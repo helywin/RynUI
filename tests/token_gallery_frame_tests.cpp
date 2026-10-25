@@ -23,6 +23,8 @@
 #include "component/time_picker_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
+#include "component/descriptions_component.hpp"
+#include "component/skeleton_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -853,7 +855,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 334, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 358, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -866,17 +868,17 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 257,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 274,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
                     rynui::example::ReferenceSurfaceRole::site_header,
             "Token Gallery document and header surface count drifted");
-    require(fixture.selections->mounted().size() == 46 && fixture.selections->checkbox_groups().size() == 2 &&
+    require(fixture.selections->mounted().size() == 47 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 1287) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 1319) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -895,7 +897,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 554) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 578) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -904,7 +906,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 286,
+                initial.reference_content_runs == 126 && initial.live_samples == 291,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1048,8 +1050,8 @@ void test_live_input_samples() {
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
     // DatePicker and the appended navigation slots retain their own editors after Form.
-    require(fixture.inputs->mounted_inputs().size() == 147 &&
-                fixture.host->services().select().mounted().size() == 22 &&
+    require(fixture.inputs->mounted_inputs().size() == 151 &&
+                fixture.host->services().select().mounted().size() == 24 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
                 fixture.host->services().modal().mounted().size() == 13,
@@ -2574,7 +2576,9 @@ void test_empty_and_result_gallery_after_document_scroll() {
                 const auto heading = entry.identity == "ant.component.breadcrumb"    ? "gallery.breadcrumb.trail "
                                      : entry.identity == "ant.component.steps"       ? "gallery.steps.workflow "
                                      : entry.identity == "ant.component.time-picker" ? "gallery.time-picker.controlled "
-                                                                                     : "";
+                                     : entry.identity == "ant.component.descriptions" ? "gallery.descriptions.editor "
+                                     : entry.identity == "ant.component.skeleton"     ? "gallery.skeleton.preview "
+                                                                                      : "";
                 if (std::string_view{heading}.size() > 0) {
                     const auto texts = f.host->text().mounted_texts();
                     const auto target = std::ranges::find_if(texts, [&](const auto& t) {
@@ -2747,10 +2751,14 @@ void test_form_gallery_after_document_scroll() {
                 entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
                 auto expected = reference->node;
                 if (entry.identity == "ant.component.breadcrumb" || entry.identity == "ant.component.steps" ||
-                    entry.identity == "ant.component.time-picker") {
-                    const auto heading = entry.identity == "ant.component.breadcrumb" ? "gallery.breadcrumb.trail "
-                                         : entry.identity == "ant.component.steps" ? "gallery.steps.workflow "
-                                                                                   : "gallery.time-picker.controlled ";
+                    entry.identity == "ant.component.time-picker" || entry.identity == "ant.component.descriptions" ||
+                    entry.identity == "ant.component.skeleton") {
+                    const auto heading =
+                        entry.identity == "ant.component.breadcrumb"     ? "gallery.breadcrumb.trail "
+                        : entry.identity == "ant.component.steps"        ? "gallery.steps.workflow "
+                        : entry.identity == "ant.component.time-picker"  ? "gallery.time-picker.controlled "
+                        : entry.identity == "ant.component.descriptions" ? "gallery.descriptions.editor "
+                                                                         : "gallery.skeleton.preview ";
                     const auto texts = f.host->text().mounted_texts();
                     const auto target = std::ranges::find_if(texts, [&](const auto& t) {
                         return f.text_scene.text_state(t.scene).content().bytes().starts_with(heading);
@@ -3312,6 +3320,10 @@ void test_time_picker_gallery_after_document_scroll() {
                 heading = "gallery.steps.workflow";
             } else if (entry.identity == "ant.component.time-picker") {
                 heading = "gallery.time-picker.controlled";
+            } else if (entry.identity == "ant.component.descriptions") {
+                heading = "gallery.descriptions.editor";
+            } else if (entry.identity == "ant.component.skeleton") {
+                heading = "gallery.skeleton.preview";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -3982,6 +3994,10 @@ void test_date_picker_gallery_after_document_scroll() {
                 heading = "gallery.steps.workflow";
             } else if (entry.identity == "ant.component.time-picker") {
                 heading = "gallery.time-picker.controlled";
+            } else if (entry.identity == "ant.component.descriptions") {
+                heading = "gallery.descriptions.editor";
+            } else if (entry.identity == "ant.component.skeleton") {
+                heading = "gallery.skeleton.preview";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -4951,6 +4967,650 @@ void test_navigation_gallery_after_document_scroll() {
     }
 }
 
+void test_details_loading_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    std::cout << std::unitbuf;
+    auto definition = make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                "Details/loading finite layout failed");
+    };
+    sync();
+    const auto root = services.components().root(services.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& n = f.nodes.require(services.components().root(id));
+        return runtime::Rect{n.bounds.x + n.translation.x, n.bounds.y + n.translation.y, n.bounds.width,
+                             n.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId owner) {
+        for (auto id = std::optional{child}; id; id = services.components().parent(*id)) {
+            if (*id == owner) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text = [&](std::string_view prefix) {
+        for (const auto& t : f.host->text().mounted_texts()) {
+            if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
+                return t;
+            }
+        }
+        throw std::runtime_error("Details/loading Text absent: " + std::string{prefix});
+    };
+    const auto owner_of = [&](std::string_view heading) {
+        const auto owner = services.components().parent(text(heading).component);
+        require(owner.has_value(), "Details/loading sample ownership absent");
+        return *owner;
+    };
+    const auto details_owner = owner_of("gallery.descriptions.editor");
+    const auto loading_owner = owner_of("gallery.skeleton.preview");
+    const auto owned = [&](auto mounted, runtime::ComponentId owner, std::size_t index = 0) {
+        for (auto id : mounted) {
+            if (descendant(id, owner)) {
+                if (index == 0) {
+                    return id;
+                }
+                --index;
+            }
+        }
+        throw std::runtime_error("Details/loading owned component absent");
+    };
+    const auto details = owned(services.descriptions().mounted(), details_owner);
+    const auto skeleton = owned(services.skeleton().mounted(), loading_owner);
+    const auto original_details = services.descriptions().snapshot(details);
+    const auto original_skeleton = services.skeleton().snapshot(skeleton);
+    const auto role = owned(services.select().mounted(), original_details.items[1].content);
+    const auto audience = owned(services.select().mounted(), original_skeleton.content);
+    const auto role_before = services.select().snapshot(role);
+    const auto audience_before = services.select().snapshot(audience);
+    const auto editor_in = [&](runtime::ComponentId owner) {
+        for (const auto& e : f.inputs->mounted_inputs()) {
+            if (descendant(e.component, owner)) {
+                return e;
+            }
+        }
+        throw std::runtime_error("Details/loading owned Input absent");
+    };
+    const auto name = editor_in(original_details.items[0].content);
+    const auto draft = editor_in(original_skeleton.content);
+    const auto name_layers = f.inputs->text_layers(name.component);
+    const auto draft_layers = f.inputs->text_layers(draft.component);
+    const auto save = button_with_label(f, "保存资料");
+    const auto publish = button_with_label(f, "发布动态");
+    require(descendant(save.component, details) && descendant(publish.component, original_skeleton.content),
+            "Details/loading selected a foreign child Button");
+    const auto toggles = f.selections->mounted();
+    const auto enabled_it =
+        std::ranges::find_if(toggles, [&](const auto& e) { return descendant(e.component, details); });
+    require(enabled_it != toggles.end(), "Descriptions native Switch absent");
+    const auto enabled = *enabled_it;
+    GalleryDocumentViewport document_scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        if (metrics.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        const auto translate = [&] {
+            require(document_scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "Details/loading document translation failed");
+            if (!metrics.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "Details/loading sidebar translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto reference = std::ranges::find_if(
+                surfaces, [&](const auto& s) { return f.surfaces->snapshot(s.component).identity == entry.identity; });
+            require(reference != surfaces.end(), "Details/loading lost old reference card");
+            const auto anchor = gallery_component_navigation_anchor(entry.identity, reference->node, f.host->text(),
+                                                                    f.nodes, scroll_root);
+            if (entry.identity == "ant.component.descriptions" || entry.identity == "ant.component.skeleton") {
+                const auto heading = text(entry.identity == "ant.component.descriptions" ? "gallery.descriptions.editor"
+                                                                                         : "gallery.skeleton.preview");
+                require(near(anchor.offset,
+                             f.nodes.require(services.components().root(heading.component)).bounds.y -
+                                 f.nodes.require(scroll_root).bounds.y,
+                             .02F),
+                        "Details/loading production anchor did not select actual heading");
+            }
+            anchors.push_back(anchor);
+        }
+        static_cast<void>(document_scroll.replace_component_anchors(anchors));
+        static_cast<void>(
+            document_scroll.set_extents(metrics.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(metrics.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            static_cast<void>(document_scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    reconcile();
+    const auto reveal = [&](runtime::ComponentId id) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        static_cast<void>(document_scroll.scroll_to(f.nodes.require(services.components().root(id)).bounds.y -
+                                                    f.nodes.require(scroll_root).bounds.y - 90));
+        reconcile();
+    };
+    const auto key = [&](input::Key k, input::KeyModifier mods = input::KeyModifier::none) {
+        services.focus().dispatch({k, input::KeyAction::down, mods});
+        services.focus().dispatch({k, input::KeyAction::up, mods});
+        sync();
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto r = bounds(id);
+        const runtime::Point point{r.x + r.width / 2, r.y + r.height / 2};
+        require(r.width > 0 && r.height > 0 && point.x >= 16 && point.x < width - 16 && point.y >= 12 && point.y < 888,
+                "Details/loading pointer target outside finite viewport");
+        for (auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            services.pointer().dispatch(pointer_event(action, point, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto action = [&](std::string_view prefix) {
+        const auto b = button_with_label(f, prefix);
+        reveal(b.component);
+        const auto r = bounds(b.component);
+        require(services.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) == b.interaction,
+                "Details/loading command is not actual topmost hit");
+        click(b.component);
+        reconcile();
+    };
+    // Supplemental no-blur regression uses the mounted Button's real activation handler;
+    // pointer and focused keyboard actions above/below cover the user event paths.
+    const auto command_without_blur = [&](std::string_view prefix) {
+        const auto b = button_with_label(f, prefix);
+        const auto handler = services.interactions().require(b.interaction).focus_handlers;
+        require(handler && handler->activate, "Details/loading native command handler absent");
+        handler->activate();
+        reconcile();
+    };
+    const auto type = [&](const auto& e, String value) {
+        reveal(e.component);
+        click(e.component);
+        require(services.focus().state().focused == e.interaction && f.inputs->sessions().active().valid(),
+                "Details/loading native Input focus/session absent");
+        key(input::Key::a, input::KeyModifier::control);
+        require(bool(f.inputs->dispatch(input::TextCommitted{value, f.inputs->sessions().active()})),
+                "Details/loading native Text event failed");
+        sync();
+    };
+    const auto within = [](runtime::Rect a, runtime::Rect b) {
+        return a.width <= 0 || a.height <= 0 ||
+               (a.x >= b.x - .02F && a.y >= b.y - .02F && a.x + a.width <= b.x + b.width + .02F &&
+                a.y + a.height <= b.y + b.height + .02F);
+    };
+    const auto glyphs = [&](auto scene, runtime::Rect allowed) {
+        const auto range = f.text_scene.primitive(scene).instances;
+        std::size_t visible = 0;
+        for (std::uint32_t i = 0; i < range.count; ++i) {
+            const auto instance = range.first + i;
+            if (!std::ranges::any_of(services.scene_composer().ordered_scene().commands(), [instance](const auto& c) {
+                    return c.kind == graphics::SceneDrawKind::glyph && instance >= c.first_instance &&
+                           instance - c.first_instance < c.instance_count;
+                })) {
+                continue;
+            }
+            const auto& g = f.text_scene.glyph_scene().instances().at(instance);
+            const auto& p = g.position_size;
+            const auto& tr = g.translation_opacity;
+            const auto& c = g.clip_bounds;
+            const auto r = graphics::intersect_effect_bounds({p[0] + tr[0], p[1] + tr[1], p[2], p[3]},
+                                                             {c[0], c[1], c[2] - c[0], c[3] - c[1]});
+            if (r.width > 0 && r.height > 0 && tr[2] > 0 && g.color[3] > 0) {
+                require(std::isfinite(r.x) && std::isfinite(r.y) && within(r, allowed) &&
+                            within(r, {16, 12, width - 32, 876}),
+                        "Details/loading actual glyph escaped region/viewport");
+                ++visible;
+            }
+        }
+        return visible;
+    };
+    const auto allocation = [&](runtime::ComponentId id, runtime::ComponentId owner) {
+        if (owner == details) {
+            for (const auto& item : services.descriptions().snapshot(details).items) {
+                if (descendant(id, item.label)) {
+                    return bounds(item.label);
+                }
+                if (descendant(id, item.content)) {
+                    return bounds(item.content);
+                }
+            }
+        }
+        return bounds(owner == skeleton ? original_skeleton.content : owner);
+    };
+    const auto visuals = [&](runtime::ComponentId owner) {
+        std::size_t painted = 0;
+        for (const auto& t : f.host->text().mounted_texts()) {
+            if (descendant(t.component, owner) && services.components().branch_active(t.component)) {
+                painted += glyphs(t.scene, allocation(t.component, owner));
+            }
+        }
+        for (const auto& e : f.inputs->mounted_inputs()) {
+            if (descendant(e.component, owner) && services.components().branch_active(e.component)) {
+                const auto layers = f.inputs->text_layers(e.component);
+                require(glyphs(layers.base, allocation(e.component, owner)) +
+                                glyphs(layers.selected, allocation(e.component, owner)) >
+                            0,
+                        "Details/loading native editor glyphs absent");
+            }
+        }
+        require(painted > 0, "Details/loading actual content glyphs absent");
+        for (const auto& hit : services.hit_test().records()) {
+            const auto* record = services.interactions().find(hit.interaction);
+            if (record && descendant(record->component, owner) && hit.effective_eligible) {
+                require(within(graphics::intersect_effect_bounds(hit.translated_bounds, hit.effective_clip),
+                               allocation(record->component, owner)),
+                        "Details/loading actual hit escaped region");
+            }
+        }
+    };
+    std::size_t clipped_fills_seen = 0;
+    const auto surface = [&](component::RetainedSurfaceId id, runtime::Rect allowed) {
+        const auto range = services.surfaces().visual_range(id);
+        std::size_t visible = 0;
+        for (std::uint32_t i = 0; i < range.count; ++i) {
+            const auto instance = range.first + i;
+            const auto& q = services.surfaces().instances().at(instance);
+            const runtime::Rect r{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1], q.bounds[2],
+                                  q.bounds[3]};
+            const bool drawn_quad =
+                q.opacity > 0 &&
+                std::ranges::any_of(services.scene_composer().ordered_scene().commands(), [instance](const auto& c) {
+                    return c.kind == graphics::SceneDrawKind::quad && instance >= c.first_instance &&
+                           instance - c.first_instance < c.instance_count;
+                });
+            // Skeleton publishes zero-opacity source quads plus common clipped fills when
+            // any shape meets an ancestor clip. Count the actual ordered fill, not the source.
+            bool drawn_fill = false;
+            if (!drawn_quad && id.content_range && q.color[3] > 0 && r.width > 0 && r.height > 0) {
+                const auto effects = services.rounded_effects().packed_instances();
+                for (const auto& command : services.scene_composer().ordered_scene().commands()) {
+                    if (command.kind != graphics::SceneDrawKind::rounded_effect) {
+                        continue;
+                    }
+                    for (std::uint32_t j = command.first_instance; j < command.first_instance + command.instance_count;
+                         ++j) {
+                        const auto& effect = effects[j];
+                        const auto& g = effect.geometry;
+                        const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                                  g.shape.rect.width, g.shape.rect.height};
+                        if (g.kind != graphics::RoundedEffectKind::outer_shadow || g.blur != 0 || g.spread != 0 ||
+                            shape != r || g.shape.radius != q.corner_radius || !effect.material.visible ||
+                            effect.material.opacity <= 0 ||
+                            effect.material.color != Color{q.color[0], q.color[1], q.color[2], q.color[3]}) {
+                            continue;
+                        }
+                        const auto clipped =
+                            g.ancestor_clip ? graphics::intersect_effect_bounds(shape, g.ancestor_clip->bounds) : shape;
+                        require(within(clipped, allowed) && within(clipped, {16, 12, width - 32, 876}),
+                                "Skeleton actual common fill escaped allocation/viewport");
+                        const runtime::Point center{clipped.x + clipped.width / 2, clipped.y + clipped.height / 2};
+                        drawn_fill |= clipped.width > 0 && clipped.height > 0 &&
+                                      graphics::rounded_effect_coverage(center, effect) > 0;
+                    }
+                }
+            }
+            if (drawn_fill) {
+                ++clipped_fills_seen;
+                ++visible;
+                continue;
+            }
+            if (!drawn_quad || q.color[3] <= 0 || r.width <= 0 || r.height <= 0) {
+                continue;
+            }
+            require(std::isfinite(r.x) && std::isfinite(r.y) && within(r, allowed) &&
+                        within(r, {16, 12, width - 32, 876}),
+                    "Details/loading actual surface escaped allocation/viewport");
+            ++visible;
+        }
+        return visible;
+    };
+    const auto focus_edges = [&](runtime::ComponentId id) {
+        const auto b = bounds(id);
+        std::array<float, 4> edges{};
+        for (const auto& effect : services.rounded_effects().packed_instances()) {
+            const auto& g = effect.geometry;
+            const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                      g.shape.rect.width, g.shape.rect.height};
+            if (g.kind != graphics::RoundedEffectKind::outline || shape != b || !effect.material.visible ||
+                effect.material.opacity <= 0) {
+                continue;
+            }
+            const float offset = g.outline_offset + g.outline_width / 2;
+            const std::array<runtime::Point, 4> points{{{b.x - offset, b.y + b.height / 2},
+                                                        {b.x + b.width / 2, b.y - offset},
+                                                        {b.x + b.width + offset, b.y + b.height / 2},
+                                                        {b.x + b.width / 2, b.y + b.height + offset}}};
+            for (std::size_t i = 0; i < points.size(); ++i) {
+                const auto p = points[i];
+                if (!g.ancestor_clip || (p.x >= g.ancestor_clip->bounds.x && p.y >= g.ancestor_clip->bounds.y &&
+                                         p.x < g.ancestor_clip->bounds.x + g.ancestor_clip->bounds.width &&
+                                         p.y < g.ancestor_clip->bounds.y + g.ancestor_clip->bounds.height)) {
+                    edges[i] = std::max(edges[i], graphics::rounded_effect_coverage(p, effect) *
+                                                      effect.material.opacity * effect.material.color.alpha());
+                }
+            }
+        }
+        require(std::ranges::all_of(edges, [](float value) { return value > .8F; }),
+                "Details/loading outward focus edge absent");
+    };
+    const auto navigate = [&](std::string_view caption, std::string_view identity, std::string_view heading,
+                              runtime::ComponentId owner) {
+        const auto b = button_with_label(f, caption);
+        require(descendant(b.component, services.components().root_components().front()),
+                "Details/loading catalog owner absent");
+        auto parent = f.nodes.require(b.node).parent;
+        while (parent && *parent != navigation_root) {
+            parent = f.nodes.require(*parent).parent;
+        }
+        require(parent.has_value(), "Details/loading catalog Button outside sidebar");
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : navigation_root;
+        const float offset = f.nodes.require(b.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (metrics.narrow) {
+            static_cast<void>(document_scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        require(within(bounds(b.component), metrics.navigation_lane) &&
+                    glyphs(text(caption).scene, bounds(b.component)) > 0,
+                "Details/loading catalog is not actually visible");
+        require(!definition.take_navigation_request(), "Details/loading stale navigation request");
+        click(b.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == GalleryNavigationTargetKind::component &&
+                    request->component_identity == identity,
+                "Details/loading actual catalog identity differs");
+        reconcile(request);
+        require(glyphs(text(heading).scene, bounds(owner)) > 0,
+                "Details/loading real catalog did not reach actual sample");
+    };
+    const auto mounts = services.components().mount_runs();
+    const auto count = services.components().component_count();
+    const auto telemetry = definition.telemetry();
+    const auto retained = [&] {
+        const auto current = services.descriptions().snapshot(details);
+        require(current.items.size() == original_details.items.size(), "Descriptions changed item count");
+        for (std::size_t i = 0; i < current.items.size(); ++i) {
+            require(current.items[i].viewport == original_details.items[i].viewport &&
+                        current.items[i].label == original_details.items[i].label &&
+                        current.items[i].content == original_details.items[i].content,
+                    "Descriptions update replaced slot identity");
+        }
+        require(editor_in(original_details.items[0].content).component == name.component &&
+                    editor_in(original_details.items[0].content).editor == name.editor &&
+                    editor_in(original_skeleton.content).component == draft.component &&
+                    editor_in(original_skeleton.content).editor == draft.editor &&
+                    f.inputs->text_layers(name.component).base == name_layers.base &&
+                    f.inputs->text_layers(draft.component).base == draft_layers.base &&
+                    services.select().snapshot(role).selector == role_before.selector &&
+                    services.select().snapshot(role).rows == role_before.rows &&
+                    services.select().snapshot(audience).selector == audience_before.selector &&
+                    services.select().snapshot(audience).rows == audience_before.rows &&
+                    services.skeleton().snapshot(skeleton).content == original_skeleton.content &&
+                    services.skeleton().snapshot(skeleton).surface == original_skeleton.surface &&
+                    button_with_label(f, "保存资料").interaction == save.interaction &&
+                    button_with_label(f, "发布动态").interaction == publish.interaction &&
+                    services.components().mount_runs() == mounts && services.components().component_count() == count &&
+                    definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "Details/loading ordinary update replaced component/editor/scene/interaction identity");
+    };
+    bool title_enabled = true;
+    bool avatar_enabled = true;
+    bool rounded = false;
+    int paragraph_step = 0;
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        for (const float next_width : {1200.0F, 560.0F}) {
+            width = next_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            std::cout << "Details/loading begin theme_step=" << theme_step << " viewport=" << width << "x900\n";
+            navigate("Descriptions", "ant.component.descriptions", "gallery.descriptions.editor", details_owner);
+            type(name, u8"Morning project");
+            key(input::Key::home);
+            key(input::Key::right, input::KeyModifier::shift);
+            require(f.inputs->editors().require(name.editor).selection().anchor !=
+                        f.inputs->editors().require(name.editor).selection().caret,
+                    "Descriptions actual selection failed");
+            reveal(role);
+            click(services.select().snapshot(role).selector);
+            require(services.select().snapshot(role).visible, "Descriptions real Select did not open");
+            key(input::Key::end);
+            key(input::Key::enter);
+            require(services.select().snapshot(role).value == SelectSelection{u8"reviewer"},
+                    "Descriptions Select keyboard writeback failed");
+            reveal(enabled.component);
+            click(enabled.component);
+            require(!f.selections->snapshot(enabled.component).checked,
+                    "Descriptions actual Switch did not write back");
+            reveal(save.component);
+            click(save.component);
+            require(f.text_scene.text_state(text("gallery.descriptions.feedback").scene)
+                            .content()
+                            .bytes()
+                            .find("Morning project · 审核者 · 已停用") != std::string_view::npos,
+                    "Descriptions saved actual draft/role missing");
+            require(services.focus().request_focus(save.interaction, input::FocusModality::keyboard),
+                    "Descriptions child Button focus failed");
+            sync();
+            focus_edges(save.component);
+            require(surface(save.scene, allocation(save.component, details)) > 0,
+                    "Descriptions actual Button surface absent");
+            reveal(enabled.component);
+            require(services.focus().request_focus(enabled.interaction, input::FocusModality::keyboard),
+                    "Descriptions Switch keyboard focus failed");
+            sync();
+            focus_edges(enabled.component);
+            require(surface(enabled.surface, allocation(enabled.component, details)) > 0,
+                    "Descriptions actual Switch surface absent");
+            key(input::Key::space);
+            action("gallery.descriptions.span");
+            require(services.descriptions().snapshot(details).rows.front().front().span == 1,
+                    "Descriptions native span command did not update packing");
+            action("gallery.descriptions.columns");
+            require(services.descriptions().snapshot(details).rows.size() == 4,
+                    "Descriptions native columns command did not use one column");
+            action("gallery.descriptions.vertical");
+            action("gallery.descriptions.bordered");
+            action("gallery.descriptions.size");
+            reveal(details);
+            visuals(details);
+            retained();
+            require(f.inputs->editors().require(name.editor).value() == "Morning project",
+                    "Descriptions layout lost draft");
+            type(name, u8"Details retained");
+            const auto details_session = f.inputs->sessions().active();
+            require(bool(f.inputs->dispatch(input::CompositionChanged{String{u8"候选"}, {}, details_session})),
+                    "Descriptions preedit failed");
+            command_without_blur("gallery.descriptions.vertical");
+            require(f.inputs->editors().require(name.editor).composition().active,
+                    "Descriptions ordinary layout discarded preedit");
+            width = next_width == 1200.0F ? 560.0F : 1200.0F;
+            definition.set_viewport_width(width);
+            reconcile();
+            require(f.inputs->editors().require(name.editor).composition().active &&
+                        f.inputs->editors().require(name.editor).value() == "Details retained",
+                    "Descriptions responsive reflow discarded draft/preedit");
+            width = next_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            command_without_blur("gallery.descriptions.visible");
+            require(!services.components().branch_active(original_details.items[0].content) &&
+                        !f.inputs->editors().require(name.editor).composition().active &&
+                        !f.inputs->sessions().active().valid() &&
+                        !bool(f.inputs->dispatch(input::TextCommitted{String{u8"stale"}, details_session})) &&
+                        glyphs(name_layers.base, bounds(details)) == 0,
+                    "Descriptions hidden item retained input/preedit/glyphs");
+            action("gallery.descriptions.visible");
+            reveal(role);
+            click(services.select().snapshot(role).selector);
+            require(services.select().snapshot(role).visible, "Descriptions popup reopen failed");
+            command_without_blur("gallery.descriptions.visible");
+            require(!services.select().snapshot(role).visible, "Descriptions hidden role kept Select popup");
+            action("gallery.descriptions.focus");
+            require(services.focus().state().focused == name.interaction &&
+                        f.inputs->editors().require(name.editor).value() == "Details retained",
+                    "Descriptions external ref/restore lost draft");
+            action("gallery.descriptions.columns");
+            action("gallery.descriptions.span");
+            action("gallery.descriptions.bordered");
+            std::cout << "Descriptions real edit/layout/visibility/popup/ref passed\n";
+            navigate("Skeleton", "ant.component.skeleton", "gallery.skeleton.preview", loading_owner);
+            type(draft, u8"Retained story");
+            reveal(audience);
+            click(services.select().snapshot(audience).selector);
+            require(services.select().snapshot(audience).visible, "Skeleton real Select did not open");
+            click(services.select().snapshot(audience).rows[1]);
+            require(services.select().snapshot(audience).value == SelectSelection{u8"private"},
+                    "Skeleton actual option pointer failed");
+            reveal(publish.component);
+            click(publish.component);
+            key(input::Key::tab, input::KeyModifier::shift);
+            require(services.focus().request_focus(publish.interaction, input::FocusModality::keyboard),
+                    "Skeleton child keyboard focus failed");
+            sync();
+            focus_edges(publish.component);
+            require(surface(publish.scene, bounds(original_skeleton.content)) > 0,
+                    "Skeleton actual Button surface absent");
+            key(input::Key::enter);
+            require(f.text_scene.text_state(text("gallery.skeleton.feedback").scene)
+                            .content()
+                            .bytes()
+                            .find("已发布 Retained story · 仅自己") != std::string_view::npos,
+                    "Skeleton actual publication differs");
+            reveal(skeleton);
+            visuals(skeleton);
+            type(draft, u8"Retained story");
+            const auto session = f.inputs->sessions().active();
+            require(bool(f.inputs->dispatch(input::CompositionChanged{String{u8"拼音"}, {}, session})),
+                    "Skeleton preedit event failed");
+            definition.smoke_step(theme_step == 0U ? 1U : 0U);
+            sync();
+            require(f.inputs->editors().require(draft.editor).composition().active,
+                    "Skeleton Theme update discarded preedit");
+            definition.smoke_step(theme_step);
+            width = next_width == 1200.0F ? 560.0F : 1200.0F;
+            definition.set_viewport_width(width);
+            reconcile();
+            require(f.inputs->editors().require(draft.editor).composition().active &&
+                        f.inputs->editors().require(draft.editor).value() == "Retained story",
+                    "Skeleton responsive reflow discarded draft/preedit");
+            width = next_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            command_without_blur("gallery.skeleton.loading");
+            require(services.skeleton().snapshot(skeleton).loading &&
+                        !services.components().branch_active(original_skeleton.content) &&
+                        !f.inputs->editors().require(draft.editor).composition().active &&
+                        !f.inputs->sessions().active().valid() &&
+                        !bool(f.inputs->dispatch(input::TextCommitted{String{u8"late"}, session})) &&
+                        !services.focus().request_focus(draft.interaction, input::FocusModality::keyboard) &&
+                        glyphs(draft_layers.base, bounds(skeleton)) == 0,
+                    "Skeleton loading retained active input/preedit/glyphs");
+            for (auto setting : {"gallery.skeleton.title", "gallery.skeleton.paragraph", "gallery.skeleton.avatar",
+                                 "gallery.skeleton.round"}) {
+                action(setting);
+                if (std::string_view{setting} == "gallery.skeleton.title") {
+                    title_enabled = !title_enabled;
+                } else if (std::string_view{setting} == "gallery.skeleton.paragraph") {
+                    paragraph_step = (paragraph_step + 1) % 3;
+                } else if (std::string_view{setting} == "gallery.skeleton.avatar") {
+                    avatar_enabled = !avatar_enabled;
+                } else {
+                    rounded = !rounded;
+                }
+                reveal(skeleton);
+                const std::size_t expected = (title_enabled ? 1 : 0) + (avatar_enabled ? 1 : 0) +
+                                             (paragraph_step == 0   ? 3
+                                              : paragraph_step == 1 ? 1
+                                                                    : 0);
+                const auto actual = surface(original_skeleton.surface, bounds(skeleton));
+                if (actual != expected) {
+                    const auto range = services.surfaces().visual_range(original_skeleton.surface);
+                    std::cerr << "Skeleton setting=" << setting << " expected=" << expected << " actual=" << actual
+                              << " raw_count=" << range.count << " bounds=" << bounds(skeleton).x << ','
+                              << bounds(skeleton).y << ',' << bounds(skeleton).width << ',' << bounds(skeleton).height
+                              << '\n';
+                    for (std::uint32_t i = 0; i < range.count; ++i) {
+                        const auto& q = services.surfaces().instances().at(range.first + i);
+                        std::cerr << "shape=" << q.bounds[0] + q.translation[0] << ',' << q.bounds[1] + q.translation[1]
+                                  << ',' << q.bounds[2] << ',' << q.bounds[3] << " opacity=" << q.opacity << '\n';
+                    }
+                }
+                require(actual == expected, "Skeleton title/paragraph/avatar actual shape count differs");
+                if (rounded) {
+                    const auto range = services.surfaces().visual_range(original_skeleton.surface);
+                    for (std::uint32_t i = avatar_enabled ? 1 : 0; i < expected; ++i) {
+                        const auto& q = services.surfaces().instances().at(range.first + i);
+                        require(near(q.corner_radius, q.bounds[3] / 2), "Skeleton round actual radius differs");
+                    }
+                }
+                retained();
+            }
+            action("gallery.skeleton.loading");
+            reveal(audience);
+            click(services.select().snapshot(audience).selector);
+            require(services.select().snapshot(audience).visible, "Skeleton retained popup did not reopen");
+            command_without_blur("gallery.skeleton.loading");
+            require(!services.select().snapshot(audience).visible, "Skeleton loading retained Select popup");
+            action("gallery.skeleton.focus");
+            require(services.focus().state().focused == draft.interaction &&
+                        f.inputs->editors().require(draft.editor).value() == "Retained story" &&
+                        !f.inputs->editors().require(draft.editor).composition().active &&
+                        !services.select().snapshot(audience).visible,
+                    "Skeleton external ref recovery lost draft or resurrected popup/preedit");
+            action("gallery.skeleton.shape");
+            for (std::size_t i = 1; i < 4; ++i) {
+                const auto standalone = owned(services.skeleton().mounted(), loading_owner, i);
+                reveal(standalone);
+                require(surface(services.skeleton().snapshot(standalone).surface, bounds(standalone)) > 0,
+                        "Skeleton standalone actual shape absent");
+            }
+            action("gallery.skeleton.block");
+            for (std::size_t i = 2; i < 4; ++i) {
+                const auto standalone = owned(services.skeleton().mounted(), loading_owner, i);
+                reveal(standalone);
+                require(near(bounds(standalone).width, bounds(loading_owner).width, .02F) &&
+                            surface(services.skeleton().snapshot(standalone).surface, bounds(standalone)) > 0,
+                        "Skeleton block standalone did not fill available width");
+            }
+            action("gallery.skeleton.block");
+            retained();
+            std::cout << "Details/loading theme_step=" << theme_step << " viewport=" << width
+                      << "x900 catalog/events/clip/focus/preedit/popup/retained passed; clipped_fills="
+                      << clipped_fills_seen << '\n';
+        }
+    }
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -4959,6 +5619,14 @@ void print_gallery_inventory() {
     f.surfaces->mount(definition.content, f.inputs.get());
     require(f.host->layout_and_synchronize({1200, 60000}, {0, 0, 1200, 60000}, {24, 20}), "inventory layout failed");
     const auto telemetry = definition.telemetry();
+    require(definition.stable_test_ids.size() == 358 && definition.navigation_control_count == 93 &&
+                f.host->mounted_buttons().size() == 367 && f.host->interactions().size() == 1412 &&
+                f.host->scene_composer().interaction_order().size() == 671 && telemetry.live_samples == 291 &&
+                telemetry.theme_content_runs == 67 && f.inputs->mounted_inputs().size() == 151 &&
+                f.host->services().select().mounted().size() == 24 && f.selections->mounted().size() == 47 &&
+                f.host->services().descriptions().mounted().size() == 1 &&
+                f.host->services().skeleton().mounted().size() == 4,
+            "Details/loading exact Gallery inventory drifted");
     std::cout << "stable_ids=" << definition.stable_test_ids.size()
               << " navigation=" << definition.navigation_control_count
               << " buttons=" << f.host->mounted_buttons().size() << " interactions=" << f.host->interactions().size()
@@ -4979,7 +5647,9 @@ void print_gallery_inventory() {
               << " date_pickers=" << f.host->services().date_picker().mounted().size()
               << " time_pickers=" << f.host->services().time_picker().mounted().size()
               << " breadcrumbs=" << f.host->services().breadcrumb().mounted().size()
-              << " steps=" << f.host->services().steps().mounted().size() << '\n';
+              << " steps=" << f.host->services().steps().mounted().size()
+              << " descriptions=" << f.host->services().descriptions().mounted().size()
+              << " skeletons=" << f.host->services().skeleton().mounted().size() << '\n';
 }
 } // namespace
 
@@ -4987,6 +5657,10 @@ int main(int argc, char** argv) {
     try {
         if (argc == 2 && std::string_view{argv[1]} == "--inventory-only") {
             print_gallery_inventory();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--details-loading-only") {
+            test_details_loading_gallery_after_document_scroll();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--navigation-only") {
@@ -5049,6 +5723,7 @@ int main(int argc, char** argv) {
         test_navigation_gallery_after_document_scroll();
         test_panel_and_selection_gallery_after_document_scroll();
         test_empty_and_result_gallery_after_document_scroll();
+        test_details_loading_gallery_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

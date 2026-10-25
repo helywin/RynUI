@@ -196,6 +196,28 @@ struct GalleryState final {
     ryn::Signal<bool> time_form_read_only{false};
     ryn::Signal<ryn::String> time_help{ryn::String{u8"HH:mm:ss，08:00:00 至 18:00:00，12 时不可选"}};
     ryn::Signal<ryn::String> time_feedback{ryn::String{u8"尚未保存时间"}};
+    ryn::Signal<bool> details_columns{true};
+    ryn::Signal<int> details_span{2};
+    ryn::Signal<bool> details_visible{true};
+    ryn::Signal<bool> details_vertical{false};
+    ryn::Signal<bool> details_bordered{true};
+    ryn::Signal<ryn::DescriptionsSize> details_size{ryn::DescriptionsSize::Default};
+    ryn::Signal<ryn::String> details_name{ryn::String{u8"晨间项目"}};
+    ryn::Signal<ryn::SelectSelection> details_role{ryn::SelectSelection{u8"editor"}};
+    ryn::Signal<bool> details_enabled{true};
+    ryn::Signal<ryn::String> details_feedback{ryn::String{u8"编辑资料后保存"}};
+    ryn::InputRef details_ref;
+    ryn::Signal<bool> skeleton_loading{false};
+    ryn::Signal<bool> skeleton_title{true};
+    ryn::Signal<int> skeleton_paragraph{0};
+    ryn::Signal<bool> skeleton_avatar{true};
+    ryn::Signal<bool> skeleton_round{false};
+    ryn::Signal<bool> skeleton_block{false};
+    ryn::Signal<int> skeleton_shape{0};
+    ryn::Signal<ryn::String> skeleton_draft{ryn::String{u8"今天整理项目资料"}};
+    ryn::Signal<ryn::SelectSelection> skeleton_audience{ryn::SelectSelection{u8"team"}};
+    ryn::Signal<ryn::String> skeleton_feedback{ryn::String{u8"编辑正文并选择分享范围"}};
+    ryn::InputRef skeleton_ref;
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -587,6 +609,30 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.time-picker.readonly",
     "gallery.time-picker.help",
     "gallery.time-picker.status",
+    "gallery.descriptions.editor",
+    "gallery.descriptions.feedback",
+    "gallery.descriptions.name",
+    "gallery.descriptions.save",
+    "gallery.descriptions.columns",
+    "gallery.descriptions.span",
+    "gallery.descriptions.visible",
+    "gallery.descriptions.vertical",
+    "gallery.descriptions.bordered",
+    "gallery.descriptions.size",
+    "gallery.descriptions.focus",
+    "gallery.skeleton.preview",
+    "gallery.skeleton.feedback",
+    "gallery.skeleton.draft",
+    "gallery.skeleton.save",
+    "gallery.skeleton.loading",
+    "gallery.skeleton.title",
+    "gallery.skeleton.paragraph",
+    "gallery.skeleton.avatar",
+    "gallery.skeleton.round",
+    "gallery.skeleton.standalone",
+    "gallery.skeleton.shape",
+    "gallery.skeleton.block",
+    "gallery.skeleton.focus",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -3605,6 +3651,257 @@ void add_time_picker_samples(const std::shared_ptr<GalleryState>& state) {
           }});
     state->telemetry.live_samples += 2;
 }
+
+void add_descriptions_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.descriptions.editor · Descriptions · 项目资料")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}.content(bind([state] {
+                 return utf8("gallery.descriptions.feedback · " + std::string{state->details_feedback.get().bytes()});
+             })));
+             Descriptions(
+                 DescriptionsProps{}
+                     .column(
+                         bind([state] { return state->details_columns.get() && !state->narrow_layout.get() ? 2 : 1; }))
+                     .bordered(state->details_bordered)
+                     .labelPlacement(bind([state] {
+                         return state->details_vertical.get() ? DescriptionsLabelPlacement::Vertical
+                                                              : DescriptionsLabelPlacement::Horizontal;
+                     }))
+                     .size(state->details_size)
+                     .title(DescriptionsTitle{[] { Text(u8"项目资料"); }})
+                     .layout(LayoutStyle{}
+                                 .width(bind([state] { return dp(state->document_width.get().value() - 16); }))
+                                 .margin_left(dp(8))
+                                 .margin_top(dp(4))
+                                 .margin_bottom(dp(4))),
+                 {DescriptionsItem{u8"name", DescriptionsLabel{[] { Text(u8"名称"); }}, DescriptionsContent{[state] {
+                                       Input(InputProps{}
+                                                 .defaultValue(u8"晨间项目")
+                                                 .placeholder(u8"gallery.descriptions.name")
+                                                 .ref(state->details_ref)
+                                                 .onChange([state](String value) { state->details_name.set(value); })
+                                                 .layout(LayoutStyle{}
+                                                             .width(dp(156))
+                                                             .margin_left(dp(6))
+                                                             .margin_right(dp(6))
+                                                             .margin_top(dp(6))
+                                                             .margin_bottom(dp(6))));
+                                   }}}
+                      .span(state->details_span)
+                      .visible(state->details_visible),
+                  DescriptionsItem{u8"role", DescriptionsLabel{[] { Text(u8"角色"); }}, DescriptionsContent{[state] {
+                                       Select(SelectProps{}
+                                                  .value(state->details_role)
+                                                  .options(std::vector<SelectOption>{{u8"editor", u8"编辑者"},
+                                                                                     {u8"reviewer", u8"审核者"}})
+                                                  .onChange([state](SelectSelection value) {
+                                                      state->details_role.set(value);
+                                                  })
+                                                  .layout(LayoutStyle{}
+                                                              .width(dp(148))
+                                                              .margin_left(dp(6))
+                                                              .margin_right(dp(6))
+                                                              .margin_top(dp(6))
+                                                              .margin_bottom(dp(6))));
+                                   }}}
+                      .visible(state->details_visible),
+                  DescriptionsItem{u8"enabled", DescriptionsLabel{[] { Text(u8"启用"); }}, DescriptionsContent{[state] {
+                                       Switch(SwitchProps{}
+                                                  .checked(state->details_enabled)
+                                                  .onChange([state](bool value) { state->details_enabled.set(value); })
+                                                  .layout(LayoutStyle{}
+                                                              .margin_left(dp(6))
+                                                              .margin_right(dp(6))
+                                                              .margin_top(dp(6))
+                                                              .margin_bottom(dp(6))));
+                                   }}},
+                  DescriptionsItem{u8"save", DescriptionsLabel{[] { Text(u8"操作"); }}, DescriptionsContent{[state] {
+                                       Button(ButtonProps{}
+                                                  .type(ButtonType::Primary)
+                                                  .onClick([state] {
+                                                      state->details_feedback.set(utf8(
+                                                          "已保存 " + std::string{state->details_name.get().bytes()} +
+                                                          (state->details_role.get() == SelectSelection{u8"reviewer"}
+                                                               ? " · 审核者"
+                                                               : " · 编辑者") +
+                                                          (state->details_enabled.get() ? " · 已启用" : " · 已停用")));
+                                                  })
+                                                  .layout(LayoutStyle{}
+                                                              .margin_left(dp(6))
+                                                              .margin_right(dp(6))
+                                                              .margin_top(dp(6))
+                                                              .margin_bottom(dp(6))),
+                                              [] { Text(u8"保存资料"); });
+                                   }}}});
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->details_columns.set(!state->details_columns.get()); }),
+                              [] { Text(u8"gallery.descriptions.columns · 单列/多列"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->details_span.set(state->details_span.get() == 1 ? 2 : 1); }),
+                              [] { Text(u8"gallery.descriptions.span · 名称跨列"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->details_visible.set(!state->details_visible.get()); }),
+                              [] { Text(u8"gallery.descriptions.visible · 显隐资料"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->details_vertical.set(!state->details_vertical.get()); }),
+                              [] { Text(u8"gallery.descriptions.vertical · 横纵标签"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->details_bordered.set(!state->details_bordered.get()); }),
+                              [] { Text(u8"gallery.descriptions.bordered · 切换边框"); });
+                       Button(ButtonProps{}.onClick([state] {
+                           state->details_size.set(
+                               state->details_size.get() == DescriptionsSize::Default  ? DescriptionsSize::Middle
+                               : state->details_size.get() == DescriptionsSize::Middle ? DescriptionsSize::Small
+                                                                                       : DescriptionsSize::Default);
+                       }),
+                              [] { Text(u8"gallery.descriptions.size · 切换尺寸"); });
+                       Button(ButtonProps{}.onClick([state] {
+                           state->details_visible.set(true);
+                           static_cast<void>(state->details_ref.focus());
+                       }),
+                              [] { Text(u8"gallery.descriptions.focus · 编辑名称"); });
+                   }});
+         }});
+    ++state->telemetry.live_samples;
+}
+
+void add_skeleton_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.skeleton.preview · Skeleton · 正文加载")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}.content(bind([state] {
+                 return utf8("gallery.skeleton.feedback · " + std::string{state->skeleton_feedback.get().bytes()});
+             })));
+             Space(
+                 SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                 SpaceContent{[state] {
+                     Button(ButtonProps{}.onClick(
+                                [state] { state->skeleton_loading.set(!state->skeleton_loading.get()); }),
+                            [] { Text(u8"gallery.skeleton.loading · 加载/显示正文"); });
+                     Button(ButtonProps{}.onClick([state] { state->skeleton_title.set(!state->skeleton_title.get()); }),
+                            [] { Text(u8"gallery.skeleton.title · 标题"); });
+                     Button(ButtonProps{}.onClick(
+                                [state] { state->skeleton_paragraph.set((state->skeleton_paragraph.get() + 1) % 3); }),
+                            [] { Text(u8"gallery.skeleton.paragraph · 正文行数"); });
+                     Button(
+                         ButtonProps{}.onClick([state] { state->skeleton_avatar.set(!state->skeleton_avatar.get()); }),
+                         [] { Text(u8"gallery.skeleton.avatar · 头像"); });
+                     Button(ButtonProps{}.onClick([state] { state->skeleton_round.set(!state->skeleton_round.get()); }),
+                            [] { Text(u8"gallery.skeleton.round · 圆角"); });
+                     Button(ButtonProps{}.onClick([state] {
+                         state->skeleton_loading.set(false);
+                         static_cast<void>(state->skeleton_ref.focus());
+                     }),
+                            [] { Text(u8"gallery.skeleton.focus · 编辑正文"); });
+                 }});
+             Skeleton(SkeletonProps{}
+                          .loading(state->skeleton_loading)
+                          .title(bind([state] { return SkeletonTitle{state->skeleton_title.get()}; }))
+                          .paragraph(bind([state] {
+                              SkeletonParagraph value;
+                              value.enabled = state->skeleton_paragraph.get() != 2;
+                              value.rows = state->skeleton_paragraph.get() == 0 ? 3 : 1;
+                              return value;
+                          }))
+                          .avatar(bind([state] { return SkeletonAvatarOptions{state->skeleton_avatar.get()}; }))
+                          .round(state->skeleton_round)
+                          .layout(LayoutStyle{}
+                                      .width(bind([state] { return dp(state->document_width.get().value() - 16); }))
+                                      .margin_left(dp(8))
+                                      .margin_top(dp(4))
+                                      .margin_bottom(dp(4))),
+                      SkeletonContent{[state] {
+                          Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(12)), FlexContent{[state] {
+                                   Text(u8"项目动态");
+                                   Input(InputProps{}
+                                             .defaultValue(u8"今天整理项目资料")
+                                             .placeholder(u8"gallery.skeleton.draft")
+                                             .ref(state->skeleton_ref)
+                                             .onChange([state](String value) { state->skeleton_draft.set(value); })
+                                             .layout(LayoutStyle{}
+                                                         .width(dp(260))
+                                                         .margin_left(dp(6))
+                                                         .margin_right(dp(6))
+                                                         .margin_top(dp(6))
+                                                         .margin_bottom(dp(6))));
+                                   Select(SelectProps{}
+                                              .value(state->skeleton_audience)
+                                              .options(std::vector<SelectOption>{{u8"team", u8"团队可见"},
+                                                                                 {u8"private", u8"仅自己"}})
+                                              .onChange([state](SelectSelection value) {
+                                                  state->skeleton_audience.set(value);
+                                              })
+                                              .layout(LayoutStyle{}
+                                                          .width(dp(180))
+                                                          .margin_left(dp(6))
+                                                          .margin_right(dp(6))
+                                                          .margin_top(dp(6))
+                                                          .margin_bottom(dp(6))));
+                                   Button(ButtonProps{}
+                                              .type(ButtonType::Primary)
+                                              .onClick([state] {
+                                                  state->skeleton_feedback.set(utf8(
+                                                      "已发布 " + std::string{state->skeleton_draft.get().bytes()} +
+                                                      (state->skeleton_audience.get() == SelectSelection{u8"private"}
+                                                           ? " · 仅自己"
+                                                           : " · 团队可见")));
+                                              })
+                                              .layout(LayoutStyle{}
+                                                          .margin_left(dp(6))
+                                                          .margin_right(dp(6))
+                                                          .margin_top(dp(6))
+                                                          .margin_bottom(dp(6))),
+                                          [] { Text(u8"发布动态"); });
+                               }});
+                      }});
+             Text(u8"gallery.skeleton.standalone · 独立占位");
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->skeleton_shape.set((state->skeleton_shape.get() + 1) % 4); }),
+                              [] { Text(u8"gallery.skeleton.shape · 切换形态与尺寸"); });
+                       Button(
+                           ButtonProps{}.onClick([state] { state->skeleton_block.set(!state->skeleton_block.get()); }),
+                           [] { Text(u8"gallery.skeleton.block · 填满宽度"); });
+                   }});
+             Flex(FlexProps{}
+                      .vertical(true)
+                      .align(FlexAlign::Start)
+                      .gap(dp(12))
+                      .layout(LayoutStyle{}.width(state->document_width)),
+                  FlexContent{[state] {
+                      const auto size = bind([state] {
+                          return state->skeleton_shape.get() % 2 == 0 ? ControlSize::Middle : ControlSize::Large;
+                      });
+                      SkeletonAvatar(SkeletonAvatarProps{}.size(size).shape(bind([state] {
+                          return state->skeleton_shape.get() % 2 == 0 ? SkeletonAvatarShape::Circle
+                                                                      : SkeletonAvatarShape::Square;
+                      })));
+                      SkeletonButton(SkeletonButtonProps{}.size(size).block(state->skeleton_block).shape(bind([state] {
+                          return static_cast<SkeletonButtonShape>(state->skeleton_shape.get());
+                      })));
+                      SkeletonInput(SkeletonInputProps{}.size(size).block(state->skeleton_block));
+                  }});
+         }});
+    state->telemetry.live_samples += 4;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -3701,6 +3998,8 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_breadcrumb_samples(state);
                                                         add_steps_samples(state);
                                                         add_time_picker_samples(state);
+                                                        add_descriptions_samples(state);
+                                                        add_skeleton_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

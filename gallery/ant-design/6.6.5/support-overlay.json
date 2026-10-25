@@ -925,16 +925,17 @@
     {
       "identity": "ant.component.descriptions",
       "status": "partial",
-      "summary": "原生 Descriptions 提供固定键控的多列详情、span、横纵标签、边框和三种尺寸；富内容保留编辑状态，交互 Gallery 与平台验收尚未提供。",
+      "summary": "原生 Descriptions 提供固定键控的多列详情、span、横纵标签、边框和三种尺寸；086 Gallery 可编辑项目资料并调整布局，平台验收独立记录。",
       "supported_scope": [
         "typed reactive keyed items, columns and positive spans with retained label/content/title/extra slots",
         "horizontal/vertical labels, bordered/unbordered variants, three sizes, colon and visibility reflow",
         "retained native controls, partition content/hit clips and ancestor-clipped focus decorations",
-        "finite and zero-size recovery, Theme inheritance, final metric validation and idle behavior"
+        "finite and zero-size recovery, Theme inheritance, final metric validation and idle behavior",
+        "086 interactive Gallery: native Input/Select/Switch save flow, responsive columns/span/visibility and retained refs"
       ],
       "missing_scope": [
         "dynamic item topology, automatic responsive breakpoints and locale/RTL",
-        "interactive Gallery, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
         "full Ant Design Web/DOM/CSS API and HTML auto-table sizing"
       ],
       "evidence_identifiers": [
@@ -944,7 +945,11 @@
         "runtime:src/component/descriptions_component.cpp",
         "test:rynui.descriptions_model",
         "test:rynui.descriptions_component",
-        "test:rynui.descriptions_theme"
+        "test:rynui.descriptions_theme",
+        "openspec:086-20261025-add-descriptions-and-skeleton-gallery",
+        "docs:docs/descriptions.md",
+        "test:rynui_token_gallery_frame_tests --details-loading-only",
+        "evidence:openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/01-gallery.md"
       ]
     },
     {
@@ -1348,16 +1353,17 @@
     {
       "identity": "ant.component.skeleton",
       "status": "partial",
-      "summary": "原生静态 Skeleton 提供标题、段落、avatar 和独立 Avatar/Button/Input 占位；loading 往返保留真实内容与编辑状态，动画和交互 Gallery 尚未提供。",
+      "summary": "原生静态 Skeleton 提供标题、段落、avatar 和独立 Avatar/Button/Input 占位；086 Gallery 可切换加载并恢复正文草稿与分享范围，动画尚未提供。",
       "supported_scope": [
         "typed reactive static title/paragraph/avatar composition and proportional row widths",
         "standalone SkeletonAvatar/SkeletonButton/SkeletonInput with size, shape and block semantics",
         "retained loading content with input, focus, popup and preedit cleanup plus identity/draft restoration",
-        "finite and zero-size recovery, logical scene clipping, Theme inheritance and idle behavior"
+        "finite and zero-size recovery, logical scene clipping, Theme inheritance and idle behavior",
+        "086 interactive Gallery: loading/title/paragraph/avatar/round, standalone shapes and native retained publication flow"
       ],
       "missing_scope": [
         "active/shimmer animation, SkeletonImage and SkeletonNode",
-        "interactive Gallery samples, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
         "network loading and full Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
@@ -1367,7 +1373,11 @@
         "runtime:src/component/skeleton_component.cpp",
         "test:rynui.skeleton_model",
         "test:rynui.skeleton_component",
-        "test:rynui.skeleton_theme"
+        "test:rynui.skeleton_theme",
+        "openspec:086-20261025-add-descriptions-and-skeleton-gallery",
+        "docs:docs/skeleton.md",
+        "test:rynui_token_gallery_frame_tests --details-loading-only",
+        "evidence:openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/01-gallery.md"
       ]
     },
     {

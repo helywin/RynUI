@@ -22,7 +22,9 @@ ryn::SkeletonInput(ryn::SkeletonInputProps{}.block(true));
 
 布局与逻辑 quad 顺序为 avatar、title、paragraph 各行；avatar 与 body 分配互不交叉的区域。有限宽使用可用宽，无界宽使用 Theme intrinsic width；短高度逐段截断，零尺寸后可恢复。standalone 默认 Middle：avatar 1×、button 2×、input 5×控制高度；button Circle 为 1×，Round 为 capsule，Square 与上游一样保留 default 矩形比例和小圆角。block 使用有限父宽；avatar Square 零圆角。所有绝对尺寸、间距、颜色、圆角由 Skeleton Theme 控制，LayoutStyle 仅控制外布局。
 
-首版无 active/shimmer 动画、SkeletonImage/Node、网络加载或 Web/AT 适配；没有接受却无效果的 active 属性，占位自身不注册焦点或点击目标。平台实际验收状态见 083 evidence，headless 不等于 GPU、原生窗口、Linux、系统 IME、AT 或 Gallery 已通过。
+首版无 active/shimmer 动画、SkeletonImage/Node、网络加载或 Web/AT 适配；没有接受却无效果的 active 属性，占位自身不注册焦点或点击目标。平台实际验收状态见 083 evidence，headless 不等于 GPU、原生窗口、Linux、系统 IME 或 AT 已通过。
+
+Gallery 目录的 Skeleton 直接进入“正文加载”：编辑正文、选择分享范围并发布；外部“加载/显示正文”切换骨架，“编辑正文”恢复正文并调用原 InputRef。标题、正文行数、头像和 round 可独立调整，下方独立 Avatar/Button/Input 可切换形态、尺寸与 block。加载控制始终在隐藏内容之外；加载时清理旧 popup/preedit，恢复保留普通草稿和真实控件身份。086 的 `--details-loading-only` 验证三主题和两种有限视口，实际证据及限制见该 change evidence。
 
 loading=true 时真实 content 仅挂载一次，分支绘制/输入/焦点/popup/IME 受既有门禁管理；loading=false 恢复原组件、编辑器、普通 draft 和 refs，preedit 与旧输入会话在隐藏时清除。未提供 content 或 content slot 没有挂载任何直接子组件，且 loading=false 时，根节点退出正常布局流，因此 Flex/Space 不保留空项 gap；retained region 后续增删子组件会在布局前恢复/退出正常流。非空子组件自身的空白或隐藏语义仍由该组件负责。根节点始终可处理 loading 更新；输入门禁只归属于自身 retained content 的完整 generational ID。
 
