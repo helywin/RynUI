@@ -15,6 +15,8 @@
 
 完整约 1001 秒 frame/native smoke 由父统一执行；不在本任务重复。无新增 OS/GPU 功能，故不建立 Linux/native/system IME/AT 验收项，也不据 headless 结果宣称这些通过。
 
+父最终已在 `fbce29a0` 完成冻结批次 9/9（完整 frame 1800.51 秒）及独立 Windows D3D12/DXIL 七帧启动，见 [最终记录](evidence/03-frozen-batch-final.md)。上方约 1001 秒为规划时旧基线，不是本轮耗时。
+
 ## 4. 父分支平台通用集成
 
 - [x] 4.1 独立 Astra 复核通过后合入 main，使用 ROOT 正式 MSVC Debug 新构建 Gallery/frame/catalog，运行新 focused、inventory 和八项 contracts；保留既有源码与数量，记录本轮边界后提交并推送 main。统一完整 frame 与原生启动仍由父后续分别记录，不冒充本阶段已执行。

@@ -27,3 +27,5 @@
 原始日志 `out/086-main-r1-{build,focused,inventory,contracts}.log`，JUnit `out/086-main-r1-contracts.xml`。构建中的原有四条 frame MSVC warnings 与 VSDevShell vswhere 提示保留。父实际运行不重复 worker 的全部旧长 flags；未改 Core 的旧代表由 worker 记录及 Astra 只读复验分别支持，不能冒充本轮 ROOT 重跑。
 
 发布只推送 main，并在推送后核对远端 SHA；不推送 `t3/*`，不创建 PR/archive。原有未跟踪 JPEG 不读取、不暂存、不修改。
+
+后续冻结批次的完整 Gallery 9/9 和独立 Windows 原生启动已完成，见 [实际最终验收](03-frozen-batch-final.md)；本文件此前的 focused/延期说明保持为阶段历史。

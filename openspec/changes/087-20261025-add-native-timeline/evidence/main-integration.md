@@ -40,3 +40,7 @@ clang-format 22.1.3：**723 文件、0 failures**；OpenSpec 1.14 doctor healthy
 ## 验收边界
 
 本记录证明冻结功能组合的新构建和平台通用合同。最终完整 Gallery 与 Windows 原生启动将在本阶段发布后固定源码 SHA 各执行一次，另记实际日志与范围；不把本记录升级为组件完整 GPU/人工视觉、Linux、系统 IME 或 AT 验收。只推送 main，保留工作树历史，不推送 t3 分支。
+
+## 后续统一验收
+
+本阶段发布的 `fbce29a0` 已完成一次完整 Gallery 9/9 及独立 Windows D3D12/DXIL 七帧启动，见 [批次最终记录](../../086-20261025-add-descriptions-and-skeleton-gallery/evidence/03-frozen-batch-final.md)。这些是完整 Gallery 和启动证据，不补称 Timeline 的专属 Gallery/GPU/人工视觉验收。

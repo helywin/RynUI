@@ -34,3 +34,7 @@ clang-format 22.1.3：**705 文件、0 failures**；OpenSpec 1.14 doctor healthy
 Theme、宿主、测试接入按双方并集处理；Popover 的双向父子定位、trigger Escape 与默认栈修复保留。notice 宿主在 Modal/锚定 popup 之前；内容处理后再执行所有边界兜底。此阶段采用 worker 的转换关闭清理，后续 Timeline 合并必须同时保留普通 document 根范围与逐记录清理。
 
 上述结果是 Windows 上平台通用逻辑及 Recording 检查。未在此阶段新增完整 Gallery/native、组件 GPU/人工视觉、Linux、系统 IME 或 AT 验收。最终统一运行后单独补充，不复用历史验收作为当前源码证明。
+
+## 后续统一验收
+
+与 087 合并及 document hit 修复后的冻结源码 `fbce29a0`，已完成完整 Gallery 9/9 和独立 Windows 启动，见 [批次最终记录](../../086-20261025-add-descriptions-and-skeleton-gallery/evidence/03-frozen-batch-final.md)。这里的 81/81 仍是通知阶段的历史组合结果，不替代最后的 96/96、53/53。

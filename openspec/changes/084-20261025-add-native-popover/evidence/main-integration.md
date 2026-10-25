@@ -29,3 +29,7 @@ R2 没有自行使用 Git 核验提交身份、完整历史 diff，旧 golden/II
 原始日志 `out/084-main-r2-{build,ctest,inventory}.log`，JUnit `out/084-main-r2-ctest.xml`。原有四条 frame MSVC warnings 和 VSDevShell 的 vswhere 提示保留。未重复 worker 的 44×2 或约1001秒完整 Gallery；这不替代后续统一全套与独立 Windows 启动证据。
 
 仅推送 main，推送后核对远端 SHA；不推送 `t3/*`、不创建 PR/archive，原未跟踪 JPEG 保留。
+
+## 后续统一验收
+
+与 085/086/087 合并后的冻结源码 `fbce29a0` 已完成完整 Gallery 9/9 和独立 D3D12/DXIL 七帧启动，见 [批次最终记录](../../086-20261025-add-descriptions-and-skeleton-gallery/evidence/03-frozen-batch-final.md)。这不扩大 Popover 组件的 GPU/人工视觉、Linux、系统 IME/AT 或交互 Gallery 验收范围。
