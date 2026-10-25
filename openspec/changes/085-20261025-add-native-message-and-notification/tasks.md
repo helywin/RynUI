@@ -15,4 +15,4 @@
 
 ## 3. 交付
 
-- [ ] 3.1 汇总集成验收证据，运行 clang-format 22 check、doctor、all strict、git diff --check，阶段本地提交并交付精确 HEAD/分支/path/dirty、实际 checks 与限制。
+- [x] 3.1 汇总集成验收证据，运行 clang-format 22 check、doctor、all strict、git diff --check，阶段本地提交并交付精确 HEAD/分支/path/dirty、实际 checks 与限制。
