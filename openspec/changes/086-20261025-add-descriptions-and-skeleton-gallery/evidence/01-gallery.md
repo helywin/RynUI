@@ -34,9 +34,24 @@ inventory 在 1200×60000 下仅用于精确盘点，可达性由上面的真实
 stable_ids=358 navigation=93 buttons=367 interactions=1412 visible_interactions=671 live_samples=291 theme_content=67 inputs=151 selects=24 modal_drawer=13 selection=47 menu=2 dropdown=1 collapse=1 segmented=3 empties=3 results=3 forms=3 form_items=6 date_pickers=2 time_pickers=2 breadcrumbs=2 steps=1 descriptions=1 skeletons=4
 ```
 
-八 contracts 8/8（0.56 秒），包含 generator check/self-test；独立 generator `--check` 通过。`compare-baseline.py` 核实 334 旧 IDs 顺序、31 旧 `add_*` 函数体及调用顺序、71 非目标 overlay 条目，以及 Core/API/Theme/goldens/CMake、父 README/完成记录均保持基线。
+八 contracts 最终 8/8（0.58 秒），包含 generator check/self-test；独立 generator `--check` 通过。`compare-baseline.py` 核实 334 旧 IDs 顺序、31 旧 `add_*` 函数体及调用顺序、71 非目标 overlay 条目，以及 Core/API/Theme/goldens/CMake、父 README/完成记录均保持基线。
 
 本树日志在 `out/086-*.log`。中间编译修正了新样例的 LayoutStyle margin 写法；新夹具首次长运行主动停止以移除多余同步，之后 Compact 数量断言揭示夹具需要统计共同 clipped fill，未修改 Core。一次重链接遭运行中 EXE 占用（LNK1168），待旧回归结束后串行 build 已成功。
+
+## 本地收口
+
+实现提交 `f74ee57ca9b0974e6d36a2e5506d94376ba8acbd` 后工作树干净。clang-format 22.1.3 全仓检查 674 个自有源文件、0 failures；OpenSpec 1.14.0 doctor healthy，strict validation 84/84，generator consistency、基线比较和 `git diff --check` 通过。最后仅提交本收口记录与完成后的任务状态。
+
+```text
+python openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/compare-baseline.py
+python tools/update_ant_design_gallery_catalog.py --check
+python scripts/format-code.py --check --clang-format "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/Llvm/x64/bin/clang-format.exe"
+openspec doctor --json
+openspec validate --all --strict --no-interactive
+git diff --check
+```
+
+实际 Python 为 `C:/Users/jiang/AppData/Local/Programs/Python/Python310/python.exe`，OpenSpec 为 `C:/Users/jiang/AppData/Local/pnpm/bin/openspec.cmd`。未运行完整 Gallery main；只在源中接入新 focused 流程一次，完整运行交父统一验收。
 
 ## 验收边界
 

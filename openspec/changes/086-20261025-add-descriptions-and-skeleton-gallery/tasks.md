@@ -11,6 +11,6 @@
 
 ## 3. 集成边界（平台通用）
 
-- [ ] 3.1 运行 clang-format 22 全仓 check、doctor、strict validate、diff check；记录本树实际证据、检查与限制，本地提交并确认 dirty clean，交父新一轮 Astra 审查。
+- [x] 3.1 运行 clang-format 22 全仓 check、doctor、strict validate、diff check；记录本树实际证据、检查与限制，本地提交并确认 dirty clean，交父新一轮 Astra 审查。
 
 完整约 1001 秒 frame/native smoke 由父统一执行；不在本任务重复。无新增 OS/GPU 功能，故不建立 Linux/native/system IME/AT 验收项，也不据 headless 结果宣称这些通过。
