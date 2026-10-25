@@ -35,4 +35,14 @@ ctest --test-dir out/build/windows-msvc-headless -C Release -R "^rynui\.(popover
 
 clang-format22.1.3 检查690个自有文件，0 failures；doctor健康、OpenSpec1.14 strict全部84/84、diff check通过。重开的任务全部验收后再勾选。
 
+最终核对发现默认 `openspec` shim 指向旧 pnpm v5 的1.13.1，该入口的结果不作为1.14验收。只读定位到已安装的 pnpm v11 全局1.14.0，显式执行下列入口；实际 `--version` 输出1.14.0、doctor健康、strict84/84、apply11/11 all_done。未安装仓库依赖或改全局 shim：
+
+```powershell
+$openSpec114 = 'C:/Users/jiang/AppData/Local/pnpm/global/v11/571d8138cbe6cca8ed77baade632db40d9ff691763fbc5f585da857bbb3b1d1f/node_modules/@fission-ai/openspec/bin/openspec.js'
+node $openSpec114 --version
+node $openSpec114 doctor --json
+node $openSpec114 validate --all --strict --no-interactive
+node $openSpec114 instructions apply --change 084-20261025-add-native-popover --json
+```
+
 证据仅为 Windows headless 平台通用合同，不代表 native/GPU/Linux/system IME/AT 验收。没有远端操作/push、ROOT修改、children/PR/archive或新建 R2；父任务负责独立 R2 与集成。
