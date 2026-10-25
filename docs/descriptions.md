@@ -26,7 +26,9 @@ void AccountDetails() {
 
 `labelPlacement(Horizontal/Vertical)` 控制标签位置，`bordered` 默认 false，`colon` 默认 true（bordered 不显示）。`DescriptionsSize::Default/Middle/Small` 对应锁定 Ant Design 6.6.5 的 large/medium/small。`layout(LayoutStyle)` 只控制外部布局，组件视觉通过 Theme 配置。
 
-富内容可使用 Text、Button、Input、Select 等原生组件。普通响应式内容应在 slot 内绑定 `Prop<T>`，不要通过重建整个面板更新。没有 locale/RTL、自动响应断点、动态增删/排序、Web DOM/CSS 或 AT API；等分原生列不复制 HTML auto table。Gallery 与真实 GPU/平台验收不属于本 change。
+富内容可使用 Text、Button、Input、Select 等原生组件。普通响应式内容应在 slot 内绑定 `Prop<T>`，不要通过重建整个面板更新。没有 locale/RTL、自动响应断点、动态增删/排序、Web DOM/CSS 或 AT API；等分原生列不复制 HTML auto table。真实 GPU/平台验收独立记录。
+
+Gallery 目录的 Descriptions 直接进入“项目资料”：编辑名称、选择角色、切换启用状态后保存；外部按钮调整单列/多列、名称跨列、资料显隐、横纵标签、边框及三种尺寸。窄视口通过应用层 Binding 使用单列，组件本身不增加自动断点 API。“编辑名称”可恢复隐藏资料并调用原 InputRef，普通草稿保持。086 的 `--details-loading-only` 提供有限视口 Recording 验证，详见该 change evidence；不代表原生窗口/GPU/系统 IME/AT 验收。
 
 列宽以可用宽度等分，span 合并对应列。水平 bordered 标签占一个半列单位，值占 `2 * span - 1` 个半列单位；水平 unbordered 标签最多分配 item 的一半宽度，按内在尺寸为值留下其余空间。垂直布局在每个逻辑行内分别对齐标签和值的最大高度。有限宽度参与真实文字测量与换行，短/零高度会裁剪实际绘制与命中，尺寸恢复不重挂子树。
 

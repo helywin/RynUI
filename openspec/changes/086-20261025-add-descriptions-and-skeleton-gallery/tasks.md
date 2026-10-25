@@ -6,8 +6,8 @@
 
 ## 2. 详情与加载流程（平台通用，Windows MSVC 验证一次）
 
-- [ ] 2.1 追加 Descriptions/Skeleton 真实交互示例、共同生产 anchor、目标文档和两条 overlay/生成目录；实现 focused fixture，验证三主题双有限视口中的真实目录、按钮、键盘、Input/Select/Switch、草稿/preedit 清理恢复、refs/身份以及实际 glyph/surface/hit clip 和四边焦点 coverage。
-- [ ] 2.2 用 windows-msvc-debug、Ninja Multi-Config、最多 4 jobs 构建本树 frame/catalog target；新 focused flag、必要旧代表 flag、精确 inventory、八 contracts 与 generator checks 实际通过，基线脚本确认 334 旧 IDs/旧函数体和非目标 overlay 未变后本地提交。
+- [x] 2.1 追加 Descriptions/Skeleton 真实交互示例、共同生产 anchor、目标文档和两条 overlay/生成目录；实现 focused fixture，验证三主题双有限视口中的真实目录、按钮、键盘、Input/Select/Switch、草稿/preedit 清理恢复、refs/身份以及实际 glyph/surface/hit clip 和四边焦点 coverage。
+- [x] 2.2 用 windows-msvc-debug、Ninja Multi-Config、最多 4 jobs 构建本树 frame/catalog target；新 focused flag、必要旧代表 flag、精确 inventory、八 contracts 与 generator checks 实际通过，基线脚本确认 334 旧 IDs/旧函数体和非目标 overlay 未变后本地提交。
 
 ## 3. 集成边界（平台通用）
 
