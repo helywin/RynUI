@@ -204,6 +204,7 @@ add_library(rynui_components STATIC
     component/descriptions_model.cpp
     component/descriptions_component.cpp
     component/timeline_model.cpp
+    component/timeline_component.cpp
     component/form_component.cpp
     component/feedback_component.cpp
     component/tag_badge_component.cpp

@@ -42,6 +42,7 @@ class EmptyResultComponentHost;
 class CollapseComponentHost;
 class FormComponentHost;
 class DescriptionsComponentHost;
+class TimelineComponentHost;
 class BreadcrumbComponentHost;
 class StepsComponentHost;
 class SkeletonComponentHost;
@@ -259,6 +260,10 @@ public:
         return *descriptions_;
     }
 
+    [[nodiscard]] TimelineComponentHost& timeline() noexcept {
+        return *timeline_;
+    }
+
     [[nodiscard]] BreadcrumbComponentHost& breadcrumb() noexcept {
         return *breadcrumb_;
     }
@@ -417,6 +422,7 @@ private:
     std::unique_ptr<SegmentedComponentHost> segmented_;
     std::unique_ptr<FormComponentHost> form_;
     std::unique_ptr<DescriptionsComponentHost> descriptions_;
+    std::unique_ptr<TimelineComponentHost> timeline_;
     std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;
     std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<SkeletonComponentHost> skeleton_;

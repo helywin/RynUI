@@ -9,3 +9,14 @@ item 的现代字段是 `title`、`content`、`icon`、`loading`、`placement`�
 `tone` 为 Default/Blue/Red/Green/Gray，默认节点和 Blue 均映射 colorPrimary。视觉只通过 `ThemeConfig::timeline`：colors 为 text/tail/dot_background/node/blue/red/green/gray；metrics 为 tail_width/dot_border_width/dot_size/icon_size/item_padding_bottom/content_gap/font_size/line_height/font_family。支持全局及组件算法、继承、inherit=false 与 typed override。最终 metric 必须有限、非负且组合不过溢，font_size/icon_size>=.5、line_height>0；非法后代组合拒绝整次更新。
 
 `LayoutStyle` 只控制外部布局。首版不提供 horizontal、titleSpan、RTL、动画、Web AT、动态增删/任意排序或任意 style，不提供 deprecated pending/pendingDot/children/dot/label/position。headless 测试不代表 GPU/native/Linux/系统 IME/AT 验收。
+
+可编译示例见 [examples/timeline_example.hpp](../examples/timeline_example.hpp)，由 `rynui.timeline_example` 在真实组件 host 中挂载并更新。最小使用方式（在 Content scope 内）：
+
+```cpp
+ryn::Timeline(ryn::TimelineProps{}.mode(ryn::TimelineMode::Alternate), {
+    ryn::TimelineItem{u8"created", u8"Request created"}.title(u8"09:00").tone(ryn::TimelineTone::Green),
+    ryn::TimelineItem{u8"pending", u8"Waiting"}.title(u8"09:30").loading(true)
+});
+```
+
+每个 slot 保留自然内容尺寸。超出分配宽/高的文本、图标与控件内容被独立裁剪，不通过缩小 Button/Input/Select 避免越界；文本不会自动换行。focus 外扩使用既有 decoration clip，仍服从 Timeline 及祖先 hardclip。隐藏会清理焦点、preedit、capture 和 popup；恢复保留草稿，不复活此前被强制 suppression 的 popup。

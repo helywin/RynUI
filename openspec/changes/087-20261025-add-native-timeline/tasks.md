@@ -7,8 +7,8 @@
 
 ## 2. 平台通用 retained 组件与真实控件
 
-- [ ] 2.1 实现 vertical retained layout、regions、dot/tail/loading、visibility/reverse 与真实 Tab 顺序；以 component 测试验证文本、placement、tail、空/全隐藏 flow、Input/Button/Select 身份与草稿；补充文档和可编译示例。
-- [ ] 2.2 用 integration/region_clip 测试验证极窄/短/零高恢复的实际 glyph ink、surface/hit、focus decoration 与外部 hardclip；验证隐藏/Modal/Spin、controlled 拒绝 popup suppression、preedit/focus/capture、同步卸载/重绑与 owned block 清理，不影响 foreign owner；验证 idle 后本地提交。
+- [x] 2.1 实现 vertical retained layout、regions、dot/tail/loading、visibility/reverse 与真实 Tab 顺序；以 component 测试验证文本、placement、tail、空/全隐藏 flow、Input/Button/Select 身份与草稿；补充文档和可编译示例。
+- [x] 2.2 用 integration/region_clip 测试验证极窄/短/零高恢复的实际 glyph ink、surface/hit、focus decoration 与外部 hardclip；验证隐藏/Modal/Spin、controlled 拒绝 popup suppression、preedit/focus/capture、同步卸载/重绑与 owned block 清理，不影响 foreign owner；验证 idle 后本地提交。
 
 ## 3. 去重集成验收
 
