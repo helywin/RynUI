@@ -202,6 +202,9 @@ enum class TokenIdentity : std::uint8_t {
     notification_metrics,
     notification_effects,
     notification_order,
+
+    timeline_colors,
+    timeline_metrics,
     count,
 };
 

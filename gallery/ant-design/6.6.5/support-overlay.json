@@ -1140,16 +1140,27 @@
     },
     {
       "identity": "ant.component.timeline",
-      "status": "planned",
-      "summary": "时间轴（Timeline）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生竖向 Timeline 提供固定 keyed 条目、正反序、Start/End/Alternate、富内容、静态 loading 与虚线轨迹，保留编辑状态和主题；平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive vertical Timeline and fixed keyed TimelineItem slots",
+        "placement, reverse, visibility and retained native Input/Button/Select",
+        "Theme, content/decoration clips and bounded retained loading rails"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "horizontal, dynamic topology, titleSpan, RTL and animations",
+        "interactive Gallery and complete component GPU/native/Linux/system IME/AT acceptance"
       ],
       "evidence_identifiers": [
-        "source:components/timeline/index.en-US.md"
+        "source:components/timeline/index.en-US.md",
+        "openspec:087-20261025-add-native-timeline",
+        "api:include/ryn/timeline.hpp",
+        "docs:docs/timeline.md",
+        "runtime:src/component/timeline_component.cpp",
+        "test:rynui.timeline_component",
+        "test:rynui.timeline_review_fill",
+        "test:rynui.timeline_review_loading",
+        "test:rynui.timeline_review_capacity"
       ]
     },
     {

@@ -11,6 +11,7 @@
 #include "theme/time_picker_theme.hpp"
 #include "theme/descriptions_theme.hpp"
 #include "theme/popover_theme.hpp"
+#include "theme/timeline_theme.hpp"
 
 #include <algorithm>
 #include <array>
@@ -4094,17 +4095,18 @@ ThemeSnapshot::ThemeSnapshot(
     DatePickerThemeToken date_picker, FormThemeToken form, BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
     std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
     DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
-    std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification)
+    std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
+    std::shared_ptr<const TimelineThemeToken> timeline)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), segmented_(std::move(segmented)), date_picker_(std::move(date_picker)),
       form_(std::move(form)), breadcrumb_(std::move(breadcrumb)), steps_(std::move(steps)),
-      time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), descriptions_(std::move(descriptions)),
-      popover_(std::move(popover)), message_(std::move(message)), notification_(std::move(notification)),
-      modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)),
-      popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
+      time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), timeline_(std::move(timeline)),
+      descriptions_(std::move(descriptions)), popover_(std::move(popover)), message_(std::move(message)),
+      notification_(std::move(notification)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
+      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
       progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
       input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
       collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
@@ -4505,6 +4507,18 @@ ThemeSnapshot::ThemeSnapshot(
         }
         status_json << "]}";
     }
+    status_json << ",\"timeline\":{\"colors\":[";
+    first = true;
+    for (const auto value : timeline_->colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (const auto value : timeline_->metrics.values()) {
+        metric(value);
+    }
+    hash_integer(identity_, timeline_->metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(timeline_->metrics.font_family) << '}';
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -4640,7 +4654,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.breadcrumb_ == right.breadcrumb_ && left.steps_ == right.steps_ &&
            *left.time_picker_ == *right.time_picker_ && *left.skeleton_ == *right.skeleton_ &&
            left.descriptions_ == right.descriptions_ && *left.popover_ == *right.popover_ &&
-           *left.message_ == *right.message_ && *left.notification_ == *right.notification_;
+           *left.message_ == *right.message_ && *left.notification_ == *right.notification_ &&
+           *left.timeline_ == *right.timeline_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -5497,6 +5512,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_notice_override(*token, config.notification.tokens);
         return token;
     }();
+    auto timeline = [&] {
+        auto token = std::make_shared<TimelineThemeToken>();
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.timeline.algorithm;
+        if (inherit) {
+            *token = parent->timeline();
+        } else if (config.timeline.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.timeline.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            *token = detail::derive_timeline(component_seed, component_map,
+                                             derive_alias(component_seed, component_map, algorithms));
+        } else {
+            *token = detail::derive_timeline(seed, map, alias);
+        }
+        detail::apply_timeline_override(*token, config.timeline.tokens);
+        return token;
+    }();
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
@@ -5507,7 +5541,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                          std::move(collapse), std::move(segmented), std::move(empty), std::move(result),
                          std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(steps),
                          std::move(time_picker), std::move(skeleton), std::move(descriptions), std::move(popover),
-                         std::move(message), std::move(notification));
+                         std::move(message), std::move(notification), std::move(timeline));
 }
 
 } // namespace ryn

@@ -44,4 +44,6 @@
 
 | 14 | Message / Notification | 085 已提供窗口内 holder/ref、keyed 更新与关闭、五种状态、四角通知、保留富内容、数量限制及单调时钟自动关闭；独立 Astra R3 CLEAN，父 main 与 Popover 的新构建组合回归 81/81 及 inventory 通过，见 [API](message-notification.md)、[集成证据](../openspec/changes/085-20261025-add-native-message-and-notification/evidence/main-integration.md)。loading 为静态图标；全局 service、动画、暂停计时、交互 Gallery 和平台专属验收未覆盖 |
 
+| 15 | Timeline | 087 已提供竖向固定 keyed 富条目、Start/End/Alternate、正反序、显隐、静态 loading 与分批虚线轨迹；组件 Astra R2 和最终共享合并 Astra R2 CLEAN，父新构建 Debug 96/96、MSVC headless Release 53/53 通过，见 [Timeline API](timeline.md)、[集成证据](../openspec/changes/087-20261025-add-native-timeline/evidence/main-integration.md)。横向、动态拓扑、titleSpan、RTL、动画、交互 Gallery 与平台专属验收未覆盖 |
+
 以上记录各项实际进展与剩余范围；Gallery support status 按对应原生实现和验收证据单独维护。现有 Button、Input 家族、布局、选择控件、Typography 等已实现能力继续保持可用。

@@ -35,7 +35,7 @@ public:
                       std::optional<input::InteractionId> interaction = std::nullopt,
                       std::optional<runtime::Rect> interaction_clip = std::nullopt);
     bool remove_fragment(runtime::SceneFragmentId fragment);
-    void rebuild(runtime::Rect window_clip);
+    void rebuild(runtime::Rect window_clip, std::optional<runtime::Rect> document_clip = std::nullopt);
 
     [[nodiscard]] bool needs_rebuild() const noexcept {
         return bindings_dirty_;

@@ -14,6 +14,7 @@
 #include "component/segmented_component.hpp"
 #include "component/form_component.hpp"
 #include "component/descriptions_component.hpp"
+#include "component/timeline_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
@@ -124,6 +125,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     segmented_ = std::make_unique<SegmentedComponentHost>(*this);
     form_ = std::make_unique<FormComponentHost>(*this);
     descriptions_ = std::make_unique<DescriptionsComponentHost>(*this);
+    timeline_ = std::make_unique<TimelineComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
     steps_ = std::make_unique<StepsComponentHost>(*this);
     skeleton_ = std::make_unique<SkeletonComponentHost>(*this);
@@ -436,7 +438,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
         text_scene.finish_ordered_scene_batch();
         if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height},
-                                      modal_->visible() || notices_->visible())) {
+                                      modal_->visible() || notices_->visible(), timeline_->mounted(), clip)) {
             scene_structure_dirty_ = true;
         }
     }
@@ -456,13 +458,14 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     }
     const auto hit_clip =
         modal_->visible() || notices_->visible() ? runtime::Rect{0, 0, viewport.width, viewport.height} : clip;
-    if (hit_clip_ != hit_clip) {
+    if (hit_clip_ != hit_clip || document_hit_clip_ != clip) {
         scene_structure_dirty_ = true;
         hit_clip_ = hit_clip;
+        document_hit_clip_ = clip;
     }
     if (scene_structure_dirty_ || text_fragments_changed || scene_composer_.needs_rebuild()) {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.composer_nanoseconds);
-        scene_composer_.rebuild(hit_clip);
+        scene_composer_.rebuild(hit_clip, clip);
         scene_structure_dirty_ = false;
     } else if (text_.layout_performed_last_sync()) {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.hit_nanoseconds);

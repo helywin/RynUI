@@ -60,7 +60,7 @@ bool ComponentSceneComposer::remove_fragment(runtime::SceneFragmentId fragment) 
     return true;
 }
 
-void ComponentSceneComposer::rebuild(runtime::Rect window_clip) {
+void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<runtime::Rect> document_clip) {
     ensure_owner_thread();
     ordered_scene_.clear();
     interaction_order_.clear();
@@ -93,9 +93,23 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip) {
             }) != interaction_order_.end()) {
             throw std::logic_error("Component paint traversal emitted an interaction more than once");
         }
+        auto interaction_clip = binding->interaction_clip;
+        if (document_clip && !components_->in_window_layer(entry.component)) {
+            if (interaction_clip) {
+                const float left = std::max(interaction_clip->x, document_clip->x);
+                const float top = std::max(interaction_clip->y, document_clip->y);
+                const float right =
+                    std::min(interaction_clip->x + interaction_clip->width, document_clip->x + document_clip->width);
+                const float bottom =
+                    std::min(interaction_clip->y + interaction_clip->height, document_clip->y + document_clip->height);
+                interaction_clip = runtime::Rect{left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
+            } else {
+                interaction_clip = document_clip;
+            }
+        }
         interaction_order_.push_back({
             *binding->interaction,
-            binding->interaction_clip,
+            interaction_clip,
         });
         ++diagnostics_.interactions_emitted;
     }
