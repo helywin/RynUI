@@ -1,0 +1,38 @@
+Internal ctest changing into directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-a626df41/out/build/windows-msvc-headless
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-a626df41/out/build/windows-msvc-headless
+    Start 1: rynui.popover_review_fonts
+1/6 Test #1: rynui.popover_review_fonts .........***Failed    0.07 sec
+R1.1: unrenderable final Popover font was published
+
+    Start 2: rynui.popover_review_positioning
+2/6 Test #2: rynui.popover_review_positioning ...***Failed    0.25 sec
+R1.2: moved picker footer left child Popover on previous anchor
+
+    Start 3: rynui.popover_review_escape
+3/6 Test #3: rynui.popover_review_escape ........***Failed    0.18 sec
+R1.3: Escape closed parent picker before its open child Popover
+
+    Start 4: rynui.popover_review_focus
+4/6 Test #4: rynui.popover_review_focus .........***Failed    0.10 sec
+R1.4: initial focus selected proxy wrapper instead of native entry
+
+    Start 5: rynui.popover_review_delays
+5/6 Test #5: rynui.popover_review_delays ........***Failed    0.10 sec
+R1.5: reactive leave delay discarded pending close forever
+
+    Start 6: rynui.popover_review_immediate
+6/6 Test #6: rynui.popover_review_immediate .....***Failed    0.06 sec
+R1.6: pending hover delayed immediate focus
+
+
+0% tests passed, 6 tests failed out of 6
+
+Total Test time (real) =   0.78 sec
+
+The following tests FAILED:
+	  1 - rynui.popover_review_fonts (Failed)
+	  2 - rynui.popover_review_positioning (Failed)
+	  3 - rynui.popover_review_escape (Failed)
+	  4 - rynui.popover_review_focus (Failed)
+	  5 - rynui.popover_review_delays (Failed)
+	  6 - rynui.popover_review_immediate (Failed)

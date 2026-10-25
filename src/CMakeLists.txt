@@ -15,6 +15,7 @@ add_library(rynui_theme STATIC
     theme/time_picker_theme.cpp
     theme/skeleton_theme.cpp
     theme/descriptions_theme.cpp
+    theme/popover_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC
@@ -242,6 +243,8 @@ add_library(rynui_components STATIC
     component/tooltip_component.cpp
     component/popconfirm_model.cpp
     component/popconfirm_component.cpp
+    component/popover_model.cpp
+    component/popover_component.cpp
     component/search_component.cpp
     component/retained_surface_service.cpp
     component/component_scene.cpp

@@ -1024,16 +1024,27 @@
     },
     {
       "identity": "ant.component.popover",
-      "status": "planned",
-      "summary": "气泡卡片（Popover）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Popover 提供保留式交互富内容、受控开合、hover/focus/click 组合、定位箭头及子浮层输入归属；动画、交互 Gallery 与平台验收尚未提供。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed trigger/title/content slots and reactive string title/content with retained native editors and controls",
+        "controlled/default visibility, hover/focus/click combinations, finite delays and keyboard/outside closing",
+        "twelve placements, arrows, viewport clipping and independent Theme inheritance",
+        "Modal/Spin/hidden suppression, child-popup priority, content-first wheel routing and callback lifetime checks"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "contextMenu trigger, animations, RTL, wireframe special cases and built-in content scrolling",
+        "interactive Gallery, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "full Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
-        "source:components/popover/index.en-US.md"
+        "source:components/popover/index.en-US.md",
+        "openspec:084-20261025-add-native-popover",
+        "api:include/ryn/popover.hpp",
+        "runtime:src/component/popover_component.cpp",
+        "test:rynui.popover_retained",
+        "test:rynui.popover_children",
+        "test:rynui.popover_theme"
       ]
     },
     {

@@ -33,6 +33,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Dialogs | Controlled Modal, retained body/title/footer slots, nested layers, focus restoration and scrolling within the window; see [Modal](docs/modal.md) |
 | Drawers | Four-edge Drawer panels, controlled close, retained slots, fixed header/footer, body scrolling and shared Modal focus layers; see [Drawer](docs/drawer.md) |
 | Confirmation popups | Popconfirm with retained trigger/title/description, real confirm/cancel buttons, controlled or default visibility, keyboard/outside close, focus restoration and child popups; see [Popconfirm](docs/popconfirm.md) |
+| Interactive popovers | Popover with retained rich contents and editor drafts, controlled visibility, combined triggers, placement/arrows and child-popup input ownership; see [Popover](docs/popover.md) |
 | Tags and counts | Tag/CheckableTag colors, controlled close/selection; standalone or wrapped Badge count/overflow/dot/status with retained contents; see [Tag / Badge](docs/tag-and-badge.md) |
 | Status and progress | Alert with controlled close and content slots, Spin with retained contents and a loading shield, and line/circle/dashboard Progress; see [Feedback components](docs/feedback.md) |
 | Loading placeholders | Static Skeleton title/paragraph/avatar and standalone Avatar/Button/Input shapes, retaining contents and editor state across loading changes; see [Skeleton](docs/skeleton.md) |

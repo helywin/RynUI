@@ -44,6 +44,7 @@ public:
                           std::optional<input::InteractionId>) override;
     bool consume_scroll_boundary(const input::ScrollInputEvent&);
     void position_window_layers(runtime::Size, runtime::Rect) override;
+    void position_window_layer(runtime::ComponentId, runtime::Size, runtime::Rect);
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
@@ -55,6 +56,7 @@ private:
     void mount_items(runtime::ComponentId);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
+    std::vector<runtime::ComponentId> positioning_;
     bool active_{true};
 };
 } // namespace ryn::detail

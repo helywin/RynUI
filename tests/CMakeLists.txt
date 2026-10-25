@@ -1,6 +1,46 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_popover_review_tests popover_review_tests.cpp)
+rynui_configure_cpp_target(rynui_popover_review_tests)
+target_link_libraries(rynui_popover_review_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_popover_review_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS fonts positioning escape focus delays immediate)
+    add_test(NAME rynui.popover_review_${case} COMMAND rynui_popover_review_tests ${case})
+endforeach()
+
+foreach(popover_test IN ITEMS popover_public_api popover_model popover_theme popover_examples)
+    add_executable(rynui_${popover_test}_tests ${popover_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${popover_test}_tests)
+    target_link_libraries(rynui_${popover_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${popover_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${popover_test} COMMAND rynui_${popover_test}_tests)
+endforeach()
+
+add_executable(rynui_popover_component_tests popover_component_tests.cpp)
+rynui_configure_cpp_target(rynui_popover_component_tests)
+target_link_libraries(rynui_popover_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_popover_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS retained triggers boundaries lifecycle validation gates)
+    add_test(NAME rynui.popover_${case} COMMAND rynui_popover_component_tests ${case})
+endforeach()
+
+add_executable(rynui_popover_integration_tests popover_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_popover_integration_tests)
+target_link_libraries(rynui_popover_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_popover_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS wheel children covered clips)
+    add_test(NAME rynui.popover_${case} COMMAND rynui_popover_integration_tests ${case})
+endforeach()
+
 foreach(skeleton_test IN ITEMS skeleton_public_api skeleton_model)
     add_executable(rynui_${skeleton_test}_tests ${skeleton_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${skeleton_test}_tests)

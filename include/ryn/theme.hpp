@@ -1278,6 +1278,64 @@ struct PopconfirmThemeConfig final {
     friend bool operator==(const PopconfirmThemeConfig&, const PopconfirmThemeConfig&) = default;
 };
 
+struct PopoverThemeToken final {
+    Color background;
+    Color title;
+    Color text;
+    float max_width{480};
+    float title_min_width{177};
+    float padding{12};
+    float title_gap{8};
+    float border_radius{8};
+    float arrow_size{8};
+    float gap{4};
+    float font_size{14};
+    float line_height{22};
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    std::uint32_t font_weight{400};
+    std::uint32_t title_font_weight{600};
+    ShadowList shadow;
+    std::int32_t z_index_popup{1030};
+
+    [[nodiscard]] std::array<Color, 3> colors() const {
+        return {background, title, text};
+    }
+
+    [[nodiscard]] std::array<float, 7> metrics() const {
+        return {max_width, title_min_width, padding, title_gap, border_radius, arrow_size, gap};
+    }
+
+    friend bool operator==(const PopoverThemeToken&, const PopoverThemeToken&) = default;
+};
+
+struct PopoverTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> title;
+    std::optional<Color> text;
+    std::optional<LogicalLength> max_width;
+    std::optional<LogicalLength> title_min_width;
+    std::optional<LogicalLength> padding;
+    std::optional<LogicalLength> title_gap;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> arrow_size;
+    std::optional<LogicalLength> gap;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<std::uint32_t> font_weight;
+    std::optional<std::uint32_t> title_font_weight;
+    std::optional<ShadowList> shadow;
+    std::optional<std::int32_t> z_index_popup;
+    friend bool operator==(const PopoverTokenOverride&, const PopoverTokenOverride&) = default;
+};
+
+struct PopoverThemeConfig final {
+    PopoverTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const PopoverThemeConfig&, const PopoverThemeConfig&) = default;
+};
+
 struct AlertThemeConfig final {
     AlertTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1551,6 +1609,7 @@ struct ThemeConfig final {
     BadgeThemeConfig badge;
     DrawerThemeConfig drawer;
     PopconfirmThemeConfig popconfirm;
+    PopoverThemeConfig popover;
     AlertThemeConfig alert;
     SpinThemeConfig spin;
     ProgressThemeConfig progress;
@@ -2155,6 +2214,7 @@ public:
 
     [[nodiscard]] const DrawerThemeToken& drawer() const noexcept;
     [[nodiscard]] const PopconfirmThemeToken& popconfirm() const noexcept;
+    [[nodiscard]] const PopoverThemeToken& popover() const noexcept;
 
     [[nodiscard]] const AlertThemeToken& alert() const noexcept {
         return alert_;
@@ -2210,7 +2270,8 @@ private:
                   ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
                   BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
                   std::shared_ptr<const TimePickerThemeToken> time_picker,
-                  std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions);
+                  std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
+                  std::shared_ptr<const PopoverThemeToken> popover);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2235,6 +2296,7 @@ private:
     std::shared_ptr<const TimePickerThemeToken> time_picker_;
     std::shared_ptr<const SkeletonThemeToken> skeleton_;
     DescriptionsThemeToken descriptions_;
+    std::shared_ptr<const PopoverThemeToken> popover_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;
