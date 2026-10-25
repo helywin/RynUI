@@ -15,6 +15,11 @@ struct RegionState final {
     bool align_end{};
 };
 
+struct TailRange final {
+    runtime::SceneFragmentId fragment;
+    component::RetainedSurfaceId surface;
+};
+
 struct ItemState final {
     TimelineItemSnapshot snapshot;
     bool rich_title{};
@@ -24,6 +29,7 @@ struct ItemState final {
     Signal<runtime::SemanticForeground> icon_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticTypography> icon_font{runtime::SemanticTypography{}};
     component::RetainedSurfaceId surface;
+    std::shared_ptr<std::vector<TailRange>> tails{std::make_shared<std::vector<TailRange>>()};
     runtime::Rect frame;
     runtime::Rect title_frame;
     runtime::Rect content_frame;
@@ -72,6 +78,14 @@ runtime::Rect intersect(runtime::Rect a, runtime::Rect b) {
     const float y = std::clamp(a.y, b.y, b.y + b.height);
     return {x, y, std::max(0.0F, std::min(a.x + a.width, b.x + b.width) - x),
             std::max(0.0F, std::min(a.y + a.height, b.y + b.height) - y)};
+}
+
+void clear_tail_ranges(WindowComponentServices& services, std::vector<TailRange>& ranges) {
+    for (const auto& range : ranges) {
+        services.surfaces().destroy_content_range(range.surface);
+        services.components().remove_scene_fragment(range.fragment);
+    }
+    ranges.clear();
 }
 } // namespace
 
@@ -129,6 +143,9 @@ void TimelineComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     for (std::size_t i = 0; i < s->items.size(); ++i) {
         auto& item = s->items[i];
         item.snapshot.visible = s->model[i].visible;
+        if (!root_visible || !item.snapshot.visible) {
+            clear_tail_ranges(*services_, *item.tails);
+        }
         item.icon_color.set(foreground(tone_color(t.colors, s->model[i].tone)));
         item.icon_font.set({t.metrics.font_family, 400, false, t.metrics.icon_size, t.metrics.icon_size});
         geometry |= services_->components().set_branch_active(item.snapshot.viewport, item.snapshot.visible);
@@ -311,9 +328,11 @@ void TimelineComponentHost::mount(const TimelineProps& props, const std::vector<
                 const auto fragment = context.register_scene_fragment(item.snapshot.viewport,
                                                                       runtime::SceneFragmentPlacement::before_children);
                 item.surface = services.surfaces().create_content_range(fragment, {});
-                context.on_resource_cleanup(item.snapshot.viewport, [&services, surface = item.surface] {
-                    services.surfaces().destroy_content_range(surface);
-                });
+                context.on_resource_cleanup(item.snapshot.viewport,
+                                            [&services, surface = item.surface, tails = item.tails] {
+                                                clear_tail_ranges(services, *tails);
+                                                services.surfaces().destroy_content_range(surface);
+                                            });
             }
         }});
     services.layout().set_layout(
@@ -522,9 +541,31 @@ void TimelineComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
             static_cast<void>(services_->surfaces().update_content_effects(item.surface, effects));
             std::vector<graphics::QuadInstance> lines;
             const auto tail = offset(item.snapshot.tail, origin);
-            const bool dashed = s->reverse && position + 1 < s->order.size()
-                                    ? s->items[s->order[position + 1].item].snapshot.loading
-                                    : item.snapshot.loading;
+            const bool dashed =
+                s->reverse ? item.snapshot.loading
+                           : position + 1 < s->order.size() && s->items[s->order[position + 1].item].snapshot.loading;
+            auto& ranges = *item.tails;
+            std::size_t used_ranges = 0;
+            const auto publish = [&] {
+                if (lines.empty()) {
+                    return;
+                }
+                if (used_ranges == ranges.size()) {
+                    TailRange range{services_->components().register_scene_fragment(
+                                        item.snapshot.viewport, runtime::SceneFragmentPlacement::before_children),
+                                    {}};
+                    try {
+                        range.surface = services_->surfaces().create_content_range(range.fragment, {});
+                        ranges.push_back(range);
+                    } catch (...) {
+                        services_->surfaces().destroy_content_range(range.surface);
+                        services_->components().remove_scene_fragment(range.fragment);
+                        throw;
+                    }
+                }
+                static_cast<void>(services_->surfaces().update_content_range(ranges[used_ranges++].surface, lines));
+                lines.clear();
+            };
             const auto line = [&](runtime::Rect rect) {
                 rect = intersect(rect, clip);
                 if (rect.width > 0 && rect.height > 0) {
@@ -532,25 +573,49 @@ void TimelineComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
                         {{rect.x, rect.y, rect.width, rect.height},
                          {t.colors.tail.red(), t.colors.tail.green(), t.colors.tail.blue(), t.colors.tail.alpha()},
                          opacity});
+                    if (lines.size() == component::retained_content_visual_capacity) {
+                        publish();
+                    }
                 }
             };
-            if (dashed && tail.width > 0) {
-                const float dash = std::max(2.0F, t.metrics.tail_width * 2);
-                // Bound allocation/work even for unusually large but valid logical extents.
-                const float start = std::max(tail.y, clip.y);
-                const float end = std::min(tail.y + tail.height, clip.y + clip.height);
-                for (float y = start; y < end;) {
-                    const float next = y + dash * 2;
-                    line({tail.x, y, tail.width, std::min(dash, end - y)});
-                    if (next <= y) {
-                        break;
+            if (dashed && tail.width > 0 && tail.height > 0 && clip.width > 0 &&
+                tail.x < static_cast<double>(clip.x) + clip.width &&
+                tail.x + static_cast<double>(tail.width) > clip.x) {
+                const double dash = std::max(2.0, static_cast<double>(t.metrics.tail_width) * 2);
+                const double period = dash * 2;
+                const double start = std::max<double>(tail.y, clip.y);
+                const double end =
+                    std::min(static_cast<double>(tail.y) + tail.height, static_cast<double>(clip.y) + clip.height);
+                if (end > start) {
+                    // Preserve phase when the visible clip begins halfway through the trajectory.
+                    double first = start - std::fmod(start - tail.y, period);
+                    if (first + dash <= start) {
+                        first += period;
                     }
-                    y = next;
+                    const double count = std::max(0.0, std::ceil((end - first) / period));
+                    if (!std::isfinite(count) || count > std::numeric_limits<std::uint32_t>::max()) {
+                        throw std::length_error("Timeline visible dash count exceeds logical scene index capacity");
+                    }
+                    const auto segments = static_cast<std::uint64_t>(count);
+                    lines.reserve(static_cast<std::size_t>(
+                        std::min<std::uint64_t>(segments, component::retained_content_visual_capacity)));
+                    for (std::uint64_t index = 0; index < segments; ++index) {
+                        const double y = first + static_cast<double>(index) * period;
+                        const double top = std::max(y, start);
+                        const double bottom = std::min(y + dash, end);
+                        line({tail.x, static_cast<float>(top), tail.width,
+                              static_cast<float>(std::max(0.0, bottom - top))});
+                    }
                 }
             } else {
                 line(tail);
             }
-            static_cast<void>(services_->surfaces().update_content_range(item.surface, lines));
+            publish();
+            while (ranges.size() > used_ranges) {
+                services_->surfaces().destroy_content_range(ranges.back().surface);
+                services_->components().remove_scene_fragment(ranges.back().fragment);
+                ranges.pop_back();
+            }
         }
     }
 }

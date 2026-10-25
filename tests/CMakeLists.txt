@@ -8,6 +8,16 @@ foreach(timeline_test IN ITEMS timeline_model timeline_public_api timeline_theme
     add_test(NAME rynui.${timeline_test} COMMAND rynui_${timeline_test}_tests)
 endforeach()
 
+add_executable(rynui_timeline_review_tests timeline_review_tests.cpp)
+rynui_configure_cpp_target(rynui_timeline_review_tests)
+target_link_libraries(rynui_timeline_review_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_timeline_review_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(timeline_case IN ITEMS fill loading capacity)
+    add_test(NAME rynui.timeline_review_${timeline_case} COMMAND rynui_timeline_review_tests ${timeline_case})
+endforeach()
+
 foreach(timeline_test IN ITEMS timeline_component timeline_integration timeline_region_clip timeline_example)
     add_executable(rynui_${timeline_test}_tests ${timeline_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${timeline_test}_tests)

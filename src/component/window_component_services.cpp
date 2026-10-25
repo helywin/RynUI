@@ -432,7 +432,8 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
         text_scene.finish_ordered_scene_batch();
-        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height}, modal_->visible())) {
+        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height}, modal_->visible(),
+                                      timeline_->mounted(), clip)) {
             scene_structure_dirty_ = true;
         }
     }

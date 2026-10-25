@@ -14,3 +14,5 @@
 
 - [x] 3.1 使用 Windows MSVC windows-msvc-headless Ninja Multi-Config、最多 4 jobs，运行 Debug/Release 全部 Timeline 测试及一次去重影响组合（Theme、Descriptions/Steps/Collapse、Select/Modal/Spin、focus/lifecycle/scene），记录实际目标、数量和边界，不执行历史全套或长 Gallery。
 - [x] 3.2 运行 clang-format 22 `python scripts/format-code.py --check`、OpenSpec 1.14 doctor/strict validate、git diff --check；记录 evidence、精确 HEAD/branch/path/dirty 并本地提交，交父独立评审，不访问远端/push/PR/archive。
+
+Astra R1（4545748c）重新打开 2.1/2.2/3.1/3.2：只修复 document rich fill 分区裁剪、loading 相邻 rail 状态、长虚线超过单 retained range 容量。先运行失败回归，再最小修复与定向复验；不新增功能/change/子任务。

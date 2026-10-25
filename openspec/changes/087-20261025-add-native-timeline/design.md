@@ -25,4 +25,10 @@
 
 ## Migration Plan
 
+### Astra R1 必要修正
+
+在 4545748c 的纯后代修复原有 finite clip/loading 合同，不新增功能：普通 document 的 fill 转换只准入 Timeline host 提供的 retained 子树，沿已有 clipped-fill 路径处理，并分别使用 content/decoration clip。原 normal root 保持原始绘制，window-layer 准入保持原谓词；失活或关闭转换开关时清理 surface/content 两类旧转换缓存并恢复生产者 effects。
+
+正序 rail 取下一显示项的 loading，反序取当前项。tail 使用独立动态 range/fragment，最多每 range 4096 quads；缩小、零宽、隐藏及 teardown 释放多余 ranges。可见 dash 数量在循环前用 double 计算，保留原轨迹相位，以整数计数迭代；超出现有 logical scene 索引可表示数量时显式拒绝，不扩大 renderer/ABI 上限，不静默截断。
+
 纯新增 API；本隔离 worktree 分阶段本地提交，父负责集成与独立评审。平台通用验收使用 Windows MSVC windows-msvc-headless、Ninja Multi-Config Debug/Release、最多 4 jobs。只运行 Timeline 与一次去重影响组合，不重复历史全套/长 Gallery。回退通过撤销本 change 提交。

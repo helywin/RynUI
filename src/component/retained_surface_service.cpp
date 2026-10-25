@@ -482,14 +482,44 @@ std::size_t RetainedSurfaceService::synchronize_effects(Record& record, const Re
     return updates;
 }
 
-bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip) {
+bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip, bool clip_window_layers,
+                                                       std::span<const runtime::ComponentId> document_clip_roots,
+                                                       runtime::Rect document_clip) {
     bool topology_changed = false;
+    const auto in_document_clip = [&](runtime::ComponentId component) {
+        if (document_clip_roots.empty() || components_->in_window_layer(component)) {
+            return false;
+        }
+        for (auto ancestor = std::optional{component}; ancestor; ancestor = components_->parent(*ancestor)) {
+            if (std::ranges::find(document_clip_roots, *ancestor) != document_clip_roots.end()) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto clear_fills = [&](auto& record) {
+        if (record.clipped_fill_ids.empty()) {
+            return false;
+        }
+        for (auto effect : record.clipped_fill_ids) {
+            static_cast<void>(effect_scene_.store().remove(effect));
+        }
+        record.clipped_fill_ids.clear();
+        topology_changed = true;
+        return true;
+    };
     for (auto& slot : slots_) {
         if (!slot.record) {
             continue;
         }
         auto& record = *slot.record;
-        if (!components_->branch_active(record.component) || !components_->in_window_layer_stack(record.component)) {
+        const bool document = in_document_clip(record.component);
+        // Document admission is independent of the existing window-layer policy.
+        const bool enabled = document || (clip_window_layers && components_->in_window_layer_stack(record.component));
+        if (!components_->branch_active(record.component) || !enabled) {
+            if (clear_fills(record)) {
+                static_cast<void>(synchronize_effects(record, record.effects));
+            }
             continue;
         }
         const auto& node = nodes_->require(record.node);
@@ -507,11 +537,12 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
         if (!clipped && record.clipped_fill_ids.empty()) {
             continue;
         }
-        const auto clip = nodes_->content_clip(*node.parent, window_clip);
+        const auto base_clip = document ? document_clip : window_clip;
+        const auto clip = nodes_->content_clip(*node.parent, base_clip);
         const auto clipping = graphics::EffectClip{1, clip};
         auto effects = record.effects;
         effects.ancestor_clip =
-            graphics::EffectClip{1, nodes_->content_clip(*node.parent, window_clip, runtime::ClipPurpose::decoration)};
+            graphics::EffectClip{1, nodes_->content_clip(*node.parent, base_clip, runtime::ClipPurpose::decoration)};
         if (record.effects.ancestor_clip) {
             effects.ancestor_clip->bounds =
                 graphics::intersect_effect_bounds(effects.ancestor_clip->bounds, record.effects.ancestor_clip->bounds);
@@ -549,7 +580,10 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
         }
         auto& record = *slot.record;
         const auto component = components_->fragment_component(record.fragment);
-        if (!components_->branch_active(component) || !components_->in_window_layer_stack(component)) {
+        const bool document = in_document_clip(component);
+        const bool enabled = document || (clip_window_layers && components_->in_window_layer_stack(component));
+        if (!components_->branch_active(component) || !enabled) {
+            static_cast<void>(clear_fills(record));
             continue;
         }
         const auto& node = nodes_->require(components_->root(component));
@@ -567,7 +601,8 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
         if (!clipped && record.clipped_fill_ids.empty()) {
             continue;
         }
-        const auto clip = graphics::EffectClip{1, nodes_->content_clip(*node.parent, window_clip)};
+        const auto clip =
+            graphics::EffectClip{1, nodes_->content_clip(*node.parent, document ? document_clip : window_clip)};
         const auto count = static_cast<std::size_t>(record.range.count) * 4;
         while (record.clipped_fill_ids.size() > count) {
             static_cast<void>(effect_scene_.store().remove(record.clipped_fill_ids.back()));
@@ -600,9 +635,13 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
     return topology_changed;
 }
 
-bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip, bool clip_window_layers) {
+bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip, bool clip_window_layers,
+                                             std::span<const runtime::ComponentId> document_clip_roots,
+                                             std::optional<runtime::Rect> document_clip) {
     ensure_owner_thread();
-    const bool fills_changed = clip_window_layers && synchronize_clipped_fills(window_clip);
+    // Visit previous conversions even after their enabling owner disappears.
+    const bool fills_changed = synchronize_clipped_fills(window_clip, clip_window_layers, document_clip_roots,
+                                                         document_clip.value_or(window_clip));
     const bool packed_changed = effect_scene_.store().compact(window_clip);
     if (!fills_changed && !packed_changed) {
         return false;
