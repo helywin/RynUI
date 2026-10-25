@@ -5,7 +5,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[4]
 for config in sys.argv[1:] or ["Debug", "Release"]:
-    for name in ["public_api", "model", "theme", "component", "integration", "examples"]:
+    for name in ["public_api", "model", "theme", "component", "integration", "examples", "review"]:
         path = ROOT / f"out/build/windows-msvc-headless/tests/{config}/rynui_popover_{name}_tests.exe"
         data = path.read_bytes()
         pe = struct.unpack_from("<I", data, 0x3C)[0]

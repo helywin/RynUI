@@ -2,7 +2,7 @@
 
 ## Context
 
-动机见 proposal.md。已阅读 Tooltip 的 position_tooltip/箭头字形/延时、Popconfirm 的 retained slots、Dropdown 的 native activation gate 和 wheel fallback，以及 Date/Time 的最近 layer 与回调回取路径。WindowComponentServices 按 host 注册顺序定位、逆序派发键盘和 wheel，因此 Popover 必须在 Date/Time/Dropdown/Tooltip/Select 前挂接，让子层优先；父层位置先提交再更新内容 Table 与子定位。
+动机见 proposal.md。已阅读 Tooltip 的 position_tooltip/箭头字形/延时、Popconfirm 的 retained slots、Dropdown 的 native activation gate 和 wheel fallback，以及 Date/Time 的最近 layer 与回调回取路径。WindowComponentServices 按 host 注册顺序遍历、逆序派发键盘和 wheel。注册顺序不能代替逻辑父子依赖；Popover/Date/Time 在定位自身前定向提交最近的逻辑弹层祖先，父层位置先提交再更新内容 Table 与子定位。
 
 锁定参考位于本机 `D:/code/RynUI/out/upstream-ant-design-6.6.5`，HEAD `4a39f54842eade4e565ab336ef6097cd7e723cdd`；仅只读核对。Popover 采用其中 elevated 背景、heading/title、strong weight、titleMinWidth177、padding12、title gap8、radiusLG、z-index base+30 的普通模式语义。
 
@@ -21,6 +21,8 @@
 - 自身处理前给编辑器与子 popup 优先，内容 wheel 处理后仅最近 popup 边界 fallback。原生 trigger activation gate 和所有用户可执行路径之后重新查询完整 ComponentId generation。
 - 内容按视口减 padding 测量，title 可见时应用 titleMinWidth；超高内容裁剪，不提供内部滚动。popup content clip 约束普通内容；focus decoration 的外扩只受有效外部 clip 约束，子 popup 保持现有 window layer 逃逸规则。
 - Theme 新增独立 token/config 与 snapshot/runtime 五组 identity，append-only；新增派生函数和末尾 resolve 路径，不重写原有33个 IIFE。新构建程序生成五份 goldens，再逐值比较所有旧字段（identity 除外），验证无旧值漂移。
+- R1：最终 Popover 字号在 resolve/preflight 中校验为至少0.5且处于 long/uint32 可安全舍入范围，避免发布后 Text/Icon 才失败。动态延时保留 pending 方向、以更新时刻重算 deadline，focus 可以提前已有 hover deadline。
+- R1：三个 host 保留逐实例定位入口与完整 ComponentId 重入栈，只向最近的逻辑祖先递归，不增加通用 overlay 框架或额外全局遍历。Date/Time 对已打开子 Popover 的逻辑 trigger 让出 Escape；原生 trigger 的代理 wrapper 不再可聚焦，不改变其他 roving 控件的 tab_stop 语义。
 
 ## Risks / Trade-offs
 

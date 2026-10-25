@@ -1,4 +1,5 @@
 #include "component/time_picker_component.hpp"
+#include "component/popover_component.hpp"
 #include "component/input_component.hpp"
 #include "component/input_affix_action.hpp"
 #include "component/table_component.hpp"
@@ -754,6 +755,9 @@ bool TimePickerComponentHost::on_keyboard_input(const input::KeyboardInputEvent&
     }
     using input::Key;
     if (event.key == Key::escape && s->view.visible) {
+        if (services_->popover().owns_escape(*owner, record->component)) {
+            return false;
+        }
         request_open(*owner, false, true);
         return true;
     }
@@ -875,115 +879,119 @@ bool TimePickerComponentHost::consume_scroll_boundary(const input::ScrollInputEv
 }
 
 void TimePickerComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect clip) {
-    // Parent TimePicker is appended after its footer children; position ancestors first.
     const auto ids = mounted_;
-    bool positioned = false;
-    for (auto it = ids.rbegin(); it != ids.rend(); ++it) {
-        const auto id = *it;
-        auto* s = services_->components().state<TimePickerState>(id);
-        if (!s || !s->view.visible) {
-            continue;
+    for (auto id : ids) {
+        position_window_layer(id, viewport, clip);
+    }
+}
+
+void TimePickerComponentHost::position_window_layer(runtime::ComponentId id, runtime::Size viewport,
+                                                    runtime::Rect clip) {
+    if (std::ranges::find(positioning_, id) != positioning_.end()) {
+        return;
+    }
+    positioning_.push_back(id);
+
+    struct PositionGuard final {
+        std::vector<runtime::ComponentId>& stack;
+
+        ~PositionGuard() {
+            stack.pop_back();
         }
-        auto& engine = services_->layout();
-        const auto& node = services_->nodes().require(s->node);
-        const runtime::Rect anchor{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
-                                   node.bounds.width, node.bounds.height};
-        const auto popup_node = services_->components().root(s->view.popup);
-        if (!s->needs_layout && anchor == s->anchor && clip == s->clip &&
-            services_->nodes().require(popup_node).measure_generation == engine.generation()) {
-            continue;
+    } guard{positioning_};
+
+    services_->popover().position_ancestors(id, viewport, clip);
+    auto* s = services_->components().state<TimePickerState>(id);
+    if (!s || !s->view.visible) {
+        return;
+    }
+    auto& engine = services_->layout();
+    const auto& node = services_->nodes().require(s->node);
+    const runtime::Rect anchor{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
+                               node.bounds.width, node.bounds.height};
+    const auto popup_node = services_->components().root(s->view.popup);
+    if (!s->needs_layout && anchor == s->anchor && clip == s->clip &&
+        services_->nodes().require(popup_node).measure_generation == engine.generation()) {
+        return;
+    }
+    const auto& m = services_->components().theme_scope(id)->snapshot().time_picker().metrics;
+    const int columns = s->model.precision() == TimePickerPrecision::Minute ? 2 : 3;
+    const float width = std::min(clip.width, std::max(anchor.width, m.column_width * columns + m.padding * 2));
+    const float inner_width = std::max(0.0F, width - std::min(m.padding * 2, width));
+    const auto footer_node = services_->components().root(s->view.footer);
+    const auto actions_node = services_->components().root(s->actions);
+    const auto footer_size = engine.measure_child(footer_node, {0, inner_width, 0, clip.height});
+    const auto actions_size =
+        s->need_confirm ? engine.measure_child(actions_node, {0, inner_width, 0, clip.height}) : runtime::Size{};
+    const float footer_height = footer_size.height > 0 ? footer_size.height + m.footer_padding * 2 : 0;
+    const float actions_height = s->need_confirm ? actions_size.height + m.footer_padding * 2 : 0;
+    const float wanted = m.column_height + m.padding * 2 + footer_height + actions_height;
+    const float below = std::clamp(clip.y + clip.height - anchor.y - anchor.height - m.gap, 0.0F, clip.height);
+    const float above = std::clamp(anchor.y - m.gap - clip.y, 0.0F, clip.height);
+    const bool upwards = below < wanted && above > below;
+    const float height = std::min(wanted, upwards ? above : below);
+    s->view.bounds = {std::clamp(anchor.x, clip.x, clip.x + clip.width - width),
+                      std::clamp(upwards ? anchor.y - m.gap - height : anchor.y + anchor.height + m.gap, clip.y,
+                                 clip.y + clip.height - height),
+                      width, height};
+    static_cast<void>(engine.measure_child(popup_node, layout::Constraints::fixed(width, height)));
+    engine.place_child(popup_node, s->view.bounds);
+    const float inset = std::min(m.padding, std::min(width, height) / 2);
+    const runtime::Rect inner{s->view.bounds.x + inset, s->view.bounds.y + inset, std::max(0.0F, width - inset * 2),
+                              std::max(0.0F, height - inset * 2)};
+    const float rows_height = std::max(0.0F, inner.height - footer_height - actions_height);
+    for (int column = 0; column < 3; ++column) {
+        auto rect =
+            runtime::Rect{inner.x + inner.width * column / columns, inner.y, inner.width / columns, rows_height};
+        if (column >= columns) {
+            rect = {};
         }
-        const auto& m = services_->components().theme_scope(id)->snapshot().time_picker().metrics;
-        const int columns = s->model.precision() == TimePickerPrecision::Minute ? 2 : 3;
-        const float width = std::min(clip.width, std::max(anchor.width, m.column_width * columns + m.padding * 2));
-        const float inner_width = std::max(0.0F, width - std::min(m.padding * 2, width));
-        const auto footer_node = services_->components().root(s->view.footer);
-        const auto actions_node = services_->components().root(s->actions);
-        const auto footer_size = engine.measure_child(footer_node, {0, inner_width, 0, clip.height});
-        const auto actions_size =
-            s->need_confirm ? engine.measure_child(actions_node, {0, inner_width, 0, clip.height}) : runtime::Size{};
-        const float footer_height = footer_size.height > 0 ? footer_size.height + m.footer_padding * 2 : 0;
-        const float actions_height = s->need_confirm ? actions_size.height + m.footer_padding * 2 : 0;
-        const float wanted = m.column_height + m.padding * 2 + footer_height + actions_height;
-        const float below = std::clamp(clip.y + clip.height - anchor.y - anchor.height - m.gap, 0.0F, clip.height);
-        const float above = std::clamp(anchor.y - m.gap - clip.y, 0.0F, clip.height);
-        const bool upwards = below < wanted && above > below;
-        const float height = std::min(wanted, upwards ? above : below);
-        s->view.bounds = {std::clamp(anchor.x, clip.x, clip.x + clip.width - width),
-                          std::clamp(upwards ? anchor.y - m.gap - height : anchor.y + anchor.height + m.gap, clip.y,
-                                     clip.y + clip.height - height),
-                          width, height};
-        static_cast<void>(engine.measure_child(popup_node, layout::Constraints::fixed(width, height)));
-        engine.place_child(popup_node, s->view.bounds);
-        const float inset = std::min(m.padding, std::min(width, height) / 2);
-        const runtime::Rect inner{s->view.bounds.x + inset, s->view.bounds.y + inset, std::max(0.0F, width - inset * 2),
-                                  std::max(0.0F, height - inset * 2)};
-        const float rows_height = std::max(0.0F, inner.height - footer_height - actions_height);
-        for (int column = 0; column < 3; ++column) {
-            auto rect =
-                runtime::Rect{inner.x + inner.width * column / columns, inner.y, inner.width / columns, rows_height};
-            if (column >= columns) {
-                rect = {};
-            }
-            s->view.column_clips[column] = rect;
-            const auto column_node = services_->components().root(s->view.columns[column]);
-            static_cast<void>(engine.measure_child(column_node, layout::Constraints::fixed(rect.width, rect.height)));
-            engine.place_child(column_node, rect);
-            const int count = column == 0 ? 24 : 60;
-            const int stride = step(s->model, column);
-            const float content = static_cast<float>((count - 1) / stride + 1) * m.cell_height;
-            auto& scroll = s->view.scroll[column];
-            const float maximum = std::max(0.0F, content - rows_height);
-            scroll = std::clamp(scroll, 0.0F, maximum);
-            if (s->reveal[column]) {
-                const float top = static_cast<float>(field(s->model.panel(), column) / stride) * m.cell_height;
-                scroll = std::clamp(rows_height < m.cell_height
-                                        ? top
-                                        : std::clamp(scroll, std::max(0.0F, top + m.cell_height - rows_height), top),
-                                    0.0F, maximum);
-            }
-            s->reveal[column] = false;
-            for (int value = 0; value < count; value += stride) {
-                const auto* row = services_->components().state<TimeRow>(s->view.rows[column][value]);
-                const float padding = std::min(m.padding, rect.width / 2);
-                engine.set_layout(row->node, layout::BoxLayout{{padding, 0, padding, 0}});
-                static_cast<void>(
-                    engine.measure_child(row->node, layout::Constraints::fixed(rect.width, m.cell_height)));
-                engine.place_child(
-                    row->node, {rect.x, rect.y + value / stride * m.cell_height - scroll, rect.width, m.cell_height});
-            }
+        s->view.column_clips[column] = rect;
+        const auto column_node = services_->components().root(s->view.columns[column]);
+        static_cast<void>(engine.measure_child(column_node, layout::Constraints::fixed(rect.width, rect.height)));
+        engine.place_child(column_node, rect);
+        const int count = column == 0 ? 24 : 60;
+        const int stride = step(s->model, column);
+        const float content = static_cast<float>((count - 1) / stride + 1) * m.cell_height;
+        auto& scroll = s->view.scroll[column];
+        const float maximum = std::max(0.0F, content - rows_height);
+        scroll = std::clamp(scroll, 0.0F, maximum);
+        if (s->reveal[column]) {
+            const float top = static_cast<float>(field(s->model.panel(), column) / stride) * m.cell_height;
+            scroll = std::clamp(rows_height < m.cell_height
+                                    ? top
+                                    : std::clamp(scroll, std::max(0.0F, top + m.cell_height - rows_height), top),
+                                0.0F, maximum);
         }
-        const float footer_top = inner.y + rows_height;
-        const float fp = std::min(m.footer_padding, inner.width / 2);
-        const runtime::Rect footer_rect{inner.x + fp, footer_top + std::min(fp, footer_height / 2),
-                                        std::max(0.0F, inner.width - fp * 2), std::max(0.0F, footer_height - fp * 2)};
-        static_cast<void>(
-            engine.measure_child(footer_node, layout::Constraints::fixed(footer_rect.width, footer_rect.height)));
-        engine.place_child(footer_node, footer_rect);
-        const runtime::Rect actions_rect{inner.x + fp, footer_top + footer_height + std::min(fp, actions_height / 2),
-                                         std::max(0.0F, inner.width - fp * 2), std::max(0.0F, actions_height - fp * 2)};
-        static_cast<void>(
-            engine.measure_child(actions_node, layout::Constraints::fixed(actions_rect.width, actions_rect.height)));
-        engine.place_child(actions_node, actions_rect);
-        s->needs_layout = false;
-        s->anchor = anchor;
-        s->clip = clip;
-        positioned = true;
-        // Date's normal pass precedes Time's. Refresh this footer's final Date
-        // anchors before placing any deeper retained Time children.
-        if (std::ranges::any_of(services_->date_picker().mounted(),
-                                [&](auto date) { return descendant(*services_, date, s->view.footer); })) {
-            services_->date_picker().position_window_layers(viewport, clip);
+        s->reveal[column] = false;
+        for (int value = 0; value < count; value += stride) {
+            const auto* row = services_->components().state<TimeRow>(s->view.rows[column][value]);
+            const float padding = std::min(m.padding, rect.width / 2);
+            engine.set_layout(row->node, layout::BoxLayout{{padding, 0, padding, 0}});
+            static_cast<void>(engine.measure_child(row->node, layout::Constraints::fixed(rect.width, m.cell_height)));
+            engine.place_child(row->node,
+                               {rect.x, rect.y + value / stride * m.cell_height - scroll, rect.width, m.cell_height});
         }
     }
-    // Footer placement can change a retained Table's ancestor clip after the
-    // normal Modal -> Table pass. Refresh its cached clip/scroll translations
-    // before later child popup positioning, without changing dispatch order.
-    if (positioned && std::ranges::any_of(services_->table().mounted(), [&](auto table) {
-            return std::ranges::any_of(ids, [&](auto id) {
-                const auto* s = services_->components().state<TimePickerState>(id);
-                return s && s->view.visible && descendant(*services_, table, s->view.footer);
-            });
+    const float footer_top = inner.y + rows_height;
+    const float fp = std::min(m.footer_padding, inner.width / 2);
+    const runtime::Rect footer_rect{inner.x + fp, footer_top + std::min(fp, footer_height / 2),
+                                    std::max(0.0F, inner.width - fp * 2), std::max(0.0F, footer_height - fp * 2)};
+    static_cast<void>(
+        engine.measure_child(footer_node, layout::Constraints::fixed(footer_rect.width, footer_rect.height)));
+    engine.place_child(footer_node, footer_rect);
+    const runtime::Rect actions_rect{inner.x + fp, footer_top + footer_height + std::min(fp, actions_height / 2),
+                                     std::max(0.0F, inner.width - fp * 2), std::max(0.0F, actions_height - fp * 2)};
+    static_cast<void>(
+        engine.measure_child(actions_node, layout::Constraints::fixed(actions_rect.width, actions_rect.height)));
+    engine.place_child(actions_node, actions_rect);
+    s->needs_layout = false;
+    s->anchor = anchor;
+    s->clip = clip;
+
+    if (std::ranges::any_of(services_->table().mounted(), [&](auto table) {
+            const auto* live = services_->components().state<TimePickerState>(id);
+            return live && live->view.visible && descendant(*services_, table, live->view.footer);
         })) {
         services_->table().position_window_layers(viewport, clip);
     }

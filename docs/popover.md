@@ -28,4 +28,6 @@ ryn::Popover(
 
 视觉入口为 `ThemeConfig::popover`，与 Tooltip/Popconfirm 独立。支持继承/reset、独立 seed/algorithm，以及颜色、尺寸、字体、阴影、顺序五组失效。普通模式默认 elevated 背景、正文色、strong 标题、title_min_width177、padding12、title_gap8、radiusLG、14/22 字体和 z-index base+30。`max_width=480` 是原生富内容测量上限，可通过 Theme 修改；实际视口更窄时继续约束。其他 token 包括 arrow_size/gap、font_family/font_weight/title_font_weight 和 shadow。内嵌原生组件继续使用自身 Theme。
 
+最终字号须至少0.5，且可安全舍入为原生字体的整数尺寸；不合法的 Theme 会在发布前连同后代 preflight 一起拒绝。Popover 与 Date/Time footer 可双向嵌套，移动或视口变化在同一帧按逻辑祖先顺序定位；焦点留在已打开子 Popover 的 trigger 时，Escape 仍先交给子层。待入/待出的延时热更新会保留方向并从更新时间重算，focus 会立即完成待入。
+
 参考本地锁定 Ant Design 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e723cdd` 的 `components/popover/index.tsx`、`PurePanel.tsx` 与 `style/index.ts`。首版排除 Web 属性透传、contextMenu、动画、RTL、wireframe 特例和 OS 可访问性桥接。验收见 [084 tasks](../openspec/changes/084-20261025-add-native-popover/tasks.md)；headless 证据不代表 native/GPU/Linux/system IME/AT 验收。

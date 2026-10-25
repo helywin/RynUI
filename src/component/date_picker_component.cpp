@@ -3,6 +3,7 @@
 #include "component/input_component.hpp"
 #include "component/input_affix_action.hpp"
 #include "component/table_component.hpp"
+#include "component/popover_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
@@ -705,6 +706,9 @@ bool DatePickerComponentHost::on_keyboard_input(const input::KeyboardInputEvent&
         }
         using input::Key;
         if (event.key == Key::escape && s->visible) {
+            if (services_->popover().owns_escape(id, record->component)) {
+                return false;
+            }
             request_open(id, false, true);
             return true;
         }
@@ -812,71 +816,90 @@ bool DatePickerComponentHost::consume_scroll_boundary(const input::ScrollInputEv
 }
 
 void DatePickerComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect clip) {
-    for (auto id : mounted_) {
-        auto* s = services_->components().state<DateState>(id);
-        if (!s || !s->visible) {
-            continue;
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        position_window_layer(id, viewport, clip);
+    }
+}
+
+void DatePickerComponentHost::position_window_layer(runtime::ComponentId id, runtime::Size viewport,
+                                                    runtime::Rect clip) {
+    if (std::ranges::find(positioning_, id) != positioning_.end()) {
+        return;
+    }
+    positioning_.push_back(id);
+
+    struct PositionGuard final {
+        std::vector<runtime::ComponentId>& stack;
+
+        ~PositionGuard() {
+            stack.pop_back();
         }
-        const auto& t = services_->components().theme_scope(id)->snapshot().date_picker();
-        auto anchor = services_->nodes().require(s->node).bounds;
-        const auto translation = services_->nodes().require(s->node).translation;
-        anchor.x += translation.x;
-        anchor.y += translation.y;
-        const auto available = services_->component_clip(s->popup, viewport, clip);
-        auto& engine = services_->layout();
-        const auto popup_node = services_->components().root(s->popup);
-        if (!s->needs_layout && s->anchor == anchor && s->clip == available &&
-            services_->nodes().require(popup_node).measure_generation == engine.generation()) {
-            continue;
-        }
-        const float width = std::min(t.metrics.panel_width, available.width);
-        const float padding = std::min(t.metrics.padding, width / 2);
-        const auto footer_node = services_->components().root(s->footer);
-        const auto footer_size =
-            engine.measure_child(footer_node, {0, std::max(0.0F, width - 2 * padding), 0, available.height});
-        const float wanted = 2 * padding + t.metrics.header_height + 7 * t.metrics.row_height + footer_size.height;
-        const float below = std::clamp(available.y + available.height - anchor.y - anchor.height - t.metrics.gap, 0.0F,
-                                       available.height);
-        const float above = std::clamp(anchor.y - t.metrics.gap - available.y, 0.0F, available.height);
-        const bool use_above = below < wanted && above > below;
-        const float height = std::min(wanted, use_above ? above : below);
-        s->bounds = {
-            std::clamp(anchor.x, available.x, available.x + available.width - width),
-            std::clamp(use_above ? anchor.y - t.metrics.gap - height : anchor.y + anchor.height + t.metrics.gap,
-                       available.y, available.y + available.height - height),
-            width, height};
-        static_cast<void>(engine.measure_child(popup_node, layout::Constraints::fixed(width, height)));
-        engine.place_child(popup_node, s->bounds);
-        const float x = s->bounds.x + padding;
-        const float y = s->bounds.y + padding;
-        const float body = std::max(0.0F, width - 2 * padding);
-        const float nav = std::min(t.metrics.header_height, body / 6);
-        const auto place = [&](runtime::ComponentId item, runtime::Rect rect) {
-            const auto node = services_->components().root(item);
-            static_cast<void>(engine.measure_child(node, layout::Constraints::fixed(rect.width, rect.height)));
-            engine.place_child(node, rect);
-        };
-        for (std::size_t i = 0; i < 4; ++i) {
-            const float offset = i < 2 ? nav * float(i) : body - nav * float(4 - i);
-            place(s->items[i], {x + offset, y, nav, t.metrics.header_height});
-        }
-        place(s->items[4], {x + 2 * nav, y, std::max(0.0F, body - 4 * nav), t.metrics.header_height});
-        for (std::size_t i = 5; i < s->items.size(); ++i) {
-            const std::size_t index = i - 5;
-            place(s->items[i], {x + float(index % 7) * body / 7,
-                                y + t.metrics.header_height + float(index / 7) * t.metrics.row_height, body / 7,
-                                t.metrics.row_height});
-        }
-        place(s->footer, {x, y + t.metrics.header_height + 7 * t.metrics.row_height, body, footer_size.height});
-        s->needs_layout = false;
-        s->anchor = anchor;
-        s->clip = available;
-        // Footer placement commits after Table's normal pass. Its cached body
-        // clip and scroll coordinates must be ready for input in this frame.
-        if (std::ranges::any_of(services_->table().mounted(),
-                                [&](auto table) { return descendant(*services_, table, s->footer); })) {
-            services_->table().position_window_layers(viewport, clip);
-        }
+    } guard{positioning_};
+
+    services_->popover().position_ancestors(id, viewport, clip);
+    auto* s = services_->components().state<DateState>(id);
+    if (!s || !s->visible) {
+        return;
+    }
+    const auto& t = services_->components().theme_scope(id)->snapshot().date_picker();
+    auto anchor = services_->nodes().require(s->node).bounds;
+    const auto translation = services_->nodes().require(s->node).translation;
+    anchor.x += translation.x;
+    anchor.y += translation.y;
+    const auto available = services_->component_clip(s->popup, viewport, clip);
+    auto& engine = services_->layout();
+    const auto popup_node = services_->components().root(s->popup);
+    if (!s->needs_layout && s->anchor == anchor && s->clip == available &&
+        services_->nodes().require(popup_node).measure_generation == engine.generation()) {
+        return;
+    }
+    const float width = std::min(t.metrics.panel_width, available.width);
+    const float padding = std::min(t.metrics.padding, width / 2);
+    const auto footer_node = services_->components().root(s->footer);
+    const auto footer_size =
+        engine.measure_child(footer_node, {0, std::max(0.0F, width - 2 * padding), 0, available.height});
+    const float wanted = 2 * padding + t.metrics.header_height + 7 * t.metrics.row_height + footer_size.height;
+    const float below =
+        std::clamp(available.y + available.height - anchor.y - anchor.height - t.metrics.gap, 0.0F, available.height);
+    const float above = std::clamp(anchor.y - t.metrics.gap - available.y, 0.0F, available.height);
+    const bool use_above = below < wanted && above > below;
+    const float height = std::min(wanted, use_above ? above : below);
+    s->bounds = {std::clamp(anchor.x, available.x, available.x + available.width - width),
+                 std::clamp(use_above ? anchor.y - t.metrics.gap - height : anchor.y + anchor.height + t.metrics.gap,
+                            available.y, available.y + available.height - height),
+                 width, height};
+    static_cast<void>(engine.measure_child(popup_node, layout::Constraints::fixed(width, height)));
+    engine.place_child(popup_node, s->bounds);
+    const float x = s->bounds.x + padding;
+    const float y = s->bounds.y + padding;
+    const float body = std::max(0.0F, width - 2 * padding);
+    const float nav = std::min(t.metrics.header_height, body / 6);
+    const auto place = [&](runtime::ComponentId item, runtime::Rect rect) {
+        const auto node = services_->components().root(item);
+        static_cast<void>(engine.measure_child(node, layout::Constraints::fixed(rect.width, rect.height)));
+        engine.place_child(node, rect);
+    };
+    for (std::size_t i = 0; i < 4; ++i) {
+        const float offset = i < 2 ? nav * float(i) : body - nav * float(4 - i);
+        place(s->items[i], {x + offset, y, nav, t.metrics.header_height});
+    }
+    place(s->items[4], {x + 2 * nav, y, std::max(0.0F, body - 4 * nav), t.metrics.header_height});
+    for (std::size_t i = 5; i < s->items.size(); ++i) {
+        const std::size_t index = i - 5;
+        place(s->items[i],
+              {x + float(index % 7) * body / 7, y + t.metrics.header_height + float(index / 7) * t.metrics.row_height,
+               body / 7, t.metrics.row_height});
+    }
+    place(s->footer, {x, y + t.metrics.header_height + 7 * t.metrics.row_height, body, footer_size.height});
+    s->needs_layout = false;
+    s->anchor = anchor;
+    s->clip = available;
+    // Footer placement commits after Table's normal pass. Its cached body
+    // clip and scroll coordinates must be ready for input in this frame.
+    if (std::ranges::any_of(services_->table().mounted(),
+                            [&](auto table) { return descendant(*services_, table, s->footer); })) {
+        services_->table().position_window_layers(viewport, clip);
     }
 }
 

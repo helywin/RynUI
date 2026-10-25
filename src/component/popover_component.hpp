@@ -36,6 +36,9 @@ public:
     bool consume_scroll_boundary(const input::ScrollInputEvent&);
     void prepare_auxiliary_layout() override;
     void position_window_layers(runtime::Size, runtime::Rect) override;
+    void position_window_layer(runtime::ComponentId, runtime::Size, runtime::Rect);
+    void position_ancestors(runtime::ComponentId, runtime::Size, runtime::Rect);
+    [[nodiscard]] bool owns_escape(runtime::ComponentId ancestor, runtime::ComponentId focused) const;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     std::size_t tick_auxiliary(animation::AnimationTime) override;
     std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
@@ -48,6 +51,7 @@ private:
     void update_theme(runtime::ComponentId, bool);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
+    std::vector<runtime::ComponentId> positioning_;
     bool window_active_{true};
 };
 } // namespace ryn::detail

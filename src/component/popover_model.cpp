@@ -65,6 +65,10 @@ void PopoverModel::observe(bool desire, bool immediate, animation::AnimationTime
         dismissed_ = false;
     }
     if (desire == observed_) {
+        if (desire && immediate && deadline_ && pending_ && !dismissed_) {
+            deadline_ = now;
+            pending_immediate_ = true;
+        }
         return;
     }
     observed_ = desire;
@@ -72,12 +76,25 @@ void PopoverModel::observe(bool desire, bool immediate, animation::AnimationTime
     if (dismissed_) {
         return;
     }
-    const auto delay = desire && immediate ? Duration{} : desire ? enter : leave;
+    schedule(desire, immediate, now, enter, leave);
+}
+
+void PopoverModel::retime(animation::AnimationTime now, Duration enter, Duration leave) {
+    validate_popover_delay(enter);
+    validate_popover_delay(leave);
+    if (deadline_) {
+        schedule(pending_, pending_immediate_, now, enter, leave);
+    }
+}
+
+void PopoverModel::schedule(bool open, bool immediate, animation::AnimationTime now, Duration enter, Duration leave) {
+    const auto delay = open && immediate ? Duration{} : open ? enter : leave;
     const auto micros = static_cast<animation::AnimationTime::rep>(delay.count_milliseconds() * 1000.0);
     if (now.count_microseconds() > std::numeric_limits<animation::AnimationTime::rep>::max() - micros) {
         throw std::overflow_error("Popover deadline overflow");
     }
-    pending_ = desire;
+    pending_ = open;
+    pending_immediate_ = immediate;
     deadline_ = animation::AnimationTime::microseconds(now.count_microseconds() + micros);
 }
 

@@ -72,9 +72,11 @@ void apply_popover_override(PopoverThemeToken& t, const PopoverTokenOverride& o)
         }
         extent += value * 2048;
     }
-    if (t.max_width <= 0 || !std::isfinite(t.font_size) || t.font_size <= 0 || !std::isfinite(t.line_height) ||
-        t.line_height <= 0 || t.font_weight < 100 || t.font_weight > 1000 || t.title_font_weight < 100 ||
-        t.title_font_weight > 1000 || t.z_index_popup < 0 ||
+    if (t.max_width <= 0 || !std::isfinite(t.font_size) || t.font_size < .5F ||
+        static_cast<double>(t.font_size) >= std::numeric_limits<long>::max() ||
+        static_cast<double>(t.font_size) >= std::numeric_limits<std::uint32_t>::max() ||
+        !std::isfinite(t.line_height) || t.line_height <= 0 || t.font_weight < 100 || t.font_weight > 1000 ||
+        t.title_font_weight < 100 || t.title_font_weight > 1000 || t.z_index_popup < 0 ||
         !std::isfinite(extent + t.font_size * 2048 + t.line_height * 2048)) {
         throw std::invalid_argument("Popover final token is invalid");
     }

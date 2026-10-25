@@ -14,3 +14,16 @@
 本次仅平台通用逻辑与 headless scene/input 合同；不设未实际运行的 native/GPU/Linux/system IME/AT 完成项，不改 Gallery。父任务负责集成与独立评审。
 
 实际证据见 [windows-headless.md](evidence/windows-headless.md)：Debug/Release 去重组合各31/31，五份 golden 的15,372个旧叶子与33个 IIFE 保持，12个新 PE 程序的栈保留量均为默认1 MiB。
+
+## 3. Astra R1 修复
+
+R1 对 f3a900ec 提出6项 P2，重开上述相关验收，历史证据保留为历史结果。
+
+- [x] 3.1 先执行失败回归，再拒绝最终不可渲染字体；验证 override/独立 seed/继承/祖先 update 的失败原子性和合法恢复。
+- [x] 3.2 先执行失败回归，再按逻辑依赖同帧定位双向嵌套 Popover 与 Date/Time；验证打开、移动和视口变化。
+- [x] 3.3 先执行真实 Pointer→Escape 失败回归，再修复父 picker 与已打开子 Popover trigger 的键盘归属；保留受控拒绝、IME、更深子层优先。
+- [x] 3.4 先执行键盘打开父层→首焦点→Enter/Space 失败回归，再跳过代理 wrapper，保留其他合法 roving focus。
+- [x] 3.5 先执行 reactive leave delay 失败回归，再重算保留方向的 pending deadline；验证 enter/leave 变长、变短、0、取消和销毁。
+- [x] 3.6 先执行 hover pending→focus 失败回归，再让 focus 立即打开且无旧 deadline；验证失焦后正常关闭。
+
+R1 修复实际证据见 [r1-review.md](evidence/r1-review.md)：6项先失败后通过，最终 Debug/Release 影响集合各44/44。

@@ -1,6 +1,8 @@
 #include "component/popover_component.hpp"
 #include "component/popover_model.hpp"
 #include "component/table_component.hpp"
+#include "component/date_picker_component.hpp"
+#include "component/time_picker_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
@@ -384,6 +386,7 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
                 }
             }
             services.interactions().set_tab_stop(s.trigger_hit, !s.native_trigger);
+            services.interactions().set_focusable(s.trigger_hit, !s.native_trigger);
             s.view.popup = group(services);
             const auto popup_node = children.root(s.view.popup);
             services.components().set_window_layer(s.view.popup, 1030);
@@ -567,7 +570,7 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
             if (auto* state = services_->components().state<PopoverState>(id)) {
                 if (state->*field != value) {
                     state->*field = value;
-                    state->model.reset_observation();
+                    state->model.retime(services_->animation_time(), state->enter, state->leave);
                     services_->request_frame();
                 }
             }
@@ -773,81 +776,129 @@ std::optional<animation::AnimationTime> PopoverComponentHost::next_auxiliary_dea
     return result;
 }
 
-void PopoverComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect document_clip) {
-    auto ids = mounted_;
-    std::reverse(ids.begin(), ids.end());
-    bool positioned{};
-    for (auto id : ids) {
-        observe(id, services_->animation_time());
-        auto* s = services_->components().state<PopoverState>(id);
-        if (!s || !s->view.geometry.visible) {
-            continue;
-        }
-        const auto& t = services_->components().theme_scope(id)->snapshot().popover();
-        const auto popup_node = services_->components().root(s->view.popup);
-        const auto clip = services_->component_clip(s->view.popup, viewport, document_clip);
-        auto& engine = services_->layout();
-        const bool measure = s->needs_measure || s->clip != clip ||
-                             services_->nodes().require(popup_node).measure_generation != engine.generation();
-        if (measure) {
-            s->popup_size = engine.measure_child(popup_node, {0, std::min(t.max_width, clip.width), 0, clip.height});
-            s->clip = clip;
-            s->needs_measure = false;
-        }
-        const auto& node = services_->nodes().require(s->node);
-        const runtime::Rect anchor{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
-                                   node.bounds.width, node.bounds.height};
-        s->view.geometry =
-            position_tooltip(anchor, s->popup_size, clip, s->placement, t.gap + (s->arrow ? t.arrow_size : 0),
-                             s->adjust, s->arrow && s->point_at_center, std::max(12.0F, t.border_radius + 2));
-        if (measure || services_->nodes().require(popup_node).bounds != s->view.geometry.bounds) {
-            engine.place_child(popup_node, s->view.geometry.bounds);
-            positioned = true;
-        }
-        const auto bounds = s->view.geometry.bounds;
-        const int side = static_cast<int>(s->view.geometry.placement) / 3;
-        const float size = std::min(t.arrow_size, (side < 2 ? bounds.width : bounds.height) / 2);
-        const bool arrow = s->arrow && size > 0;
-        if (services_->components().set_branch_active(s->view.arrow, arrow)) {
-            services_->mark_scene_structure_dirty();
-        }
-        if (arrow) {
-            static const String glyphs[]{String{u8"\uF000"}, String{u8"\uF001"}, String{u8"\uF002"},
-                                         String{u8"\uF003"}};
-            s->arrow_glyph.set(glyphs[side]);
-            const float font = std::max(1.0F, std::round(size * 2));
-            const float half = font / 2;
-            s->arrow_font.set({SystemFontFamily::ui_sans, 400, false, font, font});
-            const auto arrow_node = services_->components().root(s->view.arrow);
-            static_cast<void>(engine.measure_child(arrow_node, {0, font, 0, font}));
-            const float center = s->view.geometry.arrow_center;
-            runtime::Rect rect{bounds.x + center - half, bounds.y + bounds.height, font, font};
-            if (side == 1) {
-                rect.y = bounds.y - half;
-            } else if (side == 2) {
-                rect.x = bounds.x + bounds.width;
-                rect.y = bounds.y + center - half;
-            } else if (side == 3) {
-                rect.x = bounds.x - half;
-                rect.y = bounds.y + center - half;
-            }
-            engine.place_child(arrow_node, rect);
-        }
-        if (s->focus_pending) {
-            s->focus_pending = false;
-            const auto target = first_focus(*services_, s->view.popup);
-            if (target) {
-                services_->focus().defer_focus(target, input::FocusModality::keyboard);
-            }
+bool PopoverComponentHost::owns_escape(runtime::ComponentId ancestor, runtime::ComponentId focused) const {
+    for (auto id : mounted_) {
+        const auto* s = services_->components().state<PopoverState>(id);
+        if (s && s->view.geometry.visible && descendant(*services_, id, ancestor) &&
+            descendant(*services_, focused, id)) {
+            return true;
         }
     }
-    // Table's normal geometry pass precedes Popover. Refresh only when a
-    // retained popup changed the coordinates of an actual descendant Table.
+    return false;
+}
+
+void PopoverComponentHost::position_ancestors(runtime::ComponentId id, runtime::Size viewport, runtime::Rect clip) {
+    if (!services_->components().contains(id)) {
+        return;
+    }
+    for (auto p = services_->components().parent(id); p && services_->components().contains(*p);
+         p = services_->components().parent(*p)) {
+        if (std::ranges::find(mounted_, *p) != mounted_.end()) {
+            position_window_layer(*p, viewport, clip);
+            return;
+        }
+        const auto dates = services_->date_picker().mounted();
+        if (std::ranges::find(dates, *p) != dates.end()) {
+            services_->date_picker().position_window_layer(*p, viewport, clip);
+            return;
+        }
+        const auto times = services_->time_picker().mounted();
+        if (std::ranges::find(times, *p) != times.end()) {
+            services_->time_picker().position_window_layer(*p, viewport, clip);
+            return;
+        }
+    }
+}
+
+void PopoverComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect document_clip) {
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        position_window_layer(id, viewport, document_clip);
+    }
+}
+
+void PopoverComponentHost::position_window_layer(runtime::ComponentId id, runtime::Size viewport,
+                                                 runtime::Rect document_clip) {
+    if (std::ranges::find(positioning_, id) != positioning_.end()) {
+        return;
+    }
+    positioning_.push_back(id);
+
+    struct PositionGuard final {
+        std::vector<runtime::ComponentId>& stack;
+
+        ~PositionGuard() {
+            stack.pop_back();
+        }
+    } guard{positioning_};
+
+    services_->popover().position_ancestors(id, viewport, document_clip);
+    observe(id, services_->animation_time());
+    bool positioned{};
+    auto* s = services_->components().state<PopoverState>(id);
+    if (!s || !s->view.geometry.visible) {
+        return;
+    }
+    const auto& t = services_->components().theme_scope(id)->snapshot().popover();
+    const auto popup_node = services_->components().root(s->view.popup);
+    const auto clip = services_->component_clip(s->view.popup, viewport, document_clip);
+    auto& engine = services_->layout();
+    const bool measure = s->needs_measure || s->clip != clip ||
+                         services_->nodes().require(popup_node).measure_generation != engine.generation();
+    if (measure) {
+        s->popup_size = engine.measure_child(popup_node, {0, std::min(t.max_width, clip.width), 0, clip.height});
+        s->clip = clip;
+        s->needs_measure = false;
+    }
+    const auto& node = services_->nodes().require(s->node);
+    const runtime::Rect anchor{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
+                               node.bounds.width, node.bounds.height};
+    s->view.geometry =
+        position_tooltip(anchor, s->popup_size, clip, s->placement, t.gap + (s->arrow ? t.arrow_size : 0), s->adjust,
+                         s->arrow && s->point_at_center, std::max(12.0F, t.border_radius + 2));
+    if (measure || services_->nodes().require(popup_node).bounds != s->view.geometry.bounds) {
+        engine.place_child(popup_node, s->view.geometry.bounds);
+        positioned = true;
+    }
+    const auto bounds = s->view.geometry.bounds;
+    const int side = static_cast<int>(s->view.geometry.placement) / 3;
+    const float size = std::min(t.arrow_size, (side < 2 ? bounds.width : bounds.height) / 2);
+    const bool arrow = s->arrow && size > 0;
+    if (services_->components().set_branch_active(s->view.arrow, arrow)) {
+        services_->mark_scene_structure_dirty();
+    }
+    if (arrow) {
+        static const String glyphs[]{String{u8"\uF000"}, String{u8"\uF001"}, String{u8"\uF002"}, String{u8"\uF003"}};
+        s->arrow_glyph.set(glyphs[side]);
+        const float font = std::max(1.0F, std::round(size * 2));
+        const float half = font / 2;
+        s->arrow_font.set({SystemFontFamily::ui_sans, 400, false, font, font});
+        const auto arrow_node = services_->components().root(s->view.arrow);
+        static_cast<void>(engine.measure_child(arrow_node, {0, font, 0, font}));
+        const float center = s->view.geometry.arrow_center;
+        runtime::Rect rect{bounds.x + center - half, bounds.y + bounds.height, font, font};
+        if (side == 1) {
+            rect.y = bounds.y - half;
+        } else if (side == 2) {
+            rect.x = bounds.x + bounds.width;
+            rect.y = bounds.y + center - half;
+        } else if (side == 3) {
+            rect.x = bounds.x - half;
+            rect.y = bounds.y + center - half;
+        }
+        engine.place_child(arrow_node, rect);
+    }
+    if (s->focus_pending) {
+        s->focus_pending = false;
+        const auto target = first_focus(*services_, s->view.popup);
+        if (target) {
+            services_->focus().defer_focus(target, input::FocusModality::keyboard);
+        }
+    }
+
     if (positioned && std::ranges::any_of(services_->table().mounted(), [&](auto table) {
-            return std::ranges::any_of(ids, [&](auto id) {
-                const auto* s = services_->components().state<PopoverState>(id);
-                return s && s->view.geometry.visible && descendant(*services_, table, s->view.popup);
-            });
+            const auto* live = services_->components().state<PopoverState>(id);
+            return live && live->view.geometry.visible && descendant(*services_, table, live->view.popup);
         })) {
         services_->table().position_window_layers(viewport, document_clip);
     }
