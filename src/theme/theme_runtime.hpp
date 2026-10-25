@@ -153,6 +153,11 @@ public:
     [[nodiscard]] const PopconfirmThemeToken& popconfirm_typography() const;
     [[nodiscard]] const PopconfirmThemeToken& popconfirm_effects() const;
     [[nodiscard]] const PopconfirmThemeToken& popconfirm_order() const;
+    [[nodiscard]] const PopoverThemeToken& popover_colors() const;
+    [[nodiscard]] const PopoverThemeToken& popover_metrics() const;
+    [[nodiscard]] const PopoverThemeToken& popover_typography() const;
+    [[nodiscard]] const PopoverThemeToken& popover_effects() const;
+    [[nodiscard]] const PopoverThemeToken& popover_order() const;
     [[nodiscard]] const AlertThemeToken& alert_colors() const;
     [[nodiscard]] const AlertThemeToken& alert_metrics() const;
     [[nodiscard]] const SpinThemeToken& spin_colors() const;

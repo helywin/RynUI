@@ -2,6 +2,7 @@
 #include "component/date_picker_model.hpp"
 #include "component/input_component.hpp"
 #include "component/input_affix_action.hpp"
+#include "component/table_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
@@ -870,6 +871,12 @@ void DatePickerComponentHost::position_window_layers(runtime::Size viewport, run
         s->needs_layout = false;
         s->anchor = anchor;
         s->clip = available;
+        // Footer placement commits after Table's normal pass. Its cached body
+        // clip and scroll coordinates must be ready for input in this frame.
+        if (std::ranges::any_of(services_->table().mounted(),
+                                [&](auto table) { return descendant(*services_, table, s->footer); })) {
+            services_->table().position_window_layers(viewport, clip);
+        }
     }
 }
 

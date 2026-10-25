@@ -327,6 +327,22 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.result().colors, after.result().colors, TokenIdentity::result_colors, changed, count);
     append_if_changed(before.result().metrics, after.result().metrics, TokenIdentity::result_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
+    const auto& old_popover = before.popover();
+    const auto& new_popover = after.popover();
+    append_if_changed(old_popover.colors(), new_popover.colors(), TokenIdentity::popover_colors, changed, count);
+    append_if_changed(old_popover.metrics(), new_popover.metrics(), TokenIdentity::popover_metrics, changed, count);
+    append_if_changed(old_popover.font_family, new_popover.font_family, TokenIdentity::popover_typography, changed,
+                      count);
+    append_if_changed(old_popover.font_size, new_popover.font_size, TokenIdentity::popover_typography, changed, count);
+    append_if_changed(old_popover.line_height, new_popover.line_height, TokenIdentity::popover_typography, changed,
+                      count);
+    append_if_changed(old_popover.font_weight, new_popover.font_weight, TokenIdentity::popover_typography, changed,
+                      count);
+    append_if_changed(old_popover.title_font_weight, new_popover.title_font_weight, TokenIdentity::popover_typography,
+                      changed, count);
+    append_if_changed(old_popover.shadow, new_popover.shadow, TokenIdentity::popover_effects, changed, count);
+    append_if_changed(old_popover.z_index_popup, new_popover.z_index_popup, TokenIdentity::popover_order, changed,
+                      count);
     append_if_changed(before.tag().colors, after.tag().colors, TokenIdentity::tag_colors, changed, count);
     append_if_changed(before.input_number().colors(), after.input_number().colors(), TokenIdentity::input_number_colors,
                       changed, count);
@@ -1230,6 +1246,36 @@ const PopconfirmThemeToken& ThemeScope::popconfirm_order() const {
     return snapshot_->popconfirm();
 }
 
+const PopoverThemeToken& ThemeScope::popover_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popover_colors);
+    return snapshot_->popover();
+}
+
+const PopoverThemeToken& ThemeScope::popover_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popover_metrics);
+    return snapshot_->popover();
+}
+
+const PopoverThemeToken& ThemeScope::popover_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popover_typography);
+    return snapshot_->popover();
+}
+
+const PopoverThemeToken& ThemeScope::popover_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popover_effects);
+    return snapshot_->popover();
+}
+
+const PopoverThemeToken& ThemeScope::popover_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popover_order);
+    return snapshot_->popover();
+}
+
 const AlertThemeToken& ThemeScope::alert_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::alert_colors);
@@ -1812,6 +1858,11 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Skeleton.metrics",
         "Descriptions.colors",
         "Descriptions.metrics",
+        "Popover.colors",
+        "Popover.metrics",
+        "Popover.typography",
+        "Popover.effects",
+        "Popover.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1820,6 +1871,16 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
 
 DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     switch (identity) {
+    case TokenIdentity::popover_colors:
+        return DirtyPhase::paint_material;
+    case TokenIdentity::popover_metrics:
+        return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
+    case TokenIdentity::popover_typography:
+        return DirtyPhase::text | DirtyPhase::measure_layout;
+    case TokenIdentity::popover_effects:
+        return DirtyPhase::geometry | DirtyPhase::paint_material;
+    case TokenIdentity::popover_order:
+        return DirtyPhase::paint_material | DirtyPhase::hit_test;
     case TokenIdentity::skeleton_metrics:
         return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::skeleton_colors:

@@ -33,6 +33,7 @@ class SegmentedComponentHost;
 class ModalComponentHost;
 class TagBadgeComponentHost;
 class PopconfirmComponentHost;
+class PopoverComponentHost;
 class FeedbackComponentHost;
 class MenuComponentHost;
 class DropdownComponentHost;
@@ -283,6 +284,10 @@ public:
         return *popconfirm_;
     }
 
+    [[nodiscard]] PopoverComponentHost& popover() noexcept {
+        return *popover_;
+    }
+
     [[nodiscard]] FeedbackComponentHost& feedback() noexcept {
         return *feedback_;
     }
@@ -405,6 +410,7 @@ private:
     std::unique_ptr<SliderComponentHost> slider_;
     std::unique_ptr<ModalComponentHost> modal_;
     std::unique_ptr<PopconfirmComponentHost> popconfirm_;
+    std::unique_ptr<PopoverComponentHost> popover_;
     std::unique_ptr<TooltipComponentHost> tooltip_;
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;

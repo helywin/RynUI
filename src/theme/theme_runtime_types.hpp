@@ -188,6 +188,11 @@ enum class TokenIdentity : std::uint8_t {
     skeleton_metrics,
     descriptions_colors,
     descriptions_metrics,
+    popover_colors,
+    popover_metrics,
+    popover_typography,
+    popover_effects,
+    popover_order,
     count,
 };
 

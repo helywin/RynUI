@@ -20,6 +20,7 @@
 #include "component/modal_component.hpp"
 #include "component/tag_badge_component.hpp"
 #include "component/popconfirm_component.hpp"
+#include "component/popover_component.hpp"
 #include "component/feedback_component.hpp"
 #include "component/menu_component.hpp"
 #include "component/dropdown_component.hpp"
@@ -107,6 +108,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     slider_ = std::make_unique<SliderComponentHost>(*this);
     modal_ = std::make_unique<ModalComponentHost>(*this);
     table_ = std::make_unique<TableComponentHost>(*this);
+    popover_ = std::make_unique<PopoverComponentHost>(*this);
     date_picker_ = std::make_unique<DatePickerComponentHost>(*this);
     time_picker_ = std::make_unique<TimePickerComponentHost>(*this);
     popconfirm_ = std::make_unique<PopconfirmComponentHost>(*this);
@@ -195,7 +197,8 @@ bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& eve
         }
     }
     return time_picker_->consume_scroll_boundary(event) || date_picker_->consume_scroll_boundary(event) ||
-           dropdown_->consume_scroll_boundary(event) || interactions_.input_boundary().has_value();
+           dropdown_->consume_scroll_boundary(event) || popover_->consume_scroll_boundary(event) ||
+           interactions_.input_boundary().has_value();
 }
 
 bool WindowComponentServices::set_input_boundary(std::optional<runtime::ComponentId> root) {
