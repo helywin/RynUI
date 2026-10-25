@@ -193,6 +193,15 @@ enum class TokenIdentity : std::uint8_t {
     popover_typography,
     popover_effects,
     popover_order,
+
+    message_colors,
+    message_metrics,
+    message_effects,
+    message_order,
+    notification_colors,
+    notification_metrics,
+    notification_effects,
+    notification_order,
     count,
 };
 

@@ -42,4 +42,6 @@
 | 12 | Descriptions | 081 已提供固定 keyed 多列/span、横纵标签、边框/三尺寸、保留富 slots、分区内容裁剪和外扩焦点装饰；独立 Astra R3 CLEAN、父分支组合测试 44/44 和 inventory 通过。086 已提供真实编辑/选择/保存、列数/跨列/方向/尺寸/显隐恢复及目录直达，三主题双宽与独立 Astra R1 通过，见 [Descriptions API](descriptions.md)、[081 证据](../openspec/changes/081-20261025-add-native-descriptions/evidence/main-publication.md)、[086 集成记录](../openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/02-main-and-review.md)。动态拓扑、自动断点、RTL、统一完整 frame/native 及组件平台视觉验收仍独立记录 |
 | 13 | Popover | 084 已提供 typed 交互富内容、受控开合、hover/focus/click 组合与延时、十二方位/箭头、原生输入和子浮层归属；六项 R1 问题修复后通过独立 Astra R2，父 main 新构建回归 52/52 与 inventory 通过，见 [Popover API](popover.md)、[集成证据](../openspec/changes/084-20261025-add-native-popover/evidence/main-integration.md)。contextMenu、动画、RTL、内置内容滚动、交互 Gallery 与平台专属验收未覆盖 |
 
+| 14 | Message / Notification | 085 已提供窗口内 holder/ref、keyed 更新与关闭、五种状态、四角通知、保留富内容、数量限制及单调时钟自动关闭；独立 Astra R3 CLEAN，父 main 与 Popover 的新构建组合回归 81/81 及 inventory 通过，见 [API](message-notification.md)、[集成证据](../openspec/changes/085-20261025-add-native-message-and-notification/evidence/main-integration.md)。loading 为静态图标；全局 service、动画、暂停计时、交互 Gallery 和平台专属验收未覆盖 |
+
 以上记录各项实际进展与剩余范围；Gallery support status 按对应原生实现和验收证据单独维护。现有 Button、Input 家族、布局、选择控件、Typography 等已实现能力继续保持可用。

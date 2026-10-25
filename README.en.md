@@ -36,6 +36,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Interactive popovers | Popover with retained rich contents and editor drafts, controlled visibility, combined triggers, placement/arrows and child-popup input ownership; see [Popover](docs/popover.md) |
 | Tags and counts | Tag/CheckableTag colors, controlled close/selection; standalone or wrapped Badge count/overflow/dot/status with retained contents; see [Tag / Badge](docs/tag-and-badge.md) |
 | Status and progress | Alert with controlled close and content slots, Spin with retained contents and a loading shield, and line/circle/dashboard Progress; see [Feedback components](docs/feedback.md) |
+| Messages and notifications | Window-scoped Message/Notification holders and refs, keyed updates, corner notifications, rich contents and timed cleanup; see [Message / Notification](docs/message-notification.md) |
 | Loading placeholders | Static Skeleton title/paragraph/avatar and standalone Avatar/Button/Input shapes, retaining contents and editor state across loading changes; see [Skeleton](docs/skeleton.md) |
 | Data browsing | Table with retained keyed rows, typed columns/slots, controlled sorting/selection and finite scrolling, composed with controlled or default Pagination; see [Table](docs/table.md) and [Pagination](docs/pagination.md) |
 | Detail panels | Descriptions with fixed keyed columns, spans, horizontal/vertical labels, borders and retained rich contents; see [Descriptions](docs/descriptions.md) |

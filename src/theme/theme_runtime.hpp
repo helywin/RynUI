@@ -124,6 +124,14 @@ public:
     [[nodiscard]] const StepsThemeToken& steps_effects() const;
     [[nodiscard]] const SkeletonThemeToken& skeleton_colors() const;
     [[nodiscard]] const SkeletonThemeToken& skeleton_metrics() const;
+    [[nodiscard]] const NoticeThemeToken& message_colors() const;
+    [[nodiscard]] const NoticeThemeToken& message_metrics() const;
+    [[nodiscard]] const NoticeThemeToken& message_effects() const;
+    [[nodiscard]] const NoticeThemeToken& message_order() const;
+    [[nodiscard]] const NoticeThemeToken& notification_colors() const;
+    [[nodiscard]] const NoticeThemeToken& notification_metrics() const;
+    [[nodiscard]] const NoticeThemeToken& notification_effects() const;
+    [[nodiscard]] const NoticeThemeToken& notification_order() const;
     [[nodiscard]] const ModalThemeToken& modal_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_metrics() const;

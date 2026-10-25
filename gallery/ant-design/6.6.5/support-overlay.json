@@ -1245,16 +1245,27 @@
     },
     {
       "identity": "ant.component.message",
-      "status": "planned",
-      "summary": "全局提示（Message）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Message 提供窗口作用域 holder/ref、键控打开更新关闭、五种静态状态、保留富内容与单调到期；不提供全局 service 或动画。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "window-scoped typed holder/ref with keyed open, partial update, close and clear",
+        "five status icons, string/rich content and retained editor identities",
+        "top-centered stacking, maxCount eviction, persistent or monotonic timed entries",
+        "Theme, input boundaries, reentrant callbacks and actual clipped scene rendering"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "animations, progress, pauseOnHover, global service and promise API",
+        "interactive Gallery, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "full Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
-        "source:components/message/index.en-US.md"
+        "source:components/message/index.en-US.md",
+        "openspec:085-20261025-add-native-message-and-notification",
+        "api:include/ryn/message.hpp",
+        "runtime:src/component/notice_component.cpp",
+        "test:rynui.notice_event",
+        "test:rynui.notice_clock",
+        "test:rynui.notice_lifecycle"
       ]
     },
     {
@@ -1281,16 +1292,27 @@
     },
     {
       "identity": "ant.component.notification",
-      "status": "planned",
-      "summary": "通知提醒框（Notification）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Notification 提供窗口作用域 holder/ref、四角键控堆叠、标题说明与真实关闭/action slots、保留编辑状态和到期清理。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed window-scoped holder/ref with keyed partial updates and safe close/clear",
+        "four-corner stacking, title/description/actions and real close Button",
+        "persistent/timed entries, maxCount, retained rich controls and reentrant lifecycle",
+        "independent Theme, clipping, focus/input boundaries and child-popup priority"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "animations, pauseOnHover, progress, collapsed stack and global/promise APIs",
+        "interactive Gallery, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "full Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
-        "source:components/notification/index.en-US.md"
+        "source:components/notification/index.en-US.md",
+        "openspec:085-20261025-add-native-message-and-notification",
+        "api:include/ryn/notification.hpp",
+        "runtime:src/component/notice_component.cpp",
+        "test:rynui.notice_retention",
+        "test:rynui.notice_review_fills",
+        "test:rynui.notice_review_inactive_content"
       ]
     },
     {

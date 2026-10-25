@@ -1,4 +1,6 @@
 #pragma once
+#include <ryn/message.hpp>
+#include <ryn/notification.hpp>
 
 #include <ryn/descriptions.hpp>
 #include <ryn/form.hpp>

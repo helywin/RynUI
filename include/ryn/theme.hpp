@@ -14,6 +14,7 @@
 #include <ryn/time_picker_tokens.hpp>
 #include <ryn/skeleton_tokens.hpp>
 #include <ryn/descriptions_tokens.hpp>
+#include <ryn/notice_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -991,6 +992,13 @@ struct DescriptionsThemeConfig final {
     friend bool operator==(const DescriptionsThemeConfig&, const DescriptionsThemeConfig&) = default;
 };
 
+struct NoticeThemeConfig final {
+    NoticeTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const NoticeThemeConfig&, const NoticeThemeConfig&) = default;
+};
+
 struct TabsThemeConfig final {
     TabsTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1604,6 +1612,8 @@ struct ThemeConfig final {
     FormThemeConfig form;
     TimePickerThemeConfig time_picker;
     DescriptionsThemeConfig descriptions;
+    NoticeThemeConfig message;
+    NoticeThemeConfig notification;
     ModalThemeConfig modal;
     TagThemeConfig tag;
     BadgeThemeConfig badge;
@@ -2198,6 +2208,14 @@ public:
         return descriptions_;
     }
 
+    [[nodiscard]] const MessageThemeToken& message() const noexcept {
+        return *message_;
+    }
+
+    [[nodiscard]] const NotificationThemeToken& notification() const noexcept {
+        return *notification_;
+    }
+
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
 
     [[nodiscard]] const TagThemeToken& tag() const noexcept {
@@ -2271,7 +2289,8 @@ private:
                   BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
                   std::shared_ptr<const TimePickerThemeToken> time_picker,
                   std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
-                  std::shared_ptr<const PopoverThemeToken> popover);
+                  std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
+                  std::shared_ptr<const NoticeThemeToken> notification);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2297,6 +2316,8 @@ private:
     std::shared_ptr<const SkeletonThemeToken> skeleton_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
+    std::shared_ptr<const NoticeThemeToken> message_;
+    std::shared_ptr<const NoticeThemeToken> notification_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;
