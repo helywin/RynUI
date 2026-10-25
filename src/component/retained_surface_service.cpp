@@ -602,7 +602,37 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
 
 bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip, bool clip_window_layers) {
     ensure_owner_thread();
-    const bool fills_changed = clip_window_layers && synchronize_clipped_fills(window_clip);
+    bool fills_changed = false;
+    if (clip_window_layers) {
+        fills_changed = synchronize_clipped_fills(window_clip);
+    } else {
+        // A converted sibling popup can outlive the overlay that enabled this
+        // path. Drop both caches before rebinding source quad commands below.
+        const auto release = [this](auto& record) {
+            if (record.clipped_fill_ids.empty()) {
+                return false;
+            }
+            for (auto id : record.clipped_fill_ids) {
+                static_cast<void>(effect_scene_.store().remove(id));
+            }
+            record.clipped_fill_ids.clear();
+            return true;
+        };
+        for (auto& slot : slots_) {
+            if (slot.record && release(*slot.record)) {
+                // The conversion also applied an effective decoration clip.
+                // Restore the caller's effects even if update_effects was an
+                // equality no-op before this conversion was disabled.
+                static_cast<void>(synchronize_effects(*slot.record, slot.record->effects));
+                fills_changed = true;
+            }
+        }
+        for (auto& slot : content_slots_) {
+            if (slot.record && release(*slot.record)) {
+                fills_changed = true;
+            }
+        }
+    }
     const bool packed_changed = effect_scene_.store().compact(window_clip);
     if (!fills_changed && !packed_changed) {
         return false;

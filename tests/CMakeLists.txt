@@ -7,7 +7,7 @@ target_link_libraries(rynui_notice_review_tests PRIVATE rynui_components)
 target_compile_definitions(rynui_notice_review_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
-foreach(notice_review_case IN ITEMS fills content_ranges clip_contract trim trim_callbacks anchor)
+foreach(notice_review_case IN ITEMS fills content_ranges clip_contract trim trim_callbacks anchor inactive_surface inactive_content)
     add_test(NAME rynui.notice_review_${notice_review_case} COMMAND rynui_notice_review_tests ${notice_review_case})
 endforeach()
 

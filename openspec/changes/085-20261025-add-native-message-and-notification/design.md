@@ -21,6 +21,7 @@
 4. 使用现有 AnimationTime 和单调 cursor，0 无 deadline，正数只注册最近 deadline；hover/失活继续计时。没有活动计时器时返回空 deadline，不使用 sleep 或每帧 poll。
 5. 每个 entry 为正常流外窗口 layer，优先级来自 Theme；保持逻辑祖先，Modal/Spin/隐藏边界自然生效。只在自己的实际 topmost hit 内容范围拦截最终滚轮回退，放在所有内容处理之后；不拦 Escape。open 不聚焦。关闭 focused 内容经窗口服务销毁路径清理 focus/会话，不调用 stale ref。有限窗口约束宽高并 clip_content，越界部分无绘制或交互。
    R1 修正：共同 retained fill 裁剪接纳普通 window layer 的后代；surface 和 content-range 都沿祖先 clip 生成既有 fill effects。window-layer root 仍重置 clip chain，普通正文不进入该路径，装饰使用既有 decoration clip。
+   R2 修正：当调用方关闭转换时，compact_effects 完整释放两种 record 的 clipped fill 缓存，surface 恢复调用方保存的 effects，随后 compact/rebind 原 source quad commands。保持 enable 条件及准入谓词不变，独立 popup 不再发布旧材料或旧几何。
 6. Message 与 Notification 独立 Theme config 和 tokens，共享小型 typed token 结构。完整接入 derive/override/seed algorithm/validate/merge/runtime identity/serialization。新增 identity 只 append，保留父已有 IIFE 原文/顺序及旧 golden 字段值，维持 heap preflight、self guard、Time 默认配置和 Binding bridge，不扩大 PE 栈。
 
 ## Risks / Trade-offs

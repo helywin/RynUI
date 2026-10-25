@@ -2,6 +2,7 @@
 #include "component/slider_component.hpp"
 #include "component/selection_component.hpp"
 #include "component/select_component.hpp"
+#include "component/popconfirm_component.hpp"
 #include "support/input_fixture.hpp"
 
 #include <algorithm>
@@ -403,6 +404,133 @@ void anchor() {
     verify(900, 500, "restored");
     check(std::ranges::equal(ids, f.services.select().mounted()), "anchor changes or suppression remounted Selects");
 }
+
+void inactive_surface() {
+    Fixture f;
+    NotificationRef notices;
+    Signal<SelectSelection> selected{SelectSelection{SelectValue{1}}};
+    Signal<LogicalLength> left{dp(16)};
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .options({{1, u8"One"}, {2, u8"Two"}})
+                   .value(Prop<SelectSelection>{selected})
+                   .open(true)
+                   .layout(LayoutStyle{}.width(dp(160)).margin_left(left)));
+        Button(ButtonProps{}.layout(LayoutStyle{}.width(dp(100))), [] { Text(u8"Normal sibling"); });
+        NotificationHolder(NotificationHolderProps{}.ref(notices));
+    }});
+    sync(f, 600);
+    const auto select = f.services.select().mounted()[0];
+    const auto initial = f.services.select().snapshot(select);
+    check(initial.visible && initial.rows.size() == 3, "independent Select popup fixture missing");
+    const auto color =
+        f.services.components().theme_scope(select)->snapshot().select().colors.option_selected_background;
+    const auto sample = [&](std::size_t index) {
+        const auto r = bounds(f, f.services.select().snapshot(select).rows[index]);
+        return runtime::Point{r.x + r.width / 2, r.y + r.height / 2};
+    };
+    const auto base_effects = f.services.rounded_effects().live_count();
+    check(fill_coverage(f, color, sample(0)) > .99F, "initial selected row fill missing");
+    check(notices.open(u8"temporary", NotificationProps{}.title(u8"Temporary").duration(0)), "notice open failed");
+    sync(f, 600);
+    check(f.services.rounded_effects().live_count() > base_effects, "fixture did not create converted fills");
+    check(notices.close(u8"temporary"), "last notice close failed");
+    sync(f, 600);
+    check(!f.services.notices().visible() && f.services.select().snapshot(select).visible,
+          "last-notice close did not leave the independent Select open");
+    selected.set(SelectSelection{SelectValue{2}});
+    sync(f, 600);
+    const auto material = fill_coverage(f, color, sample(1));
+    std::cout << "inactive Select selected coverage=" << material << '\n';
+    check(material > .99F && fill_coverage(f, color, sample(0)) == 0,
+          "selected row material stopped updating after the last notice closed");
+    const auto old_point = sample(1);
+    left.set(dp(300));
+    sync(f, 600);
+    const auto new_point = sample(1);
+    check(new_point.x != old_point.x && fill_coverage(f, color, new_point) > .99F &&
+              fill_coverage(f, color, old_point) == 0,
+          "independent Select retained old converted fill geometry after notice close");
+    check(f.services.rounded_effects().live_count() == base_effects,
+          "disabled conversion kept independent Select clipped fill resources");
+    f.services.dispose();
+    check(f.services.surfaces().size() == 0 && f.services.rounded_effects().live_count() == 0,
+          "Select converted surface cleanup leaked resources");
+}
+
+void inactive_content() {
+    Fixture f;
+    NotificationRef notices;
+    Signal<double> value{0};
+    Signal<LogicalLength> left{dp(16)};
+    f.services.mount(Content{[&] {
+        Popconfirm(PopconfirmProps{}
+                       .open(true)
+                       .title(u8"Independent dots")
+                       .placement(PopconfirmPlacement::BottomLeft)
+                       .layout(LayoutStyle{}.margin_left(left)),
+                   PopconfirmTrigger{
+                       [] { Button(ButtonProps{}.layout(LayoutStyle{}.width(dp(100))), [] { Text(u8"Trigger"); }); }},
+                   {.description = PopconfirmDescription{[&] {
+                        Slider(SliderProps{}
+                                   .value(value)
+                                   .limits(SliderLimits{0, 100, 25})
+                                   .dots(true)
+                                   .hint(SliderHintOptions{SliderHintMode::Hidden})
+                                   .layout(LayoutStyle{}.width(dp(180)).height(dp(40))));
+                    }}});
+        NotificationHolder(NotificationHolderProps{}.ref(notices));
+    }});
+    sync(f, 600);
+    const auto popup = f.services.popconfirm().mounted()[0];
+    const auto slider = f.services.slider().mounted()[0].component;
+    const auto& token = f.services.components().theme_scope(slider)->snapshot().slider();
+    const auto middle_dot = [&](Color color) {
+        const auto r = bounds(f, slider);
+        std::optional<runtime::Point> result;
+        float distance = 100000;
+        for (const auto& q : f.services.surfaces().instances().instances()) {
+            if (q.bounds[2] != token.metrics.dot_size || q.bounds[3] != token.metrics.dot_size ||
+                q.color != std::array{color.red(), color.green(), color.blue(), color.alpha()}) {
+                continue;
+            }
+            const float x = q.bounds[0] + q.bounds[2] / 2;
+            const float delta = std::abs(x - r.x - r.width / 2);
+            if (delta < distance) {
+                distance = delta;
+                result = runtime::Point{q.bounds[0] + q.bounds[2] * .8F, q.bounds[1] + q.bounds[3] / 2};
+            }
+        }
+        check(result.has_value(), "independent Slider dot source fixture missing");
+        return *result;
+    };
+    const auto base_effects = f.services.rounded_effects().live_count();
+    const auto initial_point = middle_dot(token.colors.dot_border);
+    check(fill_coverage(f, token.colors.dot_border, initial_point) > .9F, "initial dot fill missing");
+    check(notices.open(u8"temporary", NotificationProps{}.title(u8"Temporary").duration(0)), "notice open failed");
+    sync(f, 600);
+    check(notices.close(u8"temporary"), "last notice close failed");
+    sync(f, 600);
+    check(!f.services.notices().visible() && f.services.popconfirm().snapshot(popup).geometry.visible,
+          "last-notice close did not leave independent content-range popup open");
+    value.set(100);
+    sync(f, 600);
+    const auto material = fill_coverage(f, token.colors.dot_active_border, initial_point);
+    std::cout << "inactive Slider dot selected coverage=" << material << '\n';
+    check(material > .9F && fill_coverage(f, token.colors.dot_border, initial_point) == 0,
+          "Slider dot content-range material stopped updating after the last notice closed");
+    left.set(dp(300));
+    sync(f, 600);
+    const auto new_point = middle_dot(token.colors.dot_active_border);
+    check(new_point.x != initial_point.x && fill_coverage(f, token.colors.dot_active_border, new_point) > .9F &&
+              fill_coverage(f, token.colors.dot_active_border, initial_point) == 0,
+          "independent content-range retained old converted fill geometry after notice close");
+    check(f.services.rounded_effects().live_count() == base_effects,
+          "disabled conversion kept independent Slider clipped fill resources");
+    f.services.dispose();
+    check(f.services.surfaces().size() == 0 && f.services.rounded_effects().live_count() == 0,
+          "popup content-range cleanup leaked resources");
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -424,6 +552,10 @@ int main(int argc, char** argv) {
             clip_contract();
         } else if (name == "anchor") {
             anchor();
+        } else if (name == "inactive_surface") {
+            inactive_surface();
+        } else if (name == "inactive_content") {
+            inactive_content();
         } else {
             throw std::runtime_error("unknown notice review case");
         }
