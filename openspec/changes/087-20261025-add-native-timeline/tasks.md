@@ -2,8 +2,8 @@
 
 ## 1. 平台通用 API、模型与 Theme
 
-- [ ] 1.1 实现 typed Timeline API、固定 key/order/placement 模型与独立 Theme 全链；以 model/public_api/theme CTest 验证非法输入、继承、精确 dirty、后代原子拒绝与恢复；新增 docs/timeline.md 的 API/Theme 合同。
-- [ ] 1.2 用本树新构建生成五份 goldens，深比较所有旧 typed 字段和值与旧 33 IIFE 原文/顺序及 identity ordinals，仅追加 Timeline；运行 theme_algorithm/runtime/public_api/default_theme 针对性测试后本地提交。
+- [x] 1.1 实现 typed Timeline API、固定 key/order/placement 模型与独立 Theme 全链；以 model/public_api/theme CTest 验证非法输入、继承、精确 dirty、后代原子拒绝与恢复；新增 docs/timeline.md 的 API/Theme 合同。
+- [x] 1.2 用本树新构建生成五份 goldens，深比较所有旧 typed 字段和值与旧 33 IIFE 原文/顺序及 identity ordinals，仅追加 Timeline；运行 theme_algorithm/runtime/public_api/default_theme 针对性测试后本地提交。
 
 ## 2. 平台通用 retained 组件与真实控件
 
