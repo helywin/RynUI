@@ -39,4 +39,4 @@
 ## 8. 已审共享基线集成与 Tree Astra R3 交接
 
 - [x] 8.1 从 2fd96f6209e817e892f7684c7eae6891ee576d10 显式 merge 已审 ad779c595a63a39d05aa787d38dccda1fcaea9c7，保留双亲；Tree IIFE/ordinal 前缀保持、AC 尾追加，双方五 golden 旧 typed 值与两套真实组合 exporter 比对通过；不引入 095 或其他未审源码。
-- [ ] 8.2 对最终 Tree 全部核心/review 与 AC/shared quiet/focus/popup 直接代表执行 fresh MSVC HEADLESS Debug/Release 定向集合（每配置一次、最多 2 jobs）；核对去重计数、format 22.1.3、显式 OpenSpec 1.14 doctor/strict、diff、组合 Theme 与默认 1MiB PE；提交完整证据并交接 clean HEAD/parents，停待 fresh Tree Astra R3。
+- [x] 8.2 对最终 Tree 全部核心/review 与 AC/shared quiet/focus/popup 直接代表执行 fresh MSVC HEADLESS Debug/Release 定向集合（每配置一次、最多 2 jobs）；核对去重计数、format 22.1.3、显式 OpenSpec 1.14 doctor/strict、diff、组合 Theme 与默认 1MiB PE；提交完整证据并交接 clean HEAD/parents，停待 fresh Tree Astra R3。
