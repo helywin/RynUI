@@ -56,6 +56,7 @@ struct State final {
     std::optional<Prop<runtime::SemanticTypography>> affix_font;
     std::shared_ptr<Scope> bindings{std::make_shared<Scope>()};
     std::uint64_t model_revision{};
+    std::uint64_t refresh_generation{};
     bool private_ready{};
     bool mounting{true};
     bool reconciling{};
@@ -351,6 +352,11 @@ void AutoCompleteComponentHost::refresh(runtime::ComponentId id, bool geometry) 
     if (!s || !s->private_ready || s->mounting) {
         return;
     }
+    const auto generation = ++s->refresh_generation;
+    const auto current = [&]() -> State* {
+        auto* live = checked(*services_, id);
+        return live && live->refresh_generation == generation ? live : nullptr;
+    };
     const bool visible = s->open && !s->suppressed && !s->model.filtered().empty() && editable(id, false);
     const bool changed = visible != s->visible;
     s->visible = visible;
@@ -359,13 +365,13 @@ void AutoCompleteComponentHost::refresh(runtime::ComponentId id, bool geometry) 
     }
     auto clear_visible = s->clear_visible;
     clear_visible.set(s->allow_clear && !s->display.get().empty() && editable(id, false));
-    s = checked(*services_, id);
+    s = current();
     if (!s) {
         return;
     }
     auto action_disabled = s->action_disabled;
     action_disabled.set(!editable(id));
-    s = checked(*services_, id);
+    s = current();
     if (!s) {
         return;
     }
@@ -373,7 +379,7 @@ void AutoCompleteComponentHost::refresh(runtime::ComponentId id, bool geometry) 
     std::vector<std::pair<runtime::ComponentId, bool>> boundaries;
     const auto children = s->rows;
     for (auto child : children) {
-        s = checked(*services_, id);
+        s = current();
         if (!s) {
             return;
         }
@@ -403,19 +409,19 @@ void AutoCompleteComponentHost::refresh(runtime::ComponentId id, bool geometry) 
         auto color = row->color;
         auto font = row->font;
         label.set(option.label.empty() ? option.value : option.label);
-        if (!checked(*services_, id)) {
+        if (!current()) {
             return;
         }
         color.set(foreground(option.disabled ? t.colors.option_disabled_color
                              : selected      ? t.colors.option_selected_color
                                              : t.colors.option_color));
-        if (!checked(*services_, id)) {
+        if (!current()) {
             return;
         }
         font.set({t.typography.font_family, selected ? t.typography.selected_font_weight : t.typography.font_weight,
                   false, t.typography.font_size, t.typography.line_height});
     }
-    s = checked(*services_, id);
+    s = current();
     if (!s) {
         return;
     }
@@ -429,13 +435,13 @@ void AutoCompleteComponentHost::refresh(runtime::ComponentId id, bool geometry) 
     // This can synchronously blur a native child and destroy this entire control.
     const auto popup = s->popup;
     services_->set_input_blocked(popup, !visible);
-    if (!checked(*services_, id)) {
+    if (!current()) {
         return;
     }
     for (const auto& [child, blocked] : boundaries) {
         if (services_->components().contains(child)) {
             services_->set_input_blocked(child, blocked);
-            if (!checked(*services_, id)) {
+            if (!current()) {
                 return;
             }
         }

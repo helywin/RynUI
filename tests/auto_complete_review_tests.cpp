@@ -306,6 +306,37 @@ void first_mount() {
         clean(current);
     }
 
+    {
+        auto reopened = std::make_unique<Fixture>();
+        auto& current = *reopened;
+        Signal<bool> open{false};
+        int echo_closes = 0;
+        current.services.mount(Content{[&] {
+            AutoComplete(AutoCompleteProps{}.open(open).options(
+                {{u8"child", u8"child", u8"", false, AutoCompleteRichLabel{AutoCompleteOptionLabel{[&] {
+                      Select(SelectProps{}.defaultOpen(true).options({{1, u8"One"}}).onOpenChange([&](bool value) {
+                          if (!value) {
+                              ++echo_closes;
+                              open.set(true);
+                          }
+                      }));
+                  }}}}}));
+        }});
+        sync(current);
+        const auto id = current.services.auto_complete().mounted()[0];
+        const auto state = snapshot(current, id);
+        bool row_hit = false;
+        for (const auto& hit : current.services.hit_test().records()) {
+            const auto* record = current.services.interactions().find(hit.interaction);
+            row_hit |= record && record->component == state.rows[0];
+        }
+        check(echo_closes == 1 && open.get() && state.visible && row_hit &&
+                  current.services.interactions().component_active(state.rows[0]),
+              "initial boundary open echo was overwritten by stale row blocks");
+        check(current.scene.glyph_scene().instances().size() > 0, "boundary open echo lost actual glyphs");
+        clean(current);
+    }
+
     // A replacement mounted during the close callback must outlive only its own generation.
     {
         auto rebound = std::make_unique<Fixture>();

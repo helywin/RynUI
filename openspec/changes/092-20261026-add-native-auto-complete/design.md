@@ -12,6 +12,8 @@ rich/native 后代和嵌套子 popup 的 Tab/ShiftTab 以主 Input 为全局遍�
 
 Select 拆出逐 owner 的定位入口并加入局部递归 guard，复用 Popover 的既有祖先解析；解析同时识别 Select/AutoComplete/DateTime/Popover。先完成父行定位再测子 anchor，首帧、移动和滚动均在同帧使用最终几何，不交换全局 host 顺序。
 
+refresh 另有局部交付代际：首次阻断富 Select 可同步触发关闭回调，并把父 open authority 改为 true。嵌套 refresh 已交付最新可见性后，旧 refresh 必须停止 label/style/block 的后续交付，避免原 owner 仍有效时覆盖较新的 Prop 更新。该路径以实际 row hit/输入资格复现，不把保留的 paint record 当作可交互证据。
+
 ## Context
 
 参见 proposal.md。已检查 Input 的真实 TextEditor/session、Select 的 retained rows/window-layer、DatePicker 的 configure_form_reset，以及 FormItem.control(InputRef)。锁定上游 AutoComplete.tsx 使用 combobox、无 suffix；doc FAQ 指明选项选择不触发 onSearch、空 options 不显示；tests/index.test.tsx 明确默认不过滤。参考 demo/basic、options、non-case-sensitive。
