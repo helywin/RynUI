@@ -462,6 +462,28 @@ void RateComponentHost::ensure_items(runtime::ComponentId id, int count) {
                                    mount_item(id, i);
                                }
                            }});
+    s = services_->components().state<RateState>(id);
+    if (!s) {
+        return;
+    }
+    // Append preserves existing nodes, but registry creation order puts new popup descendants after neighbors.
+    // Group every retained logical descendant, including inactive items and Tooltip window layers.
+    std::vector<std::vector<input::InteractionId>> groups(s->items.size());
+    for (auto hit : services_->interactions().declaration_order()) {
+        for (auto owner = std::optional{services_->interactions().require(hit).component}; owner && *owner != id;
+             owner = services_->components().parent(*owner)) {
+            const auto item = std::ranges::find(s->items, *owner);
+            if (item != s->items.end()) {
+                groups[static_cast<std::size_t>(item - s->items.begin())].push_back(hit);
+                break;
+            }
+        }
+    }
+    std::vector<input::InteractionId> order;
+    for (const auto& group : groups) {
+        order.insert(order.end(), group.begin(), group.end());
+    }
+    services_->interactions().reorder_after(s->focus, order);
 }
 
 void RateComponentHost::mount(const RateProps& props) {

@@ -13,6 +13,7 @@ ryn::Rate(ryn::RateProps{}.value(rating).allowHalf()
 默认 count=5、defaultValue=0、allowHalf=false、allowClear=true、keyboard=true、size=Middle。
 `value` 与 `defaultValue` 互斥。有限值限制到 0..count，再按 .5 或 1 四舍五入；NaN/Infinity 拒绝。
 count 是 reactive `Prop<int>`，范围 0..1000；缩减只隐藏已建项，恢复保留身份。
+动态增长后，完整 retained 子控件仍按星项逻辑序紧随 Rate 的单一 Tab 入口；隐藏项不进入 Tab，外部邻居顺序保持。
 count/allowHalf 变化重新规范化原始权威输入，不触发 onChange；非受控的用户提交保存新的原始值。
 受控 onChange 提供候选，只有应用回写 value 才改变权威显示，拒绝回写不留下提交后的 hover 假象。
 

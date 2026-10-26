@@ -50,3 +50,7 @@
 ## Astra full R1 响应
 
 父随后转交的首次 full R1 为非 CLEAN，包含四项 P2。四项在 cea1552c 上全部真实复现并修复，before/after、原生连续鼠标/Tab/IME/outline/lifetime 证据及 7/7 Debug/Release 定向结果见 [astra-r1-response.md](astra-r1-response.md)。本 worker 完成后停待 fresh R2，不将本地通过描述为 Astra CLEAN。
+
+## Astra R2 响应
+
+父随后转交 R2 的动态追加焦点顺序 P2。在 0df5c99b 上真实复现 count 0→1 跳过 Input，已最小重排完整 retained 后代，验证增长/隐藏恢复/多个 owner 与 foreign 隔离；本次每配置一次 7/7 定向结果及不变量证据见 [astra-r2-response.md](astra-r2-response.md)。完成后停待父 fresh R3。

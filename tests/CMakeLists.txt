@@ -26,6 +26,14 @@ target_compile_definitions(rynui_rate_font_limit_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.rate_font_limit COMMAND rynui_rate_font_limit_tests)
 
+add_executable(rynui_rate_focus_order_tests rate_focus_order_tests.cpp)
+rynui_configure_cpp_target(rynui_rate_focus_order_tests)
+target_link_libraries(rynui_rate_focus_order_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_rate_focus_order_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.rate_focus_order COMMAND rynui_rate_focus_order_tests)
+
 add_executable(rynui_rate_review_tests rate_review_tests.cpp)
 rynui_configure_cpp_target(rynui_rate_review_tests)
 target_link_libraries(rynui_rate_review_tests PRIVATE rynui_components)

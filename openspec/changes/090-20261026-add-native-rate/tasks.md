@@ -24,3 +24,8 @@
 
 - [x] 5.1 在 cea1552c 的原生产实现逐项真实复现几何归零、鼠标间隙、后代 Tab 退出和键盘 modality 问题；保留 before 证据后最小修复，以真实事件、outline coverage、身份/清理/恢复与 deadline 验证。
 - [x] 5.2 完成新回归和直接相关代表的 MSVC HEADLESS Debug/Release 定向验证，保持字号上限与 shared clip 修复，通过 format/explicit OpenSpec 1.14 doctor/strict/diff；英文 local commit、clean HEAD 后停待父 fresh Astra R2。
+
+## 6. 平台通用：Astra R2 动态增长焦点顺序 P2
+
+- [x] 6.1 在 0df5c99b 真实复现 count=0→1 跳过富 Tooltip Input；最小重排完整 retained 所有后代 interaction，覆盖既有项增长、隐藏恢复、祖先/前后邻居和多个 owner 隔离，保持组件/editor/ref。
+- [x] 6.2 完成新回归与直接 focus 代表的 fresh MSVC HEADLESS Debug/Release 定向验证，每配置一次、最多 2 jobs；保留 R1/font/clip 与既有不变量，通过 format/explicit1.14 doctor/strict/diff，英文 local commit 后 clean HEAD 停待父 fresh Astra R3。
