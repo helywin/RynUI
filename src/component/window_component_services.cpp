@@ -15,6 +15,7 @@
 #include "component/form_component.hpp"
 #include "component/descriptions_component.hpp"
 #include "component/timeline_component.hpp"
+#include "component/avatar_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
@@ -126,6 +127,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     form_ = std::make_unique<FormComponentHost>(*this);
     descriptions_ = std::make_unique<DescriptionsComponentHost>(*this);
     timeline_ = std::make_unique<TimelineComponentHost>(*this);
+    avatar_ = std::make_unique<AvatarComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
     steps_ = std::make_unique<StepsComponentHost>(*this);
     skeleton_ = std::make_unique<SkeletonComponentHost>(*this);

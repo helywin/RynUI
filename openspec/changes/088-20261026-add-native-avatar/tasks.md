@@ -6,8 +6,8 @@
 
 ## 2. 平台通用实现（实际 Windows MSVC headless）
 
-- [ ] 2.1 实现 Avatar/AvatarGroup typed API、Theme 全链与 append-only identity；Theme 定向测试及五份 fresh goldens 旧 typed 字段深比较通过
-- [ ] 2.2 实现 retained Avatar 测量/auto-fit/富 slot/裁剪/显隐与 Group overlap/max/原生 Popover；定向 component 测试覆盖实际 glyph/quad/hit、有限宽/短高/零恢复、身份、草稿/ref、同步卸载和 gate 清理
+- [x] 2.1 实现 Avatar/AvatarGroup typed API、Theme 全链与 append-only identity；Theme 定向测试及五份 fresh goldens 旧 typed 字段深比较通过
+- [x] 2.2 实现 retained Avatar 测量/auto-fit/富 slot/裁剪/显隐与 Group overlap/max/原生 Popover；定向 component 测试覆盖实际 glyph/quad/hit、有限宽/短高/零恢复、身份、草稿/ref、同步卸载和 gate 清理
 
 ## 3. 定向收口
 

@@ -1,6 +1,21 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_avatar_theme_tests avatar_theme_tests.cpp)
+rynui_configure_cpp_target(rynui_avatar_theme_tests)
+target_link_libraries(rynui_avatar_theme_tests PRIVATE rynui_components)
+add_test(NAME rynui.avatar_theme COMMAND rynui_avatar_theme_tests)
+
+add_executable(rynui_avatar_component_tests avatar_component_tests.cpp)
+rynui_configure_cpp_target(rynui_avatar_component_tests)
+target_link_libraries(rynui_avatar_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_avatar_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(avatar_case IN ITEMS text group clips retention gates lifecycle validation)
+    add_test(NAME rynui.avatar_${avatar_case} COMMAND rynui_avatar_component_tests ${avatar_case})
+endforeach()
+
 add_executable(rynui_popover_review_tests popover_review_tests.cpp)
 rynui_configure_cpp_target(rynui_popover_review_tests)
 target_link_libraries(rynui_popover_review_tests PRIVATE rynui_components)
