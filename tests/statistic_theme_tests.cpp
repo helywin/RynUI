@@ -1,4 +1,5 @@
 #include "theme/theme_runtime.hpp"
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -130,6 +131,81 @@ void preflight() {
               grandchild->snapshot().statistic() == child->snapshot().statistic(),
           "ancestor recovery failed");
 }
+
+void font_limits() {
+    constexpr auto raster_limit = std::numeric_limits<int>::max() / 64;
+    const auto above = static_cast<float>(raster_limit);
+    const auto below = std::nextafter(above, 0.0F);
+    check(std::round(static_cast<double>(below)) <= raster_limit &&
+              std::round(static_cast<double>(above)) > raster_limit,
+          "font quantization boundary fixture drifted");
+    for (bool title : {true, false}) {
+        auto config = std::make_unique<ThemeConfig>();
+        auto& font = title ? config->statistic.tokens.title_font_size : config->statistic.tokens.content_font_size;
+        font = dp(below);
+        static_cast<void>(resolve_theme(*config));
+        for (float value : {above, 100000000.0F}) {
+            font = dp(value);
+            bool rejected = false;
+            try {
+                static_cast<void>(resolve_theme(*config));
+            } catch (const std::invalid_argument&) {
+                rejected = true;
+            }
+            check(rejected, "quantized font above FontRuntime limit was accepted");
+        }
+    }
+    auto config = std::make_unique<ThemeConfig>();
+    config->statistic.seed.font_size = dp(30000000);
+    auto root = ThemeScope::create_default();
+    check(resolve_theme(*config).statistic() == root->snapshot().statistic(), "inactive seed changed Statistic");
+    config->statistic.algorithm = true;
+    bool rejected = false;
+    try {
+        static_cast<void>(resolve_theme(*config));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected, "algorithm-derived content font above raster limit was accepted");
+    config = std::make_unique<ThemeConfig>();
+    config->algorithms = {ThemeAlgorithm::Compact};
+    root->update(*config);
+    config = std::make_unique<ThemeConfig>();
+    config->statistic.algorithm = true;
+    config->statistic.seed.font_size = dp(20000000);
+    auto child = ThemeScope::create(root, *config);
+    config = std::make_unique<ThemeConfig>();
+    auto grandchild = ThemeScope::create(child, *config);
+    const auto* r = &root->snapshot();
+    const auto* c = &child->snapshot();
+    const auto* g = &grandchild->snapshot();
+    int notifications = 0;
+    auto rs = root->capture([&](auto) { ++notifications; }, [&] { static_cast<void>(root->statistic_metrics()); });
+    auto cs = child->capture([&](auto) { ++notifications; }, [&] { static_cast<void>(child->statistic_metrics()); });
+    auto gs = grandchild->capture([&](auto) { ++notifications; },
+                                  [&] { static_cast<void>(grandchild->statistic_metrics()); });
+    config->algorithms = {ThemeAlgorithm::Default};
+    // Root stays small; only the child's private seed crosses the raster limit when Compact is removed.
+    static_cast<void>(resolve_theme(*config));
+    rejected = false;
+    try {
+        root->update(*config);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && r == &root->snapshot() && c == &child->snapshot() && g == &grandchild->snapshot() &&
+              notifications == 0,
+          "derived descendant font failed atomic ancestor preflight");
+    auto recovery = std::make_unique<ThemeConfig>();
+    recovery->statistic.algorithm = true;
+    recovery->statistic.seed.font_size = dp(18);
+    child->update(*recovery);
+    notifications = 0;
+    root->update(*config);
+    check(notifications == 3 && child->snapshot().statistic().metrics.title_font_size == 18 &&
+              grandchild->snapshot().statistic() == child->snapshot().statistic(),
+          "inherited algorithm font did not recover");
+}
 } // namespace
 
 int main() {
@@ -137,6 +213,7 @@ int main() {
         recipe();
         validation();
         preflight();
+        font_limits();
         std::cout << "Statistic Theme passed\n";
         return 0;
     } catch (const std::exception& e) {

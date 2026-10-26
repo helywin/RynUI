@@ -56,9 +56,11 @@ void apply_statistic_override(StatisticThemeToken& t, const StatisticTokenOverri
         }
         sum += value * 4;
     }
+    // TextComponent quantizes with lround; FontRuntime limits that logical pixel size for FT 26.6.
+    constexpr auto maximum_font_pixels = std::numeric_limits<int>::max() / 64;
     if (!std::isfinite(sum) || m.title_font_size < .5F || m.content_font_size < .5F || m.title_line_height <= 0 ||
-        m.content_line_height <= 0 || static_cast<double>(m.title_font_size) >= std::numeric_limits<long>::max() ||
-        static_cast<double>(m.content_font_size) >= std::numeric_limits<long>::max() ||
+        m.content_line_height <= 0 || std::round(static_cast<double>(m.title_font_size)) > maximum_font_pixels ||
+        std::round(static_cast<double>(m.content_font_size)) > maximum_font_pixels ||
         (m.font_family != SystemFontFamily::ui_sans && m.font_family != SystemFontFamily::ui_monospace)) {
         throw std::invalid_argument("Statistic final typography or combined extents are invalid");
     }

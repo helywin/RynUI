@@ -17,3 +17,7 @@
 ## 4. Astra R1 修正
 
 - [x] 4.1 复现并修复 StatisticValue 将 double 正负零比较为相等的问题；Signal/Binding 双向正负零更新、静态格式化与其他 variant 相等性定向 Debug/Release 检查通过，format、显式 OpenSpec 1.14 doctor/strict 和 diff check 通过，记录修复前后证据并本地提交交父 R2。
+
+## 5. Astra R2 修正
+
+- [x] 5.1 复现并修复首次边界协调中 owner 同步销毁导致的 stale ComponentId，以及 title/content 字号超出 FontRuntime 实际范围仍发布的问题；首次 hidden/loading 销毁、mount 返回后的同 ref/generation 恢复、round 字号边界、继承/算法原子 preflight 与有效恢复通过定向 Debug/Release 检查，保留 R1 正负零断言，format、显式 OpenSpec 1.14 doctor/strict 与 diff check 通过，保存本地提交交父 R3。

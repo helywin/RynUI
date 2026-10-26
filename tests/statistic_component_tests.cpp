@@ -125,6 +125,47 @@ void retained() {
           "Statistic teardown leaked resources");
 }
 
+void font_limit_recovery() {
+    unsigned failures = 0;
+    for (bool title : {true, false}) {
+        Fixture f;
+        f.services.mount(Content{[] { Statistic(StatisticProps{}.title(u8"Title").value(42)); }});
+        sync(f);
+        const auto id = f.services.statistic().mounted()[0];
+        const auto scope = f.services.components().theme_scope(id);
+        const auto* before = &scope->snapshot();
+        const auto generation = scope->generation();
+        int notifications = 0;
+        auto subscription =
+            scope->capture([&](auto) { ++notifications; }, [&] { static_cast<void>(scope->statistic_metrics()); });
+        auto config = std::make_unique<ThemeConfig>();
+        auto& font = title ? config->statistic.tokens.title_font_size : config->statistic.tokens.content_font_size;
+        font = dp(100000000);
+        bool rejected = false;
+        try {
+            scope->update(*config);
+            sync(f);
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        } catch (const std::exception& e) {
+            std::cerr << (title ? "title" : "content") << " post-publication exception: " << e.what()
+                      << "; snapshot changed=" << (&scope->snapshot() != before) << '\n';
+        }
+        if (!rejected || &scope->snapshot() != before || scope->generation() != generation || notifications != 0) {
+            ++failures;
+            std::cerr << (title ? "title" : "content") << " oversized font was not atomically rejected\n";
+        }
+        notifications = 0;
+        font = dp(title ? 16.0F : 28.0F);
+        scope->update(*config);
+        sync(f);
+        check(notifications == 1 && f.services.components().contains(id) &&
+                  f.scene.glyph_scene().instances().size() > 0,
+              "valid font did not recover retained scene");
+    }
+    check(failures == 0, "Statistic font limits failed before publication");
+}
+
 void formatting() {
     Fixture f;
     Signal<StatisticValue> value{StatisticValue{u8"-1234.123456789"}};
@@ -168,6 +209,7 @@ void formatting() {
     check(f.services.statistic().snapshot(id).formatted_value.bytes() == "18,446,744,073,709,551,615",
           "invalid update did not recover");
     check(f.scene.glyph_scene().instances().size() > 0, "formatted value emitted no glyphs");
+    font_limit_recovery();
 }
 
 struct Ink final {
@@ -337,7 +379,88 @@ void clips() {
     check(f.services.skeleton().snapshot(original.skeleton).loading, "loading skeleton not live");
 }
 
+void initial_mount_retirement() {
+    unsigned failures = 0;
+    for (bool loading : {false, true}) {
+        for (bool replace : {false, true}) {
+            Fixture f;
+            InputRef ref;
+            Signal<StatisticValue> value{StatisticValue{1}};
+            Signal<String> prefix{String{u8"Old"}};
+            runtime::ComponentId retired;
+            runtime::ComponentId replacement;
+            runtime::ComponentId parent;
+            bool premature = false;
+            int closes = 0;
+            try {
+                f.services.mount(Content{[&] {
+                    Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                             Statistic(StatisticProps{}
+                                           .visible(loading)
+                                           .loading(loading)
+                                           .value(value)
+                                           .prefix(prefix)
+                                           .richValue(StatisticValueContent{[&] {
+                                               Input(InputProps{}.ref(ref).defaultValue(u8"Old"));
+                                               Select(SelectProps{}.open(true).onOpenChange([&](bool open) {
+                                                   if (open) {
+                                                       return;
+                                                   }
+                                                   ++closes;
+                                                   if (f.services.statistic().mounted().empty()) {
+                                                       premature = true;
+                                                       return;
+                                                   }
+                                                   retired = f.services.statistic().mounted().back();
+                                                   parent = *f.services.components().parent(retired);
+                                                   check(f.services.destroy(retired),
+                                                         "first close could not destroy Statistic");
+                                               }));
+                                           }}));
+                         }});
+                }});
+                sync(f);
+                check(!premature && closes == 1 && retired.valid() && !f.services.components().contains(retired),
+                      "first close ran before owner was fully registered or retained the owner");
+                if (replace) {
+                    // The host intentionally forbids dynamic slots while its initial mount is active.
+                    f.services.append_slot(parent, Content{[&] {
+                                               Statistic(StatisticProps{}.richValue(StatisticValueContent{[&] {
+                                                   Input(InputProps{}.ref(ref).defaultValue(u8"New generation"));
+                                               }}));
+                                           }});
+                    replacement = f.services.statistic().mounted().back();
+                }
+                value.set(StatisticValue{2});
+                prefix.set(u8"Stale update");
+                sync(f);
+                if (replace) {
+                    check(replacement != retired && f.services.components().contains(replacement) && ref.focus() &&
+                              f.inputs.editors().require(f.inputs.mounted_inputs()[0].editor).value() ==
+                                  "New generation" &&
+                              f.services.statistic().snapshot(replacement).formatted_value.bytes() == "0",
+                          "initial retirement corrupted rebound ref or replacement generation");
+                } else {
+                    check(f.services.statistic().mounted().empty() && !ref.focus(),
+                          "initial retirement left live owner/ref");
+                }
+                check(blocked_roots(f.services.interactions()).empty(), "initial retirement leaked input blocks");
+                f.services.dispose();
+                check(!ref.focus() && f.services.surfaces().size() == 0 &&
+                          blocked_roots(f.services.interactions()).empty(),
+                      "initial retirement cleanup leaked resources");
+            } catch (const std::exception& e) {
+                ++failures;
+                std::cerr << "initial " << (loading ? "loading" : "hidden") << " replace=" << replace << ": "
+                          << e.what() << '\n';
+            }
+        }
+    }
+    check(failures == 0, "Statistic initial-mount retirement failed");
+}
+
 void lifecycle() {
+    initial_mount_retirement();
     Fixture f;
     Signal<bool> loading{false};
     InputRef ref;

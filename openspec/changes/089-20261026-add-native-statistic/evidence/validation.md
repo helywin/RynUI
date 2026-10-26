@@ -52,7 +52,9 @@ git diff --check
 
 ## 限制与移交
 
-Astra R1 的正负零相等性 P2 已单独复现并修复；修复前红测、修复后受影响的 Debug/Release 各 3/3 及工具复验见 [r1-signed-zero.md](r1-signed-zero.md)。原有 13/13 记录保留，本轮没有重复执行完整矩阵；等待父线程独立 R2。
+Astra R1 的正负零相等性 P2 已单独复现并修复；修复前红测、修复后受影响的 Debug/Release 各 3/3 及工具复验见 [r1-signed-zero.md](r1-signed-zero.md)。原有 13/13 记录保留，该轮没有重复执行完整矩阵，已交父线程独立 R2。
+
+Astra R2 的首次挂载同步销毁与字体真实上限问题已分别复现并局部修复，详见 [r2-mount-font-limits.md](r2-mount-font-limits.md)。本轮受影响集合 Debug/Release 各 8/8 通过，包含 R1 原断言；未重跑完整矩阵或金样，停止交父独立 R3。
 
 首版仅 Statistic；Timer、Countdown、Countup、数值动画、locale 国际化均不覆盖，没有类型占位。formatter 返回 String，富输出由 retained typed value slot 表达。浮点若 to_chars 产生指数形式则保持原样，需要精确十进制位时使用 String；precision>100 明确拒绝。
 

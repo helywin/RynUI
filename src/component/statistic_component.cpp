@@ -12,6 +12,7 @@ constexpr float infinity = std::numeric_limits<float>::infinity();
 
 struct StatisticState final {
     runtime::NodeId node;
+    bool ready{};
     StatisticSnapshot snapshot;
     StatisticModel model;
     std::array<bool, 4> rich{};
@@ -78,7 +79,7 @@ StatisticSnapshot StatisticComponentHost::snapshot(runtime::ComponentId id) cons
 
 void StatisticComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     auto* s = services_->components().state<StatisticState>(id);
-    if (!s || !services_->components().scope(id).active()) {
+    if (!s || !s->ready || !services_->components().scope(id).active()) {
         return;
     }
     const auto& t = services_->components().theme_scope(id)->snapshot().statistic();
@@ -304,6 +305,9 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                         [theme] { static_cast<void>(theme->statistic_colors()); });
     s.subscriptions[1] = theme->capture([this, id](auto) { refresh(id, true); },
                                         [theme] { static_cast<void>(theme->statistic_metrics()); });
+    // Boundary reconciliation can retire this generation. Install every connection first,
+    // and leave no borrowed state/scope access after the initial refresh.
+    s.ready = true;
     refresh(id, true);
 }
 
