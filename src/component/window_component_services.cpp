@@ -399,6 +399,9 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     for (auto* participant : participants_) {
         participant->prepare_auxiliary_layout();
     }
+    // A later Input count/formatter callback can retire an earlier compound's private Input.
+    // Retire damaged AutoComplete owners before LayoutEngine starts walking their nodes.
+    auto_complete_->validate_private_regions();
 
     struct SceneBatch {
         TextSceneService& scene;

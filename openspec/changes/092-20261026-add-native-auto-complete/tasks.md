@@ -18,3 +18,10 @@
 - [x] 4.1 运行适当 fresh Debug/Release 定向检查、五个 goldens、PE 1 MiB、format-code --check、OpenSpec doctor/strict 与 diff check；保存原始 log 和准确 evidence，记录测试数、实际 SHA 与未验 native GPU/Linux/系统 IME/AT，干净本地提交并交接父审查。
 
 本轮平台通用证据使用 Windows MSVC、Ninja Multi-Config、windows-msvc-headless，最多 2 jobs。不重复无关全矩阵，不运行长 Gallery/native；本 change 不要求系统专属验收完成，不将其计为通过。所有 build/cache/log 在本树，依赖 source/font cache 只读引用父 ROOT/out。不 fetch/push/PR/archive，不创建 children。
+
+## 5. Astra R1 修复（平台通用）
+
+- [x] 5.1 在 clean bca1acafde1c7486d549bc9104a3e2f836b937ba 的实现上构建五个独立实际事件复现用例，记录首次挂载访问违规、rich Tab、真实零尺寸、root AutoComplete 子 Select 定位、keydown modality 五项失败的原始日志。
+- [x] 5.2 修复同步挂载/连接/富 region/filter/主题/首次边界的完整 owner 与私有代际守卫、富槽内 Prop 更新，避免持有释放后的 Scope/State；覆盖 owner/private child 退役、回调重绑和 formatter。
+- [x] 5.3 修复主 Input 遍历锚点与整个逻辑后代退出、真实布局零尺寸输入清理及恢复、祖先依赖定位和消费键盘命令的 keyboard 焦点交付；覆盖实际 glyph/fill/hit/focus 与 callback 销毁安全。
+- [ ] 5.4 本树 fresh MSVC HEADLESS Debug/Release 运行原有 19 项、新增 5 项及直接受影响的 DateTime/Popover/Input/Form/Select 代表集合；保持旧 Theme IIFE/ordinal/typed goldens、唯一 resetHook 与默认 PE 1 MiB，运行 format、显式 OpenSpec 1.14 doctor/strict、diff，提交准确 before/after evidence，clean HEAD 交父 fresh R2。Theme 产物未变时不重生成金样，不运行无关全矩阵。

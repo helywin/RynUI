@@ -1,5 +1,17 @@
 # Design
 
+## Astra R1 修订
+
+挂载先建立私有 Input/popup/list/affix region，再连接外部 Props，最后挂载富槽。外部连接使用单独持有、随原 owner 清理的 Scope，保证 connect_binding 首次同步读/apply 返回时 Scope 对象仍存在。每次用户代码或同步边界交付返回后，用完整 ComponentId/NodeId、直接父关系、主 Input interaction/editor 和所有私有 region ticket 重取状态；损坏结构只退役原 owner，不碰复用 index 的新代际。filter 在独立模型副本上执行，守卫每次 predicate 调用；富槽内 options/value/open/size 等变化由已安装的连接接收，行协调以 revision 与 pending 标记合并，避免忽略变化或重入半成品行。
+
+首次 prepare 期间 Input count formatter 可能晚于 AutoComplete prepare 删除主 Input。因此 WindowComponentServices 在所有 prepare 完成后、LayoutEngine 遍历开始前调用一次 AutoComplete 私有结构复核；不在已经开始的节点遍历中补救损坏结构。LayoutStyle adapter 仅增加可选局部 guard，AutoComplete 用它包围初始 reader 与连接交付；现有调用仍使用默认空 guard。没有重构全局组件生命周期。
+
+rich/native 后代和嵌套子 popup 的 Tab/ShiftTab 以主 Input 为全局遍历锚点，使用现有 FocusManager deferred focus 交付；prepare 观察整个逻辑后代的焦点退出。消费的上下/Enter/Escape 同样排队 keyboard modality，在同一次 keydown 事务结束时呈现真实焦点状态，回调后先核完整私有代际与编辑资格再触碰模型。
+
+真实零尺寸只在节点已有 place_count、祖先完成定位后确定。此时抑制建议并持有原 owner 的输入 block，清理 focus/session/preedit；恢复正尺寸只解除自己的 block，保留 suppression，直到显式用户动作或新的 open authority。未布局的临时零值不抑制 defaultOpen/初始打开 Modal。清理复用唯一 Form reset hook。
+
+Select 拆出逐 owner 的定位入口并加入局部递归 guard，复用 Popover 的既有祖先解析；解析同时识别 Select/AutoComplete/DateTime/Popover。先完成父行定位再测子 anchor，首帧、移动和滚动均在同帧使用最终几何，不交换全局 host 顺序。
+
 ## Context
 
 参见 proposal.md。已检查 Input 的真实 TextEditor/session、Select 的 retained rows/window-layer、DatePicker 的 configure_form_reset，以及 FormItem.control(InputRef)。锁定上游 AutoComplete.tsx 使用 combobox、无 suffix；doc FAQ 指明选项选择不触发 onSearch、空 options 不显示；tests/index.test.tsx 明确默认不过滤。参考 demo/basic、options、non-case-sensitive。

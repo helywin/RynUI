@@ -43,6 +43,7 @@ public:
     void on_window_active(bool) override;
     void on_input_boundary_changed() override;
     void prepare_auxiliary_layout() override;
+    void validate_private_regions();
     bool on_keyboard_input(const input::KeyboardInputEvent&) override;
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;
@@ -61,7 +62,7 @@ private:
     void choose(runtime::ComponentId, std::size_t);
     void reconcile_rows(runtime::ComponentId);
     void mount_row(runtime::ComponentId, std::size_t);
-    void mount_label(runtime::ComponentId);
+    void mount_label(runtime::ComponentId, runtime::ComponentId);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     std::vector<runtime::ComponentId> positioning_;

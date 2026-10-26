@@ -10,9 +10,9 @@
 
 输入提交产生 `onChange(String)` 和 `onSearch(String)`。选择先对变化值发 `onChange`，再发 `onSelect(String, AutoCompleteOption)`，不发 `onSearch`。受控值由外部接受；`onSearch` 只用于建议查询，不能代替 onChange 控制值。程序 value 更新不发用户事件；preedit 本身不发搜索。清空发变化的 onChange、onSearch 和 onClear。
 
-上下键在建议中移动并跳过 disabled 项；Enter 选择，Escape 取消临时 backfill 并请求关闭，Tab 请求关闭并按正常焦点顺序离开。backfill 不产生值事件。组合输入活动时这些建议快捷键交还编辑器。prefix/suffix 是 typed 装饰 slots，不增加 Tab 入口。rich label 中的子 popup 按最近窗口层拥有 wheel/Escape。
+上下键在建议中移动并跳过 disabled 项；Enter 选择，Escape 取消临时 backfill 并请求关闭。Tab/ShiftTab 请求关闭，并以主 Input 为锚点按正常相邻顺序离开；这也适用于 pointer 聚焦的 rich Input 和嵌套子 popup。焦点离开整个逻辑后代时请求关闭建议。backfill 不产生值事件。组合输入活动时这些建议快捷键交还编辑器。prefix/suffix 是 typed 装饰 slots，不增加 Tab 入口。rich label 中的子 popup 按最近窗口层拥有 wheel/Escape。
 
-`open` 是外部权威，`onOpenChange` 只是意图；空过滤结果不显示 popup。输入边界隐藏、Modal/Spin 阻断和窗口失活会 suppress popup 并清理临时状态，恢复后需要显式打开。首版有限高度滚动，无虚拟化。
+`open` 是外部权威，`onOpenChange` 只是意图；空过滤结果不显示 popup。输入边界隐藏、Modal/Spin 阻断、实际布局零宽/高和窗口失活会 suppress popup 并清理临时状态，恢复后需要显式打开。实际零尺寸同时清理 focus/session/preedit；首次尚未布局的临时零值不影响 defaultOpen 或初始打开的 Modal。首版有限高度滚动，无虚拟化。
 
 Theme 通过 `ThemeConfig::auto_complete` 独立设置。`AutoCompleteThemeToken` 与 `AutoCompleteTokenOverride` 复用 Select 的视觉字段：popup/option/selector/clear 颜色、option_height/padding/radius/gap、typography、shadow 和 z_index_popup。支持继承、独立 component algorithm 和全局 dark/compact；Input 自有尺寸/状态/variant 继续使用其 Theme。视觉只来自 Theme，LayoutStyle 仅控制外部布局。最终 popup font 按实际 round 后检查 FontRuntime 1..INT_MAX/64 范围，非法后代 preflight 不发布部分 Theme。
 

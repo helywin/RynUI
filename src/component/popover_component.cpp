@@ -1,4 +1,5 @@
 #include "component/popover_component.hpp"
+#include "component/select_component.hpp"
 #include "component/auto_complete_component.hpp"
 #include "component/popover_model.hpp"
 #include "component/table_component.hpp"
@@ -811,6 +812,11 @@ void PopoverComponentHost::position_ancestors(runtime::ComponentId id, runtime::
         const auto completions = services_->auto_complete().mounted();
         if (std::ranges::find(completions, *p) != completions.end()) {
             services_->auto_complete().position_window_layer(*p, viewport, clip);
+            return;
+        }
+        const auto selects = services_->select().mounted();
+        if (std::ranges::find(selects, *p) != selects.end()) {
+            services_->select().position_window_layer(*p, viewport, clip);
             return;
         }
     }

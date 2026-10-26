@@ -54,7 +54,7 @@ def main():
         original.pop("identity")
         actual.pop("avatar")
         assert typed_equal(original, actual), f"original typed leaves: {name}"
-    print(f"AutoComplete baseline passed: 36 original IIFEs and 196 original ordinals unchanged; including Avatar: {len(recipes(old))} old IIFEs and {len(ids)-1} old ordinals; 5 fresh goldens with all old typed leaves unchanged")
+    print(f"AutoComplete baseline passed: 36 original IIFEs and 196 original ordinals unchanged; including Avatar: {len(recipes(old))} old IIFEs and {len(ids)-1} old ordinals; 5 supplied goldens with all old typed leaves unchanged")
 
 if __name__ == "__main__":
     main()

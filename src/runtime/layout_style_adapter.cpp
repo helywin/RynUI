@@ -270,8 +270,12 @@ constexpr FieldBinding fields[] = {
 
 } // namespace
 
-void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, NodeStore& nodes, DirtyQueues& dirty) {
-    if (!scope.active()) {
+void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, NodeStore& nodes, DirtyQueues& dirty,
+                          std::function<bool()> guard) {
+    const auto alive = [&] {
+        return (!guard || guard()) && scope.active();
+    };
+    if (!alive()) {
         return;
     }
 
@@ -279,23 +283,42 @@ void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, N
     for (const auto& field : fields) {
         const auto& prop = field.member(style);
         if (prop.has_value()) {
-            set_field(initial, field.field, detail::read_prop(*prop));
+            const auto value = detail::read_prop(*prop);
+            if (!alive()) {
+                return;
+            }
+            set_field(initial, field.field, value);
         }
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_grow(style)) {
         initial.flex_grow = detail::read_prop(*prop);
+        if (!alive()) {
+            return;
+        }
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_shrink(style)) {
         initial.flex_shrink = detail::read_prop(*prop);
+        if (!alive()) {
+            return;
+        }
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_basis(style)) {
         initial.flex_basis = optional_length(detail::read_prop(*prop));
+        if (!alive()) {
+            return;
+        }
     }
     if (const auto& prop = detail::LayoutStyleAccess::align_self(style)) {
         initial.align_self = flex_item_align(detail::read_prop(*prop));
+        if (!alive()) {
+            return;
+        }
     }
     if (const auto& prop = detail::LayoutStyleAccess::order(style)) {
         initial.order = detail::read_prop(*prop);
+        if (!alive()) {
+            return;
+        }
     }
 
     LayoutStyleWriter writer(nodes, dirty);
@@ -307,34 +330,62 @@ void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, N
             continue;
         }
         static_cast<void>(detail::connect_prop(
-            scope, *prop, [writer, node, current_field = field.field](LogicalLength value) mutable {
-                static_cast<void>(writer.set(node, current_field, value));
+            scope, *prop, [writer, node, guard, current_field = field.field](LogicalLength value) mutable {
+                if (!guard || guard()) {
+                    static_cast<void>(writer.set(node, current_field, value));
+                }
             }));
+        if (!alive()) {
+            return;
+        }
     }
 
     if (const auto& prop = detail::LayoutStyleAccess::flex_grow(style)) {
-        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node](float value) mutable {
-            static_cast<void>(writer.set_flex_grow(node, value));
+        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node, guard](float value) mutable {
+            if (!guard || guard()) {
+                static_cast<void>(writer.set_flex_grow(node, value));
+            }
         }));
+        if (!alive()) {
+            return;
+        }
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_shrink(style)) {
-        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node](float value) mutable {
-            static_cast<void>(writer.set_flex_shrink(node, value));
+        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node, guard](float value) mutable {
+            if (!guard || guard()) {
+                static_cast<void>(writer.set_flex_shrink(node, value));
+            }
         }));
+        if (!alive()) {
+            return;
+        }
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_basis(style)) {
-        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node](LogicalLength value) mutable {
-            static_cast<void>(writer.set_flex_basis(node, value));
+        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node, guard](LogicalLength value) mutable {
+            if (!guard || guard()) {
+                static_cast<void>(writer.set_flex_basis(node, value));
+            }
         }));
+        if (!alive()) {
+            return;
+        }
     }
     if (const auto& prop = detail::LayoutStyleAccess::align_self(style)) {
-        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node](FlexAlignSelf value) mutable {
-            static_cast<void>(writer.set_align_self(node, value));
+        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node, guard](FlexAlignSelf value) mutable {
+            if (!guard || guard()) {
+                static_cast<void>(writer.set_align_self(node, value));
+            }
         }));
+        if (!alive()) {
+            return;
+        }
     }
     if (const auto& prop = detail::LayoutStyleAccess::order(style)) {
-        static_cast<void>(detail::connect_prop(
-            scope, *prop, [writer, node](int value) mutable { static_cast<void>(writer.set_order(node, value)); }));
+        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node, guard](int value) mutable {
+            if (!guard || guard()) {
+                static_cast<void>(writer.set_order(node, value));
+            }
+        }));
     }
 }
 

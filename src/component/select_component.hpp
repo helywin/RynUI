@@ -44,6 +44,7 @@ public:
                           std::optional<input::InteractionId>) override;
     bool on_scroll_input(const input::ScrollInputEvent&) override;
     void position_window_layers(runtime::Size, runtime::Rect) override;
+    void position_window_layer(runtime::ComponentId, runtime::Size, runtime::Rect);
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
@@ -55,6 +56,7 @@ private:
     void update_theme(runtime::ComponentId id, bool geometry = true);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
+    std::vector<runtime::ComponentId> positioning_;
     bool window_active_{true};
 };
 } // namespace ryn::detail
