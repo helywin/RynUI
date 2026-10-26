@@ -6,8 +6,8 @@
 
 ## 2. 平台通用实现（本机 Windows / windows-msvc-headless）
 
-- [ ] 2.1 实现 typed value/Props/slots、稳定格式化与完整 Theme 全链；定向 model/theme/public API 测试和 5 份 fresh golden 深比较通过，旧 IIFE 原文/顺序及旧 identity 保持。
-- [ ] 2.2 实现 retained Statistic title/value/prefix/suffix、Skeleton loading、可见性、布局与服务注册；定向真实场景测试覆盖属性/Theme 更新、草稿/ref 身份、有限宽/短高/零尺寸、实际 R8 glyph/quad/hit clip、loading/hidden 输入边界、同步卸载和资源清理。
+- [x] 2.1 实现 typed value/Props/slots、稳定格式化与完整 Theme 全链；定向 model/theme/public API 测试和 5 份 fresh golden 深比较通过，旧 IIFE 原文/顺序及旧 identity 保持。
+- [x] 2.2 实现 retained Statistic title/value/prefix/suffix、Skeleton loading、可见性、布局与服务注册；定向真实场景测试覆盖属性/Theme 更新、草稿/ref 身份、有限宽/短高/零尺寸、实际 R8 glyph/quad/hit clip、loading/hidden 输入边界、同步卸载和资源清理。
 
 ## 3. 平台通用集成验收（本机 Windows / MSVC）
 

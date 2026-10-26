@@ -205,6 +205,8 @@ enum class TokenIdentity : std::uint8_t {
 
     timeline_colors,
     timeline_metrics,
+    statistic_colors,
+    statistic_metrics,
     count,
 };
 

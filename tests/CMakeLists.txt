@@ -70,6 +70,32 @@ endforeach()
 add_test(NAME rynui.notice_docs_example COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_notice_examples.py")
 
 
+foreach(statistic_test IN ITEMS statistic_model statistic_theme)
+    add_executable(rynui_${statistic_test}_tests ${statistic_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${statistic_test}_tests)
+    target_link_libraries(rynui_${statistic_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${statistic_test} COMMAND rynui_${statistic_test}_tests)
+endforeach()
+
+add_executable(rynui_statistic_component_tests statistic_component_tests.cpp)
+rynui_configure_cpp_target(rynui_statistic_component_tests)
+target_link_libraries(rynui_statistic_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_statistic_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(statistic_case IN ITEMS retained formatting clips lifecycle gates boundaries)
+    add_test(NAME rynui.statistic_${statistic_case} COMMAND rynui_statistic_component_tests ${statistic_case})
+endforeach()
+
+add_executable(rynui_statistic_public_api_tests statistic_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_statistic_public_api_tests)
+target_link_libraries(rynui_statistic_public_api_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_statistic_public_api_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.statistic_public_api COMMAND rynui_statistic_public_api_tests)
+add_test(NAME rynui.statistic_docs_example COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_statistic_examples.py")
+
 foreach(timeline_test IN ITEMS timeline_model timeline_public_api timeline_theme)
     add_executable(rynui_${timeline_test}_tests ${timeline_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${timeline_test}_tests)

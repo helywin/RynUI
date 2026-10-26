@@ -15,6 +15,7 @@
 #include "component/form_component.hpp"
 #include "component/descriptions_component.hpp"
 #include "component/timeline_component.hpp"
+#include "component/statistic_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
@@ -126,6 +127,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     form_ = std::make_unique<FormComponentHost>(*this);
     descriptions_ = std::make_unique<DescriptionsComponentHost>(*this);
     timeline_ = std::make_unique<TimelineComponentHost>(*this);
+    statistic_ = std::make_unique<StatisticComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
     steps_ = std::make_unique<StepsComponentHost>(*this);
     skeleton_ = std::make_unique<SkeletonComponentHost>(*this);
@@ -437,8 +439,10 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
         text_scene.finish_ordered_scene_batch();
+        std::vector<runtime::ComponentId> clipped_roots(timeline_->mounted().begin(), timeline_->mounted().end());
+        clipped_roots.insert(clipped_roots.end(), statistic_->mounted().begin(), statistic_->mounted().end());
         if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height},
-                                      modal_->visible() || notices_->visible(), timeline_->mounted(), clip)) {
+                                      modal_->visible() || notices_->visible(), clipped_roots, clip)) {
             scene_structure_dirty_ = true;
         }
     }

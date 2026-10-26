@@ -318,6 +318,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       changed, count);
     append_if_changed(before.descriptions().metrics, after.descriptions().metrics, TokenIdentity::descriptions_metrics,
                       changed, count);
+    append_if_changed(before.statistic().colors, after.statistic().colors, TokenIdentity::statistic_colors, changed,
+                      count);
+    append_if_changed(before.statistic().metrics, after.statistic().metrics, TokenIdentity::statistic_metrics, changed,
+                      count);
     append_if_changed(before.timeline().colors, after.timeline().colors, TokenIdentity::timeline_colors, changed,
                       count);
     append_if_changed(before.timeline().metrics, after.timeline().metrics, TokenIdentity::timeline_metrics, changed,
@@ -1749,6 +1753,18 @@ const SkeletonThemeToken& ThemeScope::skeleton_metrics() const {
     return snapshot_->skeleton();
 }
 
+const StatisticThemeToken& ThemeScope::statistic_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::statistic_colors);
+    return snapshot_->statistic();
+}
+
+const StatisticThemeToken& ThemeScope::statistic_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::statistic_metrics);
+    return snapshot_->statistic();
+}
+
 std::string_view token_identity_name(TokenIdentity identity) noexcept {
     // Order MUST match the TokenIdentity declaration: several readers walk the
     // enum by contiguous range, and the count assert guards the pairing.
@@ -1952,6 +1968,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
 
         "Timeline.colors",
         "Timeline.metrics",
+        "Statistic.colors",
+        "Statistic.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1960,6 +1978,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
 
 DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     switch (identity) {
+    case TokenIdentity::statistic_colors:
+        return DirtyPhase::paint_material;
+    case TokenIdentity::statistic_metrics:
+        return DirtyPhase::text | DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::popover_colors:
         return DirtyPhase::paint_material;
     case TokenIdentity::popover_metrics:
