@@ -43,7 +43,10 @@ public:
     bool on_keyboard_input(const input::KeyboardInputEvent&) override;
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;
+    void prepare_auxiliary_layout() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
 private:
     void mount_item(runtime::ComponentId, std::size_t);
@@ -52,6 +55,7 @@ private:
     void reconcile_input(runtime::ComponentId);
     void set_hover(runtime::ComponentId, std::optional<float>);
     void commit(runtime::ComponentId, float, bool clear);
+    void apply_keyboard(runtime::ComponentId);
     runtime::Size measure(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     WindowComponentServices* services_;

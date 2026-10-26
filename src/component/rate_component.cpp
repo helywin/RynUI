@@ -43,6 +43,9 @@ struct RateState final {
     std::optional<float> hover;
     std::optional<std::size_t> pressed;
     std::optional<std::size_t> tooltip_hover;
+    std::optional<animation::AnimationTime> tooltip_leave_deadline;
+    std::optional<input::InteractionId> observed_focus;
+    std::optional<input::Key> pending_key;
     RateCharacter character;
     std::function<RateCharacter(std::size_t)> character_for;
     std::vector<RateTooltip> tooltips;
@@ -181,6 +184,7 @@ void RateComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     services_->interactions().set_eligible(s->focus, input_container_active(*s) && window_active_);
     services_->interactions().set_focusable(s->focus, s->keyboard && !s->read_only);
     services_->interactions().set_tab_stop(s->focus, s->keyboard && !s->read_only);
+    s->observed_focus = services_->focus().state().focused;
     const auto items = s->items;
     for (std::size_t i = 0; i < items.size(); ++i) {
         s = services_->components().state<RateState>(id);
@@ -213,7 +217,7 @@ void RateComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         }
         // Closing a rich Tooltip synchronizes native focus and may unmount/rebind this owner.
         const auto tip_open = row.tip_open;
-        tip_open.set(s->visible && s->count > 0 && active && !s->disabled && window_active_ &&
+        tip_open.set(s->visible && s->count > 0 && s->geometry_active && active && !s->disabled && window_active_ &&
                      services_->interactions().component_active(id) &&
                      (s->tooltip_hover == i || focused_content ||
                       (focus.focused == s->focus && focus.focus_visible && focus_index == i)));
@@ -233,7 +237,9 @@ void RateComponentHost::reconcile_input(runtime::ComponentId id) {
         return;
     }
     std::vector<input::InteractionId> cancel;
-    const bool active = editable(*s) && window_active_ && services_->interactions().component_active(id);
+    const bool container_active =
+        input_container_active(*s) && window_active_ && services_->interactions().component_active(id);
+    const bool active = container_active && !s->read_only;
     for (std::size_t i = 0; i < s->items.size(); ++i) {
         if (!active || i >= static_cast<std::size_t>(s->count)) {
             cancel.push_back(services_->components().state<RateItemState>(s->items[i])->view.interaction);
@@ -242,8 +248,12 @@ void RateComponentHost::reconcile_input(runtime::ComponentId id) {
     const auto focus = s->focus;
     const bool cancel_focus = !active || !s->keyboard;
     const bool cancel_hover = !active || (s->hover && *s->hover > s->count);
-    if (!active || (s->tooltip_hover && *s->tooltip_hover >= static_cast<std::size_t>(s->count))) {
+    if (!container_active || (s->tooltip_hover && *s->tooltip_hover >= static_cast<std::size_t>(s->count))) {
         s->tooltip_hover.reset();
+        s->tooltip_leave_deadline.reset();
+    }
+    if (cancel_focus) {
+        s->pending_key.reset();
     }
     for (std::size_t i = 0; i < s->items.size(); ++i) {
         services_->interactions().set_input_blocked(s->items[i], i >= static_cast<std::size_t>(s->count));
@@ -263,7 +273,7 @@ void RateComponentHost::reconcile_input(runtime::ComponentId id) {
     }
     s = services_->components().state<RateState>(id);
     if (s) {
-        services_->set_input_blocked(id, !s->visible || s->count == 0 || s->disabled);
+        services_->set_input_blocked(id, !s->visible || s->count == 0 || s->disabled || !s->geometry_active);
     }
 }
 
@@ -501,8 +511,15 @@ void RateComponentHost::mount(const RateProps& props) {
         services.layout().remove_layout(node);
     });
     input::FocusHandlers focus;
-    focus.state_changed = [this, id](input::FocusPresentation) {
+    focus.state_changed = [this, id](input::FocusPresentation state) {
+        if (!state.focused) {
+            if (auto* s = services_->components().state<RateState>(id)) {
+                s->pending_key.reset();
+            }
+        }
         refresh(id, true);
+        // refresh can close a rich Tooltip and invoke native blur/unmount/ref-rebind callbacks.
+        apply_keyboard(id);
     };
     services.interactions().set_focus_handlers(s.focus, std::move(focus));
     services.layout().set_layout(
@@ -586,7 +603,7 @@ void RateComponentHost::mount(const RateProps& props) {
                            [theme, accessor = accessors[i]] { static_cast<void>((theme.get()->*accessor)()); });
     }
     refresh(id, true);
-    services.set_input_blocked(id, !s.visible || s.count == 0 || s.disabled);
+    services.set_input_blocked(id, !s.visible || s.count == 0 || s.disabled || !s.geometry_active);
 }
 
 runtime::Size RateComponentHost::measure(runtime::ComponentId id, layout::LayoutEngine& engine,
@@ -614,10 +631,29 @@ void RateComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& eng
     }
 }
 
+void RateComponentHost::apply_keyboard(runtime::ComponentId id) {
+    auto* s = services_->components().state<RateState>(id);
+    const auto focus = services_->focus().state();
+    if (!s || !s->pending_key || !s->keyboard || !editable(*s) || !window_active_ || focus.focused != s->focus ||
+        !focus.focus_visible || !services_->interactions().branch_active(s->focus)) {
+        return;
+    }
+    const auto key = *s->pending_key;
+    s->pending_key.reset();
+    const bool activation = key == input::Key::enter || key == input::Key::space;
+    const float step = s->half ? .5F : 1;
+    const float next = key == input::Key::left    ? s->value - step
+                       : key == input::Key::right ? s->value + step
+                       : key == input::Key::home  ? 0
+                       : key == input::Key::end   ? static_cast<float>(s->count)
+                                                  : s->value;
+    commit(id, next, activation);
+}
+
 bool RateComponentHost::on_keyboard_input(const input::KeyboardInputEvent& event) {
     const auto ids = mounted_;
     for (auto id : ids) {
-        const auto* s = services_->components().state<RateState>(id);
+        auto* s = services_->components().state<RateState>(id);
         if (!s || !s->keyboard || !editable(*s) || !window_active_ || services_->focus().state().focused != s->focus ||
             !services_->interactions().branch_active(s->focus)) {
             continue;
@@ -629,13 +665,12 @@ bool RateComponentHost::on_keyboard_input(const input::KeyboardInputEvent& event
             return false;
         }
         if (event.action == input::KeyAction::down && !(activation && event.repeat)) {
-            const float step = s->half ? .5F : 1;
-            const float next = event.key == input::Key::left    ? s->value - step
-                               : event.key == input::Key::right ? s->value + step
-                               : event.key == input::Key::home  ? 0
-                               : event.key == input::Key::end   ? static_cast<float>(s->count)
-                                                                : s->value;
-            commit(id, next, activation);
+            s->pending_key = event.key;
+            const auto target = s->focus;
+            services_->focus().defer_focus(target, input::FocusModality::keyboard);
+            // defer_focus may immediately run callbacks, or flush after the enclosing keyboard dispatch.
+            // Always reacquire this full ComponentId; the focus callback also drains a queued command.
+            apply_keyboard(id);
         }
         return true;
     }
@@ -657,7 +692,7 @@ void RateComponentHost::on_pointer_input(const input::PointerInputEvent& event, 
             for (auto component = record ? std::optional{record->component} : std::nullopt;
                  component && *component != id; component = services_->components().parent(*component)) {
                 for (int i = 0; i < s->count; ++i) {
-                    if (*component == s->items[i]) {
+                    if (*component == s->items[i] && static_cast<std::size_t>(i) < s->tooltips.size()) {
                         tooltip_hover = static_cast<std::size_t>(i);
                         break;
                     }
@@ -667,8 +702,22 @@ void RateComponentHost::on_pointer_input(const input::PointerInputEvent& event, 
                 }
             }
         }
-        if (s->tooltip_hover != tooltip_hover) {
+        bool tooltip_changed = false;
+        if (tooltip_hover) {
+            s->tooltip_leave_deadline.reset();
+            tooltip_changed = s->tooltip_hover != tooltip_hover;
             s->tooltip_hover = tooltip_hover;
+        } else if (event.action == input::PointerAction::cancel || !window_active_ || !input_container_active(*s) ||
+                   !services_->interactions().component_active(id)) {
+            tooltip_changed = s->tooltip_hover.has_value();
+            s->tooltip_hover.reset();
+            s->tooltip_leave_deadline.reset();
+        } else if (s->tooltip_hover && !s->tooltip_leave_deadline) {
+            s->tooltip_leave_deadline =
+                services_->animation_time() + animation::AnimationDuration::microseconds(100000);
+            services_->request_frame();
+        }
+        if (tooltip_changed) {
             refresh(id, true);
             s = services_->components().state<RateState>(id);
             if (!s) {
@@ -704,6 +753,44 @@ void RateComponentHost::on_window_active(bool active) {
     on_input_boundary_changed();
 }
 
+void RateComponentHost::prepare_auxiliary_layout() {
+    const auto ids = mounted_;
+    const auto focus = services_->focus().state().focused;
+    for (auto id : ids) {
+        const auto* s = services_->components().state<RateState>(id);
+        if (s && s->observed_focus != focus) {
+            refresh(id, true);
+        }
+    }
+}
+
+std::size_t RateComponentHost::tick_auxiliary(animation::AnimationTime time) {
+    const auto ids = mounted_;
+    std::size_t changed = 0;
+    for (auto id : ids) {
+        auto* s = services_->components().state<RateState>(id);
+        if (s && s->tooltip_leave_deadline && time >= *s->tooltip_leave_deadline) {
+            s->tooltip_leave_deadline.reset();
+            s->tooltip_hover.reset();
+            refresh(id, true);
+            ++changed;
+        }
+    }
+    return changed;
+}
+
+std::optional<animation::AnimationTime> RateComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> result;
+    for (auto id : mounted_) {
+        const auto* s = services_->components().state<RateState>(id);
+        if (s && s->tooltip_leave_deadline && window_active_ && input_container_active(*s) &&
+            services_->interactions().component_active(id) && (!result || *s->tooltip_leave_deadline < *result)) {
+            result = s->tooltip_leave_deadline;
+        }
+    }
+    return result;
+}
+
 void RateComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
     const auto ids = mounted_;
     for (auto id : ids) {
@@ -712,6 +799,15 @@ void RateComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
             continue;
         }
         s->clip = services_->component_clip(id, viewport, document_clip);
+        const bool empty = !s->geometry_active;
+        if (s->empty_reconciled != empty) {
+            s->empty_reconciled = empty;
+            reconcile_input(id);
+            s = services_->components().state<RateState>(id);
+            if (!s) {
+                continue;
+            }
+        }
         const auto focus = services_->focus().state();
         std::vector<graphics::RoundedEffectInstance> effects;
         if (s->visible && s->count > 0 && editable(*s) && focus.focused == s->focus && focus.focus_visible &&
@@ -729,14 +825,7 @@ void RateComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
             }
         }
         static_cast<void>(services_->surfaces().update_content_effects(s->decoration, effects));
-        // Geometry becoming empty must also cancel keyboard/capture state. Re-query across callbacks.
-        if (!s->geometry_active) {
-            if (!s->empty_reconciled) {
-                s->empty_reconciled = true;
-                reconcile_input(id);
-            }
-        } else {
-            s->empty_reconciled = false;
+        if (s->geometry_active) {
             services_->interactions().set_eligible(s->focus, input_container_active(*s) && window_active_);
             for (int i = 0; i < s->count; ++i) {
                 services_->interactions().set_eligible(

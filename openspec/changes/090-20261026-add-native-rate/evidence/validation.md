@@ -46,3 +46,7 @@
 ## 父合并前补正
 
 父线程随后发现 Rate 字号上限与 FontRuntime 不一致；原 `0190d4b1` 上已实际复现，最小补正及本次 Debug/Release 专项结果见 [font-limit-correction.md](font-limit-correction.md)。上述 9/9 是原首版源码的验收，本补正未重复该矩阵，也尚未接受独立 Astra 审查。
+
+## Astra full R1 响应
+
+父随后转交的首次 full R1 为非 CLEAN，包含四项 P2。四项在 cea1552c 上全部真实复现并修复，before/after、原生连续鼠标/Tab/IME/outline/lifetime 证据及 7/7 Debug/Release 定向结果见 [astra-r1-response.md](astra-r1-response.md)。本 worker 完成后停待 fresh R2，不将本地通过描述为 Astra CLEAN。

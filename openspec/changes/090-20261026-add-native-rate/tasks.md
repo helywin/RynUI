@@ -19,3 +19,8 @@
 
 - [x] 4.1 在 0190d4b1 的生产实现上复现大字号先发布后失败；按生产 float 乘积与 round 量化校验三尺寸 normal/hover，在 resolve/preflight 拒绝 FontRuntime 不接受的最终像素；新增直接、继承组合、通知原子性与有效恢复回归。
 - [x] 4.2 仅构建/执行此补正的 MSVC HEADLESS Debug/Release 定向测试，确认五份金样无变更，通过 format/explicit OpenSpec 1.14 doctor/strict/diff，保存英文 local commit 并交接；不声称已接受 Astra 独立审查。
+
+## 5. 平台通用：Astra full R1 四项 P2
+
+- [x] 5.1 在 cea1552c 的原生产实现逐项真实复现几何归零、鼠标间隙、后代 Tab 退出和键盘 modality 问题；保留 before 证据后最小修复，以真实事件、outline coverage、身份/清理/恢复与 deadline 验证。
+- [x] 5.2 完成新回归和直接相关代表的 MSVC HEADLESS Debug/Release 定向验证，保持字号上限与 shared clip 修复，通过 format/explicit OpenSpec 1.14 doctor/strict/diff；英文 local commit、clean HEAD 后停待父 fresh Astra R2。

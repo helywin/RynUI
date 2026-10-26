@@ -20,6 +20,7 @@ count/allowHalf 变化重新规范化原始权威输入，不触发 onChange；�
 Left/Right 每次增减一级（allowHalf 时 .5），Home 到 0，End 到 count；Enter/Space 提交当前位置并应用 allowClear。
 每个 Rate 只有一个 Tab 入口。disabled/readOnly 禁止自身编辑；readOnly 不建立后代输入封锁。
 visible=false 和 count=0 不保留布局 flow/gap。隐藏、窗口失活或 Modal/Spin gate 会取消临时输入状态。
+宽或高归零也会关闭 Tooltip、注销后代输入 session/preedit；恢复尺寸后保留子内容身份与草稿。Tooltip 提供 100ms 可取消的离开宽限供鼠标跨越间隙进入浮层；没有鼠标停留时，后代 Tab 焦点离开会关闭浮层。评分导航键会切换为 keyboard modality 并显示 focus outline 与 emphasis。
 
 `character(RateCharacter{u8"好"})`、`character(RateCharacter{IconName::HeartFilled})` 或纯值 index 函数可定制字符。
 全局 character 支持 `Prop<RateCharacter>`；index 函数在该项首次创建时调用，已建项不会因普通值/布局/主题更新而重新调用该函数。
