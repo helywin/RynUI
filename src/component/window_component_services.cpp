@@ -348,6 +348,21 @@ bool WindowComponentServices::retire_failed_component(runtime::ComponentId id) n
         }
     } restore{retiring_failed_component_, std::exchange(retiring_failed_component_, true)};
 
+    // Drain the old subtree's event sources before resource destructors can cancel them again.
+    // This reuses the dispatchers' non-delivering cancellation branch, including hover/capture.
+    for (auto interaction : interactions_.declaration_order()) {
+        const auto* record = interactions_.find(interaction);
+        if (!record) {
+            continue;
+        }
+        for (auto owner = std::optional{record->component}; owner && components().contains(*owner);
+             owner = components().parent(*owner)) {
+            if (*owner == id) {
+                pointer_.cancel_interaction(interaction, false);
+                break;
+            }
+        }
+    }
     if (!text_.destroy(id)) {
         return false;
     }

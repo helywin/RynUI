@@ -1,6 +1,14 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_component_failure_retirement_tests component_failure_retirement_tests.cpp)
+rynui_configure_cpp_target(rynui_component_failure_retirement_tests)
+target_link_libraries(rynui_component_failure_retirement_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_component_failure_retirement_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.component_failure_retirement COMMAND rynui_component_failure_retirement_tests)
+
 foreach(auto_complete_case IN ITEMS model theme)
     add_executable(rynui_auto_complete_${auto_complete_case}_tests auto_complete_${auto_complete_case}_tests.cpp)
     rynui_configure_cpp_target(rynui_auto_complete_${auto_complete_case}_tests)

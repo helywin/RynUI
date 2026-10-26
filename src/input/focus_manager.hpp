@@ -57,7 +57,7 @@ public:
     void defer_focus(std::optional<InteractionId> target, FocusModality modality);
     void set_window_active(bool active);
     void synchronize();
-    void cancel_interaction(InteractionId interaction);
+    void cancel_interaction(InteractionId interaction, bool notify = true);
 
     [[nodiscard]] FocusSnapshot state() const;
     [[nodiscard]] const FocusManagerDiagnostics& diagnostics() const noexcept;

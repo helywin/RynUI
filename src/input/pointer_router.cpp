@@ -219,22 +219,22 @@ void PointerRouter::cancel_all() {
     }
 }
 
-void PointerRouter::cancel_interaction(InteractionId interaction) {
-    cancel_interaction_internal(interaction, true);
+void PointerRouter::cancel_interaction(InteractionId interaction, bool notify) {
+    cancel_interaction_internal(interaction, true, notify);
 }
 
 void PointerRouter::cancel_pointer_interaction(InteractionId interaction) {
     cancel_interaction_internal(interaction, false);
 }
 
-void PointerRouter::cancel_interaction_internal(InteractionId interaction, bool cancel_focus) {
+void PointerRouter::cancel_interaction_internal(InteractionId interaction, bool cancel_focus, bool notify) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("PointerRouter can only be used on its owner thread");
     }
     if (cancel_focus && focus_ != nullptr) {
-        focus_->cancel_interaction(interaction);
+        focus_->cancel_interaction(interaction, notify);
     }
-    const bool invoke_handlers = !dispatching_;
+    const bool invoke_handlers = notify && !dispatching_;
     if (invoke_handlers) {
         dispatching_ = true;
         frame_requested_during_dispatch_ = false;

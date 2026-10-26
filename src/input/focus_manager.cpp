@@ -268,7 +268,7 @@ void FocusManager::synchronize() {
     }
 }
 
-void FocusManager::cancel_interaction(InteractionId interaction) {
+void FocusManager::cancel_interaction(InteractionId interaction, bool notify) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("FocusManager can only be used on its owner thread");
     }
@@ -276,7 +276,7 @@ void FocusManager::cancel_interaction(InteractionId interaction) {
     if (!affected) {
         return;
     }
-    if (dispatching_) {
+    if (dispatching_ || !notify) {
         const bool had_focus = focused_ == interaction;
         const bool had_press = keyboard_press_ == interaction;
         if (had_press) {
