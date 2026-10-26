@@ -958,7 +958,8 @@ bool TreeComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
     if (!record) {
         return false;
     }
-    // The first window layer/Tree owner on the real target path owns the event.
+    // A Tree at its scroll boundary hands off to a logical Tree ancestor,
+    // while the nearest window layer remains an ownership boundary.
     for (auto owner = std::optional{record->component}; owner; owner = services_->components().parent(*owner)) {
         if (std::ranges::find(mounted_, *owner) != mounted_.end() && intact(*owner)) {
             const auto s = state(*services_, *owner);
@@ -968,17 +969,15 @@ bool TreeComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
             }
             const float height = bounds(*services_, *owner).height;
             const float maximum = std::max(0.0F, s->content_height - height);
-            if (maximum <= 0) {
-                return false;
+            if (maximum > 0) {
+                const float next = std::clamp(s->scroll - event.delta_y * 32, 0.0F, maximum);
+                if (s->scroll != next) {
+                    s->scroll = next;
+                    services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
+                                                               runtime::DirtyFlags::HitTest);
+                    return true;
+                }
             }
-            const float next = std::clamp(s->scroll - event.delta_y * 32, 0.0F, maximum);
-            if (s->scroll == next) {
-                return false;
-            }
-            s->scroll = next;
-            services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
-                                                       runtime::DirtyFlags::HitTest);
-            return true;
         }
         if (services_->components().is_window_layer_root(*owner)) {
             return false;
