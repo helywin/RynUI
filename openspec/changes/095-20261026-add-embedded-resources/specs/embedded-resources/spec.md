@@ -2,46 +2,38 @@
 
 ## Purpose
 
-提供可随 C++ 程序或静态库链接的只读资源包，使应用通过稳定路径获取内嵌原始内容，不依赖启动目录或旁置资源文件；首先用于 RynUI 原生 shader 和脱离开发目录运行的示例，并保留系统字体作为默认字体链。
+使原生示例可以离开开发时的资源目录运行：Windows 通过标准 rc 资源嵌入必要 shader，其他平台保留同等只读资源能力，普通示例默认使用系统字体 fallback，并通过实际构建和独立目录启动验证结果。
 
 ## ADDED Requirements
 
-### Requirement: 只读路径资源
+### Requirement: 原生内嵌 shader
 
-资源包 SHALL 使用带 prefix/alias 的稳定资源路径提供原始 bytes，不依赖 cwd、exe 路径或运行时文件读取。空文件与不存在路径 SHALL 可以区分，读取 SHALL 不修改或复制整个资源内容。资源内容在所属模块存活期间 SHALL 有效。
+Windows SDL renderer SHALL 从链接到最终 exe 的标准 rc/RCDATA 读取所需 shader，不依赖旁置 shaders、源文件或运行时 shader 编译器。Quad、Glyph、RoundedEffect 的 vertex/fragment 与 DXIL/SPIR-V SHALL 完整，设备格式选择和 GPU ABI SHALL 保持。
 
-#### Scenario: 独立目录读取二进制和空文件
-- **WHEN** 程序从任意 cwd 读取包含零字节的内嵌二进制、空文件与不存在的 alias
-- **THEN** 已存在内容逐字节正确，空文件被识别为存在，不存在路径明确返回缺失
+#### Scenario: exe 离开 shader 目录
+- **WHEN** 将示例 exe 复制到没有 shaders 的目录并从另一 cwd 启动
+- **THEN** 实际 GPU pipeline 创建和绘制成功，shader 来自 exe 内嵌资源
 
-### Requirement: 可重复构建与静态库链接
+### Requirement: 简单构建接入
 
-构建工具 SHALL 从资源清单生成可链接的 C++ 资源，支持路径 prefix 和 alias，拒绝重复 alias、非法资源路径和缺失输入。资源输入或清单变化 SHALL 触发更新；未变化内容 SHALL 不产生无意义重编译。静态库中的已引用资源 SHALL 不因链接裁剪而消失。
+构建 SHALL 使用现有 shader 输出作为资源输入，并在输入变化后更新最终 exe。Windows SHALL 使用原生 rc 工具，不新增 qrc/XML 清单或框架自制打包协议；其他平台 SHALL 保持固定 shader 集的内嵌读取能力。
 
-#### Scenario: 修改原始资源后重新构建
-- **WHEN** 使用 Ninja Multi-Config 构建带空格路径的资源包，修改一个资源后再构建
-- **THEN** 程序读取新内容，未修改构建保持稳定，Debug/Release 均能引用静态库内资源
+#### Scenario: 修改构建输入
+- **WHEN** shader 二进制重新生成并构建最终目标
+- **THEN** 原生资源中的 bytes 与最新编译输出一致，无需手动复制目录
 
-### Requirement: 内置 shader 启动
+### Requirement: 默认系统字体 fallback
 
-SDL renderer SHALL 从内嵌资源读取自身需要的 shader，根据设备支持选择 DXIL 或 SPIR-V。Quad、Glyph 与 RoundedEffect 的 vertex/fragment SHALL 均可用，运行时 SHALL 不依赖 shader 源文件、编译器或 exe 旁的 shaders 目录。
+普通示例 SHALL 默认使用系统字体链，不要求旁置 fonts 或验收字体。显式应用字体 SHALL 保留其顺序和系统 fallback；显式测试/应用 fallback 配置 SHALL 保持。缺失所需字形 SHALL 明确诊断，不伪造系统提供的 coverage。
 
-#### Scenario: exe 离开 shaders 目录
-- **WHEN** 将示例 exe 复制到不含 shaders 的独立目录并从另一 cwd 启动
-- **THEN** renderer 能创建实际 GPU pipeline 并正常绘制，资源来源确认为内嵌
+#### Scenario: 没有旁置字体的示例
+- **WHEN** 在具有所需字形的系统上，不配置自定义字体，从无 fonts 的目录启动示例
+- **THEN** 实际文字完成布局/绘制，记录系统字体来源，显式锁定字体测试仍可使用
 
-### Requirement: 默认系统字体链
+### Requirement: 分层与部署证据
 
-普通原生示例 SHALL 默认使用平台系统字体链，不要求 exe 旁存在 fonts 或固定验收字体。应用显式字体 SHALL 仍位于系统 fallback 前；显式测试/应用 fallback 配置 SHALL 保留。缺失实际所需字体 coverage SHALL 有明确诊断，不伪造系统提供的字形。
+Core 和 renderer/common SHALL 不新增 Windows/SDL 资源加载依赖。验收 SHALL 区分平台通用合同、Windows 原生 rc/GPU/字体与未运行的 Linux 环境，不将构建或历史二进制结果冒充新 exe 的部署成功。
 
-#### Scenario: 无旁置字体启动
-- **WHEN** 不提供自定义字体，将示例 exe 放入无 fonts 的目录并在具有所需字形的系统上启动
-- **THEN** 使用系统字体完成实际文字布局/绘制，telemetry 标明系统字体，显式锁定字体测试不受影响
-
-### Requirement: 层次与部署证据
-
-资源基础层 SHALL 不依赖 Qt、SDL、renderer 或系统字体服务；renderer 和应用拥有各自资源包。发布验收 SHALL 明确实际构建配置、原生 backend、独立目录和字体来源，平台通用验证不得代替未运行平台的原生验收。
-
-#### Scenario: HEADLESS 与原生部署分别验证
-- **WHEN** 构建资源单元测试及原生示例并执行部署检查
-- **THEN** HEADLESS 保持平台隔离，实际原生启动结果单独记录，未运行的 Linux/GPU/字体环境保持待验
+#### Scenario: 平台验收独立记录
+- **WHEN** 执行 HEADLESS 检查及原生独立目录启动
+- **THEN** 平台隔离保持，记录实际新构建配置、资源内容、backend、字体、退出码及 hashes，未执行的平台保持待验
