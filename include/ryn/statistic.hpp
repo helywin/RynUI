@@ -3,6 +3,7 @@
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
+#include <cmath>
 #include <concepts>
 #include <cstdint>
 #include <functional>
@@ -40,7 +41,13 @@ public:
         return value_;
     }
 
-    friend bool operator==(const StatisticValue&, const StatisticValue&) = default;
+    friend bool operator==(const StatisticValue& left, const StatisticValue& right) {
+        if (left.value_ != right.value_) {
+            return false;
+        }
+        const auto* number = std::get_if<double>(&left.value_);
+        return !number || *number != 0 || std::signbit(*number) == std::signbit(std::get<double>(right.value_));
+    }
 
 private:
     Storage value_{std::int64_t{0}};

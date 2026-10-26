@@ -13,3 +13,7 @@
 
 - [x] 3.1 docs/statistic.md 的公开 API 示例实际编译运行；windows-msvc-headless Debug/Release 定向 build/CTest 通过（Ninja Multi-Config、最多 2 jobs、默认 1 MiB PE 栈），记录命令、日志、数量和覆盖边界。
 - [x] 3.2 clang-format 22.1.3 check、OpenSpec 1.14 doctor/全量 strict validate、git diff --check 通过，证据落盘并保存本地英文 Conventional Commits，返回精确 HEAD/path/branch/dirty 待父审查。
+
+## 4. Astra R1 修正
+
+- [x] 4.1 复现并修复 StatisticValue 将 double 正负零比较为相等的问题；Signal/Binding 双向正负零更新、静态格式化与其他 variant 相等性定向 Debug/Release 检查通过，format、显式 OpenSpec 1.14 doctor/strict 和 diff check 通过，记录修复前后证据并本地提交交父 R2。

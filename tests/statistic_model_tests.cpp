@@ -1,4 +1,5 @@
 #include "component/statistic_model.hpp"
+#include <array>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -36,6 +37,9 @@ int main() {
         expect(u8"+12", "+12");
         expect(u8"0000.123", "0,000", -7);
         expect(-0.0, "-0");
+        expect(0.0, "0");
+        expect(-0.0, "-0.00", 2);
+        expect(0.0, "0.00", 2);
         StatisticModel model;
         model.value = u8"123456.789";
         model.group_separator = u8"__";
@@ -70,6 +74,21 @@ int main() {
         model.group_separator = u8",";
         model.decimal_separator = u8".";
         check(format_statistic(model).bytes() == "42.00", "format recovery failed");
+        const std::array values{StatisticValue{std::int64_t{7}}, StatisticValue{std::uint64_t{7}}, StatisticValue{7.0},
+                                StatisticValue{u8"7"}};
+        for (std::size_t i = 0; i < values.size(); ++i) {
+            for (std::size_t j = 0; j < values.size(); ++j) {
+                check((values[i] == values[j]) == (i == j), "Statistic variant equality changed");
+            }
+        }
+        const auto nan = StatisticValue{std::numeric_limits<double>::quiet_NaN()};
+        check(nan != nan && StatisticValue{1.5} != StatisticValue{2.5} &&
+                  StatisticValue{u8"7"} != StatisticValue{u8"8"},
+              "Statistic nonzero/String/NaN equality changed");
+        check(StatisticValue{0.0} == StatisticValue{0.0} && StatisticValue{-0.0} == StatisticValue{-0.0},
+              "same-sign zero equality changed");
+        check(StatisticValue{0.0} != StatisticValue{-0.0} && StatisticValue{-0.0} != StatisticValue{0.0},
+              "opposite-sign double zeros compare equal");
         std::cout << "Statistic model passed\n";
         return 0;
     } catch (const std::exception& e) {
