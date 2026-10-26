@@ -35,3 +35,38 @@ Debug/Release fresh 编译 `rynui_auto_complete_{model,theme,component}_tests` �
 收口针对测试 19 项：AutoComplete 13 + portable Theme algorithm/runtime 2 + 受影响 Popover wheel/children/covered/clips 4。两配置均为本树 MSVC fresh 编译/链接后的运行：Debug 19/19，CTest real 2.52 s；Release 19/19，0.93 s，exit 0，最多 2 jobs。Debug 最后核心源码构建 `out/092-build-Debug-20261026-181601.log`，共享回归目标新建 `out/092-build-Debug-20261026-181916.log`；Release `out/092-build-Release-20261026-181723.log`；测试原始日志 `out/092-test-Debug-20261026-182050.log`、`out/092-test-Release-20261026-181907.log`。后续文档收口不改变这些已测 source blobs。
 
 中间失败日志保留在 out：最初零 viewport 试验不符合宿主合同，改为合法有限视口；nested 可见性与 rich blur 销毁失败已由最终对应真实事件验证修复。曾在一次 integration 测试编译失败后误跑旧 executable，结果含 unknown case，`out/092-stage32-test-Debug.log` 仅为失败诊断，不计作 fresh 验收；最终通过记录为上述带时间戳的日志。没有以测试设计、源码阅读或旧 binary 代替最终通过结果。
+
+## 阶段 4：收口与交接
+
+最终被测 C++ 实现 commit 为 `348abf6861b5328850ab798a9986b3c5e14dc4d2`；随后只更新验证脚本与文档/证据，不改变已测 C++、CMake 或示例 source blobs。当前 app 绑定 branch `t3/add-native-autocomplete`，路径仍为本文开头的独立 worktree。实现阶段提交依次为：
+
+- `27cdcbe8ed1c480498443a8976d29f1b75d585df`：规划。
+- `2c6dbba2a005a39ef487714bf4b0198cf353969f`：精确合并 verified Avatar main `6118f67728aede9985867377b122274ac86f31d7`。
+- `3eea638499d9dae98b854f08ede3afae13e72adc`：typed model 与完整独立 Theme。
+- `521daf022dafd711df32cb8596106538562b38d7`：真实 Input、keyed/rich 建议、事件、Form reset 与示例。
+- `348abf6861b5328850ab798a9986b3c5e14dc4d2`：popup/clip/输入边界/生命周期收口。
+
+最终命令（cwd 必须为本 worker worktree，helper 仅使用显式 VS MSVC 环境与本树输出）：
+
+```text
+powershell -NoProfile -ExecutionPolicy Bypass -File out/092-msvc.ps1 -Action build -Config Release -Final
+powershell -NoProfile -ExecutionPolicy Bypass -File out/092-msvc.ps1 -Action test -Config Release
+powershell -NoProfile -ExecutionPolicy Bypass -File out/092-msvc.ps1 -Action build -Final
+powershell -NoProfile -ExecutionPolicy Bypass -File out/092-msvc.ps1 -Action test
+powershell -NoProfile -ExecutionPolicy Bypass -File out/092-msvc.ps1 -Action goldens
+powershell -NoProfile -ExecutionPolicy Bypass -File out/092-msvc.ps1 -Action goldens -Config Release
+C:/Users/jiang/AppData/Local/Programs/Python/Python310/python.exe tests/verify_auto_complete_theme_baseline.py out/092-goldens-Debug
+C:/Users/jiang/AppData/Local/Programs/Python/Python310/python.exe tests/verify_auto_complete_theme_baseline.py out/092-goldens-Release
+C:/Users/jiang/AppData/Local/Programs/Python/Python310/python.exe out/092-verify-pe.py
+C:/Users/jiang/AppData/Local/Programs/Python/Python310/python.exe out/092-final-verify.py
+```
+
+`-Final` 构建的实际 targets 为 `rynui_auto_complete_model_tests rynui_auto_complete_theme_tests rynui_auto_complete_component_tests rynui_auto_complete_integration_tests rynui_portable_theme_algorithm rynui_portable_theme_runtime rynui_popover_integration_tests`。测试正则为 `^rynui\.(auto_complete_.*|portable\.theme_(algorithm|runtime)|popover_(wheel|children|covered|clips))$`。不运行完整 CTest/Gallery/native。
+
+最终 Debug/Release Theme executable 分别 fresh 生成五份 golden。验证脚本同时以原始 `83d26e7a` 和 Avatar `6118f677` 为证据：36 个原始 IIFE 原文/顺序、196 个原始 ordinal 不变；包含 Avatar 后为 37/198；仅 AutoComplete 在其后追加一个 recipe 与五个 identity。递归比较要求 JSON 每个叶子的 Python 类型及值完全相同（区别 bool/int/float），两套旧 typed leaves 全部保留。五份 fresh Debug == fresh Release == repository 字节相同，SHA256 原始结果见 artifact 日志。
+
+八个本树新建 AutoComplete test PE（model/theme/component/integration × Debug/Release）均为 PE32+，stack reserve `1048576` bytes，没有 `/STACK` 扩大。clang-format 22.1.3 全部 742 个 owned C++/HLSL 文件 0 failures；显式 OpenSpec 1.14 doctor healthy、strict 90/90 与 diff check 通过。README、completion、Gallery、091 frame tests、support-overlay 和 generated catalog 相对精确 Avatar 基线无 diff。未导入移动 main 或 089/090 WIP。
+
+最终原始 build/test 日志已按字节复制到 [evidence/windows](evidence/windows/)；其中 Debug source build 和共享回归目标 build 分开记录。fresh golden 的基线检查、PE 与 artifact/hash 输出也保存在该目录。所有本机缓存、测试 exe 与额外诊断日志仍在本树 out；没有运行 ROOT 程序或写 ROOT/out。
+
+首版限制保持 proposal/docs 所列：网络异步、分组、虚拟化、动画、RTL/Web、任意 editor/popupRender 未实现也未暴露假 props。未验收 native GPU、Linux、系统 IME、AT、完整 Gallery/native startup。当前结果是 worker 首版实现与本树 headless 验证；等待父 fresh Astra 审查和 main 集成，不创建 PR/archive，不推 worker branch。

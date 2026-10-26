@@ -15,6 +15,6 @@
 
 ## 4. 集成收口（平台通用）
 
-- [ ] 4.1 运行适当 fresh Debug/Release 定向检查、五个 goldens、PE 1 MiB、format-code --check、OpenSpec doctor/strict 与 diff check；保存原始 log 和准确 evidence，记录测试数、实际 SHA 与未验 native GPU/Linux/系统 IME/AT，干净本地提交并交接父审查。
+- [x] 4.1 运行适当 fresh Debug/Release 定向检查、五个 goldens、PE 1 MiB、format-code --check、OpenSpec doctor/strict 与 diff check；保存原始 log 和准确 evidence，记录测试数、实际 SHA 与未验 native GPU/Linux/系统 IME/AT，干净本地提交并交接父审查。
 
 本轮平台通用证据使用 Windows MSVC、Ninja Multi-Config、windows-msvc-headless，最多 2 jobs。不重复无关全矩阵，不运行长 Gallery/native；本 change 不要求系统专属验收完成，不将其计为通过。所有 build/cache/log 在本树，依赖 source/font cache 只读引用父 ROOT/out。不 fetch/push/PR/archive，不创建 children。

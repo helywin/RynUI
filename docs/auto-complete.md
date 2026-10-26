@@ -32,3 +32,5 @@ void Page() {
 字段通过 `.value(name.value()).onChange(name.onChange())` 显式采值；FormItem 使用 `.control(input)`，并显式连接字段的 disabled/readOnly/status。reset 取消 preedit、候选和 backfill，即使接受值没有改变；普通同值 value 或建议更新保留 preedit。Form 不自动修改任意子控件 props。
 
 首版排除网络异步管理、选项分组、虚拟化、动画、RTL、Web、自定义编辑器替换与任意 popupRender。headless 合成事件不能替代 native GPU、Linux、系统 IME 或 AT 验收。
+
+实现与 Windows MSVC headless 证据见 [092 实施记录](../openspec/changes/092-20261026-add-native-auto-complete/evidence.md)。该记录是 worker 本树结果，后续由父执行 fresh Astra 审查与 main 集成；没有把它等同于整库发布验收。
