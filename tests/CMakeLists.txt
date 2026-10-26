@@ -18,6 +18,14 @@ foreach(rate_test IN ITEMS rate_component rate_lifecycle)
     add_test(NAME rynui.${rate_test} COMMAND rynui_${rate_test}_tests)
 endforeach()
 
+add_executable(rynui_rate_font_limit_tests rate_font_limit_tests.cpp)
+rynui_configure_cpp_target(rynui_rate_font_limit_tests)
+target_link_libraries(rynui_rate_font_limit_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_rate_font_limit_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.rate_font_limit COMMAND rynui_rate_font_limit_tests)
+
 if(NOT RYNUI_HAS_SDL_GPU)
     add_executable(rynui_theme_algorithm_tests theme_algorithm_tests.cpp)
     rynui_configure_cpp_target(rynui_theme_algorithm_tests)

@@ -56,11 +56,21 @@ void apply_rate_override(RateThemeToken& t, const RateTokenOverride& o) {
     }
     const float largest = std::max({m.star_size, m.star_size_small, m.star_size_large});
     const float smallest = std::min({m.star_size, m.star_size_small, m.star_size_large});
-    const double scaled = static_cast<double>(largest) * m.hover_scale;
+    // Match Rate's float product and Text's lround without converting an out-of-range value to an integer.
+    // FontRuntime::resolve_raster_pixel_size accepts logical pixels only through INT_MAX / 64.
+    for (float size : {m.star_size, m.star_size_small, m.star_size_large}) {
+        for (float scale : {1.0F, m.hover_scale}) {
+            const float logical = size * scale;
+            const double pixels = std::round(static_cast<double>(logical));
+            if (!std::isfinite(logical) || logical < .5F ||
+                pixels > static_cast<double>(std::numeric_limits<int>::max() / 64)) {
+                throw std::invalid_argument("Rate final font exceeds the native logical pixel range");
+            }
+        }
+    }
+    const float scaled = largest * m.hover_scale;
     const double extent = (scaled + m.gap + m.focus_width * 2.0) * 1000;
-    if (smallest < .5F || m.hover_scale < 1 || scaled >= std::numeric_limits<long>::max() ||
-        scaled >= std::numeric_limits<std::uint32_t>::max() || !std::isfinite(extent) ||
-        extent >= std::numeric_limits<float>::max() ||
+    if (smallest < .5F || m.hover_scale < 1 || !std::isfinite(extent) || extent >= std::numeric_limits<float>::max() ||
         (m.font_family != SystemFontFamily::ui_sans && m.font_family != SystemFontFamily::ui_monospace)) {
         throw std::invalid_argument("Rate final typography or combined extents are invalid");
     }

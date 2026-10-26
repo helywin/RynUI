@@ -29,5 +29,6 @@ RateCharacter 只接受可复制的绘制值（String/IconSource），不会重�
 外部布局用 LayoutStyle；`ThemeConfig::rate.tokens` 控制 star/background、三种 star_size、gap、hover_scale、focus_width、font_family。
 锁定 Ant Design 6.6.5 的 starSize=controlHeight×.625、marginXS、yellow6、colorFillContent；默认 hover scale=1.1。
 所有最终字体至少 .5 logical dp，主题发布前验证独立 seed、继承与祖先组合，失败不发布部分快照。
+三种尺寸的 normal 与 hover 字号按实际 float 乘积和 Text 的取整方式校验，量化后的 logical pixels 不得超过 FontRuntime 的 `INT_MAX / 64` 上限。
 
 验证范围与精确命令见 change `090-20261026-add-native-rate` 的 evidence。HEADLESS 逻辑场景和合成原生事件不代表真实 GPU/原生窗口、Linux、系统 IME 或 AT 已验收。

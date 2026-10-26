@@ -42,3 +42,7 @@
 - `node $osc doctor --json`：当前隔离根 healthy=true；`node $osc validate --all --strict --no-interactive`：88 passed / 0 failed；`git diff --check` 与 `git diff --cached --check` 通过。
 
 交接范围：Rate API/model/host、Theme 全链、窗口服务注册和窗口层命中总 clip、CMake、5 份金样、Rate 专项测试和文档。未改 README、component-completion、Gallery、support overlay/generated catalog、renderer ABI 或 DateTime/Form reset hook。字符是纯文本/图标值，按 index 的函数在该项初建时生成；富原生内容通过只挂载一次的 TooltipTitle slot 提供。count 上限 1000，隐藏/缩减保留已建项以保持身份。真实 GPU、原生窗口、Linux、系统 IME/AT 以及父 main 集成/审查仍由父线程按其工作流处理。
+
+## 父合并前补正
+
+父线程随后发现 Rate 字号上限与 FontRuntime 不一致；原 `0190d4b1` 上已实际复现，最小补正及本次 Debug/Release 专项结果见 [font-limit-correction.md](font-limit-correction.md)。上述 9/9 是原首版源码的验收，本补正未重复该矩阵，也尚未接受独立 Astra 审查。

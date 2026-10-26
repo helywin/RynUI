@@ -14,3 +14,8 @@
 
 - [x] 3.1 在 Windows MSVC windows-msvc-headless Ninja Multi-Config、最多 2 jobs 完成上述 Debug/Release 定向 CTest，记录精确命令和数量；不运行历史 full suite 或长 Gallery。
 - [x] 3.2 完成 clang-format 22.1.3 check、OpenSpec 1.14 doctor/strict、git diff --check，保留 1 MiB 默认 PE 栈；中文证据记录 HEAD/worktree/边界并以本地英文阶段提交交付父 review。
+
+## 4. 平台通用：父合并前发现的字体上限补正
+
+- [x] 4.1 在 0190d4b1 的生产实现上复现大字号先发布后失败；按生产 float 乘积与 round 量化校验三尺寸 normal/hover，在 resolve/preflight 拒绝 FontRuntime 不接受的最终像素；新增直接、继承组合、通知原子性与有效恢复回归。
+- [x] 4.2 仅构建/执行此补正的 MSVC HEADLESS Debug/Release 定向测试，确认五份金样无变更，通过 format/explicit OpenSpec 1.14 doctor/strict/diff，保存英文 local commit 并交接；不声称已接受 Astra 独立审查。
