@@ -106,3 +106,30 @@ Theme/金样未修改，不重新生成。以 `tests/verify_auto_complete_theme_
 最终 clang-format 22.1.3 检查 743 owned 文件，0 failures；显式指定安装入口的 OpenSpec **1.14.0** doctor healthy、strict **90/90**，diff check 通过。README/completion/Gallery/support-overlay/generated catalog、Theme/金样、Avatar、Input/Form 实现及原 AC component/integration tests 相对 bca1 未改。没有 fetch/push/PR/archive/children，没有运行 ROOT 程序或写 ROOT/out。所有系统专属边界仍未验：native GPU、Linux、系统 IME、AT；本树结果等待父 fresh Astra R2 与 main 集成，不据此宣称 R2 CLEAN。
 
 [artifacts.log](evidence/windows/r1/artifacts.log) 记录最终 source commit、完整 branch/path、十个实际 PE 的 SHA256/栈、五份未改仓库金样与全部本轮原始证据文件的 SHA256；由同目录只读 `verify_artifacts.py` 在本树实际核验。该脚本同时拒绝保护路径改动及最终 source commit 之后的 src/include/tests/examples 变化。
+
+## Astra R2：异常交接与同帧焦点退出
+
+本轮从指定 clean HEAD `0c3ab536f4500a057ce81f84f7cd4d77887ea758` 继续，branch/path 未改变，未导入其它 WIP。被测 source commit `d481487a9531ef9f32420a28de11fefd28501304`（`fix(auto-complete): retire failed rows and track descendant focus`），其直接 parent 就是上述 0c3；后续证据提交只更新本 change 的 tasks/evidence。没有访问远端、fetch/push/PR/archive/children，没有写 ROOT 或运行 ROOT/out 程序。
+
+先仅新增两个独立 CTest 进程，在未修改原实现的 0c3 基线上 fresh MSVC Debug 构建并实际复现 **0/2**：
+
+- `auto_complete_r2_exceptions`：defaultOpen + 两项 options，首个 rich label 抛出，外层 Content 局部 catch 后挂 fallback；下一帧实际布局触发 MSVC `vector subscript out of range`，进程退出 `0xc0000409`。
+- `auto_complete_r2_focus`：首次布局后主 Input 未聚焦，连续 rich Input ref.focus()、外 Button ref.focus()，期间不布局；下一帧仍有建议，报告 `same-frame descendant exit retained suggestions`。
+
+原始 baseline build 为 `092-build-Debug-20261026-201917.log`，before 为 `092-R2-before-Debug.log`；最终 harness 随后扩展，原直接路径仍保留在两组测试开头。
+
+P1 修复在 AutoComplete 内使用局部成功交接守卫，覆盖创建完整 owner 后的 slots/bindings/首次协调，以及后续 reactive 行协调。异常自然向外传播，同时退役原完整 ComponentId；不增加 bounds 跳过，不保留半成品或永久 reconciling。WindowComponentServices 只增加内部失败清理入口：清理 Text/节点/所有 participant bookkeeping，抑制清理期间新增的边界/焦点观察交付，避免遮蔽原异常；正常 prepare 补协调祖先焦点取消。回调已删除原 owner 并创建同 ref 替代 generation 时，旧守卫只尝试旧完整 id。
+
+`exceptions` 共 17 个 fixture：原首帧布局路径；初始 LayoutStyle reader、options reader、filter、prefix/suffix、富槽 Prop 回显、第二项富槽、首次子 Select 边界异常；首次/后续 reactive 新增或替换富标签与同 ref 重绑的组合。验证异常类型/错误码/共享 payload 标识、fallback 的真实 focus/输入提交、原 owner 完整资源释放、后续 Signal 不触发已释放 observers、Theme subscriber_count 复原、session/ref/block 清理、旧 reset/session 不影响新 generation。没有把退役替代为异常吞错。
+
+P2 修复在 FocusManager 增加一个 WindowComponentServices 持有的内部 observer，在原生 focus/blur 通知完成后观察每次实际完整焦点 id 转移。AutoComplete 对整个逻辑后代（包含子 popup）退出请求关闭，主 Input 已交付的 blur 关闭不重复；不替换后代 handlers，也不重建身份。`focus` 共 12 个 fixture：原两次 ref.focus 路径，直接/嵌套 Popover × 外 Input/外 Button × uncontrolled/controlled 拒绝，及关闭回调销毁 owner/私有 Input/popup 并同 ref 重绑。验证内部转移不关闭、重复受控拒绝仍逐次发意图、原生回调次数和顺序、真实 popup hit eligibility、外部 focus_visible、完整 Input/editor/row 身份和无关 owner 不变。
+
+中间一次 Debug 集合为 30/31：错误地要求 `current_exception() == make_exception_ptr(...)`，在 MSVC 的 rethrow 复制行为下失败；未计作通过。改为验证同一异常类型、code 和共享 payload marker，保留原始诊断 `092-R2-exception-identity-diagnostic-Debug.log`。该修正只改 fixture，production source 未变；同时消除了新 fixture 的局部变量 shadow warning。最终验收源码再次 fresh 构建/链接后，各配置运行一次下列集合：**Debug 31/31，9.14 s；Release 31/31，4.47 s**，最多 2 jobs，配置间顺序执行。
+
+集合包含 AC 原 13 + R1 review 5（含 ab0 停止过期 refresh/open 回显）+ 新 R2 2 = 20；直接共享代表 11：portable Focus order/state/lifecycle 3、Input component/actions 2、Popover children/review_focus 2、TimePicker review_focus 1、DatePicker review_form_reset 1、Form component 1、portable Select component 1。没有将父已跑的 25/25 当作新路径的证据，没有重跑无关全矩阵或未变金样。
+
+全部原始文件按字节保存在 [r2/windows 证据目录](evidence/windows/r2/)。实际 targets/单层 regex/命令见 `092-r2-final.ps1`；共用的 `092-msvc.ps1` 仍为显式 VS MSVC 环境、正式 `windows-msvc-headless`/Ninja Multi-Config、build/CTest `--parallel 2`。最终 Debug production/shared build 为 `092-build-Debug-20261026-203855.log`，修正后 fixture fresh build 为 `092-build-Debug-20261026-204409.log`；Release production/fixture/shared build 为 `092-build-Release-20261026-204430.log`。最终测试为 `092-R2-final-test-{Debug,Release}.log`，现有自有/第三方 warnings 如实保留，未运行失败 build 后的旧 binary 计通过。
+
+clang-format 22.1.3 检查 **744** owned 文件，0 failures；显式安装入口 OpenSpec **1.14.0** doctor healthy、strict **90/90**，diff check 通过。12 个实际 AC test PE（model/theme/component/integration/review/r2 × Debug/Release）均 PE32+，默认 stack reserve **1048576**。Theme/五份旧 golden、原 R1 test、Avatar、Input/Form/DateTime/Popover/Select 实现及 renderer/GPU ABI/README/Gallery/全局完成记录相对 0c3 无 diff；没有重新生成金样。哈希和保护路径/source blob 检查见 [artifacts.log](evidence/windows/r2/artifacts.log)。
+
+此轮交付范围仅为上述两项合同缺口的本树实现与 headless 证据。未声称 main/Gallery/native GPU/Linux/system IME/AT 通过；保持首版范围和既有排除项，clean 本地交接后停待父 fresh 独立 Astra R3。
