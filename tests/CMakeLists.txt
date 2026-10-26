@@ -1,6 +1,13 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+foreach(auto_complete_case IN ITEMS model theme)
+    add_executable(rynui_auto_complete_${auto_complete_case}_tests auto_complete_${auto_complete_case}_tests.cpp)
+    rynui_configure_cpp_target(rynui_auto_complete_${auto_complete_case}_tests)
+    target_link_libraries(rynui_auto_complete_${auto_complete_case}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.auto_complete_${auto_complete_case} COMMAND rynui_auto_complete_${auto_complete_case}_tests)
+endforeach()
+
 add_executable(rynui_avatar_theme_tests avatar_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_avatar_theme_tests)
 target_link_libraries(rynui_avatar_theme_tests PRIVATE rynui_components)

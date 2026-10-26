@@ -607,6 +607,17 @@ struct SelectThemeConfig final {
     friend bool operator==(const SelectThemeConfig&, const SelectThemeConfig&) = default;
 };
 
+// AutoComplete shares the locked Select visual recipe, with independent configuration and subscriptions.
+using AutoCompleteThemeToken = SelectThemeToken;
+using AutoCompleteTokenOverride = SelectTokenOverride;
+
+struct AutoCompleteThemeConfig final {
+    AutoCompleteTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const AutoCompleteThemeConfig&, const AutoCompleteThemeConfig&) = default;
+};
+
 struct CardColorToken final {
     Color background;
     Color header_background;
@@ -1649,6 +1660,7 @@ struct ThemeConfig final {
     SkeletonThemeConfig skeleton;
     TimelineThemeConfig timeline;
     AvatarThemeConfig avatar;
+    AutoCompleteThemeConfig auto_complete;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -2297,6 +2309,10 @@ public:
         return *avatar_;
     }
 
+    [[nodiscard]] const AutoCompleteThemeToken& auto_complete() const noexcept {
+        return *auto_complete_;
+    }
+
 private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
@@ -2317,7 +2333,8 @@ private:
                   std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
                   std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
                   std::shared_ptr<const NoticeThemeToken> notification,
-                  std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar);
+                  std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
+                  std::shared_ptr<const AutoCompleteThemeToken> auto_complete);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2343,6 +2360,7 @@ private:
     std::shared_ptr<const SkeletonThemeToken> skeleton_;
     std::shared_ptr<const TimelineThemeToken> timeline_;
     std::shared_ptr<const AvatarThemeToken> avatar_;
+    std::shared_ptr<const AutoCompleteThemeToken> auto_complete_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;

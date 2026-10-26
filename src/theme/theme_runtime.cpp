@@ -324,6 +324,16 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       count);
     append_if_changed(before.avatar().colors, after.avatar().colors, TokenIdentity::avatar_colors, changed, count);
     append_if_changed(before.avatar().metrics, after.avatar().metrics, TokenIdentity::avatar_metrics, changed, count);
+    append_if_changed(before.auto_complete().colors, after.auto_complete().colors, TokenIdentity::auto_complete_colors,
+                      changed, count);
+    append_if_changed(before.auto_complete().metrics, after.auto_complete().metrics,
+                      TokenIdentity::auto_complete_metrics, changed, count);
+    append_if_changed(before.auto_complete().typography, after.auto_complete().typography,
+                      TokenIdentity::auto_complete_typography, changed, count);
+    append_if_changed(before.auto_complete().shadow, after.auto_complete().shadow, TokenIdentity::auto_complete_effects,
+                      changed, count);
+    append_if_changed(before.auto_complete().z_index_popup, after.auto_complete().z_index_popup,
+                      TokenIdentity::auto_complete_order, changed, count);
     append_if_changed(before.steps().colors, after.steps().colors, TokenIdentity::steps_colors, changed, count);
     append_if_changed(before.steps().metrics, after.steps().metrics, TokenIdentity::steps_metrics, changed, count);
     append_if_changed(before.steps().effects, after.steps().effects, TokenIdentity::steps_effects, changed, count);
@@ -1499,6 +1509,36 @@ const AvatarThemeToken& ThemeScope::avatar_metrics() const {
     return snapshot_->avatar();
 }
 
+const AutoCompleteThemeToken& ThemeScope::auto_complete_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::auto_complete_colors);
+    return snapshot_->auto_complete();
+}
+
+const AutoCompleteThemeToken& ThemeScope::auto_complete_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::auto_complete_metrics);
+    return snapshot_->auto_complete();
+}
+
+const AutoCompleteThemeToken& ThemeScope::auto_complete_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::auto_complete_typography);
+    return snapshot_->auto_complete();
+}
+
+const AutoCompleteThemeToken& ThemeScope::auto_complete_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::auto_complete_effects);
+    return snapshot_->auto_complete();
+}
+
+const AutoCompleteThemeToken& ThemeScope::auto_complete_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::auto_complete_order);
+    return snapshot_->auto_complete();
+}
+
 const DescriptionsThemeToken& ThemeScope::descriptions_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::descriptions_colors);
@@ -1968,6 +2008,11 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Timeline.metrics",
         "Avatar.colors",
         "Avatar.metrics",
+        "AutoComplete.colors",
+        "AutoComplete.metrics",
+        "AutoComplete.typography",
+        "AutoComplete.effects",
+        "AutoComplete.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2059,6 +2104,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::descriptions_colors:
     case TokenIdentity::timeline_colors:
     case TokenIdentity::avatar_colors:
+    case TokenIdentity::auto_complete_colors:
+    case TokenIdentity::auto_complete_effects:
     case TokenIdentity::breadcrumb_colors:
     case TokenIdentity::steps_colors:
     case TokenIdentity::modal_colors:
@@ -2142,6 +2189,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::descriptions_metrics:
     case TokenIdentity::timeline_metrics:
     case TokenIdentity::avatar_metrics:
+    case TokenIdentity::auto_complete_typography:
     case TokenIdentity::breadcrumb_metrics:
     case TokenIdentity::steps_metrics:
     case TokenIdentity::alert_metrics:
@@ -2164,6 +2212,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::menu_metrics:
     case TokenIdentity::dropdown_metrics:
     case TokenIdentity::select_metrics:
+    case TokenIdentity::auto_complete_metrics:
     case TokenIdentity::card_metrics:
     case TokenIdentity::tabs_metrics:
     case TokenIdentity::collapse_metrics:
@@ -2193,6 +2242,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_motion_enabled:
         return DirtyPhase::animation;
     case TokenIdentity::modal_order:
+    case TokenIdentity::auto_complete_order:
     case TokenIdentity::drawer_order:
     case TokenIdentity::popconfirm_order:
         return DirtyPhase::paint_material | DirtyPhase::hit_test;

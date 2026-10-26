@@ -120,6 +120,11 @@ public:
     [[nodiscard]] const TimelineThemeToken& timeline_metrics() const;
     [[nodiscard]] const AvatarThemeToken& avatar_colors() const;
     [[nodiscard]] const AvatarThemeToken& avatar_metrics() const;
+    [[nodiscard]] const AutoCompleteThemeToken& auto_complete_colors() const;
+    [[nodiscard]] const AutoCompleteThemeToken& auto_complete_metrics() const;
+    [[nodiscard]] const AutoCompleteThemeToken& auto_complete_typography() const;
+    [[nodiscard]] const AutoCompleteThemeToken& auto_complete_effects() const;
+    [[nodiscard]] const AutoCompleteThemeToken& auto_complete_order() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_colors() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_metrics() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_effects() const;

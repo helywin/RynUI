@@ -6,7 +6,7 @@
 
 ## 2. 模型与主题（平台通用）
 
-- [ ] 2.1 干净阶段合并父指定 6118f67728aede9985867377b122274ac86f31d7；实现 typed API/model 与完整追加 Theme 合同，交付对应 API/Theme 文档；以本树 windows-msvc-headless Debug/Release 模型与主题测试、五个 fresh goldens、旧 typed leaves/IIFE/ordinal 核对验证后本地提交。
+- [x] 2.1 干净阶段合并父指定 6118f67728aede9985867377b122274ac86f31d7；实现 typed API/model 与完整追加 Theme 合同，交付对应 API/Theme 文档；以本树 windows-msvc-headless Debug/Release 模型与主题测试、五个 fresh goldens、旧 typed leaves/IIFE/ordinal 核对验证后本地提交。
 
 ## 3. 原生编辑与建议（平台通用）
 
