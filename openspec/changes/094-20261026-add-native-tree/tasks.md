@@ -35,3 +35,8 @@
 - [x] 7.2 仅修复 Tree 自身沿逻辑祖先的 wheel handoff；验证无 range、上下边界、自身 range、不同 owner 和 child/foreign popup 边界。
 - [x] 7.3 MSVC HEADLESS Debug/Release 定向新回归、旧 R1 四项及直接代表，最多 2 jobs；format/显式 1.14 doctor/strict/diff；本地提交后保存未解决共享依赖的准确 checkpoint，不宣称 R2 整体通过。
 - [ ] 7.4 等父提供已验证的独立共享异常退役 SHA 后，显式集成并验证 focused Input onBlur 抛出时原异常、完整释放及替代 generation 隔离；未获得共享修复前保持未完成，不改写第二套 shared cleanup。
+
+## 8. 已审共享基线集成与 Tree Astra R3 交接
+
+- [x] 8.1 从 2fd96f6209e817e892f7684c7eae6891ee576d10 显式 merge 已审 ad779c595a63a39d05aa787d38dccda1fcaea9c7，保留双亲；Tree IIFE/ordinal 前缀保持、AC 尾追加，双方五 golden 旧 typed 值与两套真实组合 exporter 比对通过；不引入 095 或其他未审源码。
+- [ ] 8.2 对最终 Tree 全部核心/review 与 AC/shared quiet/focus/popup 直接代表执行 fresh MSVC HEADLESS Debug/Release 定向集合（每配置一次、最多 2 jobs）；核对去重计数、format 22.1.3、显式 OpenSpec 1.14 doctor/strict、diff、组合 Theme 与默认 1MiB PE；提交完整证据并交接 clean HEAD/parents，停待 fresh Tree Astra R3。

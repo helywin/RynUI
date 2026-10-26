@@ -2,6 +2,7 @@
 #include "component/select_model.hpp"
 #include "component/input_component.hpp"
 #include "component/input_affix_action.hpp"
+#include "component/popover_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
@@ -796,80 +797,101 @@ bool SelectComponentHost::on_scroll_input(const input::ScrollInputEvent& event) 
     return false;
 }
 
-void SelectComponentHost::position_window_layers(runtime::Size, runtime::Rect clip) {
-    for (auto id : mounted_) {
-        auto* s = services_->components().state<SelectState>(id);
-        if (!s) {
-            continue;
-        }
-        if (!services_->interactions().component_active(id)) {
-            refresh(id, false);
-        }
-        if (!s->visible) {
-            continue;
-        }
-        const auto& token = services_->components().theme_scope(id)->snapshot().select();
-        const auto& metrics = token.metrics;
-        auto anchor = services_->nodes().require(s->node).bounds;
-        const auto translation = services_->nodes().require(s->node).translation;
-        anchor.x += translation.x;
-        anchor.y += translation.y;
-        const auto popup_node = services_->components().root(s->popup);
-        if (!s->needs_layout && s->layout_anchor == anchor && s->layout_clip == clip &&
-            services_->nodes().require(popup_node).measure_generation == services_->layout().generation()) {
-            continue;
-        }
-        const auto filtered = s->model.filtered();
-        const float content = static_cast<float>(std::max<std::size_t>(1, filtered.size())) * metrics.option_height;
-        const float wanted = std::min(s->list_height, content) + metrics.popup_padding * 2;
-        const float below =
-            std::clamp(clip.y + clip.height - anchor.y - anchor.height - metrics.gap, 0.0F, clip.height);
-        const float above = std::clamp(anchor.y - metrics.gap - clip.y, 0.0F, clip.height);
-        s->above = below < wanted && above > below;
-        const float height = std::min(wanted, s->above ? above : below);
-        const float width = std::min(anchor.width, clip.width);
-        s->popup_bounds = {
-            std::clamp(anchor.x, clip.x, clip.x + clip.width - width),
-            std::clamp(s->above ? anchor.y - metrics.gap - height : anchor.y + anchor.height + metrics.gap, clip.y,
-                       clip.y + clip.height - height),
-            width, height};
-        const float available = std::max(0.0F, height - metrics.popup_padding * 2);
-        s->scroll = std::clamp(s->scroll, 0.0F, std::max(0.0F, content - available));
-        if (s->reveal_active && s->model.active()) {
-            const auto it = std::ranges::find(filtered, *s->model.active());
-            if (it != filtered.end()) {
-                const float top = static_cast<float>(it - filtered.begin()) * metrics.option_height;
-                s->scroll = available < metrics.option_height
-                                ? top
-                                : std::clamp(s->scroll, std::max(0.0F, top + metrics.option_height - available), top);
-            }
-        }
-        s->reveal_active = false;
-        auto& engine = services_->layout();
-        static_cast<void>(engine.measure_child(popup_node, layout::Constraints::fixed(width, height)));
-        engine.place_child(popup_node, s->popup_bounds);
-        const float inset = std::min(metrics.popup_padding, std::min(width, height) / 2);
-        const runtime::Rect menu{s->popup_bounds.x + inset, s->popup_bounds.y + inset,
-                                 std::max(0.0F, width - inset * 2), std::max(0.0F, height - inset * 2)};
-        const auto list_node = services_->components().root(s->list);
-        static_cast<void>(engine.measure_child(list_node, layout::Constraints::fixed(menu.width, menu.height)));
-        engine.place_child(list_node, menu);
-        float y = s->popup_bounds.y + metrics.popup_padding - s->scroll;
-        for (std::size_t i = 0; i < (filtered.empty() ? 1 : filtered.size()); ++i) {
-            const auto row_id = s->rows[filtered.empty() ? s->rows.size() - 1 : filtered[i]];
-            auto* row = services_->components().state<SelectRow>(row_id);
-            const float padding = std::min(metrics.option_padding_inline, menu.width / 2);
-            engine.set_layout(row->node, layout::BoxLayout{{padding, metrics.option_padding_block, padding,
-                                                            metrics.option_padding_block}});
-            static_cast<void>(engine.measure_child(
-                row->node, {menu.width, menu.width, metrics.option_height, metrics.option_height}));
-            engine.place_child(row->node, {menu.x, y, menu.width, metrics.option_height});
-            y += metrics.option_height;
-        }
-        s->needs_layout = false;
-        s->layout_anchor = anchor;
-        s->layout_clip = clip;
+void SelectComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect clip) {
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        position_window_layer(id, viewport, clip);
     }
+}
+
+void SelectComponentHost::position_window_layer(runtime::ComponentId id, runtime::Size viewport, runtime::Rect clip) {
+    if (std::ranges::find(positioning_, id) != positioning_.end()) {
+        return;
+    }
+    positioning_.push_back(id);
+
+    struct PositionGuard final {
+        std::vector<runtime::ComponentId>& stack;
+
+        ~PositionGuard() {
+            stack.pop_back();
+        }
+    } guard{positioning_};
+
+    services_->popover().position_ancestors(id, viewport, clip);
+    auto* s = services_->components().state<SelectState>(id);
+    if (!s) {
+        return;
+    }
+    if (!services_->interactions().component_active(id)) {
+        refresh(id, false);
+        s = services_->components().state<SelectState>(id);
+        if (!s) {
+            return;
+        }
+    }
+    if (!s->visible) {
+        return;
+    }
+    const auto& token = services_->components().theme_scope(id)->snapshot().select();
+    const auto& metrics = token.metrics;
+    auto anchor = services_->nodes().require(s->node).bounds;
+    const auto translation = services_->nodes().require(s->node).translation;
+    anchor.x += translation.x;
+    anchor.y += translation.y;
+    const auto popup_node = services_->components().root(s->popup);
+    if (!s->needs_layout && s->layout_anchor == anchor && s->layout_clip == clip &&
+        services_->nodes().require(popup_node).measure_generation == services_->layout().generation()) {
+        return;
+    }
+    const auto filtered = s->model.filtered();
+    const float content = static_cast<float>(std::max<std::size_t>(1, filtered.size())) * metrics.option_height;
+    const float wanted = std::min(s->list_height, content) + metrics.popup_padding * 2;
+    const float below = std::clamp(clip.y + clip.height - anchor.y - anchor.height - metrics.gap, 0.0F, clip.height);
+    const float above = std::clamp(anchor.y - metrics.gap - clip.y, 0.0F, clip.height);
+    s->above = below < wanted && above > below;
+    const float height = std::min(wanted, s->above ? above : below);
+    const float width = std::min(anchor.width, clip.width);
+    s->popup_bounds = {std::clamp(anchor.x, clip.x, clip.x + clip.width - width),
+                       std::clamp(s->above ? anchor.y - metrics.gap - height : anchor.y + anchor.height + metrics.gap,
+                                  clip.y, clip.y + clip.height - height),
+                       width, height};
+    const float available = std::max(0.0F, height - metrics.popup_padding * 2);
+    s->scroll = std::clamp(s->scroll, 0.0F, std::max(0.0F, content - available));
+    if (s->reveal_active && s->model.active()) {
+        const auto it = std::ranges::find(filtered, *s->model.active());
+        if (it != filtered.end()) {
+            const float top = static_cast<float>(it - filtered.begin()) * metrics.option_height;
+            s->scroll = available < metrics.option_height
+                            ? top
+                            : std::clamp(s->scroll, std::max(0.0F, top + metrics.option_height - available), top);
+        }
+    }
+    s->reveal_active = false;
+    auto& engine = services_->layout();
+    static_cast<void>(engine.measure_child(popup_node, layout::Constraints::fixed(width, height)));
+    engine.place_child(popup_node, s->popup_bounds);
+    const float inset = std::min(metrics.popup_padding, std::min(width, height) / 2);
+    const runtime::Rect menu{s->popup_bounds.x + inset, s->popup_bounds.y + inset, std::max(0.0F, width - inset * 2),
+                             std::max(0.0F, height - inset * 2)};
+    const auto list_node = services_->components().root(s->list);
+    static_cast<void>(engine.measure_child(list_node, layout::Constraints::fixed(menu.width, menu.height)));
+    engine.place_child(list_node, menu);
+    float y = s->popup_bounds.y + metrics.popup_padding - s->scroll;
+    for (std::size_t i = 0; i < (filtered.empty() ? 1 : filtered.size()); ++i) {
+        const auto row_id = s->rows[filtered.empty() ? s->rows.size() - 1 : filtered[i]];
+        auto* row = services_->components().state<SelectRow>(row_id);
+        const float padding = std::min(metrics.option_padding_inline, menu.width / 2);
+        engine.set_layout(row->node, layout::BoxLayout{{padding, metrics.option_padding_block, padding,
+                                                        metrics.option_padding_block}});
+        static_cast<void>(
+            engine.measure_child(row->node, {menu.width, menu.width, metrics.option_height, metrics.option_height}));
+        engine.place_child(row->node, {menu.x, y, menu.width, metrics.option_height});
+        y += metrics.option_height;
+    }
+    s->needs_layout = false;
+    s->layout_anchor = anchor;
+    s->layout_clip = clip;
 }
 
 void SelectComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect) {

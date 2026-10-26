@@ -76,6 +76,6 @@ struct LayoutStyleAccess final {
 namespace ryn::runtime {
 
 void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, NodeStore& nodes, DirtyQueues& dirty,
-                          std::function<bool()> owner_valid = {});
+                          std::function<bool()> guard = {});
 
 } // namespace ryn::runtime

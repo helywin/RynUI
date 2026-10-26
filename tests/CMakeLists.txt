@@ -40,6 +40,70 @@ add_executable(rynui_tree_theme_tests tree_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_tree_theme_tests)
 target_link_libraries(rynui_tree_theme_tests PRIVATE rynui_components)
 add_test(NAME rynui.tree_theme COMMAND rynui_tree_theme_tests)
+add_executable(rynui_component_failure_retirement_tests component_failure_retirement_tests.cpp)
+rynui_configure_cpp_target(rynui_component_failure_retirement_tests)
+target_link_libraries(rynui_component_failure_retirement_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_component_failure_retirement_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.component_failure_retirement COMMAND rynui_component_failure_retirement_tests)
+
+foreach(auto_complete_case IN ITEMS model theme)
+    add_executable(rynui_auto_complete_${auto_complete_case}_tests auto_complete_${auto_complete_case}_tests.cpp)
+    rynui_configure_cpp_target(rynui_auto_complete_${auto_complete_case}_tests)
+    target_link_libraries(rynui_auto_complete_${auto_complete_case}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.auto_complete_${auto_complete_case} COMMAND rynui_auto_complete_${auto_complete_case}_tests)
+endforeach()
+
+add_executable(rynui_auto_complete_component_tests auto_complete_component_tests.cpp)
+rynui_configure_cpp_target(rynui_auto_complete_component_tests)
+target_link_libraries(rynui_auto_complete_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_auto_complete_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(auto_complete_case IN ITEMS flow controlled retention form example)
+    add_test(NAME rynui.auto_complete_${auto_complete_case} COMMAND rynui_auto_complete_component_tests ${auto_complete_case})
+endforeach()
+
+add_executable(rynui_auto_complete_integration_tests auto_complete_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_auto_complete_integration_tests)
+target_link_libraries(rynui_auto_complete_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_auto_complete_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(auto_complete_case IN ITEMS clips children boundaries lifetime idle theme_runtime)
+    add_test(NAME rynui.auto_complete_${auto_complete_case} COMMAND rynui_auto_complete_integration_tests ${auto_complete_case})
+endforeach()
+
+add_executable(rynui_auto_complete_review_tests auto_complete_review_tests.cpp)
+rynui_configure_cpp_target(rynui_auto_complete_review_tests)
+target_link_libraries(rynui_auto_complete_review_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_auto_complete_review_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(auto_complete_case IN ITEMS mount tab zero anchor modality)
+    add_test(NAME rynui.auto_complete_review_${auto_complete_case} COMMAND rynui_auto_complete_review_tests ${auto_complete_case})
+endforeach()
+
+add_executable(rynui_auto_complete_r2_tests auto_complete_r2_tests.cpp)
+rynui_configure_cpp_target(rynui_auto_complete_r2_tests)
+target_link_libraries(rynui_auto_complete_r2_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_auto_complete_r2_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(auto_complete_case IN ITEMS exceptions focus)
+    add_test(NAME rynui.auto_complete_r2_${auto_complete_case} COMMAND rynui_auto_complete_r2_tests ${auto_complete_case})
+endforeach()
+
+add_executable(rynui_auto_complete_r3_tests auto_complete_r3_tests.cpp)
+rynui_configure_cpp_target(rynui_auto_complete_r3_tests)
+target_link_libraries(rynui_auto_complete_r3_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_auto_complete_r3_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(auto_complete_case IN ITEMS teardown blur_throw restore)
+    add_test(NAME rynui.auto_complete_r3_${auto_complete_case} COMMAND rynui_auto_complete_r3_tests ${auto_complete_case})
+endforeach()
 
 add_executable(rynui_avatar_theme_tests avatar_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_avatar_theme_tests)

@@ -608,6 +608,17 @@ struct SelectThemeConfig final {
     friend bool operator==(const SelectThemeConfig&, const SelectThemeConfig&) = default;
 };
 
+// AutoComplete shares the locked Select visual recipe, with independent configuration and subscriptions.
+using AutoCompleteThemeToken = SelectThemeToken;
+using AutoCompleteTokenOverride = SelectTokenOverride;
+
+struct AutoCompleteThemeConfig final {
+    AutoCompleteTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const AutoCompleteThemeConfig&, const AutoCompleteThemeConfig&) = default;
+};
+
 struct CardColorToken final {
     Color background;
     Color header_background;
@@ -1658,6 +1669,7 @@ struct ThemeConfig final {
     TimelineThemeConfig timeline;
     AvatarThemeConfig avatar;
     TreeThemeConfig tree;
+    AutoCompleteThemeConfig auto_complete;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -2310,28 +2322,30 @@ public:
         return *tree_;
     }
 
+    [[nodiscard]] const AutoCompleteThemeToken& auto_complete() const noexcept {
+        return *auto_complete_;
+    }
+
 private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
 
-    ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
-                  TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
-                  RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
-                  SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
-                  TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
-                  MenuThemeToken menu, DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
-                  AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
-                  InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-                  CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                  ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
-                  BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
-                  std::shared_ptr<const TimePickerThemeToken> time_picker,
-                  std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
-                  std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
-                  std::shared_ptr<const NoticeThemeToken> notification,
-                  std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
-                  std::shared_ptr<const TreeThemeToken> tree);
+    ThemeSnapshot(
+        AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
+        TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox, RadioThemeToken radio,
+        TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
+        SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
+        DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu, DropdownThemeToken dropdown,
+        std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag,
+        BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
+        InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
+        CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result,
+        DatePickerThemeToken date_picker, FormThemeToken form, BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
+        std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
+        DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
+        std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
+        std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
+        std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2358,6 +2372,7 @@ private:
     std::shared_ptr<const TimelineThemeToken> timeline_;
     std::shared_ptr<const AvatarThemeToken> avatar_;
     std::shared_ptr<const TreeThemeToken> tree_;
+    std::shared_ptr<const AutoCompleteThemeToken> auto_complete_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;

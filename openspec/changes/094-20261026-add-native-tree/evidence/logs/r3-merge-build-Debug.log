@@ -1,0 +1,124 @@
+[0/2] Re-checking globbed directories...
+cmake.exe : -- GLOB mismatch!
+所在位置 C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\tree-build.ps1:32 字符: 5
++     & cmake @buildArgs 2>&1 | Tee-Object "out/tree-logs/build-$Config ...
++     ~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (-- GLOB mismatch!:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+The following files were added:
+  +C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/include/ryn/auto_complete.hpp
+-- GLOB mismatch!
+The following files were added:
+  +C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/src/component/auto_complete_component.cpp
+  +C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/src/component/auto_complete_model.cpp
+-- GLOB mismatch!
+The following files were added:
+  +C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/src/component/auto_complete_component.hpp
+  +C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/src/component/auto_complete_model.hpp
+[1/2] Re-running CMake...
+-- Resolving FreeType 2.14.3 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_FREETYPE.
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE) 
+-- Resolving HarfBuzz 14.3.1 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_HARFBUZZ.
+CMake Warning at D:/code/RynUI/out/build/windows-msvc-headless/_deps/rynui_harfbuzz-src/CMakeLists.txt:4 (message):
+  The main build system for HarfBuzz is Meson.  CMake build support is
+  community-maintained and is not actively supported by HarfBuzz developers.
+
+
+-- Found Python3: C:/Users/jiang/AppData/Local/Programs/Python/Python310/python3.exe (found version "3.10.11") found components: Interpreter
+Building introspection files on Windows requires BUILD_SHARED_LIBS to be enabled.
+-- Found Python3: C:/Users/jiang/AppData/Local/Programs/Python/Python310/python3.exe (found suitable version "3.10.11", minimum required is "3.10") found components: Interpreter
+-- Configuring done (3.9s)
+-- Generating done (1.7s)
+-- Build files have been written to: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless
+[0/4] Re-checking globbed directories...
+[1/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\input_tokens.cpp.obj
+[2/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\theme_runtime.cpp.obj
+[3/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\segmented_theme.cpp.obj
+[4/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\theme_snapshot.cpp.obj
+[5/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\date_picker_theme.cpp.obj
+[6/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\form_theme.cpp.obj
+[7/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\breadcrumb_theme.cpp.obj
+[8/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\steps_theme.cpp.obj
+[9/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\time_picker_theme.cpp.obj
+[10/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\skeleton_theme.cpp.obj
+[11/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\descriptions_theme.cpp.obj
+[12/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\popover_theme.cpp.obj
+[13/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\notice_theme.cpp.obj
+[14/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\timeline_theme.cpp.obj
+[15/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\avatar_theme.cpp.obj
+[16/88] Building CXX object src\CMakeFiles\rynui_theme.dir\Debug\theme\tree_theme.cpp.obj
+[17/88] Linking CXX static library src\Debug\rynui_theme.lib
+[18/88] Building CXX object src\CMakeFiles\rynui_runtime.dir\Debug\runtime\component_host.cpp.obj
+[19/88] Building CXX object src\CMakeFiles\rynui_runtime.dir\Debug\runtime\invalidation.cpp.obj
+[20/88] Building CXX object src\CMakeFiles\rynui_graphics.dir\Debug\graphics\quad_scene.cpp.obj
+[21/88] Building CXX object src\CMakeFiles\rynui_runtime.dir\Debug\runtime\layout_style_adapter.cpp.obj
+[22/88] Linking CXX static library src\Debug\rynui_runtime.lib
+[23/88] Building CXX object src\CMakeFiles\rynui_motion.dir\Debug\animation\motion_policy.cpp.obj
+[24/88] Building CXX object src\CMakeFiles\rynui_interaction.dir\Debug\input\focus_manager.cpp.obj
+[25/88] Building CXX object src\CMakeFiles\rynui_interaction.dir\Debug\input\interaction_registry.cpp.obj
+[26/88] Linking CXX static library src\Debug\rynui_graphics.lib
+[27/88] Linking CXX static library src\Debug\rynui_motion.lib
+[28/88] Building CXX object src\CMakeFiles\rynui_interaction.dir\Debug\input\pointer_router.cpp.obj
+[29/88] Linking CXX static library src\Debug\rynui_interaction.lib
+[30/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\descriptions_component.cpp.obj
+[31/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\date_picker_component.cpp.obj
+[32/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\timeline_component.cpp.obj
+[33/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\avatar_component.cpp.obj
+[34/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\tree_component.cpp.obj
+[35/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\form_component.cpp.obj
+[36/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\feedback_component.cpp.obj
+[37/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\tag_badge_component.cpp.obj
+[38/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\button_component.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\button_component.cpp(1775): warning C4834: discarding return value of function with [[nodiscard]] attribute
+[39/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\window_component_services.cpp.obj
+[40/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\input_component.cpp.obj
+[41/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\input_number_actions.cpp.obj
+[42/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\auto_complete_model.cpp.obj
+[43/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\input_affix_action.cpp.obj
+[44/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\auto_complete_component.cpp.obj
+[45/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\select_component.cpp.obj
+[46/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\menu_component.cpp.obj
+[47/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\time_picker_component.cpp.obj
+[48/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\card_component.cpp.obj
+[49/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\dropdown_component.cpp.obj
+[50/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\skeleton_component.cpp.obj
+[51/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\empty_result_component.cpp.obj
+[52/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\notice_model.cpp.obj
+[53/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\notice_component.cpp.obj
+[54/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\modal_component.cpp.obj
+[55/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\tabs_component.cpp.obj
+[56/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\pagination_component.cpp.obj
+[57/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\table_component.cpp.obj
+[58/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\collapse_component.cpp.obj
+[59/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\segmented_component.cpp.obj
+[60/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\breadcrumb_component.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\breadcrumb_component.cpp(436): warning C4456: declaration of 'w' hides previous local declaration
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\breadcrumb_component.cpp(431): note: see declaration of 'w'
+[61/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\steps_component.cpp.obj
+[62/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\otp_component.cpp.obj
+[63/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\selection_component.cpp.obj
+[64/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\slider_component.cpp.obj
+[65/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\tooltip_component.cpp.obj
+[66/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\popconfirm_component.cpp.obj
+[67/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\popover_component.cpp.obj
+[68/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\search_component.cpp.obj
+[69/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\retained_surface_service.cpp.obj
+[70/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\default_theme.cpp.obj
+[71/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\component_scene.cpp.obj
+[72/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\layout_component_context.cpp.obj
+[73/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\flex_component.cpp.obj
+[74/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\space_component.cpp.obj
+[75/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\space_compact.cpp.obj
+[76/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\space_addon.cpp.obj
+[77/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\text_component.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\text_component.cpp(882): warning C4100: 'viewport': unreferenced parameter
+[78/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\typography_component.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\typography_component.cpp(820): warning C4189: 'theme': local variable is initialized but not referenced
+[79/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\theme_component.cpp.obj
+[80/88] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\divider_component.cpp.obj
+[81/88] Linking CXX static library src\Debug\rynui_components.lib
+[82/88] Building CXX object tests\CMakeFiles\rynui_tree_theme_tests.dir\Debug\tree_theme_tests.cpp.obj
+[83/88] Linking CXX executable tests\Debug\rynui_tree_theme_tests.exe
+[84/88] Building CXX object tests\CMakeFiles\rynui_auto_complete_theme_tests.dir\Debug\auto_complete_theme_tests.cpp.obj
+[85/88] Linking CXX executable tests\Debug\rynui_auto_complete_theme_tests.exe

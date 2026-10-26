@@ -271,51 +271,55 @@ constexpr FieldBinding fields[] = {
 } // namespace
 
 void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, NodeStore& nodes, DirtyQueues& dirty,
-                          std::function<bool()> owner_valid) {
-    if (!scope.active()) {
+                          std::function<bool()> guard) {
+    const auto valid = [&nodes, node, guard] {
+        return nodes.find(node) && (!guard || guard());
+    };
+    const auto alive = [&] {
+        return valid() && scope.active();
+    };
+    if (!alive()) {
         return;
     }
 
-    const auto valid = [&nodes, node, owner_valid] {
-        return nodes.find(node) && (!owner_valid || owner_valid());
-    };
     ExternalLayoutStyle initial;
     for (const auto& field : fields) {
         const auto& prop = field.member(style);
         if (prop.has_value()) {
-            set_field(initial, field.field, detail::read_prop(*prop));
-            if (!valid()) {
+            const auto value = detail::read_prop(*prop);
+            if (!alive()) {
                 return;
             }
+            set_field(initial, field.field, value);
         }
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_grow(style)) {
         initial.flex_grow = detail::read_prop(*prop);
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_shrink(style)) {
         initial.flex_shrink = detail::read_prop(*prop);
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_basis(style)) {
         initial.flex_basis = optional_length(detail::read_prop(*prop));
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
     if (const auto& prop = detail::LayoutStyleAccess::align_self(style)) {
         initial.align_self = flex_item_align(detail::read_prop(*prop));
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
     if (const auto& prop = detail::LayoutStyleAccess::order(style)) {
         initial.order = detail::read_prop(*prop);
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
@@ -334,7 +338,7 @@ void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, N
                     static_cast<void>(writer.set(node, current_field, value));
                 }
             }));
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
@@ -345,7 +349,7 @@ void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, N
                 static_cast<void>(writer.set_flex_grow(node, value));
             }
         }));
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
@@ -355,7 +359,7 @@ void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, N
                 static_cast<void>(writer.set_flex_shrink(node, value));
             }
         }));
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
@@ -365,7 +369,7 @@ void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, N
                 static_cast<void>(writer.set_flex_basis(node, value));
             }
         }));
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }
@@ -375,7 +379,7 @@ void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, N
                 static_cast<void>(writer.set_align_self(node, value));
             }
         }));
-        if (!valid()) {
+        if (!alive()) {
             return;
         }
     }

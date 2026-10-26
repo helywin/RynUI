@@ -6,6 +6,7 @@
 #include "component/tooltip_component.hpp"
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
+#include "component/auto_complete_component.hpp"
 #include "component/date_picker_component.hpp"
 #include "component/time_picker_component.hpp"
 #include "component/card_component.hpp"
@@ -121,6 +122,12 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);
+    auto_complete_ = std::make_unique<AutoCompleteComponentHost>(*this);
+    focus_.set_observer([this] {
+        if (!retiring_failed_component_) {
+            auto_complete_->on_focus_changed();
+        }
+    });
     card_ = std::make_unique<CardComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
     collapse_ = std::make_unique<CollapseComponentHost>(*this);
@@ -333,6 +340,44 @@ bool WindowComponentServices::destroy(runtime::ComponentId id) {
     return true;
 }
 
+bool WindowComponentServices::retire_failed_component(runtime::ComponentId id) noexcept {
+    struct Restore final {
+        bool& target;
+        bool previous;
+
+        ~Restore() {
+            target = previous;
+        }
+    } restore{retiring_failed_component_, std::exchange(retiring_failed_component_, true)};
+
+    // Drain the old subtree's event sources before resource destructors can cancel them again.
+    // This reuses the dispatchers' non-delivering cancellation branch, including hover/capture.
+    for (auto interaction : interactions_.declaration_order()) {
+        const auto* record = interactions_.find(interaction);
+        if (!record) {
+            continue;
+        }
+        for (auto owner = std::optional{record->component}; owner && components().contains(*owner);
+             owner = components().parent(*owner)) {
+            if (*owner == id) {
+                pointer_.cancel_interaction(interaction, false);
+                break;
+            }
+        }
+    }
+    if (!text_.destroy(id)) {
+        return false;
+    }
+    for (auto* participant : participants_) {
+        participant->on_destroy();
+    }
+    if (const auto boundary = interactions_.input_boundary(); boundary && !components().contains(*boundary)) {
+        interactions_.set_input_boundary({});
+    }
+    scene_structure_dirty_ = true;
+    return true;
+}
+
 void WindowComponentServices::dispose() noexcept {
     if (!components().active()) {
         return;
@@ -399,6 +444,9 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     for (auto* participant : participants_) {
         participant->prepare_auxiliary_layout();
     }
+    // A later Input count/formatter callback can retire an earlier compound's private Input.
+    // Retire damaged AutoComplete owners before LayoutEngine starts walking their nodes.
+    auto_complete_->validate_private_regions();
 
     struct SceneBatch {
         TextSceneService& scene;

@@ -25,6 +25,7 @@ class SliderComponentHost;
 class TooltipComponentHost;
 class OTPComponentHost;
 class SelectComponentHost;
+class AutoCompleteComponentHost;
 class DatePickerComponentHost;
 class TimePickerComponentHost;
 class CardComponentHost;
@@ -139,6 +140,8 @@ public:
     void detach_input_host(WindowComponentParticipant& participant) noexcept;
     void mount(const Content& content);
     bool destroy(runtime::ComponentId id);
+    // Unwind cleanup: release one exact generation without delivering new boundary callbacks.
+    bool retire_failed_component(runtime::ComponentId id) noexcept;
     void append_slot(runtime::ComponentId parent, const Content& content);
     void dispose() noexcept;
     void set_window_active(bool active);
@@ -230,6 +233,10 @@ public:
 
     [[nodiscard]] SelectComponentHost& select() noexcept {
         return *select_;
+    }
+
+    [[nodiscard]] AutoCompleteComponentHost& auto_complete() noexcept {
+        return *auto_complete_;
     }
 
     [[nodiscard]] DatePickerComponentHost& date_picker() noexcept {
@@ -397,6 +404,7 @@ public:
     }
 
 private:
+    bool retiring_failed_component_{};
     bool reconcile_input_boundary();
     std::uint64_t reconciled_input_boundary_revision_{};
     runtime::NodeStore* nodes_;
@@ -435,6 +443,7 @@ private:
     std::unique_ptr<TooltipComponentHost> tooltip_;
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;
+    std::unique_ptr<AutoCompleteComponentHost> auto_complete_;
     std::unique_ptr<DatePickerComponentHost> date_picker_;
     std::unique_ptr<TimePickerComponentHost> time_picker_;
     std::unique_ptr<CardComponentHost> card_;

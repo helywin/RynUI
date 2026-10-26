@@ -40,6 +40,7 @@
 #include <ryn/reactive.hpp>
 #include <ryn/search.hpp>
 #include <ryn/select.hpp>
+#include <ryn/auto_complete.hpp>
 #include <ryn/time_picker.hpp>
 #include <ryn/card.hpp>
 #include <ryn/tabs.hpp>
