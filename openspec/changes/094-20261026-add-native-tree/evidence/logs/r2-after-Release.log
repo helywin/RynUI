@@ -1,0 +1,169 @@
+UpdateCTestConfiguration  from :C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/DartConfiguration.tcl
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+      Start   1: rynui.tree_r2_nested_wheel
+
+1: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_r2_tests.exe "nested_wheel"
+1: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+1: Test timeout computed to be: 45
+1: no-range nested wheel: inner=0 outer=32 independent=0
+1: Tree R2 nested_wheel passed
+ 1/15 Test   #1: rynui.tree_r2_nested_wheel ..............   Passed    0.10 sec
+test 2
+      Start   2: rynui.tree_r2_throwing_blur_rollback
+
+2: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_r2_tests.exe "throwing_blur_rollback"
+2: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+2: Test timeout computed to be: 45
+2: throwing blur rollback: original=1 slot_threw=1 blur_escaped=0 blurs=1 editor_live=1 interaction_live=0 text_scenes=4 surfaces=3 session=0 ref=0
+2: R2.1: focused Input onBlur throw interrupted failed-Tree resource retirement
+ 2/15 Test   #2: rynui.tree_r2_throwing_blur_rollback ....***Failed    0.06 sec
+throwing blur rollback: original=1 slot_threw=1 blur_escaped=0 blurs=1 editor_live=1 interaction_live=0 text_scenes=4 surfaces=3 session=0 ref=0
+R2.1: focused Input onBlur throw interrupted failed-Tree resource retirement
+
+test 3
+      Start   3: rynui.tree_review_mount_rollback
+
+3: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_review_tests.exe "mount_rollback"
+3: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+3: Test timeout computed to be: 45
+3: mount mode=0 caught=1 tree_count=0 input_count=0
+3: mount mode=1 caught=1 tree_count=0 input_count=0
+3: mount mode=2 caught=1 tree_count=0 input_count=0
+3: mount mode=3 caught=1 tree_count=0 input_count=0
+3: mount mode=4 caught=1 tree_count=1 input_count=1
+3: mount mode=5 caught=1 tree_count=1 input_count=1
+3: mount mode=6 caught=1 tree_count=0 input_count=0
+3: Tree R1 mount_rollback passed
+ 3/15 Test   #3: rynui.tree_review_mount_rollback ........   Passed    0.33 sec
+test 4
+      Start   4: rynui.tree_review_zero_area
+
+4: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_review_tests.exe "zero_area"
+4: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+4: Test timeout computed to be: 45
+4: zero cycle=0 selection_delta=0 check_delta=0 focused=0
+4: zero cycle=1 selection_delta=0 check_delta=0 focused=0
+4: Tree R1 zero_area passed
+ 4/15 Test   #4: rynui.tree_review_zero_area .............   Passed    0.12 sec
+test 5
+      Start   5: rynui.tree_review_translated_checkbox
+
+5: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_review_tests.exe "translated_checkbox"
+5: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+5: Test timeout computed to be: 45
+5: translation_y=-184 modal_scroll=184 tree_scroll=264 modal_max=184 body_yh=68,176 tree_yh=148,96 last_yh=220,24
+5: checkbox mode=0 actual_fills=4 center_covered=1
+5: checkbox mode=1 actual_fills=4 center_covered=1
+5: checkbox mode=2 actual_fills=4 center_covered=1
+5: Tree R1 translated_checkbox passed
+ 5/15 Test   #5: rynui.tree_review_translated_checkbox ...   Passed    0.10 sec
+test 6
+      Start   6: rynui.tree_review_wheel_handoff
+
+6: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_review_tests.exe "wheel_handoff"
+6: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+6: Test timeout computed to be: 45
+6: natural Tree modal_scroll=0 -> 48
+6: Tree R1 wheel_handoff passed
+ 6/15 Test   #6: rynui.tree_review_wheel_handoff .........   Passed    0.12 sec
+test 9
+      Start   9: rynui.tree_rich
+
+9: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_component_tests.exe "rich"
+9: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+9: Test timeout computed to be: 45
+9: Tree rich passed
+ 7/15 Test   #9: rynui.tree_rich .........................   Passed    0.08 sec
+test 10
+      Start  10: rynui.tree_scroll
+
+10: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_component_tests.exe "scroll"
+10: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+10: Test timeout computed to be: 45
+10: Tree scroll passed
+ 8/15 Test  #10: rynui.tree_scroll .......................   Passed    0.13 sec
+test 12
+      Start  12: rynui.tree_boundaries
+
+12: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_component_tests.exe "boundaries"
+12: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+12: Test timeout computed to be: 45
+12: Tree boundaries passed
+ 9/15 Test  #12: rynui.tree_boundaries ...................   Passed    0.07 sec
+test 13
+      Start  13: rynui.tree_mount_lifecycle
+
+13: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_component_tests.exe "mount_lifecycle"
+13: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+13: Test timeout computed to be: 45
+13: Tree mount_lifecycle passed
+10/15 Test  #13: rynui.tree_mount_lifecycle ..............   Passed    0.27 sec
+test 14
+      Start  14: rynui.tree_lifecycle
+
+14: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Release\rynui_tree_component_tests.exe "lifecycle"
+14: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+14: Test timeout computed to be: 45
+14: Tree lifecycle passed
+11/15 Test  #14: rynui.tree_lifecycle ....................   Passed    0.06 sec
+test 211
+      Start 211: rynui.portable.input_component
+
+211: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\portable\Release\rynui_portable_input_component.exe
+211: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests/portable
+211: Test timeout computed to be: 45
+211: Input layout simulated-scale cases=768
+211: Input lifecycle, layout and controlled callbacks passed
+12/15 Test #211: rynui.portable.input_component ..........   Passed    2.07 sec
+test 237
+      Start 237: rynui.portable.focus_lifecycle
+
+237: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\portable\Release\rynui_portable_focus_lifecycle.exe
+237: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests/portable
+237: Test timeout computed to be: 45
+13/15 Test #237: rynui.portable.focus_lifecycle ..........   Passed    0.02 sec
+test 264
+      Start 264: rynui.portable.select_component
+
+264: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\portable\Release\rynui_portable_select_component.exe
+264: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests/portable
+264: Test timeout computed to be: 45
+14/15 Test #264: rynui.portable.select_component .........   Passed    0.46 sec
+test 276
+      Start 276: rynui.portable.modal_component
+
+276: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\portable\Release\rynui_portable_modal_component.exe
+276: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests/portable
+276: Test timeout computed to be: 45
+15/15 Test #276: rynui.portable.modal_component ..........   Passed    1.15 sec
+
+The following tests passed:
+	rynui.tree_r2_nested_wheel
+	rynui.tree_review_mount_rollback
+	rynui.tree_review_zero_area
+	rynui.tree_review_translated_checkbox
+	rynui.tree_review_wheel_handoff
+	rynui.tree_rich
+	rynui.tree_scroll
+	rynui.tree_boundaries
+	rynui.tree_mount_lifecycle
+	rynui.tree_lifecycle
+	rynui.portable.input_component
+	rynui.portable.focus_lifecycle
+	rynui.portable.select_component
+	rynui.portable.modal_component
+
+93% tests passed, 1 tests failed out of 15
+
+Total Test time (real) =   5.18 sec
+
+The following tests FAILED:
+	  2 - rynui.tree_r2_throwing_blur_rollback (Failed)
+Errors while running CTest

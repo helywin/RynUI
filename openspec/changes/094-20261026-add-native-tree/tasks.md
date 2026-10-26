@@ -33,5 +33,5 @@
 
 - [x] 7.1 在未修复生产代码上独立复现 nested Tree wheel 与 focused Input onBlur 抛出后挂载回滚泄漏，保存准确失败日志及回归。
 - [x] 7.2 仅修复 Tree 自身沿逻辑祖先的 wheel handoff；验证无 range、上下边界、自身 range、不同 owner 和 child/foreign popup 边界。
-- [ ] 7.3 MSVC HEADLESS Debug/Release 定向新回归、旧 R1 四项及直接代表，最多 2 jobs；format/显式 1.14 doctor/strict/diff；本地提交后保存未解决共享依赖的准确 checkpoint，不宣称 R2 整体通过。
+- [x] 7.3 MSVC HEADLESS Debug/Release 定向新回归、旧 R1 四项及直接代表，最多 2 jobs；format/显式 1.14 doctor/strict/diff；本地提交后保存未解决共享依赖的准确 checkpoint，不宣称 R2 整体通过。
 - [ ] 7.4 等父提供已验证的独立共享异常退役 SHA 后，显式集成并验证 focused Input onBlur 抛出时原异常、完整释放及替代 generation 隔离；未获得共享修复前保持未完成，不改写第二套 shared cleanup。

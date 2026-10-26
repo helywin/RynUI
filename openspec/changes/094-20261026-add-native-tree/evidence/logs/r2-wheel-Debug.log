@@ -1,0 +1,24 @@
+UpdateCTestConfiguration  from :C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/DartConfiguration.tcl
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+    Start 1: rynui.tree_r2_nested_wheel
+
+1: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Debug\rynui_tree_r2_tests.exe "nested_wheel"
+1: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+1: Test timeout computed to be: 45
+1: no-range nested wheel: inner=0 outer=32 independent=0
+1: Tree R2 nested_wheel passed
+1/1 Test #1: rynui.tree_r2_nested_wheel .......   Passed    0.26 sec
+
+The following tests passed:
+	rynui.tree_r2_nested_wheel
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.28 sec

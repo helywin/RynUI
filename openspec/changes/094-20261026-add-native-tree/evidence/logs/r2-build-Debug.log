@@ -1,0 +1,10 @@
+[0/2] Re-checking globbed directories...
+[1/10] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\tree_component.cpp.obj
+[2/10] Linking CXX static library src\Debug\rynui_components.lib
+[3/10] Linking CXX executable tests\Debug\rynui_tree_review_tests.exe
+[4/10] Linking CXX executable tests\Debug\rynui_tree_r2_tests.exe
+[5/10] Linking CXX executable tests\portable\Debug\rynui_portable_input_component.exe
+[6/10] Linking CXX executable tests\Debug\rynui_tree_component_tests.exe
+[7/10] Linking CXX executable tests\portable\Debug\rynui_portable_focus_lifecycle.exe
+[8/10] Linking CXX executable tests\portable\Debug\rynui_portable_select_component.exe
+[9/10] Linking CXX executable tests\portable\Debug\rynui_portable_modal_component.exe
