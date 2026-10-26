@@ -1,6 +1,16 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_tree_model_tests tree_model_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_model_tests)
+target_link_libraries(rynui_tree_model_tests PRIVATE rynui_components)
+add_test(NAME rynui.tree_model COMMAND rynui_tree_model_tests)
+
+add_executable(rynui_tree_theme_tests tree_theme_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_theme_tests)
+target_link_libraries(rynui_tree_theme_tests PRIVATE rynui_components)
+add_test(NAME rynui.tree_theme COMMAND rynui_tree_theme_tests)
+
 add_executable(rynui_avatar_theme_tests avatar_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_avatar_theme_tests)
 target_link_libraries(rynui_avatar_theme_tests PRIVATE rynui_components)

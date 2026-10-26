@@ -6,8 +6,8 @@
 
 ## 2. 平台通用模型与 Theme（本机 Windows MSVC HEADLESS）
 
-- [ ] 2.1 实现固定拓扑、显隐、展开、单选、非 strict 级联勾选与 disabled 隔离；模型测试覆盖受控候选与边界拒绝，并记录 API 文档。
-- [ ] 2.2 追加 Tree Theme 全合同；Theme 测试验证五种算法 fresh goldens、旧 typed 值/IIFE/ordinals、字体边界及继承原子失败恢复；格式检查通过后本地提交。
+- [x] 2.1 实现固定拓扑、显隐、展开、单选、非 strict 级联勾选与 disabled 隔离；模型测试覆盖受控候选与边界拒绝，并记录 API 文档。
+- [x] 2.2 追加 Tree Theme 全合同；Theme 测试验证五种算法 fresh goldens、旧 typed 值/IIFE/ordinals、字体边界及继承原子失败恢复；格式检查通过后本地提交。
 
 ## 3. 平台通用组件（本机 Windows MSVC HEADLESS）
 
