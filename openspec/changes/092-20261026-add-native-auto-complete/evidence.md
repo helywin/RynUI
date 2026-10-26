@@ -17,3 +17,11 @@ Windows MSVC 19.51.36256.0、Ninja Multi-Config、`windows-msvc-headless`、BUND
 原始日志：`out/092-configure-Debug-attempt1.log`、`out/092-configure-Debug.log`、`out/092-build-{Debug,Release}.log`、`out/092-stage2-test-{Debug,Release}.log`、`out/092-goldens-{Debug,Release}.log`、`out/092-stage2-baseline.log`、`out/092-stage2-format.log`。现有第三方 C4819 及自有既存 warning 保留。OpenSpec 显式 1.14 doctor healthy、strict 90/90，diff check 通过；format 使用 clang-format 22.1.3 显式路径，已跟踪 731 个文件 0 failures，新增文件另已直接格式化（收口时纳入完整检查）。
 
 此阶段没有把尚未链接的原生 host 计作完成；原生事件、Form、popup、生命周期和示例仍待后续阶段。
+
+## 阶段 3.1：真实编辑与建议
+
+模型/Theme commit `3eea6384` 后接入真实 AutoComplete host，复用 Input/editor、InputRef/reset hook、retained surfaces、window layer 和 Popover 祖先定位。不是 stub，也不构造 Virtual DOM。新增 `examples/auto_complete_example.hpp`，由文档入口和实际运行的 example case 共用。
+
+Debug/Release fresh 编译 `rynui_auto_complete_{model,theme,component}_tests` 后，定向 CTest 各 7/7（model、theme、flow、controlled、retention、form、example）。实际事件覆盖自由 String、onChange/onSearch/onSelect 顺序及同值选择、键盘/Pointer/clear/Tab、受控值与 open 拒绝/接受、空 options 与过滤、typed Input props、rich label 下原生 Input 草稿/preedit/完整 editor 身份保留、移除 key 的旧 session/ref 失效、主输入 IME 上下/Enter 门禁，以及真实 Form String/control(ref) 同值 preedit/backfill reset 与 readOnly。示例实际挂载输入/reset。清理检查 nodes、glyph scene、surfaces、interactions、owned blocks 和 deadline。
+
+日志：`out/092-native-first-tests-Debug.log`（初次四项通过）、`out/092-stage3-test-{Debug,Release}.log`（最终七项）及 `out/092-build-{Debug,Release}-*.log`。中间首次 component 测试编译发现 snapshot bool 误写函数调用，已修复后 fresh 编译通过；没有把失败计作验收。popup 裁剪/子 popup、边界和同步回调重绑定的进一步验证属于下一阶段。

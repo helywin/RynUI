@@ -225,6 +225,7 @@ add_library(rynui_components STATIC
     component/otp_model.cpp
     component/select_model.cpp
     component/auto_complete_model.cpp
+    component/auto_complete_component.cpp
     component/select_component.cpp
     component/time_picker_model.cpp
     component/time_picker_component.cpp

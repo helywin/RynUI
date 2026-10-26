@@ -8,6 +8,16 @@ foreach(auto_complete_case IN ITEMS model theme)
     add_test(NAME rynui.auto_complete_${auto_complete_case} COMMAND rynui_auto_complete_${auto_complete_case}_tests)
 endforeach()
 
+add_executable(rynui_auto_complete_component_tests auto_complete_component_tests.cpp)
+rynui_configure_cpp_target(rynui_auto_complete_component_tests)
+target_link_libraries(rynui_auto_complete_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_auto_complete_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(auto_complete_case IN ITEMS flow controlled retention form example)
+    add_test(NAME rynui.auto_complete_${auto_complete_case} COMMAND rynui_auto_complete_component_tests ${auto_complete_case})
+endforeach()
+
 add_executable(rynui_avatar_theme_tests avatar_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_avatar_theme_tests)
 target_link_libraries(rynui_avatar_theme_tests PRIVATE rynui_components)

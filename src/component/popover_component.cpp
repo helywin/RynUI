@@ -1,4 +1,5 @@
 #include "component/popover_component.hpp"
+#include "component/auto_complete_component.hpp"
 #include "component/popover_model.hpp"
 #include "component/table_component.hpp"
 #include "component/date_picker_component.hpp"
@@ -805,6 +806,11 @@ void PopoverComponentHost::position_ancestors(runtime::ComponentId id, runtime::
         const auto times = services_->time_picker().mounted();
         if (std::ranges::find(times, *p) != times.end()) {
             services_->time_picker().position_window_layer(*p, viewport, clip);
+            return;
+        }
+        const auto completions = services_->auto_complete().mounted();
+        if (std::ranges::find(completions, *p) != completions.end()) {
+            services_->auto_complete().position_window_layer(*p, viewport, clip);
             return;
         }
     }

@@ -6,6 +6,7 @@
 #include "component/tooltip_component.hpp"
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
+#include "component/auto_complete_component.hpp"
 #include "component/date_picker_component.hpp"
 #include "component/time_picker_component.hpp"
 #include "component/card_component.hpp"
@@ -120,6 +121,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);
+    auto_complete_ = std::make_unique<AutoCompleteComponentHost>(*this);
     card_ = std::make_unique<CardComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
     collapse_ = std::make_unique<CollapseComponentHost>(*this);

@@ -37,8 +37,9 @@ bool AutoCompleteModel::set_options(std::vector<AutoCompleteOption> options) {
     candidate.options_ = std::move(options);
     candidate.refilter(key);
     if (candidate.backfill_) {
-        candidate.backfill_ =
-            candidate.active_ ? std::optional{candidate.options_[*candidate.active_].value} : std::nullopt;
+        candidate.backfill_ = candidate.active_ && key == std::optional{candidate.options_[*candidate.active_].key}
+                                  ? std::optional{candidate.options_[*candidate.active_].value}
+                                  : std::nullopt;
     }
     *this = std::move(candidate);
     return true;

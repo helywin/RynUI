@@ -16,7 +16,7 @@
 2. 从 Select 已有有限列表机制按需实现独立 host，复用 WindowComponentParticipant、RetainedSurface 与公共 Popover 的祖先定位/ownership；不扩展 Select 的 selection 语义，也不抽象全库 popup。列表以 key 差分，保留 row/label；仅删除 key 或变更 rich slot identity 才局部卸载。
 3. typed prefix/suffix 转换为 Input slots；选项 label 可有原生内容。主输入保持单 Tab 入口；装饰性 prefix/suffix 拒绝额外 focusable，popup 内丰富内容可拥有独立子 popup。
 4. controlled open 只发意图，外部不接受时仍显示；输入边界可强制 suppress，恢复须新的显式打开。空过滤集合不渲染 popup。Tab/blur/Escape 清理 backfill；composition 时快捷键交还 Input，原始 commit 才产生搜索。
-5. reset 复用 Input configure_form_reset，在 editor 重新读取前恢复字段 accepted String，清除 backfill/query/active/scroll；保持同值普通 prop 刷新不破坏 preedit。Form 的 disabled/readOnly 通过 Input 既有上下文生效，host 读取实际 editor/interaction eligibility 作为动作门禁。
+5. reset 复用 Input configure_form_reset，在 editor 重新读取前恢复字段 accepted String，清除 backfill/query/active/scroll；保持同值普通 prop 刷新不破坏 preedit。Form 的 disabled/readOnly/status 通过字段适配属性显式连接，host 读取实际 editor/interaction eligibility 作为动作门禁。
 6. AutoComplete Theme 使用 Select 风格 popup colors/metrics/typography/shadow/order 和 Input 选择框颜色；独立 override 全链追加，不改旧 IIFE 原文顺序。大量 ThemeConfig/ThemeSnapshot 临时值使用 heap，所有最终字体按 round 与 FontRuntime 上限校验，并保持 ThemeScope descendant preflight 原子性。
 7. 仅本树 `windows-msvc-headless`、Ninja Multi-Config、MSVC Debug/Release，最多 2 jobs。依赖可引用 ROOT/out 的锁定 source 与字体缓存，所有生成物、cache、测试和 log 写入本树。五个 fresh Theme goldens 保留旧 typed leaves，额外检查 IIFE、ordinal、PE 与资源清理。测试集中 model、真实事件、Theme、clip/hit/focus、回调销毁、generation、owned block、idle/ref，不跑长 Gallery/native。
 

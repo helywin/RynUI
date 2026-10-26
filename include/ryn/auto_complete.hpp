@@ -98,6 +98,10 @@ public:
         return *this;
     }
 
+    template <std::size_t N> AutoCompleteProps& placeholder(const char8_t (&value)[N]) {
+        return placeholder(String{value});
+    }
+
     AutoCompleteProps& defaultActiveFirstOption(Prop<bool> value) {
         active_first_ = std::move(value);
         return *this;

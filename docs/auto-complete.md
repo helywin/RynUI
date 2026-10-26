@@ -16,4 +16,19 @@
 
 Theme 通过 `ThemeConfig::auto_complete` 独立设置。`AutoCompleteThemeToken` 与 `AutoCompleteTokenOverride` 复用 Select 的视觉字段：popup/option/selector/clear 颜色、option_height/padding/radius/gap、typography、shadow 和 z_index_popup。支持继承、独立 component algorithm 和全局 dark/compact；Input 自有尺寸/状态/variant 继续使用其 Theme。视觉只来自 Theme，LayoutStyle 仅控制外部布局。最终 popup font 按实际 round 后检查 FontRuntime 1..INT_MAX/64 范围，非法后代 preflight 不发布部分 Theme。
 
-本阶段先交付模型与完整 Theme 合同；原生组件和可编译 Form 示例在后续实施阶段验证后补齐。首版排除网络异步管理、选项分组、虚拟化、动画、RTL、Web、自定义编辑器替换与任意 popupRender。headless 合成事件不能替代 native GPU、Linux、系统 IME 或 AT 验收。
+完整可编译的 Form String 示例见 [auto_complete_example.hpp](../examples/auto_complete_example.hpp)，由 `rynui.auto_complete_example` 实际挂载、输入和 reset。调用方式：
+
+```cpp
+#include "examples/auto_complete_example.hpp"
+
+void Page() {
+    ryn::FormRef form;
+    ryn::FormField<ryn::String> name{ryn::String{u8"Initial"}};
+    ryn::AutoCompleteRef input;
+    AutoCompleteForm(form, name, input);
+}
+```
+
+字段通过 `.value(name.value()).onChange(name.onChange())` 显式采值；FormItem 使用 `.control(input)`，并显式连接字段的 disabled/readOnly/status。reset 取消 preedit、候选和 backfill，即使接受值没有改变；普通同值 value 或建议更新保留 preedit。Form 不自动修改任意子控件 props。
+
+首版排除网络异步管理、选项分组、虚拟化、动画、RTL、Web、自定义编辑器替换与任意 popupRender。headless 合成事件不能替代 native GPU、Linux、系统 IME 或 AT 验收。

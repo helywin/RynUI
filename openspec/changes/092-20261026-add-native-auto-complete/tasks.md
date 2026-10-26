@@ -10,7 +10,7 @@
 
 ## 3. 原生编辑与建议（平台通用）
 
-- [ ] 3.1 实现真实 Input、keyed/rich label 保留、自由文本/选择/过滤/open authority/键盘/pointer/清空/backfill/IME/ref 与 Form reset；文档示例可编译，以本树 Debug/Release 实际事件和 Form 集成定向测试验证后本地提交。
+- [x] 3.1 实现真实 Input、keyed/rich label 保留、自由文本/选择/过滤/open authority/键盘/pointer/清空/backfill/IME/ref 与 Form reset；文档示例可编译，以本树 Debug/Release 实际事件和 Form 集成定向测试验证后本地提交。
 - [ ] 3.2 完成有限 popup/scroll/子 popup 所有权及 Modal/Spin/hidden 边界，覆盖 glyph/fill/hit/focus clipping、回调销毁、generation、owned block 清理、idle/ref；以本树 Debug/Release 定向合同测试验证后本地提交。
 
 ## 4. 集成收口（平台通用）
