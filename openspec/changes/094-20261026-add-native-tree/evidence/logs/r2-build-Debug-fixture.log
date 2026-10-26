@@ -1,0 +1,31 @@
+[0/2] Re-checking globbed directories...
+[1/2] Re-running CMake...
+-- Resolving FreeType 2.14.3 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_FREETYPE.
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE) 
+-- Resolving HarfBuzz 14.3.1 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_HARFBUZZ.
+cmake.exe : CMake Warning at D:/code/RynUI/out/build/windows-msvc-headless/_deps/rynui_harfbuzz-src/CMakeLists.txt:4 (m
+essage):
+所在位置 C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\tree-build.ps1:32 字符: 5
++     & cmake @buildArgs 2>&1 | Tee-Object "out/tree-logs/build-$Config ...
++     ~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (CMake Warning a...xt:4 (message)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  The main build system for HarfBuzz is Meson.  CMake build support is
+  community-maintained and is not actively supported by HarfBuzz developers.
+
+
+-- Found Python3: C:/Users/jiang/AppData/Local/Programs/Python/Python310/python3.exe (found version "3.10.11") found components: Interpreter
+Building introspection files on Windows requires BUILD_SHARED_LIBS to be enabled.
+-- Found Python3: C:/Users/jiang/AppData/Local/Programs/Python/Python310/python3.exe (found suitable version "3.10.11", minimum required is "3.10") found components: Interpreter
+-- Configuring done (4.7s)
+-- Generating done (1.9s)
+-- Build files have been written to: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless
+[0/4] Re-checking globbed directories...
+[1/5] Building CXX object tests\CMakeFiles\rynui_tree_r2_tests.dir\Debug\tree_r2_tests.cpp.obj
+FAILED: [code=2] tests/CMakeFiles/rynui_tree_r2_tests.dir/Debug/tree_r2_tests.cpp.obj 
+C:\PROGRA~1\MICROS~1\18\COMMUN~1\VC\Tools\MSVC\1451~1.362\bin\Hostx64\x64\cl.exe  /nologo /TP -DRYNUI_VALIDATION_CJK_FONT=\"C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/_deps/rynui-validation-fonts/NotoSansCJKsc-Regular.otf\" -DRYNUI_VALIDATION_LATIN_FONT=\"C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/_deps/rynui-validation-fonts/NotoSans-Regular.ttf\" -DCMAKE_INTDIR=\"Debug\" -IC:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\include -IC:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src /DWIN32 /D_WINDOWS /EHsc /Ob0 /Od /RTC1 -std:c++20 -MDd -Zi /W4 /permissive- /Zc:__cplusplus /utf-8 /showIncludes /Fotests\CMakeFiles\rynui_tree_r2_tests.dir\Debug\tree_r2_tests.cpp.obj /Fdtests\CMakeFiles\rynui_tree_r2_tests.dir\Debug\ /FS -c C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\tests\tree_r2_tests.cpp
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\tests\tree_r2_tests.cpp(42): error C2660: 'ryn::FlexProps::vertical': function does not take 0 arguments
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\include\ryn/flex.hpp(110): note: see declaration of 'ryn::FlexProps::vertical'
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\tests\tree_r2_tests.cpp(42): note: while trying to match the argument list '()'
+ninja: build stopped: subcommand failed.

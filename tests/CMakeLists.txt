@@ -1,6 +1,16 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_tree_r2_tests tree_r2_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_r2_tests)
+target_link_libraries(rynui_tree_r2_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tree_r2_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(tree_r2 IN ITEMS nested_wheel throwing_blur_rollback)
+    add_test(NAME rynui.tree_r2_${tree_r2} COMMAND rynui_tree_r2_tests ${tree_r2})
+endforeach()
+
 add_executable(rynui_tree_model_tests tree_model_tests.cpp)
 add_executable(rynui_tree_review_tests tree_review_tests.cpp)
 rynui_configure_cpp_target(rynui_tree_review_tests)
