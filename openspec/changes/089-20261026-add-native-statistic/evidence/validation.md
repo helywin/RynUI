@@ -30,9 +30,25 @@ python scripts/format-code.py --check --clang-format "C:/Program Files/Microsoft
 
 ## OpenSpec 工具版本边界
 
-仓库生成 skills 与要求为 1.14.0，但当前 Windows PATH 实际全局入口 `C:/Users/jiang/AppData/Local/pnpm/openspec.ps1` 固定到 pnpm 包 `@fission-ai/openspec@1.13.1_@types+node@24.10.1`；`openspec --version` 实测 1.13.1，WSL 亦解析到相同 Windows 入口。已检查本机全局 pnpm 包和缓存，未找到 1.14.0。遵守 worker 不访问远端的限制，没有在线升级，也未修改 ROOT 或全局工具。
+`0808d36b` 交接阶段，仓库生成 skills 与要求为 1.14.0，但 Windows PATH 实际全局入口 `C:/Users/jiang/AppData/Local/pnpm/openspec.ps1` 固定到 pnpm 包 `@fission-ai/openspec@1.13.1_@types+node@24.10.1`；`openspec --version` 实测 1.13.1，WSL 亦解析到相同 Windows 入口。当时的本机全局 pnpm 包和缓存检查未找到 1.14.0。遵守 worker 不访问远端的限制，没有在线升级，也未修改 ROOT 或全局工具。
 
-当前已运行：`openspec doctor --json` 健康，`openspec validate --all --strict --no-interactive` 88/88 通过；实际版本明确为 1.13.1，不能当作指定 1.14.0 的证据。见 [openspec-version.txt](openspec-version.txt)、[doctor-1.13.1.json](doctor-1.13.1.json)、[strict-1.13.1.txt](strict-1.13.1.txt)。已向父线程请求已安装的 1.14.0 入口；`tasks.md` 3.2 在指定版本补验前保持未勾选。
+该阶段已运行：`openspec doctor --json` 健康，`openspec validate --all --strict --no-interactive` 88/88 通过；实际版本明确为 1.13.1，不能当作指定 1.14.0 的证据。历史记录保留在 [openspec-version.txt](openspec-version.txt)、[doctor-1.13.1.json](doctor-1.13.1.json)、[strict-1.13.1.txt](strict-1.13.1.txt)。该阶段 `tasks.md` 3.2 保持未勾选。
+
+### 1.14.0 显式入口补验
+
+父提供已安装的显式入口后，在本 worktree cwd 现场运行以下命令；两个版本确认均返回 `1.14.0`：
+
+```powershell
+& C:/Users/jiang/AppData/Local/pnpm/bin/openspec.cmd --version
+& 'C:/Program Files/nodejs/node.exe' 'C:/Users/jiang/AppData/Local/pnpm/global/v11/571d8138cbe6cca8ed77baade632db40d9ff691763fbc5f585da857bbb3b1d1f/node_modules/@fission-ai/openspec/bin/openspec.js' --version
+& 'C:/Program Files/nodejs/node.exe' 'C:/Users/jiang/AppData/Local/pnpm/global/v11/571d8138cbe6cca8ed77baade632db40d9ff691763fbc5f585da857bbb3b1d1f/node_modules/@fission-ai/openspec/bin/openspec.js' doctor --json
+& 'C:/Program Files/nodejs/node.exe' 'C:/Users/jiang/AppData/Local/pnpm/global/v11/571d8138cbe6cca8ed77baade632db40d9ff691763fbc5f585da857bbb3b1d1f/node_modules/@fission-ai/openspec/bin/openspec.js' validate --all --strict --no-interactive
+git diff --check
+```
+
+指定 node + js 入口的 doctor 返回 `healthy: true`，strict validate **88/88 通过、0 failed**，两者退出码均为 0；diff check 通过。见 [openspec-version-1.14.0.txt](openspec-version-1.14.0.txt)、[doctor-1.14.0.json](doctor-1.14.0.json)、[strict-1.14.0.txt](strict-1.14.0.txt)。结合前述已经通过的 format 与阶段提交，`tasks.md` 3.2 已勾选，5/5 项闭合。
+
+本次只补版本确认、1.14.0 doctor/strict 与 diff check，未重跑已经通过的 Debug/Release、金样或 PE 矩阵；未访问 ROOT/out/远端，未修改全局入口。保留 1.13.1 历史，新增明确的 1.14.0 证据，待父 Astra 审查。
 
 ## 限制与移交
 
