@@ -24,5 +24,5 @@
 - [x] 5.1 在 clean bca1acafde1c7486d549bc9104a3e2f836b937ba 的实现上构建五个独立实际事件复现用例，记录首次挂载访问违规、rich Tab、真实零尺寸、root AutoComplete 子 Select 定位、keydown modality 五项失败的原始日志。
 - [x] 5.2 修复同步挂载/连接/富 region/filter/主题/首次边界的完整 owner 与私有代际守卫、富槽内 Prop 更新，避免持有释放后的 Scope/State；覆盖 owner/private child 退役、回调重绑和 formatter。
 - [x] 5.3 修复主 Input 遍历锚点与整个逻辑后代退出、真实布局零尺寸输入清理及恢复、祖先依赖定位和消费键盘命令的 keyboard 焦点交付；覆盖实际 glyph/fill/hit/focus 与 callback 销毁安全。
-- [ ] 5.4 本树 fresh MSVC HEADLESS Debug/Release 运行原有 19 项、新增 5 项及直接受影响的 DateTime/Popover/Input/Form/Select 代表集合；保持旧 Theme IIFE/ordinal/typed goldens、唯一 resetHook 与默认 PE 1 MiB，运行 format、显式 OpenSpec 1.14 doctor/strict、diff，提交准确 before/after evidence，clean HEAD 交父 fresh R2。Theme 产物未变时不重生成金样，不运行无关全矩阵。
+- [x] 5.4 本树 fresh MSVC HEADLESS Debug/Release 运行原有 19 项、新增 5 项及直接受影响的 DateTime/Popover/Input/Form/Select 代表集合；保持旧 Theme IIFE/ordinal/typed goldens、唯一 resetHook 与默认 PE 1 MiB，运行 format、显式 OpenSpec 1.14 doctor/strict、diff，提交准确 before/after evidence，clean HEAD 交父 fresh R2。Theme 产物未变时不重生成金样，不运行无关全矩阵。
 - [x] 5.5 补充首次子 Select 关闭回调同步回显父 open 的实际复现；局部 refresh 代际停止旧一轮 label/style/block 交付，Debug/Release 重验 37 项集合后独立提交。

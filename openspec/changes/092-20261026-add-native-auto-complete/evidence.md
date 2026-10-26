@@ -70,3 +70,39 @@ C:/Users/jiang/AppData/Local/Programs/Python/Python310/python.exe out/092-final-
 最终原始 build/test 日志已按字节复制到 [evidence/windows](evidence/windows/)；其中 Debug source build 和共享回归目标 build 分开记录。fresh golden 的基线检查、PE 与 artifact/hash 输出也保存在该目录。所有本机缓存、测试 exe 与额外诊断日志仍在本树 out；没有运行 ROOT 程序或写 ROOT/out。
 
 首版限制保持 proposal/docs 所列：网络异步、分组、虚拟化、动画、RTL/Web、任意 editor/popupRender 未实现也未暴露假 props。未验收 native GPU、Linux、系统 IME、AT、完整 Gallery/native startup。当前结果是 worker 首版实现与本树 headless 验证；等待父 fresh Astra 审查和 main 集成，不创建 PR/archive，不推 worker branch。
+
+## Astra R1：实际复现与修复
+
+本轮从 clean `bca1acafde1c7486d549bc9104a3e2f836b937ba` 继续，没有导入移动 main 或其它 WIP。首轮修复 commit 为 `b3c9626d4280ff5f763c9fa08dbd6e4547d87477`（`fix(auto-complete): guard lifetimes and popup input transactions`）；P1 审计补测后增加 `ab0cd6002f5f91241df909225b3c00f41a06f38d`（`fix(auto-complete): stop superseded boundary refresh delivery`），它是最终被测 source commit。后续证据提交不改已测 C++/CMake/example blobs。仍为同一个 app 绑定 worktree/branch；Avatar 精确 merge 及原 13 个 AutoComplete case 源码均保留。
+
+先只添加独立 review harness/CMake cases，在未修改原实现的基线上以本树 MSVC Debug 编译、运行五个独立进程，结果 **0/5**；不是根据源码推测失败。初始 harness 之后扩充，原复现入口保留在每组测试开头。
+
+| R1 问题 | 修复前实际结果 | 修复后直接断言 |
+| --- | --- | --- |
+| P1 首次关闭富 Select，回调销毁外 owner | `auto_complete_review_mount` SegFault，4.03 s | owner、私有 Input/popup/list/row/label region、affix、Prop reader/filter、首次 count formatter/autoFocus 退役及 close 回调重绑，停止旧代际并清理资源；富槽内 options/value/open/size 更新保留 rich 身份并首帧生效 |
+| P2 rich Input Tab 锚点 | `rich Tab/ShiftTab did not traverse relative to the main Input` | Before→主 Input→After 的相邻顺序；rich Input/嵌套 Popover Input 两向 Tab、程序焦点离开后代关闭，最终 popup hit 消失 |
+| P2 实际零尺寸 | `zero allocated geometry retained popup/focus/session/preedit` | 真实零高/零宽取消 focus/session/preedit、ref 拒绝、同值 reset；正尺寸不自动恢复建议，显式 authority/Down 恢复；初始 open Modal/defaultOpen 不误抑制；隐藏 popup 的 glyph 不进入最终 ordered draw commands |
+| P2 root AC→子 Select 同帧定位 | 首帧先抛 `Rounded effect geometry is invalid`，尚未到自定义 anchor 断言 | 无外层 Popover 的直接 root 组合，首帧/父移动/父建议滚动后 child anchor、实际 fill、glyph clip、hit 同帧匹配 |
+| P2 消费命令的 keyboard modality | `consumed Down did not deliver keyboard modality before keyup` | 只送 keydown 即为 keyboard/focus_visible，并有实际 outline；Up/Enter/Escape 同样交付；open 回调销毁 owner/private child、重绑 ref 或 disabled/readOnly 后不触碰旧模型/新代际 |
+
+局部守卫记录完整 owner/private ComponentId/NodeId、直接父关系、主 Input interaction/editor；每次同步用户代码后重取状态。外部连接 Scope 独立持有至首次 synchronous read/apply 返回，并随原 owner dispose。模型 predicate 在独立副本上计算，逐次检查代际；富槽更新用 revision/pending 合并行协调。没有添加吞错 catch 或全局生命周期重构。唯一 Input Form reset hook 保持原入口。
+
+共享改动只有三处行为入口：LayoutStyle adapter 的可选局部 guard；WindowComponentServices 在所有 prepare（含后执行的 Input formatter）后、LayoutEngine 遍历前复核 AutoComplete 私有结构；Select 的逐 owner 定位与 Popover 祖先解析相接并加递归 guard。没有交换全局 host 顺序。DateTime↔Popover 反向嵌套代表、现有 AC children 组合及 root AC→Select 均实际运行。Input/Form 实现源码未修改。
+
+中间补测首次 formatter 删除主 Input 时曾报告 `NodeId is stale or invalid`，原始诊断保留；增加遍历前复核后通过。曾把保留 glyph 存储直接当成提交可见性断言，已改为检查最终 ordered draw commands；readOnly 仍允许原生焦点，修正该 fixture 的错误无焦点预期。新增 fixture 的编译笔误、HEADLESS target 名称和 CTest 过深 regex 的命令错误均未计作通过；最终使用下列实际 37 项集合，`--no-tests=error`。没有在失败 build 后运行旧 binary 计验收。
+
+P1 审计补测还实际复现：子 Select 首次关闭回调同步把父 open 回显为 true 时，旧 refresh 在嵌套更新后仍继续设置 row block，snapshot/paint record 看似可见却不可交互。`092-R1-open-echo-before-Debug.log` 是 b3c 实现上的真实失败，不把最初只有 paint record 存在的不足断言当作通过证据；加强为完整 row 输入资格后复现。增加局部 refresh 代际，在每次同步交付后停止旧一轮更新；最终同一用例通过。
+
+最终使用同一正式 preset、MSVC、Ninja Multi-Config，build/CTest 均 `--parallel 2`；Debug 和 Release 顺序执行。两配置在最终 refresh 代际修复后重新编译/链接所有指定 targets，再运行：**Debug 37/37，14.29 s；Release 37/37，6.17 s**。集合为原 19 项（AC 13 + portable Theme 2 + Popover 4）+ 新 review 5 + 直接共享代表 13：DatePicker component/wheel/form_reset 3、TimePicker component/reset/focus 3、Popover positioning/focus 2、portable Input component/actions/count 3、Form component 1、portable Select component 1。不是完整 CTest 或 native/GPU 验收。
+
+最终命令的 targets 与单层 regex 原样保存在 [092-r1-final.ps1](evidence/windows/r1/092-r1-final.ps1)，其调用的 [092-msvc.ps1](evidence/windows/r1/092-msvc.ps1) 同样按字节保存供复核；执行 cwd 始终是本 worker worktree，仅输出到本树 out。实际日志见 [r1 原始证据](evidence/windows/r1/)：
+
+- 修复前：`092-build-Debug-20261026-185812.log`、`092-R1-before-Debug.log`。
+- 最终 Debug：共享目标首编 `092-build-Debug-20261026-193459.log`，最终 review 首编 `092-build-Debug-20261026-195450.log`，最终 C++ 重编及所有指定目标 relink `092-build-Debug-20261026-195625.log`，`092-R1-final-test-Debug.log`。此前 autoFocus 阶段的 194253/194454 build 日志也保留。
+- 最终 Release：主体重编 `092-build-Release-20261026-193811.log`，最终 C++/review 重编及 relink `092-build-Release-20261026-195658.log`，`092-R1-final-test-Release.log`。此前 autoFocus 阶段的 194515 build 日志也保留。
+
+Theme/金样未修改，不重新生成。以 `tests/verify_auto_complete_theme_baseline.py design-tokens/ant-design/6.6.5/golden` 复核本仓五份已有金样：36 原 IIFE/196 ordinal 及 Avatar 后 37/198 原文/顺序不变，全部旧 typed leaves 类型和值不变，仅此前 AC 追加。脚本输出改称 supplied，避免把本轮复核误称 fresh 生成。原 font round 上下限、descendant preflight 原子性测试包含在最终 Theme case。10 个 AC test PE（含 review，5×Debug/Release）实际均为 PE32+、stack reserve 1048576 bytes。
+
+最终 clang-format 22.1.3 检查 743 owned 文件，0 failures；显式指定安装入口的 OpenSpec **1.14.0** doctor healthy、strict **90/90**，diff check 通过。README/completion/Gallery/support-overlay/generated catalog、Theme/金样、Avatar、Input/Form 实现及原 AC component/integration tests 相对 bca1 未改。没有 fetch/push/PR/archive/children，没有运行 ROOT 程序或写 ROOT/out。所有系统专属边界仍未验：native GPU、Linux、系统 IME、AT；本树结果等待父 fresh Astra R2 与 main 集成，不据此宣称 R2 CLEAN。
+
+[artifacts.log](evidence/windows/r1/artifacts.log) 记录最终 source commit、完整 branch/path、十个实际 PE 的 SHA256/栈、五份未改仓库金样与全部本轮原始证据文件的 SHA256；由同目录只读 `verify_artifacts.py` 在本树实际核验。该脚本同时拒绝保护路径改动及最终 source commit 之后的 src/include/tests/examples 变化。
