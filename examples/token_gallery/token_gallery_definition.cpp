@@ -4055,111 +4055,118 @@ void add_notice_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     MessageHolder(MessageHolderProps{}.ref(state->messages).maxCount(std::size_t{3}));
     NotificationHolder(NotificationHolderProps{}.ref(state->notifications).maxCount(std::size_t{3}));
-    Flex(
-        FlexProps{}
-            .vertical(true)
-            .align(FlexAlign::Start)
-            .gap(dp(12))
-            .layout(LayoutStyle{}.width(state->document_width)),
-        FlexContent{[state] {
-            Text(TextProps{}
-                     .content(u8"gallery.notices.workflow · Message / Notification · 处理提示")
-                     .layout(LayoutStyle{}.margin_left(dp(1))));
-            Text(TextProps{}
-                     .content(bind([state] {
-                         return utf8("gallery.notices.feedback · " + std::string{state->notice_feedback.get().bytes()});
-                     }))
-                     .layout(LayoutStyle{}.margin_left(dp(1))));
-            Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
-                  SpaceContent{[state] {
-                      Button(ButtonProps{}.onClick([state] {
-                          static_cast<void>(state->messages.open(
-                              u8"project-save", MessageProps{}
-                                                    .content(u8"正在处理项目")
-                                                    .status(NoticeStatus::Loading)
-                                                    .duration(0)
-                                                    .onClose([state] { state->notice_feedback.set(u8"消息已关闭"); })));
-                          state->notice_feedback.set(u8"处理提示已打开");
-                      }),
-                             [] { Text(u8"gallery.message.open · 处理提示"); });
-                      Button(ButtonProps{}.onClick([state] {
-                          static_cast<void>(state->messages.open(
-                              u8"project-save",
-                              MessageProps{}.content(u8"项目处理成功").status(NoticeStatus::Success).duration(0)));
-                          state->notice_feedback.set(u8"同一提示已更新为处理成功");
-                      }),
-                             [] { Text(u8"gallery.message.update · 更新成功"); });
-                      Button(ButtonProps{}.onClick(
-                                 [state] { static_cast<void>(state->messages.close(u8"project-save")); }),
-                             [] { Text(u8"gallery.message.close · 关闭提示"); });
-                      Button(ButtonProps{}.disabled(state->notification_open).onClick([state] {
-                          const bool opened = state->notifications.open(
-                              u8"project-review",
-                              NotificationProps{}
-                                  .title(u8"项目资料待核对")
-                                  .status(state->notification_status)
-                                  .placement(state->notification_placement)
-                                  .duration(0)
-                                  .onClose([state] {
-                                      state->notification_open.set(false);
-                                      state->notice_feedback.set(u8"通知已关闭，可重新打开");
-                                  }),
-                              {.description = NotificationDescription{[state] {
-                                   Input(InputProps{}
-                                             .defaultValue(state->notification_draft.get())
-                                             .placeholder(u8"gallery.notification.draft")
-                                             .ref(state->notification_ref)
-                                             .onChange([state](String value) { state->notification_draft.set(value); })
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.notices.workflow · Message / Notification · 处理提示")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.notices.feedback · " +
+                                      std::string{state->notice_feedback.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Space(
+                 SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                 SpaceContent{[state] {
+                     Button(ButtonProps{}.onClick([state] {
+                         static_cast<void>(state->messages.open(
+                             u8"project-save", MessageProps{}
+                                                   .content(u8"正在处理项目")
+                                                   .status(NoticeStatus::Loading)
+                                                   .duration(0)
+                                                   .onClose([state] { state->notice_feedback.set(u8"消息已关闭"); })));
+                         state->notice_feedback.set(u8"处理提示已打开");
+                     }),
+                            [] { Text(u8"gallery.message.open · 处理提示"); });
+                     Button(ButtonProps{}.onClick([state] {
+                         static_cast<void>(state->messages.open(
+                             u8"project-save",
+                             MessageProps{}.content(u8"项目处理成功").status(NoticeStatus::Success).duration(0)));
+                         state->notice_feedback.set(u8"同一提示已更新为处理成功");
+                     }),
+                            [] { Text(u8"gallery.message.update · 更新成功"); });
+                     Button(
+                         ButtonProps{}.onClick([state] { static_cast<void>(state->messages.close(u8"project-save")); }),
+                         [] { Text(u8"gallery.message.close · 关闭提示"); });
+                     Button(ButtonProps{}.disabled(state->notification_open).onClick([state] {
+                         const bool opened = state->notifications.open(
+                             u8"project-review",
+                             NotificationProps{}
+                                 .title(u8"项目资料待核对")
+                                 .status(state->notification_status)
+                                 .placement(state->notification_placement)
+                                 .duration(0)
+                                 .onClose([state] {
+                                     state->notification_open.set(false);
+                                     state->notice_feedback.set(u8"通知已关闭，可重新打开");
+                                 }),
+                             {.description = NotificationDescription{[state] {
+                                  Input(InputProps{}
+                                            .defaultValue(state->notification_draft.get())
+                                            .placeholder(u8"gallery.notification.draft")
+                                            .ref(state->notification_ref)
+                                            .onChange([state](String value) { state->notification_draft.set(value); })
+                                            .layout(LayoutStyle{}
+                                                        .width(dp(180))
+                                                        .margin_left(dp(6))
+                                                        .margin_right(dp(6))
+                                                        .margin_top(dp(6))
+                                                        .margin_bottom(dp(6))));
+                              }},
+                              .actions = NotificationActions{[state] {
+                                  Button(ButtonProps{}
+                                             .onClick([state] {
+                                                 static_cast<void>(state->notifications.close(u8"project-review"));
+                                                 state->notice_feedback.set(utf8(
+                                                     "已确认 " + std::string{state->notification_draft.get().bytes()}));
+                                             })
                                              .layout(LayoutStyle{}
-                                                         .width(dp(180))
                                                          .margin_left(dp(6))
                                                          .margin_right(dp(6))
                                                          .margin_top(dp(6))
-                                                         .margin_bottom(dp(6))));
-                               }},
-                               .actions = NotificationActions{[state] {
-                                   Button(ButtonProps{}.onClick([state] {
-                                       static_cast<void>(state->notifications.close(u8"project-review"));
-                                       state->notice_feedback.set(
-                                           utf8("已确认 " + std::string{state->notification_draft.get().bytes()}));
-                                   }),
-                                          [] { Text(u8"确认核对"); });
-                               }}});
-                          state->notification_open.set(opened);
-                          if (opened) {
-                              state->notice_feedback.set(u8"通知已打开，可编辑核对备注");
-                          }
-                      }),
-                             [] { Text(u8"gallery.notification.open · 打开通知"); });
-                      Button(ButtonProps{}
-                                 .disabled(bind([state] { return !state->notification_open.get(); }))
-                                 .onClick([state] {
-                                     static_cast<void>(state->notifications.open(
-                                         u8"project-review", NotificationProps{}.title(u8"项目资料已更新")));
-                                     state->notice_feedback.set(u8"已更新通知标题，编辑内容保持");
-                                 }),
-                             [] { Text(u8"gallery.notification.update · 更新标题"); });
-                      Button(ButtonProps{}.onClick(
-                                 [state] { static_cast<void>(state->notifications.close(u8"project-review")); }),
-                             [] { Text(u8"gallery.notification.close · 关闭通知"); });
-                      Button(ButtonProps{}.onClick([state] {
-                          state->notification_placement.set(static_cast<NotificationPlacement>(
-                              (static_cast<int>(state->notification_placement.get()) + 1) % 4));
-                      }),
-                             [] { Text(u8"gallery.notification.placement · 四角位置"); });
-                      Button(ButtonProps{}.onClick([state] {
-                          state->notification_status.set(
-                              static_cast<NoticeStatus>((static_cast<int>(state->notification_status.get()) + 1) % 5));
-                      }),
-                             [] { Text(u8"gallery.notification.status · 切换状态"); });
-                      Button(ButtonProps{}.onClick([state] {
-                          static_cast<void>(state->messages.clear());
-                          static_cast<void>(state->notifications.clear());
-                          state->notice_feedback.set(u8"已清空消息与通知");
-                      }),
-                             [] { Text(u8"gallery.notices.clear · 清空提示"); });
-                  }});
-        }});
+                                                         .margin_bottom(dp(6))),
+                                         [] { Text(u8"确认核对"); });
+                              }}});
+                         state->notification_open.set(opened);
+                         if (opened) {
+                             state->notice_feedback.set(u8"通知已打开，可编辑核对备注");
+                         }
+                     }),
+                            [] { Text(u8"gallery.notification.open · 打开通知"); });
+                     Button(ButtonProps{}
+                                .disabled(bind([state] { return !state->notification_open.get(); }))
+                                .onClick([state] {
+                                    static_cast<void>(state->notifications.open(
+                                        u8"project-review", NotificationProps{}.title(u8"项目资料已更新")));
+                                    state->notice_feedback.set(u8"已更新通知标题，编辑内容保持");
+                                }),
+                            [] { Text(u8"gallery.notification.update · 更新标题"); });
+                     Button(ButtonProps{}.onClick(
+                                [state] { static_cast<void>(state->notifications.close(u8"project-review")); }),
+                            [] { Text(u8"gallery.notification.close · 关闭通知"); });
+                     Button(ButtonProps{}.onClick([state] {
+                         state->notification_placement.set(static_cast<NotificationPlacement>(
+                             (static_cast<int>(state->notification_placement.get()) + 1) % 4));
+                     }),
+                            [] { Text(u8"gallery.notification.placement · 四角位置"); });
+                     Button(ButtonProps{}.onClick([state] {
+                         state->notification_status.set(
+                             static_cast<NoticeStatus>((static_cast<int>(state->notification_status.get()) + 1) % 5));
+                     }),
+                            [] { Text(u8"gallery.notification.status · 切换状态"); });
+                     Button(ButtonProps{}.onClick([state] {
+                         static_cast<void>(state->messages.clear());
+                         static_cast<void>(state->notifications.clear());
+                         state->notice_feedback.set(u8"已清空消息与通知");
+                     }),
+                            [] { Text(u8"gallery.notices.clear · 清空提示"); });
+                 }});
+         }});
     state->telemetry.live_samples += 2;
 }
 
@@ -4205,10 +4212,17 @@ void add_timeline_samples(const std::shared_ptr<GalleryState>& state) {
                                                               .margin_right(dp(6))
                                                               .margin_top(dp(6))
                                                               .margin_bottom(dp(6))));
-                                        Button(ButtonProps{}.onClick([state] {
-                                            state->timeline_feedback.set(
-                                                utf8("已记录 " + std::string{state->timeline_draft.get().bytes()}));
-                                        }),
+                                        Button(ButtonProps{}
+                                                   .onClick([state] {
+                                                       state->timeline_feedback.set(
+                                                           utf8("已记录 " +
+                                                                std::string{state->timeline_draft.get().bytes()}));
+                                                   })
+                                                   .layout(LayoutStyle{}
+                                                               .margin_left(dp(6))
+                                                               .margin_right(dp(6))
+                                                               .margin_top(dp(6))
+                                                               .margin_bottom(dp(6))),
                                                [] { Text(u8"保存处理备注"); });
                                     }});
                            }})});

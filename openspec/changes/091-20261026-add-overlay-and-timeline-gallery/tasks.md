@@ -12,4 +12,4 @@
 
 ## 3. 跨流程集成
 
-- [ ] 3.1 基线比较确认旧 IDs 顺序、旧样例函数体/调用顺序、非目标支持条目及 Core/API/Theme/goldens/CMake 保持；运行必要旧代表回归、clang-format 22 check、doctor/strict/diff，新一轮 Astra 审查后修复实际问题并记录精确命令/范围/限制，提交推送完成阶段。不重复已通过的定向矩阵，完整 Gallery/native 放在用户指定收尾时统一执行。
+- [x] 3.1 基线比较确认旧 IDs 顺序、旧样例函数体/调用顺序、非目标支持条目及 Core/API/Theme/goldens/CMake 保持；运行必要旧代表回归、clang-format 22 check、doctor/strict/diff，新一轮 Astra 审查后修复实际问题并记录精确命令/范围/限制，提交推送完成阶段。不重复已通过的定向矩阵，完整 Gallery/native 放在用户指定收尾时统一执行。
