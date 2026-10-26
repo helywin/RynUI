@@ -39,6 +39,16 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
             return;
         }
 
+        // A window command filter may consume the event. Publish keyboard presentation
+        // before entering it, then revalidate focus after user state callbacks.
+        if (focused_ && modality_ != FocusModality::keyboard) {
+            const auto target = focused_;
+            modality_ = FocusModality::keyboard;
+            request_frame();
+            notify_state(*target, presentation_for(*target));
+            sanitize_internal();
+        }
+
         const auto filter = command_filter_;
         // Escape belongs to the focused editor's IME/draft transaction first.
         // Other commands retain the window filter's existing priority.
@@ -101,18 +111,6 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
             return;
         }
 
-        if (!focused_.has_value()) {
-            end_operation();
-            return;
-        }
-
-        if (modality_ != FocusModality::keyboard) {
-            const auto target = focused_;
-            modality_ = FocusModality::keyboard;
-            request_frame();
-            notify_state(*target, presentation_for(*target));
-            sanitize_internal();
-        }
         if (!focused_.has_value()) {
             end_operation();
             return;

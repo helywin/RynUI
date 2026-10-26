@@ -103,6 +103,23 @@ void run() {
     config->tree.tokens.font_size = dp(16);
     root->update(*config);
     check(grand->snapshot().tree().metrics.font_size == 16, "Tree inherited recovery failed");
+    auto child_config = std::make_unique<ThemeConfig>();
+    child_config->tree.tokens.indent_size = dp(2e33F);
+    auto limited_child = ThemeScope::create(root, *child_config);
+    auto limited_grand = ThemeScope::create(limited_child, *std::make_unique<ThemeConfig>());
+    const auto* root_before = &root->snapshot();
+    const auto* child_before = &limited_child->snapshot();
+    const auto* grand_before = &limited_grand->snapshot();
+    auto ancestor = std::make_unique<ThemeConfig>(*config);
+    ancestor->tree.tokens.title_height = dp(4e33F);
+    static_cast<void>(resolve_theme(*ancestor)); // Valid alone; only the descendant combination exceeds the limit.
+    invalid([&] { root->update(*ancestor); });
+    check(root_before == &root->snapshot() && child_before == &limited_child->snapshot() &&
+              grand_before == &limited_grand->snapshot(),
+          "Tree descendant preflight published part of the chain");
+    ancestor->tree.tokens.title_height = dp(32);
+    root->update(*ancestor);
+    check(limited_grand->snapshot().tree().metrics.title_height == 32, "Tree descendant preflight failed to recover");
 }
 
 void goldens(const std::filesystem::path& output) {

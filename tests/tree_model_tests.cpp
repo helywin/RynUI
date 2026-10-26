@@ -72,6 +72,14 @@ void run() {
     }
     max.validate();
     check(max.shown().size() == 1024, "maximum valid nodes were truncated");
+    TreeModel deep;
+    for (std::size_t i = 0; i < 64; ++i) {
+        const auto key = String::from_utf8(std::to_string(i)).value();
+        deep.nodes.push_back({key, i ? i - 1 : tree_no_parent, i, 64});
+        deep.expanded.push_back(key);
+    }
+    deep.validate();
+    check(deep.shown().size() == 64, "maximum valid depth was truncated");
 }
 } // namespace
 

@@ -15,7 +15,7 @@ void project_tree() {
 }
 ```
 
-richTitle(TreeTitle{...}) 和 icon(TreeIcon{...}) 挂载一次并保留原生内容身份。禁用节点仅阻止 Tree 行自身操作，富 child 遵循自己的 disabled 状态；全树 disabled 会阻止整树输入。隐藏/折叠会取消后代输入及 popup，恢复不会重开旧 popup。
+richTitle(TreeTitle{...}) 和 icon(TreeIcon{...}) 挂载一次并保留原生内容身份；多个富 child 可用 Flex/Space 组合。节点切换为 disabled 时取消已有后代交互，随后仅阻止 Tree 行自身操作，富 child 遵循自己的 disabled 状态；全树 disabled 会阻止整树输入。隐藏/折叠会取消后代输入及 popup，恢复不会重开旧 popup。选中背景和行焦点框覆盖图标/标题分区，checkbox 与 switcher 使用独立分区。
 
 Tree 行单 Tab 入口；Up/Down、Home/End 移动，Right 展开或进入子项，Left 折叠或到父项，Enter 单选，Space 在 checkable 时勾选，否则单选。富 child 保留自己的 Tab 和键盘行为。有限高度下滚轮和键盘显露焦点；不虚拟化。视觉仅由 ThemeConfig.tree.tokens 控制，LayoutStyle 仅控制外部布局。
 

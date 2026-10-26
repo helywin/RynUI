@@ -2,6 +2,16 @@ find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
 add_executable(rynui_tree_model_tests tree_model_tests.cpp)
+add_executable(rynui_tree_component_tests tree_component_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_component_tests)
+target_link_libraries(rynui_tree_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tree_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(tree_case IN ITEMS basic controlled rich scroll clips boundaries mount_lifecycle lifecycle validation reactivity theme_scene)
+    add_test(NAME rynui.tree_${tree_case} COMMAND rynui_tree_component_tests ${tree_case})
+endforeach()
+
 rynui_configure_cpp_target(rynui_tree_model_tests)
 target_link_libraries(rynui_tree_model_tests PRIVATE rynui_components)
 add_test(NAME rynui.tree_model COMMAND rynui_tree_model_tests)

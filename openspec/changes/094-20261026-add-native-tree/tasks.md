@@ -11,8 +11,8 @@
 
 ## 3. 平台通用组件（本机 Windows MSVC HEADLESS）
 
-- [ ] 3.1 实现保留 slots、原生指针和 roving 键盘、有限 viewport 滚动与 scene；定向组件测试验证受控/默认、富 Input/Button/Select 草稿/ref/身份、显隐和折叠恢复、有效富 child、邻居 Tab、实际 glyph/fill/hit/focus 裁剪。
-- [ ] 3.2 覆盖 mount/Prop/theme/输入边界重入销毁 owner 与私有节点、代际隔离、popup/capture/focus/session/preedit 清理及 owned/foreign blocks；通过生命周期测试和直接共享回归，提供可编译 docs/tree.md 示例，创建本地提交。
+- [x] 3.1 实现保留 slots、原生指针和 roving 键盘、有限 viewport 滚动与 scene；定向组件测试验证受控/默认、富 Input/Button/Select 草稿/ref/身份、显隐和折叠恢复、有效富 child、邻居 Tab、实际 glyph/fill/hit/focus 裁剪。
+- [x] 3.2 覆盖 mount/Prop/theme/输入边界重入销毁 owner 与私有节点、代际隔离、popup/capture/focus/session/preedit 清理及 owned/foreign blocks；通过生命周期测试和直接共享回归，提供可编译 docs/tree.md 示例，创建本地提交。
 
 ## 4. 集成收口
 
