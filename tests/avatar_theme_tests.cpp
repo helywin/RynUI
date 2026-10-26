@@ -1,4 +1,5 @@
 #include "theme/theme_runtime.hpp"
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -141,12 +142,65 @@ void goldens(const std::filesystem::path& output) {
         check(file.good(), "could not write fresh Avatar golden");
     }
 }
+
+void font_limits() {
+    auto root = ThemeScope::create_default();
+    auto inherited = std::make_unique<ThemeConfig>();
+    auto child = ThemeScope::create(root, *inherited);
+    auto grandchild = ThemeScope::create(child, *inherited);
+    const auto* before = &root->snapshot();
+    const auto* child_before = &child->snapshot();
+    const auto* grandchild_before = &grandchild->snapshot();
+    auto config = std::make_unique<ThemeConfig>();
+    config->avatar.tokens.text_font_size = dp(100000000);
+    bool rejected = false;
+    try {
+        root->update(*config);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    std::cout << "R1 font: rejected=" << rejected << ", snapshot preserved=" << (before == &root->snapshot()) << '\n';
+    check(rejected && before == &root->snapshot() && child_before == &child->snapshot() &&
+              grandchild_before == &grandchild->snapshot(),
+          "R1 font: 100000000 dp was published before font loading");
+    constexpr auto limit = std::numeric_limits<int>::max() / 64;
+    const float above = static_cast<float>(limit);
+    const float below = std::nextafter(above, 0.0F);
+    check(std::round(static_cast<double>(below)) <= limit && std::round(static_cast<double>(above)) > limit,
+          "font limit fixture does not straddle the quantized FontRuntime limit");
+    for (auto field : {&AvatarTokenOverride::text_font_size, &AvatarTokenOverride::text_font_size_large,
+                       &AvatarTokenOverride::text_font_size_small, &AvatarTokenOverride::icon_font_size,
+                       &AvatarTokenOverride::icon_font_size_large, &AvatarTokenOverride::icon_font_size_small}) {
+        auto boundary = std::make_unique<ThemeConfig>();
+        boundary->avatar.tokens.*field = dp(above);
+        invalid([&] { root->update(*boundary); });
+        check(before == &root->snapshot(), "quantized oversized Avatar font changed snapshot");
+        boundary->avatar.tokens.*field = dp(below);
+        static_cast<void>(resolve_theme(*boundary));
+    }
+    auto algorithm = std::make_unique<ThemeConfig>();
+    algorithm->avatar.algorithm = true;
+    algorithm->avatar.seed.font_size = dp(100000000);
+    invalid([&] { static_cast<void>(resolve_theme(*algorithm)); });
+    invalid([&] { static_cast<void>(ThemeScope::create(root, *algorithm)); });
+    algorithm->avatar.seed.font_size = dp(20);
+    child->update(*algorithm);
+    check(child->snapshot().avatar().metrics.text_font_size == 20 &&
+              grandchild->snapshot().avatar() == child->snapshot().avatar(),
+          "derived font recovery failed");
+    config->avatar.tokens.text_font_size = dp(18);
+    root->update(*config);
+    check(root->snapshot().avatar().metrics.text_font_size == 18 &&
+              child->snapshot().avatar().metrics.text_font_size == 20,
+          "valid font recovery or independent component algorithm failed");
+}
 } // namespace
 
 int main(int argc, char** argv) {
     try {
         recipe();
         validation();
+        font_limits();
         if (argc == 2) {
             goldens(argv[1]);
         }

@@ -104,6 +104,22 @@ void text_case() {
                                   return e.material.visible && e.material.color == *config->avatar.tokens.background;
                               }),
           "Avatar Theme background missed logical scene");
+    const auto scope = f.services.components().theme_scope(id);
+    const auto* before = &scope->snapshot();
+    auto bad = std::make_unique<ThemeConfig>(*config);
+    bad->avatar.tokens.text_font_size = dp(100000000);
+    bool rejected = false;
+    try {
+        theme->set(*bad);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && before == &scope->snapshot(), "reactive oversized font was published before font resolution");
+    config->avatar.tokens.text_font_size = dp(18);
+    theme->set(*config);
+    sync(f);
+    check(scope->snapshot().avatar().metrics.text_font_size == 18 && ink(f, first.content) > 0,
+          "reactive valid font recovery did not render actual glyphs");
     for (auto value :
          {AvatarSizeValue{AvatarSize::Small}, AvatarSizeValue{AvatarSize::Large}, AvatarSizeValue{47.0F}}) {
         size.set(value);
@@ -218,6 +234,79 @@ void group() {
     visible.set(false);
     sync(f);
     check(!f.services.next_frame_deadline(), "hidden Group retained hover deadline");
+    clean(f);
+}
+
+void overflow() {
+    Fixture f;
+    std::vector<AvatarGroupItem> items;
+    for (int i = 0; i < 14; ++i) {
+        items.emplace_back(String::from_utf8(std::to_string(i)).value(), u8"A");
+    }
+    f.services.mount(Content{[&] {
+        AvatarGroup(AvatarGroupProps{}.max(AvatarGroupMax{0, PopoverTriggerMode::Click, PopoverPlacement::Top}), items);
+    }});
+    sync(f);
+    const auto owner = f.services.avatar().groups()[0];
+    const auto group = f.services.avatar().group_snapshot(owner);
+    click(f, group.overflow);
+    f.services.tick_animations(animation::AnimationTime::microseconds(1000000));
+    sync(f);
+    const auto pop = f.services.popover().snapshot(group.popover);
+    const auto content = bounds(f, pop.content);
+    const auto last = bounds(f, group.items.back().overflow_avatar);
+    std::cout << "R1 overflow: content width=" << content.width << ", last relative x=" << last.x - content.x << '\n';
+    check(inside(last, content) && ink(f, f.services.avatar().snapshot(group.items.back().overflow_avatar).content) > 0,
+          "R1 overflow: last hidden Avatar is permanently clipped");
+    const auto count = f.services.components().component_count();
+    std::vector<bool> seen(group.items.size());
+    const auto inspect = [&](bool all) {
+        const auto popup = f.services.popover().snapshot(group.popover);
+        check(popup.geometry.visible, "overflow layout closed the popup");
+        const auto clip = bounds(f, popup.content);
+        const auto background = f.services.components().theme_scope(owner)->snapshot().avatar().colors.background;
+        for (std::size_t i = 0; i < group.items.size(); ++i) {
+            const auto avatar = group.items[i].overflow_avatar;
+            const auto frame = bounds(f, avatar);
+            const auto visible_ink = ink(f, f.services.avatar().snapshot(avatar).content);
+            seen[i] = seen[i] || visible_ink > 0;
+            bool surface = false;
+            for (const auto& effect : f.services.rounded_effects().packed_instances()) {
+                if (!effect.material.visible || effect.material.color != background ||
+                    effect.geometry.shape.rect != frame) {
+                    continue;
+                }
+                check(effect.geometry.ancestor_clip.has_value() && inside(effect.geometry.ancestor_clip->bounds, clip),
+                      "actual overflow surface clip escaped popup content");
+                surface = surface || contains(effect.geometry.ancestor_clip->bounds,
+                                              {frame.x + frame.width / 2, frame.y + frame.height / 2});
+            }
+            if (all) {
+                check(inside(frame, clip) && visible_ink > 0 && surface,
+                      "wrapped overflow item has no reachable actual glyph/surface");
+            }
+        }
+        check(f.services.components().component_count() == count &&
+                  f.services.avatar().group_snapshot(owner).items.back().overflow_avatar ==
+                      group.items.back().overflow_avatar,
+              "overflow constraint update rebuilt retained identities");
+    };
+    inspect(true);
+    check(f.services.layout_and_synchronize({200, 800}, {0, 0, 200, 800}), "narrow overflow layout failed");
+    inspect(true);
+    check(f.services.layout_and_synchronize({120, 100}, {0, 0, 120, 100}), "short overflow layout failed");
+    std::fill(seen.begin(), seen.end(), false);
+    for (int step = 0; step < 12; ++step) {
+        inspect(false);
+        const auto clip = bounds(f, f.services.popover().snapshot(group.popover).content);
+        check(f.services.dispatch_scroll({0, -1, clip.x + clip.width / 2, clip.y + clip.height / 2}),
+              "overflow popup did not own its vertical wheel");
+        check(f.services.layout_and_synchronize({120, 100}, {0, 0, 120, 100}), "overflow scroll layout failed");
+    }
+    check(std::ranges::all_of(seen, [](bool v) { return v; }), "scrolling did not reveal every hidden Avatar glyph");
+    sync(f);
+    inspect(true);
+    check(!f.services.next_frame_deadline(), "overflow scrolling left an idle deadline");
     clean(f);
 }
 
@@ -471,6 +560,8 @@ int main(int argc, char** argv) {
             text_case();
         } else if (name == "group") {
             group();
+        } else if (name == "overflow") {
+            overflow();
         } else if (name == "clips") {
             clips();
         } else if (name == "retention") {

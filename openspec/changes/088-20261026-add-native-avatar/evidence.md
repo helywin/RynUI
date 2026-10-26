@@ -53,3 +53,37 @@ $avatarOpenSpec = 'C:/Users/jiang/AppData/Local/pnpm/global/v11/571d8138cbe6cca8
 T3 configuration 现场读取确认此 worker 为 `codex / gpt-6.1-sol / reasoningEffort=xhigh / serviceTier=default`。没有创建 children；本地阶段提交由父线程随后集成，不推送 t3 分支。
 
 当前证据不代表 GPU、原生窗口、Linux、系统字体、系统 IME、AT 或 main 已验收。父线程负责 Astra 审查与集成发布；本 worker 不执行 Git 远端操作、push、PR 或 archive。
+
+## Astra R1 两个 P2 的复现与修正
+
+继续工作时现场确认 HEAD `26e1a7128375f77cbe4eac801797342f1cb4fc21`，分支 `t3/native-avatar-group`，worktree 干净。先只增加回归测试，未修改实现，使用同一 MSVC headless Debug preset 构建两个测试 target（`--parallel 2`）并执行：
+
+```text
+ctest --preset windows-msvc-headless-debug -R '^rynui\.avatar_(overflow|theme)$' --output-on-failure
+```
+
+两项均失败（exit 8）：
+
+- overflow：600 dp 窗口、14 项、max.count=0、Click，实测 `content width=456, last relative x=468`，最后一项没有可见 glyph；原单行布局永久裁剪该项。
+- font：`text_font_size=dp(100000000)`，实测 `rejected=0, snapshot preserved=0`，Theme 已发布超出 FontRuntime logical pixel 输入范围的值。
+
+原始日志：`out/build/avatar-r1-repro-build.log`、`out/build/avatar-r1-repro-ctest.log`。
+
+修正范围：仅 AvatarGroup overflow popup 的布局/滚动与 Avatar 最终字体校验。inline overlap 不变；popup 按可用宽度换行，必要时在所属 popup layer 与内容 clip 内消费纵向滚轮。换行/滚动仅重新放置 retained 子节点，恢复尺寸时将偏移限制在新的可滚动范围。字体按现有系统实际量化规则 `round(font)` 比较 FontRuntime 的 `INT_MAX / 64` 上限，发生在 Theme 发布前，不再只比较 long/uint32 上限。
+
+最终受影响用例：theme、text、group、overflow、clips、gates。使用本 worktree 新构建：
+
+```text
+cmake --build --preset windows-msvc-headless-debug --target rynui_avatar_theme_tests rynui_avatar_component_tests --parallel 2
+ctest --preset windows-msvc-headless-debug -R '^rynui\.avatar_(theme|overflow|text|group|gates|clips)$' --output-on-failure
+cmake --build --preset windows-msvc-headless-release --target rynui_avatar_theme_tests rynui_avatar_component_tests --parallel 2
+ctest --preset windows-msvc-headless-release -R '^rynui\.avatar_(theme|overflow|text|group|gates|clips)$' --output-on-failure
+```
+
+- Debug **6/6**，2.14 秒；Release **6/6**，1.13 秒。未重跑历史 full suite、Gallery 或上一轮全 8×2 矩阵。
+- overflow 回归：最后一项换行后相对 x=36；600×800、200×800 下全部 14 项的实际 R8 glyph 可见，实际 retained surface/ancestor clip 均位于内容区。120×100 下用滚轮逐步验证全部 14 项 glyph 都可到达；恢复 600×800 后全部可见且 ComponentId/组件数量保持。开窗后先推进原生 Popover 的已有延迟时钟，再断言滚动不留下 idle deadline，卸载完整清理。
+- font 回归：六个最终字体字段均验证量化边界；100000000 dp 被拒绝且 root/child/grandchild snapshot 地址不变；独立组件 seed 算法在直接解析与嵌套 ThemeScope 创建时拒绝非法字体，合法算法更新后继承链恢复。真实 mounted Avatar 的 reactive Theme 更新也验证拒绝保留旧 snapshot，恢复为 18 dp 后实际 glyph 再次可见。
+- `rynui_avatar_theme_tests.exe out/avatar-r1-goldens` 重新生成五份 fresh JSON。`verify_avatar_theme_baseline.py` 精确覆盖 **36 个旧 IIFE（34 direct + 2 nested）**、完整旧派生段和 **196 个旧 identities**；五份旧 typed JSON 的 235 个顶层字段及全部嵌套字段深比较通过，fresh JSON 与本 change 已提交的五份 golden **逐字节一致**，未修改仓库 golden。
+- clang-format **22.1.3** check：**731 files / 0 failures**。未修改 stack 设置或 renderer/GPU ABI；上一轮四个 EXE 默认 1MiB PE 栈证据保留，本轮不重复 PE 矩阵。
+
+最终构建/测试日志：`out/build/avatar-r1-debug-build.log`、`out/build/avatar-r1-debug-ctest.log`、`out/build/avatar-r1-release-build.log`、`out/build/avatar-r1-release-ctest.log`。收口继续使用上述绝对 Node + global/v11 OpenSpec 入口，实测 version **1.14.0**、doctor root 为本隔离 worktree 且 **healthy=true**、strict **88 passed / 0 failed**，命令均 exit 0；`git diff --check` 通过。日志为 `out/build/avatar-r1-openspec-114-doctor.log` 与 `out/build/avatar-r1-openspec-114-strict.log`。本轮没有创建 children、切换模型、运行 ROOT/out 程序、修改 Gallery、访问 Git 远端或 push/PR/archive；保存本地英文修正提交后交父安排全新 Astra R2。

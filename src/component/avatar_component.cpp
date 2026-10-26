@@ -33,6 +33,7 @@ struct AvatarState final {
 
 struct GroupItem final {
     AvatarGroupItemSnapshot view;
+    runtime::Rect popup_frame;
     bool visible{true};
     Signal<bool> inline_visible{false};
     Signal<bool> overflow_visible{false};
@@ -53,6 +54,9 @@ struct GroupState final {
     Signal<PopoverPlacement> placement{PopoverPlacement::Top};
     AvatarGroupMax max;
     bool visible{true};
+    runtime::ComponentId popup_row;
+    float popup_height{};
+    float popup_scroll{};
     std::array<theme_runtime::Subscription, 2> subscriptions;
 };
 
@@ -536,6 +540,7 @@ void AvatarComponentHost::mount(const AvatarGroupProps& p, const std::vector<Ava
             slots.content = PopoverContent{[&] {
                 auto& c = runtime::require_component_build_context();
                 const auto row = region(services);
+                s.popup_row = row;
                 services.layout().set_layout(
                     c.root(row), layout::ComponentLayout{
                                      [this, id](layout::LayoutEngine& e, runtime::NodeId, layout::Constraints limits) {
@@ -619,52 +624,128 @@ void AvatarComponentHost::mount(const AvatarGroupProps& p, const std::vector<Ava
 
 runtime::Size AvatarComponentHost::measure_group(runtime::ComponentId id, layout::LayoutEngine& e,
                                                  layout::Constraints c, bool popup) {
-    const auto& s = *services_->components().state<GroupState>(id);
+    auto& s = *services_->components().state<GroupState>(id);
     const auto& m = services_->components().theme_scope(id)->snapshot().avatar().metrics;
+    if (popup) {
+        float x = 0;
+        float y = 0;
+        float row_height = 0;
+        float width = 0;
+        for (auto& item : s.items) {
+            if (!item.view.overflow_visible) {
+                continue;
+            }
+            const auto size = e.measure_child(services_->components().root(item.view.overflow_avatar),
+                                              {0, c.max_width, 0, c.max_height});
+            if (x > 0 && x + m.group_space + size.width > c.max_width) {
+                y += row_height + m.group_space;
+                x = 0;
+                row_height = 0;
+            }
+            if (x > 0) {
+                x += m.group_space;
+            }
+            item.popup_frame = {x, y, size.width, size.height};
+            x += size.width;
+            width = std::max(width, x);
+            row_height = std::max(row_height, size.height);
+        }
+        s.popup_height = y + row_height;
+        return c.constrain({width, s.popup_height});
+    }
     float width = 0;
     float height = 0;
     std::size_t count = 0;
     const auto add = [&](runtime::ComponentId child) {
         const auto size = e.measure_child(services_->components().root(child), {0, infinity, 0, c.max_height});
         if (count++) {
-            width = std::max(0.0F, width + (popup ? m.group_space : m.group_overlapping));
+            width = std::max(0.0F, width + m.group_overlapping);
         }
         width += size.width;
         height = std::max(height, size.height);
     };
     for (const auto& item : s.items) {
-        if (popup ? item.view.overflow_visible : item.view.inline_visible) {
-            add(popup ? item.view.overflow_avatar : item.view.inline_avatar);
+        if (item.view.inline_visible) {
+            add(item.view.inline_avatar);
         }
     }
-    if (!popup && s.view.overflow_count > 0) {
+    if (s.view.overflow_count > 0) {
         add(s.view.popover);
     }
     return c.constrain({width, height});
 }
 
 void AvatarComponentHost::place_group(runtime::ComponentId id, layout::LayoutEngine& e, runtime::Rect r, bool popup) {
-    const auto& s = *services_->components().state<GroupState>(id);
+    auto& s = *services_->components().state<GroupState>(id);
     const auto& m = services_->components().theme_scope(id)->snapshot().avatar().metrics;
+    if (popup) {
+        s.popup_scroll = std::clamp(s.popup_scroll, 0.0F, std::max(0.0F, s.popup_height - r.height));
+        for (const auto& item : s.items) {
+            if (item.view.overflow_visible) {
+                const auto frame = item.popup_frame;
+                e.place_child(services_->components().root(item.view.overflow_avatar),
+                              {r.x + frame.x, r.y + frame.y - s.popup_scroll, frame.width, frame.height});
+            }
+        }
+        return;
+    }
     float x = 0;
     std::size_t count = 0;
     const auto add = [&](runtime::ComponentId child) {
         const auto node = services_->components().root(child);
         const auto size = services_->nodes().require(node).layout_size;
         if (count++) {
-            x = std::max(0.0F, x + (popup ? m.group_space : m.group_overlapping));
+            x = std::max(0.0F, x + m.group_overlapping);
         }
         e.place_child(node, {r.x + x, r.y + (r.height - size.height) / 2, size.width, size.height});
         x += size.width;
     };
     for (const auto& item : s.items) {
-        if (popup ? item.view.overflow_visible : item.view.inline_visible) {
-            add(popup ? item.view.overflow_avatar : item.view.inline_avatar);
+        if (item.view.inline_visible) {
+            add(item.view.inline_avatar);
         }
     }
-    if (!popup && s.view.overflow_count > 0) {
+    if (s.view.overflow_count > 0) {
         add(s.view.popover);
     }
+}
+
+bool AvatarComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
+    const auto hit = services_->hit_test().hit_test({event.x, event.y});
+    const auto* target = hit ? services_->interactions().find(*hit) : nullptr;
+    auto layer = target ? std::optional{target->component} : std::nullopt;
+    while (layer && !services_->components().is_window_layer_root(*layer)) {
+        layer = services_->components().parent(*layer);
+    }
+    if (!layer) {
+        return false;
+    }
+    for (auto id : groups_) {
+        auto* s = services_->components().state<GroupState>(id);
+        if (!s) {
+            continue;
+        }
+        const auto popup = services_->popover().snapshot(s->view.popover);
+        if (popup.popup != *layer || !popup.geometry.visible ||
+            !services_->interactions().component_active(popup.popup)) {
+            continue;
+        }
+        const auto node = services_->components().root(s->popup_row);
+        const auto& row = services_->nodes().require(node);
+        const auto clip = services_->nodes().content_clip(node, popup.geometry.bounds);
+        if (event.x < clip.x || event.x >= clip.x + clip.width || event.y < clip.y || event.y >= clip.y + clip.height) {
+            return false;
+        }
+        const float next = std::clamp(s->popup_scroll - event.delta_y * 32.0F, 0.0F,
+                                      std::max(0.0F, s->popup_height - row.bounds.height));
+        if (next != s->popup_scroll) {
+            s->popup_scroll = next;
+            services_->dirty().invalidate(node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
+                                                    runtime::DirtyFlags::HitTest);
+        }
+        return true;
+    }
+    return false;
 }
 } // namespace ryn::detail
 

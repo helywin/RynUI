@@ -27,8 +27,8 @@ void Avatars() {
 
 `AvatarGroup` 接收构建时固定的 `std::vector<AvatarGroupItem>`，最多 1024 项；key 必须唯一且非空。每项提供 reactive text、optional IconName 与 visible；统一 size/shape 可响应更新。首版 Group 接受文字和原生图标，不接受任意富 slot。每项的 inline/overflow 展示位置都保留节点，max 和显隐改变不重新构建；两处共享文字/图标属性。
 
-`AvatarGroupMax` 使用现代 `count`、`trigger`、`placement`。count 为空表示不限制；count 范围 0..1024，0 只显示 `+N`。超过 count 时显示前 count 个可见原始头像，再追加准确 `+N`；默认 hover/top，Popover 展示实际隐藏头像。未溢出或 Group 隐藏时不显示触发器，pending hover deadline 会取消。受限宽度裁剪自然重叠队列，不自动减少 count；短高收缩头像，恢复尺寸保持节点身份。Popup 延用现有 Modal/Spin/window-layer 输入边界。
+`AvatarGroupMax` 使用现代 `count`、`trigger`、`placement`。count 为空表示不限制；count 范围 0..1024，0 只显示 `+N`。超过 count 时显示前 count 个可见原始头像，再追加准确 `+N`；默认 hover/top，Popover 展示实际隐藏头像。未溢出或 Group 隐藏时不显示触发器，pending hover deadline 会取消。内联队列在受限宽度下裁剪自然重叠布局，不自动减少 count；overflow Popover 按可用宽度换行，超过可用高度时用滚轮纵向浏览全部隐藏条目；短高收缩头像，恢复尺寸保持节点身份。Popup 延用现有 Modal/Spin/window-layer 输入边界。
 
-视觉只通过 `ThemeConfig::avatar.tokens` 设置。包括 text/background/group_border、三套 container_size/text_font_size/icon_font_size、三套 border_radius、border_width、group_space、group_overlapping 和 font_family；overlap 为非正数，其他尺寸非负且 container_size 正、最终字体至少 .5 logical dp。`avatar.algorithm=true` 启用组件 seed 独立派生；默认继承全局/父主题。非法最终字体、非有限值与组合 extent 在主题发布前拒绝，祖先对子孙执行原子 preflight。LayoutStyle 只控制外部布局。
+视觉只通过 `ThemeConfig::avatar.tokens` 设置。包括 text/background/group_border、三套 container_size/text_font_size/icon_font_size、三套 border_radius、border_width、group_space、group_overlapping 和 font_family；overlap 为非正数，其他尺寸非负且 container_size 正、最终字体至少 .5 logical dp，按现有字体系统量化后的 logical pixel size 不超过 FontRuntime 的 `INT_MAX / 64` 上限。`avatar.algorithm=true` 启用组件 seed 独立派生；默认继承全局/父主题。非法最终字体、非有限值与组合 extent 在主题发布前拒绝，祖先对子孙执行原子 preflight。LayoutStyle 只控制外部布局。
 
 首版不提供 `src`、`srcSet`、图片联网/文件加载、CORS、图片错误回调、responsive breakpoint 尺寸或 CSS/DOM 属性。仓库尚无公开 Image 管线，未提供这些接口的 stub。当前证据仅覆盖 Windows MSVC headless 的真实字体/逻辑场景与输入合同，不代表 GPU、原生窗口、Linux、系统 IME 或 AT 验收。

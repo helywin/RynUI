@@ -39,6 +39,7 @@ public:
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
     void on_dispose() noexcept override;
+    bool on_scroll_input(const input::ScrollInputEvent&) override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     [[nodiscard]] AvatarSnapshot snapshot(runtime::ComponentId) const;
     [[nodiscard]] AvatarGroupSnapshot group_snapshot(runtime::ComponentId) const;

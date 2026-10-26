@@ -12,7 +12,7 @@ target_link_libraries(rynui_avatar_component_tests PRIVATE rynui_components)
 target_compile_definitions(rynui_avatar_component_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
-foreach(avatar_case IN ITEMS text group clips retention gates lifecycle validation)
+foreach(avatar_case IN ITEMS text group overflow clips retention gates lifecycle validation)
     add_test(NAME rynui.avatar_${avatar_case} COMMAND rynui_avatar_component_tests ${avatar_case})
 endforeach()
 

@@ -85,8 +85,9 @@ void apply_avatar_override(AvatarThemeToken& t, const AvatarTokenOverride& o) {
     }
     for (float font : {m.text_font_size, m.text_font_size_large, m.text_font_size_small, m.icon_font_size,
                        m.icon_font_size_large, m.icon_font_size_small}) {
-        if (font < .5F || static_cast<double>(font) >= std::numeric_limits<long>::max() ||
-            static_cast<double>(font) >= std::numeric_limits<std::uint32_t>::max()) {
+        // Match FontRuntime's logical pixel limit before its 26.6 conversion.
+        const double pixels = std::round(static_cast<double>(font));
+        if (font < .5F || pixels > std::numeric_limits<int>::max() / 64) {
             throw std::invalid_argument("Avatar final font is not renderable");
         }
     }

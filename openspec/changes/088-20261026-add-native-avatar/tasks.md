@@ -13,3 +13,8 @@
 
 - [x] 3.1 windows-msvc-headless 的 Ninja Multi-Config Debug/Release（最多 2 jobs）定向 build/CTest 通过，保留默认 1MiB PE stack 并记录精确命令/数量/日志
 - [x] 3.2 公开 docs/avatar.md 示例与限制准确；clang-format 22.1.3 check、OpenSpec 1.14 doctor/strict、git diff --check 通过，本地英文阶段提交完成，交父审查
+
+## 4. Astra R1 修正
+
+- [x] 4.1 先复现 14 项 overflow 的永久裁剪，再仅修正 popup 的受限宽换行/必要滚动；定向 Debug/Release 验证真实 glyph/surface、全部条目可达、恢复布局与 retained 身份
+- [x] 4.2 先复现 100000000 dp 字体被发布，再按 FontRuntime 实际量化上限拒绝最终派生字体；定向 Debug/Release 验证旧 snapshot/继承链保留、独立算法及合法恢复，补 format/1.14 doctor/strict/diff 与英文提交证据

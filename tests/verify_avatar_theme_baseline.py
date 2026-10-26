@@ -12,7 +12,8 @@ def baseline(path):
     return subprocess.check_output(["git", "show", f"{BASE}:{path}"], cwd=ROOT).decode("utf-8")
 
 def recipes(source):
-    return re.findall(r"    auto \w+ = \[&\] \{.*?\n    \}\(\);", source, re.S)
+    return [match.group(0) for match in re.finditer(
+        r"^( +)(?:auto )?\w+ = \[&\] \{.*?\n\1\}\(\);", source, re.S | re.M)]
 
 def identities(source):
     enum = re.search(r"enum class TokenIdentity[^\{]*\{(.*?)\n\};", source, re.S).group(1)
@@ -39,7 +40,8 @@ def main():
         actual.pop("avatar")
         assert actual == expected, f"old typed fields changed: {name}"
         fields += len(expected)
-    print(f"Avatar baseline passed: {len(old)} old IIFEs unchanged; {len(ids)-1} old identities unchanged; 5 fresh goldens deeply equal across {fields} old top-level fields")
+    direct = sum(recipe.startswith("    auto ") for recipe in old)
+    print(f"Avatar baseline passed: {len(old)} old IIFEs unchanged ({direct} direct + {len(old)-direct} nested); {len(ids)-1} old identities unchanged; 5 fresh goldens deeply equal across {fields} old top-level fields")
 
 if __name__ == "__main__":
     main()

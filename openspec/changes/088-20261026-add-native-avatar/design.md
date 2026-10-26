@@ -13,8 +13,8 @@ Goals：真正 retained 原生首版；文字 shaping auto-fit；可恢复受限
 - AvatarProps 以 AvatarSizeValue（预设或 float）、AvatarShape、text、gap、visible、layout 表达；AvatarSlots 的 icon/content 一次挂载，icon 优先。纯文字用独立 measurement scene 测量，量化字体后复测；不估算字符数。最小字体 .5 dp，无法容纳时裁剪。
 - 内容使用独立矩形 viewport，clip_content=true、clip_decorations=false；circle 使用内接安全矩形，避免没有弧形 glyph mask 时泄漏到圆外。背景/边框通过现有 retained surface，不新增 shader。内容居中，有限宽/短高收缩到正方形，零尺寸能够恢复。
 - AvatarGroupItem 固定 key 与 reactive text/optional IconName/visible；不接受任意用户 slot。每个条目的内联与 overflow 原生 Avatar 各保留一次，视觉共享属性，避免移动组件 ancestry 或复制带 ref/草稿的用户 slot。条目上限 1024；max.count 使用 optional uint32，0 表示只显示 +N。Popover 本身与隐藏展示都 retained，关闭不销毁；只计可见条目。
-- Group inline 采用自定义布局，overlap 来自 token，step 至少 0；受限宽不改变自然相对顺序，通过视口裁剪。Popover 内容使用正常 groupSpace；对溢出区域可见性、input block 和真实 hit clip 进行断言。
-- Theme 新增 Avatar config/token、append-only 两个 identities，原 IIFE 原文/顺序保持；最终 derive/override 后统一检查字体与组合 extent。大 ThemeConfig/Snapshot 用 heap；不扩大默认 1MiB PE stack。
+- Group inline 采用自定义布局，overlap 来自 token，step 至少 0；受限宽不改变自然相对顺序，通过视口裁剪。Popover 内容使用正常 groupSpace 并按可用宽度换行，超出可用高度时仅在自己 popup 的命中层内接收纵向滚轮；保留子节点，布局恢复时收敛滚动偏移。对溢出区域可见性、input block 和真实 hit clip 进行断言。
+- Theme 新增 Avatar config/token、append-only 两个 identities，原 IIFE 原文/顺序保持；最终 derive/override 后统一检查字体与组合 extent，最终字号量化后遵守 FontRuntime 的 `INT_MAX / 64` logical pixel 上限。大 ThemeConfig/Snapshot 用 heap；不扩大默认 1MiB PE stack。
 
 ## Risks / Trade-offs
 
