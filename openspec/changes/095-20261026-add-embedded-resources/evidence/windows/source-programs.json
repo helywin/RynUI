@@ -1,0 +1,214 @@
+{
+  "sources": {
+    "CMakeLists.txt": {
+      "sha256": "9e88fdc4b43db00e0c400e24f1431f048f1a82523e068704a39141ad0decc6df",
+      "mtime_ns": 1793026123496785700
+    },
+    "cmake/RynUIArchitecture.cmake": {
+      "sha256": "58c6f3df8e96986142e9e711dbbcbfc4ea8a7a9ae3cdafb38686b09cfb036119",
+      "mtime_ns": 1793026123497785500
+    },
+    "cmake/RynUIShaders.cmake": {
+      "sha256": "3172ada959b29fdcf527873eb399d93588b3f687b5d5d362dc4b494804221727",
+      "mtime_ns": 1793026123498785400
+    },
+    "docs/architecture.md": {
+      "sha256": "76c70fbfed2afc88307a628b66f68f801b1ac9f6233beeedfefadef69f010e15",
+      "mtime_ns": 1793026870652165000
+    },
+    "docs/development/building.md": {
+      "sha256": "bebbd8792ac24fa4663c67edc1e3c7517bca22f6075b4d60f1ecedd0a61f9c75",
+      "mtime_ns": 1793027983172991800
+    },
+    "examples/CMakeLists.txt": {
+      "sha256": "973d31c8c24c6e79bef01618edca5de4125e21e65a58206bf53ff081ebb35948",
+      "mtime_ns": 1793027342988765700
+    },
+    "examples/button/main.cpp": {
+      "sha256": "f7cbfdb6f0e8171b801c5fb6c904a3c5dd1032a7be0c08a27f53473199fdb46b",
+      "mtime_ns": 1793026419913776100
+    },
+    "examples/layout/layout_demo_runtime.cpp": {
+      "sha256": "a96a04b12af4174ca29df08374098cb64957153797e42957e2a81db156802e4a",
+      "mtime_ns": 1793026419913776100
+    },
+    "examples/minimal/main.cpp": {
+      "sha256": "53f16006adb2801e02b5ae4390d6f2b13390a10173c5761ab173e0b7fba7c19a",
+      "mtime_ns": 1793026419912551600
+    },
+    "examples/text/main.cpp": {
+      "sha256": "c5ec1626795952951480c7ece8c243514e5e0a8fb77a78e889f48ba0f4669573",
+      "mtime_ns": 1793026419913253100
+    },
+    "examples/token_gallery/bidi_acceptance.cpp": {
+      "sha256": "bca0f66f90421d08cff7b06b9398eeb857970ce396e56f42be304a5b5c98b7cd",
+      "mtime_ns": 1793026539848225500
+    },
+    "examples/token_gallery/button_acceptance.cpp": {
+      "sha256": "e8547f66211062daa9b2b487ffe6baa55c19181529d2951bc071e3871db14e74",
+      "mtime_ns": 1793026539848225500
+    },
+    "examples/token_gallery/card_acceptance.cpp": {
+      "sha256": "cb054256cc95e0a2ca457d8fe4d59e31ffd411070b295e1d91a9548e43e832df",
+      "mtime_ns": 1793026539849225600
+    },
+    "examples/token_gallery/checkbox_acceptance.cpp": {
+      "sha256": "2d9666f7599848d25cfe27b5b41d7e9f52e5da8be75facbac02167b6257b2b94",
+      "mtime_ns": 1793026539849225600
+    },
+    "examples/token_gallery/divider_acceptance.cpp": {
+      "sha256": "a67bb2a6d2e61992f3667615c63ef3f1788bea645624aa25a1da43fe419bf8ec",
+      "mtime_ns": 1793026539849225600
+    },
+    "examples/token_gallery/flex_acceptance.cpp": {
+      "sha256": "e34a6482fc06885fa673fceb8cd08a0ff6323b89e6b03fc57039e466339a266d",
+      "mtime_ns": 1793026539850225700
+    },
+    "examples/token_gallery/icon_acceptance.cpp": {
+      "sha256": "a884ce6d66684fa420e9462e9b61dbabe31616460e85685b646128c881771a76",
+      "mtime_ns": 1793026539850730200
+    },
+    "examples/token_gallery/input_acceptance.cpp": {
+      "sha256": "896587918016868a54b7b6bd42f4254a424d3b986c4c3ffe35b69eee1eef8cd8",
+      "mtime_ns": 1793026539850730200
+    },
+    "examples/token_gallery/modal_acceptance.cpp": {
+      "sha256": "b57ad82d724698626112cd23811f33a8fc46e4886530ca21b5be76e684053d2f",
+      "mtime_ns": 1793026539851735700
+    },
+    "examples/token_gallery/otp_acceptance.cpp": {
+      "sha256": "5368e95d9f2c4ced7348e843ac8b0e785dbb9fbbf3a6325d9cfbe5ada65c2ef0",
+      "mtime_ns": 1793026539851735700
+    },
+    "examples/token_gallery/radio_acceptance.cpp": {
+      "sha256": "f5bd2bb3ddc76d0d4ca69fa8d9543b2063a79e634499e82f215deb97973a9113",
+      "mtime_ns": 1793026539851735700
+    },
+    "examples/token_gallery/rounded_acceptance.cpp": {
+      "sha256": "d9e2fc6e73fc8f84e9d8f407404de488967131f24694271b5caa5e4250f2926a",
+      "mtime_ns": 1793026419916782900
+    },
+    "examples/token_gallery/select_acceptance.cpp": {
+      "sha256": "d230b219efa87eda57e65127766785760ce911649d2466d6b2d3fd7a6573bd7c",
+      "mtime_ns": 1793026539853953100
+    },
+    "examples/token_gallery/slider_acceptance.cpp": {
+      "sha256": "ca24b3d49c6e8ce8a01d426f29a834efa5399f54a8a7f9db05bc060050d4699d",
+      "mtime_ns": 1793026539853953100
+    },
+    "examples/token_gallery/space_acceptance.cpp": {
+      "sha256": "8e85da1467042360ec85f4223944add52f657c467262d7c77e594a28d550c0bd",
+      "mtime_ns": 1793026539854959200
+    },
+    "examples/token_gallery/switch_acceptance.cpp": {
+      "sha256": "f804b7875d41781ca5c14253660f6da9ccd526ef9f3f12634a9859233f37afa1",
+      "mtime_ns": 1793026539854959200
+    },
+    "examples/token_gallery/tabs_acceptance.cpp": {
+      "sha256": "8563ae802f7e439e30d5e23271b49d5d6d33272fa6acb5e347c09c98f0c0f201",
+      "mtime_ns": 1793026539855958400
+    },
+    "examples/token_gallery/text_area_acceptance.cpp": {
+      "sha256": "5ee05778b25def36b40fcae553526c4f69861b0a3c61f6b60d92ae11d9ad7b6c",
+      "mtime_ns": 1793026539855958400
+    },
+    "examples/token_gallery/token_gallery_definition.cpp": {
+      "sha256": "c704bbb1f49f0cd2ee04282f395b3beb571e10adb368321d5d8d0a9e49f0fa7d",
+      "mtime_ns": 1793028137734875900
+    },
+    "examples/token_gallery/token_gallery_runtime.cpp": {
+      "sha256": "d0809c035db20e74eb2b321f976817b32ed9277e648e9017b552a220df851ee8",
+      "mtime_ns": 1793026419915782300
+    },
+    "examples/token_gallery/tooltip_acceptance.cpp": {
+      "sha256": "c351875c0cdd487bf036a19dfad666d2f15820df5003a5fc07774ff2b98e3f8d",
+      "mtime_ns": 1793026539856958700
+    },
+    "examples/token_gallery/typography_acceptance.cpp": {
+      "sha256": "3ffb0ce977afc62e24f2f83e14e0fa90eccb0d3dc836e423b231782f2525f5ae",
+      "mtime_ns": 1793026539856958700
+    },
+    "src/CMakeLists.txt": {
+      "sha256": "9301c0056685d7d823bd9eecaa8aa8c65f4f88c3906c885e62c9dba6014b3079",
+      "mtime_ns": 1793026123498785400
+    },
+    "src/renderer/sdl/quad_renderer.cpp": {
+      "sha256": "eb09b6cf86b2cac52c18122b5f53dad1a1779072e210b8b1a77f009f2201fd78",
+      "mtime_ns": 1793026541227807300
+    },
+    "src/renderer/sdl/quad_renderer.hpp": {
+      "sha256": "6ec2ccc421271726310ade5451aa4a857a035127d514bba2d2955bfcbf5556af",
+      "mtime_ns": 1793026400797131000
+    },
+    "src/renderer/sdl/scene_renderer.cpp": {
+      "sha256": "a273802e1d038fe3b9b768bb60685a5bbf8d27c4c5b0c6cba2cde79c1f4aca25",
+      "mtime_ns": 1793026541249012200
+    },
+    "src/renderer/sdl/scene_renderer.hpp": {
+      "sha256": "7365c2c9291f1c1f00a5382078a46bf63f9e0cf7abb94670bfa2b8475591b6c9",
+      "mtime_ns": 1793026400797131000
+    },
+    "tests/CMakeLists.txt": {
+      "sha256": "eb1d0f39b691084a6aae386c882f26ab52c4a00218d5a515553c3bb2aa5623cb",
+      "mtime_ns": 1793026539847225600
+    },
+    "cmake/EmbedBuiltinShaders.cmake": {
+      "sha256": "b2dcc04f9271a00de59e4d3f9d28bcaf0966c703b07bd2fc3ce8c2c4322ee096",
+      "mtime_ns": 1793026123496785700
+    },
+    "src/renderer/sdl/shader_resources.hpp": {
+      "sha256": "05a56b585327d5170059138b45521e81ddc2332a9e4ac2a07326c240def075cf",
+      "mtime_ns": 1793026123494781500
+    },
+    "src/renderer/sdl/shader_resources_win32.cpp": {
+      "sha256": "1c8b47d1863714c0b7be5e5567d24718d2c4957fd7130213ee1c1e9dfce18a22",
+      "mtime_ns": 1793026123495786800
+    },
+    "src/renderer/sdl/shaders.rc.in": {
+      "sha256": "dc121563fabd4cb9023b31947e13c2c18ad8ad5576ec1dde65c430fa8e71e7b4",
+      "mtime_ns": 1793027013118110700
+    },
+    "tests/embedded_shader_tests.cpp": {
+      "sha256": "26145c520b524629255c9b17a4eb7608c8509b08dc86fc851af8c33ea22cfa68",
+      "mtime_ns": 1793026539096613900
+    }
+  },
+  "programs": {
+    "out\\build\\windows-msvc\\examples\\Debug\\rynui_minimal.exe": {
+      "sha256": "fd01008ba119f6547c0aa0feba7bf579ea7c9cbe231b2e641d70e6d65c2abda7",
+      "bytes": 8309760,
+      "mtime_ns": 1793028144645551100,
+      "stack_reserve": 1048576
+    },
+    "out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe": {
+      "sha256": "920faa93d229ed58e15a6f04de421553080c87c2f878b251e7fa859762a4ea7a",
+      "bytes": 45059584,
+      "mtime_ns": 1793028166950208600,
+      "stack_reserve": 1048576
+    },
+    "out\\build\\windows-msvc\\tests\\Debug\\rynui_embedded_shader_tests.exe": {
+      "sha256": "8da328a69109526b6aa3a7a582e4905916deae6273e1280848e83dd1788c4a46",
+      "bytes": 941056,
+      "mtime_ns": 1793028147924076900,
+      "stack_reserve": 1048576
+    },
+    "out\\build\\windows-msvc\\examples\\Release\\rynui_minimal.exe": {
+      "sha256": "9f83853b6190b42c798dcdaecd43a97e97b34535a72dbb6c34fbe461faa906e7",
+      "bytes": 2895872,
+      "mtime_ns": 1793028250634934200,
+      "stack_reserve": 1048576
+    },
+    "out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe": {
+      "sha256": "02ef3f69b78685aeb4a8e15218c65e54d7617426e31c24b265d8f156c0738970",
+      "bytes": 15057408,
+      "mtime_ns": 1793028278565588300,
+      "stack_reserve": 1048576
+    },
+    "out\\build\\windows-msvc\\tests\\Release\\rynui_embedded_shader_tests.exe": {
+      "sha256": "ef0c0d1b0fe5b4a15bd700a92a401a2f0e43ead6e74ad8a9a787b21297fe5032",
+      "bytes": 103424,
+      "mtime_ns": 1793028256724383100,
+      "stack_reserve": 1048576
+    }
+  }
+}

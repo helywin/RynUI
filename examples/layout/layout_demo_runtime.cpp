@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
-#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -38,10 +37,6 @@ bool has_argument(int argc, char** argv, std::string_view expected) {
         }
     }
     return false;
-}
-
-std::filesystem::path executable_directory(char* executable) {
-    return std::filesystem::absolute(executable).parent_path();
 }
 
 class LayoutPlatformEvents final : public ryn::runtime::FrameEventSource {
@@ -224,7 +219,6 @@ void collect_layout_diagnostics(const ryn::runtime::ComponentHost& components, c
 int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
     try {
         const bool smoke_mode = has_argument(argc, argv, "--smoke");
-        const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{960.0F, 720.0F};
         ryn::runtime::Size viewport = requested_window;
         constexpr std::uint32_t pixel_size = 14;
@@ -261,8 +255,6 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         };
         ryn::detail::DefaultFontChainRequest font_request;
         font_request.raster = font_raster;
-        font_request.fallback_latin = executable / "fonts/latin.ttf";
-        font_request.fallback_cjk = executable / "fonts/cjk.otf";
         auto font_chain = ryn::detail::load_default_ui_font_chain(*fonts, font_request);
         if (!font_chain) {
             std::cerr << "font_error=" << font_chain.diagnostic << '\n';
@@ -286,7 +278,7 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
                                                      frame_requests);
         application.mount(definition.content);
 
-        ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
+        ryn::detail::SdlSceneRenderer renderer(platform);
         ryn::detail::SceneResources scene_resources(renderer);
         LayoutComponentSubmitter submitter(platform, application, text_scene, scene_resources, renderer, viewport);
         LayoutPlatformEvents events(platform, application, frame_requests, viewport);

@@ -1,0 +1,2 @@
+RynUI 0.1.0
+gpu_driver=direct3d12 shader_format=DXIL display_scale=1.5 pixel_density=1 window_size=960x640 pixel_size=960x640 viewport=640x426.667 component_runs=1 signal_writes=4 observer_executions=8 measure=4 layout=4 primitive_rebuilds=1 instance_updates=3 gpu_uploads=4 gpu_uploaded_bytes=192 submits=4 idle_wakes=0 idle_waits=139

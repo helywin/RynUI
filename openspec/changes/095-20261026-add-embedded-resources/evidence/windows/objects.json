@@ -1,0 +1,314 @@
+{
+  "src/CMakeFiles/rynui_renderer_sdl.dir/Debug/renderer/sdl/quad_renderer.cpp.obj": {
+    "ninja_record": [
+      "144894",
+      "147062",
+      "8147299546242902",
+      "src/CMakeFiles/rynui_renderer_sdl.dir/Debug/renderer/sdl/quad_renderer.cpp.obj",
+      "380924dc6869a2a"
+    ],
+    "sha256": "8300abe8c27e2974d2d4f46be96cf4dbb037baafd59a148dd57b36b9a51cfc48",
+    "mtime_ns": 1793026756776615900,
+    "bytes": 390364
+  },
+  "src/CMakeFiles/rynui_renderer_sdl.dir/Debug/renderer/sdl/scene_renderer.cpp.obj": {
+    "ninja_record": [
+      "147062",
+      "149442",
+      "8147299567928463",
+      "src/CMakeFiles/rynui_renderer_sdl.dir/Debug/renderer/sdl/scene_renderer.cpp.obj",
+      "b850dd5936faad3a"
+    ],
+    "sha256": "740c05688e74e90d5efc57a5dbbfd46f46aab64c5d42bb3cf51fd9abbc8a1edb",
+    "mtime_ns": 1793026759156946700,
+    "bytes": 1456306
+  },
+  "examples/CMakeFiles/rynui_token_gallery_definition.dir/Debug/token_gallery/token_gallery_definition.cpp.obj": {
+    "ninja_record": [
+      "570",
+      "23589",
+      "8147313423853209",
+      "examples/CMakeFiles/rynui_token_gallery_definition.dir/Debug/token_gallery/token_gallery_definition.cpp.obj",
+      "133f4b76fc4893c9"
+    ],
+    "sha256": "2a6d321d9b980cc23bac6359d871813bfbc58a8d84664eab227e31896ed6469c",
+    "mtime_ns": 1793028165353747300,
+    "bytes": 75921354
+  },
+  "examples/CMakeFiles/rynui_token_gallery.dir/Debug/token_gallery/token_gallery_runtime.cpp.obj": {
+    "ninja_record": [
+      "178246",
+      "183641",
+      "8147299879755440",
+      "examples/CMakeFiles/rynui_token_gallery.dir/Debug/token_gallery/token_gallery_runtime.cpp.obj",
+      "dab55f1786cd5f77"
+    ],
+    "sha256": "0da8bd8a70d9ff11f60926d667bddf8cbe7c1702003bc60ff05356409688b726",
+    "mtime_ns": 1793026793352474500,
+    "bytes": 2563022
+  },
+  "src/CMakeFiles/rynui_renderer_sdl.dir/Release/renderer/sdl/quad_renderer.cpp.obj": {
+    "ninja_record": [
+      "176157",
+      "178122",
+      "8147304334096890",
+      "src/CMakeFiles/rynui_renderer_sdl.dir/Release/renderer/sdl/quad_renderer.cpp.obj",
+      "6ef7d78ce02257ed"
+    ],
+    "sha256": "b6b6fbf47f77f5408ba20967770ebcf04b66e8951b080803bf91aa6ce26a37f0",
+    "mtime_ns": 1793027235359385200,
+    "bytes": 108861
+  },
+  "src/CMakeFiles/rynui_renderer_sdl.dir/Release/renderer/sdl/scene_renderer.cpp.obj": {
+    "ninja_record": [
+      "178122",
+      "180339",
+      "8147304353744312",
+      "src/CMakeFiles/rynui_renderer_sdl.dir/Release/renderer/sdl/scene_renderer.cpp.obj",
+      "c2427a788579d39b"
+    ],
+    "sha256": "921eed56d50968d79d6d154886c848ca8327c28db43b8e6d01696e64210fa88b",
+    "mtime_ns": 1793027237574289500,
+    "bytes": 534363
+  },
+  "examples/CMakeFiles/rynui_token_gallery_definition.dir/Release/token_gallery/token_gallery_definition.cpp.obj": {
+    "ninja_record": [
+      "559",
+      "28835",
+      "8147314483158683",
+      "examples/CMakeFiles/rynui_token_gallery_definition.dir/Release/token_gallery/token_gallery_definition.cpp.obj",
+      "3e0bab696a3af03f"
+    ],
+    "sha256": "8e1934977a817c9f1c50eb992a21816283ab6cb939277cb89dd50a5dc62243fd",
+    "mtime_ns": 1793028276540179700,
+    "bytes": 44599612
+  },
+  "examples/CMakeFiles/rynui_token_gallery.dir/Release/token_gallery/token_gallery_runtime.cpp.obj": {
+    "ninja_record": [
+      "211968",
+      "218293",
+      "8147304692201208",
+      "examples/CMakeFiles/rynui_token_gallery.dir/Release/token_gallery/token_gallery_runtime.cpp.obj",
+      "113bfded2992ce83"
+    ],
+    "sha256": "55fe03021fd701d1663efe4084f9aef43de14995976c6d364d353e838d71fbe9",
+    "mtime_ns": 1793027275522995700,
+    "bytes": 863675
+  },
+  "src/CMakeFiles/rynui_renderer_sdl.dir/Debug/renderer/sdl/shader_resources_win32.cpp.obj": {
+    "ninja_record": [
+      "149442",
+      "150063",
+      "8147299591725160",
+      "src/CMakeFiles/rynui_renderer_sdl.dir/Debug/renderer/sdl/shader_resources_win32.cpp.obj",
+      "ca7c873ad0da410c"
+    ],
+    "sha256": "889a119c2f24d404b9b9db175478230f99a8c6d0ce94b809aace96f97944ad69",
+    "mtime_ns": 1793026759783854000,
+    "bytes": 281548
+  },
+  "examples/CMakeFiles/rynui_minimal.dir/Debug/embedded_shaders/rynui_minimal/shaders.rc.res": {
+    "ninja_record": [
+      "1943",
+      "2051",
+      "8147313437583957",
+      "examples/CMakeFiles/rynui_minimal.dir/Debug/embedded_shaders/rynui_minimal/shaders.rc.res",
+      "49da9bde48e57877"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028143859733200,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_text_demo.dir/Debug/embedded_shaders/rynui_text_demo/shaders.rc.res": {
+    "ninja_record": [
+      "2051",
+      "2147",
+      "8147313438667906",
+      "examples/CMakeFiles/rynui_text_demo.dir/Debug/embedded_shaders/rynui_text_demo/shaders.rc.res",
+      "8a65474ad824f98e"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028143956240600,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_button_demo.dir/Debug/embedded_shaders/rynui_button_demo/shaders.rc.res": {
+    "ninja_record": [
+      "2147",
+      "2242",
+      "8147313439626414",
+      "examples/CMakeFiles/rynui_button_demo.dir/Debug/embedded_shaders/rynui_button_demo/shaders.rc.res",
+      "99431a68e730111d"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028144051393100,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_layout_demo.dir/Debug/embedded_shaders/rynui_layout_demo/shaders.rc.res": {
+    "ninja_record": [
+      "2243",
+      "2336",
+      "8147313440579253",
+      "examples/CMakeFiles/rynui_layout_demo.dir/Debug/embedded_shaders/rynui_layout_demo/shaders.rc.res",
+      "f4def349516dfbbc"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028144144690100,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_token_gallery.dir/Debug/embedded_shaders/rynui_token_gallery/shaders.rc.res": {
+    "ninja_record": [
+      "2336",
+      "2434",
+      "8147313441512518",
+      "examples/CMakeFiles/rynui_token_gallery.dir/Debug/embedded_shaders/rynui_token_gallery/shaders.rc.res",
+      "cc3ced2633130944"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028144243047400,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_rounded_acceptance.dir/Debug/embedded_shaders/rynui_rounded_acceptance/shaders.rc.res": {
+    "ninja_record": [
+      "2434",
+      "2531",
+      "8147313442495635",
+      "examples/CMakeFiles/rynui_rounded_acceptance.dir/Debug/embedded_shaders/rynui_rounded_acceptance/shaders.rc.res",
+      "a66b715d43f3f11b"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028144339417400,
+    "bytes": 46088
+  },
+  "tests/CMakeFiles/rynui_embedded_shader_tests.dir/Debug/embedded_shader_tests.cpp.obj": {
+    "ninja_record": [
+      "275813",
+      "277584",
+      "8147300855428369",
+      "tests/CMakeFiles/rynui_embedded_shader_tests.dir/Debug/embedded_shader_tests.cpp.obj",
+      "53e2c9f521cd7ab8"
+    ],
+    "sha256": "ecb7bdb4a88d14d1801b33335896333de9234b03f4d046fbb318066fe01ec357",
+    "mtime_ns": 1793026887300179000,
+    "bytes": 789673
+  },
+  "tests/CMakeFiles/rynui_embedded_shader_tests.dir/Debug/embedded_shaders/rynui_embedded_shader_tests/shaders.rc.res": {
+    "ninja_record": [
+      "2532",
+      "2628",
+      "8147313443471175",
+      "tests/CMakeFiles/rynui_embedded_shader_tests.dir/Debug/embedded_shaders/rynui_embedded_shader_tests/shaders.rc.res",
+      "b102137760e571f0"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028144437551400,
+    "bytes": 46088
+  },
+  "src/CMakeFiles/rynui_renderer_sdl.dir/Release/renderer/sdl/shader_resources_win32.cpp.obj": {
+    "ninja_record": [
+      "180339",
+      "180966",
+      "8147304375913393",
+      "src/CMakeFiles/rynui_renderer_sdl.dir/Release/renderer/sdl/shader_resources_win32.cpp.obj",
+      "20ae581fbcf558ce"
+    ],
+    "sha256": "c722bdf173b7af69aac695b2a1cad109a6a386a8c45afdc63caf1c32f73bcde4",
+    "mtime_ns": 1793027238207752300,
+    "bytes": 80371
+  },
+  "examples/CMakeFiles/rynui_minimal.dir/Release/embedded_shaders/rynui_minimal/shaders.rc.res": {
+    "ninja_record": [
+      "1897",
+      "1997",
+      "8147314496524850",
+      "examples/CMakeFiles/rynui_minimal.dir/Release/embedded_shaders/rynui_minimal/shaders.rc.res",
+      "581e3ba4e4cad40b"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028249747506000,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_text_demo.dir/Release/embedded_shaders/rynui_text_demo/shaders.rc.res": {
+    "ninja_record": [
+      "1998",
+      "2097",
+      "8147314497536015",
+      "examples/CMakeFiles/rynui_text_demo.dir/Release/embedded_shaders/rynui_text_demo/shaders.rc.res",
+      "2620baf9686e46ed"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028249846455200,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_button_demo.dir/Release/embedded_shaders/rynui_button_demo/shaders.rc.res": {
+    "ninja_record": [
+      "2097",
+      "2195",
+      "8147314498529710",
+      "examples/CMakeFiles/rynui_button_demo.dir/Release/embedded_shaders/rynui_button_demo/shaders.rc.res",
+      "8ccca3b6c683fef2"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028249944101800,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_layout_demo.dir/Release/embedded_shaders/rynui_layout_demo/shaders.rc.res": {
+    "ninja_record": [
+      "2195",
+      "2299",
+      "8147314499512624",
+      "examples/CMakeFiles/rynui_layout_demo.dir/Release/embedded_shaders/rynui_layout_demo/shaders.rc.res",
+      "62747f7e49b272be"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028250049262600,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_token_gallery.dir/Release/embedded_shaders/rynui_token_gallery/shaders.rc.res": {
+    "ninja_record": [
+      "2300",
+      "2398",
+      "8147314500552734",
+      "examples/CMakeFiles/rynui_token_gallery.dir/Release/embedded_shaders/rynui_token_gallery/shaders.rc.res",
+      "3111a1b92bd8faa"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028250147428400,
+    "bytes": 46088
+  },
+  "examples/CMakeFiles/rynui_rounded_acceptance.dir/Release/embedded_shaders/rynui_rounded_acceptance/shaders.rc.res": {
+    "ninja_record": [
+      "2398",
+      "2492",
+      "8147314501542835",
+      "examples/CMakeFiles/rynui_rounded_acceptance.dir/Release/embedded_shaders/rynui_rounded_acceptance/shaders.rc.res",
+      "1d31156dcbc6a149"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028250242772700,
+    "bytes": 46088
+  },
+  "tests/CMakeFiles/rynui_embedded_shader_tests.dir/Release/embedded_shaders/rynui_embedded_shader_tests/shaders.rc.res": {
+    "ninja_record": [
+      "2493",
+      "2585",
+      "8147314502487990",
+      "tests/CMakeFiles/rynui_embedded_shader_tests.dir/Release/embedded_shaders/rynui_embedded_shader_tests/shaders.rc.res",
+      "16ea860d2093f22b"
+    ],
+    "sha256": "01b341d4f9b4c3912a597e5e4c9730251a694a83b74fcfdb18d9c99820569a5f",
+    "mtime_ns": 1793028250335226600,
+    "bytes": 46088
+  },
+  "tests/CMakeFiles/rynui_embedded_shader_tests.dir/Release/embedded_shader_tests.cpp.obj": {
+    "ninja_record": [
+      "347153",
+      "348862",
+      "8147306044049580",
+      "tests/CMakeFiles/rynui_embedded_shader_tests.dir/Release/embedded_shader_tests.cpp.obj",
+      "324a244d5cc3fcd0"
+    ],
+    "sha256": "7793a1e7e3135e895649ce6c646a9a63c6fac70c50f9daef823c3aa7c6715b2f",
+    "mtime_ns": 1793027406101448700,
+    "bytes": 288330
+  }
+}

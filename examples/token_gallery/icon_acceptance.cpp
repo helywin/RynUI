@@ -166,7 +166,7 @@ int run_icon_acceptance(int argc, char** argv) {
         const auto primary_scene = services.text().icon_snapshot(changed_id).layers[0];
         const auto clip_node = *nodes.require(services.components().root(icons[8])).parent;
         nodes.require(clip_node).clip_content = true;
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneResources resources{renderer};
         std::int64_t microseconds{};
         const auto draw = [&](const std::string& name) {

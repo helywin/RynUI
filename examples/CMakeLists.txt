@@ -3,12 +3,7 @@ rynui_configure_cpp_target(rynui_minimal)
 target_link_libraries(rynui_minimal PRIVATE RynUI::RynUI rynui_renderer_sdl)
 rynui_assert_no_link_dependency_matching(rynui_minimal "[Ss]hader[Cc]ross")
 
-rynui_deploy_target_shaders(rynui_minimal
-    quad.vertex.dxil
-    quad.vertex.spv
-    quad.fragment.dxil
-    quad.fragment.spv
-)
+rynui_embed_target_shaders(rynui_minimal)
 
 add_executable(rynui_text_demo text/main.cpp)
 rynui_configure_cpp_target(rynui_text_demo)
@@ -17,32 +12,7 @@ target_link_libraries(
     PRIVATE rynui_components rynui_default_fonts rynui_renderer_sdl
 )
 rynui_assert_no_link_dependency_matching(rynui_text_demo "[Ss]hader[Cc]ross")
-add_custom_command(TARGET rynui_text_demo POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-        "$<TARGET_FILE_DIR:rynui_text_demo>/fonts"
-)
-rynui_deploy_target_shaders(rynui_text_demo
-    quad.vertex.dxil
-    quad.vertex.spv
-    quad.fragment.dxil
-    quad.fragment.spv
-    glyph.vertex.dxil
-    glyph.vertex.spv
-    glyph.fragment.dxil
-    glyph.fragment.spv
-    rounded_effect.vertex.dxil
-    rounded_effect.vertex.spv
-    rounded_effect.fragment.dxil
-    rounded_effect.fragment.spv
-)
-add_custom_command(TARGET rynui_text_demo POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RYNUI_VALIDATION_LATIN_FONT_FILE}"
-        "$<TARGET_FILE_DIR:rynui_text_demo>/fonts/latin.ttf"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RYNUI_VALIDATION_CJK_FONT_FILE}"
-        "$<TARGET_FILE_DIR:rynui_text_demo>/fonts/cjk.otf"
-)
+rynui_embed_target_shaders(rynui_text_demo)
 
 add_executable(rynui_button_demo button/main.cpp)
 rynui_configure_cpp_target(rynui_button_demo)
@@ -51,32 +21,7 @@ target_link_libraries(
     PRIVATE rynui_components rynui_default_fonts rynui_renderer_sdl
 )
 rynui_assert_no_link_dependency_matching(rynui_button_demo "[Ss]hader[Cc]ross")
-add_custom_command(TARGET rynui_button_demo POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-        "$<TARGET_FILE_DIR:rynui_button_demo>/fonts"
-)
-rynui_deploy_target_shaders(rynui_button_demo
-    quad.vertex.dxil
-    quad.vertex.spv
-    quad.fragment.dxil
-    quad.fragment.spv
-    glyph.vertex.dxil
-    glyph.vertex.spv
-    glyph.fragment.dxil
-    glyph.fragment.spv
-    rounded_effect.vertex.dxil
-    rounded_effect.vertex.spv
-    rounded_effect.fragment.dxil
-    rounded_effect.fragment.spv
-)
-add_custom_command(TARGET rynui_button_demo POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RYNUI_VALIDATION_LATIN_FONT_FILE}"
-        "$<TARGET_FILE_DIR:rynui_button_demo>/fonts/latin.ttf"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RYNUI_VALIDATION_CJK_FONT_FILE}"
-        "$<TARGET_FILE_DIR:rynui_button_demo>/fonts/cjk.otf"
-)
+rynui_embed_target_shaders(rynui_button_demo)
 
 add_executable(
     rynui_layout_demo
@@ -89,32 +34,7 @@ target_link_libraries(
     PRIVATE rynui_components rynui_default_fonts rynui_renderer_sdl
 )
 rynui_assert_no_link_dependency_matching(rynui_layout_demo "[Ss]hader[Cc]ross")
-add_custom_command(TARGET rynui_layout_demo POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-        "$<TARGET_FILE_DIR:rynui_layout_demo>/fonts"
-)
-rynui_deploy_target_shaders(rynui_layout_demo
-    quad.vertex.dxil
-    quad.vertex.spv
-    quad.fragment.dxil
-    quad.fragment.spv
-    glyph.vertex.dxil
-    glyph.vertex.spv
-    glyph.fragment.dxil
-    glyph.fragment.spv
-    rounded_effect.vertex.dxil
-    rounded_effect.vertex.spv
-    rounded_effect.fragment.dxil
-    rounded_effect.fragment.spv
-)
-add_custom_command(TARGET rynui_layout_demo POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RYNUI_VALIDATION_LATIN_FONT_FILE}"
-        "$<TARGET_FILE_DIR:rynui_layout_demo>/fonts/latin.ttf"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RYNUI_VALIDATION_CJK_FONT_FILE}"
-        "$<TARGET_FILE_DIR:rynui_layout_demo>/fonts/cjk.otf"
-)
+rynui_embed_target_shaders(rynui_layout_demo)
 
 file(SHA256
     "${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.5.0/catalog.yaml"
@@ -219,32 +139,17 @@ target_compile_definitions(
         "RYNUI_WINDOW_SYSTEM=\"${rynui_token_gallery_window_system}\""
 )
 rynui_assert_no_link_dependency_matching(rynui_token_gallery "[Ss]hader[Cc]ross")
-add_custom_command(TARGET rynui_token_gallery POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-        "$<TARGET_FILE_DIR:rynui_token_gallery>/fonts"
-)
-rynui_deploy_target_shaders(rynui_token_gallery
-    quad.vertex.dxil
-    quad.vertex.spv
-    quad.fragment.dxil
-    quad.fragment.spv
-    glyph.vertex.dxil
-    glyph.vertex.spv
-    glyph.fragment.dxil
-    glyph.fragment.spv
-    rounded_effect.vertex.dxil
-    rounded_effect.vertex.spv
-    rounded_effect.fragment.dxil
-    rounded_effect.fragment.spv
-)
-add_custom_command(TARGET rynui_token_gallery POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RYNUI_VALIDATION_LATIN_FONT_FILE}"
+rynui_embed_target_shaders(rynui_token_gallery)
+
+# Explicit preparation for the fixed-font acceptance modes, outside the default build.
+add_custom_target(rynui_token_gallery_acceptance_fonts
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:rynui_token_gallery>/fonts"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${RYNUI_VALIDATION_LATIN_FONT_FILE}"
         "$<TARGET_FILE_DIR:rynui_token_gallery>/fonts/latin.ttf"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${RYNUI_VALIDATION_CJK_FONT_FILE}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${RYNUI_VALIDATION_CJK_FONT_FILE}"
         "$<TARGET_FILE_DIR:rynui_token_gallery>/fonts/cjk.otf"
-)
+    DEPENDS rynui_token_gallery
+    VERBATIM)
 
 add_executable(rynui_rounded_acceptance token_gallery/rounded_acceptance.cpp)
 rynui_configure_cpp_target(rynui_rounded_acceptance)
@@ -252,10 +157,7 @@ target_compile_definitions(rynui_rounded_acceptance PRIVATE RYNUI_ROUNDED_ACCEPT
 target_link_libraries(rynui_rounded_acceptance PRIVATE
     rynui_components rynui_default_fonts rynui_renderer_sdl SDL3::SDL3)
 rynui_assert_no_link_dependency_matching(rynui_rounded_acceptance "[Ss]hader[Cc]ross")
-rynui_deploy_target_shaders(rynui_rounded_acceptance
-    quad.vertex.dxil quad.vertex.spv quad.fragment.dxil quad.fragment.spv
-    glyph.vertex.dxil glyph.vertex.spv glyph.fragment.dxil glyph.fragment.spv
-    rounded_effect.vertex.dxil rounded_effect.vertex.spv rounded_effect.fragment.dxil rounded_effect.fragment.spv)
+rynui_embed_target_shaders(rynui_rounded_acceptance)
 add_custom_command(TARGET rynui_rounded_acceptance POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:rynui_rounded_acceptance>/fonts"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${RYNUI_VALIDATION_LATIN_FONT_FILE}"

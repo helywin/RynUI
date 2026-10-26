@@ -348,6 +348,10 @@ target_link_libraries(rynui_renderer_sdl PRIVATE
     rynui_text_scene
     SDL3::SDL3
 )
+if(WIN32)
+    target_sources(rynui_renderer_sdl PRIVATE renderer/sdl/shader_resources_win32.cpp)
+    target_link_libraries(rynui_renderer_sdl PRIVATE kernel32)
+endif()
 endif()
 
 add_library(rynui INTERFACE)
@@ -409,7 +413,7 @@ if(RYNUI_HAS_SDL_HOST)
     rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3 rynui_input)
 endif()
 if(RYNUI_HAS_SDL_GPU)
-rynui_assert_direct_dependencies(
+set(sdl_renderer_dependencies
     rynui_renderer_sdl
     rynui_renderer_common
     SDL3::SDL3
@@ -419,6 +423,10 @@ rynui_assert_direct_dependencies(
     rynui_text
     rynui_text_scene
 )
+if(WIN32)
+    list(APPEND sdl_renderer_dependencies kernel32)
+endif()
+rynui_assert_direct_dependencies(${sdl_renderer_dependencies})
 endif()
 rynui_assert_direct_dependencies(
     rynui

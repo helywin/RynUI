@@ -147,7 +147,7 @@ int run_modal_acceptance(int argc, char** argv) {
                             }});
                   }});
         }});
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneBackend& backend = renderer;
         detail::SceneResources resources{renderer};
         runtime::Size viewport;

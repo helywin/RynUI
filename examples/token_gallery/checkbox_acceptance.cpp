@@ -160,7 +160,7 @@ int run_checkbox_acceptance(int argc, char** argv) {
                            }});
                   }});
         }});
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneResources resources{renderer};
         std::int64_t microseconds{};
         const auto draw = [&](const std::string& name, std::int64_t increment = 200000) {

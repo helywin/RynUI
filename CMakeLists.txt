@@ -26,6 +26,9 @@ if(RYNUI_HAS_SDL_HOST)
     rynui_resolve_platform_font_service()
 endif()
 if(RYNUI_HAS_SDL_GPU)
+    if(WIN32)
+        enable_language(RC)
+    endif()
     rynui_resolve_shadercross_host_tool(
         RYNUI_SHADERCROSS_COMMAND
         RYNUI_SHADERCROSS_DEPENDENCY)

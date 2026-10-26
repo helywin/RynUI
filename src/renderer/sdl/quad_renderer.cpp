@@ -1,10 +1,10 @@
 #include "renderer/sdl/quad_renderer.hpp"
+#include "renderer/sdl/shader_resources.hpp"
 
 #include <SDL3/SDL.h>
 
 #include <array>
 #include <cstring>
-#include <fstream>
 #include <limits>
 #include <stdexcept>
 #include <vector>
@@ -18,24 +18,6 @@ struct ShaderSelection {
     const char* name;
 };
 
-std::vector<Uint8> read_shader(const std::filesystem::path& path) {
-    std::ifstream stream(path, std::ios::binary | std::ios::ate);
-    if (!stream) {
-        throw std::runtime_error("Unable to open shader: " + path.string());
-    }
-    const auto size = stream.tellg();
-    if (size <= 0) {
-        throw std::runtime_error("Shader is empty: " + path.string());
-    }
-    std::vector<Uint8> bytes(static_cast<std::size_t>(size));
-    stream.seekg(0);
-    stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(size));
-    if (!stream) {
-        throw std::runtime_error("Unable to read shader: " + path.string());
-    }
-    return bytes;
-}
-
 ShaderSelection select_shader_format(SDL_GPUDevice* device) {
     const auto formats = SDL_GetGPUShaderFormats(device);
     if ((formats & SDL_GPU_SHADERFORMAT_DXIL) != 0) {
@@ -47,12 +29,12 @@ ShaderSelection select_shader_format(SDL_GPUDevice* device) {
     throw std::runtime_error("SDL GPU device supports neither DXIL nor SPIR-V");
 }
 
-SDL_GPUShader* create_shader(SDL_GPUDevice* device, const std::filesystem::path& path, const char* entrypoint,
+SDL_GPUShader* create_shader(SDL_GPUDevice* device, std::string_view filename, const char* entrypoint,
                              SDL_GPUShaderFormat format, SDL_GPUShaderStage stage) {
-    const auto code = read_shader(path);
+    const auto code = builtin_shader_bytes(filename);
     SDL_GPUShaderCreateInfo info{};
     info.code_size = code.size();
-    info.code = code.data();
+    info.code = reinterpret_cast<const Uint8*>(code.data());
     info.entrypoint = entrypoint;
     info.format = format;
     info.stage = stage;
@@ -66,22 +48,20 @@ std::string sdl_error(const char* fallback) {
 
 } // namespace
 
-SdlQuadRenderer::SdlQuadRenderer(PlatformState& platform, const std::filesystem::path& shader_directory,
-                                 bool debug_mode)
+SdlQuadRenderer::SdlQuadRenderer(PlatformState& platform, bool debug_mode)
     : platform_(&platform), binding_(platform, debug_mode) {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
 
-    auto* vertex_shader = create_shader(device, shader_directory / (std::string("quad.vertex.") + selection.extension),
-                                        "VSMain", selection.format, SDL_GPU_SHADERSTAGE_VERTEX);
+    auto* vertex_shader = create_shader(device, std::string("quad.vertex.") + selection.extension, "VSMain",
+                                        selection.format, SDL_GPU_SHADERSTAGE_VERTEX);
     if (vertex_shader == nullptr) {
         throw std::runtime_error(sdl_error("Failed to create Quad vertex shader"));
     }
-    auto* fragment_shader =
-        create_shader(device, shader_directory / (std::string("quad.fragment.") + selection.extension), "PSMain",
-                      selection.format, SDL_GPU_SHADERSTAGE_FRAGMENT);
+    auto* fragment_shader = create_shader(device, std::string("quad.fragment.") + selection.extension, "PSMain",
+                                          selection.format, SDL_GPU_SHADERSTAGE_FRAGMENT);
     if (fragment_shader == nullptr) {
         SDL_ReleaseGPUShader(device, vertex_shader);
         throw std::runtime_error(sdl_error("Failed to create Quad fragment shader"));

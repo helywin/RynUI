@@ -215,7 +215,7 @@ int run_typography_acceptance(int argc, char** argv) {
                             }});
                 }});
         }});
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneBackend& backend = renderer;
         std::array<std::byte, 16> contract_bytes{};
         auto* retired_buffer = backend.create_vertex_buffer(contract_bytes.size());

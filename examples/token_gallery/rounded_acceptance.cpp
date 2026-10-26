@@ -179,7 +179,7 @@ int run_rounded_acceptance(int argc, char** argv) {
         const float scale = requested_scale.value_or(metrics.display_scale);
         require_rounded(std::isfinite(scale) && scale > 0, "Rounded scale");
         const auto executable = std::filesystem::absolute(argv[0]).parent_path();
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         capture_coverage(platform, renderer, directory, scale, false);
         capture_coverage(platform, renderer, directory, scale, true);
         auto font_result = font::FontRuntime::create();

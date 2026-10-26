@@ -68,7 +68,7 @@ ctest --preset windows-msvc-headless-release
 
 ## 离线 shader（SDL_GPU）
 
-`rynui_shaders` target 从单一 `shaders/quad.hlsl` 离线生成 vertex/fragment 的 DXIL 与 SPIR-V：
+`rynui_shaders` target 从 `shaders/` 中的 Quad、Glyph、RoundedEffect HLSL 离线生成 vertex/fragment 的 DXIL 与 SPIR-V：
 
 ```powershell
 cmake --build --preset windows-msvc-debug --target rynui_shaders
@@ -82,6 +82,10 @@ cmake --preset windows-msvc `
 ```
 
 configure 会执行 `shadercross --help` 验证 override。交叉编译不会尝试执行 target binary；未提供 host override 时会立即失败。
+
+SDL 示例会将生成的 shader 内嵌进 exe；Windows 使用原生 `.rc` / `RCDATA`，普通启动不依赖旁置
+`shaders/` 或固定验收字体。默认系统字体、固定字体验收的显式准备目标及自有 `.rc` 接入见
+[资源与部署](../resources.md)。
 
 ## Linux / GCC
 

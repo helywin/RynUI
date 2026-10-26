@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
-#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -31,10 +30,6 @@ bool has_argument(int argc, char** argv, std::string_view expected) {
         }
     }
     return false;
-}
-
-std::filesystem::path executable_directory(char* executable) {
-    return std::filesystem::absolute(executable).parent_path();
 }
 
 class PlatformFrameEvents final : public ryn::runtime::FrameEventSource {
@@ -124,7 +119,6 @@ private:
 int main(int argc, char** argv) {
     try {
         const bool smoke_mode = has_argument(argc, argv, "--smoke");
-        const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{960.0F, 540.0F};
         ryn::runtime::Size viewport = requested_window;
         constexpr std::uint32_t pixel_size = 14;
@@ -161,8 +155,6 @@ int main(int argc, char** argv) {
         };
         ryn::detail::DefaultFontChainRequest font_request;
         font_request.raster = font_raster;
-        font_request.fallback_latin = executable / "fonts/latin.ttf";
-        font_request.fallback_cjk = executable / "fonts/cjk.otf";
         const auto font_chain = ryn::detail::load_default_ui_font_chain(*fonts, font_request);
         if (!font_chain) {
             std::cerr << "font_error=" << font_chain.diagnostic << '\n';
@@ -197,7 +189,7 @@ int main(int argc, char** argv) {
             ryn::Text(ryn::TextProps{}.content(u8"Shared glyph proof: RynUI 中文").tone(ryn::TextTone::Secondary));
         }});
 
-        ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
+        ryn::detail::SdlSceneRenderer renderer(platform);
         ryn::detail::SceneResources resources(renderer);
         TextComponentSubmitter submitter(application, scene, resources, renderer, viewport);
         PlatformFrameEvents events(platform);

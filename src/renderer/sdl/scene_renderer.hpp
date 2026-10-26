@@ -45,8 +45,7 @@ struct SceneRendererCounters {
 
 class SdlSceneRenderer final : public SceneBackend {
 public:
-    SdlSceneRenderer(PlatformState& platform, const std::filesystem::path& shader_directory,
-                     bool debug_mode = default_sdl_gpu_debug);
+    explicit SdlSceneRenderer(PlatformState& platform, bool debug_mode = default_sdl_gpu_debug);
     SdlSceneRenderer(const SdlSceneRenderer&) = delete;
     SdlSceneRenderer& operator=(const SdlSceneRenderer&) = delete;
     ~SdlSceneRenderer() override;

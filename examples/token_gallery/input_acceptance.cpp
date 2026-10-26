@@ -318,7 +318,7 @@ int run_input_acceptance(int argc, char** argv) {
             });
         require_input(search_button != buttons.mounted_buttons().end(), "Search sibling button absent");
         const auto search_action = search_button->interaction;
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneResources resources{renderer};
         std::int64_t microseconds{};
         const auto draw = [&](const std::string& name) {

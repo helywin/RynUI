@@ -69,10 +69,6 @@ std::optional<float> acceptance_scale_argument(int argc, char** argv) {
     return std::nullopt;
 }
 
-std::filesystem::path executable_directory(char* executable) {
-    return std::filesystem::absolute(executable).parent_path();
-}
-
 struct GalleryScrollPresentation final {
     bool narrow{};
     ryn::runtime::Rect navigation_lane;
@@ -1019,7 +1015,6 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const bool smoke_mode = has_argument(argc, argv, "--smoke") || animation_acceptance || input_acceptance ||
                                 selection_acceptance || search_acceptance || password_acceptance || clear_acceptance;
         const auto acceptance_scale = acceptance_scale_argument(argc, argv);
-        const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{1280.0F, 900.0F};
         ryn::runtime::Size viewport = requested_window;
 
@@ -1063,8 +1058,6 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         auto fonts = std::move(font_result.runtime);
         ryn::detail::DefaultFontChainRequest font_request;
         font_request.raster = {14, render_scale};
-        font_request.fallback_latin = executable / "fonts/latin.ttf";
-        font_request.fallback_cjk = executable / "fonts/cjk.otf";
         auto font_chain = ryn::detail::load_default_ui_font_chain(*fonts, font_request);
         if (!font_chain) {
             std::cerr << "font_error=" << font_chain.diagnostic << '\n';
@@ -1110,7 +1103,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         GalleryScrollPresentation scroll_presentation;
         std::optional<GalleryNavigationTarget> deferred_navigation;
 
-        ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
+        ryn::detail::SdlSceneRenderer renderer(platform);
         ryn::detail::SceneResources scene_resources(renderer);
         scene_resources.glyphs().set_sparse_upload_coalescing_limit(512 * 1024);
         GallerySubmitter submitter(platform, application, inputs, text_scene, scene_resources, renderer,

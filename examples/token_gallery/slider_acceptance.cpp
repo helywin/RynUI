@@ -183,7 +183,7 @@ int run_slider_acceptance(int argc, char** argv) {
                            }});
                   }});
         }});
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneResources resources{renderer};
         std::uint64_t frame{};
         std::uint64_t normalized{};

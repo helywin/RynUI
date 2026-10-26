@@ -1,12 +1,12 @@
 #include "renderer/sdl/scene_renderer.hpp"
 #include "renderer/sdl/glyph_texture_upload_layout.hpp"
+#include "renderer/sdl/shader_resources.hpp"
 
 #include <SDL3/SDL.h>
 
 #include <algorithm>
 #include <array>
 #include <cstring>
-#include <fstream>
 #include <limits>
 #include <new>
 #include <stdexcept>
@@ -21,24 +21,6 @@ struct ShaderSelection {
     const char* extension;
     const char* name;
 };
-
-[[nodiscard]] std::vector<Uint8> read_shader(const std::filesystem::path& path) {
-    std::ifstream stream(path, std::ios::binary | std::ios::ate);
-    if (!stream) {
-        throw std::runtime_error("Unable to open shader: " + path.string());
-    }
-    const auto size = stream.tellg();
-    if (size <= 0) {
-        throw std::runtime_error("Shader is empty: " + path.string());
-    }
-    std::vector<Uint8> bytes(static_cast<std::size_t>(size));
-    stream.seekg(0);
-    stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(size));
-    if (!stream) {
-        throw std::runtime_error("Unable to read shader: " + path.string());
-    }
-    return bytes;
-}
 
 [[nodiscard]] ShaderSelection select_shader_format(SDL_GPUDevice* device) {
     const auto formats = SDL_GetGPUShaderFormats(device);
@@ -56,12 +38,12 @@ struct ShaderSelection {
     return error != nullptr && error[0] != '\0' ? error : fallback;
 }
 
-[[nodiscard]] SDL_GPUShader* create_shader(SDL_GPUDevice* device, const std::filesystem::path& path,
-                                           SDL_GPUShaderFormat format, SDL_GPUShaderStage stage, Uint32 sampler_count) {
-    const auto code = read_shader(path);
+[[nodiscard]] SDL_GPUShader* create_shader(SDL_GPUDevice* device, std::string_view filename, SDL_GPUShaderFormat format,
+                                           SDL_GPUShaderStage stage, Uint32 sampler_count) {
+    const auto code = builtin_shader_bytes(filename);
     SDL_GPUShaderCreateInfo info{};
     info.code_size = code.size();
-    info.code = code.data();
+    info.code = reinterpret_cast<const Uint8*>(code.data());
     info.entrypoint = stage == SDL_GPU_SHADERSTAGE_VERTEX ? "VSMain" : "PSMain";
     info.format = format;
     info.stage = stage;
@@ -112,8 +94,7 @@ create_pipeline(SDL_GPUDevice* device, SDL_Window* window, SDL_GPUShader* vertex
 
 } // namespace
 
-SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, const std::filesystem::path& shader_directory,
-                                   bool debug_mode)
+SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
     : platform_(&platform), binding_(platform, debug_mode) {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
@@ -126,14 +107,13 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, const std::filesyste
 
     auto build_pipeline = [&](const char* name, Uint32 pitch, const auto& attributes,
                               Uint32 fragment_samplers) -> void* {
-        auto* vertex = create_shader(device, shader_directory / (std::string(name) + ".vertex." + selection.extension),
-                                     selection.format, SDL_GPU_SHADERSTAGE_VERTEX, 0);
+        auto* vertex = create_shader(device, std::string(name) + ".vertex." + selection.extension, selection.format,
+                                     SDL_GPU_SHADERSTAGE_VERTEX, 0);
         if (vertex == nullptr) {
             throw std::runtime_error(sdl_error("Failed to create vertex shader"));
         }
-        auto* fragment =
-            create_shader(device, shader_directory / (std::string(name) + ".fragment." + selection.extension),
-                          selection.format, SDL_GPU_SHADERSTAGE_FRAGMENT, fragment_samplers);
+        auto* fragment = create_shader(device, std::string(name) + ".fragment." + selection.extension, selection.format,
+                                       SDL_GPU_SHADERSTAGE_FRAGMENT, fragment_samplers);
         if (fragment == nullptr) {
             SDL_ReleaseGPUShader(device, vertex);
             throw std::runtime_error(sdl_error("Failed to create fragment shader"));

@@ -2383,16 +2383,12 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_generated_shaders.cmake"
 )
 
-add_test(
-    NAME rynui.deployed_shaders
-    COMMAND ${CMAKE_COMMAND}
-        "-DGENERATED_SHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
-        "-DMINIMAL_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_minimal>/shaders"
-        "-DTEXT_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_text_demo>/shaders"
-        "-DBUTTON_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_button_demo>/shaders"
-        "-DLAYOUT_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_layout_demo>/shaders"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_deployed_shaders.cmake"
-)
+add_executable(rynui_embedded_shader_tests embedded_shader_tests.cpp)
+rynui_configure_cpp_target(rynui_embedded_shader_tests)
+target_include_directories(rynui_embedded_shader_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_embedded_shader_tests PRIVATE rynui_renderer_sdl)
+rynui_embed_target_shaders(rynui_embedded_shader_tests)
+add_test(NAME rynui.embedded_shaders COMMAND rynui_embedded_shader_tests "${RYNUI_GENERATED_SHADER_DIRECTORY}")
 
 add_test(
     NAME rynui.glyph_shader_contract

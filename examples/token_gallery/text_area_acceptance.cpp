@@ -238,7 +238,7 @@ int run_text_area_acceptance(int argc, char** argv) {
             }
             throw std::runtime_error("TextArea clear action absent");
         }();
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneResources resources{renderer};
         std::int64_t microseconds{};
         const auto draw = [&](const std::string& name) {

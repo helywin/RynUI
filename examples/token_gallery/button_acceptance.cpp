@@ -152,7 +152,7 @@ int run_button_acceptance(int argc, char** argv) {
                          }});
                 }});
         }});
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneResources resources{renderer};
         std::int64_t microseconds{};
         std::uint64_t normalized{};

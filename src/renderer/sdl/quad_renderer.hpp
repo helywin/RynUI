@@ -9,7 +9,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <span>
 #include <string>
 
@@ -27,8 +26,7 @@ struct QuadRendererCounters {
 
 class SdlQuadRenderer final : public detail::QuadUploadApi, public runtime::FrameSubmitter {
 public:
-    SdlQuadRenderer(PlatformState& platform, const std::filesystem::path& shader_directory,
-                    bool debug_mode = default_sdl_gpu_debug);
+    explicit SdlQuadRenderer(PlatformState& platform, bool debug_mode = default_sdl_gpu_debug);
     SdlQuadRenderer(const SdlQuadRenderer&) = delete;
     SdlQuadRenderer& operator=(const SdlQuadRenderer&) = delete;
     SdlQuadRenderer(SdlQuadRenderer&&) = delete;

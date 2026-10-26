@@ -254,7 +254,7 @@ int run_otp_acceptance(int argc, char** argv) {
         const auto first = mounted_cell(0, 0);
         const auto first_scene = inputs.text_scene(first.component);
         const auto prefix = services.otp().cell_components(groups[6]);
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneResources resources{renderer};
         std::int64_t microseconds{};
         const auto draw = [&](const std::string& name) {

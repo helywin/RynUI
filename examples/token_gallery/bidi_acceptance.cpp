@@ -175,7 +175,7 @@ int run_bidi_acceptance(int argc, char** argv) {
                                                                  inputs.mounted_inputs().end()};
         require_bidi(mounted.size() == 7, "Bidi editor inventory");
         const auto mixed_scene = inputs.text_scene(mounted[0].component);
-        detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
+        detail::SdlSceneRenderer renderer{platform};
         detail::SceneResources resources{renderer};
         std::int64_t microseconds{};
         const auto draw = [&](const std::string& name) {

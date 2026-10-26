@@ -1,0 +1,16 @@
+[
+  {
+    "label": "changed",
+    "sha256": "d2b10381bece0cc6cf99411f83ce490024ad9c97ea2500d61bb0b4e61d69cc09",
+    "exit_code": 0,
+    "seconds": 0.9529999999995198,
+    "output": "embedded_shaders=12 bytes=44910 comparison=exact\r\n"
+  },
+  {
+    "label": "restored",
+    "sha256": "701b28d99314f27af52bd82cdced782d36d87a099af3144540426ffd8d428f31",
+    "exit_code": 0,
+    "seconds": 0.9380000000001019,
+    "output": "embedded_shaders=12 bytes=44888 comparison=exact\r\n"
+  }
+]

@@ -1,0 +1,4 @@
+[0/2] Re-checking globbed directories...
+[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[2/4] Building RC object tests\CMakeFiles\rynui_embedded_shader_tests.dir\Debug\embedded_shaders\rynui_embedded_shader_tests\shaders.rc.res
+[3/4] Linking CXX executable tests\Debug\rynui_embedded_shader_tests.exe

@@ -10,7 +10,6 @@
 
 #include <chrono>
 #include <cstdint>
-#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
@@ -35,10 +34,6 @@ const char* stage_name(ryn::detail::PlatformStage stage) {
         return "window";
     }
     return "unknown";
-}
-
-std::filesystem::path executable_directory(char* executable) {
-    return std::filesystem::absolute(executable).parent_path();
 }
 
 class PlatformFrameEvents final : public ryn::runtime::FrameEventSource {
@@ -187,7 +182,7 @@ int main(int argc, char** argv) {
 
         ryn::graphics::QuadScene scene(nodes);
         static_cast<void>(scene.add_quad(quad_node, 28.0F));
-        ryn::detail::SdlQuadRenderer renderer(platform, executable_directory(argv[0]) / "shaders");
+        ryn::detail::SdlQuadRenderer renderer(platform);
         ryn::detail::QuadGpuBuffer gpu_buffer(renderer, scene.instances(),
                                               {static_cast<std::uint32_t>(initial_window_metrics.pixel_width),
                                                static_cast<std::uint32_t>(initial_window_metrics.pixel_height),

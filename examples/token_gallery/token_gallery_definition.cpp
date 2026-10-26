@@ -284,9 +284,9 @@ struct GalleryState final {
         });
     }
 
-    void set_theme(ryn::ThemeConfig config, bool brand = false) {
+    void set_theme(const ryn::ThemeConfig& config, bool brand = false) {
         background_color = ryn::resolve_theme(config).alias().color_background_container;
-        theme.set(std::move(config));
+        theme.set(config);
         ++telemetry.theme_updates;
         if (brand) {
             ++telemetry.brand_updates;
@@ -1128,7 +1128,10 @@ void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view 
                    ryn::ControlSize size = ryn::ControlSize::Small, ryn::Prop<bool> disabled = false,
                    ryn::Prop<bool> loading = false, std::function<void()> on_click = {}) {
     const auto text = label(test_id, caption);
-    ryn::Theme(ryn::ThemeProps{}.config(config),
+    // Keep the large ThemeConfig-bearing props off the native thread's stack.
+    auto theme_props = std::make_unique<ryn::ThemeProps>();
+    theme_props->config(config);
+    ryn::Theme(std::move(*theme_props),
                ryn::ThemeContent{[state, text, type, size, disabled = std::move(disabled), loading = std::move(loading),
                                   on_click = std::move(on_click)]() mutable {
                    ++state->telemetry.theme_content_runs;
@@ -1174,15 +1177,16 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
             auto nested = algorithm_config(ryn::ThemeAlgorithm::Dark);
             nested.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
             themed_button(state, "gallery.theme.nested-brand", "Dark + Purple Seed", nested, ryn::ButtonType::Primary);
-            themed_button(state, "gallery.state.default", "Default", {});
-            themed_button(state, "gallery.state.primary", "Primary", {}, ryn::ButtonType::Primary);
-            themed_button(state, "gallery.state.danger", "Danger", {}, ryn::ButtonType::Danger);
-            themed_button(state, "gallery.state.hover", "Hover me / 悬停", {});
-            themed_button(state, "gallery.state.active", "Press me / 按下", {});
-            themed_button(state, "gallery.state.focus-visible", "Tab focus / 键盘焦点", {});
-            themed_button(state, "gallery.state.disabled", "Disabled / 禁用", {}, ryn::ButtonType::Default,
+            const auto& defaults = ryn::detail::default_theme_config();
+            themed_button(state, "gallery.state.default", "Default", defaults);
+            themed_button(state, "gallery.state.primary", "Primary", defaults, ryn::ButtonType::Primary);
+            themed_button(state, "gallery.state.danger", "Danger", defaults, ryn::ButtonType::Danger);
+            themed_button(state, "gallery.state.hover", "Hover me / 悬停", defaults);
+            themed_button(state, "gallery.state.active", "Press me / 按下", defaults);
+            themed_button(state, "gallery.state.focus-visible", "Tab focus / 键盘焦点", defaults);
+            themed_button(state, "gallery.state.disabled", "Disabled / 禁用", defaults, ryn::ButtonType::Default,
                           ryn::ControlSize::Middle, state->disabled);
-            themed_button(state, "gallery.state.loading", "Loading / 加载", {}, ryn::ButtonType::Primary,
+            themed_button(state, "gallery.state.loading", "Loading / 加载", defaults, ryn::ButtonType::Primary,
                           ryn::ControlSize::Middle, false, state->loading);
         });
     ryn::Text(u8"Input / 输入家族 · 原生桌面功能");
@@ -4272,8 +4276,8 @@ float token_gallery_pointer_to_render_logical(float host_logical_coordinate, flo
 
 TokenGalleryDefinition make_token_gallery_definition() {
     auto state = std::make_shared<GalleryState>();
-    auto set_theme = [state](ryn::ThemeConfig config, bool brand) {
-        state->set_theme(std::move(config), brand);
+    auto set_theme = [state](const ryn::ThemeConfig& config, bool brand) {
+        state->set_theme(config, brand);
     };
 
     TokenGalleryDefinition definition{

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="7"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="0"
+	timestamp="2026-10-26T23:25:36"
+	>
+	<testcase name="rynui.default_font_chain" classname="rynui.default_font_chain" time="0.650449" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.text_example_contract" classname="rynui.text_example_contract" time="0.0313606" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.generated_shaders" classname="rynui.generated_shaders" time="0.0358647" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.embedded_shaders" classname="rynui.embedded_shaders" time="0.0153273" status="run">
+		<properties/>
+		<system-out>embedded_shaders=12 bytes=44888 comparison=exact
+</system-out>
+	</testcase>
+	<testcase name="rynui.glyph_shader_contract" classname="rynui.glyph_shader_contract" time="0.0325919" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.quad_shader_contract" classname="rynui.quad_shader_contract" time="0.0318819" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.rounded_effect_shader_contract" classname="rynui.rounded_effect_shader_contract" time="0.0361611" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+</testsuite>
