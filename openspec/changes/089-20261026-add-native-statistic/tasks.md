@@ -11,5 +11,5 @@
 
 ## 3. 平台通用集成验收（本机 Windows / MSVC）
 
-- [ ] 3.1 docs/statistic.md 的公开 API 示例实际编译运行；windows-msvc-headless Debug/Release 定向 build/CTest 通过（Ninja Multi-Config、最多 2 jobs、默认 1 MiB PE 栈），记录命令、日志、数量和覆盖边界。
+- [x] 3.1 docs/statistic.md 的公开 API 示例实际编译运行；windows-msvc-headless Debug/Release 定向 build/CTest 通过（Ninja Multi-Config、最多 2 jobs、默认 1 MiB PE 栈），记录命令、日志、数量和覆盖边界。
 - [ ] 3.2 clang-format 22.1.3 check、OpenSpec 1.14 doctor/全量 strict validate、git diff --check 通过，证据落盘并保存本地英文 Conventional Commits，返回精确 HEAD/path/branch/dirty 待父审查。
