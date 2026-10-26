@@ -60,7 +60,9 @@ Astra R3 的阻断祖先首次组合挂载问题及共享 Skeleton 同步销毁�
 
 Astra R4 的 rich region 返回后只检查 owner、继续使用已退役私有组合问题已复现并统一修复，见 [r4-rich-region-consistency.md](r4-rich-region-consistency.md)。新增 16 个实际挂载组合；修复前 9 条路径抛 stale，修复后 Debug/Release 定向各 13/13，通过同 index 新 generation 回调替代、输入恢复与资源清理断言；保留 R1/R2/R3 断言，该轮未修改共享 Skeleton，已交父独立 R5。
 
-Astra R5 的最终首次 refresh 后私有图失效与 rich slots 期间格式属性更新丢失均先实跑复现，再统一修复 first-mount 用户代码衔接，见 [r5-first-mount-handoff.md](r5-first-mount-handoff.md)。模型在连接完成后格式化最终 revision，getter observer 在执行前登记清理；fresh Debug/Release 各 14/14，保留 R1–R4、补充实际 clip 与共享 Skeleton 直接代表检查。共享 Skeleton 未改，停止交父独立 R6。
+Astra R5 的最终首次 refresh 后私有图失效与 rich slots 期间格式属性更新丢失均先实跑复现，再统一修复 first-mount 用户代码衔接，见 [r5-first-mount-handoff.md](r5-first-mount-handoff.md)。模型在连接完成后格式化最终 revision，getter observer 在执行前登记清理；fresh Debug/Release 各 14/14，保留 R1–R4、补充实际 clip 与共享 Skeleton 直接代表检查。共享 Skeleton 未改，已交父独立 R6。
+
+Astra R6 的首次挂载异常被 Content 局部 catch 后留下未完成 owner 已真实复现并修复，见 [r6-local-catch-rollback.md](r6-local-catch-rollback.md)。owner 创建后立即启用局部 RAII 回滚，完整成功才解除；保留原异常和回调建立的新 generation。Debug 的 14 项原代表检查已通过，修正仅命中既有 Text LeafLayout 缓存的测试探针后新 rollback 项 1/1 通过；Release 最终集合 15/15。共享 Skeleton 未改，保留 R1–R5，停止交父独立 R7。
 
 首版仅 Statistic；Timer、Countdown、Countup、数值动画、locale 国际化均不覆盖，没有类型占位。formatter 返回 String，富输出由 retained typed value slot 表达。浮点若 to_chars 产生指数形式则保持原样，需要精确十进制位时使用 String；precision>100 明确拒绝。
 

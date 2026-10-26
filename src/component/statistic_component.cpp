@@ -238,6 +238,24 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     const auto id = build.mount_component<StatisticState>();
+
+    struct MountRollback final {
+        WindowComponentServices& services;
+        runtime::ComponentId owner;
+        bool committed{};
+
+        ~MountRollback() noexcept {
+            if (!committed) {
+                try {
+                    static_cast<void>(services.destroy(owner));
+                } catch (...) {
+                    // Records/resources are retired before boundary reconciliation. A secondary
+                    // callback failure during cleanup must not replace the original mount exception.
+                }
+            }
+        }
+    } rollback{services, id};
+
     const auto root_node = build.root(id);
     auto& s = build.state<StatisticState>(id);
     s.node = root_node;
@@ -552,7 +570,7 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
         return;
     }
     refresh(id, true);
-    static_cast<void>(valid_mount(true));
+    rollback.committed = valid_mount(true);
 }
 
 runtime::Size StatisticComponentHost::measure_value(runtime::ComponentId id, layout::LayoutEngine& e,

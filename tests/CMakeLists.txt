@@ -83,7 +83,7 @@ target_link_libraries(rynui_statistic_component_tests PRIVATE rynui_components)
 target_compile_definitions(rynui_statistic_component_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
-foreach(statistic_case IN ITEMS retained formatting clips lifecycle gates boundaries)
+foreach(statistic_case IN ITEMS retained formatting clips lifecycle gates boundaries rollback)
     add_test(NAME rynui.statistic_${statistic_case} COMMAND rynui_statistic_component_tests ${statistic_case})
 endforeach()
 

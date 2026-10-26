@@ -1149,6 +1149,243 @@ void lifecycle() {
     check(formatter_fixture.services.statistic().mounted().empty(), "formatter used retired generation");
 }
 
+void mount_rollback() {
+    struct MountError final : std::runtime_error {
+        MountError() : std::runtime_error("R6 mount marker") {}
+    };
+    enum class Failure {
+        Infinity,
+        NaN,
+        Formatter,
+        Getter,
+        Slot,
+        EarlyGetter,
+        FormatterOwnerRebind,
+        FormatterPrivateRebind,
+        Refresh,
+        GetterOwnerRebind,
+        SlotOwnerRebind
+    };
+    unsigned failures = 0;
+    for (const auto failure : {Failure::Infinity, Failure::NaN, Failure::Formatter, Failure::Getter, Failure::Slot,
+                               Failure::EarlyGetter, Failure::FormatterOwnerRebind, Failure::FormatterPrivateRebind,
+                               Failure::Refresh, Failure::GetterOwnerRebind, Failure::SlotOwnerRebind}) {
+        Fixture f;
+        Signal<StatisticValue> value{
+            failure == Failure::Infinity ? StatisticValue{std::numeric_limits<double>::infinity()}
+            : failure == Failure::NaN    ? StatisticValue{std::numeric_limits<double>::quiet_NaN()}
+                                         : StatisticValue{1}};
+        InputRef failed_ref;
+        InputRef fallback_ref;
+        runtime::ComponentId owner;
+        runtime::ComponentId outside;
+        runtime::ComponentId replacement;
+        runtime::ComponentId retired;
+        runtime::ComponentId fallback;
+        std::vector<runtime::NodeId> failed_nodes;
+        std::vector<runtime::NodeId> text_nodes;
+        std::function<void(runtime::ComponentId)> capture_nodes;
+        std::shared_ptr<theme_runtime::ThemeScope> theme;
+        TextInputSessionStamp failed_session;
+        int reads = 0;
+        int formats = 0;
+        bool cleanup = false;
+        bool captured = false;
+        bool caught = false;
+        bool original_error = false;
+        bool clean_at_catch = false;
+        bool child_resources_clean = true;
+        const auto counts = [&] {
+            return std::array{f.services.components().component_count(),
+                              f.nodes.size(),
+                              f.services.surfaces().size(),
+                              f.services.interactions().declaration_order().size(),
+                              blocked_roots(f.services.interactions()).size(),
+                              f.inputs.mounted_inputs().size(),
+                              f.services.text().mounted_texts().size(),
+                              theme->diagnostics().subscriber_count};
+        };
+        capture_nodes = [&](runtime::ComponentId component) {
+            const auto node = f.services.components().root(component);
+            failed_nodes.push_back(node);
+            if (std::ranges::any_of(f.services.text().mounted_texts(),
+                                    [&](const auto& text) { return text.component == component; })) {
+                text_nodes.push_back(node);
+            }
+            for (auto child : f.services.components().children(component)) {
+                capture_nodes(child);
+            }
+        };
+        try {
+            const auto capture_owner = [&] {
+                if (captured) {
+                    return;
+                }
+                captured = true;
+                owner = f.services.components().children(outside).back();
+                runtime::require_component_build_context().scope(owner).on_cleanup([&] {
+                    cleanup = true;
+                    capture_nodes(owner);
+                });
+                runtime::require_component_build_context().on_resource_cleanup(owner, [&] {
+                    // Child cleanups have run, but nodes are still live: intrinsic removal is observable here.
+                    for (auto node : failed_nodes) {
+                        child_resources_clean &= !f.layout.remove_intrinsic_measure(node);
+                        if (node != f.services.components().root(owner) &&
+                            std::ranges::find(text_nodes, node) == text_nodes.end()) {
+                            child_resources_clean &= !f.layout.remove_layout(node);
+                        }
+                    }
+                    // Text retains an inert LeafLayout generation cache, with no owned callback/resources.
+                });
+            };
+            const auto rebind = [&](bool private_only) {
+                retired = private_only ? f.services.statistic().snapshot(owner).skeleton : owner;
+                check(f.services.destroy(retired), "throwing callback could not retire owner/private Skeleton");
+                runtime::require_component_build_context().mount_slot(
+                    outside, Content{[&] {
+                        Statistic(StatisticProps{}.value(99).richValue(StatisticValueContent{
+                            [&] { Input(InputProps{}.ref(failed_ref).defaultValue(u8"Replacement")); }}));
+                        replacement = f.services.statistic().mounted().back();
+                    }});
+            };
+            f.services.mount(Content{[&] {
+                Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                         outside = f.services.components().root_components().back();
+                         theme = runtime::require_component_build_context().theme_scope();
+                         const auto baseline = counts();
+                         try {
+                             Statistic(
+                                 StatisticProps{}
+                                     .value(bind([&] {
+                                         ++reads;
+                                         const auto current = value.get();
+                                         if (failure == Failure::GetterOwnerRebind) {
+                                             rebind(false);
+                                             throw MountError{};
+                                         }
+                                         if (failure == Failure::Getter) {
+                                             throw MountError{};
+                                         }
+                                         return current;
+                                     }))
+                                     .loading(failure == Failure::NaN)
+                                     .visible(bind([&] {
+                                         if (failure == Failure::EarlyGetter) {
+                                             capture_owner();
+                                             throw MountError{};
+                                         }
+                                         return failure != Failure::Refresh;
+                                     }))
+                                     .formatter([&](const StatisticValue&) {
+                                         ++formats;
+                                         if (failure == Failure::FormatterOwnerRebind ||
+                                             failure == Failure::FormatterPrivateRebind) {
+                                             rebind(failure == Failure::FormatterPrivateRebind);
+                                         }
+                                         if (failure == Failure::Refresh) {
+                                             return String{u8"Formatted"};
+                                         }
+                                         throw MountError{};
+                                     })
+                                     .richTitle(StatisticTitle{[&] {
+                                         capture_owner();
+                                         Text(u8"Incomplete");
+                                     }})
+                                     .richValue(StatisticValueContent{[&] {
+                                         Input(InputProps{}.ref(failed_ref).defaultValue(u8"Incomplete"));
+                                         if (failure != Failure::NaN) {
+                                             check(failed_ref.focus(), "failed mount did not activate rich input");
+                                             failed_session = f.inputs.sessions().active();
+                                             check(failed_session.valid(), "failed mount has no real input session");
+                                         }
+                                         if (failure == Failure::Refresh) {
+                                             Select(SelectProps{}.open(true).onOpenChange([](bool open) {
+                                                 if (!open) {
+                                                     throw MountError{};
+                                                 }
+                                             }));
+                                         }
+                                         if (failure == Failure::SlotOwnerRebind) {
+                                             rebind(false);
+                                             throw MountError{};
+                                         }
+                                         if (failure == Failure::Slot) {
+                                             throw MountError{};
+                                         }
+                                     }}));
+                         } catch (const std::exception& error) {
+                             caught = true;
+                             original_error =
+                                 failure == Failure::Infinity || failure == Failure::NaN
+                                     ? dynamic_cast<const std::invalid_argument*>(&error) &&
+                                           std::string_view{error.what()} == "Statistic numeric value must be finite"
+                                     : dynamic_cast<const MountError*>(&error) &&
+                                           std::string_view{error.what()} == "R6 mount marker";
+                             clean_at_catch =
+                                 !f.services.components().contains(owner) && cleanup &&
+                                 (!failed_session.valid() || f.inputs.sessions().active() != failed_session);
+                             if (replacement.valid()) {
+                                 clean_at_catch &= f.services.components().contains(replacement) &&
+                                                   f.services.statistic().mounted().size() == 1;
+                             } else {
+                                 clean_at_catch &= counts() == baseline && !failed_ref.focus() &&
+                                                   !f.inputs.sessions().active().valid();
+                             }
+                             if (!clean_at_catch) {
+                                 std::cerr << "local catch=" << static_cast<int>(failure)
+                                           << " owner_alive=" << f.services.components().contains(owner)
+                                           << " statistic=" << f.services.statistic().mounted().size()
+                                           << " inputs=" << f.inputs.mounted_inputs().size()
+                                           << " blocks=" << blocked_roots(f.services.interactions()).size()
+                                           << " cleanup=" << cleanup << '\n';
+                             }
+                         }
+                         // Keep the host Content successful: it must not perform the failed child's rollback for us.
+                         Input(InputProps{}.ref(fallback_ref).defaultValue(u8"Fallback"));
+                         fallback = f.inputs.mounted_inputs().back().component;
+                     }});
+            }});
+            sync(f);
+            check(fallback_ref.focus({InputFocusCursor::All}) &&
+                      bool(f.inputs.dispatch(TextCommitted{String{u8"Fallback saved"}, f.inputs.sessions().active()})),
+                  "local catch fallback could not accept real input");
+            sync(f);
+            check(drawn(f, f.inputs.text_layers(fallback).base), "local catch fallback emitted no glyphs");
+            const auto prior_reads = reads;
+            const auto prior_formats = formats;
+            value.set(StatisticValue{7});
+            sync(f);
+            check(caught && original_error && clean_at_catch && child_resources_clean && reads == prior_reads &&
+                      formats == prior_formats,
+                  "local catch retained failed owner/resources or its subscriptions");
+            for (auto node : failed_nodes) {
+                check(!f.nodes.find(node), "failed mount retained a node generation");
+            }
+            check(!f.layout.remove_layout(failed_nodes[0]), "failed mount retained the owner layout callback");
+            if (replacement.valid()) {
+                check(replacement.index == retired.index && replacement.generation != retired.generation &&
+                          f.services.statistic().snapshot(replacement).formatted_value.bytes() == "99" &&
+                          failed_ref.focus() &&
+                          f.inputs.editors().require(f.inputs.mounted_inputs()[0].editor).value() == "Replacement",
+                      "throw rollback damaged callback replacement generation/ref/draft");
+            }
+            f.services.dispose();
+            check(f.services.components().component_count() == 0 && f.nodes.size() == 0 &&
+                      f.services.surfaces().size() == 0 && f.services.interactions().declaration_order().empty() &&
+                      blocked_roots(f.services.interactions()).empty() && f.inputs.mounted_inputs().empty() &&
+                      !f.inputs.sessions().active().valid() && !failed_ref.focus() && !fallback_ref.focus() &&
+                      theme->diagnostics().subscriber_count == 0,
+                  "local catch teardown did not return resources to baseline");
+        } catch (const std::exception& error) {
+            ++failures;
+            std::cerr << "rollback failure=" << static_cast<int>(failure) << ": " << error.what() << '\n';
+        }
+        f.services.dispose();
+    }
+    check(failures == 0, "Statistic locally caught first-mount rollback failed");
+}
+
 void gates() {
     Fixture f;
     Signal<bool> visible{true};
@@ -1242,6 +1479,8 @@ int main(int argc, char** argv) {
             gates();
         } else if (name == "boundaries") {
             boundaries();
+        } else if (name == "rollback") {
+            mount_rollback();
         } else {
             throw std::runtime_error("unknown Statistic case");
         }

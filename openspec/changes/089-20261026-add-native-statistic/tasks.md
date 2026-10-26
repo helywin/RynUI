@@ -33,3 +33,7 @@
 ## 8. Astra R5 修正
 
 - [x] 8.1 复现并修复最终首次 refresh 后私有图退役未清理、rich slot 期间格式属性更新被首次 apply 跳过的问题；统一核对 first-mount 用户代码边界，覆盖最终 region/Skeleton/owner 退役、getter/formatter 同步销毁与同 ref 新 generation 重绑、首帧最终属性、格式化次数/revision、合法后续更新和拒绝恢复。保留 R1–R4 断言，通过 fresh 定向 MSVC HEADLESS Debug/Release 与共享 Skeleton 代表、format、显式 OpenSpec 1.14 doctor/strict 和 diff check，记录证据并本地提交交父 R6。
+
+## 9. Astra R6 修正
+
+- [x] 9.1 真实复现 Content 局部 catch 首次格式化异常后留下未完成 Statistic 的问题；从 owner 创建起加入局部 RAII 回滚，覆盖非有限数值、throwing formatter/getter/slot/首次输入协调，同步销毁/代际重绑后抛错保持原异常和新 generation，fallback、后续 Signal 与资源/布局/订阅/输入 session/ref 清理真实可用。保留 R1–R5，经一次 fresh 定向 MSVC HEADLESS Debug/Release、format、显式 OpenSpec 1.14 doctor/strict 与 diff check 后英文提交 clean 交父 R7。
