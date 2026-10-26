@@ -133,3 +133,38 @@ P2 修复在 FocusManager 增加一个 WindowComponentServices 持有的内部 o
 clang-format 22.1.3 检查 **744** owned 文件，0 failures；显式安装入口 OpenSpec **1.14.0** doctor healthy、strict **90/90**，diff check 通过。12 个实际 AC test PE（model/theme/component/integration/review/r2 × Debug/Release）均 PE32+，默认 stack reserve **1048576**。Theme/五份旧 golden、原 R1 test、Avatar、Input/Form/DateTime/Popover/Select 实现及 renderer/GPU ABI/README/Gallery/全局完成记录相对 0c3 无 diff；没有重新生成金样。哈希和保护路径/source blob 检查见 [artifacts.log](evidence/windows/r2/artifacts.log)。
 
 此轮交付范围仅为上述两项合同缺口的本树实现与 headless 证据。未声称 main/Gallery/native GPU/Linux/system IME/AT 通过；保持首版范围和既有排除项，clean 本地交接后停待父 fresh 独立 Astra R3。
+
+## Astra R3：静默失败退役与子 popup 焦点恢复
+
+本轮从指定 clean `40bba184cbed09584468dc7a190d135085bd34a9` 继续，仍为 `t3/add-native-autocomplete`、`C:/Users/jiang/.t3/worktrees/RynUI/t3-081ff944`。先在原实现上仅添加独立 harness/CMake cases，fresh MSVC Debug 实际运行 **0/3**：保留 rich Input 聚焦后追加 throwing label，破坏性 blur 重入 owner destroy 导致 SegFault；blur throw 变体报告 `failure teardown delivered native blur or replaced original exception`；子 Popover content Input 无 composition 按 Escape 报告 `deferred trigger restore was blocked by premature parent exit`。原始 baseline build 为 `092-build-Debug-20261026-212158.log`，before 为 `092-R3-before-Debug.log`，总耗时 0.24 s。原复现入口保留在最终三组测试开头。
+
+共享生产修复独立保存为 `4c67fd5c3e661b0794be193e1f0144ec07816867`（`fix(component): quietly cancel failed subtree interactions`），直接 parent 为上述 40bba。它只修改 WindowComponentServices、FocusManager、PointerRouter，并新增无 AutoComplete 依赖的普通 Input/Button 回归及 CMake 注册；新增生产代码不依赖 AC 类或字段。父明确要求共享协调后，已向父交付完整 SHA、接口、依赖和实际结果，未导入 Tree 或修改其源码。
+
+`retire_failed_component(full ComponentId) noexcept` 在 Text/Component 析构前枚举原完整 generation 的 interaction 后代；FocusManager/PointerRouter 的 `cancel_interaction(id, bool notify = true)` 在失败路径传 `false`，复用既有 dispatch 中不交付的分支，静默清除 focus、keyboard press、pointer capture/press/hover。Input/Button cleanup 再取消时已无事件源，不能进入用户 blur/cancel/leave。默认取消和普通 destroy 的用户通知语义保持原样。此共享 commit 依赖 R2 已有的失败退役入口（d481/40bba 基线）；复用者应在 throwing slot 自身 append-slot 回滚前调用或建立局部守卫，仅外层 catch 太晚。它没有把所有普通 rollback 自动改为静默。
+
+AC 专属守卫和焦点事务修复保存为 `648da9b6abddf519d1dce41ffaf00f782ebc4ddb`（`fix(auto-complete): guard rich rollback and settle focus restoration`），直接 parent 是共享 commit，也是最终被测 source commit。rich label 构建内部增加原 owner 的失败守卫，新行已取得焦点后抛出时先静默退役，再让 append-slot 处理原异常；私有结构损坏检查也使用该入口。所有旧守卫仍只退役旧完整 id，不破坏同 ref 替代 generation。
+
+FocusManager 先处理 pending deferred 焦点请求和原生 blur/focus 通知，再在同一次事务内观察最终焦点；嵌套 end_operation 不抢先交付临时 null。observer 新增的 deferred 请求继续有界收敛，目标沿用完整 InteractionId 和 eligibility 检查。没有延后到 layout/帧采样，也未替换用户原生 handlers；独立 ref.focus 调用仍在各自返回前交付，R2 同帧 rich→外部的及时退出保持。
+
+三组 R3 回归除原路径外覆盖：危险 rich blur 销毁/同 ref 重绑/throw 的处理器均不被调用；pointer cancel/leave 抛出处理器、capture/hover 与迟到 up；Space press 取消不通知或激活；新 rich Input 先聚焦再抛出和私有主 Input 损坏；原异常 payload、旧 editor/node/session/ref/block/subscription 清理及后续 Signal 安全。子 Popover 的 Escape 覆盖内部 trigger、内部替代目标、恢复链、目标被删除/disabled、外部 deferred 目标、blur/恢复 focus 通知中销毁重绑、原生 blur throw；断言原生通知顺序、实际 hit eligibility/focus outline、原有身份及恢复后同帧外部 ref.focus 关闭。没有靠 keyup 或下一帧补偿。
+
+最终正式 MSVC HEADLESS、Ninja Multi-Config、`windows-msvc-headless`，build/CTest 均最多 2 jobs，Debug 与 Release 顺序执行。每配置在最终 C++ fresh 编译/链接后运行一次原定向集合：**Debug 37/37，13.37 s；Release 37/37，6.10 s**。集合为 AC 原 13 + R1 review 5 + R2 2 + R3 3 = 23；直接共享代表 14：Focus order/state/lifecycle 3、Pointer route 1、Input component/actions 2、Popover children/review_focus/review_escape 3、TimePicker review_focus/review_row_focus 2、DatePicker review_form_reset 1、Form component 1、Select component 1。R1 五项、ab0 停止过期 refresh/open 回显和 R2 两项均包含在内。
+
+父随后协调 Tree 同源问题，另加 `component_failure_retirement`，仅普通 region/Input/Button，不导入 Tree/AC。六个 fixture 为危险 blur destroy/rebind/throw × 无/有替代 generation，实际 focus/preedit/pointer capture，异常展开时静默退役；验证原 MountFailure 共享 payload、旧资源及订阅归零、旧 Signal/reset/session 无跨代影响。每配置只 fresh 构建这个新 target 并运行 **1/1**：Debug 0.32 s、Release 0.20 s；未重跑前一 37 项集合。因此每配置实际验证 38 个不同 CTest，分 37+1 两次运行，不声称单次 38/38。所有验证在最终集成源码上进行；拆 commit 只调整 Git index，未回退或重写已验源码，不把集成树结果冒称 shared-only checkout 的验收。
+
+中间 Debug 一次为 35/37：新增 fixture 在旧 InputRef 仍存活时绑定同 ref 被正确拒绝，另一 fixture 对默认 Outlined Input 错误要求 Borderless 的 focus outline。修正为先显式失败退役再建立同 ref 替代 generation，以及使用 Borderless 内部 Input 后通过；保留 `092-R3-fixture-diagnostic-Debug.log`。同时审计补上新 label 内层守卫和损坏结构静默退役，并在最终集合重编验证。新增通用 fixture 首次编译误用 NodeStore::contains，改为 find 后 fresh 构建；失败 build 后没有运行旧 executable 计验收。PowerShell 合并 OpenSpec stderr 时曾使 shell 状态为 1（原生结果 90 passed）；最终用 Python subprocess 显式入口保存原生字节与 exit，doctor/strict/apply/version 均 exit 0，保留 shell 诊断而不以它计验收。
+
+实际命令与 targets/完整 regex 见 [092-r3-final.ps1](evidence/windows/r3/092-r3-final.ps1)，调用的 [092-msvc.ps1](evidence/windows/r3/092-msvc.ps1) 保持显式 VS MSVC 环境。新增通用代表的实际命令为：
+
+```powershell
+& ./out/092-msvc.ps1 -Action build -Config Debug -Targets rynui_component_failure_retirement_tests
+ctest --preset windows-msvc-headless-debug --parallel 2 --output-on-failure --no-tests=error -R '^rynui\.component_failure_retirement$'
+& ./out/092-msvc.ps1 -Action build -Config Release -Targets rynui_component_failure_retirement_tests
+ctest --preset windows-msvc-headless-release --parallel 2 --output-on-failure --no-tests=error -R '^rynui\.component_failure_retirement$'
+```
+
+所有原始日志按字节复制到 [r3/windows 证据目录](evidence/windows/r3/)：Debug 共享生产首编 `092-build-Debug-20261026-213523.log`，最终 AC/fixture 重编及全部指定目标 relink `092-build-Debug-20261026-214442.log`；Release 全部指定目标 fresh build `092-build-Release-20261026-214512.log`；最终测试 `092-R3-final-test-{Debug,Release}.log`。通用 fixture 首次失败 build `215533`、修正后 Debug `215621`、Release `215702` 和 `092-R3-shared-test-{Debug,Release}.log` 同样保留。现有 warnings 原样保留，未通过 ROOT/out 程序获取证据。
+
+clang-format **22.1.3** 检查 **746** owned 文件，0 failures；显式 OpenSpec **1.14.0** doctor healthy、strict **90/90**、apply **18/18**，diff check 通过。显式 CLI 路径和原生 exit 记录机制保存在 `092-r3-openspec.py`。16 个实际 test PE（AC 七种 + 通用退役一种 × Debug/Release）均 PE32+，默认 stack reserve **1048576**。Theme/五份旧 golden、原 IIFE/ordinal/typed leaves、font 上限与 preflight 源码、Avatar、原 R1/R2 tests、Input/Form/DateTime/Popover/Select 实现、renderer/GPU ABI/README/Gallery/全局完成记录相对 40bba 无 diff；未重新生成金样，也未重跑无关矩阵。只读 source/blob/PE/golden/raw artifact SHA256 核验见 [artifacts.log](evidence/windows/r3/artifacts.log)，由同目录 `verify_artifacts.py` 在本树实际运行。
+
+最终 source commit 之后只更新本 change 的 tasks/evidence，不改已测 src/include/tests/examples。没有 fetch/push/PR/archive/children，没有写 ROOT/out 或运行 ROOT 程序。未声称 main/Gallery/native GPU/Linux/system IME/AT 通过；本轮完成 R3 两项的实现和本树 headless 证据，clean 本地交接后停待父 fresh 独立 Astra R4。
