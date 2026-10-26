@@ -153,8 +153,9 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     const auto id = build.mount_component<StatisticState>();
+    const auto root_node = build.root(id);
     auto& s = build.state<StatisticState>(id);
-    s.node = build.root(id);
+    s.node = root_node;
     s.model = std::move(model);
     s.snapshot.formatted_value = formatted;
     s.value.set(std::move(formatted));
@@ -165,21 +166,64 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
               props.rich_suffix_.has_value()};
     s.snapshot.visible = read_prop(props.visible_);
     s.snapshot.loading = read_prop(props.loading_);
-    services.nodes().require(s.node).clip_content = true;
-    runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
-    build.on_resource_cleanup(id, [&services, id, node = s.node] {
+    // Keep owned signal handles, never a state reference, across user slot execution.
+    const auto text_signals = std::array{s.title, s.prefix, s.value, s.suffix};
+    const auto title_color = s.title_color;
+    const auto content_color = s.content_color;
+    const auto title_font = s.title_font;
+    const auto content_font = s.content_font;
+    services.nodes().require(root_node).clip_content = true;
+    runtime::connect_layout_style(build.scope(id), props.layout_, root_node, services.nodes(), services.dirty());
+    if (!services.components().contains(id)) {
+        return;
+    }
+    build.on_resource_cleanup(id, [&services, id, node = root_node] {
         services.interactions().set_input_blocked(id, false);
         services.layout().remove_layout(node);
     });
+    const auto owner_parent = services.components().parent(id);
+    std::array<runtime::ComponentId, 4> mount_regions{};
+    runtime::ComponentId mount_skeleton;
+    runtime::ComponentId mount_wrapper;
+    runtime::ComponentId mount_content;
+    const auto valid_mount = [&](bool complete = false) {
+        auto& components = services.components();
+        if (!components.contains(id)) {
+            return false;
+        }
+        const auto edge = [&](auto child, auto parent) {
+            return components.contains(child) && components.contains(parent) &&
+                   components.parent(child) == std::optional{parent};
+        };
+        bool valid = components.state<StatisticState>(id) && components.parent(id) == owner_parent;
+        for (std::size_t i = 0; i < mount_regions.size(); ++i) {
+            valid &= mount_regions[i].valid() ? edge(mount_regions[i], i == 0 ? id : mount_content) : !complete;
+        }
+        valid &= mount_skeleton.valid() ? edge(mount_skeleton, id) : !complete;
+        valid &= mount_wrapper.valid() ? edge(mount_wrapper, mount_skeleton) : !complete;
+        valid &= mount_content.valid() ? edge(mount_content, mount_wrapper) : !complete;
+        if (!valid) {
+            // Only the captured unfinished owner is ours to retire; a replacement generation is not.
+            services.destroy(id);
+        }
+        return valid;
+    };
     build.mount_slot(
         id, Content{[&] {
             auto& context = runtime::require_component_build_context();
-            const auto region = [&](runtime::ComponentId parent, Content body, bool title) {
+            const auto region = [&](std::size_t index, runtime::ComponentId parent, Content body, bool title) {
                 runtime::ComponentId child;
+                if (!valid_mount()) {
+                    return child;
+                }
                 context.mount_slot(
                     parent, Content{[&] {
                         auto& c = runtime::require_component_build_context();
                         child = c.mount_component<int>(0);
+                        mount_regions[index] = child;
+                        if (!valid_mount()) {
+                            return;
+                        }
                         const auto node = c.root(child);
                         services.nodes().require(node).clip_content = true;
                         services.nodes().require(node).clip_decorations = false;
@@ -204,12 +248,12 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                 }});
                         c.on_resource_cleanup(child, [&services, node] { services.layout().remove_layout(node); });
                         c.mount_slot_with_semantic_text_style(
-                            child, body, Prop<runtime::SemanticForeground>{title ? s.title_color : s.content_color},
-                            Prop<runtime::SemanticTypography>{title ? s.title_font : s.content_font});
+                            child, body, Prop<runtime::SemanticForeground>{title ? title_color : content_color},
+                            Prop<runtime::SemanticTypography>{title ? title_font : content_font});
                     }});
                 return child;
             };
-            const auto title_region = region(id, Content{[slot = props.rich_title_, text = s.title] {
+            const auto title_region = region(0, id, Content{[slot = props.rich_title_, text = text_signals[0]] {
                                                  if (slot) {
                                                      SlotContentAccess::function (*slot)();
                                                  } else {
@@ -217,16 +261,38 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                                  }
                                              }},
                                              true);
-            if (!services.components().contains(id)) {
+            if (!valid_mount()) {
                 return;
             }
-            s.snapshot.title = title_region;
+            services.components().state<StatisticState>(id)->snapshot.title = title_region;
             Skeleton(SkeletonProps{}.loading(props.loading_).paragraph(false), SkeletonContent{[&] {
+                         if (!valid_mount()) {
+                             return;
+                         }
                          auto& c = runtime::require_component_build_context();
                          const auto content = c.mount_component<int>(0);
-                         s.snapshot.content = content;
-                         const auto wrapper = *services.components().parent(content);
-                         s.snapshot.skeleton = *services.components().parent(wrapper);
+                         if (!services.components().contains(id)) {
+                             return;
+                         }
+                         const auto wrapper = services.components().contains(content)
+                                                  ? services.components().parent(content)
+                                                  : std::nullopt;
+                         const auto skeleton = wrapper && services.components().contains(*wrapper)
+                                                   ? services.components().parent(*wrapper)
+                                                   : std::nullopt;
+                         if (!wrapper || !skeleton) {
+                             services.destroy(id);
+                             return;
+                         }
+                         mount_content = content;
+                         mount_wrapper = *wrapper;
+                         mount_skeleton = *skeleton;
+                         if (!valid_mount()) {
+                             return;
+                         }
+                         auto* current = services.components().state<StatisticState>(id);
+                         current->snapshot.content = mount_content;
+                         current->snapshot.skeleton = mount_skeleton;
                          const auto node = c.root(content);
                          services.nodes().require(node).clip_content = true;
                          services.nodes().require(node).clip_decorations = false;
@@ -238,74 +304,84 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                            place_value(id, e, bounds);
                                        }});
                          c.on_resource_cleanup(content, [&services, node] { services.layout().remove_layout(node); });
-                         c.mount_slot(content, Content{[&] {
-                                          const auto prefix_region =
-                                              region(content, Content{[slot = props.rich_prefix_, text = s.prefix] {
-                                                         if (slot) {
-                                                             SlotContentAccess::function (*slot)();
-                                                         } else {
-                                                             Text(TextProps{}.content(text));
-                                                         }
-                                                     }},
-                                                     false);
-                                          if (!services.components().contains(id)) {
-                                              return;
-                                          }
-                                          s.snapshot.prefix = prefix_region;
-                                          const auto value_region =
-                                              region(content, Content{[slot = props.rich_value_, text = s.value] {
-                                                         if (slot) {
-                                                             SlotContentAccess::function (*slot)();
-                                                         } else {
-                                                             Text(TextProps{}.content(text));
-                                                         }
-                                                     }},
-                                                     false);
-                                          if (!services.components().contains(id)) {
-                                              return;
-                                          }
-                                          s.snapshot.value = value_region;
-                                          const auto suffix_region =
-                                              region(content, Content{[slot = props.rich_suffix_, text = s.suffix] {
-                                                         if (slot) {
-                                                             SlotContentAccess::function (*slot)();
-                                                         } else {
-                                                             Text(TextProps{}.content(text));
-                                                         }
-                                                     }},
-                                                     false);
-                                          if (!services.components().contains(id)) {
-                                              return;
-                                          }
-                                          s.snapshot.suffix = suffix_region;
-                                      }});
+                         c.mount_slot(
+                             content, Content{[&] {
+                                 const auto prefix_region =
+                                     region(1, content, Content{[slot = props.rich_prefix_, text = text_signals[1]] {
+                                                if (slot) {
+                                                    SlotContentAccess::function (*slot)();
+                                                } else {
+                                                    Text(TextProps{}.content(text));
+                                                }
+                                            }},
+                                            false);
+                                 if (!valid_mount()) {
+                                     return;
+                                 }
+                                 services.components().state<StatisticState>(id)->snapshot.prefix = prefix_region;
+                                 const auto value_region =
+                                     region(2, content, Content{[slot = props.rich_value_, text = text_signals[2]] {
+                                                if (slot) {
+                                                    SlotContentAccess::function (*slot)();
+                                                } else {
+                                                    Text(TextProps{}.content(text));
+                                                }
+                                            }},
+                                            false);
+                                 if (!valid_mount()) {
+                                     return;
+                                 }
+                                 services.components().state<StatisticState>(id)->snapshot.value = value_region;
+                                 const auto suffix_region =
+                                     region(3, content, Content{[slot = props.rich_suffix_, text = text_signals[3]] {
+                                                if (slot) {
+                                                    SlotContentAccess::function (*slot)();
+                                                } else {
+                                                    Text(TextProps{}.content(text));
+                                                }
+                                            }},
+                                            false);
+                                 if (!valid_mount()) {
+                                     return;
+                                 }
+                                 services.components().state<StatisticState>(id)->snapshot.suffix = suffix_region;
+                             }});
+                         static_cast<void>(valid_mount());
                      }});
-            if (!services.components().contains(id)) {
+            if (!valid_mount(true)) {
                 return;
             }
-            if (!services.components().contains(s.snapshot.skeleton) ||
-                !services.components().contains(s.snapshot.content)) {
-                // A callback retired a private composition child while leaving the owner live.
-                services.destroy(id);
-                return;
-            }
-            services.nodes().require(services.components().root(s.snapshot.skeleton)).clip_decorations = false;
+            services.nodes().require(services.components().root(mount_skeleton)).clip_decorations = false;
         }});
-    if (!services.components().contains(id)) {
+    if (!valid_mount(true)) {
         return;
     }
     services.layout().set_layout(
-        s.node,
+        root_node,
         layout::ComponentLayout{
             [this, id](layout::LayoutEngine& e, runtime::NodeId, layout::Constraints c) { return measure(id, e, c); },
             [this, id](layout::LayoutEngine& e, runtime::NodeId, runtime::Rect r) { place(id, e, r); }});
     mounted_.push_back(id);
-    auto& scope = build.scope(id);
     connect(id, props.value_, &StatisticModel::value);
+    if (!valid_mount(true)) {
+        return;
+    }
     connect(id, props.precision_, &StatisticModel::precision);
+    if (!valid_mount(true)) {
+        return;
+    }
     connect(id, props.decimal_separator_, &StatisticModel::decimal_separator);
+    if (!valid_mount(true)) {
+        return;
+    }
     connect(id, props.group_separator_, &StatisticModel::group_separator);
+    if (!valid_mount(true)) {
+        return;
+    }
     connect(id, props.formatter_, &StatisticModel::formatter);
+    if (!valid_mount(true)) {
+        return;
+    }
     const auto text = [this, id](const Prop<String>& prop, Signal<String> StatisticState::* member) {
         connect_prop(services_->components().scope(id), prop, [this, id, member](String value) {
             if (auto* s = services_->components().state<StatisticState>(id)) {
@@ -315,28 +391,44 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
         });
     };
     text(props.title_, &StatisticState::title);
+    if (!valid_mount(true)) {
+        return;
+    }
     text(props.prefix_, &StatisticState::prefix);
+    if (!valid_mount(true)) {
+        return;
+    }
     text(props.suffix_, &StatisticState::suffix);
-    connect_prop(scope, props.loading_, [this, id](bool value) {
+    if (!valid_mount(true)) {
+        return;
+    }
+    connect_prop(services.components().scope(id), props.loading_, [this, id](bool value) {
         if (auto* s = services_->components().state<StatisticState>(id)) {
             s->snapshot.loading = value;
             refresh(id, true);
         }
     });
-    connect_prop(scope, props.visible_, [this, id](bool value) {
+    if (!valid_mount(true)) {
+        return;
+    }
+    connect_prop(services.components().scope(id), props.visible_, [this, id](bool value) {
         if (auto* s = services_->components().state<StatisticState>(id)) {
             s->snapshot.visible = value;
             refresh(id, true);
         }
     });
+    if (!valid_mount(true)) {
+        return;
+    }
     const auto theme = build.theme_scope();
-    s.subscriptions[0] = theme->capture([this, id](auto) { refresh(id, false); },
-                                        [theme] { static_cast<void>(theme->statistic_colors()); });
-    s.subscriptions[1] = theme->capture([this, id](auto) { refresh(id, true); },
-                                        [theme] { static_cast<void>(theme->statistic_metrics()); });
+    auto* current = services.components().state<StatisticState>(id);
+    current->subscriptions[0] = theme->capture([this, id](auto) { refresh(id, false); },
+                                               [theme] { static_cast<void>(theme->statistic_colors()); });
+    current->subscriptions[1] = theme->capture([this, id](auto) { refresh(id, true); },
+                                               [theme] { static_cast<void>(theme->statistic_metrics()); });
     // Boundary reconciliation can retire this generation. Install every connection first,
     // and leave no borrowed state/scope access after the initial refresh.
-    s.ready = true;
+    current->ready = true;
     refresh(id, true);
 }
 

@@ -25,3 +25,7 @@
 ## 6. Astra R3 修正
 
 - [x] 6.1 复现并修复阻断祖先下首次组合挂载回调销毁 owner/内部 Skeleton 后继续使用旧 child/state/scope 的问题；outer Skeleton、closed Modal、富 title Select、初始 loading、合法存活/恢复及同 ref/generation 重绑通过定向 Debug/Release 与共享 Skeleton 代表回归，保留 R1/R2 断言，format、显式 OpenSpec 1.14 doctor/strict、diff check 通过并本地提交交父 R4。
+
+## 7. Astra R4 修正
+
+- [x] 7.1 复现并统一修复四个 rich region 返回后的完整 generation/私有组合父子关系校验；覆盖 region/私有 Skeleton/wrapper/content/owner 退役、回调同 index 新 generation 重绑、合法存活与输入恢复，保留 R1/R2/R3 断言并通过定向 Debug/Release 和共享 Skeleton 代表检查，format、显式 OpenSpec 1.14 doctor/strict、diff check 通过后本地提交交父 R5。

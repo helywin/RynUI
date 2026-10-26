@@ -579,7 +579,162 @@ void blocked_ancestor_mount() {
     check(failures == 0, "Statistic blocked-ancestor first mount failed");
 }
 
+void rich_region_retirement() {
+    enum class Target { Survive, Region, Skeleton, Wrapper, Content, Owner };
+
+    struct Case final {
+        std::size_t region;
+        Target target;
+        bool rebind{};
+    };
+
+    const std::array cases{Case{0, Target::Region},   Case{1, Target::Region},      Case{2, Target::Region},
+                           Case{3, Target::Region},   Case{1, Target::Skeleton},    Case{2, Target::Skeleton},
+                           Case{3, Target::Skeleton}, Case{1, Target::Wrapper},     Case{2, Target::Content},
+                           Case{1, Target::Owner},    Case{2, Target::Owner, true}, Case{1, Target::Skeleton, true},
+                           Case{0, Target::Survive},  Case{1, Target::Survive},     Case{2, Target::Survive},
+                           Case{3, Target::Survive}};
+    unsigned failures = 0;
+    for (const auto test : cases) {
+        Fixture f;
+        Signal<bool> ancestor{test.region == 0};
+        Signal<bool> loading{true};
+        Signal<StatisticValue> value{StatisticValue{1}};
+        InputRef ref;
+        std::array<int, 4> mounts{};
+        runtime::ComponentId original;
+        runtime::ComponentId replacement;
+        runtime::ComponentId retired_target;
+        runtime::ComponentId outside;
+        int closes = 0;
+        const auto replace = [&] {
+            Statistic(StatisticProps{}.value(99).richValue(
+                StatisticValueContent{[&] { Input(InputProps{}.ref(ref).defaultValue(u8"Replacement")); }}));
+            replacement = f.services.statistic().mounted().back();
+        };
+        try {
+            const auto body = [&](std::size_t index) {
+                ++mounts[index];
+                if (index != test.region) {
+                    Text(u8"Stable");
+                    return;
+                }
+                Input(InputProps{}.ref(ref).defaultValue(u8"Original"));
+                Select(SelectProps{}.open(true).onOpenChange([&](bool open) {
+                    if (open) {
+                        return;
+                    }
+                    ++closes;
+                    const auto select = f.services.select().mounted().back();
+                    const auto region = *f.services.components().parent(select);
+                    runtime::ComponentId content;
+                    runtime::ComponentId wrapper;
+                    runtime::ComponentId skeleton;
+                    if (test.region == 0) {
+                        original = *f.services.components().parent(region);
+                    } else {
+                        content = *f.services.components().parent(region);
+                        wrapper = *f.services.components().parent(content);
+                        skeleton = *f.services.components().parent(wrapper);
+                        original = *f.services.components().parent(skeleton);
+                    }
+                    outside = *f.services.components().parent(original);
+                    runtime::ComponentId victim;
+                    switch (test.target) {
+                    case Target::Survive:
+                        break;
+                    case Target::Region:
+                        victim = region;
+                        break;
+                    case Target::Skeleton:
+                        victim = skeleton;
+                        break;
+                    case Target::Wrapper:
+                        victim = wrapper;
+                        break;
+                    case Target::Content:
+                        victim = content;
+                        break;
+                    case Target::Owner:
+                        victim = original;
+                        break;
+                    }
+                    if (victim.valid()) {
+                        retired_target = victim;
+                        check(f.services.destroy(victim), "rich-region callback failed to retire target");
+                    }
+                    if (test.rebind) {
+                        // Explicit mount_slot is valid during the initial host mount; append_slot is not.
+                        runtime::require_component_build_context().mount_slot(outside, Content{replace});
+                    }
+                }));
+                Skeleton(SkeletonProps{}.loading(true), SkeletonContent{[] { Text(u8"Trigger"); }});
+            };
+            f.services.mount(Content{[&] {
+                Skeleton(SkeletonProps{}.loading(ancestor), SkeletonContent{[&] {
+                             Statistic(StatisticProps{}
+                                           .loading(loading)
+                                           .value(value)
+                                           .richTitle(StatisticTitle{[&] { body(0); }})
+                                           .richPrefix(StatisticPrefix{[&] { body(1); }})
+                                           .richValue(StatisticValueContent{[&] { body(2); }})
+                                           .richSuffix(StatisticSuffix{[&] { body(3); }}));
+                         }});
+            }});
+            sync(f);
+            check(closes == 1 && original.valid(), "rich-region retirement callback did not run once");
+            const bool survives = test.target == Target::Survive;
+            if (survives) {
+                check(f.services.components().contains(original) && mounts == std::array{1, 1, 1, 1},
+                      "surviving rich composition was not completed once");
+            } else {
+                check(!f.services.components().contains(original),
+                      "invalid private structure left original owner alive");
+                for (std::size_t i = test.region + 1; i < mounts.size(); ++i) {
+                    check(mounts[i] == 0, "mount continued a later region after retirement");
+                }
+                if (!test.rebind) {
+                    f.services.append_slot(outside, Content{replace});
+                }
+                check(replacement != original && f.services.components().contains(replacement),
+                      "old generation cleanup destroyed callback replacement");
+                if (test.rebind) {
+                    check(replacement.index == retired_target.index &&
+                              replacement.generation != retired_target.generation,
+                          "callback replacement did not exercise same-index generation reuse");
+                }
+            }
+            for (auto blocked : blocked_roots(f.services.interactions())) {
+                check(f.services.components().contains(blocked), "rich retirement leaked old generation block");
+            }
+            ancestor.set(false);
+            loading.set(false);
+            value.set(StatisticValue{2});
+            sync(f);
+            check(ref.focus({InputFocusCursor::All}), "rich retirement recovery lost retained/rebound ref");
+            const auto input = f.inputs.mounted_inputs()[0];
+            check(f.inputs.editors().require(input.editor).value() == (survives ? "Original" : "Replacement"),
+                  "rich retirement recovery reset draft or ref generation");
+            check(bool(f.inputs.dispatch(TextCommitted{String{u8"Recovered draft"}, f.inputs.sessions().active()})),
+                  "rich retirement recovery rejected real input");
+            if (!survives) {
+                check(f.services.statistic().snapshot(replacement).formatted_value.bytes() == "99",
+                      "old value binding mutated callback replacement");
+            }
+            f.services.dispose();
+            check(!ref.focus() && blocked_roots(f.services.interactions()).empty() && f.services.surfaces().size() == 0,
+                  "rich retirement teardown leaked resources");
+        } catch (const std::exception& e) {
+            ++failures;
+            std::cerr << "rich region=" << test.region << " target=" << static_cast<int>(test.target)
+                      << " rebind=" << test.rebind << ": " << e.what() << '\n';
+        }
+    }
+    check(failures == 0, "Statistic rich-region generation validation failed");
+}
+
 void lifecycle() {
+    rich_region_retirement();
     blocked_ancestor_mount();
     initial_mount_retirement();
     Fixture f;
