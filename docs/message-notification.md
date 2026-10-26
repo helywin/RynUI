@@ -43,3 +43,9 @@ Message 顶部居中；Notification 四角向内堆叠，标题、描述、真�
 `ThemeConfig::message` / `notification` 分别支持 `tokens`、`seed`、`algorithm`。颜色为 background/text/description/success/info/warning/error/loading；指标为 width、padding_block、padding_inline、gap、stack_gap、offset、border_radius、font_size、line_height、title_font_size、title_line_height、icon_size、close_size、font_family、title_font_weight，另有 shadow 与 z_index。视觉只由 Theme 控制；holder 不占正文布局。默认 recipe 对照本地锁定 Ant Design 6.6.5（4a39f54842eade4e565ab336ef6097cd7e723cdd），不引入其运行时依赖。
 
 自动验收是 Windows MSVC headless 的逻辑布局、场景、事件、clock 和生命周期测试；不构成 GPU/native 窗口/Linux/system IME/AT 验收。
+
+## Gallery
+
+Message 和 Notification 目录均直达“处理提示”操作台。可打开处理消息，再用同 key 更新为成功、关闭或清空；通知可编辑核对备注，只更新标题时保留原编辑器和草稿，并可切换四角位置与五种状态。真实“确认核对”操作会关闭通知并显示输入内容，关闭后可重新打开。
+
+示例使用 `duration(0)`，让提示保留到显式关闭；自动到期继续由已有 notice 时钟专项合同验证。同 key 的局部更新不传新的 rich slots；显式关闭后的重开创建新的通知，最新业务备注作为新初值。091 的 `--overlays-timeline-only` 检查目录、真实操作和有限视口，进展见 [091 tasks](../openspec/changes/091-20261026-add-overlay-and-timeline-gallery/tasks.md)。

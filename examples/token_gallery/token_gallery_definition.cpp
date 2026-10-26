@@ -218,6 +218,28 @@ struct GalleryState final {
     ryn::Signal<ryn::SelectSelection> skeleton_audience{ryn::SelectSelection{u8"team"}};
     ryn::Signal<ryn::String> skeleton_feedback{ryn::String{u8"编辑正文并选择分享范围"}};
     ryn::InputRef skeleton_ref;
+    ryn::Signal<bool> popover_open{false};
+    ryn::Signal<bool> popover_disabled{false};
+    ryn::Signal<int> popover_placement{0};
+    ryn::Signal<bool> popover_arrow{true};
+    ryn::Signal<ryn::String> popover_draft{ryn::String{u8"下次会议前补齐项目备注"}};
+    ryn::Signal<ryn::String> popover_feedback{ryn::String{u8"打开气泡编辑备注"}};
+    ryn::InputRef popover_ref;
+    ryn::MessageRef messages;
+    ryn::NotificationRef notifications;
+    ryn::Signal<bool> notification_open{false};
+    ryn::Signal<ryn::NotificationPlacement> notification_placement{ryn::NotificationPlacement::TopRight};
+    ryn::Signal<ryn::NoticeStatus> notification_status{ryn::NoticeStatus::Info};
+    ryn::Signal<ryn::String> notification_draft{ryn::String{u8"请核对项目资料"}};
+    ryn::Signal<ryn::String> notice_feedback{ryn::String{u8"提示会保留，可用按钮关闭或清空"}};
+    ryn::InputRef notification_ref;
+    ryn::Signal<int> timeline_mode{0};
+    ryn::Signal<bool> timeline_reverse{false};
+    ryn::Signal<bool> timeline_loading{true};
+    ryn::Signal<bool> timeline_visible{true};
+    ryn::Signal<ryn::String> timeline_draft{ryn::String{u8"记录发布后的跟进事项"}};
+    ryn::Signal<ryn::String> timeline_feedback{ryn::String{u8"编辑并保存处理备注"}};
+    ryn::InputRef timeline_ref;
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -633,6 +655,38 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.skeleton.shape",
     "gallery.skeleton.block",
     "gallery.skeleton.focus",
+    "gallery.popover.editor",
+    "gallery.popover.feedback",
+    "gallery.popover.trigger",
+    "gallery.popover.draft",
+    "gallery.popover.save",
+    "gallery.popover.cancel",
+    "gallery.popover.placement",
+    "gallery.popover.arrow",
+    "gallery.popover.disabled",
+    "gallery.popover.restore",
+    "gallery.notices.workflow",
+    "gallery.notices.feedback",
+    "gallery.message.open",
+    "gallery.message.update",
+    "gallery.message.close",
+    "gallery.notification.open",
+    "gallery.notification.update",
+    "gallery.notification.close",
+    "gallery.notification.placement",
+    "gallery.notification.status",
+    "gallery.notification.draft",
+    "gallery.notification.action",
+    "gallery.notices.clear",
+    "gallery.timeline.workflow",
+    "gallery.timeline.feedback",
+    "gallery.timeline.draft",
+    "gallery.timeline.save",
+    "gallery.timeline.mode",
+    "gallery.timeline.reverse",
+    "gallery.timeline.loading",
+    "gallery.timeline.visible",
+    "gallery.timeline.focus",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -3902,6 +3956,285 @@ void add_skeleton_samples(const std::shared_ptr<GalleryState>& state) {
          }});
     state->telemetry.live_samples += 4;
 }
+
+void add_popover_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.popover.editor · Popover · 项目备注")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.popover.feedback · " +
+                                      std::string{state->popover_feedback.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Popover(
+                           PopoverProps{}
+                               .open(state->popover_open)
+                               .trigger(PopoverTriggerMode::Click)
+                               .disabled(state->popover_disabled)
+                               .placement(bind([state] {
+                                   constexpr std::array positions{PopoverPlacement::Top, PopoverPlacement::Right,
+                                                                  PopoverPlacement::Bottom, PopoverPlacement::Left};
+                                   return positions[static_cast<std::size_t>(state->popover_placement.get())];
+                               }))
+                               .arrow(state->popover_arrow)
+                               .onOpenChange([state](bool value) { state->popover_open.set(value); }),
+                           PopoverTrigger{[state] {
+                               Button(ButtonProps{}.disabled(state->popover_disabled),
+                                      [] { Text(u8"gallery.popover.trigger · 编辑备注"); });
+                           }},
+                           {.title = PopoverTitle{[] { Text(u8"项目备注"); }},
+                            .content = PopoverContent{[state] {
+                                Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)),
+                                     FlexContent{[state] {
+                                         Input(InputProps{}
+                                                   .defaultValue(u8"下次会议前补齐项目备注")
+                                                   .placeholder(u8"gallery.popover.draft")
+                                                   .ref(state->popover_ref)
+                                                   .onChange([state](String value) { state->popover_draft.set(value); })
+                                                   .layout(LayoutStyle{}
+                                                               .width(dp(180))
+                                                               .margin_left(dp(6))
+                                                               .margin_right(dp(6))
+                                                               .margin_top(dp(6))
+                                                               .margin_bottom(dp(6))));
+                                         Space(SpaceProps{}.size(dp(8)), SpaceContent{[state] {
+                                                   Button(ButtonProps{}
+                                                              .type(ButtonType::Primary)
+                                                              .onClick([state] {
+                                                                  state->popover_feedback.set(utf8(
+                                                                      "已保存 " +
+                                                                      std::string{state->popover_draft.get().bytes()}));
+                                                                  state->popover_open.set(false);
+                                                              })
+                                                              .layout(LayoutStyle{}
+                                                                          .margin_left(dp(6))
+                                                                          .margin_right(dp(6))
+                                                                          .margin_top(dp(6))
+                                                                          .margin_bottom(dp(6))),
+                                                          [] { Text(u8"保存备注"); });
+                                                   Button(ButtonProps{}
+                                                              .onClick([state] { state->popover_open.set(false); })
+                                                              .layout(LayoutStyle{}
+                                                                          .margin_left(dp(6))
+                                                                          .margin_right(dp(6))
+                                                                          .margin_top(dp(6))
+                                                                          .margin_bottom(dp(6))),
+                                                          [] { Text(u8"取消编辑"); });
+                                               }});
+                                     }});
+                            }}});
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->popover_placement.set((state->popover_placement.get() + 1) % 4); }),
+                              [] { Text(u8"gallery.popover.placement · 切换方位"); });
+                       Button(ButtonProps{}.onClick([state] { state->popover_arrow.set(!state->popover_arrow.get()); }),
+                              [] { Text(u8"gallery.popover.arrow · 切换箭头"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->popover_disabled.set(!state->popover_disabled.get()); }),
+                              [] { Text(u8"gallery.popover.disabled · 禁用/恢复"); });
+                       Button(ButtonProps{}.onClick([state] {
+                           state->popover_disabled.set(false);
+                           state->popover_open.set(true);
+                       }),
+                              [] { Text(u8"gallery.popover.restore · 重新打开"); });
+                   }});
+         }});
+    ++state->telemetry.live_samples;
+}
+
+void add_notice_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    MessageHolder(MessageHolderProps{}.ref(state->messages).maxCount(std::size_t{3}));
+    NotificationHolder(NotificationHolderProps{}.ref(state->notifications).maxCount(std::size_t{3}));
+    Flex(
+        FlexProps{}
+            .vertical(true)
+            .align(FlexAlign::Start)
+            .gap(dp(12))
+            .layout(LayoutStyle{}.width(state->document_width)),
+        FlexContent{[state] {
+            Text(TextProps{}
+                     .content(u8"gallery.notices.workflow · Message / Notification · 处理提示")
+                     .layout(LayoutStyle{}.margin_left(dp(1))));
+            Text(TextProps{}
+                     .content(bind([state] {
+                         return utf8("gallery.notices.feedback · " + std::string{state->notice_feedback.get().bytes()});
+                     }))
+                     .layout(LayoutStyle{}.margin_left(dp(1))));
+            Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                  SpaceContent{[state] {
+                      Button(ButtonProps{}.onClick([state] {
+                          static_cast<void>(state->messages.open(
+                              u8"project-save", MessageProps{}
+                                                    .content(u8"正在处理项目")
+                                                    .status(NoticeStatus::Loading)
+                                                    .duration(0)
+                                                    .onClose([state] { state->notice_feedback.set(u8"消息已关闭"); })));
+                          state->notice_feedback.set(u8"处理提示已打开");
+                      }),
+                             [] { Text(u8"gallery.message.open · 处理提示"); });
+                      Button(ButtonProps{}.onClick([state] {
+                          static_cast<void>(state->messages.open(
+                              u8"project-save",
+                              MessageProps{}.content(u8"项目处理成功").status(NoticeStatus::Success).duration(0)));
+                          state->notice_feedback.set(u8"同一提示已更新为处理成功");
+                      }),
+                             [] { Text(u8"gallery.message.update · 更新成功"); });
+                      Button(ButtonProps{}.onClick(
+                                 [state] { static_cast<void>(state->messages.close(u8"project-save")); }),
+                             [] { Text(u8"gallery.message.close · 关闭提示"); });
+                      Button(ButtonProps{}.disabled(state->notification_open).onClick([state] {
+                          const bool opened = state->notifications.open(
+                              u8"project-review",
+                              NotificationProps{}
+                                  .title(u8"项目资料待核对")
+                                  .status(state->notification_status)
+                                  .placement(state->notification_placement)
+                                  .duration(0)
+                                  .onClose([state] {
+                                      state->notification_open.set(false);
+                                      state->notice_feedback.set(u8"通知已关闭，可重新打开");
+                                  }),
+                              {.description = NotificationDescription{[state] {
+                                   Input(InputProps{}
+                                             .defaultValue(state->notification_draft.get())
+                                             .placeholder(u8"gallery.notification.draft")
+                                             .ref(state->notification_ref)
+                                             .onChange([state](String value) { state->notification_draft.set(value); })
+                                             .layout(LayoutStyle{}
+                                                         .width(dp(180))
+                                                         .margin_left(dp(6))
+                                                         .margin_right(dp(6))
+                                                         .margin_top(dp(6))
+                                                         .margin_bottom(dp(6))));
+                               }},
+                               .actions = NotificationActions{[state] {
+                                   Button(ButtonProps{}.onClick([state] {
+                                       static_cast<void>(state->notifications.close(u8"project-review"));
+                                       state->notice_feedback.set(
+                                           utf8("已确认 " + std::string{state->notification_draft.get().bytes()}));
+                                   }),
+                                          [] { Text(u8"确认核对"); });
+                               }}});
+                          state->notification_open.set(opened);
+                          if (opened) {
+                              state->notice_feedback.set(u8"通知已打开，可编辑核对备注");
+                          }
+                      }),
+                             [] { Text(u8"gallery.notification.open · 打开通知"); });
+                      Button(ButtonProps{}
+                                 .disabled(bind([state] { return !state->notification_open.get(); }))
+                                 .onClick([state] {
+                                     static_cast<void>(state->notifications.open(
+                                         u8"project-review", NotificationProps{}.title(u8"项目资料已更新")));
+                                     state->notice_feedback.set(u8"已更新通知标题，编辑内容保持");
+                                 }),
+                             [] { Text(u8"gallery.notification.update · 更新标题"); });
+                      Button(ButtonProps{}.onClick(
+                                 [state] { static_cast<void>(state->notifications.close(u8"project-review")); }),
+                             [] { Text(u8"gallery.notification.close · 关闭通知"); });
+                      Button(ButtonProps{}.onClick([state] {
+                          state->notification_placement.set(static_cast<NotificationPlacement>(
+                              (static_cast<int>(state->notification_placement.get()) + 1) % 4));
+                      }),
+                             [] { Text(u8"gallery.notification.placement · 四角位置"); });
+                      Button(ButtonProps{}.onClick([state] {
+                          state->notification_status.set(
+                              static_cast<NoticeStatus>((static_cast<int>(state->notification_status.get()) + 1) % 5));
+                      }),
+                             [] { Text(u8"gallery.notification.status · 切换状态"); });
+                      Button(ButtonProps{}.onClick([state] {
+                          static_cast<void>(state->messages.clear());
+                          static_cast<void>(state->notifications.clear());
+                          state->notice_feedback.set(u8"已清空消息与通知");
+                      }),
+                             [] { Text(u8"gallery.notices.clear · 清空提示"); });
+                  }});
+        }});
+    state->telemetry.live_samples += 2;
+}
+
+void add_timeline_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.timeline.workflow · Timeline · 项目处理记录")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.timeline.feedback · " +
+                                      std::string{state->timeline_feedback.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Timeline(TimelineProps{}
+                          .mode(bind([state] { return static_cast<TimelineMode>(state->timeline_mode.get()); }))
+                          .reverse(state->timeline_reverse)
+                          .layout(LayoutStyle{}
+                                      .width(bind([state] { return dp(state->document_width.get().value() - 16); }))
+                                      .margin_left(dp(8))
+                                      .margin_right(dp(8))),
+                      {TimelineItem{u8"created", u8"创建项目并填写资料"}.title(u8"09:00").tone(TimelineTone::Green),
+                       TimelineItem{u8"review", u8"核对项目材料"}.title(u8"09:30").loading(state->timeline_loading),
+                       TimelineItem{u8"publish", u8""}
+                           .title(u8"10:00")
+                           .visible(state->timeline_visible)
+                           .richContent(TimelineContent{[state] {
+                               Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), FlexContent{[state] {
+                                        Input(InputProps{}
+                                                  .defaultValue(u8"记录发布后的跟进事项")
+                                                  .placeholder(u8"gallery.timeline.draft")
+                                                  .ref(state->timeline_ref)
+                                                  .onChange([state](String value) { state->timeline_draft.set(value); })
+                                                  .layout(LayoutStyle{}
+                                                              .width(dp(160))
+                                                              .margin_left(dp(6))
+                                                              .margin_right(dp(6))
+                                                              .margin_top(dp(6))
+                                                              .margin_bottom(dp(6))));
+                                        Button(ButtonProps{}.onClick([state] {
+                                            state->timeline_feedback.set(
+                                                utf8("已记录 " + std::string{state->timeline_draft.get().bytes()}));
+                                        }),
+                                               [] { Text(u8"保存处理备注"); });
+                                    }});
+                           }})});
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->timeline_mode.set((state->timeline_mode.get() + 1) % 3); }),
+                              [] { Text(u8"gallery.timeline.mode · 切换位置"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->timeline_reverse.set(!state->timeline_reverse.get()); }),
+                              [] { Text(u8"gallery.timeline.reverse · 正序/反序"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->timeline_loading.set(!state->timeline_loading.get()); }),
+                              [] { Text(u8"gallery.timeline.loading · 切换处理中"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->timeline_visible.set(!state->timeline_visible.get()); }),
+                              [] { Text(u8"gallery.timeline.visible · 显隐备注"); });
+                       Button(ButtonProps{}.onClick([state] {
+                           state->timeline_visible.set(true);
+                           static_cast<void>(state->timeline_ref.focus());
+                       }),
+                              [] { Text(u8"gallery.timeline.focus · 编辑备注"); });
+                   }});
+         }});
+    ++state->telemetry.live_samples;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -4000,6 +4333,9 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_time_picker_samples(state);
                                                         add_descriptions_samples(state);
                                                         add_skeleton_samples(state);
+                                                        add_popover_samples(state);
+                                                        add_notice_samples(state);
+                                                        add_timeline_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

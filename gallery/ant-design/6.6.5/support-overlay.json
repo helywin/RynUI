@@ -1025,16 +1025,17 @@
     {
       "identity": "ant.component.popover",
       "status": "partial",
-      "summary": "原生 Popover 提供保留式交互富内容、受控开合、hover/focus/click 组合、定位箭头及子浮层输入归属；动画、交互 Gallery 与平台验收尚未提供。",
+      "summary": "原生 Popover 提供保留式交互富内容、受控开合、组合触发与定位箭头；Gallery 提供真实备注编辑、保存、方位与禁用恢复，平台验收独立记录。",
       "supported_scope": [
         "typed trigger/title/content slots and reactive string title/content with retained native editors and controls",
         "controlled/default visibility, hover/focus/click combinations, finite delays and keyboard/outside closing",
         "twelve placements, arrows, viewport clipping and independent Theme inheritance",
-        "Modal/Spin/hidden suppression, child-popup priority, content-first wheel routing and callback lifetime checks"
+        "Modal/Spin/hidden suppression, child-popup priority, content-first wheel routing and callback lifetime checks",
+        "interactive Gallery: real note editing/save, placements, arrows and disabled recovery from the catalog"
       ],
       "missing_scope": [
         "contextMenu trigger, animations, RTL, wireframe special cases and built-in content scrolling",
-        "interactive Gallery, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
         "full Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
@@ -1044,7 +1045,11 @@
         "runtime:src/component/popover_component.cpp",
         "test:rynui.popover_retained",
         "test:rynui.popover_children",
-        "test:rynui.popover_theme"
+        "test:rynui.popover_theme",
+        "openspec:091-20261026-add-overlay-and-timeline-gallery",
+        "runtime:examples/token_gallery/token_gallery_definition.cpp",
+        "test:rynui.token_gallery_frame",
+        "docs:docs/popover.md"
       ]
     },
     {
@@ -1141,15 +1146,16 @@
     {
       "identity": "ant.component.timeline",
       "status": "partial",
-      "summary": "原生竖向 Timeline 提供固定 keyed 条目、正反序、Start/End/Alternate、富内容、静态 loading 与虚线轨迹，保留编辑状态和主题；平台验收独立记录。",
+      "summary": "原生竖向 Timeline 提供固定 keyed 富条目、位置与正反序、静态 loading 轨迹；Gallery 可实际编辑记录、切换布局和显隐恢复，平台验收独立记录。",
       "supported_scope": [
         "typed reactive vertical Timeline and fixed keyed TimelineItem slots",
         "placement, reverse, visibility and retained native Input/Button/Select",
-        "Theme, content/decoration clips and bounded retained loading rails"
+        "Theme, content/decoration clips and bounded retained loading rails",
+        "interactive Gallery: real record editing/save, mode/reverse/loading/visibility and external ref recovery"
       ],
       "missing_scope": [
         "horizontal, dynamic topology, titleSpan, RTL and animations",
-        "interactive Gallery and complete component GPU/native/Linux/system IME/AT acceptance"
+        "complete component GPU/native/Linux/system IME/AT acceptance"
       ],
       "evidence_identifiers": [
         "source:components/timeline/index.en-US.md",
@@ -1160,7 +1166,10 @@
         "test:rynui.timeline_component",
         "test:rynui.timeline_review_fill",
         "test:rynui.timeline_review_loading",
-        "test:rynui.timeline_review_capacity"
+        "test:rynui.timeline_review_capacity",
+        "openspec:091-20261026-add-overlay-and-timeline-gallery",
+        "runtime:examples/token_gallery/token_gallery_definition.cpp",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
@@ -1257,16 +1266,17 @@
     {
       "identity": "ant.component.message",
       "status": "partial",
-      "summary": "原生 Message 提供窗口作用域 holder/ref、键控打开更新关闭、五种静态状态、保留富内容与单调到期；不提供全局 service 或动画。",
+      "summary": "原生 Message 提供窗口内键控更新、五种状态和单调到期；Gallery 提供真实打开、同 key 成功更新、关闭及清空，不提供全局 service 或动画。",
       "supported_scope": [
         "window-scoped typed holder/ref with keyed open, partial update, close and clear",
         "five status icons, string/rich content and retained editor identities",
         "top-centered stacking, maxCount eviction, persistent or monotonic timed entries",
-        "Theme, input boundaries, reentrant callbacks and actual clipped scene rendering"
+        "Theme, input boundaries, reentrant callbacks and actual clipped scene rendering",
+        "interactive Gallery: catalog-linked native open/update/close/clear workflow"
       ],
       "missing_scope": [
         "animations, progress, pauseOnHover, global service and promise API",
-        "interactive Gallery, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
         "full Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
@@ -1276,7 +1286,11 @@
         "runtime:src/component/notice_component.cpp",
         "test:rynui.notice_event",
         "test:rynui.notice_clock",
-        "test:rynui.notice_lifecycle"
+        "test:rynui.notice_lifecycle",
+        "openspec:091-20261026-add-overlay-and-timeline-gallery",
+        "runtime:examples/token_gallery/token_gallery_definition.cpp",
+        "test:rynui.token_gallery_frame",
+        "docs:docs/message-notification.md"
       ]
     },
     {
@@ -1304,16 +1318,17 @@
     {
       "identity": "ant.component.notification",
       "status": "partial",
-      "summary": "原生 Notification 提供窗口作用域 holder/ref、四角键控堆叠、标题说明与真实关闭/action slots、保留编辑状态和到期清理。",
+      "summary": "原生 Notification 提供窗口内四角键控通知和富内容；Gallery 提供实际编辑、局部更新、位置/状态切换和关闭清空，保留更新中的编辑草稿。",
       "supported_scope": [
         "typed window-scoped holder/ref with keyed partial updates and safe close/clear",
         "four-corner stacking, title/description/actions and real close Button",
         "persistent/timed entries, maxCount, retained rich controls and reentrant lifecycle",
-        "independent Theme, clipping, focus/input boundaries and child-popup priority"
+        "independent Theme, clipping, focus/input boundaries and child-popup priority",
+        "interactive Gallery: retained native editor, keyed title updates, placement/status changes and close/clear"
       ],
       "missing_scope": [
         "animations, pauseOnHover, progress, collapsed stack and global/promise APIs",
-        "interactive Gallery, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
         "full Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
@@ -1323,7 +1338,11 @@
         "runtime:src/component/notice_component.cpp",
         "test:rynui.notice_retention",
         "test:rynui.notice_review_fills",
-        "test:rynui.notice_review_inactive_content"
+        "test:rynui.notice_review_inactive_content",
+        "openspec:091-20261026-add-overlay-and-timeline-gallery",
+        "runtime:examples/token_gallery/token_gallery_definition.cpp",
+        "test:rynui.token_gallery_frame",
+        "docs:docs/message-notification.md"
       ]
     },
     {

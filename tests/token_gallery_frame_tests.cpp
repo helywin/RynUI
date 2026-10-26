@@ -25,6 +25,9 @@
 #include "component/steps_component.hpp"
 #include "component/descriptions_component.hpp"
 #include "component/skeleton_component.hpp"
+#include "component/popover_component.hpp"
+#include "component/notice_component.hpp"
+#include "component/timeline_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -855,7 +858,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 358, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 390, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -906,7 +909,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 291,
+                initial.reference_content_runs == 126 && initial.live_samples == 295,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1049,8 +1052,8 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    // DatePicker and the appended navigation slots retain their own editors after Form.
-    require(fixture.inputs->mounted_inputs().size() == 151 &&
+    // The appended popup and Timeline note also retain their own editors after Form.
+    require(fixture.inputs->mounted_inputs().size() == 153 &&
                 fixture.host->services().select().mounted().size() == 24 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
@@ -5611,6 +5614,519 @@ void test_details_loading_gallery_after_document_scroll() {
     }
 }
 
+void test_overlay_and_timeline_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    std::cout << std::unitbuf;
+    auto definition = make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                "Overlay/Timeline finite layout failed");
+    };
+    sync();
+    const auto root = services.components().root(services.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& n = f.nodes.require(services.components().root(id));
+        return runtime::Rect{n.bounds.x + n.translation.x, n.bounds.y + n.translation.y, n.bounds.width,
+                             n.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId owner) {
+        for (auto id = std::optional{child}; id; id = services.components().parent(*id)) {
+            if (*id == owner) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text = [&](std::string_view prefix) {
+        for (const auto& t : f.host->text().mounted_texts()) {
+            if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
+                return t;
+            }
+        }
+        throw std::runtime_error("Overlay/Timeline Text absent: " + std::string{prefix});
+    };
+    const auto owner_of = [&](std::string_view heading) {
+        const auto owner = services.components().parent(text(heading).component);
+        require(owner.has_value(), "Overlay/Timeline sample owner absent");
+        return *owner;
+    };
+    const auto popup_owner = owner_of("gallery.popover.editor");
+    const auto notice_owner = owner_of("gallery.notices.workflow");
+    const auto timeline_owner = owner_of("gallery.timeline.workflow");
+    const auto owned = [&](auto ids, runtime::ComponentId owner) {
+        for (auto id : ids) {
+            if (descendant(id, owner)) {
+                return id;
+            }
+        }
+        throw std::runtime_error("Overlay/Timeline owned component absent");
+    };
+    const auto owned_button = [&](std::string_view prefix, runtime::ComponentId owner) {
+        for (const auto& t : f.host->text().mounted_texts()) {
+            if (!descendant(t.component, owner) ||
+                !f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
+                continue;
+            }
+            for (auto current = std::optional{t.component}; current && *current != owner;
+                 current = services.components().parent(*current)) {
+                const auto buttons = f.host->mounted_buttons();
+                const auto found =
+                    std::ranges::find_if(buttons, [&](const auto& b) { return b.component == *current; });
+                if (found != buttons.end()) {
+                    return *found;
+                }
+            }
+        }
+        throw std::runtime_error("Overlay/Timeline owned Button absent: " + std::string{prefix});
+    };
+    const auto popup = owned(services.popover().mounted(), popup_owner);
+    const auto timeline = owned(services.timeline().mounted(), timeline_owner);
+    const auto original_popup = services.popover().snapshot(popup);
+    const auto original_timeline = services.timeline().snapshot(timeline);
+    const auto editor_in = [&](runtime::ComponentId owner) {
+        for (const auto& e : f.inputs->mounted_inputs()) {
+            if (descendant(e.component, owner)) {
+                return e;
+            }
+        }
+        throw std::runtime_error("Overlay/Timeline owned Input absent");
+    };
+    const auto popup_editor = editor_in(original_popup.content);
+    const auto timeline_editor = editor_in(original_timeline.items[2].content);
+    const auto initial_telemetry = definition.telemetry();
+    GalleryDocumentViewport document_scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        if (metrics.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        const auto translate = [&] {
+            require(document_scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "Overlay/Timeline document translation failed");
+            if (!metrics.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "Overlay/Timeline sidebar translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto reference = std::ranges::find_if(
+                surfaces, [&](const auto& s) { return f.surfaces->snapshot(s.component).identity == entry.identity; });
+            require(reference != surfaces.end(), "Overlay/Timeline lost an old reference card");
+            anchors.push_back(gallery_component_navigation_anchor(entry.identity, reference->node, f.host->text(),
+                                                                  f.nodes, scroll_root));
+        }
+        static_cast<void>(document_scroll.replace_component_anchors(anchors));
+        static_cast<void>(
+            document_scroll.set_extents(metrics.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(metrics.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            static_cast<void>(document_scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    reconcile();
+    const auto reveal = [&](runtime::ComponentId id) {
+        if (!services.components().in_window_layer(id)) {
+            const auto scroll_root = gallery_layout_metrics({width, 900}).narrow ? body : document;
+            static_cast<void>(document_scroll.scroll_to(f.nodes.require(services.components().root(id)).bounds.y -
+                                                        f.nodes.require(scroll_root).bounds.y - 180));
+        }
+        reconcile();
+    };
+    const auto within = [](runtime::Rect a, runtime::Rect b) {
+        return a.width <= 0 || a.height <= 0 ||
+               (a.x >= b.x - .02F && a.y >= b.y - .02F && a.x + a.width <= b.x + b.width + .02F &&
+                a.y + a.height <= b.y + b.height + .02F);
+    };
+    const auto glyphs = [&](auto scene, runtime::Rect allowed, bool window_layer = false) {
+        const auto range = f.text_scene.primitive(scene).instances;
+        std::size_t visible = 0;
+        for (std::uint32_t i = 0; i < range.count; ++i) {
+            const auto instance = range.first + i;
+            if (!std::ranges::any_of(services.scene_composer().ordered_scene().commands(), [instance](const auto& c) {
+                    return c.kind == graphics::SceneDrawKind::glyph && instance >= c.first_instance &&
+                           instance - c.first_instance < c.instance_count;
+                })) {
+                continue;
+            }
+            const auto& g = f.text_scene.glyph_scene().instances().at(instance);
+            const auto& p = g.position_size;
+            const auto& tr = g.translation_opacity;
+            const auto& c = g.clip_bounds;
+            const auto r = graphics::intersect_effect_bounds({p[0] + tr[0], p[1] + tr[1], p[2], p[3]},
+                                                             {c[0], c[1], c[2] - c[0], c[3] - c[1]});
+            if (r.width > 0 && r.height > 0 && tr[2] > 0 && g.color[3] > 0) {
+                const auto viewport =
+                    window_layer ? runtime::Rect{0, 0, width, 900} : runtime::Rect{16, 12, width - 32, 876};
+                if (!within(r, allowed) || !within(r, viewport)) {
+                    std::cerr << "Overlay/Timeline glyph=" << r.x << ',' << r.y << ',' << r.width << ',' << r.height
+                              << " allocated=" << allowed.x << ',' << allowed.y << ',' << allowed.width << ','
+                              << allowed.height << " window_layer=" << window_layer << '\n';
+                }
+                require(std::isfinite(r.x) && std::isfinite(r.y) && within(r, allowed) && within(r, viewport),
+                        "Overlay/Timeline actual glyph escaped its allocation/clip");
+                ++visible;
+            }
+        }
+        return visible;
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto r = bounds(id);
+        const runtime::Point point{r.x + r.width / 2, r.y + r.height / 2};
+        require(r.width > 0 && r.height > 0 && point.x >= 0 && point.x < width && point.y >= 12 && point.y < 888,
+                "Overlay/Timeline pointer target outside finite viewport");
+        for (const auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            services.pointer().dispatch(pointer_event(action, point, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto action = [&](std::string_view prefix) {
+        const auto b = button_with_label(f, prefix);
+        reveal(b.component);
+        const auto r = bounds(b.component);
+        require(services.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) == b.interaction,
+                "Overlay/Timeline command is not the real topmost hit");
+        click(b.component);
+        reconcile();
+    };
+    const auto key = [&](input::Key k, input::KeyModifier mods = input::KeyModifier::none) {
+        services.focus().dispatch({k, input::KeyAction::down, mods});
+        services.focus().dispatch({k, input::KeyAction::up, mods});
+        sync();
+    };
+    const auto type = [&](const auto& e, String value) {
+        reveal(e.component);
+        click(e.component);
+        require(services.focus().state().focused == e.interaction && f.inputs->sessions().active().valid(),
+                "Overlay/Timeline native Input focus/session absent");
+        key(input::Key::a, input::KeyModifier::control);
+        require(bool(f.inputs->dispatch(input::TextCommitted{value, f.inputs->sessions().active()})),
+                "Overlay/Timeline real text event failed");
+        sync();
+    };
+    const auto navigate = [&](std::string_view caption, std::string_view identity, std::string_view heading,
+                              runtime::ComponentId owner) {
+        std::cout << "Overlay/Timeline navigate " << identity << '\n';
+        const auto b = button_with_label(f, caption);
+        const auto metrics = gallery_layout_metrics({width, 900});
+        auto ancestor = f.nodes.require(b.node).parent;
+        while (ancestor && *ancestor != navigation_root) {
+            ancestor = f.nodes.require(*ancestor).parent;
+        }
+        require(ancestor.has_value(), "Overlay/Timeline catalog button is outside sidebar");
+        const auto scroll_root = metrics.narrow ? body : navigation_root;
+        const float offset = f.nodes.require(b.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (metrics.narrow) {
+            static_cast<void>(document_scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        require(within(bounds(b.component), metrics.navigation_lane) &&
+                    glyphs(text(caption).scene, bounds(b.component)) > 0,
+                "Overlay/Timeline actual catalog entry is not visible");
+        require(!definition.take_navigation_request(), "Overlay/Timeline stale navigation request");
+        click(b.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == GalleryNavigationTargetKind::component &&
+                    request->component_identity == identity,
+                "Overlay/Timeline real catalog requested a different component");
+        reconcile(request);
+        const auto heading_node = services.components().root(text(heading).component);
+        const auto current_root = metrics.narrow ? body : document;
+        const auto expected = f.nodes.require(heading_node).bounds.y - f.nodes.require(current_root).bounds.y;
+        const auto anchor =
+            gallery_component_navigation_anchor(identity, b.node, f.host->text(), f.nodes, current_root);
+        require(near(anchor.offset, expected, .02F) && glyphs(text(heading).scene, bounds(owner)) > 0,
+                "Overlay/Timeline production anchor did not reach the actual sample");
+    };
+    const auto retained = [&] {
+        const auto p = services.popover().snapshot(popup);
+        const auto t = services.timeline().snapshot(timeline);
+        require(p.trigger == original_popup.trigger && p.popup == original_popup.popup &&
+                    p.content == original_popup.content && t.items.size() == original_timeline.items.size(),
+                "Overlay/Timeline replaced retained popup/row regions");
+        for (std::size_t i = 0; i < t.items.size(); ++i) {
+            require(t.items[i].viewport == original_timeline.items[i].viewport &&
+                        t.items[i].content == original_timeline.items[i].content,
+                    "Timeline layout replaced a keyed row");
+        }
+        require(editor_in(p.content).component == popup_editor.component &&
+                    editor_in(p.content).editor == popup_editor.editor &&
+                    editor_in(t.items[2].content).component == timeline_editor.component &&
+                    editor_in(t.items[2].content).editor == timeline_editor.editor &&
+                    definition.telemetry().content_runs == initial_telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == initial_telemetry.theme_content_runs,
+                "Overlay/Timeline update remounted an editor or Gallery content");
+    };
+    const auto notice = [&](std::string_view wanted) -> std::optional<runtime::ComponentId> {
+        for (auto holder : services.notices().holders()) {
+            for (const auto& entry : services.notices().entries(holder)) {
+                if (entry.key.bytes() == wanted) {
+                    return entry.id;
+                }
+            }
+        }
+        return std::nullopt;
+    };
+    const auto focus_outline = [&](runtime::ComponentId id) {
+        const auto b = bounds(id);
+        std::array<float, 4> edges{};
+        for (const auto& e : services.rounded_effects().packed_instances()) {
+            const auto& g = e.geometry;
+            const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                      g.shape.rect.width, g.shape.rect.height};
+            if (g.kind != graphics::RoundedEffectKind::outline || shape != b || !e.material.visible) {
+                continue;
+            }
+            const float offset = g.outline_offset + g.outline_width / 2;
+            const std::array<runtime::Point, 4> points{{{b.x - offset, b.y + b.height / 2},
+                                                        {b.x + b.width / 2, b.y - offset},
+                                                        {b.x + b.width + offset, b.y + b.height / 2},
+                                                        {b.x + b.width / 2, b.y + b.height + offset}}};
+            for (std::size_t i = 0; i < points.size(); ++i) {
+                const auto p = points[i];
+                if (!g.ancestor_clip || (p.x >= g.ancestor_clip->bounds.x && p.y >= g.ancestor_clip->bounds.y &&
+                                         p.x < g.ancestor_clip->bounds.x + g.ancestor_clip->bounds.width &&
+                                         p.y < g.ancestor_clip->bounds.y + g.ancestor_clip->bounds.height)) {
+                    edges[i] = std::max(edges[i], graphics::rounded_effect_coverage(p, e) * e.material.opacity *
+                                                      e.material.color.alpha());
+                }
+            }
+        }
+        require(std::ranges::all_of(edges, [](float edge) { return edge > .8F; }),
+                "Popover real keyboard focus outline lost an outward edge");
+    };
+    const auto button_fill = [&](const ryn::detail::MountedButtonComponent& button, runtime::Rect allowed,
+                                 bool window_layer) {
+        const auto range = services.surfaces().visual_range(button.scene);
+        const auto index = range.first + static_cast<std::uint32_t>(component::ButtonVisualLayer::background);
+        const auto& q = services.surfaces().instances().at(index);
+        const runtime::Rect source{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1], q.bounds[2],
+                                   q.bounds[3]};
+        const auto viewport = window_layer ? runtime::Rect{0, 0, width, 900} : runtime::Rect{16, 12, width - 32, 876};
+        bool painted = false;
+        for (const auto& command : services.scene_composer().ordered_scene().commands()) {
+            if (command.kind == graphics::SceneDrawKind::quad && q.opacity > 0 && q.color[3] > 0 &&
+                index >= command.first_instance && index - command.first_instance < command.instance_count) {
+                require(within(source, allowed) && within(source, viewport),
+                        "Overlay/Timeline actual Button fill escaped its allocated region");
+                painted = source.width > 0 && source.height > 0;
+            }
+            if (command.kind != graphics::SceneDrawKind::rounded_effect) {
+                continue;
+            }
+            for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+                const auto& effect = services.rounded_effects().packed_instances()[i];
+                const auto& g = effect.geometry;
+                const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                          g.shape.rect.width, g.shape.rect.height};
+                if (g.kind != graphics::RoundedEffectKind::outer_shadow || g.blur != 0 || g.spread != 0 ||
+                    shape != source || g.shape.radius != q.corner_radius || !effect.material.visible ||
+                    effect.material.opacity <= 0 ||
+                    effect.material.color != Color{q.color[0], q.color[1], q.color[2], q.color[3]}) {
+                    continue;
+                }
+                const auto clipped =
+                    g.ancestor_clip ? graphics::intersect_effect_bounds(shape, g.ancestor_clip->bounds) : shape;
+                require(within(clipped, allowed) && within(clipped, viewport),
+                        "Overlay/Timeline converted Button fill escaped its allocated region");
+                const runtime::Point point{clipped.x + clipped.width / 2, clipped.y + clipped.height / 2};
+                painted |=
+                    clipped.width > 0 && clipped.height > 0 && graphics::rounded_effect_coverage(point, effect) > 0;
+            }
+        }
+        require(painted, "Overlay/Timeline native Button has no actual published fill");
+    };
+
+    navigate("Popover", "ant.component.popover", "gallery.popover.editor", popup_owner);
+    action("gallery.popover.trigger");
+    require(services.popover().snapshot(popup).geometry.visible, "Popover real trigger did not open");
+    type(popup_editor, u8"Retained popup note");
+    key(input::Key::tab);
+    const auto save = owned_button("保存备注", original_popup.content);
+    require(descendant(save.component, original_popup.content) && services.focus().state().focused == save.interaction,
+            "Popover keyboard traversal did not reach its native save Button");
+    focus_outline(save.component);
+    button_fill(save, bounds(original_popup.content), true);
+    key(input::Key::enter);
+    require(!services.popover().snapshot(popup).geometry.visible &&
+                f.text_scene.text_state(text("gallery.popover.feedback").scene)
+                    .content()
+                    .bytes()
+                    .ends_with("Retained popup note"),
+            "Popover keyboard save did not publish the actual draft and close");
+    action("gallery.popover.restore");
+    action("gallery.popover.placement");
+    action("gallery.popover.restore");
+    action("gallery.popover.arrow");
+    action("gallery.popover.disabled");
+    require(!services.popover().snapshot(popup).geometry.visible, "Disabled Popover remained visible");
+    action("gallery.popover.restore");
+    require(services.popover().snapshot(popup).geometry.visible &&
+                f.inputs->editors().require(popup_editor.editor).value() == "Retained popup note",
+            "Popover external recovery lost draft");
+    key(input::Key::escape);
+    retained();
+
+    navigate("Message", "ant.component.message", "gallery.notices.workflow", notice_owner);
+    action("gallery.message.open");
+    const auto message = notice("project-save");
+    require(message && services.notices().snapshot(*message).status == NoticeStatus::Loading,
+            "Real Message did not open in loading state");
+    action("gallery.message.update");
+    require(notice("project-save") == message && services.notices().snapshot(*message).status == NoticeStatus::Success,
+            "Message same-key update replaced the entry or failed to update status");
+    action("gallery.message.close");
+    require(!notice("project-save") && !services.components().contains(*message), "Message close retained its entry");
+
+    navigate("Notification", "ant.component.notification", "gallery.notices.workflow", notice_owner);
+    action("gallery.notification.open");
+    const auto notification = notice("project-review");
+    require(notification.has_value(), "Real Notification did not open");
+    const auto note_before = services.notices().snapshot(*notification);
+    const auto note_editor = editor_in(note_before.description);
+    type(note_editor, u8"Retained notification note");
+    action("gallery.notification.update");
+    require(notice("project-review") == notification &&
+                services.notices().snapshot(*notification).description == note_before.description &&
+                editor_in(note_before.description).component == note_editor.component &&
+                editor_in(note_before.description).editor == note_editor.editor &&
+                f.inputs->editors().require(note_editor.editor).value() == "Retained notification note",
+            "Notification partial update replaced its rich editor/draft");
+    action("确认核对");
+    require(!notice("project-review") && !services.components().contains(note_editor.component) &&
+                f.text_scene.text_state(text("gallery.notices.feedback").scene)
+                    .content()
+                    .bytes()
+                    .ends_with("Retained notification note"),
+            "Notification native action failed to close and report actual content");
+
+    navigate("Timeline", "ant.component.timeline", "gallery.timeline.workflow", timeline_owner);
+    type(timeline_editor, u8"Retained record note");
+    action("保存处理备注");
+    require(f.text_scene.text_state(text("gallery.timeline.feedback").scene)
+                .content()
+                .bytes()
+                .ends_with("Retained record note"),
+            "Timeline feedback differs from its actual editor");
+    action("gallery.timeline.reverse");
+    require(services.timeline().snapshot(timeline).order.front().item == 2, "Timeline real reverse failed");
+    action("gallery.timeline.mode");
+    action("gallery.timeline.mode");
+    require(services.timeline().snapshot(timeline).items[0].placement == TimelinePlacement::End,
+            "Timeline real mode cycle did not reach End");
+    action("gallery.timeline.loading");
+    require(!services.timeline().snapshot(timeline).items[1].loading, "Timeline loading control did not update");
+    type(timeline_editor, u8"Retained record note");
+    require(bool(f.inputs->dispatch(input::CompositionChanged{String{u8"候选"}, {}, f.inputs->sessions().active()})),
+            "Timeline native composition fixture failed");
+    const auto hidden_toggle = button_with_label(f, "gallery.timeline.visible");
+    const auto handler = services.interactions().require(hidden_toggle.interaction).focus_handlers;
+    require(handler && handler->activate, "Timeline no-blur supplemental native command missing");
+    handler->activate();
+    reconcile();
+    require(!services.components().branch_active(timeline_editor.component) &&
+                !f.inputs->editors().require(timeline_editor.editor).composition().active &&
+                glyphs(f.inputs->text_layers(timeline_editor.component).base,
+                       bounds(original_timeline.items[2].content)) == 0,
+            "Hidden Timeline retained input/preedit or actually published its glyphs");
+    action("gallery.timeline.focus");
+    require(services.focus().state().focused == timeline_editor.interaction &&
+                f.inputs->editors().require(timeline_editor.editor).value() == "Retained record note",
+            "Timeline external ref recovery lost focus or draft");
+    retained();
+    std::cout
+        << "Overlay/Timeline real catalog, native edit/save, keyed notice update/close and retained recovery passed\n";
+
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        definition.set_motion_enabled(false);
+        for (const float next_width : {1200.0F, 560.0F}) {
+            width = next_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            navigate("Popover", "ant.component.popover", "gallery.popover.editor", popup_owner);
+            action("gallery.popover.trigger");
+            const auto p = services.popover().snapshot(popup);
+            require(p.geometry.visible && within(p.geometry.bounds, {0, 0, width, 900}),
+                    "Popover actual placement escaped the finite window");
+            require(glyphs(f.inputs->text_layers(popup_editor.component).base, bounds(p.content), true) > 0,
+                    "Popover actual editor glyphs missing");
+            click(popup_editor.component);
+            key(input::Key::tab);
+            require(services.focus().state().focused == save.interaction,
+                    "Popover keyboard focus changed across Theme/width");
+            focus_outline(save.component);
+            button_fill(save, bounds(p.content), true);
+            key(input::Key::escape);
+            require(!services.popover().snapshot(popup).geometry.visible, "Popover Escape failed");
+            navigate("Message", "ant.component.message", "gallery.notices.workflow", notice_owner);
+            navigate("Notification", "ant.component.notification", "gallery.notices.workflow", notice_owner);
+            action("gallery.notification.open");
+            const auto entry = notice("project-review");
+            require(entry.has_value(), "Notification viewport fixture failed to open");
+            const auto before = services.notices().snapshot(*entry);
+            const auto editor = editor_in(before.description);
+            action("gallery.notification.update");
+            action("gallery.notification.placement");
+            action("gallery.notification.status");
+            const auto after = services.notices().snapshot(*entry);
+            require(notice("project-review") == entry && before.description == after.description &&
+                        editor_in(after.description).editor == editor.editor && before.placement != after.placement &&
+                        before.status != after.status && within(bounds(*entry), {0, 0, width, 900}) &&
+                        glyphs(f.inputs->text_layers(editor.component).base, bounds(after.description), true) > 0,
+                    "Notification update/placement/status or actual clipped editor failed");
+            const auto er = bounds(editor.component);
+            require(services.hit_test().hit_test({er.x + er.width / 2, er.y + er.height / 2}) == editor.interaction,
+                    "Notification window-layer editor lost its actual hit");
+            action("gallery.notices.clear");
+            require(!notice("project-review") && !notice("project-save") &&
+                        !services.components().contains(editor.component) && f.inputs->mounted_inputs().size() == 153,
+                    "Notice clear retained a transient entry/editor");
+            navigate("Timeline", "ant.component.timeline", "gallery.timeline.workflow", timeline_owner);
+            reveal(timeline_editor.component);
+            require(glyphs(f.inputs->text_layers(timeline_editor.component).base,
+                           bounds(original_timeline.items[2].content)) > 0,
+                    "Timeline actual retained editor glyphs missing");
+            const auto tr = bounds(timeline_editor.component);
+            require(services.hit_test().hit_test({tr.x + tr.width / 2, tr.y + tr.height / 2}) ==
+                        timeline_editor.interaction,
+                    "Timeline actual retained editor hit missing");
+            const auto timeline_save = button_with_label(f, "保存处理备注");
+            require(descendant(timeline_save.component, original_timeline.items[2].content),
+                    "Timeline Button fill check selected a foreign component");
+            button_fill(timeline_save, bounds(original_timeline.items[2].content), false);
+            retained();
+            std::cout << "Overlay/Timeline theme_step=" << theme_step << " viewport=" << width
+                      << "x900 real catalog/glyph/hit/focus/keyed retention passed\n";
+        }
+    }
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -5619,14 +6135,6 @@ void print_gallery_inventory() {
     f.surfaces->mount(definition.content, f.inputs.get());
     require(f.host->layout_and_synchronize({1200, 60000}, {0, 0, 1200, 60000}, {24, 20}), "inventory layout failed");
     const auto telemetry = definition.telemetry();
-    require(definition.stable_test_ids.size() == 358 && definition.navigation_control_count == 93 &&
-                f.host->mounted_buttons().size() == 367 && f.host->interactions().size() == 1412 &&
-                f.host->scene_composer().interaction_order().size() == 671 && telemetry.live_samples == 291 &&
-                telemetry.theme_content_runs == 67 && f.inputs->mounted_inputs().size() == 151 &&
-                f.host->services().select().mounted().size() == 24 && f.selections->mounted().size() == 47 &&
-                f.host->services().descriptions().mounted().size() == 1 &&
-                f.host->services().skeleton().mounted().size() == 4,
-            "Details/loading exact Gallery inventory drifted");
     std::cout << "stable_ids=" << definition.stable_test_ids.size()
               << " navigation=" << definition.navigation_control_count
               << " buttons=" << f.host->mounted_buttons().size() << " interactions=" << f.host->interactions().size()
@@ -5649,7 +6157,20 @@ void print_gallery_inventory() {
               << " breadcrumbs=" << f.host->services().breadcrumb().mounted().size()
               << " steps=" << f.host->services().steps().mounted().size()
               << " descriptions=" << f.host->services().descriptions().mounted().size()
-              << " skeletons=" << f.host->services().skeleton().mounted().size() << '\n';
+              << " skeletons=" << f.host->services().skeleton().mounted().size()
+              << " popovers=" << f.host->services().popover().mounted().size()
+              << " notice_holders=" << f.host->services().notices().holders().size()
+              << " timelines=" << f.host->services().timeline().mounted().size() << '\n';
+    require(
+        definition.stable_test_ids.size() == 390 && definition.navigation_control_count == 93 &&
+            f.host->mounted_buttons().size() == 389 && f.host->interactions().size() == 1439 &&
+            f.host->scene_composer().interaction_order().size() == 693 && telemetry.live_samples == 295 &&
+            telemetry.theme_content_runs == 67 && f.inputs->mounted_inputs().size() == 153 &&
+            f.host->services().select().mounted().size() == 24 && f.selections->mounted().size() == 47 &&
+            f.host->services().descriptions().mounted().size() == 1 &&
+            f.host->services().skeleton().mounted().size() == 4 && f.host->services().popover().mounted().size() == 1 &&
+            f.host->services().notices().holders().size() == 2 && f.host->services().timeline().mounted().size() == 1,
+        "Overlay/Timeline exact Gallery inventory drifted");
 }
 } // namespace
 
@@ -5657,6 +6178,10 @@ int main(int argc, char** argv) {
     try {
         if (argc == 2 && std::string_view{argv[1]} == "--inventory-only") {
             print_gallery_inventory();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--overlays-timeline-only") {
+            test_overlay_and_timeline_gallery_after_document_scroll();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--details-loading-only") {
@@ -5724,6 +6249,7 @@ int main(int argc, char** argv) {
         test_panel_and_selection_gallery_after_document_scroll();
         test_empty_and_result_gallery_after_document_scroll();
         test_details_loading_gallery_after_document_scroll();
+        test_overlay_and_timeline_gallery_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

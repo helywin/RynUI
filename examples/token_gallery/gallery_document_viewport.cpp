@@ -36,6 +36,10 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                     : identity == "ant.component.time-picker"  ? "gallery.time-picker.controlled "
                                     : identity == "ant.component.descriptions" ? "gallery.descriptions.editor "
                                     : identity == "ant.component.skeleton"     ? "gallery.skeleton.preview "
+                                    : identity == "ant.component.popover"      ? "gallery.popover.editor "
+                                    : identity == "ant.component.message"      ? "gallery.notices.workflow "
+                                    : identity == "ant.component.notification" ? "gallery.notices.workflow "
+                                    : identity == "ant.component.timeline"     ? "gallery.timeline.workflow "
                                                                                : "";
     auto node = reference_node;
     if (!sample.empty()) {

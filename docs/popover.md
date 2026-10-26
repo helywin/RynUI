@@ -31,3 +31,7 @@ ryn::Popover(
 最终字号须至少0.5，且可安全舍入为原生字体的整数尺寸；不合法的 Theme 会在发布前连同后代 preflight 一起拒绝。Popover 与 Date/Time footer 可双向嵌套，移动或视口变化在同一帧按逻辑祖先顺序定位；焦点留在已打开子 Popover 的 trigger 时，Escape 仍先交给子层。待入/待出的延时热更新会保留方向并从更新时间重算，focus 会立即完成待入。
 
 参考本地锁定 Ant Design 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e723cdd` 的 `components/popover/index.tsx`、`PurePanel.tsx` 与 `style/index.ts`。首版排除 Web 属性透传、contextMenu、动画、RTL、wireframe 特例和 OS 可访问性桥接。验收见 [084 tasks](../openspec/changes/084-20261025-add-native-popover/tasks.md)；headless 证据不代表 native/GPU/Linux/system IME/AT 验收。
+
+## Gallery
+
+组件目录的 Popover 直接进入“项目备注”。点击入口编辑并保存，或用 Tab/Enter 完成保存；外部按钮切换四个主方位、箭头和禁用状态，“重新打开”恢复可编辑内容。普通开合、布局和 Theme 更新保留草稿及 Input/按钮身份。091 的 `--overlays-timeline-only` 入口检查真实目录、输入、窗口层裁剪和恢复；实际进展与证据见 [091](../openspec/changes/091-20261026-add-overlay-and-timeline-gallery/tasks.md)，不代替组件专属平台验收。

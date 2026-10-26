@@ -22,3 +22,7 @@ ryn::Timeline(ryn::TimelineProps{}.mode(ryn::TimelineMode::Alternate), {
 ```
 
 每个 slot 保留自然内容尺寸。超出分配宽/高的文本、图标与控件内容被独立裁剪，不通过缩小 Button/Input/Select 避免越界；文本不会自动换行。focus 外扩使用既有 decoration clip，仍服从 Timeline 及祖先 hardclip。隐藏会清理焦点、preedit、capture 和 popup；恢复保留草稿，不复活此前被强制 suppression 的 popup。
+
+## Gallery
+
+Timeline 目录直接进入“项目处理记录”，可编辑并保存发布后的跟进事项，切换 Start/Alternate/End、正反序、loading 与备注显隐。“编辑备注”位于条目外，可恢复隐藏内容并调用原 InputRef；位置、顺序、Theme 和显隐更新保留控件与普通草稿。091 的 `--overlays-timeline-only` 覆盖真实目录、输入、可见性与有限空间裁剪，实际进展见 [091 tasks](../openspec/changes/091-20261026-add-overlay-and-timeline-gallery/tasks.md)。不新增横向、动态 topology 或动画合同。
