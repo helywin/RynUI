@@ -339,17 +339,6 @@ void FocusManager::begin_operation() {
 }
 
 void FocusManager::end_operation() {
-    std::size_t notifications = 0;
-    while (observed_focus_ != focused_) {
-        if (++notifications > 32) {
-            throw std::logic_error("focus observation failed to converge");
-        }
-        observed_focus_ = focused_;
-        const auto observer = observer_;
-        if (observer) {
-            observer();
-        }
-    }
     dispatching_ = false;
     if (flushing_focus_) {
         return;
@@ -357,21 +346,37 @@ void FocusManager::end_operation() {
     flushing_focus_ = true;
     try {
         std::size_t transfers = 0;
-        while (pending_focus_) {
-            if (++transfers > 32) {
-                throw std::logic_error("focus transaction failed to converge");
-            }
-            const auto request = *pending_focus_;
-            pending_focus_.reset();
-            if (request.target) {
-                if (can_focus(*request.target)) {
-                    static_cast<void>(request_focus(*request.target, request.modality));
+        std::size_t notifications = 0;
+        while (pending_focus_ || observed_focus_ != focused_) {
+            while (pending_focus_) {
+                if (++transfers > 32) {
+                    throw std::logic_error("focus transaction failed to converge");
                 }
-            } else {
-                static_cast<void>(clear_focus());
+                const auto request = *pending_focus_;
+                pending_focus_.reset();
+                if (request.target) {
+                    if (can_focus(*request.target)) {
+                        static_cast<void>(request_focus(*request.target, request.modality));
+                    }
+                } else {
+                    static_cast<void>(clear_focus());
+                }
+            }
+            if (observed_focus_ != focused_) {
+                if (++notifications > 32) {
+                    throw std::logic_error("focus observation failed to converge");
+                }
+                observed_focus_ = focused_;
+                const auto observer = observer_;
+                dispatching_ = true;
+                if (observer) {
+                    observer();
+                }
+                dispatching_ = false;
             }
         }
     } catch (...) {
+        dispatching_ = false;
         pending_focus_.reset();
         flushing_focus_ = false;
         throw;

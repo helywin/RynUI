@@ -33,3 +33,10 @@
 - [x] 6.2 首次 owner/slots/bindings/reconcile 完整成功交接前发生异常时退役原完整 generation 并重抛；后续 reactive 新增/替换 rich label 同样保留原异常且不留下半成品，不破坏回调建立的新 generation。验证 fallback、后续 Signal/ref/session/block/subscription 清理。
 - [x] 6.3 观察实际完整逻辑后代的焦点转移，覆盖同帧 Input/外 Button 两个出口、嵌套 popup、后代内部转移、controlled open 拒绝及关闭回调销毁/重绑；保留后代原生 onFocus/onBlur 与身份。
 - [x] 6.4 最终源码仅运行各配置一次 fresh MSVC HEADLESS Debug/Release 新回归、R1 和直接共享代表集合，最多 2 jobs；不重跑金样/无关全矩阵。完成 format、显式 OpenSpec 1.14 doctor/strict、diff、默认 PE 1 MiB 与原 golden 不变检查，英文 local commit、clean HEAD 交父 fresh R3。
+
+## 7. Astra R3 修复（平台通用）
+
+- [x] 7.1 在指定 clean 40bba184cbed09584468dc7a190d135085bd34a9 上实际复现富后代 focus/blur 的异常退役重入或残留，以及子 Popover Escape 的 deferred 恢复被父建议抢先阻断，保存 before。
+- [x] 7.2 复用既有不交付取消分支，失败退役前静默清理原子树 focus/keyboard/pointer/capture/hover 事件源，保证不进入用户 blur/cancel/leave 回调；覆盖销毁/重绑/抛出处理器、原异常、新 generation 与旧资源归零。通用取消/退役生产修复及普通 Input/Button 六个 fixture 独立提交并向父交共享接口。
+- [x] 7.3 焦点 observer 在 deferred 恢复事务收敛后交付，保留同帧外部退出及时性、原生回调顺序和完整代际检查；覆盖子 popup Escape 内部恢复、失败目标、回调销毁重绑与共享 Focus 合同。
+- [ ] 7.4 最终各配置一次 fresh MSVC HEADLESS Debug/Release 新回归、R1/R2 及直接 quiet teardown/focus 代表，最多 2 jobs；format 22.1.3、显式 OpenSpec 1.14 doctor/strict、diff、默认 1 MiB PE 与旧金样不变，英文 local commit、clean 交父 fresh R4。

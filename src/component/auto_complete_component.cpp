@@ -202,7 +202,7 @@ State* checked(WindowComponentServices& services, runtime::ComponentId id) {
                 components.contains(row->hit);
     }
     if (!valid) {
-        services.destroy(id);
+        services.retire_failed_component(id);
         return nullptr;
     }
     return state;
@@ -632,6 +632,7 @@ void AutoCompleteComponentHost::mount_label(runtime::ComponentId id, runtime::Co
     if (!row) {
         return;
     }
+    RetireOnFailure rollback{*services_, id};
     auto& build = runtime::require_component_build_context();
     row->label_root = group(*services_);
     const auto label_root = row->label_root;
@@ -661,6 +662,7 @@ void AutoCompleteComponentHost::mount_label(runtime::ComponentId id, runtime::Co
             services_->interactions().set_tab_stop(hit, false);
         }
     }
+    rollback.complete = true;
 }
 
 void AutoCompleteComponentHost::mount_row(runtime::ComponentId id, std::size_t index) {

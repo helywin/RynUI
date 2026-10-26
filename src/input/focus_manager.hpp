@@ -47,7 +47,7 @@ public:
     void reserve(std::size_t focus_capacity);
     void dispatch(const KeyboardInputEvent& event);
     void set_command_filter(std::function<bool(const KeyboardInputEvent&)> filter);
-    // Observes completed native focus notifications without replacing an interaction's handlers.
+    // Observes settled native/deferred focus transactions without replacing interaction handlers.
     void set_observer(std::function<void()> observer);
     bool focus_from_pointer(std::optional<InteractionId> target);
     bool request_focus(InteractionId target, FocusModality modality);

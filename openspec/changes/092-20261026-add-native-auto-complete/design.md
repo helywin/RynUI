@@ -1,5 +1,17 @@
 # Design
 
+## Astra R3 修订
+
+失败退役先按完整 owner generation 枚举逻辑子树的 interactions，复用 FocusManager/PointerRouter 既有 dispatch 中“不交付”的取消分支，显式 `notify=false` 清除 focus、keyboard press、pointer press/capture/hover 后，才进入普通 Text/Component 资源销毁。此时 Input/Button cleanup 再取消同一 interaction 已无事件源，不能进入用户 blur/cancel/leave 处理器，避免重复销毁或异常中断清理。默认取消仍交付原回调，未把全局销毁改为静默，也未增加仅阻止重复 destroy 的挡板。R2 仅抑制 observer 的做法不足，本轮补足实际取消链。
+
+通用取消/退役修改不依赖 AutoComplete 的类或字段，独立保存为共享 commit；另用普通 region、Input、Button 的六个 fixture 验证同一入口。复用者必须在 throwing slot 自身的回滚前调用失败退役或建立局部守卫，不能期待外层 catch 自动改变普通 destroy 的通知语义。
+
+富 label 的构建内部也持有同一 RetireOnFailure 守卫，确保新建行取得焦点后抛出时，在 append-slot 的普通子树回滚之前先静默退役完整原 owner；结构损坏的私有代际检查也使用失败退役入口。不会等到外层协调守卫才清除事件源。
+
+FocusManager 的 end_operation 先完成 pending_focus_ 队列及原生通知，再在同一次事务内交付 observer；嵌套 request_focus 的 end_operation 不抢先观察临时 null。observer 自己产生的 deferred 请求继续收敛后再观察，保留既有完整 InteractionId eligibility 检查和有界事务。独立 ref.focus 调用各自完成交付，R2 的同帧两次调用仍及时识别外部退出，不退回帧间采样。
+
+R3 定向回归覆盖：聚焦保留 rich Input 后追加 throwing label，危险 blur 销毁/重绑/抛出处理器保持未调用；pointer cancel/leave、capture/hover、Space press 与迟到 up 无旧事件；throwing slot 建立同 ref 新 generation 后旧异常退役不破坏替代组件。子 Popover Escape 覆盖 trigger 恢复、恢复链、无效/disabled 目标、外部 deferred 目标、blur/恢复通知中销毁重绑、原生 blur 异常及真实 hit/focus outline；正常内部恢复不关闭父建议，随后同帧外部 ref.focus 仍关闭。
+
 ## Astra R2 修订
 
 首次挂载从创建完整 owner generation 后，到所有 slots/bindings/rows 协调成功交接为止，由局部 `RetireOnFailure` 守卫持有失败清理责任；行协调也使用同一守卫。异常自然传播，不 catch 后吞错，不用 bounds 跳过半成品。失败时退役原完整 ComponentId，模型和不完整 rows 一起释放；后续 reactive 新增/替换富标签同样退役原 owner。回调已删除原 owner 并建立同 ref 的替代 generation 时，旧守卫不命中新 id。

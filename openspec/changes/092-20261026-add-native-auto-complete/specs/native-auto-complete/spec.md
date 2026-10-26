@@ -26,6 +26,10 @@ AutoComplete SHALL 接受任意 String，支持 reactive value 或一次性 defa
 - **WHEN** 首次挂载或后续新增/替换富标签抛出异常，调用者局部 catch 后继续挂载 fallback
 - **THEN** 原异常继续传播到调用者，失败的完整 owner generation 安全退役且不把部分 rows 交给布局，回调已建立的替代 generation 保持可用
 
+#### Scenario: 聚焦富后代的异常退役
+- **WHEN** 保留的富后代有 focus/press/capture，新增富标签抛出异常并退役原 owner
+- **THEN** 失败取消不交付用户 blur/cancel/leave，原异常保持，旧事件源和资源释放，替代 generation 不受旧取消影响
+
 ### Requirement: 原生交互与组合输入
 
 AutoComplete SHALL 只有一个 Tab 输入入口，支持上下移动、Enter 选择、Escape 关闭、Tab 离开及 pointer 选择/清空。组合输入活动时建议逻辑 SHALL 不消费上下/Enter/Escape 或提交建议；Escape 交还真实 Input 取消自身 composition，不关闭 popup 或改变接受值。disabled/readOnly SHALL 禁止用户修改与建议选择。ref SHALL 使用真实 Input 的 focus/blur/select 和 generation/lifetime 检查。
@@ -45,6 +49,10 @@ open SHALL 支持 controlled/defaultOpen 且拒绝同时设置；受控关闭请
 #### Scenario: 同帧逻辑后代退出
 - **WHEN** 富后代或嵌套子 popup 的原生输入在同帧取得焦点后，焦点转移到整个逻辑后代之外
 - **THEN** 父建议立即请求关闭且继续遵守 open 权威，保留后代原生 focus/blur 回调；逻辑后代内部转移不请求关闭
+
+#### Scenario: 子 popup 的内部焦点恢复
+- **WHEN** Escape 关闭子 popup，deferred focus 从隐藏内容恢复到父建议内部的 trigger
+- **THEN** 原生 blur/focus 顺序保持，临时空焦点不关闭父建议；恢复最终无有效内部目标或转向外部时仍请求关闭
 
 ### Requirement: Form reset 合同
 
