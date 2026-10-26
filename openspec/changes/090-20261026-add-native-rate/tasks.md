@@ -12,5 +12,5 @@
 
 ## 3. 平台通用：本机集成检查
 
-- [ ] 3.1 在 Windows MSVC windows-msvc-headless Ninja Multi-Config、最多 2 jobs 完成上述 Debug/Release 定向 CTest，记录精确命令和数量；不运行历史 full suite 或长 Gallery。
-- [ ] 3.2 完成 clang-format 22.1.3 check、OpenSpec 1.14 doctor/strict、git diff --check，保留 1 MiB 默认 PE 栈；中文证据记录 HEAD/worktree/边界并以本地英文阶段提交交付父 review。
+- [x] 3.1 在 Windows MSVC windows-msvc-headless Ninja Multi-Config、最多 2 jobs 完成上述 Debug/Release 定向 CTest，记录精确命令和数量；不运行历史 full suite 或长 Gallery。
+- [x] 3.2 完成 clang-format 22.1.3 check、OpenSpec 1.14 doctor/strict、git diff --check，保留 1 MiB 默认 PE 栈；中文证据记录 HEAD/worktree/边界并以本地英文阶段提交交付父 review。

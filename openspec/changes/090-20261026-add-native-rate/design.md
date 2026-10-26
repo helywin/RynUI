@@ -10,7 +10,7 @@
 
 ## Decisions
 
-- `RateCharacter` 为文本或 `IconSource` 的 typed 值，可按 index 函数生成并响应更新。背景和前景分别保留一份纯绘制节点；不执行两份任意原生子控件 slot，避免重复 ref/编辑草稿/焦点。Tooltip 复用现有 typed trigger/title 合同。
+- `RateCharacter` 为文本或 `IconSource` 的 typed 值，全局 character 支持 Prop 响应更新，按 index 的纯函数在该项首次创建时生成值。背景和前景分别保留一份纯绘制节点；不执行两份任意原生子控件 slot，避免重复 ref/编辑草稿/焦点。Tooltip 复用现有 typed trigger/title 合同。
 - 每项具有稳定 ComponentId、interaction、前景/背景 viewport；count 增加只追加，缩减以 inactive/out_of_flow 保留已建项，最多 1000，恢复保持已建身份。count=0 与 visible=false 根节点退出 flow。
 - 保存原始权威值与规范化值；受控候选回调前清预览，回调后不再使用借用状态。所有 callback、focus cancel、boundary reconciliation 均可能同步卸载，使用完整 generation ID 重新查询。
 - 单一可聚焦根 interaction 接受键盘，项 interaction 负责指针；Tooltip trigger 不增加 Tab stop。Left/Right 每次变化 .5 或 1，Home=0、End=count，Enter/Space 提交当前位置。上下键不吞掉。此为原生 keyboard 合同，不复制 snapshot 的多个 tabindex。

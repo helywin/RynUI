@@ -22,6 +22,7 @@ Left/Right 每次增减一级（allowHalf 时 .5），Home 到 0，End 到 count
 visible=false 和 count=0 不保留布局 flow/gap。隐藏、窗口失活或 Modal/Spin gate 会取消临时输入状态。
 
 `character(RateCharacter{u8"好"})`、`character(RateCharacter{IconName::HeartFilled})` 或纯值 index 函数可定制字符。
+全局 character 支持 `Prop<RateCharacter>`；index 函数在该项首次创建时调用，已建项不会因普通值/布局/主题更新而重新调用该函数。
 RateCharacter 只接受可复制的绘制值（String/IconSource），不会重复挂载原生子控件。逐项 Tooltip 使用已有原生 Tooltip。
 `tooltips` 接受 `RateTooltip` 列表；条目可由文本/`Prop<String>` 构造，或用 `RateTooltip{TooltipTitle{...}}` 提供 typed 富标题 slot。
 每个富标题只挂载一次，count/隐藏/主题变化保留其原生控件、编辑草稿和 ref；readOnly 仅关闭评分自身编辑，仍可操作标题中的原生控件。
