@@ -1,0 +1,260 @@
+[0/2] Re-checking globbed directories...
+[1/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\autofit\autofit.c.obj
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afadjust.c(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afadjust.c(766): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afblue.c(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afblue.c(257): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+[2/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftbase.c.obj
+[3/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftbbox.c.obj
+[4/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftbdf.c.obj
+[5/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftcid.c.obj
+[6/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftbitmap.c.obj
+[7/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftfstype.c.obj
+[8/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftgasp.c.obj
+[9/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftglyph.c.obj
+[10/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftgxval.c.obj
+[11/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftinit.c.obj
+[12/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftmm.c.obj
+[13/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftotval.c.obj
+[14/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftpatent.c.obj
+[15/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftpfr.c.obj
+[16/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftsynth.c.obj
+[17/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftstroke.c.obj
+[18/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\fttype1.c.obj
+[19/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftwinfnt.c.obj
+[20/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\bdf\bdf.c.obj
+[21/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\bzip2\ftbzip2.c.obj
+[22/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\cache\ftcache.c.obj
+[23/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\cff\cff.c.obj
+[24/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\cid\type1cid.c.obj
+[25/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\lzw\ftlzw.c.obj
+[26/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\pcf\pcf.c.obj
+[27/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\gzip\ftgzip.c.obj
+[28/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\pfr\pfr.c.obj
+[29/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\pshinter\pshinter.c.obj
+[30/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\psnames\psnames.c.obj
+[31/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\raster\raster.c.obj
+[32/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\sdf\sdf.c.obj
+[33/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\sfnt\sfnt.c.obj
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\sfnt\ttload.c(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+[34/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\smooth\smooth.c.obj
+[35/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\psaux\psaux.c.obj
+[36/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\svg\svg.c.obj
+[37/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\type1\type1.c.obj
+[38/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\type42\type42.c.obj
+[39/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\winfonts\winfnt.c.obj
+[40/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\truetype\truetype.c.obj
+D:\code\RynUI\out\build\windows-msvc-headless\_deps\rynui_freetype-src\src\truetype\ttobjs.c(969): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+[41/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\builds\windows\ftdebug.c.obj
+[42/240] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\builds\windows\ftsystem.c.obj
+[43/240] Building RC object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftver.rc.res
+[44/240] Linking C static library _deps\rynui_freetype-build\Release\freetype.lib
+[45/240] Building C object _deps\rynui_utf8proc-build\CMakeFiles\utf8proc.dir\Release\utf8proc.c.obj
+[46/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\design_token.cpp.obj
+[47/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\input_tokens.cpp.obj
+[48/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\theme_runtime.cpp.obj
+[49/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\theme_snapshot.cpp.obj
+[50/240] Building CXX object _deps\rynui_harfbuzz-build\CMakeFiles\harfbuzz.dir\Release\src\harfbuzz.cc.obj
+[51/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\segmented_theme.cpp.obj
+[52/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\date_picker_theme.cpp.obj
+[53/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\form_theme.cpp.obj
+[54/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\breadcrumb_theme.cpp.obj
+[55/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\steps_theme.cpp.obj
+[56/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\time_picker_theme.cpp.obj
+[57/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\skeleton_theme.cpp.obj
+[58/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\descriptions_theme.cpp.obj
+[59/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\popover_theme.cpp.obj
+[60/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\notice_theme.cpp.obj
+[61/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\timeline_theme.cpp.obj
+[62/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\avatar_theme.cpp.obj
+[63/240] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\tree_theme.cpp.obj
+[64/240] Building CXX object src\CMakeFiles\rynui_animation.dir\Release\animation\easing.cpp.obj
+[65/240] Building CXX object src\CMakeFiles\rynui_animation.dir\Release\animation\time.cpp.obj
+[66/240] Building CXX object src\CMakeFiles\rynui_animation.dir\Release\animation\runtime.cpp.obj
+[67/240] Building CXX object src\CMakeFiles\rynui_animation.dir\Release\animation\value.cpp.obj
+[68/240] Linking CXX static library _deps\rynui_harfbuzz-build\Release\harfbuzz.lib
+[69/240] Linking C static library _deps\rynui_utf8proc-build\Release\utf8proc_static.lib
+[70/240] Building CXX object src\CMakeFiles\rynui_reactive.dir\Release\reactive\reactive.cpp.obj
+[71/240] Building C object _deps\rynui_sheenbidi-build\CMakeFiles\SheenBidi.dir\Release\Source\SheenBidi.c.obj
+[72/240] Linking CXX static library src\Release\rynui_theme.lib
+[73/240] Linking CXX static library src\Release\rynui_animation.lib
+[74/240] Building CXX object src\CMakeFiles\rynui_string.dir\Release\text\string.cpp.obj
+[75/240] Building CXX object src\CMakeFiles\rynui_font.dir\Release\font\font_runtime.cpp.obj
+[76/240] Linking CXX static library src\Release\rynui_reactive.lib
+[77/240] Building CXX object src\CMakeFiles\rynui_font.dir\Release\font\icon_vector_font.cpp.obj
+[78/240] Building CXX object src\CMakeFiles\rynui_text_boundary.dir\Release\input\text_boundary.cpp.obj
+[79/240] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\component_mount.cpp.obj
+[80/240] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\component_host.cpp.obj
+[81/240] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\frame_scheduler.cpp.obj
+[82/240] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\callback_frame_pump.cpp.obj
+[83/240] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\invalidation.cpp.obj
+[84/240] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\layout_style_adapter.cpp.obj
+[85/240] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\runtime.cpp.obj
+[86/240] Linking C static library _deps\rynui_sheenbidi-build\Release\SheenBidi.lib
+[87/240] Linking CXX static library src\Release\rynui_string.lib
+[88/240] Linking CXX static library src\Release\rynui_font.lib
+[89/240] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\node_store.cpp.obj
+[90/240] Building CXX object src\CMakeFiles\rynui_text.dir\Release\text\bidi_analysis.cpp.obj
+[91/240] Building CXX object src\CMakeFiles\rynui_text.dir\Release\text\text_engine.cpp.obj
+[92/240] Building CXX object src\CMakeFiles\rynui_input.dir\Release\input\platform_input.cpp.obj
+[93/240] Building CXX object src\CMakeFiles\rynui_text.dir\Release\text\text_caret_map.cpp.obj
+[94/240] Linking CXX static library src\Release\rynui_text_boundary.lib
+[95/240] Linking CXX static library src\Release\rynui_runtime.lib
+[96/240] Building CXX object src\CMakeFiles\rynui_input.dir\Release\input\text_input_events.cpp.obj
+[97/240] Building CXX object src\CMakeFiles\rynui_layout.dir\Release\layout\layout.cpp.obj
+[98/240] Linking CXX static library src\Release\rynui_text.lib
+[99/240] Linking CXX static library src\Release\rynui_input.lib
+[100/240] Building CXX object src\CMakeFiles\rynui_layout.dir\Release\layout\layout_engine.cpp.obj
+[101/240] Building CXX object src\CMakeFiles\rynui_text_editor.dir\Release\input\text_editor.cpp.obj
+[102/240] Linking CXX static library src\Release\rynui_layout.lib
+[103/240] Building CXX object src\CMakeFiles\rynui_text_editor.dir\Release\input\text_history.cpp.obj
+[104/240] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\glyph_atlas.cpp.obj
+[105/240] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\graphics.cpp.obj
+[106/240] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\glyph_scene.cpp.obj
+[107/240] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\quad_primitive.cpp.obj
+[108/240] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\quad_scene.cpp.obj
+[109/240] Linking CXX static library src\Release\rynui_text_editor.lib
+[110/240] Building CXX object src\CMakeFiles\rynui_text_input_session.dir\Release\input\text_input_session.cpp.obj
+[111/240] Building CXX object src\CMakeFiles\rynui_text_clipboard_commands.dir\Release\input\text_clipboard_commands.cpp.obj
+[112/240] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\rounded_effect.cpp.obj
+[113/240] Building CXX object src\CMakeFiles\rynui_motion.dir\Release\animation\motion_policy.cpp.obj
+[114/240] Building CXX object src\CMakeFiles\rynui_interaction.dir\Release\input\focus_manager.cpp.obj
+[115/240] Building CXX object src\CMakeFiles\rynui_interaction.dir\Release\input\interaction_registry.cpp.obj
+[116/240] Linking CXX static library src\Release\rynui_graphics.lib
+[117/240] Building CXX object src\CMakeFiles\rynui_interaction.dir\Release\input\pointer_router.cpp.obj
+[118/240] Linking CXX static library src\Release\rynui_text_input_session.lib
+[119/240] Linking CXX static library src\Release\rynui_text_clipboard_commands.lib
+[120/240] Linking CXX static library src\Release\rynui_motion.lib
+[121/240] Linking CXX static library src\Release\rynui_interaction.lib
+[122/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\date_picker_model.cpp.obj
+[123/240] Building CXX object src\CMakeFiles\rynui_text_scene.dir\Release\text\text_scene_service.cpp.obj
+[124/240] Linking CXX static library src\Release\rynui_text_scene.lib
+[125/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\form_model.cpp.obj
+[126/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\descriptions_model.cpp.obj
+[127/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\date_picker_component.cpp.obj
+[128/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\descriptions_component.cpp.obj
+[129/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\timeline_model.cpp.obj
+[130/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\timeline_component.cpp.obj
+[131/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\avatar_component.cpp.obj
+[132/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tree_model.cpp.obj
+[133/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tree_component.cpp.obj
+[134/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\form_component.cpp.obj
+[135/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\feedback_component.cpp.obj
+[136/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tag_badge_component.cpp.obj
+[137/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\button_component.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\button_component.cpp(1775): warning C4834: discarding return value of function with [[nodiscard]] attribute
+[138/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\window_component_services.cpp.obj
+[139/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_number_model.cpp.obj
+[140/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_number_actions.cpp.obj
+[141/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_component.cpp.obj
+[142/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_material_transition.cpp.obj
+[143/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_affix_action.cpp.obj
+[144/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_display.cpp.obj
+[145/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\otp_model.cpp.obj
+[146/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\select_model.cpp.obj
+[147/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\time_picker_model.cpp.obj
+[148/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\select_component.cpp.obj
+[149/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\time_picker_component.cpp.obj
+[150/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\menu_component.cpp.obj
+[151/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\dropdown_component.cpp.obj
+[152/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\card_component.cpp.obj
+[153/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\skeleton_model.cpp.obj
+[154/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\empty_result_component.cpp.obj
+[155/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\notice_model.cpp.obj
+[156/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\skeleton_component.cpp.obj
+[157/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tabs_model.cpp.obj
+[158/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\modal_model.cpp.obj
+[159/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\drawer_model.cpp.obj
+[160/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\notice_component.cpp.obj
+[161/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tabs_component.cpp.obj
+[162/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\modal_component.cpp.obj
+[163/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\pagination_component.cpp.obj
+[164/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\table_component.cpp.obj
+[165/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\collapse_component.cpp.obj
+[166/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\segmented_component.cpp.obj
+[167/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\breadcrumb_component.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\breadcrumb_component.cpp(436): warning C4456: declaration of 'w' hides previous local declaration
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\breadcrumb_component.cpp(431): note: see declaration of 'w'
+[168/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\steps_component.cpp.obj
+[169/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\icon_vector.cpp.obj
+[170/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\otp_component.cpp.obj
+[171/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\selection_component.cpp.obj
+[172/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\slider_component.cpp.obj
+[173/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\popconfirm_model.cpp.obj
+[174/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tooltip_component.cpp.obj
+[175/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\popover_model.cpp.obj
+[176/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\popconfirm_component.cpp.obj
+[177/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\popover_component.cpp.obj
+[178/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\search_component.cpp.obj
+[179/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\retained_surface_service.cpp.obj
+[180/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\component_scene.cpp.obj
+[181/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\default_theme.cpp.obj
+[182/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\layout_component_context.cpp.obj
+[183/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\flex_component.cpp.obj
+[184/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_component.cpp.obj
+[185/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_compact.cpp.obj
+[186/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_addon.cpp.obj
+[187/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\text_component.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\text_component.cpp(882): warning C4100: 'viewport': unreferenced parameter
+[188/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\typography_component.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\src\component\typography_component.cpp(820): warning C4189: 'theme': local variable is initialized but not referenced
+[189/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\theme_component.cpp.obj
+[190/240] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\divider_component.cpp.obj
+[191/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_metrics.cpp.obj
+[192/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_capabilities.cpp.obj
+[193/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_packing.cpp.obj
+[194/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\rounded_effect_packing.cpp.obj
+[195/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\quad_gpu_resources.cpp.obj
+[196/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_resources.cpp.obj
+[197/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\glyph_gpu_resources.cpp.obj
+[198/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\rounded_effect_gpu_resources.cpp.obj
+[199/240] Linking CXX static library src\Release\rynui_components.lib
+[200/240] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\text_render_controller.cpp.obj
+[201/240] Linking CXX static library src\Release\rynui_renderer_common.lib
+[202/240] Building CXX object tests\CMakeFiles\rynui_tree_model_tests.dir\Release\tree_model_tests.cpp.obj
+[203/240] Building CXX object tests\CMakeFiles\rynui_tree_theme_tests.dir\Release\tree_theme_tests.cpp.obj
+[204/240] Building CXX object tests\CMakeFiles\rynui_avatar_theme_tests.dir\Release\avatar_theme_tests.cpp.obj
+[205/240] Building CXX object tests\CMakeFiles\rynui_tree_component_tests.dir\Release\tree_component_tests.cpp.obj
+[206/240] Building CXX object tests\CMakeFiles\rynui_avatar_component_tests.dir\Release\avatar_component_tests.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\tests\avatar_component_tests.cpp(253): warning C4834: discarding return value of function with [[nodiscard]] attribute
+[207/240] Building CXX object tests\CMakeFiles\rynui_timeline_integration_tests.dir\Release\timeline_integration_tests.cpp.obj
+[208/240] Building CXX object tests\CMakeFiles\rynui_collapse_component_tests.dir\Release\collapse_component_tests.cpp.obj
+[209/240] Building CXX object tests\CMakeFiles\rynui_steps_component_tests.dir\Release\steps_component_tests.cpp.obj
+[210/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_menu_component.dir\Release\__\menu_component_tests.cpp.obj
+[211/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_component.dir\Release\__\input_component_tests.cpp.obj
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\tests\input_component_tests.cpp(610): warning C4834: discarding return value of function with [[nodiscard]] attribute
+C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\tests\input_component_tests.cpp(618): warning C4834: discarding return value of function with [[nodiscard]] attribute
+[212/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_theme_algorithm.dir\Release\__\theme_algorithm_tests.cpp.obj
+[213/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_button_component.dir\Release\__\button_component_tests.cpp.obj
+[214/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_theme_runtime.dir\Release\__\theme_runtime_tests.cpp.obj
+[215/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_focus_order.dir\Release\__\focus_order_tests.cpp.obj
+[216/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_focus_state.dir\Release\__\focus_state_tests.cpp.obj
+[217/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_focus_lifecycle.dir\Release\__\focus_lifecycle_tests.cpp.obj
+[218/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_interaction_registry.dir\Release\__\interaction_registry_tests.cpp.obj
+[219/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_layout_style.dir\Release\__\layout_style_tests.cpp.obj
+[220/240] Linking CXX executable tests\Release\rynui_tree_model_tests.exe
+[221/240] Linking CXX executable tests\Release\rynui_tree_component_tests.exe
+[222/240] Linking CXX executable tests\Release\rynui_tree_theme_tests.exe
+[223/240] Linking CXX executable tests\Release\rynui_avatar_theme_tests.exe
+[224/240] Linking CXX executable tests\Release\rynui_avatar_component_tests.exe
+[225/240] Linking CXX executable tests\Release\rynui_timeline_integration_tests.exe
+[226/240] Linking CXX executable tests\Release\rynui_collapse_component_tests.exe
+[227/240] Linking CXX executable tests\Release\rynui_steps_component_tests.exe
+[228/240] Building CXX object tests\portable\CMakeFiles\rynui_portable_select_component.dir\Release\__\select_component_tests.cpp.obj
+[229/240] Linking CXX executable tests\portable\Release\rynui_portable_menu_component.exe
+[230/240] Linking CXX executable tests\portable\Release\rynui_portable_input_component.exe
+[231/240] Linking CXX executable tests\portable\Release\rynui_portable_theme_algorithm.exe
+[232/240] Linking CXX executable tests\portable\Release\rynui_portable_theme_runtime.exe
+[233/240] Linking CXX executable tests\portable\Release\rynui_portable_focus_order.exe
+[234/240] Linking CXX executable tests\portable\Release\rynui_portable_button_component.exe
+[235/240] Linking CXX executable tests\portable\Release\rynui_portable_focus_state.exe
+[236/240] Linking CXX executable tests\portable\Release\rynui_portable_focus_lifecycle.exe
+[237/240] Linking CXX executable tests\portable\Release\rynui_portable_interaction_registry.exe
+[238/240] Linking CXX executable tests\portable\Release\rynui_portable_layout_style.exe
+[239/240] Linking CXX executable tests\portable\Release\rynui_portable_select_component.exe

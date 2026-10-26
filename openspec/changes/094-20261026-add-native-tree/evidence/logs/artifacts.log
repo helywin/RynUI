@@ -1,0 +1,19 @@
+CMAKE_GENERATOR:INTERNAL=Ninja Multi-Config
+RYNUI_PLATFORM_BACKEND:STRING=HEADLESS
+RYNUI_RENDER_BACKENDS:STRING=RECORDING
+RYNUI_EXPECTED_TOOLCHAIN:STRING=msvc
+CMAKE_HOME_DIRECTORY:INTERNAL=C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f
+docs/tree.md: exact C++ example is compiled and invoked by tree_basic
+Debug: CTest 36/36 (13 Tree and 23 directly shared regressions)
+Debug/rynui_tree_component_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=132c26095608787020ec3b69af40cffc6fd5c8c829bfe0012e3be23776029d5b
+Debug/rynui_tree_model_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=46cfd9155f33f9bddeb5e66c6b0e7cdcdfe53954399410634facb738ea1203fb
+Debug/rynui_tree_theme_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=c48c9c83f0d92b93f1596b5e6c98e116a703aa1b8205afd8580bf79a8974f4a2
+Release: CTest 36/36 (13 Tree and 23 directly shared regressions)
+Release/rynui_tree_component_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=b9cd0de5fe84bd7b85ff0fa88d18d7620c28028c1513204af77f30147758f812
+Release/rynui_tree_model_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=1acdf4c2399991e7e11fc7cb4a0f8a6b45a165668c44f9698ccdc168010643a8
+Release/rynui_tree_theme_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=bcbd1771dbfa5701603614304b1dbf544c76da8e3ba765199f61f9f4fafb6ef7
+fresh golden default: sha256=3fb2f3727475f45325abead4f35d1706d2445a377cc12dfd5614886ac95384e1
+fresh golden dark: sha256=593b7ffc2607feae7c34e776336b06c9a851f71e1dee7c549e88f307ec0b2452
+fresh golden compact: sha256=297e31dac1ca4fb2eb3ea56c573c33b347185a27d011770a1d6f235be75219fe
+fresh golden dark-compact: sha256=b5300de092ca20a6e0625ffd4c211806519484d27e609bc663dba0529d709eaa
+fresh golden compact-dark: sha256=d756707ba3d8d299194b5f08dea38b85cd9022dac3ad86145e092bb343097258

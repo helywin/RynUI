@@ -1,0 +1,22 @@
+[0/2] Re-checking globbed directories...
+[1/22] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\tree_component.cpp.obj
+[2/22] Linking CXX static library src\Debug\rynui_components.lib
+[3/22] Linking CXX executable tests\Debug\rynui_tree_model_tests.exe
+[4/22] Linking CXX executable tests\Debug\rynui_tree_theme_tests.exe
+[5/22] Linking CXX executable tests\Debug\rynui_avatar_theme_tests.exe
+[6/22] Linking CXX executable tests\Debug\rynui_tree_component_tests.exe
+[7/22] Linking CXX executable tests\Debug\rynui_avatar_component_tests.exe
+[8/22] Linking CXX executable tests\Debug\rynui_timeline_integration_tests.exe
+[9/22] Linking CXX executable tests\Debug\rynui_collapse_component_tests.exe
+[10/22] Linking CXX executable tests\Debug\rynui_steps_component_tests.exe
+[11/22] Linking CXX executable tests\portable\Debug\rynui_portable_menu_component.exe
+[12/22] Linking CXX executable tests\portable\Debug\rynui_portable_input_component.exe
+[13/22] Linking CXX executable tests\portable\Debug\rynui_portable_theme_algorithm.exe
+[14/22] Linking CXX executable tests\portable\Debug\rynui_portable_theme_runtime.exe
+[15/22] Linking CXX executable tests\portable\Debug\rynui_portable_button_component.exe
+[16/22] Linking CXX executable tests\portable\Debug\rynui_portable_focus_order.exe
+[17/22] Linking CXX executable tests\portable\Debug\rynui_portable_focus_state.exe
+[18/22] Linking CXX executable tests\portable\Debug\rynui_portable_focus_lifecycle.exe
+[19/22] Linking CXX executable tests\portable\Debug\rynui_portable_interaction_registry.exe
+[20/22] Linking CXX executable tests\portable\Debug\rynui_portable_layout_style.exe
+[21/22] Linking CXX executable tests\portable\Debug\rynui_portable_select_component.exe

@@ -16,8 +16,8 @@
 
 ## 4. 集成收口
 
-- [ ] 4.1 在自身输出目录通过 windows-msvc-headless Ninja Multi-Config Debug/Release 定向 CTest 与共享回归；保存 configure/build/test 原始日志、fresh goldens 和准确边界，运行 format 22.1.3 check、OpenSpec doctor/strict validate、diff check。
+- [x] 4.1 在自身输出目录通过 windows-msvc-headless Ninja Multi-Config Debug/Release 定向 CTest 与共享回归；保存 configure/build/test 原始日志、fresh goldens 和准确边界，运行 format 22.1.3 check、OpenSpec doctor/strict validate、diff check。
 
 ## 5. Windows
 
-- [ ] 5.1 验证本次 MSVC PE 仍为默认 1MiB 栈；提交最终证据后交接 clean HEAD/branch/path 与实际测试数。原生窗口/GPU、系统 IME/AT 和 Linux 不在本次验收范围。
+- [x] 5.1 验证本次 MSVC PE 仍为默认 1MiB 栈；提交最终证据后交接 clean HEAD/branch/path 与实际测试数。原生窗口/GPU、系统 IME/AT 和 Linux 不在本次验收范围。
