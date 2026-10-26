@@ -459,7 +459,128 @@ void initial_mount_retirement() {
     check(failures == 0, "Statistic initial-mount retirement failed");
 }
 
+void blocked_ancestor_mount() {
+    unsigned failures = 0;
+    for (bool modal : {false, true}) {
+        for (int retirement : {0, 1, 2}) {
+            if (modal && retirement == 2) {
+                continue;
+            }
+            const bool retire = retirement != 0;
+            Fixture f;
+            Signal<bool> ancestor{!modal};
+            Signal<bool> loading{true};
+            Signal<bool> open{true};
+            Signal<StatisticValue> value{StatisticValue{1}};
+            InputRef title_ref;
+            InputRef value_ref;
+            runtime::ComponentId owner;
+            runtime::ComponentId parent;
+            int closes = 0;
+            int bodies = 0;
+            int bodies_at_close = 0;
+            try {
+                const auto statistic = [&] {
+                    Statistic(
+                        StatisticProps{}
+                            .loading(loading)
+                            .value(value)
+                            .richTitle(StatisticTitle{[&] {
+                                Input(InputProps{}.ref(title_ref).defaultValue(u8"Original title"));
+                                Select(SelectProps{}.options({{1, u8"One"}}).open(open).onOpenChange([&](bool shown) {
+                                    if (shown) {
+                                        return;
+                                    }
+                                    ++closes;
+                                    const auto select = f.services.select().mounted().back();
+                                    const auto title = *f.services.components().parent(select);
+                                    owner = *f.services.components().parent(title);
+                                    parent = *f.services.components().parent(owner);
+                                    bodies_at_close = bodies;
+                                    if (retirement == 1) {
+                                        check(f.services.destroy(owner), "blocked first close failed to retire owner");
+                                    } else if (retirement == 2) {
+                                        const auto child = f.services.components().children(owner).back();
+                                        check(child != title && f.services.destroy(child),
+                                              "blocked first close failed to retire private Skeleton");
+                                    }
+                                }));
+                            }})
+                            .richValue(StatisticValueContent{[&] {
+                                ++bodies;
+                                Input(InputProps{}.ref(value_ref).defaultValue(u8"Original value"));
+                            }}));
+                };
+                f.services.mount(Content{[&] {
+                    if (modal) {
+                        Modal(ModalProps{}.open(ancestor).footer(ModalFooterMode::None), ModalContent{statistic});
+                    } else {
+                        Skeleton(SkeletonProps{}.loading(ancestor), SkeletonContent{statistic});
+                    }
+                }});
+                sync(f);
+                check(closes == 1 && owner.valid(), "blocked ancestor did not close controlled title Select once");
+                check(!title_ref.focus() && !value_ref.focus(), "blocked ancestor admitted input");
+                if (retire) {
+                    check(!f.services.components().contains(owner) && f.services.statistic().mounted().empty() &&
+                              bodies == bodies_at_close,
+                          "mount continued old body after owner retirement");
+                    const auto old = owner;
+                    f.services.append_slot(
+                        parent, Content{[&] {
+                            Statistic(StatisticProps{}
+                                          .richTitle(StatisticTitle{[&] {
+                                              Input(InputProps{}.ref(title_ref).defaultValue(u8"Replacement title"));
+                                          }})
+                                          .richValue(StatisticValueContent{[&] {
+                                              Input(InputProps{}.ref(value_ref).defaultValue(u8"Replacement value"));
+                                          }}));
+                        }});
+                    owner = f.services.statistic().mounted().back();
+                    check(owner != old && !f.services.components().contains(old), "retired generation remained active");
+                } else {
+                    check(f.services.components().contains(owner) && bodies == 1, "surviving mount lost rich content");
+                }
+                for (auto blocked : blocked_roots(f.services.interactions())) {
+                    check(f.services.components().contains(blocked), "mount leaked a stale generational input block");
+                }
+                ancestor.set(modal);
+                loading.set(false);
+                value.set(StatisticValue{2});
+                sync(f);
+                check(title_ref.focus() && value_ref.focus(), "blocked ancestor recovery lost retained/rebound refs");
+                const auto expected =
+                    retire ? std::string_view{"Replacement value"} : std::string_view{"Original value"};
+                check(f.inputs.editors().require(f.inputs.mounted_inputs().back().editor).value() == expected,
+                      "ancestor recovery reset rich draft/ref generation");
+                if (retire) {
+                    check(f.services.statistic().snapshot(owner).formatted_value.bytes() == "0",
+                          "old value binding reached replacement generation");
+                } else {
+                    const auto select = f.services.select().mounted().back();
+                    check(!f.services.select().snapshot(select).visible,
+                          "blocked controlled refusal resurrected popup");
+                    open.set(false);
+                    open.set(true);
+                    sync(f);
+                    check(f.services.select().snapshot(select).visible, "surviving controlled Select could not reopen");
+                }
+                f.services.dispose();
+                check(!title_ref.focus() && !value_ref.focus() && f.services.surfaces().size() == 0 &&
+                          blocked_roots(f.services.interactions()).empty(),
+                      "blocked composition cleanup leaked resources");
+            } catch (const std::exception& e) {
+                ++failures;
+                std::cerr << "blocked " << (modal ? "Modal" : "Skeleton") << " retirement=" << retirement << ": "
+                          << e.what() << '\n';
+            }
+        }
+    }
+    check(failures == 0, "Statistic blocked-ancestor first mount failed");
+}
+
 void lifecycle() {
+    blocked_ancestor_mount();
     initial_mount_retirement();
     Fixture f;
     Signal<bool> loading{false};

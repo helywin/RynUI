@@ -117,9 +117,22 @@ runtime::ComponentId SkeletonComponentHost::create(SkeletonModel model, const La
                              });
                              services.components().set_branch_active(child, !loading);
                              services.set_input_blocked(child, loading);
+                             // Reconciliation can synchronously retire this owner and its child.
+                             if (!services.components().contains(id) || !services.components().contains(child)) {
+                                 return;
+                             }
                              context.mount_slot(child, *content);
+                             if (!services.components().contains(id) || !services.components().contains(child)) {
+                                 return;
+                             }
                              s.has_content = !services.components().children(child).empty();
                          }});
+    }
+    if (!services.components().contains(id)) {
+        return id;
+    }
+    if (s.snapshot.content.valid() && !services.components().contains(s.snapshot.content)) {
+        s.snapshot.content = {};
     }
     const auto fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     s.snapshot.surface = services.surfaces().create_content_range(fragment, {});
@@ -158,6 +171,9 @@ runtime::ComponentId SkeletonComponentHost::create(SkeletonModel model, const La
 
 template <typename T>
 void SkeletonComponentHost::connect(runtime::ComponentId id, const Prop<T>& prop, T SkeletonModel::* member) {
+    if (!services_->components().contains(id)) {
+        return;
+    }
     connect_prop(services_->components().scope(id), prop, [this, id, member](T value) {
         if (auto* s = services_->components().state<SkeletonState>(id)) {
             auto model = s->model;
@@ -176,10 +192,16 @@ void SkeletonComponentHost::mount(const SkeletonProps& props, const std::optiona
     model.avatar = read_prop(props.avatar_);
     model.round = read_prop(props.round_);
     const auto id = create(std::move(model), props.layout_, content, read_prop(props.loading_));
+    if (!services_->components().contains(id)) {
+        return;
+    }
     connect(id, props.title_, &SkeletonModel::title);
     connect(id, props.paragraph_, &SkeletonModel::paragraph);
     connect(id, props.avatar_, &SkeletonModel::avatar);
     connect(id, props.round_, &SkeletonModel::round);
+    if (!services_->components().contains(id)) {
+        return;
+    }
     connect_prop(services_->components().scope(id), props.loading_, [this, id](bool value) {
         if (auto* s = services_->components().state<SkeletonState>(id)) {
             s->snapshot.loading = value;

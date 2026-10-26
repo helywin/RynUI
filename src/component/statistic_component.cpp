@@ -209,18 +209,24 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                     }});
                 return child;
             };
-            s.snapshot.title = region(id, Content{[slot = props.rich_title_, text = s.title] {
-                                          if (slot) {
-                                              SlotContentAccess::function (*slot)();
-                                          } else {
-                                              Text(TextProps{}.content(text));
-                                          }
-                                      }},
-                                      true);
+            const auto title_region = region(id, Content{[slot = props.rich_title_, text = s.title] {
+                                                 if (slot) {
+                                                     SlotContentAccess::function (*slot)();
+                                                 } else {
+                                                     Text(TextProps{}.content(text));
+                                                 }
+                                             }},
+                                             true);
+            if (!services.components().contains(id)) {
+                return;
+            }
+            s.snapshot.title = title_region;
             Skeleton(SkeletonProps{}.loading(props.loading_).paragraph(false), SkeletonContent{[&] {
                          auto& c = runtime::require_component_build_context();
                          const auto content = c.mount_component<int>(0);
                          s.snapshot.content = content;
+                         const auto wrapper = *services.components().parent(content);
+                         s.snapshot.skeleton = *services.components().parent(wrapper);
                          const auto node = c.root(content);
                          services.nodes().require(node).clip_content = true;
                          services.nodes().require(node).clip_decorations = false;
@@ -233,7 +239,7 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                        }});
                          c.on_resource_cleanup(content, [&services, node] { services.layout().remove_layout(node); });
                          c.mount_slot(content, Content{[&] {
-                                          s.snapshot.prefix =
+                                          const auto prefix_region =
                                               region(content, Content{[slot = props.rich_prefix_, text = s.prefix] {
                                                          if (slot) {
                                                              SlotContentAccess::function (*slot)();
@@ -242,7 +248,11 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                                          }
                                                      }},
                                                      false);
-                                          s.snapshot.value =
+                                          if (!services.components().contains(id)) {
+                                              return;
+                                          }
+                                          s.snapshot.prefix = prefix_region;
+                                          const auto value_region =
                                               region(content, Content{[slot = props.rich_value_, text = s.value] {
                                                          if (slot) {
                                                              SlotContentAccess::function (*slot)();
@@ -251,7 +261,11 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                                          }
                                                      }},
                                                      false);
-                                          s.snapshot.suffix =
+                                          if (!services.components().contains(id)) {
+                                              return;
+                                          }
+                                          s.snapshot.value = value_region;
+                                          const auto suffix_region =
                                               region(content, Content{[slot = props.rich_suffix_, text = s.suffix] {
                                                          if (slot) {
                                                              SlotContentAccess::function (*slot)();
@@ -260,11 +274,26 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                                          }
                                                      }},
                                                      false);
+                                          if (!services.components().contains(id)) {
+                                              return;
+                                          }
+                                          s.snapshot.suffix = suffix_region;
                                       }});
                      }});
-            s.snapshot.skeleton = services.skeleton().mounted().back();
+            if (!services.components().contains(id)) {
+                return;
+            }
+            if (!services.components().contains(s.snapshot.skeleton) ||
+                !services.components().contains(s.snapshot.content)) {
+                // A callback retired a private composition child while leaving the owner live.
+                services.destroy(id);
+                return;
+            }
             services.nodes().require(services.components().root(s.snapshot.skeleton)).clip_decorations = false;
         }});
+    if (!services.components().contains(id)) {
+        return;
+    }
     services.layout().set_layout(
         s.node,
         layout::ComponentLayout{

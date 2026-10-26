@@ -54,7 +54,9 @@ git diff --check
 
 Astra R1 的正负零相等性 P2 已单独复现并修复；修复前红测、修复后受影响的 Debug/Release 各 3/3 及工具复验见 [r1-signed-zero.md](r1-signed-zero.md)。原有 13/13 记录保留，该轮没有重复执行完整矩阵，已交父线程独立 R2。
 
-Astra R2 的首次挂载同步销毁与字体真实上限问题已分别复现并局部修复，详见 [r2-mount-font-limits.md](r2-mount-font-limits.md)。本轮受影响集合 Debug/Release 各 8/8 通过，包含 R1 原断言；未重跑完整矩阵或金样，停止交父独立 R3。
+Astra R2 的首次挂载同步销毁与字体真实上限问题已分别复现并局部修复，详见 [r2-mount-font-limits.md](r2-mount-font-limits.md)。该轮受影响集合 Debug/Release 各 8/8 通过，包含 R1 原断言；未重跑完整矩阵或金样，已交父独立 R3。
+
+Astra R3 的阻断祖先首次组合挂载问题及共享 Skeleton 同步销毁续用已复现并修复，见 [r3-blocked-composition.md](r3-blocked-composition.md)。本轮集合为 8 项 Statistic 与 5 项共享 Skeleton 代表检查，Debug/Release 各 13/13；保留 R1/R2 断言，停止交父独立 R4。
 
 首版仅 Statistic；Timer、Countdown、Countup、数值动画、locale 国际化均不覆盖，没有类型占位。formatter 返回 String，富输出由 retained typed value slot 表达。浮点若 to_chars 产生指数形式则保持原样，需要精确十进制位时使用 String；precision>100 明确拒绝。
 

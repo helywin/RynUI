@@ -195,7 +195,52 @@ void unfocused_and_controlled_select() {
     }
 }
 
+void initial_nested_skeleton_retirement() {
+    Fixture f;
+    Signal<bool> loading{true};
+    runtime::ComponentId retired;
+    runtime::ComponentId parent;
+    int closes = 0;
+    int bodies = 0;
+    f.services.mount(Content{[&] {
+        Skeleton(SkeletonProps{}.loading(loading), SkeletonContent{[&] {
+                     Select(SelectProps{}.open(true).onOpenChange([&](bool open) {
+                         if (open) {
+                             return;
+                         }
+                         ++closes;
+                         const auto select = f.services.select().mounted().back();
+                         parent = *f.services.components().parent(select);
+                         retired = f.services.components().children(parent).back();
+                         check(retired != select && f.services.destroy(retired),
+                               "initial block did not retire nested Skeleton");
+                     }));
+                     Skeleton(SkeletonProps{}.loading(true), SkeletonContent{[&] {
+                                  ++bodies;
+                                  Text(u8"Retired body");
+                              }});
+                 }});
+    }});
+    sync(f);
+    check(closes == 1 && retired.valid() && !f.services.components().contains(retired) && bodies == 0 &&
+              f.services.skeleton().mounted().size() == 1,
+          "nested Skeleton continued after initial callback retirement");
+    InputRef ref;
+    f.services.append_slot(parent, Content{[&] {
+                               Skeleton(SkeletonProps{}.loading(false),
+                                        SkeletonContent{[&] { Input(InputProps{}.ref(ref)); }});
+                           }});
+    sync(f);
+    check(!ref.focus(), "replacement unlocked ancestor loading gate");
+    loading.set(false);
+    sync(f);
+    check(ref.focus(), "nested Skeleton generation did not recover");
+    f.services.dispose();
+    check(!ref.focus() && f.services.surfaces().size() == 0, "nested Skeleton teardown leaked");
+}
+
 void synchronous_retirement_and_owner_isolation() {
+    initial_nested_skeleton_retirement();
     for (const bool popup : {false, true}) {
         Fixture f;
         Signal<bool> loading{false};

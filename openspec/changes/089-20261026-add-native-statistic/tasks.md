@@ -21,3 +21,7 @@
 ## 5. Astra R2 修正
 
 - [x] 5.1 复现并修复首次边界协调中 owner 同步销毁导致的 stale ComponentId，以及 title/content 字号超出 FontRuntime 实际范围仍发布的问题；首次 hidden/loading 销毁、mount 返回后的同 ref/generation 恢复、round 字号边界、继承/算法原子 preflight 与有效恢复通过定向 Debug/Release 检查，保留 R1 正负零断言，format、显式 OpenSpec 1.14 doctor/strict 与 diff check 通过，保存本地提交交父 R3。
+
+## 6. Astra R3 修正
+
+- [x] 6.1 复现并修复阻断祖先下首次组合挂载回调销毁 owner/内部 Skeleton 后继续使用旧 child/state/scope 的问题；outer Skeleton、closed Modal、富 title Select、初始 loading、合法存活/恢复及同 ref/generation 重绑通过定向 Debug/Release 与共享 Skeleton 代表回归，保留 R1/R2 断言，format、显式 OpenSpec 1.14 doctor/strict、diff check 通过并本地提交交父 R4。
