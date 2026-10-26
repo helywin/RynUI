@@ -14,3 +14,5 @@
 ## 3. 跨流程集成
 
 - [ ] 3.1 比较保留 390 旧 IDs、36 旧函数体/调用顺序、70 非目标支持条目及冻结 Core/API/Theme/goldens/CMake，运行受影响的旧代表、format 22、doctor/strict/diff；新独立 Astra 审查并修复实际问题，按精确命令、当前产物和覆盖边界记录证据，提交推送收口。不重复已经通过的定向矩阵，完整 Gallery/native 在用户指定收尾时统一执行。
+
+2026-10-26 隔离 worktree 已完成技术实施、一次最终 fresh 六组 focused、精确 inventory、八项 contracts 和三个受影响旧代表；见 [本地证据](evidence/02-gallery-implementation.md)。2.1/3.1 的父 fresh Astra/main 发布尚未执行，两项保持 unchecked；本子任务只保存本地提交，不访问远端。

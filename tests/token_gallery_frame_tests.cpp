@@ -28,6 +28,10 @@
 #include "component/popover_component.hpp"
 #include "component/notice_component.hpp"
 #include "component/timeline_component.hpp"
+#include "component/avatar_component.hpp"
+#include "component/statistic_component.hpp"
+#include "component/rate_component.hpp"
+#include "component/tooltip_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -49,6 +53,7 @@
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <map>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -858,7 +863,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 390, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 419, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -907,9 +912,9 @@ void test_token_gallery_frame_contract() {
     }
 
     const auto initial = definition.telemetry();
-    require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
+    require(initial.content_runs == 1 && initial.theme_content_runs == 68 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 295,
+                initial.reference_content_runs == 126 && initial.live_samples == 302,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1053,7 +1058,7 @@ void test_live_input_samples() {
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
     // The appended popup and Timeline note also retain their own editors after Form.
-    require(fixture.inputs->mounted_inputs().size() == 153 &&
+    require(fixture.inputs->mounted_inputs().size() == 156 &&
                 fixture.host->services().select().mounted().size() == 24 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
@@ -3333,6 +3338,12 @@ void test_time_picker_gallery_after_document_scroll() {
                 heading = "gallery.notices.workflow";
             } else if (entry.identity == "ant.component.timeline") {
                 heading = "gallery.timeline.workflow";
+            } else if (entry.identity == "ant.component.avatar") {
+                heading = "gallery.avatar.members";
+            } else if (entry.identity == "ant.component.statistic") {
+                heading = "gallery.statistic.metrics";
+            } else if (entry.identity == "ant.component.rate") {
+                heading = "gallery.rate.service";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -4013,6 +4024,12 @@ void test_date_picker_gallery_after_document_scroll() {
                 heading = "gallery.notices.workflow";
             } else if (entry.identity == "ant.component.timeline") {
                 heading = "gallery.timeline.workflow";
+            } else if (entry.identity == "ant.component.avatar") {
+                heading = "gallery.avatar.members";
+            } else if (entry.identity == "ant.component.statistic") {
+                heading = "gallery.statistic.metrics";
+            } else if (entry.identity == "ant.component.rate") {
+                heading = "gallery.rate.service";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -6188,7 +6205,7 @@ void test_overlay_and_timeline_gallery_after_document_scroll() {
             action("gallery.notices.clear");
             require(!notice("project-review") && !notice("project-save") &&
                         !services.components().contains(*live_message) && !services.components().contains(*entry) &&
-                        !services.components().contains(editor.component) && f.inputs->mounted_inputs().size() == 153,
+                        !services.components().contains(editor.component) && f.inputs->mounted_inputs().size() == 156,
                     "Notice clear retained a transient entry/editor");
             navigate("Timeline", "ant.component.timeline", "gallery.timeline.workflow", timeline_owner);
             reveal(timeline_editor.component);
@@ -6218,6 +6235,862 @@ void test_overlay_and_timeline_gallery_after_document_scroll() {
             retained();
             std::cout << "Overlay/Timeline theme_step=" << theme_step << " viewport=" << width
                       << "x900 real catalog/glyph/hit/focus/keyed retention passed\n";
+        }
+    }
+}
+
+void configure_member_metric_fonts(Fixture& f) {
+    auto cache = std::make_shared<std::map<std::uint32_t, std::vector<ryn::font::FontIdentity>>>();
+    static_cast<void>(f.host->text().set_font_resolver([&f, cache](auto, auto, bool, std::uint32_t pixels) {
+        const auto found = cache->find(pixels);
+        if (found != cache->end()) {
+            return found->second;
+        }
+        const auto latin = f.fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, pixels);
+        const auto cjk = f.fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, pixels);
+        require(latin && cjk, "Member/metric size-aware validation fonts failed to load");
+        const auto fonts = std::vector<ryn::font::FontIdentity>{latin.font, cjk.font};
+        cache->emplace(pixels, fonts);
+        return fonts;
+    }));
+}
+
+void test_member_metric_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    std::cout << std::unitbuf;
+    auto definition = make_token_gallery_definition();
+    definition.set_motion_enabled(false);
+    Fixture f;
+    configure_member_metric_fonts(f);
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& s = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                "Member/metric finite layout failed");
+    };
+    definition.set_viewport_width(width);
+    sync();
+    const auto root = s.components().root(s.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    const auto node_bounds = [&](runtime::NodeId id) {
+        const auto& n = f.nodes.require(id);
+        return runtime::Rect{n.bounds.x + n.translation.x, n.bounds.y + n.translation.y, n.bounds.width,
+                             n.bounds.height};
+    };
+    const auto bounds = [&](runtime::ComponentId id) {
+        return node_bounds(s.components().root(id));
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId owner) {
+        for (auto id = std::optional{child}; id; id = s.components().parent(*id)) {
+            if (*id == owner) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text = [&](std::string_view prefix) {
+        std::optional<ryn::detail::MountedTextComponent> found;
+        for (const auto& t : s.text().mounted_texts()) {
+            if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
+                require(!found, "Member/metric text locator is ambiguous");
+                found = t;
+            }
+        }
+        if (!found) {
+            throw std::runtime_error("Member/metric text absent: " + std::string{prefix});
+        }
+        return *found;
+    };
+    const auto owner = [&](std::string_view heading) {
+        const auto p = s.components().parent(text(heading).component);
+        require(p.has_value(), "Member/metric sample owner absent");
+        return *p;
+    };
+    const auto members = owner("gallery.avatar.members");
+    const auto metrics = owner("gallery.statistic.metrics");
+    const auto ratings = owner("gallery.rate.service");
+    const auto owned = [&](auto ids, runtime::ComponentId region) {
+        std::optional<runtime::ComponentId> result;
+        for (auto id : ids) {
+            if (descendant(id, region)) {
+                require(!result, "Member/metric component locator is ambiguous");
+                result = id;
+            }
+        }
+        require(result.has_value(), "Member/metric owned component absent");
+        return *result;
+    };
+    const auto button = [&](std::string_view prefix, runtime::ComponentId region) {
+        std::optional<ryn::detail::MountedButtonComponent> result;
+        for (const auto& t : s.text().mounted_texts()) {
+            if (!descendant(t.component, region) ||
+                !f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
+                continue;
+            }
+            for (auto id = s.components().parent(t.component); id && *id != region; id = s.components().parent(*id)) {
+                for (const auto& b : f.host->mounted_buttons()) {
+                    if (b.component == *id) {
+                        require(!result, "Member/metric button locator is ambiguous");
+                        result = b;
+                    }
+                }
+            }
+        }
+        if (!result) {
+            throw std::runtime_error("Member/metric owned button absent: " + std::string{prefix});
+        }
+        return *result;
+    };
+    const auto editor = [&](runtime::ComponentId region) {
+        std::optional<ryn::detail::MountedInputComponent> result;
+        for (const auto& e : f.inputs->mounted_inputs()) {
+            if (descendant(e.component, region)) {
+                require(!result, "Member/metric editor locator is ambiguous");
+                result = e;
+            }
+        }
+        require(result.has_value(), "Member/metric owned Input absent");
+        return *result;
+    };
+    const auto member_editor = editor(members);
+    const auto metric_editor = editor(metrics);
+    const auto rating_editor = editor(ratings);
+    const auto group = owned(s.avatar().groups(), members);
+    const auto initial_group = s.avatar().group_snapshot(group);
+    runtime::ComponentId text_avatar;
+    runtime::ComponentId icon_avatar;
+    runtime::ComponentId rich_avatar;
+    for (auto id : s.avatar().mounted()) {
+        if (!descendant(id, members) || descendant(id, group)) {
+            continue;
+        }
+        if (descendant(member_editor.component, id)) {
+            rich_avatar = id;
+        } else if (s.avatar().snapshot(id).icon_visible) {
+            icon_avatar = id;
+        } else {
+            text_avatar = id;
+        }
+    }
+    require(text_avatar.valid() && icon_avatar.valid() && rich_avatar.valid(), "Member Avatar composition missing");
+    runtime::ComponentId number_stat;
+    runtime::ComponentId rich_stat;
+    for (auto id : s.statistic().mounted()) {
+        if (!descendant(id, metrics)) {
+            continue;
+        }
+        if (descendant(metric_editor.component, id)) {
+            rich_stat = id;
+        } else {
+            number_stat = id;
+        }
+    }
+    require(number_stat.valid() && rich_stat.valid(), "Metric Statistic composition missing");
+    const auto rate = owned(s.rate().mounted(), ratings);
+    runtime::ComponentId rich_tip;
+    for (auto id : s.tooltip().mounted()) {
+        if (descendant(rating_editor.component, id)) {
+            rich_tip = id;
+        }
+    }
+    require(rich_tip.valid(), "Rate rich native Tooltip absent");
+    const auto initial_number = s.statistic().snapshot(number_stat);
+    const auto initial_rich = s.statistic().snapshot(rich_stat);
+    const auto initial_rate = s.rate().snapshot(rate);
+    const auto initial_avatar = s.avatar().snapshot(text_avatar);
+    const auto initial_rich_avatar = s.avatar().snapshot(rich_avatar);
+    const auto telemetry = definition.telemetry();
+    const auto component_count = s.components().component_count();
+    GalleryDocumentViewport scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto layout = gallery_layout_metrics({width, 900});
+        const auto scroll_root = layout.narrow ? body : document;
+        if (layout.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        const auto translate = [&] {
+            require(scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "Member/metric document translation failed");
+            if (!layout.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "Member/metric sidebar translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto ref = std::ranges::find_if(surfaces, [&](const auto& item) {
+                return f.surfaces->snapshot(item.component).identity == entry.identity;
+            });
+            require(ref != surfaces.end(), "Member/metric lost existing catalog surface");
+            anchors.push_back(
+                gallery_component_navigation_anchor(entry.identity, ref->node, s.text(), f.nodes, scroll_root));
+        }
+        static_cast<void>(scroll.replace_component_anchors(anchors));
+        static_cast<void>(scroll.set_extents(layout.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(layout.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            require(request->kind == GalleryNavigationTargetKind::component, "Member/metric navigation kind differs");
+            static_cast<void>(scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    reconcile();
+    const auto reveal = [&](runtime::ComponentId id) {
+        if (!s.components().in_window_layer(id)) {
+            const auto scroll_root = gallery_layout_metrics({width, 900}).narrow ? body : document;
+            static_cast<void>(scroll.scroll_to(f.nodes.require(s.components().root(id)).bounds.y -
+                                               f.nodes.require(scroll_root).bounds.y - 160));
+        }
+        reconcile();
+    };
+    const auto within = [](runtime::Rect a, runtime::Rect b) {
+        return a.width <= 0 || a.height <= 0 ||
+               (a.x >= b.x - .02F && a.y >= b.y - .02F && a.x + a.width <= b.x + b.width + .02F &&
+                a.y + a.height <= b.y + b.height + .02F);
+    };
+    const auto glyphs = [&](auto scene, runtime::Rect allowed, bool window_layer = false) {
+        const auto range = f.text_scene.primitive(scene).instances;
+        std::size_t count{};
+        for (auto i = range.first; i < range.first + range.count; ++i) {
+            if (!std::ranges::any_of(s.scene_composer().ordered_scene().commands(), [i](const auto& c) {
+                    return c.kind == graphics::SceneDrawKind::glyph && i >= c.first_instance &&
+                           i - c.first_instance < c.instance_count;
+                })) {
+                continue;
+            }
+            const auto& g = f.text_scene.glyph_scene().instances().at(i);
+            const auto& p = g.position_size;
+            const auto& t = g.translation_opacity;
+            const auto& c = g.clip_bounds;
+            const auto painted = graphics::intersect_effect_bounds({p[0] + t[0], p[1] + t[1], p[2], p[3]},
+                                                                   {c[0], c[1], c[2] - c[0], c[3] - c[1]});
+            if (painted.width > 0 && painted.height > 0 && t[2] > 0 && g.color[3] > 0) {
+                const auto viewport =
+                    window_layer ? runtime::Rect{0, 0, width, 900} : runtime::Rect{16, 12, width - 32, 876};
+                if (!within(painted, allowed) || !within(painted, viewport)) {
+                    std::cerr << "Member/metric glyph content=" << f.text_scene.text_state(scene).content().bytes()
+                              << " painted=" << painted.x << ',' << painted.y << ',' << painted.width << ','
+                              << painted.height << " allowed=" << allowed.x << ',' << allowed.y << ',' << allowed.width
+                              << ',' << allowed.height << " window_layer=" << window_layer << '\n';
+                }
+                require(std::isfinite(painted.x) && std::isfinite(painted.y) && within(painted, allowed) &&
+                            within(painted, viewport),
+                        "Member/metric actual glyph escaped allocation/window clip");
+                ++count;
+            }
+        }
+        return count;
+    };
+    const auto region_glyphs = [&](runtime::ComponentId region, runtime::Rect allowed, bool window_layer = false) {
+        std::size_t count{};
+        for (const auto& t : s.text().mounted_texts()) {
+            if (descendant(t.component, region) && s.components().in_window_layer(t.component) == window_layer) {
+                count += glyphs(t.scene, allowed, window_layer);
+            }
+        }
+        return count;
+    };
+    const auto node_glyphs = [&](runtime::NodeId region, runtime::Rect allowed) {
+        std::size_t count{};
+        for (const auto& t : s.text().mounted_texts()) {
+            for (auto node = std::optional{s.components().root(t.component)}; node;
+                 node = f.nodes.require(*node).parent) {
+                if (*node == region) {
+                    count += glyphs(t.scene, allowed);
+                    break;
+                }
+            }
+        }
+        return count;
+    };
+    const auto pointer = [&](input::PointerAction action, runtime::Point p) {
+        require(p.x >= 0 && p.x < width && p.y >= 0 && p.y < 900, "Member/metric pointer outside finite window");
+        s.pointer().dispatch(pointer_event(action, p,
+                                           action == input::PointerAction::move ? input::PointerButton::none
+                                                                                : input::PointerButton::primary));
+    };
+    const auto click_at = [&](runtime::Point p) {
+        pointer(input::PointerAction::down, p);
+        pointer(input::PointerAction::up, p);
+        sync();
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto b = bounds(id);
+        require(b.width > 0 && b.height > 0, "Member/metric zero pointer target");
+        click_at({b.x + b.width / 2, b.y + b.height / 2});
+    };
+    const auto key = [&](input::Key k, input::KeyModifier mods = input::KeyModifier::none) {
+        s.focus().dispatch({k, input::KeyAction::down, mods});
+        s.focus().dispatch({k, input::KeyAction::up, mods});
+        sync();
+    };
+    const auto action = [&](std::string_view prefix, runtime::ComponentId region) {
+        const auto b = button(prefix, region);
+        reveal(b.component);
+        const auto r = bounds(b.component);
+        require(s.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) == b.interaction,
+                "Member/metric command lost actual topmost hit");
+        click(b.component);
+        reconcile();
+    };
+    const auto command_without_blur = [&](std::string_view prefix, runtime::ComponentId region) {
+        const auto b = button(prefix, region);
+        const auto handler = s.interactions().require(b.interaction).focus_handlers;
+        require(handler && handler->activate, "Member/metric supplemental no-blur command absent");
+        handler->activate();
+        reconcile();
+    };
+    const auto type = [&](const auto& e, String value) {
+        reveal(e.component);
+        click(e.component);
+        require(s.focus().state().focused == e.interaction && f.inputs->sessions().active().valid(),
+                "Member/metric native Input session absent");
+        key(input::Key::a, input::KeyModifier::control);
+        require(bool(f.inputs->dispatch(input::TextCommitted{value, f.inputs->sessions().active()})),
+                "Member/metric real text event failed");
+        sync();
+    };
+    const auto preedit = [&] {
+        require(
+            bool(f.inputs->dispatch(input::CompositionChanged{String{u8"候选"}, {}, f.inputs->sessions().active()})),
+            "Member/metric composition fixture failed");
+        sync();
+    };
+    const auto focus_edges = [&](runtime::Rect b) {
+        std::array<float, 4> edges{};
+        for (const auto& cmd : s.scene_composer().ordered_scene().commands()) {
+            if (cmd.kind != graphics::SceneDrawKind::rounded_effect) {
+                continue;
+            }
+            for (auto i = cmd.first_instance; i < cmd.first_instance + cmd.instance_count; ++i) {
+                const auto& effect = s.rounded_effects().packed_instances()[i];
+                const auto& g = effect.geometry;
+                const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                          g.shape.rect.width, g.shape.rect.height};
+                if (g.kind != graphics::RoundedEffectKind::outline || shape != b || !effect.material.visible) {
+                    continue;
+                }
+                const float offset = g.outline_offset + g.outline_width / 2;
+                const std::array<runtime::Point, 4> points{{{b.x - offset, b.y + b.height / 2},
+                                                            {b.x + b.width / 2, b.y - offset},
+                                                            {b.x + b.width + offset, b.y + b.height / 2},
+                                                            {b.x + b.width / 2, b.y + b.height + offset}}};
+                for (std::size_t j = 0; j < points.size(); ++j) {
+                    const auto p = points[j];
+                    if (!g.ancestor_clip || (p.x >= g.ancestor_clip->bounds.x && p.y >= g.ancestor_clip->bounds.y &&
+                                             p.x < g.ancestor_clip->bounds.x + g.ancestor_clip->bounds.width &&
+                                             p.y < g.ancestor_clip->bounds.y + g.ancestor_clip->bounds.height)) {
+                        edges[j] = std::max(edges[j], graphics::rounded_effect_coverage(p, effect) *
+                                                          effect.material.opacity * effect.material.color.alpha());
+                    }
+                }
+            }
+        }
+        if (!std::ranges::all_of(edges, [](float v) { return v > .8F; })) {
+            std::cerr << "Member/metric focus rect=" << b.x << ',' << b.y << ',' << b.width << ',' << b.height
+                      << " edges=" << edges[0] << ',' << edges[1] << ',' << edges[2] << ',' << edges[3] << '\n';
+        }
+        require(std::ranges::all_of(edges, [](float v) { return v > .8F; }),
+                "Member/metric actual keyboard focus lost an outward edge");
+    };
+    const auto fill = [&](runtime::Rect shape, runtime::Rect allowed, bool window_layer = false) {
+        bool painted = false;
+        for (const auto& cmd : s.scene_composer().ordered_scene().commands()) {
+            for (auto i = cmd.first_instance; i < cmd.first_instance + cmd.instance_count; ++i) {
+                if (cmd.kind == graphics::SceneDrawKind::quad) {
+                    const auto& q = s.surfaces().instances().at(i);
+                    const runtime::Rect rect{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1],
+                                             q.bounds[2], q.bounds[3]};
+                    painted |= rect == shape && q.opacity > 0 && q.color[3] > 0;
+                } else if (cmd.kind == graphics::SceneDrawKind::rounded_effect) {
+                    const auto& e = s.rounded_effects().packed_instances()[i];
+                    const auto& g = e.geometry;
+                    const runtime::Rect rect{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                             g.shape.rect.width, g.shape.rect.height};
+                    if (rect == shape && g.kind == graphics::RoundedEffectKind::outer_shadow && g.blur == 0 &&
+                        g.spread == 0 && e.material.visible && e.material.opacity > 0 && e.material.color.alpha() > 0) {
+                        const auto clipped =
+                            g.ancestor_clip ? graphics::intersect_effect_bounds(rect, g.ancestor_clip->bounds) : rect;
+                        require(within(clipped, allowed) &&
+                                    within(clipped, window_layer ? runtime::Rect{0, 0, width, 900}
+                                                                 : runtime::Rect{16, 12, width - 32, 876}),
+                                "Member/metric actual fill escaped allowed clip");
+                        painted |= clipped.width > 0 && clipped.height > 0 &&
+                                   graphics::rounded_effect_coverage(
+                                       {clipped.x + clipped.width / 2, clipped.y + clipped.height / 2}, e) > 0;
+                    }
+                }
+            }
+        }
+        require(painted, "Member/metric native surface has no actual published fill");
+    };
+    const auto input_focus_edges = [&](const auto& e) {
+        require(s.focus().state().focused == e.interaction && s.focus().state().focus_visible,
+                "Member/metric Input did not receive real keyboard focus");
+        const auto b = bounds(e.component);
+        const std::array<runtime::Point, 4> points{{{b.x - .5F, b.y + b.height / 2},
+                                                    {b.x + b.width / 2, b.y - .5F},
+                                                    {b.x + b.width + .5F, b.y + b.height / 2},
+                                                    {b.x + b.width / 2, b.y + b.height + .5F}}};
+        std::array<float, 4> edges{};
+        for (const auto& cmd : s.scene_composer().ordered_scene().commands()) {
+            if (cmd.kind != graphics::SceneDrawKind::rounded_effect) {
+                continue;
+            }
+            for (auto i = cmd.first_instance; i < cmd.first_instance + cmd.instance_count; ++i) {
+                const auto& effect = s.rounded_effects().packed_instances()[i];
+                const auto& g = effect.geometry;
+                const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                          g.shape.rect.width, g.shape.rect.height};
+                if (shape != b || g.kind != graphics::RoundedEffectKind::outer_shadow || !effect.material.visible) {
+                    continue;
+                }
+                for (std::size_t j = 0; j < points.size(); ++j) {
+                    const auto p = points[j];
+                    if (!g.ancestor_clip || (p.x >= g.ancestor_clip->bounds.x && p.y >= g.ancestor_clip->bounds.y &&
+                                             p.x < g.ancestor_clip->bounds.x + g.ancestor_clip->bounds.width &&
+                                             p.y < g.ancestor_clip->bounds.y + g.ancestor_clip->bounds.height)) {
+                        edges[j] = std::max(edges[j], graphics::rounded_effect_coverage(p, effect) *
+                                                          effect.material.opacity * effect.material.color.alpha());
+                    }
+                }
+            }
+        }
+        require(std::ranges::all_of(edges, [](float v) { return v > .001F; }),
+                "Member/metric native outlined Input lost a focus shadow edge");
+    };
+    const auto navigate = [&](std::string_view caption, std::string_view identity, std::string_view heading,
+                              runtime::ComponentId region) {
+        std::optional<runtime::ComponentId> nav_owner;
+        const auto find_owner = [&](auto&& self, runtime::ComponentId id) -> void {
+            if (s.components().root(id) == navigation_root) {
+                nav_owner = id;
+                return;
+            }
+            for (auto child : s.components().children(id)) {
+                self(self, child);
+            }
+        };
+        for (auto id : s.components().root_components()) {
+            find_owner(find_owner, id);
+        }
+        require(nav_owner.has_value(), "Member/metric navigation component owner absent");
+        const auto b = button(caption, *nav_owner);
+        auto ancestor = f.nodes.require(b.node).parent;
+        while (ancestor && *ancestor != navigation_root) {
+            ancestor = f.nodes.require(*ancestor).parent;
+        }
+        require(ancestor.has_value(), "Member/metric catalog locator left sidebar owner");
+        const auto layout = gallery_layout_metrics({width, 900});
+        const auto scroll_root = layout.narrow ? body : navigation_root;
+        const auto offset = f.nodes.require(b.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (layout.narrow) {
+            static_cast<void>(scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        require(within(bounds(b.component), layout.navigation_lane) &&
+                    region_glyphs(b.component, bounds(b.component)) > 0,
+                "Member/metric catalog actual glyph missing");
+        require(!definition.take_navigation_request(), "Member/metric stale navigation request");
+        click(b.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == GalleryNavigationTargetKind::component &&
+                    request->component_identity == identity,
+                "Member/metric real catalog requested a foreign sample");
+        reconcile(request);
+        const auto actual_root = layout.narrow ? body : document;
+        const auto target_node = s.components().root(text(heading).component);
+        const auto anchor = gallery_component_navigation_anchor(identity, b.node, s.text(), f.nodes, actual_root);
+        require(
+            near(anchor.offset, f.nodes.require(target_node).bounds.y - f.nodes.require(actual_root).bounds.y, .02F) &&
+                glyphs(text(heading).scene, bounds(region)) > 0,
+            "Member/metric production anchor missed actual sample heading");
+    };
+    const auto feedback = [&](std::string_view prefix, std::string_view expected) {
+        require(f.text_scene.text_state(text(prefix).scene).content().bytes().find(expected) != std::string_view::npos,
+                "Member/metric business feedback differs from accepted authority/draft");
+    };
+    const auto retained = [&] {
+        const auto g = s.avatar().group_snapshot(group);
+        require(g.popover == initial_group.popover && g.overflow == initial_group.overflow &&
+                    g.items.size() == initial_group.items.size(),
+                "Member Group replaced retained regions");
+        for (std::size_t i = 0; i < g.items.size(); ++i) {
+            require(g.items[i].key == initial_group.items[i].key &&
+                        g.items[i].inline_avatar == initial_group.items[i].inline_avatar &&
+                        g.items[i].overflow_avatar == initial_group.items[i].overflow_avatar,
+                    "Member Group replaced a full generation identity");
+        }
+        for (const auto& e : {member_editor, metric_editor, rating_editor}) {
+            const auto current = editor(e.component);
+            require(current.component == e.component && current.editor == e.editor &&
+                        current.interaction == e.interaction,
+                    "Member/metric editor generation identity changed");
+        }
+        const auto n = s.statistic().snapshot(number_stat);
+        const auto r = s.statistic().snapshot(rich_stat);
+        require(n.value == initial_number.value && n.title == initial_number.title &&
+                    n.content == initial_number.content && n.skeleton == initial_number.skeleton &&
+                    r.value == initial_rich.value && r.content == initial_rich.content &&
+                    r.skeleton == initial_rich.skeleton,
+                "Metric configuration replaced retained slots");
+        const auto rating = s.rate().snapshot(rate);
+        require(rating.focus == initial_rate.focus && rating.items.size() == initial_rate.items.size(),
+                "Rate replaced root focus/items");
+        for (std::size_t i = 0; i < rating.items.size(); ++i) {
+            require(rating.items[i].component == initial_rate.items[i].component &&
+                        rating.items[i].node == initial_rate.items[i].node &&
+                        rating.items[i].foreground == initial_rate.items[i].foreground &&
+                        rating.items[i].background == initial_rate.items[i].background &&
+                        rating.items[i].interaction == initial_rate.items[i].interaction,
+                    "Rate item generation changed");
+        }
+        require(s.avatar().snapshot(text_avatar).content == initial_avatar.content &&
+                    s.avatar().snapshot(rich_avatar).content == initial_rich_avatar.content &&
+                    s.components().component_count() == component_count &&
+                    definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "Member/metric ordinary update rebuilt unrelated content");
+    };
+    const auto rate_click = [&](std::size_t index, float fraction) {
+        reveal(rate);
+        const auto item = s.rate().snapshot(rate).items.at(index);
+        const auto b = node_bounds(item.node);
+        const runtime::Point p{b.x + b.width * fraction, b.y + b.height / 2};
+        require(s.hit_test().hit_test(p) == item.interaction, "Rate star lost real topmost half hit");
+        click_at(p);
+    };
+    std::int64_t pointer_time{};
+    const auto show_rich_tip = [&] {
+        reveal(rate);
+        const auto item = s.rate().snapshot(rate).items.back();
+        const auto b = node_bounds(item.node);
+        const runtime::Point start{b.x + b.width * .75F, b.y + b.height / 2};
+        pointer(input::PointerAction::move, start);
+        sync();
+        const auto tip = s.tooltip().snapshot(rich_tip);
+        require(tip.visible && within(tip.bounds, {0, 0, width, 900}), "Rate hover did not open finite rich Tooltip");
+        const auto target = bounds(rating_editor.component);
+        const runtime::Point end{target.x + target.width / 2, target.y + target.height / 2};
+        const auto steps = static_cast<int>(std::ceil(std::max(std::abs(end.x - start.x), std::abs(end.y - start.y))));
+        bool crossed_gap = false;
+        for (int i = 1; i <= steps; ++i) {
+            const auto part = static_cast<float>(i) / steps;
+            const runtime::Point p{start.x + (end.x - start.x) * part, start.y + (end.y - start.y) * part};
+            pointer_time += 1000;
+            static_cast<void>(s.tick_animations(animation::AnimationTime::microseconds(pointer_time)));
+            pointer(input::PointerAction::move, p);
+            sync();
+            crossed_gap |= !within({p.x, p.y, .01F, .01F}, b) && !within({p.x, p.y, .01F, .01F}, tip.bounds);
+            require(s.tooltip().snapshot(rich_tip).visible,
+                    "Rate continuous pointer path closed across actual popup gap");
+        }
+        require(crossed_gap && s.hit_test().hit_test(end) == rating_editor.interaction,
+                "Rate continuous popup path did not reach native Input through gap");
+        click_at(end);
+        require(s.focus().state().focused == rating_editor.interaction && f.inputs->sessions().active().valid(),
+                "Rate rich Input did not receive real focus/session");
+    };
+
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        definition.set_motion_enabled(false);
+        for (const float viewport_width : {1200.0F, 560.0F}) {
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            std::cout << "Member/metric begin theme_step=" << theme_step << " viewport=" << width << "x900\n";
+            navigate("Avatar", "ant.component.avatar", "gallery.avatar.members", members);
+            action("gallery.avatar.restore", members);
+            type(member_editor, u8"WWWWWW");
+            reveal(text_avatar);
+            const auto wide = s.avatar().snapshot(text_avatar);
+            require(wide.natural_text_width > wide.viewport.width && wide.font_size < 14 &&
+                        region_glyphs(wide.content, bounds(wide.content)) > 0,
+                    "Member Avatar did not measure/shrink actual native text");
+            fill(bounds(text_avatar), bounds(members));
+            type(member_editor, u8"iiiiii");
+            reveal(text_avatar);
+            const auto narrow = s.avatar().snapshot(text_avatar);
+            if (!(narrow.natural_text_width < wide.natural_text_width && narrow.font_size > wide.font_size)) {
+                std::cerr << "Avatar measured wide=" << wide.natural_text_width << " font=" << wide.font_size
+                          << " viewport=" << wide.viewport.width << ',' << wide.viewport.height
+                          << " narrow=" << narrow.natural_text_width << " font=" << narrow.font_size
+                          << " viewport=" << narrow.viewport.width << ',' << narrow.viewport.height
+                          << " native_input=" << f.inputs->editors().require(member_editor.editor).value() << '\n';
+            }
+            require(narrow.natural_text_width < wide.natural_text_width && narrow.font_size > wide.font_size,
+                    "Member Avatar auto-fit ignored real glyph measurements");
+            action("gallery.avatar.icon", members);
+            require(!s.avatar().snapshot(text_avatar).visible && s.avatar().snapshot(icon_avatar).visible,
+                    "Avatar icon switch failed");
+            reveal(icon_avatar);
+            require(
+                region_glyphs(s.avatar().snapshot(icon_avatar).icon, bounds(s.avatar().snapshot(icon_avatar).icon)) > 0,
+                "Avatar actual native icon glyph absent");
+            action("gallery.avatar.shape", members);
+            action("gallery.avatar.size", members);
+            reveal(icon_avatar);
+            require(near(bounds(icon_avatar).width,
+                         s.components().theme_scope(icon_avatar)->snapshot().avatar().metrics.container_size_small),
+                    "Avatar native small size differs from active Theme token");
+            action("gallery.avatar.size", members);
+            action("gallery.avatar.shape", members);
+            action("gallery.avatar.icon", members);
+            action("gallery.avatar.limit", members);
+            require(s.avatar().group_snapshot(group).overflow_count == 128, "Member Group max.count=0 differs");
+            action("gallery.avatar.limit", members);
+            require(s.avatar().group_snapshot(group).overflow_count == 126, "Member Group max.count=2 differs");
+            reveal(group);
+            click(initial_group.overflow);
+            require(s.popover().snapshot(initial_group.popover).geometry.visible,
+                    "Group actual overflow trigger failed");
+            const auto popup_start = bounds(s.popover().snapshot(initial_group.popover).content);
+            static_cast<void>(s.dispatch_scroll(
+                {0, 1024, popup_start.x + popup_start.width / 2, popup_start.y + popup_start.height / 2}));
+            sync();
+            std::vector<bool> seen(128, false);
+            bool scrolled = false;
+            for (int step = 0; step < 48; ++step) {
+                const auto p = s.popover().snapshot(initial_group.popover);
+                require(p.geometry.visible && within(p.geometry.bounds, {0, 0, width, 900}),
+                        "Group overflow escaped finite window");
+                const auto clip = bounds(p.content);
+                const auto current = s.avatar().group_snapshot(group);
+                for (std::size_t i = 2; i < current.items.size(); ++i) {
+                    const auto a = s.avatar().snapshot(current.items[i].overflow_avatar);
+                    if (region_glyphs(a.content, clip, true) > 0) {
+                        seen[i] = true;
+                    }
+                }
+                const auto before = bounds(current.items.back().overflow_avatar).y;
+                if (std::ranges::all_of(seen.begin() + 2, seen.end(), [](bool v) { return v; })) {
+                    break;
+                }
+                require(s.dispatch_scroll({0, -6, clip.x + clip.width / 2, clip.y + clip.height / 2}),
+                        "Group actual overflow wheel was not owned by popup");
+                sync();
+                scrolled |= bounds(current.items.back().overflow_avatar).y != before;
+            }
+            require(scrolled && std::ranges::all_of(seen.begin() + 2, seen.end(), [](bool v) { return v; }),
+                    "Group scrolling did not reveal all 126 actual hidden member glyphs");
+            key(input::Key::escape);
+            require(!s.popover().snapshot(initial_group.popover).geometry.visible, "Group native Escape failed");
+            require(f.inputs->editors().require(member_editor.editor).value() == "iiiiii",
+                    "Group close lost the member editor draft");
+            type(member_editor, u8"Retained member");
+            key(input::Key::tab);
+            const auto member_save = button("保存成员", initial_rich_avatar.content);
+            require(s.focus().state().focused == member_save.interaction, "Avatar content native Tab lost save Button");
+            focus_edges(bounds(member_save.component));
+            fill(bounds(member_save.component), bounds(initial_rich_avatar.content));
+            key(input::Key::tab, input::KeyModifier::shift);
+            input_focus_edges(member_editor);
+            key(input::Key::tab);
+            key(input::Key::enter);
+            feedback("gallery.avatar.feedback", "Retained member");
+            type(member_editor, u8"Retained member");
+            preedit();
+            command_without_blur("gallery.avatar.visible", members);
+            require(!s.components().branch_active(member_editor.component) &&
+                        !f.inputs->editors().require(member_editor.editor).composition().active &&
+                        !f.inputs->sessions().active().valid() &&
+                        glyphs(f.inputs->text_layers(member_editor.component).base,
+                               bounds(initial_rich_avatar.content)) == 0,
+                    "Hidden Avatar retained active editor/preedit/glyphs");
+            action("gallery.avatar.restore", members);
+            require(s.focus().state().focused == member_editor.interaction &&
+                        f.inputs->editors().require(member_editor.editor).value() == "Retained member",
+                    "Avatar public ref restoration lost draft/focus");
+            std::cout << "Member flow passed\n";
+
+            navigate("Statistic", "ant.component.statistic", "gallery.statistic.metrics", metrics);
+            const auto number = [&](std::string_view expected) {
+                reveal(number_stat);
+                require(s.statistic().snapshot(number_stat).formatted_value.bytes() == expected &&
+                            region_glyphs(initial_number.value, bounds(initial_number.value)) > 0,
+                        "Statistic actual core display/format differs");
+            };
+            number("-1,234.12");
+            action("gallery.statistic.precision", metrics);
+            number("-1,234.12345678");
+            action("gallery.statistic.separators", metrics);
+            number("-1 234,12345678");
+            action("gallery.statistic.formatter", metrics);
+            number("原值:-1234.123456789");
+            feedback("gallery.statistic.feedback", "原值=-1234.123456789");
+            action("gallery.statistic.formatter", metrics);
+            action("gallery.statistic.separators", metrics);
+            action("gallery.statistic.value", metrics);
+            number("1.00000040");
+            feedback("gallery.statistic.feedback", "原值=1.0000004");
+            action("gallery.statistic.value", metrics);
+            number("18,446,744,073,709,551,615.00000000");
+            feedback("gallery.statistic.feedback", "原值=18446744073709551615");
+            action("gallery.statistic.value", metrics);
+            number("-1,234,567.00000000");
+            action("gallery.statistic.value", metrics);
+            action("gallery.statistic.precision", metrics);
+            number("-1,234.123456789");
+            action("gallery.statistic.precision", metrics);
+            number("-1,234.12");
+            type(metric_editor, u8"Retained metric");
+            key(input::Key::tab);
+            const auto metric_save = button("保存指标备注", initial_rich.value);
+            require(s.focus().state().focused == metric_save.interaction, "Statistic rich value native Tab failed");
+            focus_edges(bounds(metric_save.component));
+            fill(bounds(metric_save.component), bounds(initial_rich.value));
+            key(input::Key::tab, input::KeyModifier::shift);
+            input_focus_edges(metric_editor);
+            key(input::Key::tab);
+            key(input::Key::enter);
+            feedback("gallery.statistic.feedback", "Retained metric");
+            type(metric_editor, u8"Retained metric");
+            preedit();
+            command_without_blur("gallery.statistic.loading", metrics);
+            require(s.statistic().snapshot(rich_stat).loading &&
+                        !f.inputs->editors().require(metric_editor.editor).composition().active &&
+                        !f.inputs->sessions().active().valid() &&
+                        glyphs(f.inputs->text_layers(metric_editor.component).base, bounds(initial_rich.value)) == 0,
+                    "Statistic loading retained real input/preedit/glyphs");
+            reveal(rich_stat);
+            const auto loading_bounds = bounds(metric_editor.component);
+            require(s.hit_test().hit_test({loading_bounds.x + loading_bounds.width / 2,
+                                           loading_bounds.y + loading_bounds.height / 2}) != metric_editor.interaction,
+                    "Statistic loading left native Input hittable");
+            action("gallery.statistic.restore", metrics);
+            require(s.focus().state().focused == metric_editor.interaction &&
+                        f.inputs->editors().require(metric_editor.editor).value() == "Retained metric" &&
+                        !f.inputs->editors().require(metric_editor.editor).composition().active,
+                    "Statistic public ref recovery lost draft or revived preedit");
+            key(input::Key::tab, input::KeyModifier::shift);
+            key(input::Key::tab);
+            std::cout << "Metric flow passed\n";
+
+            navigate("Rate", "ant.component.rate", "gallery.rate.service", ratings);
+            action("gallery.rate.restore", ratings);
+            rate_click(2, .25F);
+            if (s.rate().snapshot(rate).value == 0) {
+                rate_click(2, .25F);
+            }
+            require(s.rate().snapshot(rate).value == 2.5F, "Rate actual left half accepted value differs");
+            feedback("gallery.rate.feedback", "已接受=2.5");
+            reveal(rate);
+            const auto half = s.rate().snapshot(rate).items[2];
+            const auto half_node = node_bounds(half.foreground);
+            require(near(half_node.width, node_bounds(half.node).width / 2),
+                    "Rate accepted half foreground clip differs");
+            require(node_glyphs(half.foreground, half_node) > 0 &&
+                        node_glyphs(s.rate().snapshot(rate).items[3].foreground,
+                                    node_bounds(s.rate().snapshot(rate).items[3].foreground)) == 0 &&
+                        region_glyphs(rate, bounds(rate)) > 0,
+                    "Rate actual accepted half/empty foreground glyphs differ");
+            rate_click(2, .25F);
+            require(s.rate().snapshot(rate).value == 0, "Rate actual repeated half did not clear");
+            feedback("gallery.rate.feedback", "已接受=0");
+            key(input::Key::right);
+            require(s.rate().snapshot(rate).value == .5F, "Rate native Right failed");
+            key(input::Key::left);
+            require(s.rate().snapshot(rate).value == 0, "Rate native Left failed");
+            key(input::Key::end);
+            require(s.rate().snapshot(rate).value == 5, "Rate native End failed");
+            focus_edges(node_bounds(s.rate().snapshot(rate).items.back().node));
+            key(input::Key::space);
+            require(s.rate().snapshot(rate).value == 0, "Rate native Space did not clear");
+            key(input::Key::end);
+            key(input::Key::home);
+            require(s.rate().snapshot(rate).value == 0, "Rate native Home failed from a nonzero value");
+            key(input::Key::end);
+            key(input::Key::enter);
+            require(s.rate().snapshot(rate).value == 0, "Rate native Enter did not clear");
+            action("gallery.rate.authority", ratings);
+            rate_click(3, .75F);
+            require(s.rate().snapshot(rate).value == 0 && !s.rate().snapshot(rate).hover,
+                    "Rate rejection left false accepted/hover display");
+            feedback("gallery.rate.feedback", "已接受=0");
+            feedback("gallery.rate.feedback", "已拒绝候选=4");
+            action("gallery.rate.authority", ratings);
+            rate_click(3, .75F);
+            require(s.rate().snapshot(rate).value == 4, "Rate restored accepted write-back failed");
+            action("gallery.rate.disabled", ratings);
+            reveal(rate);
+            const auto disabled_item = node_bounds(s.rate().snapshot(rate).items[0].node);
+            click_at({disabled_item.x + disabled_item.width / 2, disabled_item.y + disabled_item.height / 2});
+            key(input::Key::home);
+            require(s.rate().snapshot(rate).value == 4, "Disabled Rate accepted native edits");
+            feedback("gallery.rate.feedback", "已接受=4");
+            action("gallery.rate.restore", ratings);
+            action("gallery.rate.readonly", ratings);
+            reveal(rate);
+            const auto readonly_item = node_bounds(s.rate().snapshot(rate).items[0].node);
+            click_at({readonly_item.x + readonly_item.width / 2, readonly_item.y + readonly_item.height / 2});
+            key(input::Key::home);
+            require(s.rate().snapshot(rate).value == 4, "ReadOnly Rate accepted native edits");
+            show_rich_tip();
+            require(glyphs(f.inputs->text_layers(rating_editor.component).base, bounds(rating_editor.component), true) >
+                        0,
+                    "Rate Tooltip native Input glyph missing");
+            type(rating_editor, u8"Retained rating");
+            key(input::Key::tab);
+            const auto rating_save = button("保存服务评价", ratings);
+            require(s.focus().state().focused == rating_save.interaction,
+                    "Rate Tooltip real Tab did not reach save Button");
+            focus_edges(bounds(rating_save.component));
+            fill(bounds(rating_save.component), s.tooltip().snapshot(rich_tip).bounds, true);
+            key(input::Key::tab, input::KeyModifier::shift);
+            input_focus_edges(rating_editor);
+            key(input::Key::tab);
+            key(input::Key::enter);
+            feedback("gallery.rate.feedback", "Retained rating");
+            type(rating_editor, u8"Retained rating");
+            preedit();
+            command_without_blur("gallery.rate.visible", ratings);
+            require(!s.tooltip().snapshot(rich_tip).visible && !f.inputs->sessions().active().valid() &&
+                        !f.inputs->editors().require(rating_editor.editor).composition().active &&
+                        glyphs(f.inputs->text_layers(rating_editor.component).base, bounds(rating_editor.component),
+                               true) == 0,
+                    "Hidden Rate retained Tooltip/input/preedit/glyphs");
+            action("gallery.rate.restore", ratings);
+            require(!s.tooltip().snapshot(rich_tip).visible &&
+                        f.inputs->editors().require(rating_editor.editor).value() == "Retained rating",
+                    "Rate recovery lost draft or resurrected popup");
+            rate_click(4, .75F);
+            key(input::Key::end);
+            key(input::Key::tab);
+            require(s.focus().state().focused == rating_editor.interaction && s.tooltip().snapshot(rich_tip).visible,
+                    "Rate native keyboard did not enter rich Tooltip Input");
+            key(input::Key::tab);
+            key(input::Key::tab, input::KeyModifier::shift);
+            require(s.focus().state().focused == rating_editor.interaction, "Rate rich Input reverse Tab failed");
+            key(input::Key::escape);
+            action("gallery.rate.restore", ratings);
+            pointer(input::PointerAction::move, {width - 20, 880});
+            pointer_time += 200000;
+            static_cast<void>(s.tick_animations(animation::AnimationTime::microseconds(pointer_time)));
+            sync();
+            require(!s.tooltip().snapshot(rich_tip).visible && !s.rate().next_auxiliary_deadline(),
+                    "Rate native pointer/focus exit retained Tooltip after leave grace");
+            retained();
+            std::cout << "Member/metric theme_step=" << theme_step << " viewport=" << width
+                      << "x900 real catalog/events/126 overflow members/glyph/fill/hit/four-edge focus/full-generation "
+                         "retention passed\n";
         }
     }
 }
@@ -6255,17 +7128,33 @@ void print_gallery_inventory() {
               << " skeletons=" << f.host->services().skeleton().mounted().size()
               << " popovers=" << f.host->services().popover().mounted().size()
               << " notice_holders=" << f.host->services().notices().holders().size()
-              << " timelines=" << f.host->services().timeline().mounted().size() << '\n';
+              << " timelines=" << f.host->services().timeline().mounted().size()
+              << " avatars=" << f.host->services().avatar().mounted().size()
+              << " avatar_groups=" << f.host->services().avatar().groups().size()
+              << " statistics=" << f.host->services().statistic().mounted().size()
+              << " rates=" << f.host->services().rate().mounted().size() << '\n';
     require(
-        definition.stable_test_ids.size() == 390 && definition.navigation_control_count == 93 &&
-            f.host->mounted_buttons().size() == 389 && f.host->interactions().size() == 1439 &&
-            f.host->scene_composer().interaction_order().size() == 693 && telemetry.live_samples == 295 &&
-            telemetry.theme_content_runs == 67 && f.inputs->mounted_inputs().size() == 153 &&
+        definition.stable_test_ids.size() == 419 && definition.navigation_control_count == 93 &&
+            f.host->mounted_buttons().size() == 409 && f.host->interactions().size() == 1480 &&
+            f.host->scene_composer().interaction_order().size() == 726 && telemetry.live_samples == 302 &&
+            telemetry.theme_content_runs == 68 && f.inputs->mounted_inputs().size() == 156 &&
             f.host->services().select().mounted().size() == 24 && f.selections->mounted().size() == 47 &&
             f.host->services().descriptions().mounted().size() == 1 &&
-            f.host->services().skeleton().mounted().size() == 4 && f.host->services().popover().mounted().size() == 1 &&
-            f.host->services().notices().holders().size() == 2 && f.host->services().timeline().mounted().size() == 1,
-        "Overlay/Timeline exact Gallery inventory drifted");
+            f.host->services().skeleton().mounted().size() == 6 && f.host->services().popover().mounted().size() == 2 &&
+            f.host->services().notices().holders().size() == 2 && f.host->services().timeline().mounted().size() == 1 &&
+            f.host->services().modal().mounted().size() == 13 && f.host->services().menu().mounted().size() == 2 &&
+            f.host->services().dropdown().mounted().size() == 1 &&
+            f.host->services().collapse().mounted().size() == 1 &&
+            f.host->services().segmented().mounted().size() == 3 &&
+            f.host->services().empty_result().empties().size() == 3 &&
+            f.host->services().empty_result().results().size() == 3 &&
+            f.host->services().form().mounted().size() == 3 && f.host->services().form().items().size() == 6 &&
+            f.host->services().date_picker().mounted().size() == 2 &&
+            f.host->services().time_picker().mounted().size() == 2 &&
+            f.host->services().breadcrumb().mounted().size() == 2 && f.host->services().steps().mounted().size() == 1 &&
+            f.host->services().avatar().mounted().size() == 260 && f.host->services().avatar().groups().size() == 1 &&
+            f.host->services().statistic().mounted().size() == 2 && f.host->services().rate().mounted().size() == 1,
+        "Member/metric exact Gallery inventory drifted");
 }
 } // namespace
 
@@ -6273,6 +7162,10 @@ int main(int argc, char** argv) {
     try {
         if (argc == 2 && std::string_view{argv[1]} == "--inventory-only") {
             print_gallery_inventory();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--members-metrics-only") {
+            test_member_metric_gallery_after_document_scroll();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--overlays-timeline-only") {
@@ -6345,6 +7238,7 @@ int main(int argc, char** argv) {
         test_empty_and_result_gallery_after_document_scroll();
         test_details_loading_gallery_after_document_scroll();
         test_overlay_and_timeline_gallery_after_document_scroll();
+        test_member_metric_gallery_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -240,6 +240,32 @@ struct GalleryState final {
     ryn::Signal<ryn::String> timeline_draft{ryn::String{u8"记录发布后的跟进事项"}};
     ryn::Signal<ryn::String> timeline_feedback{ryn::String{u8"编辑并保存处理备注"}};
     ryn::InputRef timeline_ref;
+    ryn::Signal<ryn::String> member_name{ryn::String{u8"江"}};
+    ryn::Signal<bool> member_icon{false};
+    ryn::Signal<bool> members_visible{true};
+    ryn::Signal<ryn::AvatarShape> member_shape{ryn::AvatarShape::Circle};
+    ryn::Signal<ryn::AvatarSizeValue> member_size{ryn::AvatarSizeValue{ryn::AvatarSize::Large}};
+    ryn::Signal<std::uint32_t> member_limit{2};
+    ryn::InputRef member_ref;
+    ryn::Signal<ryn::String> member_feedback{ryn::String{u8"编辑成员名，打开 +N 浏览全部成员"}};
+    ryn::Signal<ryn::StatisticValue> metric_value{ryn::StatisticValue{u8"-1234.123456789"}};
+    std::size_t metric_step{};
+    ryn::Signal<std::optional<int>> metric_precision{std::optional{2}};
+    ryn::Signal<bool> metric_separators{false};
+    ryn::Signal<bool> metric_formatter{false};
+    ryn::Signal<bool> metric_loading{false};
+    ryn::Signal<ryn::String> metric_note{ryn::String{u8"核对本期指标"}};
+    ryn::Signal<ryn::String> metric_feedback{ryn::String{u8"尚未保存备注"}};
+    ryn::InputRef metric_ref;
+    ryn::Signal<float> rating{2.5F};
+    ryn::Signal<bool> rating_accept{true};
+    ryn::Signal<bool> rating_disabled{false};
+    ryn::Signal<bool> rating_read_only{false};
+    ryn::Signal<bool> rating_visible{true};
+    ryn::Signal<ryn::String> rating_request{ryn::String{u8"尚未提交"}};
+    ryn::Signal<ryn::String> rating_note{ryn::String{u8"补充服务评价"}};
+    ryn::Signal<ryn::String> rating_feedback{ryn::String{u8"尚未保存评价"}};
+    ryn::InputRef rating_ref;
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -687,6 +713,35 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.timeline.loading",
     "gallery.timeline.visible",
     "gallery.timeline.focus",
+    "gallery.avatar.members",
+    "gallery.avatar.feedback",
+    "gallery.avatar.name",
+    "gallery.avatar.save",
+    "gallery.avatar.icon",
+    "gallery.avatar.shape",
+    "gallery.avatar.size",
+    "gallery.avatar.limit",
+    "gallery.avatar.visible",
+    "gallery.avatar.restore",
+    "gallery.statistic.metrics",
+    "gallery.statistic.feedback",
+    "gallery.statistic.value",
+    "gallery.statistic.precision",
+    "gallery.statistic.separators",
+    "gallery.statistic.formatter",
+    "gallery.statistic.loading",
+    "gallery.statistic.draft",
+    "gallery.statistic.save",
+    "gallery.statistic.restore",
+    "gallery.rate.service",
+    "gallery.rate.feedback",
+    "gallery.rate.authority",
+    "gallery.rate.disabled",
+    "gallery.rate.readonly",
+    "gallery.rate.visible",
+    "gallery.rate.restore",
+    "gallery.rate.draft",
+    "gallery.rate.save",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -4249,6 +4304,336 @@ void add_timeline_samples(const std::shared_ptr<GalleryState>& state) {
          }});
     ++state->telemetry.live_samples;
 }
+
+ryn::LayoutStyle member_control_margin() {
+    return ryn::LayoutStyle{}
+        .margin_left(ryn::dp(6))
+        .margin_right(ryn::dp(6))
+        .margin_top(ryn::dp(6))
+        .margin_bottom(ryn::dp(6));
+}
+
+ryn::String metric_raw_value(const ryn::StatisticValue& value) {
+    return std::visit(
+        [](const auto& item) -> ryn::String {
+            if constexpr (std::same_as<std::decay_t<decltype(item)>, ryn::String>) {
+                return item;
+            } else {
+                std::array<char, 64> buffer{};
+                const auto result = std::to_chars(buffer.data(), buffer.data() + buffer.size(), item);
+                if (result.ec != std::errc{}) {
+                    throw std::runtime_error("Gallery business value formatting failed");
+                }
+                return utf8(std::string_view{buffer.data(), static_cast<std::size_t>(result.ptr - buffer.data())});
+            }
+        },
+        value.storage());
+}
+
+void add_member_avatar_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.avatar.members · Avatar · 成员头像")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.avatar.feedback · " + std::string{state->member_feedback.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Space(SpaceProps{}.wrap(true).size(dp(12)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Avatar(AvatarProps{}
+                                  .text(state->member_name)
+                                  .size(state->member_size)
+                                  .shape(state->member_shape)
+                                  .visible(bind(
+                                      [state] { return state->members_visible.get() && !state->member_icon.get(); })));
+                       Avatar(AvatarProps{}.size(state->member_size).shape(state->member_shape).visible(bind([state] {
+                           return state->members_visible.get() && state->member_icon.get();
+                       })),
+                              {.icon = AvatarIcon{[] { Icon(IconProps{}.name(IconName::UserOutlined)); }}});
+                       std::vector<AvatarGroupItem> members;
+                       for (int i = 1; i <= 128; ++i) {
+                           const auto name = utf8("M" + std::to_string(i));
+                           members.emplace_back(name, i == 1 ? Prop<String>{state->member_name} : Prop<String>{name});
+                       }
+                       ThemeConfig member_popup;
+                       member_popup.popover.tokens.max_width = dp(240);
+                       Theme(ThemeProps{}.config(member_popup), ThemeContent{[state, members = std::move(members)] {
+                                 ++state->telemetry.theme_content_runs;
+                                 AvatarGroup(AvatarGroupProps{}
+                                                 .size(AvatarSize::Large)
+                                                 .shape(state->member_shape)
+                                                 .visible(state->members_visible)
+                                                 .max(bind([state] {
+                                                     return AvatarGroupMax{state->member_limit.get(),
+                                                                           PopoverTriggerMode::Click,
+                                                                           PopoverPlacement::Bottom};
+                                                 })),
+                                             members);
+                             }});
+                   }});
+             Avatar(AvatarProps{}.size(240.0F).shape(AvatarShape::Square).visible(state->members_visible),
+                    {.content = AvatarContent{[state] {
+                         Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), FlexContent{[state] {
+                                  Input(InputProps{}
+                                            .defaultValue(u8"江")
+                                            .placeholder(u8"gallery.avatar.name")
+                                            .ref(state->member_ref)
+                                            .onChange([state](String value) { state->member_name.set(value); })
+                                            .layout(member_control_margin().width(dp(160))));
+                                  Button(ButtonProps{}
+                                             .onClick([state] {
+                                                 state->member_feedback.set(utf8(
+                                                     "已保存成员 " + std::string{state->member_name.get().bytes()}));
+                                             })
+                                             .layout(member_control_margin()),
+                                         [] { Text(u8"保存成员"); });
+                              }});
+                     }}});
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->member_icon.set(!state->member_icon.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.avatar.icon · 文字/图标"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      state->member_shape.set(state->member_shape.get() == AvatarShape::Circle
+                                                                  ? AvatarShape::Square
+                                                                  : AvatarShape::Circle);
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.avatar.shape · 圆形/方形"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      state->member_size.set(state->member_size.get() ==
+                                                                     AvatarSizeValue{AvatarSize::Large}
+                                                                 ? AvatarSizeValue{AvatarSize::Small}
+                                                                 : AvatarSizeValue{AvatarSize::Large});
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.avatar.size · 大/小头像"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->member_limit.set(state->member_limit.get() == 2 ? 0 : 2); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.avatar.limit · 显示2/0人"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->members_visible.set(!state->members_visible.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.avatar.visible · 显隐成员"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      state->members_visible.set(true);
+                                      static_cast<void>(state->member_ref.focus());
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.avatar.restore · 恢复编辑"); });
+                   }});
+         }});
+    state->telemetry.live_samples += 4;
+}
+
+void add_statistic_metric_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.statistic.metrics · Statistic · 统计指标")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.statistic.feedback · 原值=" +
+                                      std::string{metric_raw_value(state->metric_value.get()).bytes()} + " · " +
+                                      std::string{state->metric_feedback.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Statistic(StatisticProps{}
+                           .title(u8"本期数值")
+                           .value(state->metric_value)
+                           .precision(state->metric_precision)
+                           .groupSeparator(
+                               bind([state] { return state->metric_separators.get() ? String{u8" "} : String{u8","}; }))
+                           .decimalSeparator(
+                               bind([state] { return state->metric_separators.get() ? String{u8","} : String{u8"."}; }))
+                           .formatter(bind([state] {
+                               return state->metric_formatter.get()
+                                          ? StatisticFormatter{[](const StatisticValue& value) {
+                                                return utf8("原值:" + std::string{metric_raw_value(value).bytes()});
+                                            }}
+                                          : StatisticFormatter{};
+                           }))
+                           .loading(state->metric_loading)
+                           .layout(member_control_margin().width(
+                               bind([state] { return dp(state->document_width.get().value() - 12); }))));
+             Statistic(StatisticProps{}
+                           .title(u8"指标备注")
+                           .value(state->metric_value)
+                           .loading(state->metric_loading)
+                           .richValue(StatisticValueContent{[state] {
+                               Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), FlexContent{[state] {
+                                        Input(InputProps{}
+                                                  .defaultValue(u8"核对本期指标")
+                                                  .placeholder(u8"gallery.statistic.draft")
+                                                  .ref(state->metric_ref)
+                                                  .onChange([state](String value) { state->metric_note.set(value); })
+                                                  .layout(member_control_margin().width(dp(180))));
+                                        Button(ButtonProps{}
+                                                   .onClick([state] {
+                                                       state->metric_feedback.set(utf8(
+                                                           "已保存 " + std::string{state->metric_note.get().bytes()}));
+                                                   })
+                                                   .layout(member_control_margin()),
+                                               [] { Text(u8"保存指标备注"); });
+                                    }});
+                           }})
+                           .layout(member_control_margin().width(
+                               bind([state] { return dp(state->document_width.get().value() - 12); }))));
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      const std::array values{StatisticValue{u8"-1234.123456789"},
+                                                              StatisticValue{1.0000004},
+                                                              StatisticValue{std::uint64_t{18446744073709551615ULL}},
+                                                              StatisticValue{std::int64_t{-1234567}}};
+                                      state->metric_step = (state->metric_step + 1) % values.size();
+                                      state->metric_value.set(values[state->metric_step]);
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.statistic.value · 切换业务值"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      const auto p = state->metric_precision.get();
+                                      state->metric_precision.set(p == 2   ? std::optional{8}
+                                                                  : p == 8 ? std::nullopt
+                                                                           : std::optional{2});
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.statistic.precision · 2/8/原精度"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->metric_separators.set(!state->metric_separators.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.statistic.separators · 切换分隔符"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->metric_formatter.set(!state->metric_formatter.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.statistic.formatter · 切换formatter"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->metric_loading.set(!state->metric_loading.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.statistic.loading · 加载/完成"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      state->metric_loading.set(false);
+                                      static_cast<void>(state->metric_ref.focus());
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.statistic.restore · 恢复指标编辑"); });
+                   }});
+         }});
+    state->telemetry.live_samples += 2;
+}
+
+void add_service_rate_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.rate.service · Rate · 服务评分")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8(
+                              "gallery.rate.feedback · 已接受=" +
+                              std::string{
+                                  metric_raw_value(StatisticValue{static_cast<double>(state->rating.get())}).bytes()} +
+                              (state->rating_accept.get() ? " · 接受修改" : " · 拒绝修改") +
+                              (state->rating_disabled.get() ? " · 禁用" : "") +
+                              (state->rating_read_only.get() ? " · 只读" : "") + " · " +
+                              std::string{state->rating_request.get().bytes()} + " · " +
+                              std::string{state->rating_feedback.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Rate(RateProps{}
+                      .value(state->rating)
+                      .allowHalf()
+                      .allowClear()
+                      .disabled(state->rating_disabled)
+                      .readOnly(state->rating_read_only)
+                      .visible(state->rating_visible)
+                      .onChange([state](float candidate) {
+                          if (state->rating_accept.get()) {
+                              state->rating.set(candidate);
+                          }
+                          state->rating_request.set(utf8(
+                              std::string{state->rating_accept.get() ? "已接受候选=" : "已拒绝候选="} +
+                              std::string{metric_raw_value(StatisticValue{static_cast<double>(candidate)}).bytes()}));
+                      })
+                      .tooltips(
+                          {u8"需要改进", u8"一般", u8"满意", u8"很好", RateTooltip{TooltipTitle{[state] {
+                               Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), FlexContent{[state] {
+                                        Input(InputProps{}
+                                                  .defaultValue(u8"补充服务评价")
+                                                  .placeholder(u8"gallery.rate.draft")
+                                                  .ref(state->rating_ref)
+                                                  .onChange([state](String value) { state->rating_note.set(value); })
+                                                  .layout(member_control_margin().width(dp(180))));
+                                        Button(ButtonProps{}
+                                                   .onClick([state] {
+                                                       state->rating_feedback.set(utf8(
+                                                           "已保存 " + std::string{state->rating_note.get().bytes()}));
+                                                   })
+                                                   .layout(member_control_margin()),
+                                               [] { Text(u8"保存服务评价"); });
+                                    }});
+                           }}}})
+                      .layout(member_control_margin()));
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->rating_accept.set(!state->rating_accept.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.rate.authority · 接受/拒绝修改"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->rating_disabled.set(!state->rating_disabled.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.rate.disabled · 禁用/启用评分"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->rating_read_only.set(!state->rating_read_only.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.rate.readonly · 只读/编辑评分"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->rating_visible.set(!state->rating_visible.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.rate.visible · 显隐评分"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      state->rating_visible.set(true);
+                                      state->rating_disabled.set(false);
+                                      state->rating_read_only.set(false);
+                                      state->rating_accept.set(true);
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.rate.restore · 恢复评分"); });
+                   }});
+         }});
+    ++state->telemetry.live_samples;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -4350,6 +4735,9 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_popover_samples(state);
                                                         add_notice_samples(state);
                                                         add_timeline_samples(state);
+                                                        add_member_avatar_samples(state);
+                                                        add_statistic_metric_samples(state);
+                                                        add_service_rate_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

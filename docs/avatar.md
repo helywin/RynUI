@@ -32,3 +32,5 @@ void Avatars() {
 视觉只通过 `ThemeConfig::avatar.tokens` 设置。包括 text/background/group_border、三套 container_size/text_font_size/icon_font_size、三套 border_radius、border_width、group_space、group_overlapping 和 font_family；overlap 为非正数，其他尺寸非负且 container_size 正、最终字体至少 .5 logical dp，按现有字体系统量化后的 logical pixel size 不超过 FontRuntime 的 `INT_MAX / 64` 上限。`avatar.algorithm=true` 启用组件 seed 独立派生；默认继承全局/父主题。非法最终字体、非有限值与组合 extent 在主题发布前拒绝，祖先对子孙执行原子 preflight。LayoutStyle 只控制外部布局。
 
 首版不提供 `src`、`srcSet`、图片联网/文件加载、CORS、图片错误回调、responsive breakpoint 尺寸或 CSS/DOM 属性。仓库尚无公开 Image 管线，未提供这些接口的 stub。当前证据仅覆盖 Windows MSVC headless 的真实字体/逻辑场景与输入合同，不代表 GPU、原生窗口、Linux、系统 IME 或 AT 验收。
+
+Gallery 目录选择 **Avatar**，直接进入成员头像。原生 Input 更新文字并驱动实际头像测量；可切换文字/图标、形状和尺寸，调整 Group 的 `max.count`，打开 `+N` 后使用滚轮浏览 128 名成员。方形富内容 Avatar 保留同一 Input，显隐后可用外部“恢复编辑”继续草稿。定向 Recording 入口为 `rynui_token_gallery_frame_tests --members-metrics-only`；它不代替完整 Gallery、原生窗口/GPU、系统 IME 或 AT 验收。
