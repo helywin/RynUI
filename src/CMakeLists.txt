@@ -21,6 +21,7 @@ add_library(rynui_theme STATIC
 
     theme/timeline_theme.cpp
     theme/avatar_theme.cpp
+    theme/rate_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC
@@ -209,6 +210,8 @@ add_library(rynui_components STATIC
     component/descriptions_model.cpp
     component/descriptions_component.cpp
     component/timeline_model.cpp
+    component/rate_model.cpp
+    component/rate_component.cpp
     component/timeline_component.cpp
     component/avatar_component.cpp
     component/form_component.cpp

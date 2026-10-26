@@ -16,6 +16,58 @@ foreach(avatar_case IN ITEMS text group overflow clips retention gates lifecycle
     add_test(NAME rynui.avatar_${avatar_case} COMMAND rynui_avatar_component_tests ${avatar_case})
 endforeach()
 
+foreach(rate_test IN ITEMS rate_model rate_theme rate_public_api)
+    add_executable(rynui_${rate_test}_tests ${rate_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${rate_test}_tests)
+    target_link_libraries(rynui_${rate_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${rate_test} COMMAND rynui_${rate_test}_tests)
+endforeach()
+
+foreach(rate_test IN ITEMS rate_component rate_lifecycle)
+    add_executable(rynui_${rate_test}_tests ${rate_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${rate_test}_tests)
+    target_link_libraries(rynui_${rate_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${rate_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${rate_test} COMMAND rynui_${rate_test}_tests)
+endforeach()
+
+add_executable(rynui_rate_font_limit_tests rate_font_limit_tests.cpp)
+rynui_configure_cpp_target(rynui_rate_font_limit_tests)
+target_link_libraries(rynui_rate_font_limit_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_rate_font_limit_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.rate_font_limit COMMAND rynui_rate_font_limit_tests)
+
+add_executable(rynui_rate_focus_order_tests rate_focus_order_tests.cpp)
+rynui_configure_cpp_target(rynui_rate_focus_order_tests)
+target_link_libraries(rynui_rate_focus_order_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_rate_focus_order_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.rate_focus_order COMMAND rynui_rate_focus_order_tests)
+
+add_executable(rynui_rate_review_tests rate_review_tests.cpp)
+rynui_configure_cpp_target(rynui_rate_review_tests)
+target_link_libraries(rynui_rate_review_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_rate_review_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS geometry pointer_gap focus_exit keyboard)
+    add_test(NAME rynui.rate_r1_${case} COMMAND rynui_rate_review_tests ${case})
+endforeach()
+
+if(NOT RYNUI_HAS_SDL_GPU)
+    add_executable(rynui_theme_algorithm_tests theme_algorithm_tests.cpp)
+    rynui_configure_cpp_target(rynui_theme_algorithm_tests)
+    target_link_libraries(rynui_theme_algorithm_tests PRIVATE rynui_theme)
+    target_compile_definitions(rynui_theme_algorithm_tests PRIVATE
+        "RYNUI_THEME_GOLDEN_DIRECTORY=\"${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.6.5/golden\"")
+    add_test(NAME rynui.theme_algorithm COMMAND rynui_theme_algorithm_tests)
+endif()
+
 add_executable(rynui_popover_review_tests popover_review_tests.cpp)
 rynui_configure_cpp_target(rynui_popover_review_tests)
 target_link_libraries(rynui_popover_review_tests PRIVATE rynui_components)

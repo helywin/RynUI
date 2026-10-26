@@ -17,6 +17,7 @@
 #include <ryn/notice_tokens.hpp>
 #include <ryn/timeline_tokens.hpp>
 #include <ryn/avatar_tokens.hpp>
+#include <ryn/rate_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -1604,6 +1605,13 @@ struct AvatarThemeConfig final {
     friend bool operator==(const AvatarThemeConfig&, const AvatarThemeConfig&) = default;
 };
 
+struct RateThemeConfig final {
+    RateTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const RateThemeConfig&, const RateThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
@@ -1649,6 +1657,7 @@ struct ThemeConfig final {
     SkeletonThemeConfig skeleton;
     TimelineThemeConfig timeline;
     AvatarThemeConfig avatar;
+    RateThemeConfig rate;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -2297,6 +2306,10 @@ public:
         return *avatar_;
     }
 
+    [[nodiscard]] const RateThemeToken& rate() const noexcept {
+        return *rate_;
+    }
+
 private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
@@ -2317,7 +2330,8 @@ private:
                   std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
                   std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
                   std::shared_ptr<const NoticeThemeToken> notification,
-                  std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar);
+                  std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
+                  std::shared_ptr<const RateThemeToken> rate);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2343,6 +2357,7 @@ private:
     std::shared_ptr<const SkeletonThemeToken> skeleton_;
     std::shared_ptr<const TimelineThemeToken> timeline_;
     std::shared_ptr<const AvatarThemeToken> avatar_;
+    std::shared_ptr<const RateThemeToken> rate_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;

@@ -5,6 +5,7 @@
 #include <ryn/descriptions.hpp>
 #include <ryn/timeline.hpp>
 #include <ryn/avatar.hpp>
+#include <ryn/rate.hpp>
 #include <ryn/form.hpp>
 #include <ryn/breadcrumb.hpp>
 #include <ryn/steps.hpp>

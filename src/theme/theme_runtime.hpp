@@ -120,6 +120,8 @@ public:
     [[nodiscard]] const TimelineThemeToken& timeline_metrics() const;
     [[nodiscard]] const AvatarThemeToken& avatar_colors() const;
     [[nodiscard]] const AvatarThemeToken& avatar_metrics() const;
+    [[nodiscard]] const RateThemeToken& rate_colors() const;
+    [[nodiscard]] const RateThemeToken& rate_metrics() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_colors() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_metrics() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_effects() const;

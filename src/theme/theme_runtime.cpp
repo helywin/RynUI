@@ -324,6 +324,8 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       count);
     append_if_changed(before.avatar().colors, after.avatar().colors, TokenIdentity::avatar_colors, changed, count);
     append_if_changed(before.avatar().metrics, after.avatar().metrics, TokenIdentity::avatar_metrics, changed, count);
+    append_if_changed(before.rate().colors, after.rate().colors, TokenIdentity::rate_colors, changed, count);
+    append_if_changed(before.rate().metrics, after.rate().metrics, TokenIdentity::rate_metrics, changed, count);
     append_if_changed(before.steps().colors, after.steps().colors, TokenIdentity::steps_colors, changed, count);
     append_if_changed(before.steps().metrics, after.steps().metrics, TokenIdentity::steps_metrics, changed, count);
     append_if_changed(before.steps().effects, after.steps().effects, TokenIdentity::steps_effects, changed, count);
@@ -1475,6 +1477,18 @@ const FormThemeToken& ThemeScope::form_colors() const {
     return snapshot_->form();
 }
 
+const RateThemeToken& ThemeScope::rate_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::rate_colors);
+    return snapshot_->rate();
+}
+
+const RateThemeToken& ThemeScope::rate_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::rate_metrics);
+    return snapshot_->rate();
+}
+
 const TimelineThemeToken& ThemeScope::timeline_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::timeline_colors);
@@ -1968,6 +1982,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Timeline.metrics",
         "Avatar.colors",
         "Avatar.metrics",
+        "Rate.colors",
+        "Rate.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2059,6 +2075,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::descriptions_colors:
     case TokenIdentity::timeline_colors:
     case TokenIdentity::avatar_colors:
+    case TokenIdentity::rate_colors:
     case TokenIdentity::breadcrumb_colors:
     case TokenIdentity::steps_colors:
     case TokenIdentity::modal_colors:
@@ -2142,6 +2159,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::descriptions_metrics:
     case TokenIdentity::timeline_metrics:
     case TokenIdentity::avatar_metrics:
+    case TokenIdentity::rate_metrics:
     case TokenIdentity::breadcrumb_metrics:
     case TokenIdentity::steps_metrics:
     case TokenIdentity::alert_metrics:
