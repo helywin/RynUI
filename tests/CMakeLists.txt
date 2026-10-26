@@ -1,6 +1,22 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+foreach(rate_test IN ITEMS rate_model rate_theme rate_public_api)
+    add_executable(rynui_${rate_test}_tests ${rate_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${rate_test}_tests)
+    target_link_libraries(rynui_${rate_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${rate_test} COMMAND rynui_${rate_test}_tests)
+endforeach()
+
+if(NOT RYNUI_HAS_SDL_GPU)
+    add_executable(rynui_theme_algorithm_tests theme_algorithm_tests.cpp)
+    rynui_configure_cpp_target(rynui_theme_algorithm_tests)
+    target_link_libraries(rynui_theme_algorithm_tests PRIVATE rynui_theme)
+    target_compile_definitions(rynui_theme_algorithm_tests PRIVATE
+        "RYNUI_THEME_GOLDEN_DIRECTORY=\"${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.6.5/golden\"")
+    add_test(NAME rynui.theme_algorithm COMMAND rynui_theme_algorithm_tests)
+endif()
+
 add_executable(rynui_popover_review_tests popover_review_tests.cpp)
 rynui_configure_cpp_target(rynui_popover_review_tests)
 target_link_libraries(rynui_popover_review_tests PRIVATE rynui_components)

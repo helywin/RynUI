@@ -2,8 +2,8 @@
 
 ## 1. 平台通用：主题与公开合同
 
-- [ ] 1.1 实现 Rate typed API、规范化模型、Theme 全链和文档；通过 rate_model、rate_theme、rate_public_api 定向测试。
-- [ ] 1.2 生成五份 fresh Theme goldens，深比较全部旧 typed 字段，仅允许 rate 与 identity 变化；核对全部旧 IIFE 与 TokenIdentity 原文/顺序。
+- [x] 1.1 实现 Rate typed API、规范化模型、Theme 全链和文档；通过 rate_model、rate_theme、rate_public_api 定向测试。
+- [x] 1.2 生成五份 fresh Theme goldens，深比较全部旧 typed 字段，仅允许 rate 与 identity 变化；核对全部旧 IIFE 与 TokenIdentity 原文/顺序。
 
 ## 2. 平台通用：retained 原生组件
 
