@@ -245,6 +245,31 @@ void scroll() {
     sync(f);
     check(f.services.tree().snapshot(id).scroll > 0, "wheel did not move actual rows");
     clean(f);
+    auto shifted = std::make_unique<Fixture>();
+    Signal<bool> prefix{false};
+    std::vector<TreeItem> changing;
+    for (int i = 0; i < 12; ++i) {
+        auto item = TreeItem{String::from_utf8(std::to_string(i)).value(), String{u8"Reactive row"}};
+        if (i < 6) {
+            item.visible(prefix);
+        }
+        changing.push_back(item);
+    }
+    shifted->services.mount(
+        Content{[&] { Tree(TreeProps{}.layout(LayoutStyle{}.width(dp(180)).height(dp(60))), changing); }});
+    sync(*shifted);
+    const auto owner = shifted->services.tree().mounted()[0];
+    const auto target = shifted->services.tree().snapshot(owner).rows[8];
+    check(shifted->services.focus().request_focus(target.interaction, FocusModality::keyboard),
+          "reactive scroll focus fixture failed");
+    sync(*shifted);
+    const float before = shifted->services.tree().snapshot(owner).scroll;
+    prefix.set(true);
+    sync(*shifted);
+    check(shifted->services.tree().snapshot(owner).scroll > before &&
+              inside(bounds(*shifted, target.component), bounds(*shifted, owner)),
+          "reactive rows above focus moved the existing focus outside its viewport");
+    clean(*shifted);
 }
 
 std::size_t ink(Fixture& f, runtime::ComponentId owner, runtime::Rect clip) {

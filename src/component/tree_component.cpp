@@ -131,7 +131,7 @@ void TreeComponentHost::end_mount(void* old) noexcept {
 
 bool TreeComponentHost::intact(runtime::ComponentId id) {
     const auto s = state(*services_, id);
-    if (!s) {
+    if (!s || !services_->components().scope(id).active()) {
         return false;
     }
     for (auto child : s->required) {
@@ -140,7 +140,7 @@ bool TreeComponentHost::intact(runtime::ComponentId id) {
             return false;
         }
     }
-    return services_->components().scope(id).active();
+    return true;
 }
 
 void TreeComponentHost::on_destroy() noexcept {
@@ -206,6 +206,12 @@ void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         const auto shown = s->model.shown();
         const auto previous_interaction = services_->focus().state().focused;
         const auto previous_focus = focused_row(*services_, *s);
+        if (s->reveal && std::ranges::find(shown, *s->reveal) == shown.end()) {
+            s->reveal.reset();
+        }
+        if (geometry && previous_focus && std::ranges::find(shown, *previous_focus) != shown.end()) {
+            s->reveal = previous_focus;
+        }
         const auto selected = s->model.normalize(s->model.selected, true);
         const auto eligible = [&](std::size_t i) {
             return s->model.eligible(i) && std::ranges::find(shown, i) != shown.end();
