@@ -1,0 +1,9 @@
+[0/2] Re-checking globbed directories...
+[1/9] Building CXX object src\CMakeFiles\rynui_graphics.dir\Debug\graphics\rounded_effect.cpp.obj
+[2/9] Linking CXX static library src\Debug\rynui_graphics.lib
+[3/9] Building CXX object tests\CMakeFiles\rynui_tree_review_tests.dir\Debug\tree_review_tests.cpp.obj
+[4/9] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_component.dir\Debug\__\text_component_tests.cpp.obj
+[5/9] Linking CXX executable tests\Debug\rynui_tree_review_tests.exe
+[6/9] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_component_frame.dir\Debug\__\text_component_frame_tests.cpp.obj
+[7/9] Linking CXX executable tests\portable\Debug\rynui_portable_text_component.exe
+[8/9] Linking CXX executable tests\portable\Debug\rynui_portable_text_component_frame.exe
