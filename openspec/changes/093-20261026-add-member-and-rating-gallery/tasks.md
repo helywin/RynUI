@@ -3,7 +3,7 @@
 ## 1. 平台通用规划和组件依赖
 
 - [x] 1.1 核实现有 Gallery、三组件公开 API/实际审查状态与目录条目，完成中文 proposal/spec/design/tasks；显式 OpenSpec 1.14 doctor、all strict 和 diff check 通过后提交推送规划，不描述为功能完成。
-- [ ] 1.2 确认 088/089/090 分别经独立 Astra 审查、main 实际新构建定向 Debug/Release 与推送核 SHA，通过后记录准确冻结基线；三个公开 headers/host 可由该 main 构建，才进入 Gallery 源码实施。
+- [x] 1.2 确认 088/089/090 分别经独立 Astra 审查、main 实际新构建定向 Debug/Release 与推送核 SHA，通过后记录准确冻结基线；三个公开 headers/host 可由该 main 构建，才进入 Gallery 源码实施。
 
 ## 2. 平台通用交互流程
 

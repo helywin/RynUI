@@ -2,7 +2,7 @@
 
 ## Context
 
-见 proposal.md。已发布 main `6118f677` 包含 Avatar；Statistic `0634ccd4` 和 Rate `cea1552c` 是待独立审查的 worker 版本，不能作为已发布能力。现有 Gallery 实测 390 IDs、295 live、389 Buttons、153 Inputs；源码有 36 个 `add_*` 样例函数。三个支持条目目前仍为 planned。生产目录通过共同 anchor 定位样例，091 已有有限窗口浮层及实际 fill/focus 检查可复用。
+见 proposal.md。规划时 main `6118f677` 包含 Avatar，Statistic `0634ccd4` 和 Rate `cea1552c` 尚待独立审查；这些规划时 worker SHA 不作为发布证据。实施依赖已在 [Core 冻结记录](evidence/01-core-baseline.md) 更新为实际已审、已构建、已发布的 main `29154cda`。现有 Gallery 实测 390 IDs、295 live、389 Buttons、153 Inputs；源码有 36 个 `add_*` 样例函数。三个支持条目目前仍为 planned。生产目录通过共同 anchor 定位样例，091 已有有限窗口浮层及实际 fill/focus 检查可复用。
 
 ## Goals / Non-Goals
 
