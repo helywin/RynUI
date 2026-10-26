@@ -16,6 +16,7 @@
 - 单一可聚焦根 interaction 接受键盘，项 interaction 负责指针；Tooltip trigger 不增加 Tab stop。Left/Right 每次变化 .5 或 1，Home=0、End=count，Enter/Space 提交当前位置。上下键不吞掉。此为原生 keyboard 合同，不复制 snapshot 的多个 tabindex。
 - Theme 追加 Rate 派生块和 identities，既有 IIFE 原文顺序不改；全链包括最终尺寸校验及祖先 preflight。大 ThemeConfig/Snapshot 测试对象放 heap，保持默认 1 MiB PE 栈。
 - 尺寸自然宽为所有项边长加 marginXS 间距；有限分配按自然位置裁剪，不压缩星形以伪造半选。每个 viewport 同时约束绘制和命中，focus decoration 与内容 clip 分离。无动画 deadline；hover scale 用静态几何同步，闲置不请求下一帧。
+- 富 Tooltip title slot 只挂载一次，readOnly 仅取消评分自身 focus/tab/edit，不关闭作为原生后代 interaction parent 的根 eligibility。根命中范围以窗口为总界，composer 仍单独对每个文档 interaction 施加 document clip；已有 Tooltip 窗口层中的原生子控件可在文档区域之外命中。
 
 ## Risks / Trade-offs
 

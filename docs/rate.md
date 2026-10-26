@@ -23,6 +23,8 @@ visible=false 和 count=0 不保留布局 flow/gap。隐藏、窗口失活或 Mo
 
 `character(RateCharacter{u8"好"})`、`character(RateCharacter{IconName::HeartFilled})` 或纯值 index 函数可定制字符。
 RateCharacter 只接受可复制的绘制值（String/IconSource），不会重复挂载原生子控件。逐项 Tooltip 使用已有原生 Tooltip。
+`tooltips` 接受 `RateTooltip` 列表；条目可由文本/`Prop<String>` 构造，或用 `RateTooltip{TooltipTitle{...}}` 提供 typed 富标题 slot。
+每个富标题只挂载一次，count/隐藏/主题变化保留其原生控件、编辑草稿和 ref；readOnly 仅关闭评分自身编辑，仍可操作标题中的原生控件。
 外部布局用 LayoutStyle；`ThemeConfig::rate.tokens` 控制 star/background、三种 star_size、gap、hover_scale、focus_width、font_family。
 锁定 Ant Design 6.6.5 的 starSize=controlHeight×.625、marginXS、yellow6、colorFillContent；默认 hover scale=1.1。
 所有最终字体至少 .5 logical dp，主题发布前验证独立 seed、继承与祖先组合，失败不发布部分快照。

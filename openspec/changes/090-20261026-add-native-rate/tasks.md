@@ -7,8 +7,8 @@
 
 ## 2. 平台通用：retained 原生组件
 
-- [ ] 2.1 实现鼠标/键盘/受控拒绝、真实半字符、逐项 Tooltip、size 与主题更新；通过 rate_component 的真实事件、glyph/quad/clip 断言。
-- [ ] 2.2 实现有限宽/短高/零尺寸恢复、隐藏 flow、count 身份、输入边界与代际清理；通过 rate_lifecycle 定向测试并更新 docs/rate.md。
+- [x] 2.1 实现鼠标/键盘/受控拒绝、真实半字符、逐项 Tooltip、size 与主题更新；通过 rate_component 的真实事件、glyph/quad/clip 断言。
+- [x] 2.2 实现有限宽/短高/零尺寸恢复、隐藏 flow、count 身份、输入边界与代际清理；通过 rate_lifecycle 定向测试并更新 docs/rate.md。
 
 ## 3. 平台通用：本机集成检查
 

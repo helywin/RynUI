@@ -8,6 +8,16 @@ foreach(rate_test IN ITEMS rate_model rate_theme rate_public_api)
     add_test(NAME rynui.${rate_test} COMMAND rynui_${rate_test}_tests)
 endforeach()
 
+foreach(rate_test IN ITEMS rate_component rate_lifecycle)
+    add_executable(rynui_${rate_test}_tests ${rate_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${rate_test}_tests)
+    target_link_libraries(rynui_${rate_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${rate_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${rate_test} COMMAND rynui_${rate_test}_tests)
+endforeach()
+
 if(NOT RYNUI_HAS_SDL_GPU)
     add_executable(rynui_theme_algorithm_tests theme_algorithm_tests.cpp)
     rynui_configure_cpp_target(rynui_theme_algorithm_tests)

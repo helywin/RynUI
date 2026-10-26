@@ -210,6 +210,7 @@ add_library(rynui_components STATIC
     component/descriptions_component.cpp
     component/timeline_model.cpp
     component/rate_model.cpp
+    component/rate_component.cpp
     component/timeline_component.cpp
     component/form_component.cpp
     component/feedback_component.cpp

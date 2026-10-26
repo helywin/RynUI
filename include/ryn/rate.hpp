@@ -39,6 +39,22 @@ private:
     std::variant<IconSource, String> value_{IconSource{IconName::StarFilled}};
 };
 
+class RateTooltip final {
+public:
+    RateTooltip(Prop<String> title) : title_(std::move(title)) {}
+
+    RateTooltip(String title) : title_(std::move(title)) {}
+
+    template <std::size_t N> RateTooltip(const char8_t (&title)[N]) : title_(String{title}) {}
+
+    explicit RateTooltip(TooltipTitle content) : content_(std::move(content)) {}
+
+private:
+    friend class detail::RateComponentHost;
+    Prop<String> title_{String{}};
+    std::optional<TooltipTitle> content_;
+};
+
 class RateProps final {
 public:
     RateProps& count(Prop<int> value) {
@@ -96,12 +112,16 @@ public:
         return *this;
     }
 
+    RateProps& character(RateCharacter value) {
+        return character(Prop<RateCharacter>{std::move(value)});
+    }
+
     RateProps& character(std::function<RateCharacter(std::size_t)> value) {
         character_for_ = std::move(value);
         return *this;
     }
 
-    RateProps& tooltips(std::vector<Prop<String>> value) {
+    RateProps& tooltips(std::vector<RateTooltip> value) {
         tooltips_ = std::move(value);
         return *this;
     }
@@ -135,7 +155,7 @@ private:
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<RateCharacter> character_{RateCharacter{}};
     std::function<RateCharacter(std::size_t)> character_for_;
-    std::vector<Prop<String>> tooltips_;
+    std::vector<RateTooltip> tooltips_;
     std::function<void(float)> on_change_;
     std::function<void(std::optional<float>)> on_hover_;
     LayoutStyle layout_;

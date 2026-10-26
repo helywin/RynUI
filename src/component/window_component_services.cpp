@@ -15,6 +15,7 @@
 #include "component/form_component.hpp"
 #include "component/descriptions_component.hpp"
 #include "component/timeline_component.hpp"
+#include "component/rate_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
@@ -126,6 +127,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     form_ = std::make_unique<FormComponentHost>(*this);
     descriptions_ = std::make_unique<DescriptionsComponentHost>(*this);
     timeline_ = std::make_unique<TimelineComponentHost>(*this);
+    rate_ = std::make_unique<RateComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
     steps_ = std::make_unique<StepsComponentHost>(*this);
     skeleton_ = std::make_unique<SkeletonComponentHost>(*this);
@@ -456,8 +458,8 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
             }
         }
     }
-    const auto hit_clip =
-        modal_->visible() || notices_->visible() ? runtime::Rect{0, 0, viewport.width, viewport.height} : clip;
+    // Window layers use the window extent; the composer separately clips every document interaction.
+    const runtime::Rect hit_clip{0, 0, viewport.width, viewport.height};
     if (hit_clip_ != hit_clip || document_hit_clip_ != clip) {
         scene_structure_dirty_ = true;
         hit_clip_ = hit_clip;

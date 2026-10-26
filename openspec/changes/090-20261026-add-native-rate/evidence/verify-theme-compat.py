@@ -39,9 +39,9 @@ for path in files:
 path = "src/theme/theme_snapshot.cpp"
 old = original(path)
 new = (ROOT / path).read_text(encoding="utf-8")
-pattern = r"    auto \w+ = \[&\] \{.*?    \}\(\);"
-before = re.findall(pattern, old, re.S)
-after = re.findall(pattern, new, re.S)
+pattern = r"^(?P<indent> +)(?:auto )?\w+ = \[&\] \{.*?^(?P=indent)\}\(\);"
+before = [m.group(0) for m in re.finditer(pattern, old, re.S | re.M)]
+after = [m.group(0) for m in re.finditer(pattern, new, re.S | re.M)]
 assert before and after[:len(before)] == before and len(after) == len(before) + 1
 print(f"{len(before)} original IIFEs unchanged in original order")
 path = "src/theme/theme_runtime_types.hpp"
