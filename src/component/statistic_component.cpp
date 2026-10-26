@@ -13,9 +13,16 @@ constexpr float infinity = std::numeric_limits<float>::infinity();
 struct StatisticState final {
     runtime::NodeId node;
     bool ready{};
+    std::optional<runtime::ComponentId> parent;
+    std::array<runtime::ComponentId, 4> regions{};
+    runtime::ComponentId skeleton;
+    runtime::ComponentId wrapper;
+    runtime::ComponentId content;
     StatisticSnapshot snapshot;
     StatisticModel model;
+    std::uint64_t model_revision{};
     std::array<bool, 4> rich{};
+    Signal<bool> loading{false};
     Signal<String> title{String{}};
     Signal<String> value{String{}};
     Signal<String> prefix{String{}};
@@ -77,17 +84,61 @@ StatisticSnapshot StatisticComponentHost::snapshot(runtime::ComponentId id) cons
     return s->snapshot;
 }
 
+bool StatisticComponentHost::valid_composition(runtime::ComponentId id, bool complete) {
+    auto& components = services_->components();
+    const auto* s = components.state<StatisticState>(id);
+    if (!s || !components.scope(id).active()) {
+        return false;
+    }
+    complete |= s->ready;
+    const auto edge = [&](auto child, auto parent) {
+        return components.contains(child) && components.contains(parent) &&
+               components.parent(child) == std::optional{parent};
+    };
+    bool valid = components.parent(id) == s->parent;
+    for (std::size_t i = 0; i < s->regions.size(); ++i) {
+        valid &= s->regions[i].valid() ? edge(s->regions[i], i == 0 ? id : s->content) : !complete;
+    }
+    valid &= s->skeleton.valid() ? edge(s->skeleton, id) : !complete;
+    valid &= s->wrapper.valid() ? edge(s->wrapper, s->skeleton) : !complete;
+    valid &= s->content.valid() ? edge(s->content, s->wrapper) : !complete;
+    if (!valid) {
+        // Retire only the captured generation, including when a callback reused a private child's index.
+        services_->destroy(id);
+    }
+    return valid;
+}
+
 void StatisticComponentHost::refresh(runtime::ComponentId id, bool geometry) {
-    auto* s = services_->components().state<StatisticState>(id);
-    if (!s || !s->ready || !services_->components().scope(id).active()) {
+    if (!valid_composition(id)) {
         return;
     }
-    const auto& t = services_->components().theme_scope(id)->snapshot().statistic();
-    s->title_color.set(foreground(t.colors.title));
-    s->content_color.set(foreground(t.colors.content));
-    s->title_font.set({t.metrics.font_family, 400, false, t.metrics.title_font_size, t.metrics.title_line_height});
-    s->content_font.set(
-        {t.metrics.font_family, 400, false, t.metrics.content_font_size, t.metrics.content_line_height});
+    auto* s = services_->components().state<StatisticState>(id);
+    if (!s->ready) {
+        return;
+    }
+    const auto t = services_->components().theme_scope(id)->snapshot().statistic();
+    const auto title_color = s->title_color;
+    const auto content_color = s->content_color;
+    const auto title_font = s->title_font;
+    const auto content_font = s->content_font;
+    title_color.set(foreground(t.colors.title));
+    if (!valid_composition(id, true)) {
+        return;
+    }
+    content_color.set(foreground(t.colors.content));
+    if (!valid_composition(id, true)) {
+        return;
+    }
+    title_font.set({t.metrics.font_family, 400, false, t.metrics.title_font_size, t.metrics.title_line_height});
+    if (!valid_composition(id, true)) {
+        return;
+    }
+    content_font.set({t.metrics.font_family, 400, false, t.metrics.content_font_size, t.metrics.content_line_height});
+    if (!valid_composition(id, true)) {
+        return;
+    }
+    s = services_->components().state<StatisticState>(id);
     geometry |= services_->components().set_branch_active(id, s->snapshot.visible);
     services_->nodes().require(s->node).out_of_flow = !s->snapshot.visible;
     const auto parts = regions(s->snapshot);
@@ -105,34 +156,71 @@ void StatisticComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     // Input reconciliation may synchronously dispose this entire generation.
     const bool blocked = !s->snapshot.visible;
     services_->set_input_blocked(id, blocked);
+    static_cast<void>(valid_composition(id, true));
+}
+
+template <typename T, typename Apply, typename Equal>
+void StatisticComponentHost::watch(runtime::ComponentId id, const Prop<T>& prop, Apply apply, Equal equal) {
+    if (!valid_composition(id)) {
+        return;
+    }
+    auto run = [this, id, prop, apply = std::move(apply), equal = std::move(equal),
+                last = std::optional<T>{}]() mutable {
+        {
+            auto value = read_prop(prop);
+            if (!valid_composition(id)) {
+                return;
+            }
+            if (!last || !std::invoke(equal, *last, value)) {
+                last = value;
+                apply(std::move(value));
+            }
+        }
+        static_cast<void>(valid_composition(id));
+    };
+    if (PropAccess::static_value(prop)) {
+        run();
+        return;
+    }
+    auto observer = detail::observe(detail::ObserverPhase::binding, std::move(run), false);
+    // Own/deactivate before the first getter/apply. connect_binding owns after run(), when the
+    // component Scope may already have been destroyed by user code.
+    services_->components().scope(id).on_cleanup([observer] { observer->deactivate(); });
+    observer->run();
 }
 
 template <typename T>
 void StatisticComponentHost::connect(runtime::ComponentId id, const Prop<T>& prop, T StatisticModel::* member) {
-    if (PropAccess::static_value(prop)) {
-        return;
-    }
-    connect_prop(
-        services_->components().scope(id), prop,
-        [this, id, member, initial = true](T value) mutable {
-            if (std::exchange(initial, false)) {
-                return;
-            }
+    watch(
+        id, prop,
+        [this, id, member](T value) {
             const auto* current = services_->components().state<StatisticState>(id);
             if (!current) {
                 return;
             }
+            if constexpr (!std::same_as<T, StatisticFormatter>) {
+                if (current->model.*member == value) {
+                    return;
+                }
+            }
             auto candidate = current->model;
             candidate.*member = std::move(value);
-            // formatter is user code. Do not retain a borrowed state across it.
-            auto text = format_statistic(candidate);
-            auto* s = services_->components().state<StatisticState>(id);
-            if (!s || !services_->components().scope(id).active()) {
+            if (!current->ready) {
+                auto* s = services_->components().state<StatisticState>(id);
+                s->model = std::move(candidate);
+                ++s->model_revision;
                 return;
             }
+            // formatter is user code. Do not retain a borrowed state across it.
+            auto text = format_statistic(candidate);
+            if (!valid_composition(id, true)) {
+                return;
+            }
+            auto* s = services_->components().state<StatisticState>(id);
             s->model = std::move(candidate);
             s->snapshot.formatted_value = text;
-            s->value.set(std::move(text));
+            const auto signal = s->value;
+            signal.set(std::move(text));
             refresh(id, true);
         },
         [](const T& a, const T& b) {
@@ -147,67 +235,81 @@ void StatisticComponentHost::connect(runtime::ComponentId id, const Prop<T>& pro
 }
 
 void StatisticComponentHost::mount(const StatisticProps& props) {
-    StatisticModel model{read_prop(props.value_), read_prop(props.precision_), read_prop(props.decimal_separator_),
-                         read_prop(props.group_separator_), read_prop(props.formatter_)};
-    auto formatted = format_statistic(model);
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     const auto id = build.mount_component<StatisticState>();
     const auto root_node = build.root(id);
     auto& s = build.state<StatisticState>(id);
     s.node = root_node;
-    s.model = std::move(model);
-    s.snapshot.formatted_value = formatted;
-    s.value.set(std::move(formatted));
-    s.title.set(read_prop(props.title_));
-    s.prefix.set(read_prop(props.prefix_));
-    s.suffix.set(read_prop(props.suffix_));
+    s.parent = services.components().parent(id);
     s.rich = {props.rich_title_.has_value(), props.rich_prefix_.has_value(), props.rich_value_.has_value(),
               props.rich_suffix_.has_value()};
-    s.snapshot.visible = read_prop(props.visible_);
-    s.snapshot.loading = read_prop(props.loading_);
     // Keep owned signal handles, never a state reference, across user slot execution.
     const auto text_signals = std::array{s.title, s.prefix, s.value, s.suffix};
     const auto title_color = s.title_color;
     const auto content_color = s.content_color;
     const auto title_font = s.title_font;
     const auto content_font = s.content_font;
+    const auto loading_signal = s.loading;
     services.nodes().require(root_node).clip_content = true;
-    runtime::connect_layout_style(build.scope(id), props.layout_, root_node, services.nodes(), services.dirty());
-    if (!services.components().contains(id)) {
-        return;
-    }
     build.on_resource_cleanup(id, [&services, id, node = root_node] {
         services.interactions().set_input_blocked(id, false);
         services.layout().remove_layout(node);
     });
-    const auto owner_parent = services.components().parent(id);
-    std::array<runtime::ComponentId, 4> mount_regions{};
-    runtime::ComponentId mount_skeleton;
-    runtime::ComponentId mount_wrapper;
-    runtime::ComponentId mount_content;
-    const auto valid_mount = [&](bool complete = false) {
-        auto& components = services.components();
-        if (!components.contains(id)) {
-            return false;
-        }
-        const auto edge = [&](auto child, auto parent) {
-            return components.contains(child) && components.contains(parent) &&
-                   components.parent(child) == std::optional{parent};
-        };
-        bool valid = components.state<StatisticState>(id) && components.parent(id) == owner_parent;
-        for (std::size_t i = 0; i < mount_regions.size(); ++i) {
-            valid &= mount_regions[i].valid() ? edge(mount_regions[i], i == 0 ? id : mount_content) : !complete;
-        }
-        valid &= mount_skeleton.valid() ? edge(mount_skeleton, id) : !complete;
-        valid &= mount_wrapper.valid() ? edge(mount_wrapper, mount_skeleton) : !complete;
-        valid &= mount_content.valid() ? edge(mount_content, mount_wrapper) : !complete;
-        if (!valid) {
-            // Only the captured unfinished owner is ours to retire; a replacement generation is not.
-            services.destroy(id);
-        }
-        return valid;
+    const auto valid_mount = [this, id](bool complete = false) {
+        return valid_composition(id, complete);
     };
+    watch(id, props.visible_, [this, id](bool value) {
+        services_->components().state<StatisticState>(id)->snapshot.visible = value;
+        refresh(id, true);
+    });
+    if (!valid_mount()) {
+        return;
+    }
+    watch(id, props.loading_, [this, id, loading_signal](bool value) {
+        auto* current = services_->components().state<StatisticState>(id);
+        current->snapshot.loading = value;
+        if (current->ready) {
+            loading_signal.set(value);
+        }
+        refresh(id, true);
+    });
+    if (!valid_mount()) {
+        return;
+    }
+    // Keep user getters in the guarded, already-owned observers. The shared layout adapter
+    // and private Skeleton receive only owned Signal bindings, with no user getter/apply.
+    LayoutStyle style;
+    const auto bridge = [&]<typename T>(const std::optional<Prop<T>>& source,
+                                        LayoutStyle& (LayoutStyle::*setter)(Prop<T>)) {
+        if (source) {
+            Signal<T> signal{T{}};
+            watch(id, *source, [signal](T value) { signal.set(std::move(value)); });
+            (style.*setter)(signal);
+        }
+    };
+    bridge(LayoutStyleAccess::width(props.layout_), &LayoutStyle::width);
+    bridge(LayoutStyleAccess::height(props.layout_), &LayoutStyle::height);
+    bridge(LayoutStyleAccess::min_width(props.layout_), &LayoutStyle::min_width);
+    bridge(LayoutStyleAccess::max_width(props.layout_), &LayoutStyle::max_width);
+    bridge(LayoutStyleAccess::min_height(props.layout_), &LayoutStyle::min_height);
+    bridge(LayoutStyleAccess::max_height(props.layout_), &LayoutStyle::max_height);
+    bridge(LayoutStyleAccess::margin_left(props.layout_), &LayoutStyle::margin_left);
+    bridge(LayoutStyleAccess::margin_top(props.layout_), &LayoutStyle::margin_top);
+    bridge(LayoutStyleAccess::margin_right(props.layout_), &LayoutStyle::margin_right);
+    bridge(LayoutStyleAccess::margin_bottom(props.layout_), &LayoutStyle::margin_bottom);
+    bridge(LayoutStyleAccess::flex_grow(props.layout_), &LayoutStyle::flex_grow);
+    bridge(LayoutStyleAccess::flex_shrink(props.layout_), &LayoutStyle::flex_shrink);
+    bridge(LayoutStyleAccess::flex_basis(props.layout_), &LayoutStyle::flex_basis);
+    bridge(LayoutStyleAccess::align_self(props.layout_), &LayoutStyle::align_self);
+    bridge(LayoutStyleAccess::order(props.layout_), &LayoutStyle::order);
+    if (!valid_mount()) {
+        return;
+    }
+    runtime::connect_layout_style(build.scope(id), style, root_node, services.nodes(), services.dirty());
+    if (!valid_mount()) {
+        return;
+    }
     build.mount_slot(
         id, Content{[&] {
             auto& context = runtime::require_component_build_context();
@@ -220,7 +322,7 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                     parent, Content{[&] {
                         auto& c = runtime::require_component_build_context();
                         child = c.mount_component<int>(0);
-                        mount_regions[index] = child;
+                        services.components().state<StatisticState>(id)->regions[index] = child;
                         if (!valid_mount()) {
                             return;
                         }
@@ -265,7 +367,11 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                 return;
             }
             services.components().state<StatisticState>(id)->snapshot.title = title_region;
-            Skeleton(SkeletonProps{}.loading(props.loading_).paragraph(false), SkeletonContent{[&] {
+            loading_signal.set(services.components().state<StatisticState>(id)->snapshot.loading);
+            if (!valid_mount()) {
+                return;
+            }
+            Skeleton(SkeletonProps{}.loading(loading_signal).paragraph(false), SkeletonContent{[&] {
                          if (!valid_mount()) {
                              return;
                          }
@@ -284,15 +390,15 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                              services.destroy(id);
                              return;
                          }
-                         mount_content = content;
-                         mount_wrapper = *wrapper;
-                         mount_skeleton = *skeleton;
+                         auto* current = services.components().state<StatisticState>(id);
+                         current->content = content;
+                         current->wrapper = *wrapper;
+                         current->skeleton = *skeleton;
                          if (!valid_mount()) {
                              return;
                          }
-                         auto* current = services.components().state<StatisticState>(id);
-                         current->snapshot.content = mount_content;
-                         current->snapshot.skeleton = mount_skeleton;
+                         current->snapshot.content = content;
+                         current->snapshot.skeleton = *skeleton;
                          const auto node = c.root(content);
                          services.nodes().require(node).clip_content = true;
                          services.nodes().require(node).clip_decorations = false;
@@ -351,7 +457,8 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
             if (!valid_mount(true)) {
                 return;
             }
-            services.nodes().require(services.components().root(mount_skeleton)).clip_decorations = false;
+            const auto skeleton = services.components().state<StatisticState>(id)->skeleton;
+            services.nodes().require(services.components().root(skeleton)).clip_decorations = false;
         }});
     if (!valid_mount(true)) {
         return;
@@ -383,9 +490,10 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
         return;
     }
     const auto text = [this, id](const Prop<String>& prop, Signal<String> StatisticState::* member) {
-        connect_prop(services_->components().scope(id), prop, [this, id, member](String value) {
+        watch(id, prop, [this, id, member](String value) {
             if (auto* s = services_->components().state<StatisticState>(id)) {
-                (s->*member).set(std::move(value));
+                const auto signal = s->*member;
+                signal.set(std::move(value));
                 refresh(id, true);
             }
         });
@@ -402,34 +510,49 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
     if (!valid_mount(true)) {
         return;
     }
-    connect_prop(services.components().scope(id), props.loading_, [this, id](bool value) {
-        if (auto* s = services_->components().state<StatisticState>(id)) {
-            s->snapshot.loading = value;
-            refresh(id, true);
-        }
-    });
-    if (!valid_mount(true)) {
-        return;
-    }
-    connect_prop(services.components().scope(id), props.visible_, [this, id](bool value) {
-        if (auto* s = services_->components().state<StatisticState>(id)) {
-            s->snapshot.visible = value;
-            refresh(id, true);
-        }
-    });
-    if (!valid_mount(true)) {
-        return;
-    }
     const auto theme = build.theme_scope();
     auto* current = services.components().state<StatisticState>(id);
     current->subscriptions[0] = theme->capture([this, id](auto) { refresh(id, false); },
                                                [theme] { static_cast<void>(theme->statistic_colors()); });
     current->subscriptions[1] = theme->capture([this, id](auto) { refresh(id, true); },
                                                [theme] { static_cast<void>(theme->statistic_metrics()); });
-    // Boundary reconciliation can retire this generation. Install every connection first,
-    // and leave no borrowed state/scope access after the initial refresh.
-    current->ready = true;
+    // Every getter/subscription is now installed. Format the final model once, unless the
+    // formatter itself changes a model property; then only the newer revision may publish.
+    for (;;) {
+        if (!valid_mount(true)) {
+            return;
+        }
+        const auto revision = services.components().state<StatisticState>(id)->model_revision;
+        auto candidate = services.components().state<StatisticState>(id)->model;
+        auto formatted = format_statistic(candidate);
+        if (!valid_mount(true)) {
+            return;
+        }
+        current = services.components().state<StatisticState>(id);
+        if (current->model_revision != revision) {
+            continue;
+        }
+        current->snapshot.formatted_value = formatted;
+        text_signals[2].set(std::move(formatted));
+        if (!valid_mount(true)) {
+            return;
+        }
+        current = services.components().state<StatisticState>(id);
+        if (current->model_revision == revision) {
+            break;
+        }
+    }
+    // The candidate/formatter copies from the loop have also been released before this check.
+    if (!valid_mount(true)) {
+        return;
+    }
+    services.components().state<StatisticState>(id)->ready = true;
+    loading_signal.set(services.components().state<StatisticState>(id)->snapshot.loading);
+    if (!valid_mount(true)) {
+        return;
+    }
     refresh(id, true);
+    static_cast<void>(valid_mount(true));
 }
 
 runtime::Size StatisticComponentHost::measure_value(runtime::ComponentId id, layout::LayoutEngine& e,

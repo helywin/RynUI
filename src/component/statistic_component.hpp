@@ -35,7 +35,10 @@ public:
     [[nodiscard]] StatisticSnapshot snapshot(runtime::ComponentId) const;
 
 private:
+    bool valid_composition(runtime::ComponentId, bool complete = false);
     void refresh(runtime::ComponentId, bool);
+    template <typename T, typename Apply, typename Equal = std::equal_to<T>>
+    void watch(runtime::ComponentId, const Prop<T>&, Apply, Equal = {});
     template <typename T> void connect(runtime::ComponentId, const Prop<T>&, T StatisticModel::*);
     runtime::Size measure(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);

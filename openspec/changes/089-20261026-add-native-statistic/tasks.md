@@ -29,3 +29,7 @@
 ## 7. Astra R4 修正
 
 - [x] 7.1 复现并统一修复四个 rich region 返回后的完整 generation/私有组合父子关系校验；覆盖 region/私有 Skeleton/wrapper/content/owner 退役、回调同 index 新 generation 重绑、合法存活与输入恢复，保留 R1/R2/R3 断言并通过定向 Debug/Release 和共享 Skeleton 代表检查，format、显式 OpenSpec 1.14 doctor/strict、diff check 通过后本地提交交父 R5。
+
+## 8. Astra R5 修正
+
+- [x] 8.1 复现并修复最终首次 refresh 后私有图退役未清理、rich slot 期间格式属性更新被首次 apply 跳过的问题；统一核对 first-mount 用户代码边界，覆盖最终 region/Skeleton/owner 退役、getter/formatter 同步销毁与同 ref 新 generation 重绑、首帧最终属性、格式化次数/revision、合法后续更新和拒绝恢复。保留 R1–R4 断言，通过 fresh 定向 MSVC HEADLESS Debug/Release 与共享 Skeleton 代表、format、显式 OpenSpec 1.14 doctor/strict 和 diff check，记录证据并本地提交交父 R6。

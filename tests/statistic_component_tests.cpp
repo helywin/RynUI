@@ -166,7 +166,129 @@ void font_limit_recovery() {
     check(failures == 0, "Statistic font limits failed before publication");
 }
 
+void first_mount_updates() {
+    unsigned failures = 0;
+    for (int changed = 0; changed < 6; ++changed) {
+        Fixture f;
+        Signal<StatisticValue> value{StatisticValue{1234.1234}};
+        Signal<std::optional<int>> precision{4};
+        Signal<String> decimal{String{u8"."}};
+        Signal<String> group{String{u8","}};
+        Signal<int> formatter_version{0};
+        InputRef ref;
+        int formats = 0;
+        try {
+            const auto prop = [changed]<typename T>(Signal<T> signal) -> Prop<T> {
+                return changed == 5 ? Prop<T>{bind([signal] { return signal.get(); })} : Prop<T>{signal};
+            };
+            f.services.mount(Content{[&] {
+                Statistic(StatisticProps{}
+                              .value(prop(value))
+                              .precision(prop(precision))
+                              .decimalSeparator(prop(decimal))
+                              .groupSeparator(prop(group))
+                              .formatter(bind([&]() -> StatisticFormatter {
+                                  if (formatter_version.get() == 0) {
+                                      return {};
+                                  }
+                                  return [&](const StatisticValue&) {
+                                      ++formats;
+                                      return String{u8"Updated"};
+                                  };
+                              }))
+                              .richTitle(StatisticTitle{[&] {
+                                  if (changed == 0 || changed == 5) {
+                                      value.set(StatisticValue{9876.54321});
+                                  }
+                                  if (changed == 1 || changed == 5) {
+                                      precision.set(2);
+                                  }
+                                  if (changed == 2 || changed == 5) {
+                                      decimal.set(u8";");
+                                  }
+                                  if (changed == 3 || changed == 5) {
+                                      group.set(u8"_");
+                                  }
+                                  if (changed == 4) {
+                                      formatter_version.set(1);
+                                  }
+                                  Text(u8"Updates during composition");
+                              }})
+                              .richValue(StatisticValueContent{
+                                  [&] { Input(InputProps{}.ref(ref).defaultValue(u8"Retained")); }}));
+            }});
+            sync(f);
+            const auto id = f.services.statistic().mounted()[0];
+            constexpr std::array expected{"9,876.5432", "1,234.12", "1,234;1234", "1_234.1234", "Updated", "9_876;54"};
+            check(f.services.statistic().snapshot(id).formatted_value.bytes() == expected[changed],
+                  "first frame lost a property update made in richTitle");
+            check(formats == (changed == 4 ? 1 : 0), "first mount called formatter unnecessarily");
+            check(ref.focus({InputFocusCursor::All}) &&
+                      bool(f.inputs.dispatch(TextCommitted{String{u8"Saved"}, f.inputs.sessions().active()})),
+                  "first-mount update lost rich input");
+            formatter_version.set(0);
+            precision.set(3);
+            decimal.set(u8".");
+            group.set(u8",");
+            value.set(StatisticValue{12.375});
+            sync(f);
+            check(f.services.statistic().snapshot(id).formatted_value.bytes() == "12.375",
+                  "valid update after first mount failed");
+            bool rejected = false;
+            try {
+                value.set(StatisticValue{std::numeric_limits<double>::infinity()});
+            } catch (const std::invalid_argument&) {
+                rejected = true;
+            }
+            check(rejected && f.services.statistic().snapshot(id).formatted_value.bytes() == "12.375",
+                  "invalid update published after first-mount reconciliation");
+            value.set(StatisticValue{24.625});
+            sync(f);
+            check(f.services.statistic().snapshot(id).formatted_value.bytes() == "24.625" && ref.focus() &&
+                      f.inputs.editors().require(f.inputs.mounted_inputs()[0].editor).value() == "Saved",
+                  "rejected update did not recover retained draft/ref");
+        } catch (const std::exception& e) {
+            ++failures;
+            std::cerr << "first-mount changed=" << changed << ": " << e.what() << '\n';
+        }
+    }
+    check(failures == 0, "Statistic first-mount property reconciliation failed");
+
+    Fixture stable;
+    Signal<StatisticValue> stable_value{StatisticValue{1}};
+    int formats = 0;
+    stable.services.mount(Content{[&] {
+        Statistic(StatisticProps{}.value(stable_value).formatter([&](const StatisticValue&) {
+            ++formats;
+            return String{u8"Stable"};
+        }));
+    }});
+    sync(stable);
+    check(formats == 1, "unchanged first mount formatted more than once");
+
+    Fixture revised;
+    Signal<StatisticValue> revised_value{StatisticValue{1}};
+    int revisions = 0;
+    revised.services.mount(Content{[&] {
+        Statistic(StatisticProps{}.value(revised_value).formatter([&](const StatisticValue& v) {
+            ++revisions;
+            if (std::get<std::int64_t>(v.storage()) == 1) {
+                revised_value.set(StatisticValue{2});
+                return String{u8"Obsolete"};
+            }
+            return String{u8"Latest"};
+        }));
+    }});
+    sync(revised);
+    check(
+        revisions == 2 &&
+            revised.services.statistic().snapshot(revised.services.statistic().mounted()[0]).formatted_value.bytes() ==
+                "Latest",
+        "formatter revision published the obsolete first model");
+}
+
 void formatting() {
+    first_mount_updates();
     Fixture f;
     Signal<StatisticValue> value{StatisticValue{u8"-1234.123456789"}};
     Signal<std::optional<int>> precision{8};
@@ -733,7 +855,248 @@ void rich_region_retirement() {
     check(failures == 0, "Statistic rich-region generation validation failed");
 }
 
+void final_mount_boundary() {
+    unsigned failures = 0;
+    // -1: Skeleton; 0..3: region; 4: owner; 5/6: Skeleton/owner rebind; 7: survive; 8: staged loading.
+    for (int target = -1; target < 9; ++target) {
+        Fixture f;
+        Signal<bool> visible{target == 8};
+        Signal<bool> loading{false};
+        Signal<StatisticValue> value{StatisticValue{1}};
+        InputRef ref;
+        runtime::ComponentId original;
+        runtime::ComponentId replacement;
+        runtime::ComponentId retired;
+        int closes = 0;
+        try {
+            f.services.mount(Content{[&] {
+                Flex(FlexProps{}, FlexContent{[&] {
+                         Statistic(StatisticProps{}.value(value).visible(visible).loading(loading).richValue(
+                             StatisticValueContent{[&] {
+                                 Input(InputProps{}.ref(ref).defaultValue(u8"Original"));
+                                 Select(SelectProps{}.open(true).onOpenChange([&](bool open) {
+                                     if (open) {
+                                         return;
+                                     }
+                                     ++closes;
+                                     original = f.services.statistic().mounted().back();
+                                     const auto parent = *f.services.components().parent(original);
+                                     const auto snapshot = f.services.statistic().snapshot(original);
+                                     const std::array regions{snapshot.title, snapshot.prefix, snapshot.value,
+                                                              snapshot.suffix};
+                                     retired = target == -1 || target == 5 || target == 8 ? snapshot.skeleton
+                                               : target < 4                               ? regions[target]
+                                               : target == 7                              ? runtime::ComponentId{}
+                                                                                          : original;
+                                     if (retired.valid()) {
+                                         check(f.services.destroy(retired), "final boundary failed to retire target");
+                                     }
+                                     if (target == 5 || target == 6) {
+                                         runtime::require_component_build_context().mount_slot(
+                                             parent, Content{[&] {
+                                                 Statistic(
+                                                     StatisticProps{}.value(99).richValue(StatisticValueContent{[&] {
+                                                         Input(InputProps{}.ref(ref).defaultValue(u8"Replacement"));
+                                                     }}));
+                                                 replacement = f.services.statistic().mounted().back();
+                                             }});
+                                     }
+                                 }));
+                                 if (target == 8) {
+                                     loading.set(true);
+                                 }
+                             }}));
+                     }});
+            }});
+            // This was the reported post-mount crash when only private content was retired.
+            visible.set(true);
+            value.set(StatisticValue{2});
+            sync(f);
+            check(closes == 1 && original.valid(), "final boundary did not close controlled Select once");
+            check(f.services.components().contains(original) == (target == 7),
+                  "final refresh left an incomplete owner alive");
+            if (replacement.valid()) {
+                check(replacement.index == retired.index && replacement.generation != retired.generation &&
+                          f.services.components().contains(replacement) && ref.focus() &&
+                          f.services.statistic().snapshot(replacement).formatted_value.bytes() == "99",
+                      "final boundary cleanup harmed callback replacement generation");
+            } else if (target == 7) {
+                check(ref.focus(), "surviving final boundary could not recover input");
+            } else {
+                check(f.services.statistic().mounted().empty() && !ref.focus(), "final boundary leaked owner/ref");
+            }
+            f.services.dispose();
+            check(blocked_roots(f.services.interactions()).empty() && f.services.surfaces().size() == 0 && !ref.focus(),
+                  "final boundary teardown leaked resources");
+        } catch (const std::exception& e) {
+            ++failures;
+            std::cerr << "final boundary target=" << target << ": " << e.what() << '\n';
+        }
+    }
+    check(failures == 0, "Statistic final first-mount boundary failed");
+}
+
+void first_mount_callbacks() {
+    enum class Trigger { Formatter, ValueGetter, VisibleGetter, LayoutGetter, TextGetter, LoadingGetter };
+    enum class Target { Owner, Skeleton, Region };
+
+    struct Case final {
+        Trigger trigger;
+        Target target;
+        bool later{};
+    };
+
+    const std::array cases{
+        Case{Trigger::Formatter, Target::Owner},         Case{Trigger::Formatter, Target::Skeleton},
+        Case{Trigger::Formatter, Target::Region},        Case{Trigger::ValueGetter, Target::Owner},
+        Case{Trigger::ValueGetter, Target::Skeleton},    Case{Trigger::VisibleGetter, Target::Owner},
+        Case{Trigger::LayoutGetter, Target::Owner},      Case{Trigger::TextGetter, Target::Region},
+        Case{Trigger::LoadingGetter, Target::Skeleton},  Case{Trigger::Formatter, Target::Skeleton, true},
+        Case{Trigger::ValueGetter, Target::Region, true}};
+    unsigned failures = 0;
+    for (const auto test : cases) {
+        Fixture f;
+        Signal<StatisticValue> value{StatisticValue{1}};
+        Signal<int> loading_tick{0};
+        InputRef ref;
+        runtime::ComponentId owner;
+        runtime::ComponentId outside;
+        runtime::ComponentId replacement;
+        runtime::ComponentId retired;
+        bool armed = false;
+        bool fired = false;
+        try {
+            const auto retire = [&] {
+                if (!armed || fired) {
+                    return;
+                }
+                fired = true;
+                if (!owner.valid()) {
+                    owner = f.services.components().children(outside).back();
+                }
+                if (test.target == Target::Owner) {
+                    retired = owner;
+                } else {
+                    const auto snapshot = f.services.statistic().snapshot(owner);
+                    retired = test.target == Target::Skeleton ? snapshot.skeleton : snapshot.value;
+                }
+                check(f.services.destroy(retired), "getter/formatter could not retire target");
+                runtime::require_component_build_context().mount_slot(
+                    outside, Content{[&] {
+                        Statistic(StatisticProps{}.value(99).richValue(StatisticValueContent{
+                            [&] { Input(InputProps{}.ref(ref).defaultValue(u8"Replacement")); }}));
+                        replacement = f.services.statistic().mounted().back();
+                    }});
+            };
+            f.services.mount(Content{[&] {
+                Flex(FlexProps{}, FlexContent{[&] {
+                         outside = f.services.components().root_components().back();
+                         armed = test.trigger == Trigger::VisibleGetter || test.trigger == Trigger::LayoutGetter;
+                         Statistic(StatisticProps{}
+                                       .value(bind([&] {
+                                           const auto current = value.get();
+                                           if (test.trigger == Trigger::ValueGetter) {
+                                               retire();
+                                           }
+                                           return current;
+                                       }))
+                                       .formatter([&](const StatisticValue&) {
+                                           if (test.trigger == Trigger::Formatter) {
+                                               retire();
+                                           }
+                                           return String{u8"Formatted"};
+                                       })
+                                       .visible(bind([&] {
+                                           if (test.trigger == Trigger::VisibleGetter) {
+                                               retire();
+                                           }
+                                           return true;
+                                       }))
+                                       .loading(bind([&] {
+                                           static_cast<void>(loading_tick.get());
+                                           if (test.trigger == Trigger::LoadingGetter) {
+                                               retire();
+                                           }
+                                           return false;
+                                       }))
+                                       .title(bind([&] {
+                                           if (test.trigger == Trigger::TextGetter) {
+                                               retire();
+                                           }
+                                           return String{u8"Title"};
+                                       }))
+                                       .layout(LayoutStyle{}.width(bind([&] {
+                                           if (test.trigger == Trigger::LayoutGetter) {
+                                               retire();
+                                           }
+                                           return dp(480);
+                                       })))
+                                       .richTitle(StatisticTitle{[&] {
+                                           Text(u8"Title");
+                                           const auto title = *f.services.components().parent(
+                                               f.services.text().mounted_texts().back().component);
+                                           owner = *f.services.components().parent(title);
+                                           armed = !test.later && test.trigger != Trigger::LoadingGetter;
+                                       }})
+                                       .richValue(StatisticValueContent{[&] {
+                                           Input(InputProps{}.ref(ref).defaultValue(u8"Original"));
+                                           if (test.trigger == Trigger::LoadingGetter) {
+                                               armed = true;
+                                               loading_tick.set(1);
+                                           }
+                                       }}));
+                         if (test.later) {
+                             // Keep a real build context for callback rebind while exercising a ready owner.
+                             armed = true;
+                             value.set(StatisticValue{2});
+                         }
+                     }});
+            }});
+            sync(f);
+            value.set(StatisticValue{3});
+            loading_tick.set(2);
+            sync(f);
+            check(fired && !f.services.components().contains(owner) && f.services.statistic().mounted().size() == 1 &&
+                      replacement.index == retired.index && replacement.generation != retired.generation &&
+                      f.services.components().contains(replacement),
+                  "getter/formatter cleanup harmed replacement generation or kept incomplete owner");
+            check(f.services.statistic().snapshot(replacement).formatted_value.bytes() == "99" && ref.focus() &&
+                      f.inputs.editors().require(f.inputs.mounted_inputs()[0].editor).value() == "Replacement",
+                  "getter/formatter callback lost rebound draft/ref");
+            f.services.dispose();
+            check(!ref.focus() && blocked_roots(f.services.interactions()).empty() && f.services.surfaces().size() == 0,
+                  "getter/formatter retirement leaked resources");
+        } catch (const std::exception& e) {
+            ++failures;
+            std::cerr << "mount callback=" << static_cast<int>(test.trigger)
+                      << " target=" << static_cast<int>(test.target) << " later=" << test.later << ": " << e.what()
+                      << '\n';
+        }
+    }
+    check(failures == 0, "Statistic guarded first-mount callback failed");
+
+    Fixture loading;
+    Signal<bool> show_loading{false};
+    InputRef ref;
+    loading.services.mount(Content{[&] {
+        Statistic(StatisticProps{}.loading(show_loading).richValue(StatisticValueContent{[&] {
+            Input(InputProps{}.ref(ref).defaultValue(u8"Retained"));
+            show_loading.set(true);
+        }}));
+    }});
+    sync(loading);
+    const auto owner = loading.services.statistic().mounted()[0];
+    check(loading.services.skeleton().snapshot(loading.services.statistic().snapshot(owner).skeleton).loading &&
+              !ref.focus(),
+          "loading changed during private Skeleton mount was lost");
+    show_loading.set(false);
+    sync(loading);
+    check(ref.focus(), "loading changed during mount could not recover retained input");
+}
+
 void lifecycle() {
+    first_mount_callbacks();
+    final_mount_boundary();
     rich_region_retirement();
     blocked_ancestor_mount();
     initial_mount_retirement();
