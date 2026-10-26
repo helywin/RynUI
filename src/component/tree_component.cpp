@@ -4,6 +4,7 @@
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <limits>
 
 namespace ryn::detail {
@@ -55,9 +56,36 @@ struct TreeState final {
     bool ready{};
     bool refreshing{};
     bool pending{};
+    bool geometry_blocked{};
 };
 
 using State = std::shared_ptr<TreeState>;
+
+struct MountTransaction final {
+    WindowComponentServices& services;
+    std::vector<runtime::ComponentId>& mounted;
+    runtime::ComponentId owner;
+    int exceptions{std::uncaught_exceptions()};
+    bool committed{};
+
+    ~MountTransaction() noexcept(false) {
+        if (committed) {
+            return;
+        }
+        const bool unwinding = std::uncaught_exceptions() > exceptions;
+        try {
+            services.destroy(owner);
+        } catch (...) {
+            std::erase(mounted, owner);
+            if (!unwinding) {
+                throw;
+            }
+            // Preserve the original mounting exception if teardown notifications also throw.
+            return;
+        }
+        std::erase(mounted, owner);
+    }
+};
 
 State state(WindowComponentServices& services, runtime::ComponentId id) {
     const auto* record = services.components().state<State>(id);
@@ -312,7 +340,8 @@ void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                                                    ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                          runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
                                                    : runtime::DirtyFlags::Material | runtime::DirtyFlags::HitTest);
-        services_->set_input_blocked(id, !root_shown || s->model.disabled || !services_->focus().state().window_active);
+        services_->set_input_blocked(id, !root_shown || s->model.disabled || s->geometry_blocked ||
+                                             !services_->focus().state().window_active);
         if (!intact(id)) {
             return;
         }
@@ -366,6 +395,7 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
     auto& services = *services_;
     auto& b = runtime::require_component_build_context();
     const auto id = b.mount_component<State>(s);
+    MountTransaction transaction{services, mounted_, id};
     s->node = b.root(id);
     mounted_.push_back(id);
     services.nodes().require(s->node).clip_content = true;
@@ -624,6 +654,7 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
     }
     s->ready = true;
     refresh(id, true);
+    transaction.committed = intact(id);
 }
 
 void TreeComponentHost::activate(runtime::ComponentId id, std::size_t i, int zone) {
@@ -777,6 +808,7 @@ void TreeComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& e, 
         }
         s->reveal.reset();
     }
+    s->scroll = std::clamp(s->scroll, 0.0F, std::max(0.0F, s->content_height - r.height));
     for (auto i : s->model.shown()) {
         const auto& row = s->rows[i];
         e.place_child(services_->components().root(row.view.component),
@@ -935,13 +967,17 @@ bool TreeComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
                 return false;
             }
             const float height = bounds(*services_, *owner).height;
-            const float next =
-                std::clamp(s->scroll - event.delta_y * 32, 0.0F, std::max(0.0F, s->content_height - height));
-            if (s->scroll != next) {
-                s->scroll = next;
-                services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
-                                                           runtime::DirtyFlags::HitTest);
+            const float maximum = std::max(0.0F, s->content_height - height);
+            if (maximum <= 0) {
+                return false;
             }
+            const float next = std::clamp(s->scroll - event.delta_y * 32, 0.0F, maximum);
+            if (s->scroll == next) {
+                return false;
+            }
+            s->scroll = next;
+            services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
+                                                       runtime::DirtyFlags::HitTest);
             return true;
         }
         if (services_->components().is_window_layer_root(*owner)) {
@@ -949,6 +985,25 @@ bool TreeComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
         }
     }
     return false;
+}
+
+void TreeComponentHost::position_window_layers(runtime::Size, runtime::Rect) {
+    // Coordinate committed zero-area bounds before child popup/effect painting.
+    // Never invoke the input boundary callbacks from LayoutEngine::place_child.
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        if (!intact(id)) {
+            continue;
+        }
+        const auto s = state(*services_, id);
+        const auto& committed = services_->nodes().require(s->node);
+        const bool geometry_blocked =
+            committed.place_generation != 0 && (committed.bounds.width <= 0 || committed.bounds.height <= 0);
+        if (s->geometry_blocked != geometry_blocked) {
+            s->geometry_blocked = geometry_blocked;
+            refresh(id, false);
+        }
+    }
 }
 
 void TreeComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
@@ -993,10 +1048,12 @@ void TreeComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
                     {1, row_clip});
             }
             if (s->model.checkable) {
-                const auto checkbox = bounds(*services_, row.view.checkbox);
+                const auto checkbox =
+                    services_->nodes().require(services_->components().root(row.view.checkbox)).bounds;
                 const bool checked = row.view.checked || row.view.indeterminate;
                 const bool disabled = s->model.disabled || s->model.nodes[i].disabled;
-                const auto check_clip = graphics::intersect_effect_bounds(checkbox, row_clip);
+                const auto check_clip =
+                    graphics::intersect_effect_bounds(bounds(*services_, row.view.checkbox), row_clip);
                 add(checkbox, m.border_radius,
                     disabled  ? t.colors.disabled
                     : checked ? t.colors.checkbox_checked

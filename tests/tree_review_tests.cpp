@@ -90,6 +90,8 @@ void mount_rollback() {
                                 remember(remember, f->services.components().root(retired));
                                 if (mode == 4) {
                                     f->services.destroy(retired);
+                                } else {
+                                    f->services.destroy(f->inputs.mounted_inputs().back().component);
                                 }
                                 outer.mount_slot(survivor, Content{[&] {
                                                      Tree({}, {TreeItem{u8"new", u8"New"}.richTitle(TreeTitle{[&] {
@@ -100,6 +102,8 @@ void mount_rollback() {
                                 throw MountFailure{};
                             }
                             if (mode == 6) {
+                                retired = f->services.tree().mounted().front();
+                                remember(remember, f->services.components().root(retired));
                                 check(ref.focus(), "final coordination pre-layout ref must remain usable");
                                 f->services.interactions().set_focus_handlers(
                                     f->inputs.mounted_inputs().back().interaction,
@@ -127,8 +131,11 @@ void mount_rollback() {
         check(caught && f->services.tree().mounted().size() == expected &&
                   f->inputs.mounted_inputs().size() == expected,
               "R1.1: locally caught mount exception retained a partial Tree");
+        check(!f->inputs.sessions().active().valid(), "failed mount retained an active Input session");
         for (auto node : old_nodes) {
-            check(!f->nodes.find(node) && !f->layout.remove_layout(node), "old mount node/layout survived rollback");
+            const bool live = f->nodes.find(node) != nullptr;
+            const bool layout = f->layout.remove_layout(node);
+            check(!live && !layout, "old mount node/layout survived rollback");
         }
         const int previous_reads = reads;
         trigger.set(1);
@@ -240,10 +247,58 @@ void zero_area() {
                   blocked_roots(f.services.interactions()) == std::vector{foreign},
               "zero-area restoration lost identity/draft/admission or changed foreign blocks");
     }
+    height.set(dp(0));
+    sync(f);
     f.services.destroy(owner);
     check(blocked_roots(f.services.interactions()) == std::vector{foreign}, "zero-area cleanup changed foreign blocks");
     f.services.set_input_blocked(foreign, false);
     clean(f);
+
+    auto rebound = std::make_unique<Fixture>();
+    runtime::ComponentId parent;
+    rebound->services.mount(Content{[&] {
+        auto& b = runtime::require_component_build_context();
+        parent = b.mount_component<int>(0);
+        const auto node = b.root(parent);
+        rebound->layout.set_layout(node, layout::BoxLayout{});
+        b.on_resource_cleanup(parent, [&, node] { rebound->layout.remove_layout(node); });
+    }});
+    Signal<LogicalLength> shrinking{dp(80)};
+    InputRef shared_ref;
+    runtime::ComponentId old;
+    bool replacing = false;
+    rebound->services.append_slot(
+        parent, Content{[&] {
+            Tree(TreeProps{}.layout(LayoutStyle{}.width(dp(240)).height(shrinking)),
+                 {TreeItem{u8"old", u8"Old"}.richTitle(TreeTitle{[&] {
+                     Input(InputProps{}.ref(shared_ref).onBlur([&] {
+                         if (replacing) {
+                             replacing = false;
+                             rebound->services.destroy(old);
+                             rebound->services.append_slot(
+                                 parent, Content{[&] {
+                                     Tree(TreeProps{}.layout(LayoutStyle{}.width(dp(240)).height(dp(80))),
+                                          {TreeItem{u8"new", u8"New"}.richTitle(TreeTitle{[&] {
+                                              Input(InputProps{}.ref(shared_ref).defaultValue(u8"New generation"));
+                                          }})});
+                                 }});
+                         }
+                     }));
+                 }})});
+        }});
+    sync(*rebound);
+    old = rebound->services.tree().mounted()[0];
+    check(shared_ref.focus(), "zero-area replacement focus fixture failed");
+    const auto old_session = rebound->inputs.sessions().active();
+    replacing = true;
+    shrinking.set(dp(0));
+    sync(*rebound);
+    sync(*rebound);
+    check(rebound->services.tree().mounted().size() == 1 && rebound->services.tree().mounted()[0] != old &&
+              shared_ref.bound() && shared_ref.focus() && blocked_roots(rebound->services.interactions()).empty() &&
+              !bool(rebound->inputs.dispatch(TextCommitted{String{u8"late"}, old_session})),
+          "zero-area coordination touched a replacement generation/ref or retained an old block");
+    clean(*rebound);
 }
 
 bool near(runtime::Rect a, runtime::Rect b) {
@@ -420,6 +475,9 @@ void wheel_handoff() {
     sync_window(f);
     check(f.services.tree().snapshot(owner).scroll > 0 && f.services.modal().snapshot(modal).scroll == parent_scroll,
           "Tree with its own range failed to consume wheel");
+    check(f.services.tree().snapshot(owner).scroll <=
+              f.services.tree().snapshot(owner).content_height - bounds(f, owner).height,
+          "Tree scroll exceeded its actual committed range");
     p = point();
     f.services.dispatch_scroll({0, -100, p.x, p.y});
     sync_window(f);

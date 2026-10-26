@@ -53,6 +53,7 @@ public:
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;
     void prepare_auxiliary_layout() override;
+    void position_window_layers(runtime::Size, runtime::Rect) override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
