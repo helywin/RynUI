@@ -122,6 +122,11 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);
     auto_complete_ = std::make_unique<AutoCompleteComponentHost>(*this);
+    focus_.set_observer([this] {
+        if (!retiring_failed_component_) {
+            auto_complete_->on_focus_changed();
+        }
+    });
     card_ = std::make_unique<CardComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
     collapse_ = std::make_unique<CollapseComponentHost>(*this);
@@ -329,6 +334,29 @@ bool WindowComponentServices::destroy(runtime::ComponentId id) {
         participant->on_destroy();
     }
     reconcile_input_boundary();
+    scene_structure_dirty_ = true;
+    return true;
+}
+
+bool WindowComponentServices::retire_failed_component(runtime::ComponentId id) noexcept {
+    struct Restore final {
+        bool& target;
+        bool previous;
+
+        ~Restore() {
+            target = previous;
+        }
+    } restore{retiring_failed_component_, std::exchange(retiring_failed_component_, true)};
+
+    if (!text_.destroy(id)) {
+        return false;
+    }
+    for (auto* participant : participants_) {
+        participant->on_destroy();
+    }
+    if (const auto boundary = interactions_.input_boundary(); boundary && !components().contains(*boundary)) {
+        interactions_.set_input_boundary({});
+    }
     scene_structure_dirty_ = true;
     return true;
 }

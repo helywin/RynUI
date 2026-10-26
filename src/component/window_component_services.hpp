@@ -139,6 +139,8 @@ public:
     void detach_input_host(WindowComponentParticipant& participant) noexcept;
     void mount(const Content& content);
     bool destroy(runtime::ComponentId id);
+    // Unwind cleanup: release one exact generation without delivering new boundary callbacks.
+    bool retire_failed_component(runtime::ComponentId id) noexcept;
     void append_slot(runtime::ComponentId parent, const Content& content);
     void dispose() noexcept;
     void set_window_active(bool active);
@@ -397,6 +399,7 @@ public:
     }
 
 private:
+    bool retiring_failed_component_{};
     bool reconcile_input_boundary();
     std::uint64_t reconciled_input_boundary_revision_{};
     runtime::NodeStore* nodes_;

@@ -172,6 +172,14 @@ bool FocusManager::focus_from_pointer(std::optional<InteractionId> target) {
     }
 }
 
+void FocusManager::set_observer(std::function<void()> observer) {
+    if (!registry_->is_owner_thread()) {
+        throw std::logic_error("FocusManager can only be used on its owner thread");
+    }
+    observer_ = std::move(observer);
+    observed_focus_ = focused_;
+}
+
 bool FocusManager::request_focus(InteractionId target, FocusModality modality) {
     begin_operation();
     try {
@@ -331,6 +339,17 @@ void FocusManager::begin_operation() {
 }
 
 void FocusManager::end_operation() {
+    std::size_t notifications = 0;
+    while (observed_focus_ != focused_) {
+        if (++notifications > 32) {
+            throw std::logic_error("focus observation failed to converge");
+        }
+        observed_focus_ = focused_;
+        const auto observer = observer_;
+        if (observer) {
+            observer();
+        }
+    }
     dispatching_ = false;
     if (flushing_focus_) {
         return;

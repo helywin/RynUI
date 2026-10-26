@@ -44,6 +44,7 @@ public:
     void on_input_boundary_changed() override;
     void prepare_auxiliary_layout() override;
     void validate_private_regions();
+    void on_focus_changed();
     bool on_keyboard_input(const input::KeyboardInputEvent&) override;
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;

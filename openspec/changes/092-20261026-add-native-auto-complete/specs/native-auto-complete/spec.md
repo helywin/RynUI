@@ -22,6 +22,10 @@ AutoComplete SHALL 接受任意 String，支持 reactive value 或一次性 defa
 - **WHEN** 建议在输入后动态增删、重排或更新 label
 - **THEN** 同 key 子树保留，删除项不再命中，editor 和 preedit 不因列表更新而丢失
 
+#### Scenario: 富标签构建异常
+- **WHEN** 首次挂载或后续新增/替换富标签抛出异常，调用者局部 catch 后继续挂载 fallback
+- **THEN** 原异常继续传播到调用者，失败的完整 owner generation 安全退役且不把部分 rows 交给布局，回调已建立的替代 generation 保持可用
+
 ### Requirement: 原生交互与组合输入
 
 AutoComplete SHALL 只有一个 Tab 输入入口，支持上下移动、Enter 选择、Escape 关闭、Tab 离开及 pointer 选择/清空。组合输入活动时建议逻辑 SHALL 不消费上下/Enter/Escape 或提交建议；Escape 交还真实 Input 取消自身 composition，不关闭 popup 或改变接受值。disabled/readOnly SHALL 禁止用户修改与建议选择。ref SHALL 使用真实 Input 的 focus/blur/select 和 generation/lifetime 检查。
@@ -37,6 +41,10 @@ open SHALL 支持 controlled/defaultOpen 且拒绝同时设置；受控关闭请
 #### Scenario: 空集合与受控打开
 - **WHEN** open=true 且 options 为空，然后填充建议
 - **THEN** 空时不显示 popup，填充后按外部打开状态呈现
+
+#### Scenario: 同帧逻辑后代退出
+- **WHEN** 富后代或嵌套子 popup 的原生输入在同帧取得焦点后，焦点转移到整个逻辑后代之外
+- **THEN** 父建议立即请求关闭且继续遵守 open 权威，保留后代原生 focus/blur 回调；逻辑后代内部转移不请求关闭
 
 ### Requirement: Form reset 合同
 

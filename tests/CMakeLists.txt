@@ -38,6 +38,16 @@ foreach(auto_complete_case IN ITEMS mount tab zero anchor modality)
     add_test(NAME rynui.auto_complete_review_${auto_complete_case} COMMAND rynui_auto_complete_review_tests ${auto_complete_case})
 endforeach()
 
+add_executable(rynui_auto_complete_r2_tests auto_complete_r2_tests.cpp)
+rynui_configure_cpp_target(rynui_auto_complete_r2_tests)
+target_link_libraries(rynui_auto_complete_r2_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_auto_complete_r2_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(auto_complete_case IN ITEMS exceptions focus)
+    add_test(NAME rynui.auto_complete_r2_${auto_complete_case} COMMAND rynui_auto_complete_r2_tests ${auto_complete_case})
+endforeach()
+
 add_executable(rynui_avatar_theme_tests avatar_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_avatar_theme_tests)
 target_link_libraries(rynui_avatar_theme_tests PRIVATE rynui_components)

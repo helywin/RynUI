@@ -6,6 +6,8 @@
 
 每个 `AutoCompleteOption` 有唯一非空 `key`、输入接受的 `value`、显示的 `label`、`disabled` 与可选 `AutoCompleteRichLabel{AutoCompleteOptionLabel{...}}`。相同 key 的 row 保留；普通 String label 更新不重建子树。rich label 复制保持身份，只有显式换用另一 rich label 对象才替换该局部子树。rich 内容可绑定 reactive 数据。列表更新不重建真实 Input/editor。
 
+首次构建或新增/替换富标签时若 slot 抛出异常，失败的 AutoComplete 会退役，并把原异常继续抛给调用者；调用者可局部 catch 后挂载 fallback，不会留下可布局的半成品行。
+
 默认不过滤（锁定上游 tests 的 combobox 行为）；`AutoCompleteFilter{true}` 开启大小写敏感 UTF-8 value 子串过滤，也可使用 `AutoCompleteFilter{[](StringView query, const AutoCompleteOption& option) -> bool {...}}`。predicate 应为无副作用纯函数，不在计算中修改组件树。
 
 输入提交产生 `onChange(String)` 和 `onSearch(String)`。选择先对变化值发 `onChange`，再发 `onSelect(String, AutoCompleteOption)`，不发 `onSearch`。受控值由外部接受；`onSearch` 只用于建议查询，不能代替 onChange 控制值。程序 value 更新不发用户事件；preedit 本身不发搜索。清空发变化的 onChange、onSearch 和 onClear。

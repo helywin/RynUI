@@ -47,6 +47,8 @@ public:
     void reserve(std::size_t focus_capacity);
     void dispatch(const KeyboardInputEvent& event);
     void set_command_filter(std::function<bool(const KeyboardInputEvent&)> filter);
+    // Observes completed native focus notifications without replacing an interaction's handlers.
+    void set_observer(std::function<void()> observer);
     bool focus_from_pointer(std::optional<InteractionId> target);
     bool request_focus(InteractionId target, FocusModality modality);
     bool clear_focus();
@@ -95,6 +97,8 @@ private:
     std::optional<FocusRequest> pending_focus_;
     bool flushing_focus_{};
     std::function<bool(const KeyboardInputEvent&)> command_filter_;
+    std::function<void()> observer_;
+    std::optional<InteractionId> observed_focus_;
 };
 
 } // namespace ryn::input

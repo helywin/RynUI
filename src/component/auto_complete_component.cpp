@@ -20,6 +20,18 @@ struct PrivateRegion final {
     std::optional<runtime::ComponentId> parent;
 };
 
+struct RetireOnFailure final {
+    WindowComponentServices& services;
+    runtime::ComponentId owner;
+    bool complete{};
+
+    ~RetireOnFailure() noexcept {
+        if (!complete) {
+            (void)services.retire_failed_component(owner);
+        }
+    }
+};
+
 struct Row final {
     runtime::NodeId node;
     runtime::ComponentId label_root;
@@ -739,6 +751,7 @@ void AutoCompleteComponentHost::reconcile_rows(runtime::ComponentId id) {
         s->rows_dirty = true;
         return;
     }
+    RetireOnFailure rollback{*services_, id};
     s->reconciling = true;
     do {
         s->rows_dirty = false;
@@ -820,6 +833,7 @@ void AutoCompleteComponentHost::reconcile_rows(runtime::ComponentId id) {
         }
     } while (s->rows_dirty);
     s->reconciling = false;
+    rollback.complete = true;
 }
 
 void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std::optional<AutoCompletePrefix>& prefix,
@@ -835,6 +849,7 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
     auto& build = runtime::require_component_build_context();
     const auto id = build.mount_component<State>(AutoCompleteModel{
         {}, props.default_value_.value_or(String{}), props.value_.has_value(), AutoCompleteFilter{}, true});
+    RetireOnFailure rollback{services, id};
     auto& s = build.state<State>(id);
     s.node = build.root(id);
     const auto node = s.node;
@@ -1264,7 +1279,7 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
     }
     live->mounting = false;
     reconcile_rows(id);
-    (void)checked(services, id);
+    rollback.complete = checked(services, id) != nullptr;
 }
 
 void AutoCompleteComponentHost::on_window_active(bool value) {
@@ -1287,6 +1302,8 @@ void AutoCompleteComponentHost::on_input_boundary_changed() {
 }
 
 void AutoCompleteComponentHost::prepare_auxiliary_layout() {
+    // Also reconcile focus cancellation suppressed while an exception was unwinding.
+    on_focus_changed();
     const auto ids = mounted_;
     for (auto id : ids) {
         auto* s = checked(*services_, id);
@@ -1294,18 +1311,6 @@ void AutoCompleteComponentHost::prepare_auxiliary_layout() {
             continue;
         }
         s->closed_on_blur = false;
-        const auto focus = services_->focus().state().focused;
-        const auto* record = focus ? services_->interactions().find(*focus) : nullptr;
-        const bool focus_inside = record && descendant(*services_, record->component, id);
-        const bool exited = s->focus_was_inside && !focus_inside;
-        s->focus_was_inside = focus_inside;
-        if (exited) {
-            request_open(id, false);
-        }
-        s = checked(*services_, id);
-        if (!s) {
-            continue;
-        }
         const bool active = editable(id, false);
         if (active) {
             s->has_been_active = true;
@@ -1333,6 +1338,29 @@ void AutoCompleteComponentHost::validate_private_regions() {
     const auto ids = mounted_;
     for (auto id : ids) {
         (void)checked(*services_, id);
+    }
+}
+
+void AutoCompleteComponentHost::on_focus_changed() {
+    const auto ids = mounted_;
+    for (auto it = ids.rbegin(); it != ids.rend(); ++it) {
+        const auto id = *it;
+        auto* state = checked(*services_, id);
+        if (!state) {
+            continue;
+        }
+        const auto focus = services_->focus().state().focused;
+        const auto* record = focus ? services_->interactions().find(*focus) : nullptr;
+        const bool inside = record && descendant(*services_, record->component, id);
+        const bool exited = state->focus_was_inside && !inside;
+        state->focus_was_inside = inside;
+        if (inside) {
+            state->closed_on_blur = false;
+        }
+        if (exited && !state->closed_on_blur) {
+            state->closed_on_blur = true;
+            request_open(id, false);
+        }
     }
 }
 
