@@ -1,0 +1,52 @@
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-6f192459/out/build/windows-msvc-headless
+      Start 40: rynui.statistic_model
+ 1/15 Test #40: rynui.statistic_model ...................   Passed    0.01 sec
+      Start 41: rynui.statistic_theme
+ 2/15 Test #41: rynui.statistic_theme ...................   Passed    0.39 sec
+      Start 42: rynui.statistic_retained
+ 3/15 Test #42: rynui.statistic_retained ................   Passed    0.22 sec
+      Start 43: rynui.statistic_formatting
+ 4/15 Test #43: rynui.statistic_formatting ..............   Passed    0.97 sec
+      Start 44: rynui.statistic_clips
+ 5/15 Test #44: rynui.statistic_clips ...................   Passed    0.07 sec
+      Start 45: rynui.statistic_lifecycle
+ 6/15 Test #45: rynui.statistic_lifecycle ...............   Passed    4.84 sec
+      Start 46: rynui.statistic_gates
+ 7/15 Test #46: rynui.statistic_gates ...................   Passed    0.13 sec
+      Start 47: rynui.statistic_boundaries
+ 8/15 Test #47: rynui.statistic_boundaries ..............   Passed    0.19 sec
+      Start 48: rynui.statistic_rollback
+ 9/15 Test #48: rynui.statistic_rollback ................***Failed    0.75 sec
+rollback failure=0: failed mount retained a node/layout/intrinsic generation
+rollback failure=1: failed mount retained a node/layout/intrinsic generation
+rollback failure=2: failed mount retained a node/layout/intrinsic generation
+rollback failure=3: failed mount retained a node/layout/intrinsic generation
+rollback failure=4: failed mount retained a node/layout/intrinsic generation
+rollback failure=8: failed mount retained a node/layout/intrinsic generation
+Statistic locally caught first-mount rollback failed
+
+      Start 49: rynui.statistic_public_api
+10/15 Test #49: rynui.statistic_public_api ..............   Passed    0.28 sec
+      Start 65: rynui.skeleton_component
+11/15 Test #65: rynui.skeleton_component ................   Passed    0.26 sec
+      Start 66: rynui.skeleton_integration_editor
+12/15 Test #66: rynui.skeleton_integration_editor .......   Passed    0.08 sec
+      Start 67: rynui.skeleton_integration_select
+13/15 Test #67: rynui.skeleton_integration_select .......   Passed    0.16 sec
+      Start 68: rynui.skeleton_integration_retirement
+14/15 Test #68: rynui.skeleton_integration_retirement ...   Passed    0.20 sec
+      Start 69: rynui.skeleton_integration_boundaries
+15/15 Test #69: rynui.skeleton_integration_boundaries ...   Passed    0.15 sec
+
+93% tests passed, 1 tests failed out of 15
+
+Total Test time (real) =   8.76 sec
+
+The following tests FAILED:
+	 48 - rynui.statistic_rollback (Failed)
+ctest : Errors while running CTest
+所在位置 行:8 字符: 1
++ ctest --preset windows-msvc-headless-debug -R '^rynui\.(statistic_(mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Errors while running CTest:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError

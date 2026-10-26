@@ -1,0 +1,27 @@
+[0/2] Re-checking globbed directories...
+[1/12] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\statistic_component.cpp.obj
+[2/12] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\window_component_services.cpp.obj
+[3/12] Linking CXX static library src\Debug\rynui_components.lib
+[4/12] Building CXX object tests\CMakeFiles\rynui_statistic_component_tests.dir\Debug\statistic_component_tests.cpp.obj
+[5/12] Linking CXX executable tests\Debug\rynui_statistic_model_tests.exe
+[6/12] Linking CXX executable tests\Debug\rynui_statistic_theme_tests.exe
+[7/12] Building CXX object tests\CMakeFiles\rynui_statistic_public_api_tests.dir\Debug\statistic_public_api_tests.cpp.obj
+[8/12] Linking CXX executable tests\Debug\rynui_statistic_component_tests.exe
+[9/12] Linking CXX executable tests\Debug\rynui_statistic_public_api_tests.exe
+[10/12] Linking CXX executable tests\Debug\rynui_skeleton_component_tests.exe
+[11/12] Linking CXX executable tests\Debug\rynui_skeleton_integration_tests.exe
+[0/2] Re-checking globbed directories...
+[1/3] Building CXX object tests\CMakeFiles\rynui_statistic_component_tests.dir\Debug\statistic_component_tests.cpp.obj
+[2/3] Linking CXX executable tests\Debug\rynui_statistic_component_tests.exe
+[0/2] Re-checking globbed directories...
+[1/10] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\statistic_component.cpp.obj
+[2/10] Linking CXX static library src\Debug\rynui_components.lib
+[3/10] Linking CXX executable tests\Debug\rynui_statistic_model_tests.exe
+[4/10] Linking CXX executable tests\Debug\rynui_statistic_theme_tests.exe
+[5/10] Linking CXX executable tests\Debug\rynui_statistic_public_api_tests.exe
+[6/10] Linking CXX executable tests\Debug\rynui_skeleton_component_tests.exe
+[7/10] Linking CXX executable tests\Debug\rynui_skeleton_integration_tests.exe
+[8/10] Building CXX object tests\CMakeFiles\rynui_statistic_component_tests.dir\Debug\statistic_component_tests.cpp.obj
+[9/10] Linking CXX executable tests\Debug\rynui_statistic_component_tests.exe
+[0/2] Re-checking globbed directories...
+ninja: no work to do.

@@ -37,6 +37,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Tags and counts | Tag/CheckableTag colors, controlled close/selection; standalone or wrapped Badge count/overflow/dot/status with retained contents; see [Tag / Badge](docs/tag-and-badge.md) |
 | Avatars and member groups | Text/icon Avatar with measured font fitting and retained contents; keyed AvatarGroup members, overlapping layout and a wrapping/scrolling overflow popover; see [Avatar](docs/avatar.md) |
 | Ratings | Rate with text/icons and real half fills, controlled values, clearing, native keyboard input, dynamic counts and retained rich Tooltips; see [Rate](docs/rate.md) |
+| Statistics | Statistic with typed numbers/strings, precision truncation and padding, grouping/custom formatting, retained title/value/affixes and Skeleton loading; see [Statistic](docs/statistic.md) |
 | Status and progress | Alert with controlled close and content slots, Spin with retained contents and a loading shield, and line/circle/dashboard Progress; see [Feedback components](docs/feedback.md) |
 | Messages and notifications | Window-scoped Message/Notification holders and refs, keyed updates, corner notifications, rich contents and timed cleanup; see [Message / Notification](docs/message-notification.md) |
 | Timeline | Vertical retained rich items, alternating placement, reverse order, static loading rails, and editable content; see [Timeline](docs/timeline.md) |

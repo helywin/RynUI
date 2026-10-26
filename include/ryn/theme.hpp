@@ -18,6 +18,7 @@
 #include <ryn/timeline_tokens.hpp>
 #include <ryn/avatar_tokens.hpp>
 #include <ryn/rate_tokens.hpp>
+#include <ryn/statistic_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -1612,6 +1613,13 @@ struct RateThemeConfig final {
     friend bool operator==(const RateThemeConfig&, const RateThemeConfig&) = default;
 };
 
+struct StatisticThemeConfig final {
+    StatisticTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const StatisticThemeConfig&, const StatisticThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
@@ -1658,6 +1666,7 @@ struct ThemeConfig final {
     TimelineThemeConfig timeline;
     AvatarThemeConfig avatar;
     RateThemeConfig rate;
+    StatisticThemeConfig statistic;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -2310,6 +2319,10 @@ public:
         return *rate_;
     }
 
+    [[nodiscard]] const StatisticThemeToken& statistic() const noexcept {
+        return *statistic_;
+    }
+
 private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
@@ -2331,7 +2344,7 @@ private:
                   std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
                   std::shared_ptr<const NoticeThemeToken> notification,
                   std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
-                  std::shared_ptr<const RateThemeToken> rate);
+                  std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2358,6 +2371,7 @@ private:
     std::shared_ptr<const TimelineThemeToken> timeline_;
     std::shared_ptr<const AvatarThemeToken> avatar_;
     std::shared_ptr<const RateThemeToken> rate_;
+    std::shared_ptr<const StatisticThemeToken> statistic_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;

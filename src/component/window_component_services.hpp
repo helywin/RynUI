@@ -46,6 +46,7 @@ class DescriptionsComponentHost;
 class TimelineComponentHost;
 class AvatarComponentHost;
 class RateComponentHost;
+class StatisticComponentHost;
 class BreadcrumbComponentHost;
 class StepsComponentHost;
 class SkeletonComponentHost;
@@ -276,6 +277,10 @@ public:
         return *rate_;
     }
 
+    [[nodiscard]] StatisticComponentHost& statistic() noexcept {
+        return *statistic_;
+    }
+
     [[nodiscard]] BreadcrumbComponentHost& breadcrumb() noexcept {
         return *breadcrumb_;
     }
@@ -447,6 +452,7 @@ private:
     std::unique_ptr<TimelineComponentHost> timeline_;
     std::unique_ptr<AvatarComponentHost> avatar_;
     std::unique_ptr<RateComponentHost> rate_;
+    std::unique_ptr<StatisticComponentHost> statistic_;
     std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;
     std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<SkeletonComponentHost> skeleton_;

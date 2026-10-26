@@ -1,0 +1,7 @@
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-6f192459/out/build/windows-msvc-headless
+    Start 48: rynui.statistic_rollback
+1/1 Test #48: rynui.statistic_rollback .........   Passed    0.73 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.76 sec
