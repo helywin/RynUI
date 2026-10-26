@@ -37,6 +37,7 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 气泡确认 | Popconfirm 保留触发器/标题/说明、真实确认取消按钮、受控或默认显示、键盘/外部关闭、焦点恢复和子浮层；见 [Popconfirm](docs/popconfirm.md) |
 | 交互气泡 | Popover 保留富内容与编辑草稿、受控开合、组合触发、定位箭头和子浮层输入归属；见 [Popover](docs/popover.md) |
 | 标签与计数 | Tag/CheckableTag 状态色、受控关闭与选择；Badge 计数/溢出/圆点/状态、独立或包裹保留内容；见 [Tag / Badge](docs/tag-and-badge.md) |
+| 头像与成员组 | 文字/图标 Avatar、实际字体测量自适应、保留内容；AvatarGroup 固定键控成员、重叠布局和可换行/滚动的溢出气泡；见 [Avatar](docs/avatar.md) |
 | 状态与进度 | Alert 受控关闭与内容插槽、Spin 保留内容及加载屏蔽、Progress 条形/圆形/仪表盘进度；见 [反馈组件](docs/feedback.md) |
 | 消息通知 | Message/Notification 窗口作用域 holder/ref、键控更新、四角通知、富内容及到期清理；见 [消息通知](docs/message-notification.md) |
 | 时间轴 | 竖向 Timeline 支持富条目、交替布局、正反序、静态 loading 轨迹及保留编辑内容；见 [Timeline](docs/timeline.md) |

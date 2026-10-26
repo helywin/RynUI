@@ -35,6 +35,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Confirmation popups | Popconfirm with retained trigger/title/description, real confirm/cancel buttons, controlled or default visibility, keyboard/outside close, focus restoration and child popups; see [Popconfirm](docs/popconfirm.md) |
 | Interactive popovers | Popover with retained rich contents and editor drafts, controlled visibility, combined triggers, placement/arrows and child-popup input ownership; see [Popover](docs/popover.md) |
 | Tags and counts | Tag/CheckableTag colors, controlled close/selection; standalone or wrapped Badge count/overflow/dot/status with retained contents; see [Tag / Badge](docs/tag-and-badge.md) |
+| Avatars and member groups | Text/icon Avatar with measured font fitting and retained contents; keyed AvatarGroup members, overlapping layout and a wrapping/scrolling overflow popover; see [Avatar](docs/avatar.md) |
 | Status and progress | Alert with controlled close and content slots, Spin with retained contents and a loading shield, and line/circle/dashboard Progress; see [Feedback components](docs/feedback.md) |
 | Messages and notifications | Window-scoped Message/Notification holders and refs, keyed updates, corner notifications, rich contents and timed cleanup; see [Message / Notification](docs/message-notification.md) |
 | Timeline | Vertical retained rich items, alternating placement, reverse order, static loading rails, and editable content; see [Timeline](docs/timeline.md) |
