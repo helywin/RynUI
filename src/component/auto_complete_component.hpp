@@ -16,6 +16,8 @@ struct AutoCompleteSnapshot final {
     float scroll{};
     bool visible{};
     bool backfilled{};
+    bool open{};
+    bool suppressed{};
 };
 
 class AutoCompleteComponentHost final : public WindowComponentParticipant {
@@ -63,6 +65,7 @@ private:
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     std::vector<runtime::ComponentId> positioning_;
+    std::size_t mount_depth_{};
     bool window_active_{true};
 };
 } // namespace ryn::detail

@@ -212,7 +212,8 @@ void retention() {
     sync(f);
     check(snapshot(f, id).rows[2] == original.rows[0] && snapshot(f, id).input == original.input && rich_runs == 1 &&
               f.inputs.editors().require(child.editor).value() == "kept native draft" &&
-              f.inputs.editors().require(child.editor).composition().active,
+              f.inputs.editors().require(child.editor).composition().active &&
+              f.inputs.sessions().active() == child_stamp,
           "key reorder lost native child/editor/preedit identity");
     (void)f.inputs.dispatch(CompositionChanged{String{}, {}, child_stamp});
     check(main_ref.focus(), "main focus");
@@ -222,14 +223,31 @@ void retention() {
     suggestions.set(next);
     sync(f);
     check(f.inputs.editors().require(main.editor).composition().active &&
-              f.inputs.mounted_inputs()[0].editor == main.editor,
+              f.inputs.mounted_inputs()[0].editor == main.editor && f.inputs.sessions().active() == main_stamp,
           "suggestions canceled main preedit");
+    next[2].rich_label = AutoCompleteRichLabel{
+        AutoCompleteOptionLabel{[&] { Input(InputProps{}.defaultValue(u8"replacement label").ref(child_ref)); }}};
+    suggestions.set(next);
+    sync(f);
+    check(snapshot(f, id).rows[2] == original.rows[0] && child_ref.bound() && !f.inputs.editors().find(child.editor) &&
+              f.inputs.editors().require(main.editor).composition().active &&
+              f.inputs.sessions().active() == main_stamp,
+          "rich identity replacement lost row or changed the main editor/session");
     const auto active = snapshot(f, id).active;
     key(f, Key::down);
     key(f, Key::enter);
     check(f.inputs.editors().require(main.editor).composition().active && snapshot(f, id).active == active &&
               snapshot(f, id).value.empty(),
           "IME committed suggestion");
+    key(f, Key::escape);
+    check(!f.inputs.editors().require(main.editor).composition().active && snapshot(f, id).visible &&
+              snapshot(f, id).value.empty(),
+          "native IME Escape closed suggestions or committed a value");
+    check(bool(f.inputs.dispatch(CompositionChanged{String{u8"zhong"}, {}, f.inputs.sessions().active()})),
+          "new composition");
+    check(bool(f.inputs.dispatch(TextCommitted{String{u8"中文"}, f.inputs.sessions().active()})), "IME commit");
+    sync(f);
+    check(snapshot(f, id).value == String{u8"中文"}, "IME commit did not reach String value");
     next.erase(next.begin() + 2);
     suggestions.set(next);
     sync(f);
@@ -278,9 +296,12 @@ void form() {
     const auto count = events;
     const auto stamp = f.inputs.sessions().active();
     check(bool(f.inputs.dispatch(CompositionChanged{String{u8"preedit"}, {}, stamp})), "Form preedit");
+    check(bool(f.inputs.dispatch(CandidatesChanged{{String{u8"候选"}}, 0, CandidateOrientation::vertical, stamp})),
+          "Form candidates");
     check(form_ref.reset(), "same value reset");
     sync(f);
     check(!f.inputs.editors().require(input.editor).composition().active &&
+              f.inputs.editors().require(input.editor).composition().candidates.empty() &&
               f.inputs.editors().require(input.editor).value() == "initial" && events == count,
           "same value reset lost preedit cleanup/event silence");
     key(f, Key::down);

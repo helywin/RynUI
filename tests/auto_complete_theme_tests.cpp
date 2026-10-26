@@ -67,6 +67,42 @@ void run() {
     changed->auto_complete.tokens.option_height = dp(38);
     root->update(*changed);
     check(metrics == 1, "metric subscription");
+    int typography = 0;
+    int effects = 0;
+    int order = 0;
+    auto typography_sub = root->capture(
+        [&](DirtyPhase p) {
+            check(has_any(p, DirtyPhase::text | DirtyPhase::measure_layout), "typography dirty phase");
+            ++typography;
+        },
+        [&] { (void)root->auto_complete_typography(); });
+    auto effects_sub = root->capture(
+        [&](DirtyPhase p) {
+            check(has_any(p, DirtyPhase::geometry | DirtyPhase::paint_material), "effects dirty phase");
+            ++effects;
+        },
+        [&] { (void)root->auto_complete_effects(); });
+    auto order_sub = root->capture(
+        [&](DirtyPhase p) {
+            check(has_any(p, DirtyPhase::paint_material | DirtyPhase::hit_test), "order dirty phase");
+            ++order;
+        },
+        [&] { (void)root->auto_complete_order(); });
+    auto identity = root->snapshot().identity();
+    changed->auto_complete.tokens.font_size = dp(17);
+    root->update(*changed);
+    check(typography == 1 && effects == 0 && order == 0 && identity != root->snapshot().identity(),
+          "typography identity/dirty isolation");
+    identity = root->snapshot().identity();
+    changed->auto_complete.tokens.shadow = ShadowList{};
+    root->update(*changed);
+    check(typography == 1 && effects == 1 && order == 0 && identity != root->snapshot().identity(),
+          "effects identity/dirty isolation");
+    identity = root->snapshot().identity();
+    changed->auto_complete.tokens.z_index_popup = 1200;
+    root->update(*changed);
+    check(typography == 1 && effects == 1 && order == 1 && identity != root->snapshot().identity(),
+          "order identity/dirty isolation");
     const auto* before = &root->snapshot();
     auto inherited = std::make_unique<ThemeConfig>();
     auto child = ThemeScope::create(root, *inherited);

@@ -58,6 +58,7 @@ struct State final {
     bool open{};
     bool suppressed{};
     bool visible{};
+    bool has_been_active{};
     bool closed_on_blur{};
     bool reveal_active{true};
     bool needs_layout{true};
@@ -146,12 +147,14 @@ AutoCompleteComponentHost::~AutoCompleteComponentHost() {
 }
 
 void* AutoCompleteComponentHost::begin_mount() noexcept {
+    ++mount_depth_;
     auto* old = active_auto_complete;
     active_auto_complete = this;
     return old;
 }
 
 void AutoCompleteComponentHost::end_mount(void* old) noexcept {
+    --mount_depth_;
     active_auto_complete = static_cast<AutoCompleteComponentHost*>(old);
 }
 
@@ -164,8 +167,9 @@ AutoCompleteSnapshot AutoCompleteComponentHost::snapshot(runtime::ComponentId id
     if (!s) {
         throw std::out_of_range("stale AutoComplete");
     }
-    return {s->input,          s->popup,  s->rows, s->model.value(), s->model.query(), s->display.get(),
-            s->model.active(), s->bounds, s->clip, s->scroll,        s->visible,       s->model.backfilled()};
+    return {s->input,          s->popup,     s->rows, s->model.value(), s->model.query(), s->display.get(),
+            s->model.active(), s->bounds,    s->clip, s->scroll,        s->visible,       s->model.backfilled(),
+            s->open,           s->suppressed};
 }
 
 bool AutoCompleteComponentHost::editable(runtime::ComponentId id, bool composition) const {
@@ -200,7 +204,17 @@ void AutoCompleteComponentHost::refresh(runtime::ComponentId id, bool geometry) 
         if (!row) {
             continue;
         }
-        const auto& option = s->model.options()[row->index];
+        const auto found = std::ranges::find(s->model.options(), row->key, &AutoCompleteOption::key);
+        if (found == s->model.options().end()) {
+            if (services_->components().set_branch_active(child, false)) {
+                services_->mark_scene_structure_dirty();
+            }
+            services_->interactions().set_eligible(row->interaction, false);
+            boundaries.emplace_back(child, true);
+            continue;
+        }
+        row->index = static_cast<std::size_t>(found - s->model.options().begin());
+        const auto& option = *found;
         const bool shown = std::ranges::find(s->model.filtered(), row->index) != s->model.filtered().end();
         boundaries.emplace_back(child, !visible || !shown || option.disabled);
         if (services_->components().set_branch_active(child, shown)) {
@@ -299,8 +313,14 @@ void AutoCompleteComponentHost::publish(runtime::ComponentId id, String value, s
     if (!s || !services_->components().scope(id).active()) {
         return;
     }
-    if (s->authority) {
-        s->model.reconcile(read_prop(*s->authority));
+    const auto authority = s->authority;
+    if (authority) {
+        auto accepted = read_prop(*authority);
+        s = services_->components().state<State>(id);
+        if (!s || !services_->components().scope(id).active()) {
+            return;
+        }
+        s->model.reconcile(std::move(accepted));
     }
     s->display.set(s->model.display());
     refresh(id);
@@ -364,6 +384,10 @@ void AutoCompleteComponentHost::mount_label(runtime::ComponentId child) {
     auto* row = services_->components().state<Row>(child);
     auto& build = runtime::require_component_build_context();
     row->label_root = group(*services_);
+    const auto label_root = row->label_root;
+    build.on_resource_cleanup(label_root, [services = services_, label_root] {
+        services->interactions().set_input_blocked(label_root, false);
+    });
     build.mount_slot_with_semantic_text_style(row->label_root, Content{[row] {
                                                   if (const auto* label = row->rich.content()) {
                                                       SlotContentAccess::function (*label)();
@@ -477,6 +501,10 @@ void AutoCompleteComponentHost::reconcile_rows(runtime::ComponentId id) {
             if (row->rich != option.rich_label) {
                 const auto label = row->label_root;
                 row->rich = option.rich_label;
+                services_->set_input_blocked(label, true);
+                if (!services_->components().contains(id)) {
+                    return;
+                }
                 services_->destroy(label);
                 if (!services_->components().contains(id)) {
                     return;
@@ -493,6 +521,10 @@ void AutoCompleteComponentHost::reconcile_rows(runtime::ComponentId id) {
     }
     s->rows = std::move(next);
     for (auto child : previous) {
+        services_->set_input_blocked(child, true);
+        if (!services_->components().contains(id)) {
+            return;
+        }
         services_->destroy(child);
         if (!services_->components().contains(id)) {
             return;
@@ -625,8 +657,14 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
                           if (!s || s->editor != editor || !services_->components().scope(id).active()) {
                               return;
                           }
-                          if (s->authority) {
-                              s->model.reconcile(read_prop(*s->authority));
+                          const auto authority = s->authority;
+                          if (authority) {
+                              auto accepted = read_prop(*authority);
+                              s = services_->components().state<State>(id);
+                              if (!s || s->editor != editor || !services_->components().scope(id).active()) {
+                                  return;
+                              }
+                              s->model.reconcile(std::move(accepted));
                           }
                           s->model.restore();
                           s->display.set(s->model.display());
@@ -722,6 +760,7 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
         if (auto* s = services_->components().state<State>(id)) {
             s->model.configure(s->filter, value);
             s->active_first = value;
+            s->display.set(s->model.display());
             refresh(id);
         }
     });
@@ -784,9 +823,13 @@ void AutoCompleteComponentHost::on_window_active(bool value) {
 }
 
 void AutoCompleteComponentHost::on_input_boundary_changed() {
+    if (mount_depth_) {
+        return;
+    }
     const auto ids = mounted_;
     for (auto id : ids) {
-        if (!editable(id, false)) {
+        const auto* s = services_->components().state<State>(id);
+        if (s && s->has_been_active && !editable(id, false)) {
             suppress(id);
         }
         refresh(id, false);
@@ -801,12 +844,20 @@ void AutoCompleteComponentHost::prepare_auxiliary_layout() {
             continue;
         }
         s->closed_on_blur = false;
-        if (!editable(id, false)) {
+        const bool active = editable(id, false);
+        if (active) {
+            s->has_been_active = true;
+        }
+        if (s->has_been_active && !active) {
             suppress(id);
         }
         s = services_->components().state<State>(id);
         if (s) {
             s->action_disabled.set(!editable(id));
+            const bool visible = s->open && !s->suppressed && !s->model.filtered().empty() && editable(id, false);
+            if (visible != s->visible) {
+                refresh(id);
+            }
         }
     }
 }
@@ -822,7 +873,8 @@ bool AutoCompleteComponentHost::on_keyboard_input(const input::KeyboardInputEven
     }
     const auto component = record->component;
     const auto ids = mounted_;
-    for (auto id : ids) {
+    for (auto it = ids.rbegin(); it != ids.rend(); ++it) {
+        const auto id = *it;
         auto* s = services_->components().state<State>(id);
         if (!s || !editable(id) || !descendant(*services_, component, id)) {
             continue;
@@ -842,6 +894,17 @@ bool AutoCompleteComponentHost::on_keyboard_input(const input::KeyboardInputEven
             return false;
         }
         if (event.key == Key::escape && s->visible) {
+            for (const auto& entry : services_->components().paint_traversal()) {
+                const auto child = entry.component;
+                if (child == s->popup || !services_->components().is_window_layer_root(child) ||
+                    !descendant(*services_, child, id) || !services_->interactions().component_active(child)) {
+                    continue;
+                }
+                const auto owner = services_->components().parent(child);
+                if (owner && descendant(*services_, component, *owner)) {
+                    return false;
+                }
+            }
             if (services_->popover().owns_escape(id, component)) {
                 return false;
             }

@@ -24,7 +24,7 @@ AutoComplete SHALL 接受任意 String，支持 reactive value 或一次性 defa
 
 ### Requirement: 原生交互与组合输入
 
-AutoComplete SHALL 只有一个 Tab 输入入口，支持上下移动、Enter 选择、Escape 关闭、Tab 离开及 pointer 选择/清空。组合输入活动时 SHALL 不用上下/Enter/Escape 选择或清空 preedit。disabled/readOnly SHALL 禁止用户修改与建议选择。ref SHALL 使用真实 Input 的 focus/blur/select 和 generation/lifetime 检查。
+AutoComplete SHALL 只有一个 Tab 输入入口，支持上下移动、Enter 选择、Escape 关闭、Tab 离开及 pointer 选择/清空。组合输入活动时建议逻辑 SHALL 不消费上下/Enter/Escape 或提交建议；Escape 交还真实 Input 取消自身 composition，不关闭 popup 或改变接受值。disabled/readOnly SHALL 禁止用户修改与建议选择。ref SHALL 使用真实 Input 的 focus/blur/select 和 generation/lifetime 检查。
 
 #### Scenario: backfill 与 IME
 - **WHEN** 开启 backfill 后键盘移动，或存在活动 preedit

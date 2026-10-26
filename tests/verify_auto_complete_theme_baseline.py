@@ -18,6 +18,15 @@ def identities(source):
     enum = re.search(r"enum class TokenIdentity[^\{]*\{(.*?)\n\};", source, re.S).group(1)
     return [p.strip() for p in re.sub(r"//[^\n]*", "", enum).split(",") if p.strip()]
 
+def typed_equal(expected, actual):
+    if type(expected) is not type(actual):
+        return False
+    if isinstance(expected, dict):
+        return expected.keys() == actual.keys() and all(typed_equal(v, actual[k]) for k, v in expected.items())
+    if isinstance(expected, list):
+        return len(expected) == len(actual) and all(typed_equal(a, b) for a, b in zip(expected, actual))
+    return expected == actual
+
 def main():
     fresh = Path(sys.argv[1])
     path = "src/theme/theme_snapshot.cpp"
@@ -34,7 +43,7 @@ def main():
         assert actual.pop("identity") != expected.pop("identity")
         assert "autoComplete" in actual and "autoComplete" not in expected
         actual.pop("autoComplete")
-        assert actual == expected, name
+        assert typed_equal(expected, actual), name
     print(f"AutoComplete baseline passed: {len(recipes(old))} old IIFEs; {len(ids)-1} old ordinals; 5 fresh goldens with all old typed leaves unchanged")
 
 if __name__ == "__main__":

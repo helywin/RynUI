@@ -2105,7 +2105,6 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::timeline_colors:
     case TokenIdentity::avatar_colors:
     case TokenIdentity::auto_complete_colors:
-    case TokenIdentity::auto_complete_effects:
     case TokenIdentity::breadcrumb_colors:
     case TokenIdentity::steps_colors:
     case TokenIdentity::modal_colors:
@@ -2144,6 +2143,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tooltip_shadow:
     case TokenIdentity::dropdown_effects:
     case TokenIdentity::select_effects:
+    case TokenIdentity::auto_complete_effects:
     case TokenIdentity::card_effects:
     case TokenIdentity::tabs_effects:
     case TokenIdentity::collapse_effects:
