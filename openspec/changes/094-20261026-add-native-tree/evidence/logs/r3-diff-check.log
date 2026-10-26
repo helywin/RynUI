@@ -1,0 +1,4 @@
+git diff --cached --check: exit 0
+git diff 2fd96f6209e817e892f7684c7eae6891ee576d10 --check: exit 0
+r3-tests-Debug.json: original committed bytes unchanged sha256=66e3025716f00c1cc8122649d7f86f8e0298f91398954b3aa8c2cdeeb4115b5a
+r3-tests-Release.json: original committed bytes unchanged sha256=e9daac83be80028f1825af5766460afc5f29b908b31753eb0e8d4be0e03af158

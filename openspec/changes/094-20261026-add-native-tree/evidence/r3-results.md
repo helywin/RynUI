@@ -53,7 +53,7 @@ Tree 20 = 原核心/模型/Theme 13 + R1 review 4 + R2 nested/throwing-blur/slot
 - [format](logs/r3-format.log)：显式 clang-format 22.1.3，759 owned 文件、0 失败。
 - 显式原 Node/pnpm OpenSpec 路径 [version](logs/r3-openspec-version.log) 为 1.14.0；[doctor](logs/r3-doctor.log) healthy；[strict](logs/r3-strict.log) 92 passed/0 failed；`git diff --check` 通过。
 - [artifact 原始输出](logs/r3-artifacts.log) 核对 merge 双亲/祖先、双方源码与 Theme、精确 62/62 清单及 29 个目标的两个配置共 58 个 x64 PE32+；全部 stack reserve=1048576 字节，记录实际 SHA256。未加栈。
-- 自身新日志仅无损转换 UTF-16/BOM 到 UTF-8，保留原文本/行尾；原 R1/R2 及 AC 历史失败日志保留，未改写为通过。
+- 自身新日志仅无损转换 UTF-16/BOM 到 UTF-8，保留原文本/行尾；CTest 原始 JSON 清单本身有尾空格，与原始 .log 一样通过局部 evidence 属性保留原文。最终 staged diff 初查因此失败，组合命令仍生成了文档提交；随后补充这两份清单的证据属性并重新检查通过。原 R1/R2 及 AC 历史失败日志保留，未改写为通过。
 
 ## 交接边界
 
