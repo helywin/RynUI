@@ -1,0 +1,34 @@
+﻿UpdateCTestConfiguration  from :C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/DartConfiguration.tcl
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 4
+    Start 4: rynui.tree_review_wheel_handoff
+
+4: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Debug\rynui_tree_review_tests.exe "wheel_handoff"
+4: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+4: Test timeout computed to be: 45
+4: natural Tree modal_scroll=0 -> 0
+4: R1.4: no-range Tree consumed wheel instead of scrolling its Modal body
+1/1 Test #4: rynui.tree_review_wheel_handoff ...***Failed    0.25 sec
+natural Tree modal_scroll=0 -> 0
+R1.4: no-range Tree consumed wheel instead of scrolling its Modal body
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.27 sec
+
+The following tests FAILED:
+	  4 - rynui.tree_review_wheel_handoff (Failed)
+ctest.exe : Errors while running CTest
+所在位置 行:2 字符: 306
++ ... andoff')) { & $treeCtest --preset windows-msvc-headless-debug -R "^ry ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Errors while running CTest:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
