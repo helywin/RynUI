@@ -7,7 +7,7 @@ target_link_libraries(rynui_tree_r2_tests PRIVATE rynui_components)
 target_compile_definitions(rynui_tree_r2_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
-foreach(tree_r2 IN ITEMS nested_wheel throwing_blur_rollback)
+foreach(tree_r2 IN ITEMS nested_wheel throwing_blur_rollback slot_retirement)
     add_test(NAME rynui.tree_r2_${tree_r2} COMMAND rynui_tree_r2_tests ${tree_r2})
 endforeach()
 

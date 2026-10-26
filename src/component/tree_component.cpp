@@ -4,7 +4,6 @@
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
 #include <cmath>
-#include <exception>
 #include <limits>
 
 namespace ryn::detail {
@@ -65,25 +64,26 @@ struct MountTransaction final {
     WindowComponentServices& services;
     std::vector<runtime::ComponentId>& mounted;
     runtime::ComponentId owner;
-    int exceptions{std::uncaught_exceptions()};
     bool committed{};
 
-    ~MountTransaction() noexcept(false) {
+    ~MountTransaction() noexcept {
         if (committed) {
             return;
         }
-        const bool unwinding = std::uncaught_exceptions() > exceptions;
-        try {
-            services.destroy(owner);
-        } catch (...) {
-            std::erase(mounted, owner);
-            if (!unwinding) {
-                throw;
-            }
-            // Preserve the original mounting exception if teardown notifications also throw.
-            return;
-        }
+        services.retire_failed_component(owner);
         std::erase(mounted, owner);
+    }
+};
+
+struct RetireOnFailure final {
+    WindowComponentServices& services;
+    runtime::ComponentId owner;
+    bool complete{};
+
+    ~RetireOnFailure() noexcept {
+        if (!complete) {
+            services.retire_failed_component(owner);
+        }
     }
 };
 
@@ -164,7 +164,7 @@ bool TreeComponentHost::intact(runtime::ComponentId id) {
     }
     for (auto child : s->required) {
         if (!services_->components().contains(child)) {
-            services_->destroy(id);
+            services_->retire_failed_component(id);
             return false;
         }
     }
@@ -396,6 +396,14 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
     auto& b = runtime::require_component_build_context();
     const auto id = b.mount_component<State>(s);
     MountTransaction transaction{services, mounted_, id};
+    const auto user_slot = [this, id](const auto& slot) {
+        return Content{[this, id, callback = SlotContentAccess::function(slot)] {
+            // Retire before the enclosing slot/append transaction can roll back a focused child.
+            RetireOnFailure rollback{*services_, id};
+            callback();
+            rollback.complete = intact(id);
+        }};
+    };
     s->node = b.root(id);
     mounted_.push_back(id);
     services.nodes().require(s->node).clip_content = true;
@@ -604,8 +612,7 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
                                  row.custom_icon = flat[i]->icon_.has_value();
                                  if (flat[i]->icon_) {
                                      inner.mount_slot_with_semantic_text_style(
-                                         row.view.icon, Content{SlotContentAccess::function(*flat[i]->icon_)},
-                                         row.color, s->font);
+                                         row.view.icon, user_slot(*flat[i]->icon_), row.color, s->font);
                                  }
                                  if (!intact(id)) {
                                      return;
@@ -614,7 +621,7 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
                                  inner.mount_slot_with_semantic_text_style(
                                      row.view.title,
                                      flat[i]->rich_title_
-                                         ? Content{SlotContentAccess::function(*flat[i]->rich_title_)}
+                                         ? user_slot(*flat[i]->rich_title_)
                                          : Content{[title = row.title] { Text(TextProps{}.content(title)); }},
                                      row.color, s->font);
                                  if (intact(id) && !flat[i]->rich_title_) {

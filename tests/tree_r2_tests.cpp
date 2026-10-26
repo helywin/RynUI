@@ -186,7 +186,7 @@ void throwing_blur_rollback() {
               << " interaction_live=" << (f->services.interactions().find(old.interaction) != nullptr)
               << " text_scenes=" << f->scene.size() << " surfaces=" << f->services.surfaces().size()
               << " session=" << f->inputs.sessions().active().valid() << " ref=" << ref.bound() << std::endl;
-    check(original_caught && reads == previous_reads,
+    check(original_caught && blurs == 0 && !blur_escaped && reads == previous_reads,
           "rollback replaced the original exception or retained a subscription");
     check(!f->inputs.editors().find(old.editor) && !f->services.interactions().find(old.interaction),
           "R2.1: focused Input onBlur throw interrupted failed-Tree resource retirement");
@@ -197,6 +197,144 @@ void throwing_blur_rollback() {
     click(*f, f->buttons.mounted_buttons().back().component);
     check(clicks == 1, "same-Content fallback must remain usable after failed mount");
     clean(*f);
+}
+
+void slot_retirement() {
+    for (int mode = 0; mode < 6; ++mode) {
+        auto f = std::make_unique<Fixture>();
+        runtime::ComponentId safe;
+        runtime::ComponentId foreign;
+        runtime::ComponentId owner;
+        detail::MountedInputComponent old;
+        TextInputSessionStamp stamp;
+        std::vector<runtime::NodeId> old_nodes;
+        InputRef ref;
+        Signal<int> signal{0};
+        int reads = 0;
+        int blurs = 0;
+        int clicks = 0;
+        bool original = false;
+        const auto resources = [&] {
+            return std::array{f->nodes.size(),
+                              f->services.components().component_count(),
+                              f->scene.size(),
+                              f->services.surfaces().size(),
+                              f->services.interactions().size(),
+                              f->inputs.editors().size(),
+                              f->scene.glyph_scene().instances().size()};
+        };
+        const auto replacement = [&] {
+            auto& build = runtime::require_component_build_context();
+            build.mount_slot(safe, Content{[&] {
+                                 Tree({}, {TreeItem{u8"new", u8"New"}.richTitle(TreeTitle{
+                                              [&] { Input(InputProps{}.ref(ref).defaultValue(u8"Replacement")); }})});
+                             }});
+        };
+        const auto attempt = [&] {
+            const auto baseline = resources();
+            const auto theme = f->services.components().theme_scope(safe);
+            const auto subscribers = theme->diagnostics().subscriber_count;
+            const auto content = [&] {
+                owner = f->services.tree().mounted().back();
+                Input(InputProps{}.ref(ref).onBlur([&] {
+                    ++blurs;
+                    if (mode == 0 || mode == 5) {
+                        f->services.destroy(owner);
+                    } else if (mode == 1) {
+                        f->services.retire_failed_component(owner);
+                        replacement();
+                    }
+                    throw BlurFailure{};
+                }));
+                old = f->inputs.mounted_inputs().back();
+                const auto remember = [&](auto&& self, runtime::NodeId node) -> void {
+                    old_nodes.push_back(node);
+                    for (auto child : f->nodes.require(node).children) {
+                        self(self, child);
+                    }
+                };
+                remember(remember, f->services.components().root(owner));
+                check(ref.focus(), "slot failure must start from a focused rich Input");
+                stamp = f->inputs.sessions().active();
+                check(bool(f->inputs.dispatch(CompositionChanged{String{u8"preedit"}, {0, 1}, stamp})),
+                      "slot failure preedit fixture failed");
+                if (mode == 2 || mode == 3) {
+                    f->services.retire_failed_component(mode == 2 ? owner : old.component);
+                    replacement();
+                }
+                throw MountFailure{&clicks};
+            };
+            try {
+                auto item = TreeItem{u8"old", u8"Old"};
+                if (mode == 4) {
+                    item.icon(TreeIcon{content});
+                } else {
+                    item.richTitle(TreeTitle{content});
+                }
+                Tree(TreeProps{}.visible(bind([&] {
+                    ++reads;
+                    return signal.get() == 0;
+                })),
+                     {item});
+            } catch (const MountFailure& error) {
+                original = error.token == &clicks;
+            }
+            check(original && blurs == 0 && !f->inputs.editors().find(old.editor) &&
+                      !f->services.interactions().find(old.interaction) && !f->nodes.find(old.node),
+                  "slot-local retirement replaced the exception or delivered destructive blur");
+            for (auto node : old_nodes) {
+                check(!f->nodes.find(node) && !f->layout.remove_layout(node) &&
+                          !f->layout.remove_intrinsic_measure(node),
+                      "old generation node/layout/intrinsic survived slot-local retirement");
+            }
+            if (mode == 2 || mode == 3) {
+                check(f->services.tree().mounted().size() == 1 && f->services.tree().mounted()[0] != owner &&
+                          ref.bound() && ref.focus(),
+                      "old slot guard retired a replacement Tree generation or same-ref binding");
+                const auto live = f->inputs.mounted_inputs().back();
+                check(!bool(f->inputs.dispatch(TextCommitted{String{u8"late"}, stamp})) &&
+                          f->inputs.sessions().active().owner == live.editor &&
+                          f->inputs.editors().require(live.editor).value() == "Replacement" &&
+                          bool(f->inputs.dispatch(TextCommitted{String{u8"!"}, f->inputs.sessions().active()})),
+                      "replacement Input is not actually usable");
+                f->services.destroy(f->services.tree().mounted()[0]);
+            }
+            const int previous_reads = reads;
+            signal.set(1);
+            check(reads == previous_reads && resources() == baseline &&
+                      theme->diagnostics().subscriber_count == subscribers && !ref.bound() &&
+                      !f->inputs.sessions().active().valid() &&
+                      !bool(f->inputs.dispatch(TextCommitted{String{u8"late"}, stamp})) &&
+                      blocked_roots(f->services.interactions()) == std::vector{foreign} &&
+                      !f->services.next_frame_deadline(),
+                  "slot-local retirement retained resources/subscriptions/session or changed foreign blocks");
+            std::cout << "slot retirement mode=" << mode << " original=" << original << " blur=" << blurs
+                      << " old_editor=0 resources_at_baseline=1" << std::endl;
+            Button(ButtonProps{}.wave(false).onClick([&] { ++clicks; }), [] { Text(u8"Fallback"); });
+        };
+        f->services.mount(Content{[&] {
+            auto& build = runtime::require_component_build_context();
+            safe = build.mount_component<int>(0);
+            const auto node = build.root(safe);
+            f->layout.set_layout(node, layout::BoxLayout{});
+            build.on_resource_cleanup(safe, [&, node] { f->layout.remove_layout(node); });
+            Button(ButtonProps{}.wave(false), [] { Text(u8"Foreign"); });
+            foreign = f->buttons.mounted_buttons().back().component;
+            f->services.set_input_blocked(foreign, true);
+            if (mode != 5) {
+                build.mount_slot(safe, Content{attempt});
+            }
+        }});
+        if (mode == 5) {
+            sync(*f);
+            f->services.append_slot(safe, Content{attempt});
+        }
+        sync(*f);
+        click(*f, f->buttons.mounted_buttons().back().component);
+        check(clicks == 1, "same-Content fallback after slot failure is not actually clickable");
+        f->services.set_input_blocked(foreign, false);
+        clean(*f);
+    }
 }
 } // namespace
 
@@ -212,6 +350,8 @@ int main(int argc, char** argv) {
             nested_wheel();
         } else if (name == "throwing_blur_rollback") {
             throwing_blur_rollback();
+        } else if (name == "slot_retirement") {
+            slot_retirement();
         } else {
             throw std::invalid_argument("unknown Tree R2 case");
         }
