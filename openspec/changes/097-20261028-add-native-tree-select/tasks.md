@@ -2,7 +2,7 @@
 
 ## 1. 公开 API 与选择模型（平台通用）
 
-- [ ] 1.1 实现 typed 固定 TreeSelectItem、TreeSelectProps 与单值／开合模型；新增 API 编译、唯一 key／规模限制、受控拒绝／接受／重复选择／未知值测试和使用文档；MSVC HEADLESS Debug/Release 定向通过后提交。
+- [x] 1.1 实现 typed 固定 TreeSelectItem、TreeSelectProps 与单值／开合模型；新增 API 编译、唯一 key／规模限制、受控拒绝／接受／重复选择／未知值测试和使用文档；MSVC HEADLESS Debug/Release 定向通过后提交。
 
 ## 2. 原生组合与 Theme（平台通用）
 

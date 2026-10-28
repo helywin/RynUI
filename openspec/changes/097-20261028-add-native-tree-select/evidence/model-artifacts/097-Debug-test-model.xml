@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="1"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="0"
+	timestamp="2026-10-28T11:50:27"
+	>
+	<testcase name="rynui.tree_select_model" classname="rynui.tree_select_model" time="0.0185541" status="run">
+		<properties/>
+		<system-out>TreeSelect API and model passed
+</system-out>
+	</testcase>
+</testsuite>

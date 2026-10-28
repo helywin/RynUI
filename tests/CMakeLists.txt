@@ -11,6 +11,11 @@ foreach(tree_r2 IN ITEMS nested_wheel throwing_blur_rollback slot_retirement)
     add_test(NAME rynui.tree_r2_${tree_r2} COMMAND rynui_tree_r2_tests ${tree_r2})
 endforeach()
 
+add_executable(rynui_tree_select_model_tests tree_select_model_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_select_model_tests)
+target_link_libraries(rynui_tree_select_model_tests PRIVATE rynui_components)
+add_test(NAME rynui.tree_select_model COMMAND rynui_tree_select_model_tests)
+
 add_executable(rynui_tree_model_tests tree_model_tests.cpp)
 add_executable(rynui_tree_review_tests tree_review_tests.cpp)
 rynui_configure_cpp_target(rynui_tree_review_tests)
