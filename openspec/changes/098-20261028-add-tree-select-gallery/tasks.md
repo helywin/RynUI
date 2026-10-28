@@ -10,4 +10,4 @@
 
 ## 3. 独立复核与发布记录（平台通用）
 
-- [ ] 3.1 独立 Astra xhigh/default 审阅首版 Gallery 完整性并解决所有可达 P1/P2；完成 clang-format 22、显式 OpenSpec 1.14 doctor/strict、generator、diff 与冻结基线检查，准确记录 Recording 边界及未做的 full-frame/native/GPU/Linux/系统 IME/AT，更新完成记录后提交／推送 main 并核远端 SHA；不自动 PR/archive。
+- [x] 3.1 独立 Astra xhigh/default 审阅首版 Gallery 完整性并解决所有可达 P1/P2；完成 clang-format 22、显式 OpenSpec 1.14 doctor/strict、generator、diff 与冻结基线检查，准确记录 Recording 边界及未做的 full-frame/native/GPU/Linux/系统 IME/AT，更新完成记录后提交／推送 main 并核远端 SHA；不自动 PR/archive。

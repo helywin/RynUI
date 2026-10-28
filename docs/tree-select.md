@@ -53,4 +53,4 @@ inherit、局部 seed/algorithm、override、序列化/hash、dirty 和后代预
 
 Gallery 目录中的 TreeSelect 跳到“层级目标”。这里可选择父／叶节点、更新指南标题、启用归档、清空目标及编辑保存备注；接受／拒绝选择和关闭的两个开关独立控制父级回写。禁用／只读／显隐及恢复按钮位于选择器外部，恢复只恢复可操作性，不擅自重新打开被抑制的弹层。
 
-下方“交付目标”使用真实 Form String 字段与必填反馈。提交反馈读取接受值，“聚焦后重置目标”先通过真实 ref 聚焦 selector 再 reset，可重复执行同值重置。该 selector 是只读显示，不启动编辑／IME session。098 的实际验收进度见 [任务](../openspec/changes/098-20261028-add-tree-select-gallery/tasks.md)，不沿用旧批次完整 Gallery 或平台结果。
+下方“交付目标”使用真实 Form String 字段与必填反馈。提交反馈读取接受值，“聚焦后重置目标”先通过真实 ref 聚焦 selector 再 reset，可重复执行同值重置。该 selector 是只读显示，不启动编辑／IME session。098 已通过新构建 Recording、三主题双宽、精确 inventory、八项 contracts 与独立 Astra R1，见 [最终记录](../openspec/changes/098-20261028-add-tree-select-gallery/evidence/03-final-review-and-closure.md)。完整 Gallery、原生窗口／GPU、Linux、系统 IME／AT 未在本轮验收。
