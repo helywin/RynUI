@@ -20,3 +20,5 @@ richTitle(TreeTitle{...}) 和 icon(TreeIcon{...}) 挂载一次并保留原生内
 Tree 行单 Tab 入口；Up/Down、Home/End 移动，Right 展开或进入子项，Left 折叠或到父项，Enter 单选，Space 在 checkable 时勾选，否则单选。富 child 保留自己的 Tab 和键盘行为。有限高度下滚轮和键盘显露焦点；不虚拟化。视觉仅由 ThemeConfig.tree.tokens 控制，LayoutStyle 仅控制外部布局。
 
 首版不提供多选、strict checking、动态拓扑、异步 loadData、拖放、虚拟化、搜索、RTL、动画、连接线、DirectoryTree 或 Web API。验证仅覆盖 HEADLESS logical scene 与原生输入运行时，不代表系统 IME、辅助技术、GPU 或 Linux 验收。
+
+自然尺寸包含 Theme 焦点轮廓需要的内部留白；有限视口的 Home/End 显露也计入该空间。行内容、命中与焦点仍遵守树视口及外部文档裁剪，不会因焦点留白扩张输入区域。

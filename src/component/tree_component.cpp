@@ -11,6 +11,10 @@ namespace {
 thread_local TreeComponentHost* active_tree{};
 constexpr float infinity = std::numeric_limits<float>::infinity();
 
+float focus_padding(const TreeMetricToken& metrics) {
+    return metrics.focus_width > 0 ? std::max(0.0F, metrics.focus_offset + metrics.focus_width) : 0.0F;
+}
+
 struct TreeRow final {
     TreeRowSnapshot view;
     runtime::ComponentId check_mark;
@@ -759,19 +763,25 @@ runtime::Size TreeComponentHost::measure(runtime::ComponentId id, layout::Layout
     }
     const auto s = state(*services_, id);
     const auto m = services_->components().theme_scope(id)->snapshot().tree().metrics;
+    const auto shown = s->model.shown();
+    const float padding = shown.empty() ? 0.0F : focus_padding(m);
+    const float inline_padding = std::min(padding, c.max_width / 2);
+    const float block_padding = std::min(padding, c.max_height / 2);
     runtime::Size natural;
     bool first = true;
-    for (auto i : s->model.shown()) {
+    for (auto i : shown) {
         if (!first) {
             natural.height += m.row_gap;
         }
         first = false;
         s->rows[i].top = natural.height;
-        const auto size =
-            e.measure_child(services_->components().root(s->rows[i].view.component), {0, c.max_width, 0, infinity});
+        const auto size = e.measure_child(services_->components().root(s->rows[i].view.component),
+                                          {0, std::max(0.0F, c.max_width - 2 * inline_padding), 0, infinity});
         natural.width = std::max(natural.width, size.width);
         natural.height += size.height;
     }
+    natural.width += 2 * inline_padding;
+    natural.height += 2 * block_padding;
     s->content_height = natural.height;
     return c.constrain(natural);
 }
@@ -805,21 +815,30 @@ void TreeComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& e, 
         return;
     }
     const auto s = state(*services_, id);
+    const auto shown = s->model.shown();
+    const float padding =
+        shown.empty() ? 0.0F : focus_padding(services_->components().theme_scope(id)->snapshot().tree().metrics);
+    const float inline_padding = std::min(padding, r.width / 2);
+    const float block_padding = std::min(padding, r.height / 2);
+    const runtime::Rect content{r.x + inline_padding, r.y + block_padding, std::max(0.0F, r.width - 2 * inline_padding),
+                                std::max(0.0F, r.height - 2 * block_padding)};
+    s->content_height =
+        shown.empty() ? 0.0F : s->rows[shown.back()].top + s->rows[shown.back()].height + 2 * block_padding;
     s->scroll = std::clamp(s->scroll, 0.0F, std::max(0.0F, s->content_height - r.height));
     if (s->reveal && s->rows[*s->reveal].view.shown) {
         const auto& row = s->rows[*s->reveal];
         if (row.top < s->scroll) {
             s->scroll = row.top;
-        } else if (row.top + row.height > s->scroll + r.height) {
-            s->scroll = std::max(row.top, row.top + row.height - r.height);
+        } else if (row.top + row.height > s->scroll + content.height) {
+            s->scroll = std::max(row.top, row.top + row.height - content.height);
         }
         s->reveal.reset();
     }
     s->scroll = std::clamp(s->scroll, 0.0F, std::max(0.0F, s->content_height - r.height));
-    for (auto i : s->model.shown()) {
+    for (auto i : shown) {
         const auto& row = s->rows[i];
         e.place_child(services_->components().root(row.view.component),
-                      {r.x, r.y + row.top - s->scroll, r.width, row.height});
+                      {content.x, content.y + row.top - s->scroll, content.width, row.height});
     }
 }
 

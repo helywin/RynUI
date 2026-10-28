@@ -45,3 +45,7 @@
 
 - [x] 9.1 将已审 972ca5bc 显式合入 main 48bb20f8，保留双亲与 AutoComplete 完整修复历史；保留主分支 Rate/Statistic、RC/系统字体入口、旧 Theme IIFE/ordinal，两个 exporter 产生的 fresh goldens 保留双方旧 typed 值；实跑复现并让 Statistic 的失败挂载复用同一静默退役入口，正式 Debug/Release 新构建并运行两个组件及直接共享回归。
 - [x] 9.2 新 Astra 审查组合后的生命周期、Focus/Popup/Theme 与保留性；修复具体问题后完成 format 22、显式 OpenSpec 1.14 doctor/strict、diff 检查，记录准确父验收证据；英文 merge commit 后只推 main 并核远端 SHA，不扩展为 GPU/Linux/系统 IME/AT 验收。
+
+## 10. 096 审查发现的边界行焦点（平台通用，Windows MSVC HEADLESS）
+
+- [x] 10.1 真实复现 Home 首行/End 末行的实际 outline coverage 缺边，在保留 Tree viewport、外部 document clip 与输入裁剪的前提下修复焦点留白；三主题/宽窄、滚动恢复与 retained 身份回归、Tree 与直接布局/焦点代表 Debug/Release、format22、显式1.14 doctor/strict/diff 通过后单独提交推送 main；096 重新绑定该已验证父基线，不把尚未完成的 Gallery 改动混入此提交。

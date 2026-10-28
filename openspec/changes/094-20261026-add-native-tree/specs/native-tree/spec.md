@@ -34,6 +34,10 @@ Tree 行 SHALL 仅有一个 Tab 入口，支持 Up/Down、Left/Right、Home/End�
 - **WHEN** 折叠含当前焦点的后代并继续 Tab 或方向键操作
 - **THEN** 焦点恢复到有效行，隐藏后代不进入顺序；有效富 child 不因行 wrapper 禁用而失效
 
+#### Scenario: 首末行焦点与硬裁剪
+- **WHEN** 有限视口足以容纳行和 Theme 焦点装饰，使用 Home 或 End 显露首末行
+- **THEN** 该行焦点轮廓四边可见，必要留白计入自然尺寸与滚动范围；内容和命中仍受树视口约束，外部文档裁剪仍生效
+
 ### Requirement: 生命周期与输入边界
 隐藏、折叠、禁用或 window inactive SHALL 关闭后代 popup、capture、focus、session 和 preedit；恢复不得重开旧 popup。任何用户回调销毁 owner 或私有结构后 SHALL 停止旧代际操作，安全清理本代资源和 owned input blocks，不影响 foreign owner 或新代际。
 

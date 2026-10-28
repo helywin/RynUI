@@ -18,7 +18,7 @@ target_link_libraries(rynui_tree_review_tests PRIVATE rynui_components)
 target_compile_definitions(rynui_tree_review_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
-foreach(tree_review IN ITEMS mount_rollback zero_area translated_checkbox wheel_handoff)
+foreach(tree_review IN ITEMS mount_rollback zero_area translated_checkbox wheel_handoff focus_clips)
     add_test(NAME rynui.tree_review_${tree_review} COMMAND rynui_tree_review_tests ${tree_review})
 endforeach()
 

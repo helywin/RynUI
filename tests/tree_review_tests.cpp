@@ -2,6 +2,7 @@
 #include "component/modal_component.hpp"
 #include "component/select_component.hpp"
 #include "support/timeline_fixture.hpp"
+#include <array>
 #include <string_view>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
@@ -508,6 +509,117 @@ void wheel_handoff() {
     }
     clean(f);
 }
+
+void focus_clips() {
+    for (const auto algorithm : {ThemeAlgorithm::Default, ThemeAlgorithm::Dark, ThemeAlgorithm::Compact}) {
+        for (const float width : {180.0F, 56.0F}) {
+            auto f = std::make_unique<Fixture>();
+            auto config = std::make_unique<ThemeConfig>();
+            config->algorithms = {algorithm};
+            std::vector<TreeItem> items;
+            for (int i = 0; i < 8; ++i) {
+                const auto label = String::from_utf8("Entry " + std::to_string(i)).value();
+                items.emplace_back(label, label);
+            }
+            f->services.mount(Content{[&] {
+                Theme(ThemeProps{}.config(*config), ThemeContent{[&] {
+                          Tree(
+                              TreeProps{}.layout(
+                                  LayoutStyle{}.margin_left(dp(20)).margin_top(dp(20)).width(dp(width)).height(dp(96))),
+                              items);
+                      }});
+            }});
+            sync_window(*f);
+            const auto id = f->services.tree().mounted().front();
+            const auto initial = f->services.tree().snapshot(id);
+            const auto coverage = [&](bool require_visible = true) {
+                std::array<float, 4> edges{};
+                const auto color = f->services.components().theme_scope(id)->snapshot().tree().colors.focus;
+                bool found{};
+                for (const auto& command : f->services.scene_composer().ordered_scene().commands()) {
+                    if (command.kind != graphics::SceneDrawKind::rounded_effect) {
+                        continue;
+                    }
+                    for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+                        const auto& e = f->services.rounded_effects().packed_instances()[i];
+                        const auto& g = e.geometry;
+                        if (g.kind != graphics::RoundedEffectKind::outline || !e.material.visible ||
+                            e.material.color != color || e.material.opacity <= 0) {
+                            continue;
+                        }
+                        found = true;
+                        const runtime::Rect r{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                              g.shape.rect.width, g.shape.rect.height};
+                        const float gap = g.outline_offset + g.outline_width / 2;
+                        const std::array<runtime::Point, 4> points{{{r.x - gap, r.y + r.height / 2},
+                                                                    {r.x + r.width / 2, r.y - gap},
+                                                                    {r.x + r.width + gap, r.y + r.height / 2},
+                                                                    {r.x + r.width / 2, r.y + r.height + gap}}};
+                        for (std::size_t edge = 0; edge < points.size(); ++edge) {
+                            if (!g.ancestor_clip || contains(g.ancestor_clip->bounds, points[edge])) {
+                                edges[edge] = std::max(edges[edge], graphics::rounded_effect_coverage(points[edge], e) *
+                                                                        e.material.opacity * e.material.color.alpha());
+                            }
+                        }
+                    }
+                }
+                check(!require_visible || found, "focused Tree row has no actual outline");
+                return edges;
+            };
+            const auto full = [&] {
+                const auto edges = coverage();
+                std::cout << "Tree focus width=" << width << " edges=" << edges[0] << ',' << edges[1] << ',' << edges[2]
+                          << ',' << edges[3] << std::endl;
+                check(std::ranges::all_of(edges, [](float value) { return value > .8F; }),
+                      "Tree boundary row lost an actual focus-outline edge");
+            };
+            click(*f, initial.rows.front().title);
+            key(*f, Key::home);
+            sync_window(*f);
+            check(f->services.focus().state().focused == initial.rows.front().interaction &&
+                      f->services.focus().state().focus_visible,
+                  "Home did not give first row keyboard focus");
+            full();
+            key(*f, Key::end);
+            sync_window(*f);
+            check(f->services.focus().state().focused == initial.rows.back().interaction &&
+                      f->services.tree().snapshot(id).scroll > 0,
+                  "End did not reveal last row");
+            full();
+            const auto tree_bounds = bounds(*f, id);
+            for (const auto& hit : f->services.hit_test().records()) {
+                const auto& record = f->services.interactions().require(hit.interaction);
+                if (descendant(*f, record.component, id)) {
+                    check(inside(hit.effective_clip, tree_bounds), "Tree focus padding expanded input clip");
+                }
+            }
+            key(*f, Key::home);
+            sync_window(*f);
+            const auto first_row = bounds(*f, initial.rows.front().component);
+            const auto metrics = f->services.components().theme_scope(id)->snapshot().tree().metrics;
+            const runtime::Rect external{
+                0, first_row.y + first_row.height + metrics.focus_offset + metrics.focus_width + 1, 600, 200};
+            check(f->services.layout_and_synchronize({600, 280}, external), "external focus clip layout failed");
+            const auto hidden = coverage(false);
+            check(std::ranges::all_of(hidden, [](float value) { return value == 0; }),
+                  "Tree row focus escaped an explicit document clip");
+            sync_window(*f);
+            click(*f, initial.rows.front().title);
+            key(*f, Key::home);
+            sync_window(*f);
+            full();
+            const auto final = f->services.tree().snapshot(id);
+            check(final.rows.size() == initial.rows.size(), "focus padding changed topology");
+            for (std::size_t i = 0; i < final.rows.size(); ++i) {
+                check(final.rows[i].component == initial.rows[i].component &&
+                          final.rows[i].interaction == initial.rows[i].interaction &&
+                          final.rows[i].title == initial.rows[i].title,
+                      "focus padding replaced retained row identity");
+            }
+            clean(*f);
+        }
+    }
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -526,6 +638,8 @@ int main(int argc, char** argv) {
             translated_checkbox();
         } else if (name == "wheel_handoff") {
             wheel_handoff();
+        } else if (name == "focus_clips") {
+            focus_clips();
         } else {
             throw std::invalid_argument("unknown Tree R1 case");
         }

@@ -40,7 +40,7 @@ void nested_wheel() {
         {u8"prefix-2", u8"Prefix two"},
         TreeItem{u8"nested", u8"Nested"}.richTitle(TreeTitle{[&] {
             Flex(FlexProps{}.vertical(true), FlexContent{[&] {
-                     Tree(TreeProps{}.layout(LayoutStyle{}.width(dp(200)).height(dp(24))), inner_items);
+                     Tree(TreeProps{}.layout(LayoutStyle{}.width(dp(200)).height(dp(48))), inner_items);
                      Select(SelectProps{}.options(options).open(child_open).listHeight(64));
                  }});
         }})};
@@ -63,13 +63,13 @@ void nested_wheel() {
     };
     const auto wheel_outer = [&](float delta) {
         const auto b = bounds(*f, outer);
-        f->services.dispatch_scroll({0, delta, b.x + b.width - 2, b.y + b.height / 2});
+        f->services.dispatch_scroll({0, delta, b.x + b.width / 2, b.y + b.height / 2});
         sync(*f);
     };
     const auto wheel_inner = [&](float delta) {
         const auto b = graphics::intersect_effect_bounds(bounds(*f, outer), bounds(*f, inner));
         check(b.width > 0 && b.height > 0, "nested wheel point must remain inside both actual viewports");
-        const runtime::Point p{b.x + b.width - 2, b.y + b.height / 2};
+        const runtime::Point p{b.x + b.width / 2, b.y + b.height / 2};
         const auto hit = f->services.hit_test().hit_test(p);
         const auto* record = hit ? f->services.interactions().find(*hit) : nullptr;
         bool owned = false;
@@ -81,7 +81,7 @@ void nested_wheel() {
         f->services.dispatch_scroll({0, delta, p.x, p.y});
         sync(*f);
     };
-    check(f->services.tree().snapshot(inner).content_height == bounds(*f, inner).height &&
+    check(f->services.tree().snapshot(inner).content_height <= bounds(*f, inner).height &&
               f->services.tree().snapshot(outer).content_height > bounds(*f, outer).height,
           "no-range inner / overflowing outer fixture failed");
     wheel_inner(-1);
@@ -107,7 +107,7 @@ void nested_wheel() {
     check(scroll(inner) == bottom && scroll(outer) > 0, "inner lower boundary failed ancestor handoff");
     const float outer_before = scroll(outer);
     const auto independent_bounds = bounds(*f, sibling);
-    f->services.dispatch_scroll({0, -1, independent_bounds.x + independent_bounds.width - 2,
+    f->services.dispatch_scroll({0, -1, independent_bounds.x + independent_bounds.width / 2,
                                  independent_bounds.y + independent_bounds.height / 2});
     sync(*f);
     check(scroll(sibling) > 0 && scroll(outer) == outer_before && scroll(inner) == bottom,
