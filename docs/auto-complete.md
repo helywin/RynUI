@@ -37,4 +37,6 @@ void Page() {
 
 首版排除网络异步管理、选项分组、虚拟化、动画、RTL、Web、自定义编辑器替换与任意 popupRender。headless 合成事件不能替代 native GPU、Linux、系统 IME 或 AT 验收。
 
-实现与 Windows MSVC headless 证据见 [092 实施记录](../openspec/changes/092-20261026-add-native-auto-complete/evidence.md)。该记录是 worker 本树结果，后续由父执行 fresh Astra 审查与 main 集成；没有把它等同于整库发布验收。
+Core 已通过独立 Astra R4，并与 Tree 在 main 新构建 Debug/Release 各 98/98，见 [组合验收](../openspec/changes/094-20261026-add-native-tree/evidence/main-integration.md)；原 [092 实施记录](../openspec/changes/092-20261026-add-native-auto-complete/evidence.md) 仍保留 worker 本树边界。
+
+Gallery 的 AutoComplete 目录直达“联系人建议”：自由输入/选择、过滤和更新建议、接受或拒绝候选、清空及禁用/只读恢复。富建议中的备注 Input 和保存按钮保持身份；下方 Form String 示例提供保存和同值 reset。096 定向与集成的完成状态见 [任务清单](../openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/tasks.md)，不据此扩大为完整 Gallery 或平台验收。

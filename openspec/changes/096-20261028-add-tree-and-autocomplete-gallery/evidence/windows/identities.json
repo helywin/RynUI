@@ -1,0 +1,89 @@
+{
+  "head": "a02a2abcd7684b9152f0c5bb40bc5ccce937ad8e",
+  "configuration": "Windows MSVC / windows-msvc-debug / Ninja Multi-Config / max 2 jobs",
+  "programs": [
+    {
+      "path": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+      "bytes": 46771712,
+      "sha256": "a32688681015efb9d5fd576bb7391011bdb0689bdfd25852f5dfd1ec8eed8c37",
+      "mtime_ns": 1793156206729053500,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc/tests/Debug/rynui_token_gallery_frame_tests.exe",
+      "bytes": 37632512,
+      "sha256": "1743d47040a61d8be606a523946ebc98b4ad256d26d19971a271839930c2f8c1",
+      "mtime_ns": 1793156206754752700,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc/tests/Debug/rynui_ant_design_reference_catalog_tests.exe",
+      "bytes": 901632,
+      "sha256": "e28a0e7541e3d835963ca0352e190b5b7224072c9eda18316fd3c0d558bdcc1f",
+      "mtime_ns": 1793156206988722100,
+      "stack_reserve": 1048576
+    }
+  ],
+  "source_objects_library": [
+    {
+      "path": "examples/token_gallery/token_gallery_definition.cpp",
+      "bytes": 313023,
+      "sha256": "e3ea45c556d7ec54015e9df96557d536f31fb8473d6beb8e17469e53ae9f8b7a",
+      "mtime_ns": 1793156183821143800
+    },
+    {
+      "path": "examples/token_gallery/gallery_document_viewport.cpp",
+      "bytes": 12310,
+      "sha256": "0db5dc1f8bace3ac2ed91480127941af04739ba7a66b89e8ea6ec2058cdf3fff",
+      "mtime_ns": 1793151746630461500
+    },
+    {
+      "path": "examples/token_gallery/generated_ant_design_reference_catalog.inc",
+      "bytes": 76830,
+      "sha256": "982aa7e6d754dfd8c22c3949c41ecf2f95a432f7e0c65c50acdc4454f4a18846",
+      "mtime_ns": 1793152203055919800
+    },
+    {
+      "path": "tests/token_gallery_frame_tests.cpp",
+      "bytes": 466023,
+      "sha256": "e6a22365861c2da65aa3c0dfa0cb1ab1497ef7fa2d3b158b80a02ae4cd566adb",
+      "mtime_ns": 1793155275859551000
+    },
+    {
+      "path": "src/component/tree_component.cpp",
+      "bytes": 52146,
+      "sha256": "358225734317f24a50bc4aacc04ea01ee58c3e62b3c74c693783d148f7382461",
+      "mtime_ns": 1793155465289815800
+    },
+    {
+      "path": "out/build/windows-msvc/src/Debug/rynui_components.lib",
+      "bytes": 526148800,
+      "sha256": "cf72a899bcadbd891221e830baac0b59088aeb67fd87cd2de05d72b1ab9dd124",
+      "mtime_ns": 1793156192012473900
+    },
+    {
+      "path": "out/build/windows-msvc/src/CMakeFiles/rynui_components.dir/Debug/component/tree_component.cpp.obj",
+      "bytes": 11432084,
+      "sha256": "fab75d5fcdeaf04c2c14db1aa9ae164b1d30601482a22ec89825f71cf06d6d6f",
+      "mtime_ns": 1793156191074697700
+    },
+    {
+      "path": "out/build/windows-msvc/examples/CMakeFiles/rynui_token_gallery_definition.dir/Debug/token_gallery/token_gallery_definition.cpp.obj",
+      "bytes": 86150757,
+      "sha256": "602c20827ab0f7173f5885afe806f423d32cb5873b290b298669c81292d85644",
+      "mtime_ns": 1793156205081161700
+    },
+    {
+      "path": "out/build/windows-msvc/examples/CMakeFiles/rynui_token_gallery_document_viewport.dir/Debug/token_gallery/gallery_document_viewport.cpp.obj",
+      "bytes": 672916,
+      "sha256": "c52fc327fbc719e3fe3aae2013f0f7f0546c02aa8914ffb98687b044cf977295",
+      "mtime_ns": 1793151753309909500
+    },
+    {
+      "path": "out/build/windows-msvc/tests/CMakeFiles/rynui_token_gallery_frame_tests.dir/Debug/token_gallery_frame_tests.cpp.obj",
+      "bytes": 8818993,
+      "sha256": "cb0157a2517456583dab1dbb1adb6ba9c2c8966a2be3339d0ffee4832e48f3dc",
+      "mtime_ns": 1793155356022373700
+    }
+  ]
+}

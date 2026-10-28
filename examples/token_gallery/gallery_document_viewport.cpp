@@ -27,23 +27,25 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                                            const ryn::detail::TextComponentHost& text,
                                                            const ryn::runtime::NodeStore& nodes,
                                                            ryn::runtime::NodeId scroll_root) {
-    const std::string_view sample = identity == "ant.component.empty"          ? "gallery.empty.default "
-                                    : identity == "ant.component.result"       ? "gallery.result.controlled "
-                                    : identity == "ant.component.form"         ? "gallery.form.workflow "
-                                    : identity == "ant.component.date-picker"  ? "gallery.date-picker.controlled "
-                                    : identity == "ant.component.breadcrumb"   ? "gallery.breadcrumb.trail "
-                                    : identity == "ant.component.steps"        ? "gallery.steps.workflow "
-                                    : identity == "ant.component.time-picker"  ? "gallery.time-picker.controlled "
-                                    : identity == "ant.component.descriptions" ? "gallery.descriptions.editor "
-                                    : identity == "ant.component.skeleton"     ? "gallery.skeleton.preview "
-                                    : identity == "ant.component.popover"      ? "gallery.popover.editor "
-                                    : identity == "ant.component.message"      ? "gallery.notices.workflow "
-                                    : identity == "ant.component.notification" ? "gallery.notices.workflow "
-                                    : identity == "ant.component.timeline"     ? "gallery.timeline.workflow "
-                                    : identity == "ant.component.avatar"       ? "gallery.avatar.members "
-                                    : identity == "ant.component.statistic"    ? "gallery.statistic.metrics "
-                                    : identity == "ant.component.rate"         ? "gallery.rate.service "
-                                                                               : "";
+    const std::string_view sample = identity == "ant.component.empty"           ? "gallery.empty.default "
+                                    : identity == "ant.component.result"        ? "gallery.result.controlled "
+                                    : identity == "ant.component.form"          ? "gallery.form.workflow "
+                                    : identity == "ant.component.date-picker"   ? "gallery.date-picker.controlled "
+                                    : identity == "ant.component.breadcrumb"    ? "gallery.breadcrumb.trail "
+                                    : identity == "ant.component.steps"         ? "gallery.steps.workflow "
+                                    : identity == "ant.component.time-picker"   ? "gallery.time-picker.controlled "
+                                    : identity == "ant.component.descriptions"  ? "gallery.descriptions.editor "
+                                    : identity == "ant.component.skeleton"      ? "gallery.skeleton.preview "
+                                    : identity == "ant.component.popover"       ? "gallery.popover.editor "
+                                    : identity == "ant.component.message"       ? "gallery.notices.workflow "
+                                    : identity == "ant.component.notification"  ? "gallery.notices.workflow "
+                                    : identity == "ant.component.timeline"      ? "gallery.timeline.workflow "
+                                    : identity == "ant.component.avatar"        ? "gallery.avatar.members "
+                                    : identity == "ant.component.statistic"     ? "gallery.statistic.metrics "
+                                    : identity == "ant.component.rate"          ? "gallery.rate.service "
+                                    : identity == "ant.component.auto-complete" ? "gallery.auto-complete.contacts "
+                                    : identity == "ant.component.tree"          ? "gallery.tree.project "
+                                                                                : "";
     auto node = reference_node;
     if (!sample.empty()) {
         const auto mounted = text.mounted_texts();

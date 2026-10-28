@@ -22,3 +22,7 @@ Tree 行单 Tab 入口；Up/Down、Home/End 移动，Right 展开或进入子项
 首版不提供多选、strict checking、动态拓扑、异步 loadData、拖放、虚拟化、搜索、RTL、动画、连接线、DirectoryTree 或 Web API。验证仅覆盖 HEADLESS logical scene 与原生输入运行时，不代表系统 IME、辅助技术、GPU 或 Linux 验收。
 
 自然尺寸包含 Theme 焦点轮廓需要的内部留白；有限视口的 Home/End 显露也计入该空间。行内容、命中与焦点仍遵守树视口及外部文档裁剪，不会因焦点留白扩张输入区域。
+
+Gallery 的 Tree 目录直达“项目目录”：固定 keyed 项目、源代码/文档/资源层级，展示受控展开/选择/级联勾选、只读归档分支隔离、有限滚动和富标题备注保存。树外的显隐、禁用与恢复按钮保留业务草稿。096 定向与集成的完成状态见 [任务清单](../openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/tasks.md)；Core 的 main 新构建和独立组合审查见 [094 集成证据](../openspec/changes/094-20261026-add-native-tree/evidence/main-integration.md)。
+
+“恢复项目备注”会先收起项目分支，使备注在有限树视口内可见，再恢复原生输入焦点；不清除备注草稿或勾选状态。

@@ -266,6 +266,29 @@ struct GalleryState final {
     ryn::Signal<ryn::String> rating_note{ryn::String{u8"补充服务评价"}};
     ryn::Signal<ryn::String> rating_feedback{ryn::String{u8"尚未保存评价"}};
     ryn::InputRef rating_ref;
+    ryn::Signal<ryn::String> contact_value{ryn::String{}};
+    ryn::Signal<ryn::String> contact_request{ryn::String{u8"尚未选择联系人"}};
+    ryn::Signal<bool> contact_accept{true};
+    ryn::Signal<bool> contact_extra{false};
+    ryn::Signal<bool> contact_disabled{false};
+    ryn::Signal<bool> contact_read_only{false};
+    ryn::Signal<ryn::String> contact_note{ryn::String{u8"联系人备注"}};
+    ryn::Signal<ryn::String> contact_saved{ryn::String{u8"尚未保存"}};
+    ryn::AutoCompleteRef contact_ref;
+    ryn::InputRef contact_note_ref;
+    ryn::FormRef contact_form;
+    ryn::FormField<ryn::String> contact_field{ryn::String{}};
+    ryn::AutoCompleteRef contact_form_ref;
+    ryn::Signal<ryn::String> contact_form_feedback{ryn::String{u8"表单尚未保存"}};
+    ryn::Signal<ryn::TreeKeys> project_expanded{ryn::TreeKeys{u8"project", u8"src", u8"docs"}};
+    ryn::Signal<ryn::TreeKeys> project_selected{ryn::TreeKeys{}};
+    ryn::Signal<ryn::TreeKeys> project_checked{ryn::TreeKeys{}};
+    ryn::Signal<bool> project_disabled{false};
+    ryn::Signal<bool> project_visible{true};
+    ryn::Signal<bool> project_locked{true};
+    ryn::Signal<ryn::String> project_note{ryn::String{u8"项目处理备注"}};
+    ryn::Signal<ryn::String> project_saved{ryn::String{u8"尚未保存"}};
+    ryn::InputRef project_note_ref;
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -742,6 +765,28 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.rate.restore",
     "gallery.rate.draft",
     "gallery.rate.save",
+    "gallery.auto-complete.contacts",
+    "gallery.auto-complete.feedback",
+    "gallery.auto-complete.input",
+    "gallery.auto-complete.authority",
+    "gallery.auto-complete.options",
+    "gallery.auto-complete.disabled",
+    "gallery.auto-complete.readonly",
+    "gallery.auto-complete.restore",
+    "gallery.auto-complete.note",
+    "gallery.auto-complete.save-note",
+    "gallery.auto-complete.form",
+    "gallery.auto-complete.form-feedback",
+    "gallery.auto-complete.submit",
+    "gallery.auto-complete.reset",
+    "gallery.tree.project",
+    "gallery.tree.feedback",
+    "gallery.tree.note",
+    "gallery.tree.save-note",
+    "gallery.tree.disabled",
+    "gallery.tree.visible",
+    "gallery.tree.locked",
+    "gallery.tree.restore",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -4638,6 +4683,297 @@ void add_service_rate_samples(const std::shared_ptr<GalleryState>& state) {
          }});
     ++state->telemetry.live_samples;
 }
+
+void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.auto-complete.contacts · AutoComplete · 联系人建议")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.auto-complete.feedback · 接受值=" +
+                                      std::string{state->contact_value.get().bytes()} + " · " +
+                                      std::string{state->contact_request.get().bytes()} + " · " +
+                                      std::string{state->contact_saved.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             const AutoCompleteRichLabel rich{AutoCompleteOptionLabel{[state] {
+                 Flex(FlexProps{}.align(FlexAlign::Center).gap(dp(4)), FlexContent{[state] {
+                          Input(InputProps{}
+                                    .value(state->contact_note)
+                                    .size(ControlSize::Small)
+                                    .ref(state->contact_note_ref)
+                                    .onChange([state](String value) { state->contact_note.set(value); })
+                                    .placeholder(u8"gallery.auto-complete.note")
+                                    .layout(
+                                        member_control_margin().margin_top(dp(0)).margin_bottom(dp(0)).width(dp(132))));
+                          Button(ButtonProps{}
+                                     .size(ControlSize::Small)
+                                     .onClick([state] {
+                                         state->contact_saved.set(
+                                             utf8("已保存 " + std::string{state->contact_note.get().bytes()}));
+                                     })
+                                     .layout(member_control_margin().margin_top(dp(0)).margin_bottom(dp(0))),
+                                 [] { Text(u8"保存联系人备注"); });
+                      }});
+             }}};
+             AutoComplete(AutoCompleteProps{}
+                              .value(state->contact_value)
+                              .ref(state->contact_ref)
+                              .placeholder(u8"gallery.auto-complete.input · 输入或选择联系人")
+                              .filterOption(AutoCompleteFilter{true})
+                              .backfill()
+                              .allowClear()
+                              .listHeight(224)
+                              .disabled(state->contact_disabled)
+                              .readOnly(state->contact_read_only)
+                              .options(bind([state, rich] {
+                                  std::vector<AutoCompleteOption> options{
+                                      {u8"alice", u8"alice@example.com", u8"Alice"},
+                                      {u8"blocked", u8"blocked@example.com", u8"停用联系人", true},
+                                      {u8"chen", u8"chen@example.com", u8"Chen"},
+                                      {u8"notes", u8"notes@example.com", u8"备注联系人", false, rich}};
+                                  if (state->contact_extra.get()) {
+                                      options.push_back({u8"dora", u8"dora@example.com", u8"Dora"});
+                                  }
+                                  return options;
+                              }))
+                              .onChange([state](String value) {
+                                  state->contact_request.set(
+                                      utf8(std::string{state->contact_accept.get() ? "接受候选=" : "拒绝候选="} +
+                                           std::string{value.bytes()}));
+                                  if (state->contact_accept.get()) {
+                                      state->contact_value.set(value);
+                                  }
+                              })
+                              .onSelect([state](String value, AutoCompleteOption) {
+                                  state->contact_request.set(utf8("选择候选=" + std::string{value.bytes()}));
+                              })
+                              .layout(member_control_margin().width(dp(320))));
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->contact_accept.set(!state->contact_accept.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.auto-complete.authority · 接受/拒绝修改"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->contact_extra.set(!state->contact_extra.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.auto-complete.options · 更新建议"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->contact_disabled.set(!state->contact_disabled.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.auto-complete.disabled · 禁用/启用"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->contact_read_only.set(!state->contact_read_only.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.auto-complete.readonly · 只读/编辑"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      state->contact_accept.set(true);
+                                      state->contact_disabled.set(false);
+                                      state->contact_read_only.set(false);
+                                      static_cast<void>(state->contact_ref.focus());
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.auto-complete.restore · 恢复联系人输入"); });
+                   }});
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.auto-complete.form-feedback · " +
+                                      std::string{state->contact_form_feedback.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Form(FormProps{}
+                      .ref(state->contact_form)
+                      .disabled(state->contact_disabled)
+                      .readOnly(state->contact_read_only)
+                      .onFinish([state](FormResult) {
+                          state->contact_form_feedback.set(
+                              utf8("已保存 " + std::string{state->contact_field.get().bytes()}));
+                      })
+                      .layout(LayoutStyle{}.width(state->document_width)),
+                  FormContent{[state] {
+                      FormItem(FormItemProps{}
+                                   .field(u8"contact", state->contact_field)
+                                   .label(String{u8"表单联系人"})
+                                   .control(state->contact_form_ref),
+                               FormItemContent{[state] {
+                                   AutoComplete(
+                                       AutoCompleteProps{}
+                                           .value(state->contact_field.value())
+                                           .onChange(state->contact_field.onChange())
+                                           .ref(state->contact_form_ref)
+                                           .placeholder(u8"gallery.auto-complete.form")
+                                           .options({{u8"ada", u8"Ada", u8"Ada"}, {u8"grace", u8"Grace", u8"Grace"}})
+                                           .defaultActiveFirstOption(false)
+                                           .backfill()
+                                           .allowClear()
+                                           .disabled(state->contact_field.disabled())
+                                           .readOnly(state->contact_field.readOnly())
+                                           .status(state->contact_field.status())
+                                           .layout(member_control_margin().width(dp(260))));
+                               }});
+                      Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
+                                Button(ButtonProps{}
+                                           .onClick([state] { static_cast<void>(state->contact_form.submit()); })
+                                           .layout(member_control_margin()),
+                                       [] { Text(u8"gallery.auto-complete.submit · 保存表单联系人"); });
+                                Button(ButtonProps{}
+                                           .onClick([state] {
+                                               static_cast<void>(state->contact_form.reset());
+                                               state->contact_form_feedback.set(String{u8"已重置联系人"});
+                                           })
+                                           .layout(member_control_margin()),
+                                       [] { Text(u8"gallery.auto-complete.reset · 重置联系人"); });
+                            }});
+                  }});
+         }});
+    state->telemetry.live_samples += 2;
+}
+
+ryn::String gallery_project_keys(const ryn::TreeKeys& keys) {
+    std::string result;
+    for (const auto& key : keys) {
+        if (!result.empty()) {
+            result += ',';
+        }
+        result += key.bytes();
+    }
+    return utf8(result);
+}
+
+std::pair<ryn::TreeKeys, ryn::TreeKeys> gallery_project_checks(const ryn::TreeKeys& leaves, bool archive_disabled) {
+    ryn::TreeKeys checked = leaves;
+    ryn::TreeKeys half;
+    const auto has = [&](std::string_view key) {
+        return std::ranges::any_of(leaves, [&](const auto& value) { return value.bytes() == key; });
+    };
+    const std::size_t source = has("controls") + has("theme");
+    const std::size_t docs = has("guide") + (!archive_disabled && has("locked"));
+    const auto assets = static_cast<std::size_t>(
+        std::ranges::count_if(leaves, [](const auto& key) { return key.bytes().starts_with("asset-"); }));
+    const auto group = [&](ryn::String key, std::size_t selected, std::size_t available) {
+        if (selected == available) {
+            checked.push_back(std::move(key));
+        } else if (selected > 0) {
+            half.push_back(std::move(key));
+        }
+    };
+    group(ryn::String{u8"src"}, source, 2);
+    group(ryn::String{u8"docs"}, docs, archive_disabled ? 1 : 2);
+    group(ryn::String{u8"assets"}, assets, 16);
+    group(ryn::String{u8"project"}, source + docs + assets, archive_disabled ? 19 : 20);
+    return {std::move(checked), std::move(half)};
+}
+
+void add_project_tree_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(u8"gallery.tree.project · Tree · 项目目录")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          const auto [checked, half] =
+                              gallery_project_checks(state->project_checked.get(), state->project_locked.get());
+                          return utf8("gallery.tree.feedback · 选择=" +
+                                      std::string{gallery_project_keys(state->project_selected.get()).bytes()} +
+                                      " · 勾选=" + std::string{gallery_project_keys(checked).bytes()} +
+                                      " · 半选=" + std::string{gallery_project_keys(half).bytes()} + " · " +
+                                      std::string{state->project_saved.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             std::vector<TreeItem> assets;
+             for (int i = 1; i <= 16; ++i) {
+                 assets.emplace_back(utf8("asset-" + std::to_string(i)), utf8("资源 " + std::to_string(i)));
+             }
+             TreeItem notes{u8"notes", u8"处理备注"};
+             notes.richTitle(TreeTitle{[state] {
+                 Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(4)), FlexContent{[state] {
+                          Input(InputProps{}
+                                    .value(state->project_note)
+                                    .ref(state->project_note_ref)
+                                    .onChange([state](String value) { state->project_note.set(value); })
+                                    .placeholder(u8"gallery.tree.note")
+                                    .layout(member_control_margin().width(dp(180))));
+                          Button(ButtonProps{}
+                                     .onClick([state] {
+                                         state->project_saved.set(
+                                             utf8("已保存 " + std::string{state->project_note.get().bytes()}));
+                                     })
+                                     .layout(member_control_margin()),
+                                 [] { Text(u8"保存项目备注"); });
+                      }});
+             }});
+             Tree(
+                 TreeProps{}
+                     .checkable()
+                     .expandedKeys(state->project_expanded)
+                     .selectedKeys(state->project_selected)
+                     .checkedKeys(state->project_checked)
+                     .disabled(state->project_disabled)
+                     .visible(state->project_visible)
+                     .onExpand([state](TreeExpandInfo info) { state->project_expanded.set(info.expanded_keys); })
+                     .onSelect([state](TreeSelectInfo info) { state->project_selected.set(info.selected_keys); })
+                     .onCheck([state](TreeCheckInfo info) {
+                         std::erase_if(info.checked_keys, [](const auto& key) {
+                             return key.bytes() == "project" || key.bytes() == "src" || key.bytes() == "docs" ||
+                                    key.bytes() == "assets";
+                         });
+                         state->project_checked.set(info.checked_keys);
+                     })
+                     .layout(member_control_margin()
+                                 .width(bind([state] { return dp(state->document_width.get().value() - 12); }))
+                                 .height(dp(240))),
+                 {TreeItem{
+                      u8"project",
+                      u8"RynUI 项目",
+                      {TreeItem{u8"src", u8"源代码", {TreeItem{u8"controls", u8"控件"}, TreeItem{u8"theme", u8"主题"}}},
+                       TreeItem{u8"docs",
+                                u8"文档",
+                                {TreeItem{u8"guide", u8"使用指南"},
+                                 TreeItem{u8"locked", u8"只读归档"}.disabled(state->project_locked)}},
+                       TreeItem{u8"assets", u8"资源", std::move(assets)}}},
+                  std::move(notes)});
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->project_disabled.set(!state->project_disabled.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.tree.disabled · 禁用/启用项目树"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->project_visible.set(!state->project_visible.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.tree.visible · 显隐项目树"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] { state->project_locked.set(!state->project_locked.get()); })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.tree.locked · 归档分支禁用/恢复"); });
+                       Button(ButtonProps{}
+                                  .onClick([state] {
+                                      state->project_visible.set(true);
+                                      state->project_disabled.set(false);
+                                      state->project_expanded.set(TreeKeys{});
+                                      static_cast<void>(state->project_note_ref.focus());
+                                  })
+                                  .layout(member_control_margin()),
+                              [] { Text(u8"gallery.tree.restore · 恢复项目备注"); });
+                   }});
+         }});
+    ++state->telemetry.live_samples;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -4742,6 +5078,8 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_member_avatar_samples(state);
                                                         add_statistic_metric_samples(state);
                                                         add_service_rate_samples(state);
+                                                        add_contact_autocomplete_samples(state);
+                                                        add_project_tree_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

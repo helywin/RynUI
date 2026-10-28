@@ -31,6 +31,8 @@
 #include "component/avatar_component.hpp"
 #include "component/statistic_component.hpp"
 #include "component/rate_component.hpp"
+#include "component/tree_component.hpp"
+#include "component/auto_complete_component.hpp"
 #include "component/tooltip_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
@@ -863,7 +865,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 419, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 441, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -914,7 +916,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 68 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 302,
+                initial.reference_content_runs == 126 && initial.live_samples == 305,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -3344,6 +3346,10 @@ void test_time_picker_gallery_after_document_scroll() {
                 heading = "gallery.statistic.metrics";
             } else if (entry.identity == "ant.component.rate") {
                 heading = "gallery.rate.service";
+            } else if (entry.identity == "ant.component.auto-complete") {
+                heading = "gallery.auto-complete.contacts";
+            } else if (entry.identity == "ant.component.tree") {
+                heading = "gallery.tree.project";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -4030,6 +4036,10 @@ void test_date_picker_gallery_after_document_scroll() {
                 heading = "gallery.statistic.metrics";
             } else if (entry.identity == "ant.component.rate") {
                 heading = "gallery.rate.service";
+            } else if (entry.identity == "ant.component.auto-complete") {
+                heading = "gallery.auto-complete.contacts";
+            } else if (entry.identity == "ant.component.tree") {
+                heading = "gallery.tree.project";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -7095,6 +7105,649 @@ void test_member_metric_gallery_after_document_scroll() {
     }
 }
 
+void test_tree_autocomplete_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    std::cout << std::unitbuf;
+    auto definition = make_token_gallery_definition();
+    definition.set_motion_enabled(false);
+    Fixture f;
+    configure_member_metric_fonts(f);
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& s = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                "Tree/AutoComplete finite layout failed");
+    };
+    definition.set_viewport_width(width);
+    sync();
+    const auto root = s.components().root(s.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& n = f.nodes.require(s.components().root(id));
+        return runtime::Rect{n.bounds.x + n.translation.x, n.bounds.y + n.translation.y, n.bounds.width,
+                             n.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId owner) {
+        for (auto id = std::optional{child}; id; id = s.components().parent(*id)) {
+            if (*id == owner) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text = [&](std::string_view prefix) {
+        std::optional<ryn::detail::MountedTextComponent> found;
+        for (const auto& t : s.text().mounted_texts()) {
+            if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
+                require(!found, "Tree/AutoComplete ambiguous text locator");
+                found = t;
+            }
+        }
+        require(found.has_value(), "Tree/AutoComplete required text absent");
+        return *found;
+    };
+    const auto contacts = *s.components().parent(text("gallery.auto-complete.contacts").component);
+    const auto projects = *s.components().parent(text("gallery.tree.project").component);
+    const auto button = [&](std::string_view prefix, runtime::ComponentId owner, bool exact = false) {
+        std::optional<ryn::detail::MountedButtonComponent> found;
+        for (const auto& t : s.text().mounted_texts()) {
+            const auto content = f.text_scene.text_state(t.scene).content().bytes();
+            if (!descendant(t.component, owner) || (exact ? content != prefix : !content.starts_with(prefix))) {
+                continue;
+            }
+            for (auto parent = s.components().parent(t.component); parent && *parent != owner;
+                 parent = s.components().parent(*parent)) {
+                for (const auto& b : f.host->mounted_buttons()) {
+                    if (b.component == *parent) {
+                        require(!found, "Tree/AutoComplete ambiguous button locator");
+                        found = b;
+                    }
+                }
+            }
+        }
+        require(found.has_value(), "Tree/AutoComplete required button absent");
+        return *found;
+    };
+    const auto editor = [&](runtime::ComponentId id) {
+        for (const auto& e : f.inputs->mounted_inputs()) {
+            if (e.component == id) {
+                return e;
+            }
+        }
+        throw std::runtime_error("Tree/AutoComplete editor absent");
+    };
+    std::vector<runtime::ComponentId> completions;
+    for (auto id : s.auto_complete().mounted()) {
+        if (descendant(id, contacts)) {
+            completions.push_back(id);
+        }
+    }
+    require(completions.size() == 2, "Expected standalone and Form AutoComplete");
+    const auto lookup = completions[0];
+    const auto field = completions[1];
+    const auto initial_lookup = s.auto_complete().snapshot(lookup);
+    const auto initial_field = s.auto_complete().snapshot(field);
+    const auto main_editor = editor(initial_lookup.input);
+    const auto form_editor = editor(initial_field.input);
+    std::optional<ryn::detail::MountedInputComponent> rich_editor;
+    std::optional<ryn::detail::MountedInputComponent> tree_editor;
+    for (const auto& e : f.inputs->mounted_inputs()) {
+        if (descendant(e.component, lookup) && e.component != main_editor.component) {
+            require(!rich_editor, "Ambiguous rich suggestion Input");
+            rich_editor = e;
+        }
+        if (descendant(e.component, projects)) {
+            require(!tree_editor, "Ambiguous project note Input");
+            tree_editor = e;
+        }
+    }
+    require(rich_editor && tree_editor, "Rich suggestion or project Input missing");
+    runtime::ComponentId tree;
+    for (auto id : s.tree().mounted()) {
+        if (descendant(id, projects)) {
+            require(!tree.valid(), "Ambiguous project Tree");
+            tree = id;
+        }
+    }
+    require(tree.valid(), "Project Tree absent");
+    const auto initial_tree = s.tree().snapshot(tree);
+    require(initial_tree.rows.size() == 25, "Fixed project hierarchy drifted");
+    const auto telemetry = definition.telemetry();
+    GalleryDocumentViewport scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto layout = gallery_layout_metrics({width, 900});
+        const auto scroll_root = layout.narrow ? body : document;
+        const auto translate = [&] {
+            require(scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "Tree/AutoComplete document translation failed");
+            if (!layout.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "Tree/AutoComplete sidebar translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto ref = std::ranges::find_if(surfaces, [&](const auto& item) {
+                return f.surfaces->snapshot(item.component).identity == entry.identity;
+            });
+            require(ref != surfaces.end(), "Tree/AutoComplete lost old reference surface");
+            anchors.push_back(
+                gallery_component_navigation_anchor(entry.identity, ref->node, s.text(), f.nodes, scroll_root));
+        }
+        static_cast<void>(scroll.replace_component_anchors(anchors));
+        static_cast<void>(scroll.set_extents(layout.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(layout.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            static_cast<void>(scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    const auto reveal = [&](runtime::ComponentId id) {
+        if (!s.components().in_window_layer(id)) {
+            const auto scroll_root = gallery_layout_metrics({width, 900}).narrow ? body : document;
+            static_cast<void>(scroll.scroll_to(f.nodes.require(s.components().root(id)).bounds.y -
+                                               f.nodes.require(scroll_root).bounds.y - 160));
+        }
+        reconcile();
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto r = bounds(id);
+        const runtime::Point p{r.x + r.width / 2, r.y + r.height / 2};
+        if (!(r.width > 0 && r.height > 0 && p.x >= 16 && p.x < width - 16 && p.y >= 12 && p.y < 888)) {
+            std::cerr << "Tree/AutoComplete click rect=" << r.x << ',' << r.y << ',' << r.width << ',' << r.height
+                      << '\n';
+            for (const auto& e : f.inputs->mounted_inputs()) {
+                if (e.component == id) {
+                    std::cerr << "Input value=" << f.inputs->editors().require(e.editor).value() << '\n';
+                }
+            }
+            for (const auto& t : s.text().mounted_texts()) {
+                if (descendant(t.component, id)) {
+                    std::cerr << "Click text=" << f.text_scene.text_state(t.scene).content().bytes() << '\n';
+                }
+            }
+        }
+        require(r.width > 0 && r.height > 0 && p.x >= 16 && p.x < width - 16 && p.y >= 12 && p.y < 888,
+                "Tree/AutoComplete click outside finite document/window");
+        s.pointer().dispatch(pointer_event(input::PointerAction::down, p, input::PointerButton::primary));
+        s.pointer().dispatch(pointer_event(input::PointerAction::up, p, input::PointerButton::primary));
+        sync();
+    };
+    const auto key = [&](input::Key value, input::KeyModifier modifiers = input::KeyModifier::none) {
+        s.focus().dispatch({value, input::KeyAction::down, modifiers});
+        s.focus().dispatch({value, input::KeyAction::up, modifiers});
+        sync();
+    };
+    const auto action = [&](std::string_view prefix, runtime::ComponentId owner) {
+        const auto b = button(prefix, owner);
+        reveal(b.component);
+        const auto r = bounds(b.component);
+        if (s.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) != b.interaction) {
+            std::cerr << "Tree/AutoComplete covered command=" << prefix << " rect=" << r.x << ',' << r.y << ','
+                      << r.width << ',' << r.height << '\n';
+        }
+        require(s.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) == b.interaction,
+                "Tree/AutoComplete real command hit absent");
+        click(b.component);
+        reconcile();
+    };
+    const auto supplemental_no_blur = [&](std::string_view prefix, runtime::ComponentId owner) {
+        const auto handlers = s.interactions().require(button(prefix, owner).interaction).focus_handlers;
+        require(handlers && handlers->activate, "Tree/AutoComplete supplemental reset handler absent");
+        handlers->activate();
+        reconcile();
+    };
+    const auto type = [&](const auto& e, String value, bool reveal_input = true) {
+        if (reveal_input) {
+            reveal(e.component);
+        }
+        if (s.components().in_window_layer(e.component)) {
+            const auto r = bounds(e.component);
+            const auto a = s.auto_complete().snapshot(lookup);
+            std::cout << "Rich contact before click hit_matches="
+                      << (s.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) == e.interaction)
+                      << " popup=" << a.bounds.x << ',' << a.bounds.y << ',' << a.bounds.width << ',' << a.bounds.height
+                      << " clip=" << a.clip.x << ',' << a.clip.y << ',' << a.clip.width << ',' << a.clip.height
+                      << " query=" << a.query.bytes() << " value=" << a.value.bytes()
+                      << " display=" << a.display.bytes() << '\n';
+        }
+        click(e.component);
+        if (s.focus().state().focused != e.interaction || !f.inputs->sessions().active().valid()) {
+            const auto r = bounds(e.component);
+            std::cerr << "Native editor rect=" << r.x << ',' << r.y << ',' << r.width << ',' << r.height
+                      << " hit_matches="
+                      << (s.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) == e.interaction)
+                      << " eligible=" << s.interactions().require(e.interaction).eligible
+                      << " branch_active=" << s.interactions().branch_active(e.interaction)
+                      << " main_focused=" << (s.focus().state().focused == main_editor.interaction)
+                      << " popup_visible=" << s.auto_complete().snapshot(lookup).visible << '\n';
+        }
+        require(s.focus().state().focused == e.interaction && f.inputs->sessions().active().valid(),
+                "Native editor focus/session absent");
+        key(input::Key::a, input::KeyModifier::control);
+        if (value.empty()) {
+            key(input::Key::backspace);
+        } else {
+            require(bool(f.inputs->dispatch(input::TextCommitted{value, f.inputs->sessions().active()})),
+                    "Native contact/project text event failed");
+        }
+        sync();
+    };
+    const auto feedback = [&](std::string_view prefix, std::string_view expected) {
+        require(f.text_scene.text_state(text(prefix).scene).content().bytes().find(expected) != std::string_view::npos,
+                "Tree/AutoComplete actual business feedback differs");
+    };
+    const auto within = [](runtime::Rect a, runtime::Rect b) {
+        return a.width <= 0 || a.height <= 0 ||
+               (a.x >= b.x - .02F && a.y >= b.y - .02F && a.x + a.width <= b.x + b.width + .02F &&
+                a.y + a.height <= b.y + b.height + .02F);
+    };
+    const auto glyphs = [&](runtime::ComponentId owner, runtime::Rect allowed, bool window_layer = false) {
+        std::size_t visible{};
+        for (const auto& t : s.text().mounted_texts()) {
+            if (!descendant(t.component, owner) || s.components().in_window_layer(t.component) != window_layer) {
+                continue;
+            }
+            const auto range = f.text_scene.primitive(t.scene).instances;
+            for (auto i = range.first; i < range.first + range.count; ++i) {
+                if (!std::ranges::any_of(s.scene_composer().ordered_scene().commands(), [i](const auto& c) {
+                        return c.kind == graphics::SceneDrawKind::glyph && i >= c.first_instance &&
+                               i - c.first_instance < c.instance_count;
+                    })) {
+                    continue;
+                }
+                const auto& g = f.text_scene.glyph_scene().instances().at(i);
+                const auto& p = g.position_size;
+                const auto& tr = g.translation_opacity;
+                const auto& clip = g.clip_bounds;
+                const auto painted = graphics::intersect_effect_bounds(
+                    {p[0] + tr[0], p[1] + tr[1], p[2], p[3]}, {clip[0], clip[1], clip[2] - clip[0], clip[3] - clip[1]});
+                if (painted.width > 0 && painted.height > 0 && tr[2] > 0 && g.color[3] > 0) {
+                    if (!within(painted, allowed)) {
+                        std::cerr << "Tree/AutoComplete glyph=" << f.text_scene.text_state(t.scene).content().bytes()
+                                  << " painted=" << painted.x << ',' << painted.y << ',' << painted.width << ','
+                                  << painted.height << " allowed=" << allowed.x << ',' << allowed.y << ','
+                                  << allowed.width << ',' << allowed.height << '\n';
+                    }
+                    require(within(painted, allowed) &&
+                                within(painted, window_layer ? runtime::Rect{0, 0, width, 900}
+                                                             : runtime::Rect{16, 12, width - 32, 876}),
+                            "Tree/AutoComplete actual glyph escaped allocation or viewport");
+                    ++visible;
+                }
+            }
+        }
+        return visible;
+    };
+    const auto focus_edges = [&](runtime::Rect b, bool shadow) {
+        std::array<float, 4> coverage{};
+        for (const auto& command : s.scene_composer().ordered_scene().commands()) {
+            if (command.kind != graphics::SceneDrawKind::rounded_effect) {
+                continue;
+            }
+            for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+                const auto& effect = s.rounded_effects().packed_instances()[i];
+                const auto& g = effect.geometry;
+                const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                          g.shape.rect.width, g.shape.rect.height};
+                if (shape != b || !effect.material.visible ||
+                    g.kind !=
+                        (shadow ? graphics::RoundedEffectKind::outer_shadow : graphics::RoundedEffectKind::outline)) {
+                    continue;
+                }
+                const float gap = shadow ? .5F : g.outline_offset + g.outline_width / 2;
+                const std::array<runtime::Point, 4> points{{{b.x - gap, b.y + b.height / 2},
+                                                            {b.x + b.width / 2, b.y - gap},
+                                                            {b.x + b.width + gap, b.y + b.height / 2},
+                                                            {b.x + b.width / 2, b.y + b.height + gap}}};
+                for (std::size_t j = 0; j < points.size(); ++j) {
+                    const auto p = points[j];
+                    if (!g.ancestor_clip || (p.x >= g.ancestor_clip->bounds.x && p.y >= g.ancestor_clip->bounds.y &&
+                                             p.x < g.ancestor_clip->bounds.x + g.ancestor_clip->bounds.width &&
+                                             p.y < g.ancestor_clip->bounds.y + g.ancestor_clip->bounds.height)) {
+                        coverage[j] =
+                            std::max(coverage[j], graphics::rounded_effect_coverage(p, effect) *
+                                                      effect.material.opacity * effect.material.color.alpha());
+                    }
+                }
+            }
+        }
+        require(std::ranges::all_of(coverage, [shadow](float c) { return c > (shadow ? .001F : .8F); }),
+                "Tree/AutoComplete actual keyboard focus lost an edge");
+    };
+    const auto native_fill = [&](runtime::Rect target, runtime::Rect allowed) {
+        bool painted{};
+        for (const auto& command : s.scene_composer().ordered_scene().commands()) {
+            for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+                if (command.kind == graphics::SceneDrawKind::quad) {
+                    const auto& q = s.surfaces().instances().at(i);
+                    const runtime::Rect shape{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1],
+                                              q.bounds[2], q.bounds[3]};
+                    if (shape == target && q.color[3] > 0 && q.opacity > 0) {
+                        require(within(shape, allowed), "Tree/AutoComplete actual quad fill escaped allocation");
+                        painted = true;
+                    }
+                } else if (command.kind == graphics::SceneDrawKind::rounded_effect) {
+                    const auto& e = s.rounded_effects().packed_instances()[i];
+                    const auto& g = e.geometry;
+                    const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                              g.shape.rect.width, g.shape.rect.height};
+                    if (shape == target && g.kind == graphics::RoundedEffectKind::outer_shadow && g.blur == 0 &&
+                        g.spread == 0 && e.material.visible) {
+                        const auto clipped =
+                            g.ancestor_clip ? graphics::intersect_effect_bounds(shape, g.ancestor_clip->bounds) : shape;
+                        require(within(clipped, allowed), "Tree/AutoComplete actual effect fill escaped allocation");
+                        painted |= clipped.width > 0 && clipped.height > 0 && e.material.opacity > 0 &&
+                                   e.material.color.alpha() > 0;
+                    }
+                }
+            }
+        }
+        require(painted, "Tree/AutoComplete actual native fill absent");
+    };
+    const auto navigate = [&](std::string_view caption, std::string_view identity, std::string_view heading,
+                              runtime::ComponentId owner) {
+        std::optional<runtime::ComponentId> navigation;
+        const auto find = [&](auto&& self, runtime::ComponentId id) -> void {
+            if (s.components().root(id) == navigation_root) {
+                navigation = id;
+            }
+            for (auto child : s.components().children(id)) {
+                self(self, child);
+            }
+        };
+        for (auto id : s.components().root_components()) {
+            find(find, id);
+        }
+        require(navigation.has_value(), "Navigation owner missing");
+        const auto b = button(caption, *navigation, true);
+        const auto layout = gallery_layout_metrics({width, 900});
+        const auto scroll_root = layout.narrow ? body : navigation_root;
+        const auto offset = f.nodes.require(b.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (layout.narrow) {
+            static_cast<void>(scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        require(within(bounds(b.component), layout.navigation_lane) && glyphs(b.component, bounds(b.component)) > 0,
+                "Real catalog glyph absent");
+        require(!definition.take_navigation_request(), "Unexpected stale catalog request");
+        click(b.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->component_identity == identity &&
+                    request->kind == GalleryNavigationTargetKind::component,
+                "Real catalog requested foreign sample");
+        reconcile(request);
+        const auto actual_root = layout.narrow ? body : document;
+        const auto anchor = gallery_component_navigation_anchor(identity, b.node, s.text(), f.nodes, actual_root);
+        require(near(anchor.offset,
+                     f.nodes.require(s.components().root(text(heading).component)).bounds.y -
+                         f.nodes.require(actual_root).bounds.y,
+                     .02F) &&
+                    glyphs(text(heading).component, bounds(owner)) > 0,
+                "Production anchor missed actual interactive heading");
+    };
+    const auto tree_feedback = [&] {
+        const auto report = f.text_scene.text_state(text("gallery.tree.feedback").scene).content().bytes();
+        const auto keys = [&](std::string_view marker) {
+            auto begin = report.find(marker);
+            require(begin != std::string_view::npos, "Project feedback omitted check state");
+            begin += marker.size();
+            const auto end = report.find(" · ", begin);
+            auto values = report.substr(begin, end == std::string_view::npos ? end : end - begin);
+            std::vector<std::string> result;
+            while (!values.empty()) {
+                const auto comma = values.find(',');
+                result.emplace_back(values.substr(0, comma));
+                if (comma == std::string_view::npos) {
+                    break;
+                }
+                values.remove_prefix(comma + 1);
+            }
+            std::ranges::sort(result);
+            return result;
+        };
+        const auto actual = s.tree().snapshot(tree);
+        const auto sorted = [](const TreeKeys& source) {
+            std::vector<std::string> result;
+            for (const auto& key : source) {
+                result.emplace_back(key.bytes());
+            }
+            std::ranges::sort(result);
+            return result;
+        };
+        if (keys("勾选=") != sorted(actual.checked) || keys("半选=") != sorted(actual.half_checked)) {
+            std::cerr << "Project actual feedback=" << report << " docs.checked=" << actual.rows[4].checked
+                      << " docs.half=" << actual.rows[4].indeterminate << '\n';
+        }
+        require(keys("勾选=") == sorted(actual.checked) && keys("半选=") == sorted(actual.half_checked),
+                "Project check feedback differs from actual Tree after disabled change");
+    };
+    const auto retained = [&] {
+        for (const auto& e : {main_editor, form_editor, *rich_editor, *tree_editor}) {
+            const auto current = editor(e.component);
+            require(current.component == e.component && current.editor == e.editor &&
+                        current.interaction == e.interaction && current.node == e.node,
+                    "Tree/AutoComplete replaced full-generation editor identity");
+        }
+        const auto a = s.auto_complete().snapshot(lookup);
+        const auto b = s.auto_complete().snapshot(field);
+        require(a.input == initial_lookup.input && a.popup == initial_lookup.popup && b.input == initial_field.input &&
+                    b.popup == initial_field.popup,
+                "AutoComplete ordinary update replaced retained private regions");
+        const auto current = s.tree().snapshot(tree);
+        require(current.rows.size() == initial_tree.rows.size(), "Project Tree changed fixed topology");
+        for (std::size_t i = 0; i < current.rows.size(); ++i) {
+            require(current.rows[i].component == initial_tree.rows[i].component &&
+                        current.rows[i].interaction == initial_tree.rows[i].interaction &&
+                        current.rows[i].title == initial_tree.rows[i].title &&
+                        current.rows[i].checkbox == initial_tree.rows[i].checkbox,
+                    "Project Tree replaced retained row generation");
+        }
+        require(definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "Tree/AutoComplete reran unrelated Gallery composition");
+    };
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        definition.set_motion_enabled(false);
+        for (float viewport : {1200.0F, 560.0F}) {
+            width = viewport;
+            definition.set_viewport_width(width);
+            reconcile();
+            std::cout << "Tree/AutoComplete begin theme=" << theme_step << " width=" << width << '\n';
+            navigate("AutoComplete", "ant.component.auto-complete", "gallery.auto-complete.contacts", contacts);
+            action("gallery.auto-complete.restore", contacts);
+            type(main_editor, u8"alice");
+            auto a = s.auto_complete().snapshot(lookup);
+            require(a.visible && a.query == String{u8"alice"}, "Contact substring query/popup failed");
+            key(input::Key::down);
+            key(input::Key::enter);
+            require(s.auto_complete().snapshot(lookup).value == String{u8"alice@example.com"},
+                    "Native contact keyboard selection failed");
+            feedback("gallery.auto-complete.feedback", "alice@example.com");
+            std::cout << "Contact keyboard selection passed\n";
+            std::optional<runtime::ComponentId> clear;
+            for (auto hit : s.interactions().declaration_order()) {
+                const auto& record = s.interactions().require(hit);
+                if (hit != main_editor.interaction && descendant(record.component, main_editor.component)) {
+                    require(!clear, "Ambiguous native AutoComplete clear Button");
+                    clear = record.component;
+                }
+            }
+            require(clear.has_value(), "Native AutoComplete clear Button absent");
+            click(*clear);
+            require(s.auto_complete().snapshot(lookup).value.empty(), "Native AutoComplete clear failed");
+            type(main_editor, u8"alice@example.com");
+            key(input::Key::escape);
+            action("gallery.auto-complete.authority", contacts);
+            type(main_editor, u8"rejected");
+            require(s.auto_complete().snapshot(lookup).value == String{u8"alice@example.com"},
+                    "Controlled contact rejection changed authority");
+            action("gallery.auto-complete.authority", contacts);
+            type(main_editor, String{});
+            key(input::Key::down);
+            std::cout << "Contact controlled rejection passed\n";
+            require(s.auto_complete().snapshot(lookup).visible, "Rich contact popup did not open");
+            type(*rich_editor, u8"Retained contact", false);
+            const auto rich_save = button("保存联系人备注", contacts);
+            click(rich_save.component);
+            key(input::Key::space);
+            focus_edges(bounds(rich_save.component), false);
+            feedback("gallery.auto-complete.feedback", "Retained contact");
+            supplemental_no_blur("gallery.auto-complete.options", contacts);
+            require(editor(rich_editor->component).editor == rich_editor->editor &&
+                        f.inputs->editors().require(rich_editor->editor).value() == "Retained contact",
+                    "Contact suggestions update lost rich draft/identity");
+            key(input::Key::escape);
+            action("gallery.auto-complete.options", contacts);
+            type(main_editor, String{});
+            key(input::Key::down);
+            click(rich_editor->component);
+            key(input::Key::tab);
+            require(s.focus().state().focused == button("gallery.auto-complete.authority", contacts).interaction &&
+                        !s.auto_complete().snapshot(lookup).visible,
+                    "Rich contact Tab did not leave relative to main Input");
+            action("gallery.auto-complete.disabled", contacts);
+            require(!s.auto_complete().snapshot(lookup).visible &&
+                        (!s.interactions().require(main_editor.interaction).eligible ||
+                         !s.interactions().branch_active(main_editor.interaction)),
+                    "Disabled contact retained eligible input/popup");
+            action("gallery.auto-complete.restore", contacts);
+            action("gallery.auto-complete.readonly", contacts);
+            const auto accepted = s.auto_complete().snapshot(lookup).value;
+            reveal(main_editor.component);
+            click(main_editor.component);
+            key(input::Key::backspace);
+            static_cast<void>(
+                f.inputs->dispatch(input::TextCommitted{String{u8"forbidden"}, f.inputs->sessions().active()}));
+            sync();
+            require(s.auto_complete().snapshot(lookup).value == accepted, "Read-only contact changed business value");
+            action("gallery.auto-complete.restore", contacts);
+            action("gallery.auto-complete.reset", contacts);
+            std::cout << "Contact rich content/gates passed\n";
+            type(form_editor, String{});
+            key(input::Key::down);
+            require(s.auto_complete().snapshot(field).backfilled && s.auto_complete().snapshot(field).value.empty(),
+                    "Form same-value backfill fixture invalid");
+            supplemental_no_blur("gallery.auto-complete.reset", contacts);
+            require(s.focus().state().focused == form_editor.interaction &&
+                        !s.auto_complete().snapshot(field).backfilled &&
+                        s.auto_complete().snapshot(field).display.empty() &&
+                        f.inputs->editors().require(form_editor.editor).value().empty(),
+                    "Focused Form reset retained unaccepted candidate");
+            require(bool(f.inputs->dispatch(
+                        input::CompositionChanged{String{u8"候选"}, {}, f.inputs->sessions().active()})),
+                    "Form preedit fixture failed");
+            sync();
+            supplemental_no_blur("gallery.auto-complete.reset", contacts);
+            require(!f.inputs->editors().require(form_editor.editor).composition().active &&
+                        s.auto_complete().snapshot(field).value.empty(),
+                    "Form same-value reset retained composition");
+            key(input::Key::enter);
+            require(s.auto_complete().snapshot(field).value.empty(), "Enter revived reset candidate");
+            type(form_editor, u8"Business contact");
+            key(input::Key::escape);
+            action("gallery.auto-complete.submit", contacts);
+            feedback("gallery.auto-complete.form-feedback", "Business contact");
+            std::cout << "Contact Form reset/submit passed\n";
+            navigate("Tree", "ant.component.tree", "gallery.tree.project", projects);
+            action("gallery.tree.restore", projects);
+            reveal(tree);
+            auto t = s.tree().snapshot(tree);
+            click(t.rows[0].title);
+            const bool pointer_selected = s.tree().snapshot(tree).rows[0].selected;
+            key(input::Key::left);
+            require(!s.tree().snapshot(tree).rows[0].expanded, "Tree keyboard collapse failed");
+            key(input::Key::right);
+            require(s.tree().snapshot(tree).rows[0].expanded, "Tree keyboard expand failed");
+            key(input::Key::enter);
+            require(s.tree().snapshot(tree).rows[0].selected != pointer_selected,
+                    "Tree Enter did not toggle selection");
+            if (!s.tree().snapshot(tree).rows[0].selected) {
+                key(input::Key::enter);
+            }
+            require(s.tree().snapshot(tree).selected == TreeKeys{u8"project"}, "Native Tree selection failed");
+            feedback("gallery.tree.feedback", "project");
+            click(t.rows[0].checkbox);
+            t = s.tree().snapshot(tree);
+            require(t.rows[0].checked && t.rows[2].checked && !t.rows[6].checked,
+                    "Tree conduction crossed disabled archive branch");
+            native_fill(bounds(t.rows[0].checkbox), bounds(tree));
+            require(glyphs(tree, bounds(tree)) > 0, "Project Tree actual glyph missing");
+            click(t.rows[0].checkbox);
+            click(t.rows[1].checkbox);
+            require(s.tree().snapshot(tree).rows[0].indeterminate, "Project Tree actual half check absent");
+            click(t.rows[1].checkbox);
+            action("gallery.tree.locked", projects);
+            reveal(tree);
+            t = s.tree().snapshot(tree);
+            click(t.rows[4].switcher);
+            click(t.rows[5].checkbox);
+            tree_feedback();
+            action("gallery.tree.locked", projects);
+            reveal(tree);
+            t = s.tree().snapshot(tree);
+            require(t.rows[4].checked && !t.rows[4].indeterminate, "Disabled archive did not make Docs fully checked");
+            tree_feedback();
+            click(t.rows[5].checkbox);
+            click(t.rows[7].switcher);
+            require(s.tree().snapshot(tree).rows[7].expanded, "Tree resource expansion failed");
+            click(t.rows[0].title);
+            key(input::Key::end);
+            require(s.tree().snapshot(tree).scroll > 0, "Tree End did not reveal final rich row");
+            key(input::Key::tab);
+            require(s.focus().state().focused == tree_editor->interaction, "Tree rich title Tab missed native Input");
+            focus_edges(bounds(tree_editor->component), true);
+            type(*tree_editor, u8"Retained project", false);
+            key(input::Key::tab);
+            const auto tree_save = button("保存项目备注", projects);
+            require(s.focus().state().focused == tree_save.interaction, "Tree rich title Tab missed save Button");
+            focus_edges(bounds(tree_save.component), false);
+            key(input::Key::enter);
+            feedback("gallery.tree.feedback", "Retained project");
+            native_fill(bounds(tree_save.component), bounds(tree));
+            click(tree_editor->component);
+            require(bool(f.inputs->dispatch(
+                        input::CompositionChanged{String{u8"候选"}, {}, f.inputs->sessions().active()})),
+                    "Tree preedit fixture failed");
+            sync();
+            supplemental_no_blur("gallery.tree.visible", projects);
+            require(!f.inputs->editors().require(tree_editor->editor).composition().active &&
+                        !f.inputs->sessions().active().valid() && glyphs(tree, bounds(tree)) == 0,
+                    "Hidden Tree retained glyphs, session or composition");
+            action("gallery.tree.restore", projects);
+            require(f.inputs->editors().require(tree_editor->editor).value() == "Retained project",
+                    "Tree restore lost draft");
+            action("gallery.tree.disabled", projects);
+            require(!s.interactions().require(tree_editor->interaction).eligible ||
+                        !s.interactions().branch_active(tree_editor->interaction),
+                    "Disabled Tree rich Input remains eligible");
+            action("gallery.tree.restore", projects);
+            action("gallery.tree.locked", projects);
+            action("gallery.tree.locked", projects);
+            retained();
+            std::cout << "Tree/AutoComplete theme=" << theme_step << " width=" << width
+                      << " real navigation/input/tree/reset/glyph/fill/hit/focus/retention passed\n";
+        }
+    }
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -7132,12 +7785,14 @@ void print_gallery_inventory() {
               << " avatars=" << f.host->services().avatar().mounted().size()
               << " avatar_groups=" << f.host->services().avatar().groups().size()
               << " statistics=" << f.host->services().statistic().mounted().size()
-              << " rates=" << f.host->services().rate().mounted().size() << '\n';
+              << " rates=" << f.host->services().rate().mounted().size()
+              << " auto_completes=" << f.host->services().auto_complete().mounted().size()
+              << " trees=" << f.host->services().tree().mounted().size() << '\n';
     require(
-        definition.stable_test_ids.size() == 419 && definition.navigation_control_count == 93 &&
-            f.host->mounted_buttons().size() == 409 && f.host->interactions().size() == 1480 &&
-            f.host->scene_composer().interaction_order().size() == 726 && telemetry.live_samples == 302 &&
-            telemetry.theme_content_runs == 68 && f.inputs->mounted_inputs().size() == 156 &&
+        definition.stable_test_ids.size() == 441 && definition.navigation_control_count == 93 &&
+            f.host->mounted_buttons().size() == 422 && f.host->interactions().size() == 1533 &&
+            f.host->scene_composer().interaction_order().size() == 753 && telemetry.live_samples == 305 &&
+            telemetry.theme_content_runs == 68 && f.inputs->mounted_inputs().size() == 160 &&
             f.host->services().select().mounted().size() == 24 && f.selections->mounted().size() == 47 &&
             f.host->services().descriptions().mounted().size() == 1 &&
             f.host->services().skeleton().mounted().size() == 6 && f.host->services().popover().mounted().size() == 2 &&
@@ -7148,18 +7803,23 @@ void print_gallery_inventory() {
             f.host->services().segmented().mounted().size() == 3 &&
             f.host->services().empty_result().empties().size() == 3 &&
             f.host->services().empty_result().results().size() == 3 &&
-            f.host->services().form().mounted().size() == 3 && f.host->services().form().items().size() == 6 &&
+            f.host->services().form().mounted().size() == 4 && f.host->services().form().items().size() == 7 &&
             f.host->services().date_picker().mounted().size() == 2 &&
             f.host->services().time_picker().mounted().size() == 2 &&
             f.host->services().breadcrumb().mounted().size() == 2 && f.host->services().steps().mounted().size() == 1 &&
             f.host->services().avatar().mounted().size() == 260 && f.host->services().avatar().groups().size() == 1 &&
-            f.host->services().statistic().mounted().size() == 2 && f.host->services().rate().mounted().size() == 1,
-        "Member/metric exact Gallery inventory drifted");
+            f.host->services().statistic().mounted().size() == 2 && f.host->services().rate().mounted().size() == 1 &&
+            f.host->services().auto_complete().mounted().size() == 2 && f.host->services().tree().mounted().size() == 1,
+        "Tree/AutoComplete exact Gallery inventory drifted");
 }
 } // namespace
 
 int main(int argc, char** argv) {
     try {
+        if (argc == 2 && std::string_view{argv[1]} == "--tree-autocomplete-only") {
+            test_tree_autocomplete_gallery_after_document_scroll();
+            return 0;
+        }
         if (argc == 2 && std::string_view{argv[1]} == "--inventory-only") {
             print_gallery_inventory();
             return 0;
@@ -7239,6 +7899,7 @@ int main(int argc, char** argv) {
         test_details_loading_gallery_after_document_scroll();
         test_overlay_and_timeline_gallery_after_document_scroll();
         test_member_metric_gallery_after_document_scroll();
+        test_tree_autocomplete_gallery_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

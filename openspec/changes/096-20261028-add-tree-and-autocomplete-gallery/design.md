@@ -28,3 +28,10 @@
 ## Migration Plan
 
 先提交并推送规划，随后按现有连续开发授权进入 apply。两个 Gallery 和其共同 focused 作为一个可独立验证的实施阶段，最后完成新 Astra xhigh/default 审查、保留性/文档和主分支发布。每阶段英文 Conventional Commit 后只推 main、核远端 SHA；不创建 PR 或 archive。回退按该 Gallery 提交，不回退已发布 Core。
+
+## 2026-10-28 R1 修正与 Core 依赖
+
+两项 R1 已实际复现。勾选 authority 只保存固定项目的叶子 key，显示的分组全选/半选从叶子及当前归档 disabled 派生；不保存仅在 onCheck 更新的半选副本，切换归档可用性保留叶子选择。测试逐集合对比实际 Tree snapshot，而非只匹配反馈文案。
+首末行焦点属于既有 Core 缺口，先在 094 单独复现、修复并验证发布，再将本 change 的冻结父改为该准确 SHA；不把 Core 修复夹入 Gallery 实施提交。其余 Core/API/Theme/renderer/RC/CMake 继续逐 blob 冻结。原规划中的 c1c0bb22 保留为历史起点，不伪称该版本已有修复。
+
+该依赖已作为 `a02a2abcd7684b9152f0c5bb40bc5ccce937ad8e` 单独推送并核对远端；Tree 与直接代表 Debug/Release 各 26/26。当前保留性脚本以该 SHA 为冻结父，仍保留 419 IDs/39 个旧样例和 551 个当前父 blob；该提交未混入 Gallery 实施。

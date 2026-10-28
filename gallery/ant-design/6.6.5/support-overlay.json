@@ -394,16 +394,22 @@
     },
     {
       "identity": "ant.component.auto-complete",
-      "status": "planned",
-      "summary": "自动完成（AutoComplete）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生自由输入、键控建议、受控选择及 Form reset；联系人 Gallery 展示实际输入、富备注与编辑恢复。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed/reactive String、动态 keyed/rich 建议、过滤、backfill、清空与原生键盘",
+        "受控 value/open、有限列表、富建议焦点与窗口层归属、Form 同值 reset",
+        "联系人建议/备注/表单、接受或拒绝候选、禁用只读恢复与真实目录入口"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "网络异步、分组、虚拟化、动画、RTL、自定义编辑器与 popupRender",
+        "完整 Gallery/native/GPU、Linux、系统 IME 与辅助技术验收"
       ],
       "evidence_identifiers": [
-        "source:components/auto-complete/index.en-US.md"
+        "source:components/auto-complete/index.en-US.md",
+        "openspec:092-20261026-add-native-auto-complete",
+        "openspec:096-20261028-add-tree-and-autocomplete-gallery",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
@@ -1224,16 +1230,22 @@
     },
     {
       "identity": "ant.component.tree",
-      "status": "planned",
-      "summary": "树形控件（Tree）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生固定层级项目树，支持展开、单选、级联勾选、有限滚动与保留富标题；提供项目备注交互 Gallery。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "固定 keyed 拓扑、reactive 状态、受控展开/单选/级联勾选与禁用隔离",
+        "roving 键盘、有限滚动、富标题与输入生命周期、Theme",
+        "项目目录操作、勾选与半选反馈、富备注保存、显隐禁用恢复及真实目录入口"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "动态拓扑、多选、strict checking、异步、虚拟化、拖放、连接线、DirectoryTree、RTL 与动画",
+        "完整 Gallery/native/GPU、Linux、系统 IME 与辅助技术验收"
       ],
       "evidence_identifiers": [
-        "source:components/tree/index.en-US.md"
+        "source:components/tree/index.en-US.md",
+        "openspec:094-20261026-add-native-tree",
+        "openspec:096-20261028-add-tree-and-autocomplete-gallery",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {

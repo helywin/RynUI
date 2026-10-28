@@ -1,0 +1,242 @@
+[
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/.gitattributes",
+    "bytes": 43,
+    "sha256": "04d7b519e20e7ac40a7b554977f329244ddbaff07e166d17ae02ee5836176224",
+    "mtime_ns": 1793157980570563200
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-baseline.log",
+    "bytes": 1604,
+    "sha256": "bdbffdbf3a200f06a4712b8ec745a750174b81eb4fa5aae988a09ce6eff7fea2",
+    "mtime_ns": 1793157979981476500
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-diagnostic-scope-build.log",
+    "bytes": 5628,
+    "sha256": "add1c82f0b169a25824038605e7fbf16452859a9106df56b9215da5894d96be0",
+    "mtime_ns": 1793157979976968700
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-first-test-build.log",
+    "bytes": 5512,
+    "sha256": "0fe3b2d06a9e7ec22e3be97957399e8321150bbd0ed310860224798aa12a9690",
+    "mtime_ns": 1793157979975968800
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt1.log",
+    "bytes": 1016,
+    "sha256": "ce02971db3d5e42c6ce9f832ad34c2ac3ab32d9242e2a8245b18828c8838a57f",
+    "mtime_ns": 1793157979982983600
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt10.log",
+    "bytes": 1506,
+    "sha256": "becb4033bfe74fee6a22e4dfc7d76a72ec90bc2edcaf50106b43b619a63ed904",
+    "mtime_ns": 1793157979987079400
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt2.log",
+    "bytes": 1270,
+    "sha256": "83cd48ad48c4e94a203adf7deacbc8625816a3554483dd733648782e2f281aea",
+    "mtime_ns": 1793157979982983600
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt3.log",
+    "bytes": 1002,
+    "sha256": "1b7dd10778d35e03d89aa430896622ec15f6c639a44300443abce945e8c84562",
+    "mtime_ns": 1793157979982983600
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt4.log",
+    "bytes": 1272,
+    "sha256": "0890ed4fa8b950667341199abbc0dfe9f5c0ddecd756066c48577c25d7a485fc",
+    "mtime_ns": 1793157979983983500
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt5.log",
+    "bytes": 1108,
+    "sha256": "06c351178e7d2d9a41f205226a45ac19c3d76a9d6b3dbb96421ac30ee5cbfa9a",
+    "mtime_ns": 1793157979983983500
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt6.log",
+    "bytes": 1046,
+    "sha256": "ef52dc1659b9ca61655cd221a534338415bb0f9d4aed6c2912b79b556e5bcbdb",
+    "mtime_ns": 1793157979984983600
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt7.log",
+    "bytes": 1324,
+    "sha256": "8592aba0afd4bce4a929047c5faf498beda38024922f6916500f6892ca0353d7",
+    "mtime_ns": 1793157979984983600
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt8.log",
+    "bytes": 1636,
+    "sha256": "f565419a0087105e0180c03990a542c808e6cb185c3da535b54f7df40b01d6f6",
+    "mtime_ns": 1793157979984983600
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-focused-attempt9.log",
+    "bytes": 1616,
+    "sha256": "9bea92d1622191ad20b343ae4ace028b038b6a738e539869196493c0d182badc",
+    "mtime_ns": 1793157979986486700
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-format.log",
+    "bytes": 318,
+    "sha256": "0d455a160fb0e331dc437548fc31ceebc27da9812dec48f36553631ecceee44b",
+    "mtime_ns": 1793157979980472400
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-inventory-discovery.log",
+    "bytes": 1752,
+    "sha256": "206a597d40301ede6af2303451b4a42dd8973826d4ff7beebafdd24499b1a48c",
+    "mtime_ns": 1793157979976968700
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-build-result.json",
+    "bytes": 139,
+    "sha256": "d1a80b608242f91edad6b2fbffe2391507458fce05b19666eadbdce5c90ce86d",
+    "mtime_ns": 1793157979971462600
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-build.log",
+    "bytes": 2552,
+    "sha256": "41d6b91de590b5aa1815936f991dbc60893990a42fdadeda60e7a31544eacd43",
+    "mtime_ns": 1793157979971462600
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-configure-result.json",
+    "bytes": 143,
+    "sha256": "09c7e1ad4d3eb94db12f59702dd6211afd71c2136a2cc95730260b299529b855",
+    "mtime_ns": 1793157979970462400
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-configure.log",
+    "bytes": 16746,
+    "sha256": "57aadcb678f1e3dd09cb2ea9ef5da41735de73977712b738a21ad769ad8caa0a",
+    "mtime_ns": 1793157979970462400
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-contracts-result.json",
+    "bytes": 134,
+    "sha256": "8abbbb59b6a69c74c19fd994effb44c66ab85361f97ccac2bb660787f3b456ae",
+    "mtime_ns": 1793157979973965300
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-contracts.log",
+    "bytes": 2584,
+    "sha256": "09a7b99142747f7c3912c5970d9a7b2a3cdf93ece03db3f63000e60b1e4d58b3",
+    "mtime_ns": 1793157979973965300
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-contracts.xml",
+    "bytes": 1788,
+    "sha256": "7fc70293376be928cb15b4c6fbc4e4052ee6625846bd648e370eabec9f23ed68",
+    "mtime_ns": 1793157979974968700
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-doctor.log",
+    "bytes": 358,
+    "sha256": "c852cd193b6ebfe5f839b53d87f99c1cecd6a9a89b9a87c4b376e32ff8624292",
+    "mtime_ns": 1793157979981980000
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-inventory-result.json",
+    "bytes": 135,
+    "sha256": "a671f3f2b0e9e77c0f26c13896e441625bb524f9650be5d2bab57e24947e9c0a",
+    "mtime_ns": 1793157979973462300
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-inventory.log",
+    "bytes": 892,
+    "sha256": "0680b234c8de0f1f66746111c673b74276d05e86b7144d3f58e112ad0d2ffe3e",
+    "mtime_ns": 1793157979972462300
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-members-result.json",
+    "bytes": 141,
+    "sha256": "59f6057cc940d794c6cd4d44b2c66618cfe9fb94cff8c15729dfd8d32a1d4e94",
+    "mtime_ns": 1793157979972462300
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-members.log",
+    "bytes": 4982,
+    "sha256": "f3a57f64ca7744de3cdfab2bcbef7e4c8fb04f8dfb0dab4c91e2a850d122a722",
+    "mtime_ns": 1793157979972462300
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-msvc.ps1",
+    "bytes": 2741,
+    "sha256": "358633823480362937a3c83d0581b899d67338e2023a50a5b9a5f90ce8f4d103",
+    "mtime_ns": 1793157979969462300
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-representative-result.json",
+    "bytes": 141,
+    "sha256": "a68c42c8bc8ade8ebd473348268c48fca351e89f8e697e9de8f1b7a4f5181471",
+    "mtime_ns": 1793157979975968800
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-representative.log",
+    "bytes": 2906,
+    "sha256": "de671de32b918fcacf8065bacdd159cc9416dd1ebac2971a143a39f6d8681c1d",
+    "mtime_ns": 1793157979974968700
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-main-strict.log",
+    "bytes": 12370,
+    "sha256": "2b0bce50e2640c15e1106eb6d41a2bc90dd2990741919b2815f4911176cc68cd",
+    "mtime_ns": 1793157979981980000
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-pre-r1-focused-pass.log",
+    "bytes": 4982,
+    "sha256": "f3a57f64ca7744de3cdfab2bcbef7e4c8fb04f8dfb0dab4c91e2a850d122a722",
+    "mtime_ns": 1793157979977968700
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-pre-r1-focused-result.json",
+    "bytes": 134,
+    "sha256": "101bf34ad751db586dd30cf8d05edce9db480ba415a270c0acdad6c4212af608",
+    "mtime_ns": 1793157979977968700
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-pre-r1-frame-identity.json",
+    "bytes": 285,
+    "sha256": "f1c68e86979f426498c791f3799c468afcc52706a6ad51fd2c10b8a086dd323d",
+    "mtime_ns": 1793157979977968700
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-pre-r1-representative-result.json",
+    "bytes": 140,
+    "sha256": "b03994070fba0203102e203476d19b55624d14de174306ba2b758ea7e4087e4d",
+    "mtime_ns": 1793157979978968800
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-pre-r1-representative.log",
+    "bytes": 2906,
+    "sha256": "de671de32b918fcacf8065bacdd159cc9416dd1ebac2971a143a39f6d8681c1d",
+    "mtime_ns": 1793157979978968800
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-r1-feedback-before-result.json",
+    "bytes": 132,
+    "sha256": "eabaeddfaca99e1f3532d252ca285783e6a7400dde030b4a046d75ede54b1831",
+    "mtime_ns": 1793157979980472400
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/096-r1-feedback-before.log",
+    "bytes": 1810,
+    "sha256": "d640b23209fad7e06d084a1a52f48714a32d37836fdf240a242a3001e63daff3",
+    "mtime_ns": 1793157979978968800
+  },
+  {
+    "path": "openspec/changes/096-20261028-add-tree-and-autocomplete-gallery/evidence/windows/identities.json",
+    "bytes": 3661,
+    "sha256": "e005a65dd765bb51f8b4e418a0b7ae2963bceeb1a3b656f85cf38b70fc958e0b",
+    "mtime_ns": 1793157980570037300
+  }
+]
