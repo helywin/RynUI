@@ -150,8 +150,7 @@ file(READ "${EXAMPLES_CMAKE}" examples_cmake)
 foreach(required IN ITEMS
         "add_executable(\n    rynui_token_gallery"
         "rynui_token_gallery_document_viewport"
-        "rounded_effect.vertex.dxil"
-        "rounded_effect.vertex.spv"
+        "rynui_embed_target_shaders(rynui_token_gallery)"
         "RYNUI_TOKEN_CATALOG_HASH")
     string(FIND "${examples_cmake}" "${required}" found)
     if(found EQUAL -1)

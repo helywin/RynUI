@@ -1,0 +1,128 @@
+[
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/.gitattributes",
+    "bytes": 43,
+    "mtime_ns": 1793151245706999600,
+    "sha256": "04d7b519e20e7ac40a7b554977f329244ddbaff07e166d17ae02ee5836176224"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-build-result.json",
+    "bytes": 169,
+    "mtime_ns": 1793151245490421000,
+    "sha256": "d3c152f0904afb468f762472a3f891abccad8eb8b692becd6156666389a23a53"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-build.log",
+    "bytes": 32462,
+    "mtime_ns": 1793151245490421000,
+    "sha256": "335881331a1f8669165f968e6c14b3c8299fb7ffa019382fabf5ac968a3ece06"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-configure.log",
+    "bytes": 16746,
+    "mtime_ns": 1793151245488917900,
+    "sha256": "66f591bfd7d774570137b21061604e85d7147f0caa8f05715a8a870c5b4f448d"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-contracts-before-result.json",
+    "bytes": 134,
+    "mtime_ns": 1793151245494160900,
+    "sha256": "b3cc6cbc29618ade655539e84b8fbc8f0f42e7d85589a481962b38d9181b5668"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-contracts-before.log",
+    "bytes": 3864,
+    "mtime_ns": 1793151245492425200,
+    "sha256": "5dced1b212fab39f576fb15c048aa70a55abacd275bd3b711f1fd2c9c7cf7800"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-contracts-before.xml",
+    "bytes": 1988,
+    "mtime_ns": 1793151245493426100,
+    "sha256": "7289f5d9a7ce3f0dfba0dcdd83678b8098e0a2b90fb7dbf4fb58eebb1431ddec"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-contracts-result.json",
+    "bytes": 134,
+    "mtime_ns": 1793151245495164700,
+    "sha256": "5847b19c513ccb7f2c079cdd8be72fd786ff33fe5d8b3662edc26edba9269155"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-contracts.log",
+    "bytes": 2584,
+    "mtime_ns": 1793151245494160900,
+    "sha256": "8daa573f4667810bdcd77e17e2d3be5e133044774de90b659b05ffa1932b1aeb"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-contracts.xml",
+    "bytes": 1788,
+    "mtime_ns": 1793151245494160900,
+    "sha256": "8d910c1595f2cf31e8937beae957a61ca64c9d4c76b9b81fa5b162a9b1bc0aa8"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-doctor.log",
+    "bytes": 358,
+    "mtime_ns": 1793151245496670500,
+    "sha256": "c852cd193b6ebfe5f839b53d87f99c1cecd6a9a89b9a87c4b376e32ff8624292"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-inventory-result.json",
+    "bytes": 135,
+    "mtime_ns": 1793151245492425200,
+    "sha256": "665cc0195d3d4def07d3ccbcd1508406684954bf19aadcf711a582d4c9c72f05"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-inventory.log",
+    "bytes": 842,
+    "mtime_ns": 1793151245491425300,
+    "sha256": "d7480843bbe74ea0fec2c51ff44ddeb2168195d4f8b20e3376db74cb1f9de83d"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-members-result.json",
+    "bytes": 134,
+    "mtime_ns": 1793151245491425300,
+    "sha256": "d1100e1521dd2baaeac785f4141c753df2baf090af9895a8ee7d9a05e5b4f72f"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-members.log",
+    "bytes": 2906,
+    "mtime_ns": 1793151245490421000,
+    "sha256": "de671de32b918fcacf8065bacdd159cc9416dd1ebac2971a143a39f6d8681c1d"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-msvc.ps1",
+    "bytes": 2741,
+    "mtime_ns": 1793151245488917900,
+    "sha256": "ef0c3a835cbe36aa4a4de732208e04bb52f0391bc123139a09c27efaa51bec39"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-representative-result.json",
+    "bytes": 148,
+    "mtime_ns": 1793151245495669200,
+    "sha256": "798569cd93c837ea670749c7dc993a0ac4ef2a00ae2981884f4552f6ed353445"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-representative.log",
+    "bytes": 4246,
+    "mtime_ns": 1793151245495669200,
+    "sha256": "a3aebdd2a894817b0be83fca837a1fd722a5a8bc05a29ee7e1f07d2578fce768"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/093-main-strict.log",
+    "bytes": 12256,
+    "mtime_ns": 1793151245496670500,
+    "sha256": "93486a915d140fac45053ab5b3b319eaf2fecd760aea48d45b03456c8f2fa6be"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/identities.json",
+    "bytes": 2967,
+    "mtime_ns": 1793151245706999600,
+    "sha256": "2b9850d76a0306e535e1cd1cc7f3fb09355be6ee8dd638d6c1e6b4f67b19e138"
+  },
+  {
+    "path": "openspec/changes/093-20261026-add-member-and-rating-gallery/evidence/main-integration-artifacts/preservation.log",
+    "bytes": 593,
+    "mtime_ns": 1793151246325514700,
+    "sha256": "7c3ba53248d13bb909efe4c5e0dfd3f1c2ef471b0550123fec61feccc14272da"
+  }
+]

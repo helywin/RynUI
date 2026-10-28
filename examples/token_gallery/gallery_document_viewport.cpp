@@ -40,6 +40,9 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                     : identity == "ant.component.message"      ? "gallery.notices.workflow "
                                     : identity == "ant.component.notification" ? "gallery.notices.workflow "
                                     : identity == "ant.component.timeline"     ? "gallery.timeline.workflow "
+                                    : identity == "ant.component.avatar"       ? "gallery.avatar.members "
+                                    : identity == "ant.component.statistic"    ? "gallery.statistic.metrics "
+                                    : identity == "ant.component.rate"         ? "gallery.rate.service "
                                                                                : "";
     auto node = reference_node;
     if (!sample.empty()) {

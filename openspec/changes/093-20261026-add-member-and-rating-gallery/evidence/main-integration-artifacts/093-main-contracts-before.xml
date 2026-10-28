@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="8"
+	failures="1"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="0"
+	timestamp="2026-10-28T09:27:51"
+	>
+	<testcase name="rynui.ant_design_gallery_catalog_generator" classname="rynui.ant_design_gallery_catalog_generator" time="0.123488" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.ant_design_gallery_catalog_contract" classname="rynui.ant_design_gallery_catalog_contract" time="0.134518" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.ant_design_reference_catalog" classname="rynui.ant_design_reference_catalog" time="0.0113102" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.gallery_document_contract" classname="rynui.gallery_document_contract" time="0.0383727" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.gallery_document_viewport_contract" classname="rynui.gallery_document_viewport_contract" time="0.0288363" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.token_gallery_contract" classname="rynui.token_gallery_contract" time="0.0652893" status="fail">
+		<failure message="Failed"/>
+		<properties/>
+		<system-out>CMake Error at D:/code/RynUI/tests/cmake/verify_token_gallery_contract.cmake:158 (message):
+  Token Gallery build contract is missing: rounded_effect.vertex.dxil
+
+
+</system-out>
+	</testcase>
+	<testcase name="rynui.windows_gallery_acceptance_runner_contract" classname="rynui.windows_gallery_acceptance_runner_contract" time="0.0261591" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.token_gallery_evidence_schema" classname="rynui.token_gallery_evidence_schema" time="0.0266988" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+</testsuite>

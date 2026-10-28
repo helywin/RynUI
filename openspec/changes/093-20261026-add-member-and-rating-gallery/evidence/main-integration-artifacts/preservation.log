@@ -1,0 +1,7 @@
+warning: in the working copy of 'docs/component-completion.md', CRLF will be replaced by LF the next time Git touches it
+390 published IDs/36 bodies/call order retained; 29 new IDs/3 reviewed bodies appended; low-stack helpers retained
+70 non-target overlay entries unchanged
+550 published Core/API/Theme/golden/renderer/CMake/README blobs retained
+frozen manifest SHA256=f6acbb4d43cf586657c3dec3619761cd4945f943c0cfa476b2aff9ce49f5ea15
+Gallery contract only replaces external shader-copy literals with executable embedding
+all 39 changed/untracked paths are in the parent Gallery scope

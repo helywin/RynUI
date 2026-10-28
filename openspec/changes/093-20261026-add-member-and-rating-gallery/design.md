@@ -29,3 +29,19 @@
 ## Migration Plan
 
 Gallery 保留性基线使用 `6118f677` 的既有内容；Core/API/Theme/goldens/CMake 的冻结基线在依赖集成后、实施前记录准确 main SHA。平台通用检查使用 Windows MSVC `windows-msvc-debug`、Ninja Multi-Config、最多 2 jobs。每个已验证阶段英文 Conventional Commit 并只推 main，核远端 SHA；不推 t3 分支、不自动 PR/archive。
+
+## 父主分支集成更新（2026-10-28）
+
+worker `862ff37c` 已通过独立 Astra R1。父线程在已发布 main `ee289de2ad6851ededdddd1c45bd20612b7579a8`
+上显式合并并重新构建/运行实际流程；该 main 包含已审 AutoComplete/Tree、原生 RC 和系统字体默认值。
+父验收冻结全部当前 Core/API/Theme/goldens/CMake 与 renderer，不把旧 `29154cda` 的缺少后续功能视为当前基线。
+
+旧 390 IDs、36 个样例函数及调用顺序继续保持；函数体对照当前 main。095 已验证的默认 ThemeConfig 静态引用、
+ThemeProps 堆对象与 const 参数传递属于父基线修复，合并必须保留，不能被旧 worker 的历史函数体覆盖。
+原 `compare-baseline.py` 仅记录 worker 历史冻结检查；父集成使用独立脚本绑定上述准确 main，
+不改写历史断言。仅父进度说明可更新，未变更首版业务功能或平台验收边界。
+
+父新构建后的八项合同发现一条 095 遗漏更新的旧断言：Gallery 构建合同仍要求磁盘 shader 文件名。
+仅将 `verify_token_gallery_contract.cmake` 的两条复制路径预期替换为最终 exe 的
+`rynui_embed_target_shaders(rynui_token_gallery)` 调用；生产资源代码和其余合同原文保持。
+保留修复前失败日志，父保留性脚本单独核对这项精确替换，其余 550 个冻结 blob 继续逐个相等。

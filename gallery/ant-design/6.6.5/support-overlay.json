@@ -647,16 +647,20 @@
     },
     {
       "identity": "ant.component.rate",
-      "status": "planned",
-      "summary": "评分（Rate）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Rate 服务评分：半星、清空、受控回写和富提示编辑。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "公开 typed Props、原生星项、方向键/Home/End/Enter/Space、disabled/readOnly",
+        "Gallery 目录直达服务评分、接受/拒绝反馈、富 Tooltip Input 与保留草稿"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "GPU/原生窗口与人工视觉、Linux、系统 IME 和 AT 验收"
       ],
       "evidence_identifiers": [
-        "source:components/rate/index.en-US.md"
+        "source:components/rate/index.en-US.md",
+        "openspec:090-20261026-add-native-rate",
+        "openspec:093-20261026-add-member-and-rating-gallery",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
@@ -816,16 +820,20 @@
     },
     {
       "identity": "ant.component.avatar",
-      "status": "planned",
-      "summary": "头像（Avatar）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Avatar/AvatarGroup 成员展示：文字测量、自适应与可滚动溢出。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "公开文字/图标头像、形状/尺寸、max.count 与原生 Popover",
+        "Gallery 目录直达成员编辑、有限窗口全部溢出成员访问及显隐草稿恢复"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "图片加载、响应式断点尺寸；GPU/原生窗口与人工视觉、Linux、系统 IME 和 AT 验收"
       ],
       "evidence_identifiers": [
-        "source:components/avatar/index.en-US.md"
+        "source:components/avatar/index.en-US.md",
+        "openspec:088-20261026-add-native-avatar",
+        "openspec:093-20261026-add-member-and-rating-gallery",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
@@ -1093,16 +1101,20 @@
     },
     {
       "identity": "ant.component.statistic",
-      "status": "planned",
-      "summary": "统计数值（Statistic）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Statistic 指标：typed 数值、精度截断/补零和保留编辑。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "int64/uint64/double/String、precision、分隔符、formatter、富内容和 loading",
+        "Gallery 目录直达真实统计值及富 Input、精确业务值反馈和加载恢复"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Timer/动画/locale；GPU/原生窗口与人工视觉、Linux、系统 IME 和 AT 验收"
       ],
       "evidence_identifiers": [
-        "source:components/statistic/index.en-US.md"
+        "source:components/statistic/index.en-US.md",
+        "openspec:089-20261026-add-native-statistic",
+        "openspec:093-20261026-add-member-and-rating-gallery",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {

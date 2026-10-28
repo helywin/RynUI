@@ -45,3 +45,5 @@ rich slot 挂载期间更新的 value、precision、分隔符与 formatter 会�
 `ThemeConfig::statistic` 提供 `tokens`、`seed`、`algorithm`。colors 为 `title/content`；metrics 为 `title_font_size/content_font_size/title_line_height/content_line_height/title_gap/affix_gap/loading_padding/font_family`。默认标题 14、内容 24、间距 4、loading 顶部 padding 16 logical dp；尺寸随 Theme 派生，字体最终值至少 0.5 dp，round 后的逻辑像素字号不得超过 `INT_MAX / 64`；非法最终字号在 Theme 发布前拒绝。支持继承、Dark/Compact、独立 seed、identity、诊断和颜色/尺寸独立 dirty 订阅。
 
 首版不包含 Timer、Countdown、Countup、数值动画、locale 国际化、DOM classNames/styles/valueStyle。HEADLESS 测试验证逻辑场景与输入路由，原生窗口、GPU、Linux、系统 IME/AT 需另行验收。
+
+Gallery 目录选择 **Statistic**，直接进入统计指标。纯数值 Statistic 在高精度 String、double、uint64 和 int64 之间切换，支持 2/8/原精度、分隔符及 formatter；业务反馈保留原始 typed 值。第二个 Statistic 使用真实富 value Input，可保存指标备注，loading 暂停编辑并取消 preedit，外部“恢复指标编辑”保留草稿与 ref。定向入口为 `rynui_token_gallery_frame_tests --members-metrics-only`，仅覆盖 Recording 逻辑场景和合成事件，完整 Gallery 与平台验收另行完成。

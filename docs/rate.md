@@ -34,3 +34,5 @@ RateCharacter 只接受可复制的绘制值（String/IconSource），不会重�
 三种尺寸的 normal 与 hover 字号按实际 float 乘积和 Text 的取整方式校验，量化后的 logical pixels 不得超过 FontRuntime 的 `INT_MAX / 64` 上限。
 
 验证范围与精确命令见 change `090-20261026-add-native-rate` 的 evidence。HEADLESS 逻辑场景和合成原生事件不代表真实 GPU/原生窗口、Linux、系统 IME 或 AT 已验收。
+
+Gallery 目录选择 **Rate**，直接进入服务评分。点击星项左右半部评分，重复点击清空；方向键、Home/End、Enter/Space 使用公开原生操作。接受/拒绝开关决定是否回写候选，反馈始终显示实际已接受值；disabled/readOnly/显隐后的外部恢复按钮保持可用。第五颗星的富 Tooltip 包含真实 Input 和保存按钮，支持跨间隙指针进入与 Tab 编辑，关闭/恢复保留草稿和身份。定向入口为 `rynui_token_gallery_frame_tests --members-metrics-only`，不扩大现有原生窗口、GPU、Linux、系统 IME 或 AT 的证据范围。
