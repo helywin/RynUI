@@ -27,6 +27,8 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Text | UTF-8 `ryn::String`/`StringView`, C++20 `u8"..."` literals, Latin/CJK shaping, font fallback, and high-DPI glyph rendering |
 | Typography and dividers | Five heading levels, inline semantics and decorations, grapheme-safe ellipsis and expansion, full-content copying, inline single-line editing, interactive Link; horizontal/vertical, labeled, dashed, and plain Divider |
 | Single-line editing | Input / Password / Search, four variants, statistics and soft/hard limits, focus refs, native hints and custom actions; grapheme-safe selection, clipboard, history and IME; see [Input](docs/input.md) |
+| Input suggestions | AutoComplete with free text, dynamic keyed suggestions, retained rich labels, controlled selection/visibility, keyboard input, composition gating and same-value Form reset; see [AutoComplete](docs/auto-complete.md) |
+| Hierarchical selection | Tree with fixed topology, controlled expansion/single selection, cascading checks, disabled isolation, retained rich titles, keyboard navigation and finite scrolling; see [Tree](docs/tree.md) |
 | Tab panels | Tabs with fixed retained panels, controlled selection, draft restoration, Line/Card, three sizes, top/bottom/centered headers, keyboard and horizontal overflow navigation; see [Tabs](docs/tabs.md) |
 | Collapsible panels | Collapse with fixed keyed panels, controlled/default expansion, accordion, independent extra slots, keyboard and retained body drafts; see [Collapse](docs/collapse.md) |
 | Segmented selection | Segmented with fixed options, controlled/default selection, icons/rich labels, horizontal/vertical and equal-width block layouts, three sizes and keyboard navigation; see [Segmented](docs/segmented.md) |
@@ -51,7 +53,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Tooltips | Text Tooltip, controlled visibility, hover/focus delays, Escape, twelve placements, overflow adjustment and arrows; see [Tooltip contracts](docs/tooltip.md) |
 | Portable framework foundation | Separate host/GPU ownership, shared scene upload transactions, owned Recording data, SDL-free HEADLESS builds, and nonblocking frame entry points |
 
-The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. `Tree` and Typography rich text are not available yet.
+The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. Typography rich text is not available yet.
 
 Existing components are being completed for native desktops; Web-specific APIs are outside scope. See the [052 checklist](openspec/changes/052-20261003-complete-native-input-features/tasks.md) for single-line features and platform evidence. The Input family remains partial until TextArea, OTP and visual bidi caret navigation are complete.
 

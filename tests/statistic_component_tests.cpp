@@ -1164,12 +1164,15 @@ void mount_rollback() {
         FormatterPrivateRebind,
         Refresh,
         GetterOwnerRebind,
-        SlotOwnerRebind
+        SlotOwnerRebind,
+        FormatterBlurThrow,
+        SlotBlurThrow
     };
     unsigned failures = 0;
-    for (const auto failure : {Failure::Infinity, Failure::NaN, Failure::Formatter, Failure::Getter, Failure::Slot,
-                               Failure::EarlyGetter, Failure::FormatterOwnerRebind, Failure::FormatterPrivateRebind,
-                               Failure::Refresh, Failure::GetterOwnerRebind, Failure::SlotOwnerRebind}) {
+    for (const auto failure :
+         {Failure::Infinity, Failure::NaN, Failure::Formatter, Failure::Getter, Failure::Slot, Failure::EarlyGetter,
+          Failure::FormatterOwnerRebind, Failure::FormatterPrivateRebind, Failure::Refresh, Failure::GetterOwnerRebind,
+          Failure::SlotOwnerRebind, Failure::FormatterBlurThrow, Failure::SlotBlurThrow}) {
         Fixture f;
         Signal<StatisticValue> value{
             failure == Failure::Infinity ? StatisticValue{std::numeric_limits<double>::infinity()}
@@ -1189,6 +1192,7 @@ void mount_rollback() {
         TextInputSessionStamp failed_session;
         int reads = 0;
         int formats = 0;
+        int failure_blurs = 0;
         bool cleanup = false;
         bool captured = false;
         bool caught = false;
@@ -1293,7 +1297,14 @@ void mount_rollback() {
                                          Text(u8"Incomplete");
                                      }})
                                      .richValue(StatisticValueContent{[&] {
-                                         Input(InputProps{}.ref(failed_ref).defaultValue(u8"Incomplete"));
+                                         Input(InputProps{}.ref(failed_ref).defaultValue(u8"Incomplete").onBlur([&] {
+                                             if (failure == Failure::FormatterBlurThrow ||
+                                                 failure == Failure::SlotBlurThrow) {
+                                                 ++failure_blurs;
+                                                 throw std::runtime_error(
+                                                     "Secondary blur must not run during rollback");
+                                             }
+                                         }));
                                          if (failure != Failure::NaN) {
                                              check(failed_ref.focus(), "failed mount did not activate rich input");
                                              failed_session = f.inputs.sessions().active();
@@ -1310,7 +1321,7 @@ void mount_rollback() {
                                              rebind(false);
                                              throw MountError{};
                                          }
-                                         if (failure == Failure::Slot) {
+                                         if (failure == Failure::Slot || failure == Failure::SlotBlurThrow) {
                                              throw MountError{};
                                          }
                                      }}));
@@ -1357,7 +1368,7 @@ void mount_rollback() {
             value.set(StatisticValue{7});
             sync(f);
             check(caught && original_error && clean_at_catch && child_resources_clean && reads == prior_reads &&
-                      formats == prior_formats,
+                      formats == prior_formats && failure_blurs == 0,
                   "local catch retained failed owner/resources or its subscriptions");
             for (auto node : failed_nodes) {
                 check(!f.nodes.find(node), "failed mount retained a node generation");

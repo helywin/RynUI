@@ -39,6 +39,16 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
             return;
         }
 
+        // A window command filter may consume the event. Publish keyboard presentation
+        // before entering it, then revalidate focus after user state callbacks.
+        if (focused_ && modality_ != FocusModality::keyboard) {
+            const auto target = focused_;
+            modality_ = FocusModality::keyboard;
+            request_frame();
+            notify_state(*target, presentation_for(*target));
+            sanitize_internal();
+        }
+
         const auto filter = command_filter_;
         // Escape belongs to the focused editor's IME/draft transaction first.
         // Other commands retain the window filter's existing priority.
@@ -106,18 +116,6 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
             return;
         }
 
-        if (modality_ != FocusModality::keyboard) {
-            const auto target = focused_;
-            modality_ = FocusModality::keyboard;
-            request_frame();
-            notify_state(*target, presentation_for(*target));
-            sanitize_internal();
-        }
-        if (!focused_.has_value()) {
-            end_operation();
-            return;
-        }
-
         if (event.key == Key::enter) {
             if (event.action == KeyAction::down && !event.repeat && !keyboard_press_.has_value()) {
                 activate(*focused_);
@@ -170,6 +168,14 @@ bool FocusManager::focus_from_pointer(std::optional<InteractionId> target) {
         end_operation();
         throw;
     }
+}
+
+void FocusManager::set_observer(std::function<void()> observer) {
+    if (!registry_->is_owner_thread()) {
+        throw std::logic_error("FocusManager can only be used on its owner thread");
+    }
+    observer_ = std::move(observer);
+    observed_focus_ = focused_;
 }
 
 bool FocusManager::request_focus(InteractionId target, FocusModality modality) {
@@ -260,7 +266,7 @@ void FocusManager::synchronize() {
     }
 }
 
-void FocusManager::cancel_interaction(InteractionId interaction) {
+void FocusManager::cancel_interaction(InteractionId interaction, bool notify) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("FocusManager can only be used on its owner thread");
     }
@@ -268,7 +274,7 @@ void FocusManager::cancel_interaction(InteractionId interaction) {
     if (!affected) {
         return;
     }
-    if (dispatching_) {
+    if (dispatching_ || !notify) {
         const bool had_focus = focused_ == interaction;
         const bool had_press = keyboard_press_ == interaction;
         if (had_press) {
@@ -338,21 +344,37 @@ void FocusManager::end_operation() {
     flushing_focus_ = true;
     try {
         std::size_t transfers = 0;
-        while (pending_focus_) {
-            if (++transfers > 32) {
-                throw std::logic_error("focus transaction failed to converge");
-            }
-            const auto request = *pending_focus_;
-            pending_focus_.reset();
-            if (request.target) {
-                if (can_focus(*request.target)) {
-                    static_cast<void>(request_focus(*request.target, request.modality));
+        std::size_t notifications = 0;
+        while (pending_focus_ || observed_focus_ != focused_) {
+            while (pending_focus_) {
+                if (++transfers > 32) {
+                    throw std::logic_error("focus transaction failed to converge");
                 }
-            } else {
-                static_cast<void>(clear_focus());
+                const auto request = *pending_focus_;
+                pending_focus_.reset();
+                if (request.target) {
+                    if (can_focus(*request.target)) {
+                        static_cast<void>(request_focus(*request.target, request.modality));
+                    }
+                } else {
+                    static_cast<void>(clear_focus());
+                }
+            }
+            if (observed_focus_ != focused_) {
+                if (++notifications > 32) {
+                    throw std::logic_error("focus observation failed to converge");
+                }
+                observed_focus_ = focused_;
+                const auto observer = observer_;
+                dispatching_ = true;
+                if (observer) {
+                    observer();
+                }
+                dispatching_ = false;
             }
         }
     } catch (...) {
+        dispatching_ = false;
         pending_focus_.reset();
         flushing_focus_ = false;
         throw;

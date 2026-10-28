@@ -211,6 +211,13 @@ enum class TokenIdentity : std::uint8_t {
     rate_metrics,
     statistic_colors,
     statistic_metrics,
+    tree_colors,
+    tree_metrics,
+    auto_complete_colors,
+    auto_complete_metrics,
+    auto_complete_typography,
+    auto_complete_effects,
+    auto_complete_order,
     count,
 };
 

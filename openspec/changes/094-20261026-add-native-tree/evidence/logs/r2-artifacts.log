@@ -1,0 +1,22 @@
+CMAKE_GENERATOR:INTERNAL=Ninja Multi-Config
+RYNUI_PLATFORM_BACKEND:STRING=HEADLESS
+RYNUI_EXPECTED_TOOLCHAIN:STRING=msvc
+CMAKE_HOME_DIRECTORY:INTERNAL=C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f
+Debug: 14 passed / 1 unresolved shared-cleanup failure; NOT complete R2 acceptance
+Debug/rynui_tree_component_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=0be33fe722e405f957334761435b37fefd8e3c3975edc6309a93e1d59fbdd64f
+Debug/rynui_tree_review_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=a267a96e19930994d307b43988cf71c59fd42c15b5dea710db8618aeb822686b
+Debug/rynui_tree_r2_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=64b3de071509881fa352586fe2a6fed85dab305287812708ae4d9ddba06e72df
+Debug/rynui_portable_modal_component.exe: x64 PE32+ stack_reserve=1048576 sha256=b593c5051da0952db99117e16e9abd3855f752d516246f28f2aadf6358e088e1
+Debug/rynui_portable_select_component.exe: x64 PE32+ stack_reserve=1048576 sha256=ea174cf15340666e4e8a17677f493a51991726172355530177a9df3a8fd7c673
+Debug/rynui_portable_input_component.exe: x64 PE32+ stack_reserve=1048576 sha256=1bd21f0994d7b56e9b409f72a7e0e822bdabbdcaa1c520f78eee096c1a7ef4cd
+Debug/rynui_portable_focus_lifecycle.exe: x64 PE32+ stack_reserve=1048576 sha256=c39d65f5dcc9309b8104146d28bf4e6c21d405a79303999096d479c4adb5e889
+Release: 14 passed / 1 unresolved shared-cleanup failure; NOT complete R2 acceptance
+Release/rynui_tree_component_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=d38e9c6f7b75d694ed98843b6c9fdbd69440d446fd3765b10b82c0cbc3b27d45
+Release/rynui_tree_review_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=fb26f327d84e9bfab210d35bc74276c0dfbd40fdbcf7180f6a034057d228da66
+Release/rynui_tree_r2_tests.exe: x64 PE32+ stack_reserve=1048576 sha256=69b4fbe48322f9fdbe413fa26527595fded4804726d5dbf3e75bbf6b206c3ccd
+Release/rynui_portable_modal_component.exe: x64 PE32+ stack_reserve=1048576 sha256=56e03ee8c34fd0c36d514e5958e2b9608882607de7463ec647dd58cee056d9ef
+Release/rynui_portable_select_component.exe: x64 PE32+ stack_reserve=1048576 sha256=e606f6b1f011e1c09c3f814c231b1aa78b6b2ded19f78c7a9cc260ea5a3632dc
+Release/rynui_portable_input_component.exe: x64 PE32+ stack_reserve=1048576 sha256=5bd1b563a954e4cca67db437dd36bb526308640b38846fb2bc8b95eda9e15ded
+Release/rynui_portable_focus_lifecycle.exe: x64 PE32+ stack_reserve=1048576 sha256=d2645a3208263f4cb637a26057016cbfb151f00f851f0dcf9d98ff0e4ec93333
+shared Input/focus/runtime/WindowServices, API/Theme/goldens/presets and existing assertions unchanged
+R2.1 remains unresolved: await parent-verified shared retirement interface and compatible baseline

@@ -1,0 +1,5 @@
+IIFEs: main prefix 39 + worker additions 2 = 41
+TokenIdentity: main prefix 202 + worker additions 7 = 209
+Frozen main resource/component files 25 and reviewed shared/host files 7 retained
+Statistic retained outside the two regression-covered quiet-retirement boundaries
+Five Debug fresh goldens: both exporters match; old typed leaves main=16882, worker=17457

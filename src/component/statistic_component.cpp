@@ -246,12 +246,7 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
 
         ~MountRollback() noexcept {
             if (!committed) {
-                try {
-                    static_cast<void>(services.destroy(owner));
-                } catch (...) {
-                    // Records/resources are retired before boundary reconciliation. A secondary
-                    // callback failure during cleanup must not replace the original mount exception.
-                }
+                static_cast<void>(services.retire_failed_component(owner));
             }
         }
     } rollback{services, id};
@@ -368,7 +363,13 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
                                 }});
                         c.on_resource_cleanup(child, [&services, node] { services.layout().remove_layout(node); });
                         c.mount_slot_with_semantic_text_style(
-                            child, body, Prop<runtime::SemanticForeground>{title ? title_color : content_color},
+                            child, Content{[&] {
+                                // Run before mount_slot's ordinary child rollback can deliver blur.
+                                MountRollback failed_slot{services, id};
+                                SlotContentAccess::function(body)();
+                                failed_slot.committed = true;
+                            }},
+                            Prop<runtime::SemanticForeground>{title ? title_color : content_color},
                             Prop<runtime::SemanticTypography>{title ? title_font : content_font});
                     }});
                 return child;

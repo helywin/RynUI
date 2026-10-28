@@ -47,6 +47,8 @@ public:
     void reserve(std::size_t focus_capacity);
     void dispatch(const KeyboardInputEvent& event);
     void set_command_filter(std::function<bool(const KeyboardInputEvent&)> filter);
+    // Observes settled native/deferred focus transactions without replacing interaction handlers.
+    void set_observer(std::function<void()> observer);
     bool focus_from_pointer(std::optional<InteractionId> target);
     bool request_focus(InteractionId target, FocusModality modality);
     bool clear_focus();
@@ -55,7 +57,7 @@ public:
     void defer_focus(std::optional<InteractionId> target, FocusModality modality);
     void set_window_active(bool active);
     void synchronize();
-    void cancel_interaction(InteractionId interaction);
+    void cancel_interaction(InteractionId interaction, bool notify = true);
 
     [[nodiscard]] FocusSnapshot state() const;
     [[nodiscard]] const FocusManagerDiagnostics& diagnostics() const noexcept;
@@ -95,6 +97,8 @@ private:
     std::optional<FocusRequest> pending_focus_;
     bool flushing_focus_{};
     std::function<bool(const KeyboardInputEvent&)> command_filter_;
+    std::function<void()> observer_;
+    std::optional<InteractionId> observed_focus_;
 };
 
 } // namespace ryn::input

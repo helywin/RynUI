@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="98"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="25"
+	timestamp="2026-10-28T08:51:48"
+	>
+	<testcase name="rynui.tree_r2_nested_wheel" classname="rynui.tree_r2_nested_wheel" time="0.273175" status="run">
+		<properties/>
+		<system-out>no-range nested wheel: inner=0 outer=32 independent=0
+Tree R2 nested_wheel passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_r2_throwing_blur_rollback" classname="rynui.tree_r2_throwing_blur_rollback" time="0.0964865" status="run">
+		<properties/>
+		<system-out>throwing blur rollback: original=1 slot_threw=1 blur_escaped=0 blurs=0 editor_live=0 interaction_live=0 text_scenes=1 surfaces=1 session=0 ref=0
+Tree R2 throwing_blur_rollback passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_r2_slot_retirement" classname="rynui.tree_r2_slot_retirement" time="0.500599" status="run">
+		<properties/>
+		<system-out>slot retirement mode=0 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=1 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=2 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=3 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=4 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=5 original=1 blur=0 old_editor=0 resources_at_baseline=1
+Tree R2 slot_retirement passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_mount_rollback" classname="rynui.tree_review_mount_rollback" time="0.535537" status="run">
+		<properties/>
+		<system-out>mount mode=0 caught=1 tree_count=0 input_count=0
+mount mode=1 caught=1 tree_count=0 input_count=0
+mount mode=2 caught=1 tree_count=0 input_count=0
+mount mode=3 caught=1 tree_count=0 input_count=0
+mount mode=4 caught=1 tree_count=1 input_count=1
+mount mode=5 caught=1 tree_count=1 input_count=1
+mount mode=6 caught=1 tree_count=0 input_count=0
+Tree R1 mount_rollback passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_zero_area" classname="rynui.tree_review_zero_area" time="0.224879" status="run">
+		<properties/>
+		<system-out>zero cycle=0 selection_delta=0 check_delta=0 focused=0
+zero cycle=1 selection_delta=0 check_delta=0 focused=0
+Tree R1 zero_area passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_translated_checkbox" classname="rynui.tree_review_translated_checkbox" time="0.196248" status="run">
+		<properties/>
+		<system-out>translation_y=-184 modal_scroll=184 tree_scroll=264 modal_max=184 body_yh=68,176 tree_yh=148,96 last_yh=220,24
+checkbox mode=0 actual_fills=4 center_covered=1
+checkbox mode=1 actual_fills=4 center_covered=1
+checkbox mode=2 actual_fills=4 center_covered=1
+Tree R1 translated_checkbox passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_wheel_handoff" classname="rynui.tree_review_wheel_handoff" time="0.316475" status="run">
+		<properties/>
+		<system-out>natural Tree modal_scroll=0 -&gt; 48
+Tree R1 wheel_handoff passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_basic" classname="rynui.tree_basic" time="0.105999" status="run">
+		<properties/>
+		<system-out>Tree basic passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_controlled" classname="rynui.tree_controlled" time="0.101718" status="run">
+		<properties/>
+		<system-out>Tree controlled passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_rich" classname="rynui.tree_rich" time="0.144098" status="run">
+		<properties/>
+		<system-out>Tree rich passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_scroll" classname="rynui.tree_scroll" time="0.234284" status="run">
+		<properties/>
+		<system-out>Tree scroll passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_clips" classname="rynui.tree_clips" time="0.100231" status="run">
+		<properties/>
+		<system-out>Tree clips passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_boundaries" classname="rynui.tree_boundaries" time="0.120048" status="run">
+		<properties/>
+		<system-out>Tree boundaries passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_mount_lifecycle" classname="rynui.tree_mount_lifecycle" time="0.40587" status="run">
+		<properties/>
+		<system-out>Tree mount_lifecycle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_lifecycle" classname="rynui.tree_lifecycle" time="0.0954587" status="run">
+		<properties/>
+		<system-out>Tree lifecycle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_validation" classname="rynui.tree_validation" time="0.200531" status="run">
+		<properties/>
+		<system-out>Tree validation passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_reactivity" classname="rynui.tree_reactivity" time="0.434576" status="run">
+		<properties/>
+		<system-out>Tree reactivity passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_theme_scene" classname="rynui.tree_theme_scene" time="0.167255" status="run">
+		<properties/>
+		<system-out>Tree theme_scene passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_model" classname="rynui.tree_model" time="0.0286766" status="run">
+		<properties/>
+		<system-out>Tree model passed: topology, visibility, single selection, disabled conduction, limits
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_theme" classname="rynui.tree_theme" time="0.418854" status="run">
+		<properties/>
+		<system-out>Tree Theme passed: recipe, override, algorithm, identities, inheritance, font limits, recovery
+</system-out>
+	</testcase>
+	<testcase name="rynui.component_failure_retirement" classname="rynui.component_failure_retirement" time="0.292039" status="run">
+		<properties/>
+		<system-out>quiet component failure retirement: 6 fixtures passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_model" classname="rynui.auto_complete_model" time="0.015645" status="run">
+		<properties/>
+		<system-out>AutoComplete model passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_theme" classname="rynui.auto_complete_theme" time="0.258663" status="run">
+		<properties/>
+		<system-out>AutoComplete theme passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_flow" classname="rynui.auto_complete_flow" time="0.110358" status="run">
+		<properties/>
+		<system-out>AutoComplete flow passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_controlled" classname="rynui.auto_complete_controlled" time="0.126548" status="run">
+		<properties/>
+		<system-out>AutoComplete controlled passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_retention" classname="rynui.auto_complete_retention" time="0.0948333" status="run">
+		<properties/>
+		<system-out>AutoComplete retention passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_form" classname="rynui.auto_complete_form" time="0.0898346" status="run">
+		<properties/>
+		<system-out>AutoComplete form passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_example" classname="rynui.auto_complete_example" time="0.0861997" status="run">
+		<properties/>
+		<system-out>AutoComplete example passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_clips" classname="rynui.auto_complete_clips" time="0.117109" status="run">
+		<properties/>
+		<system-out>AutoComplete integration clips passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_children" classname="rynui.auto_complete_children" time="0.154928" status="run">
+		<properties/>
+		<system-out>AutoComplete integration children passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_boundaries" classname="rynui.auto_complete_boundaries" time="0.18924" status="run">
+		<properties/>
+		<system-out>AutoComplete integration boundaries passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_lifetime" classname="rynui.auto_complete_lifetime" time="0.712687" status="run">
+		<properties/>
+		<system-out>AutoComplete integration lifetime passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_idle" classname="rynui.auto_complete_idle" time="0.154336" status="run">
+		<properties/>
+		<system-out>AutoComplete integration idle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_theme_runtime" classname="rynui.auto_complete_theme_runtime" time="0.192737" status="run">
+		<properties/>
+		<system-out>AutoComplete integration theme_runtime passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_review_mount" classname="rynui.auto_complete_review_mount" time="2.36199" status="run">
+		<properties/>
+		<system-out>mount boundary 0
+mount boundary 1
+mount boundary 2
+mount rich retirement 0
+mount rich retirement 1
+mount rich retirement 2
+mount rich retirement 3
+mount rich retirement 4
+mount rich retirement 5
+mount Prop 0
+mount Prop 1
+mount Prop 2
+mount Prop 3
+mount Prop 4
+mount Prop 5
+mount Prop 6
+mount Prop 7
+mount Prop 8
+mount Prop 9
+mount Prop 10
+mount Prop 11
+mount Prop 12
+mount Prop 13
+mount Prop 14
+mount Prop 15
+mount Prop 16
+mount affix 0
+mount affix 1
+mount formatter 0
+mount formatter 1
+AutoComplete R1 mount passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_review_tab" classname="rynui.auto_complete_review_tab" time="0.473644" status="run">
+		<properties/>
+		<system-out>AutoComplete R1 tab passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_review_zero" classname="rynui.auto_complete_review_zero" time="0.217824" status="run">
+		<properties/>
+		<system-out>AutoComplete R1 zero passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_review_anchor" classname="rynui.auto_complete_review_anchor" time="0.108849" status="run">
+		<properties/>
+		<system-out>AutoComplete R1 anchor passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_review_modality" classname="rynui.auto_complete_review_modality" time="0.518179" status="run">
+		<properties/>
+		<system-out>AutoComplete R1 modality passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_r2_exceptions" classname="rynui.auto_complete_r2_exceptions" time="1.44276" status="run">
+		<properties/>
+		<system-out>initial exception phase 0
+initial exception phase 1
+initial exception phase 2
+initial exception phase 3
+initial exception phase 4
+initial exception phase 5
+initial exception phase 6
+initial exception phase 7
+reconcile exception 000
+reconcile exception 001
+reconcile exception 010
+reconcile exception 011
+reconcile exception 100
+reconcile exception 101
+reconcile exception 110
+reconcile exception 111
+AutoComplete R2 exceptions passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_r2_focus" classname="rynui.auto_complete_r2_focus" time="1.30982" status="run">
+		<properties/>
+		<system-out>same-frame focus 000
+same-frame focus 001
+same-frame focus 010
+same-frame focus 011
+same-frame focus 100
+same-frame focus 101
+same-frame focus 110
+same-frame focus 111
+focus callback retirement 0
+focus callback retirement 1
+focus callback retirement 2
+AutoComplete R2 focus passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_r3_teardown" classname="rynui.auto_complete_r3_teardown" time="0.72978" status="run">
+		<properties/>
+		<system-out>quiet cancel 00
+quiet cancel 01
+quiet cancel 10
+quiet cancel 11
+quiet cancel 20
+quiet cancel 21
+AutoComplete R3 teardown passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_r3_blur_throw" classname="rynui.auto_complete_r3_blur_throw" time="0.149508" status="run">
+		<properties/>
+		<system-out>AutoComplete R3 blur_throw passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.auto_complete_r3_restore" classname="rynui.auto_complete_r3_restore" time="1.08786" status="run">
+		<properties/>
+		<system-out>deferred restore 0
+deferred restore 1
+deferred restore 2
+deferred restore 3
+deferred restore 4
+deferred restore 5
+deferred restore 6
+deferred restore 7
+deferred restore 8
+AutoComplete R3 restore passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_theme" classname="rynui.avatar_theme" time="0.364057" status="run">
+		<properties/>
+		<system-out>R1 font: rejected=1, snapshot preserved=1
+Avatar Theme passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_text" classname="rynui.avatar_text" time="0.515881" status="run">
+		<properties/>
+		<system-out>Avatar text passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_group" classname="rynui.avatar_group" time="0.324467" status="run">
+		<properties/>
+		<system-out>Avatar group passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_overflow" classname="rynui.avatar_overflow" time="0.43224" status="run">
+		<properties/>
+		<system-out>R1 overflow: content width=456, last relative x=36
+Avatar overflow passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_clips" classname="rynui.avatar_clips" time="0.0928073" status="run">
+		<properties/>
+		<system-out>Avatar clips passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_retention" classname="rynui.avatar_retention" time="0.0992889" status="run">
+		<properties/>
+		<system-out>Avatar retention passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_gates" classname="rynui.avatar_gates" time="0.332749" status="run">
+		<properties/>
+		<system-out>Avatar gates passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_lifecycle" classname="rynui.avatar_lifecycle" time="0.0935277" status="run">
+		<properties/>
+		<system-out>Avatar lifecycle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.avatar_validation" classname="rynui.avatar_validation" time="0.311777" status="run">
+		<properties/>
+		<system-out>Avatar validation passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_model" classname="rynui.rate_model" time="0.0135712" status="run">
+		<properties/>
+		<system-out>Rate model passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_theme" classname="rynui.rate_theme" time="0.21119" status="run">
+		<properties/>
+		<system-out>Rate Theme passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_public_api" classname="rynui.rate_public_api" time="0.0252471" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.rate_component" classname="rynui.rate_component" time="0.573309" status="run">
+		<properties/>
+		<system-out>Rate events, actual scene and Tooltip passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_lifecycle" classname="rynui.rate_lifecycle" time="0.821237" status="run">
+		<properties/>
+		<system-out>Rate lifecycle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_font_limit" classname="rynui.rate_font_limit" time="0.407047" status="run">
+		<properties/>
+		<system-out>Rate font limit passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_focus_order" classname="rynui.rate_focus_order" time="0.353208" status="run">
+		<properties/>
+		<system-out>Rate dynamic focus order passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_r1_geometry" classname="rynui.rate_r1_geometry" time="0.161114" status="run">
+		<properties/>
+		<system-out>Rate R1 geometry passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_r1_pointer_gap" classname="rynui.rate_r1_pointer_gap" time="0.174126" status="run">
+		<properties/>
+		<system-out>Rate R1 pointer_gap passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_r1_focus_exit" classname="rynui.rate_r1_focus_exit" time="0.162468" status="run">
+		<properties/>
+		<system-out>Rate R1 focus_exit passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.rate_r1_keyboard" classname="rynui.rate_r1_keyboard" time="0.311973" status="run">
+		<properties/>
+		<system-out>Rate R1 keyboard passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.popover_review_escape" classname="rynui.popover_review_escape" time="0.785444" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.popover_review_focus" classname="rynui.popover_review_focus" time="0.0954833" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.popover_children" classname="rynui.popover_children" time="0.308269" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.statistic_model" classname="rynui.statistic_model" time="0.0112203" status="run">
+		<properties/>
+		<system-out>Statistic model passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_theme" classname="rynui.statistic_theme" time="0.406222" status="run">
+		<properties/>
+		<system-out>Statistic Theme passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_retained" classname="rynui.statistic_retained" time="0.214213" status="run">
+		<properties/>
+		<system-out>Statistic retained passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_formatting" classname="rynui.statistic_formatting" time="0.963446" status="run">
+		<properties/>
+		<system-out>Statistic formatting passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_clips" classname="rynui.statistic_clips" time="0.0615631" status="run">
+		<properties/>
+		<system-out>Statistic clips passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_lifecycle" classname="rynui.statistic_lifecycle" time="5.00674" status="run">
+		<properties/>
+		<system-out>Statistic lifecycle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_gates" classname="rynui.statistic_gates" time="0.123971" status="run">
+		<properties/>
+		<system-out>Statistic gates passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_boundaries" classname="rynui.statistic_boundaries" time="0.188585" status="run">
+		<properties/>
+		<system-out>Statistic boundaries passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_rollback" classname="rynui.statistic_rollback" time="0.834042" status="run">
+		<properties/>
+		<system-out>Statistic rollback passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_public_api" classname="rynui.statistic_public_api" time="0.252372" status="run">
+		<properties/>
+		<system-out>Statistic public API and documentation example passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.statistic_docs_example" classname="rynui.statistic_docs_example" time="0.0595718" status="run">
+		<properties/>
+		<system-out>Statistic documentation example matches the executed C++ fixture
+</system-out>
+	</testcase>
+	<testcase name="rynui.skeleton_component" classname="rynui.skeleton_component" time="0.248558" status="run">
+		<properties/>
+		<system-out>Skeleton retained scene contracts passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.skeleton_integration_editor" classname="rynui.skeleton_integration_editor" time="0.0641123" status="run">
+		<properties/>
+		<system-out>Skeleton editor integration passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.skeleton_integration_select" classname="rynui.skeleton_integration_select" time="0.160053" status="run">
+		<properties/>
+		<system-out>Skeleton select integration passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.skeleton_integration_retirement" classname="rynui.skeleton_integration_retirement" time="0.207721" status="run">
+		<properties/>
+		<system-out>Skeleton retirement integration passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.skeleton_integration_boundaries" classname="rynui.skeleton_integration_boundaries" time="0.153957" status="run">
+		<properties/>
+		<system-out>Skeleton boundaries integration passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.time_picker_review_focus" classname="rynui.time_picker_review_focus" time="0.48625" status="run">
+		<properties/>
+		<system-out>TimePicker review focus passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.time_picker_review_row_focus" classname="rynui.time_picker_review_row_focus" time="2.93784" status="run">
+		<properties/>
+		<system-out>row blur destroy confirm=0 rebind=0
+row blur destroy confirm=0 rebind=1
+row blur destroy confirm=1 rebind=0
+row blur destroy confirm=1 rebind=1
+row blur surviving action=0
+row blur surviving action=1
+row blur surviving action=2
+row blur surviving action=3
+row blur surviving action=4
+row blur surviving action=5
+row blur surviving action=6
+row blur surviving action=7
+row blur surviving action=8
+TimePicker review row_focus passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.date_picker_review_form_reset" classname="rynui.date_picker_review_form_reset" time="1.06108" status="run">
+		<properties/>
+		<system-out>DatePicker R1 form_reset passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.form_component" classname="rynui.form_component" time="2.17796" status="run">
+		<properties/>
+		<system-out>Form retained component flows passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.input_component" classname="rynui.portable.input_component" time="4.08751" status="run">
+		<properties/>
+		<system-out>Input layout simulated-scale cases=768
+Input lifecycle, layout and controlled callbacks passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.input_actions" classname="rynui.portable.input_actions" time="0.404215" status="run">
+		<properties/>
+		<system-out>Native Input family actions passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.theme_algorithm" classname="rynui.portable.theme_algorithm" time="0.368978" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.theme_runtime" classname="rynui.portable.theme_runtime" time="1.05048" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.focus_order" classname="rynui.portable.focus_order" time="0.0262802" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.focus_state" classname="rynui.portable.focus_state" time="0.0253305" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.focus_lifecycle" classname="rynui.portable.focus_lifecycle" time="0.0676048" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.pointer_route" classname="rynui.portable.pointer_route" time="0.0772036" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.select_component" classname="rynui.portable.select_component" time="1.03981" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.modal_component" classname="rynui.portable.modal_component" time="3.17827" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.layout_style" classname="rynui.portable.layout_style" time="0.0365649" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+</testsuite>

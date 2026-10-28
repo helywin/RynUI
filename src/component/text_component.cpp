@@ -1303,6 +1303,7 @@ void mount_text_component(const TextProps& props, bool icon_font) {
     const auto component = build.mount_component<TextComponentState>();
     const auto node = build.root(component);
     host.layout_->set_layout(node, layout::LeafLayout{});
+    build.on_resource_cleanup(component, [layout = host.layout_, node] { layout->remove_layout(node); });
 
     const auto initial_content = read_prop(TextPropsAccess::content(props));
     const auto& explicit_tone = TextPropsAccess::tone(props);
@@ -1542,6 +1543,7 @@ void mount_typography_component(const TypographyProps& props, TypographySemantic
     const auto component = build.mount_component<TextComponentState>();
     const auto node = build.root(component);
     host.layout_->set_layout(node, layout::LeafLayout{});
+    build.on_resource_cleanup(component, [layout = host.layout_, node] { layout->remove_layout(node); });
 
     const auto theme_scope = build.theme_scope();
     auto& state = build.state<TextComponentState>(component);

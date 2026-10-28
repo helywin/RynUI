@@ -1,0 +1,34 @@
+﻿UpdateCTestConfiguration  from :C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/DartConfiguration.tcl
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 2
+    Start 2: rynui.tree_review_zero_area
+
+2: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-9bdf1a7f\out\build\windows-msvc-headless\tests\Debug\rynui_tree_review_tests.exe "zero_area"
+2: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-9bdf1a7f/out/build/windows-msvc-headless/tests
+2: Test timeout computed to be: 45
+2: zero cycle=0 selection_delta=1 check_delta=1 focused=1
+2: R1.2: committed zero-area Tree still accepts focused keyboard input
+1/1 Test #2: rynui.tree_review_zero_area ......***Failed    0.12 sec
+zero cycle=0 selection_delta=1 check_delta=1 focused=1
+R1.2: committed zero-area Tree still accepts focused keyboard input
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.14 sec
+
+The following tests FAILED:
+	  2 - rynui.tree_review_zero_area (Failed)
+ctest.exe : Errors while running CTest
+所在位置 行:2 字符: 306
++ ... andoff')) { & $treeCtest --preset windows-msvc-headless-debug -R "^ry ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Errors while running CTest:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

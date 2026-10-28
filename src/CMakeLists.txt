@@ -23,6 +23,7 @@ add_library(rynui_theme STATIC
     theme/avatar_theme.cpp
     theme/rate_theme.cpp
     theme/statistic_theme.cpp
+    theme/tree_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC
@@ -217,6 +218,8 @@ add_library(rynui_components STATIC
     component/statistic_component.cpp
     component/timeline_component.cpp
     component/avatar_component.cpp
+    component/tree_model.cpp
+    component/tree_component.cpp
     component/form_component.cpp
     component/feedback_component.cpp
     component/tag_badge_component.cpp
@@ -230,6 +233,8 @@ add_library(rynui_components STATIC
     component/input_display.cpp
     component/otp_model.cpp
     component/select_model.cpp
+    component/auto_complete_model.cpp
+    component/auto_complete_component.cpp
     component/select_component.cpp
     component/time_picker_model.cpp
     component/time_picker_component.cpp

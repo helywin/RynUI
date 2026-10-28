@@ -19,6 +19,7 @@
 #include <ryn/avatar_tokens.hpp>
 #include <ryn/rate_tokens.hpp>
 #include <ryn/statistic_tokens.hpp>
+#include <ryn/tree_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -607,6 +608,17 @@ struct SelectThemeConfig final {
     SeedTokenOverride seed;
     bool algorithm{};
     friend bool operator==(const SelectThemeConfig&, const SelectThemeConfig&) = default;
+};
+
+// AutoComplete shares the locked Select visual recipe, with independent configuration and subscriptions.
+using AutoCompleteThemeToken = SelectThemeToken;
+using AutoCompleteTokenOverride = SelectTokenOverride;
+
+struct AutoCompleteThemeConfig final {
+    AutoCompleteTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const AutoCompleteThemeConfig&, const AutoCompleteThemeConfig&) = default;
 };
 
 struct CardColorToken final {
@@ -1620,6 +1632,13 @@ struct StatisticThemeConfig final {
     friend bool operator==(const StatisticThemeConfig&, const StatisticThemeConfig&) = default;
 };
 
+struct TreeThemeConfig final {
+    TreeTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TreeThemeConfig&, const TreeThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
@@ -1667,6 +1686,8 @@ struct ThemeConfig final {
     AvatarThemeConfig avatar;
     RateThemeConfig rate;
     StatisticThemeConfig statistic;
+    TreeThemeConfig tree;
+    AutoCompleteThemeConfig auto_complete;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -2323,28 +2344,35 @@ public:
         return *statistic_;
     }
 
+    [[nodiscard]] const TreeThemeToken& tree() const noexcept {
+        return *tree_;
+    }
+
+    [[nodiscard]] const AutoCompleteThemeToken& auto_complete() const noexcept {
+        return *auto_complete_;
+    }
+
 private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
 
-    ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
-                  TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
-                  RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
-                  SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
-                  TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
-                  MenuThemeToken menu, DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
-                  AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
-                  InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-                  CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                  ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
-                  BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
-                  std::shared_ptr<const TimePickerThemeToken> time_picker,
-                  std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
-                  std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
-                  std::shared_ptr<const NoticeThemeToken> notification,
-                  std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
-                  std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic);
+    ThemeSnapshot(
+        AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
+        TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox, RadioThemeToken radio,
+        TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
+        SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
+        DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu, DropdownThemeToken dropdown,
+        std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag,
+        BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
+        InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
+        CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result,
+        DatePickerThemeToken date_picker, FormThemeToken form, BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
+        std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
+        DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
+        std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
+        std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
+        std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
+        std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2372,6 +2400,8 @@ private:
     std::shared_ptr<const AvatarThemeToken> avatar_;
     std::shared_ptr<const RateThemeToken> rate_;
     std::shared_ptr<const StatisticThemeToken> statistic_;
+    std::shared_ptr<const TreeThemeToken> tree_;
+    std::shared_ptr<const AutoCompleteThemeToken> auto_complete_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;
