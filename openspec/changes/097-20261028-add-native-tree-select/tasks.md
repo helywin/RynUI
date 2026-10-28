@@ -12,4 +12,4 @@
 
 ## 3. 合并验收（平台通用）
 
-- [ ] 3.1 运行 TreeSelect 与直接受影响 Tree／Popover／Input／Focus／Form／Theme 组合测试，clang-format 22 检查、显式 OpenSpec 1.14 doctor/strict 和 diff check；独立 Astra xhigh/default 审核解决所有可达 P1/P2，记录精确产物、命令、范围并提交／推送 main、核远端 SHA。不得把 HEADLESS 记为 native GPU、Linux、系统 IME／AT 或 Gallery 验收。
+- [x] 3.1 运行 TreeSelect 与直接受影响 Tree／Popover／Input／Focus／Form／Theme 组合测试，clang-format 22 检查、显式 OpenSpec 1.14 doctor/strict 和 diff check；独立 Astra xhigh/default 审核解决所有可达 P1/P2，记录精确产物、命令、范围并提交／推送 main、核远端 SHA。不得把 HEADLESS 记为 native GPU、Linux、系统 IME／AT 或 Gallery 验收。

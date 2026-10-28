@@ -1,6 +1,6 @@
 # TreeSelect
 
-TreeSelect 用于紧凑字段中的单值层级选择，组合 retained 原生 Input、Popover 和 Tree。公开头文件为 `<ryn/tree_select.hpp>`，也包含于 `<ryn/rynui.hpp>`。本阶段实现仍在验收，准确状态以 097 tasks／evidence 为准。
+TreeSelect 用于紧凑字段中的单值层级选择，组合 retained 原生 Input、Popover 和 Tree。公开头文件为 `<ryn/tree_select.hpp>`，也包含于 `<ryn/rynui.hpp>`。097 首版已完成平台通用验收与独立 Astra R4 复核，见 [最终记录](../openspec/changes/097-20261028-add-native-tree-select/evidence/06-final-review-and-closure.md)。
 
 公开 API 以 `TreeSelectProps` 和固定 `TreeSelectItem` 描述数据。key 是唯一非空 String，空 value 表示未选，可直接接入 `FormField<String>`。标题、disabled、visible 使用 reactive Prop；最多 1024 个节点、64 层。
 
