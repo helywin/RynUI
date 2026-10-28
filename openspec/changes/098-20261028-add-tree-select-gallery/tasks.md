@@ -6,7 +6,7 @@
 
 ## 2. 三主题双宽与组合保持（平台通用）
 
-- [ ] 2.1 将新 focused 完整覆盖扩展至 Default/Dark/Compact × 1200/560、900 高有限视口；验证实际 glyph/fill/hit/适用焦点四边、停稳后的键盘帧唤醒、ref/editor/节点／交互完整代际、Form 同值 reset 与只读 session 门禁；新构建后实跑 focused、精确 inventory、旧 Tree/AutoComplete 与 Form 代表、八项 contracts／保留性，记录命令和产物并提交／推送核 SHA，不重跑无关旧矩阵。
+- [x] 2.1 将新 focused 完整覆盖扩展至 Default/Dark/Compact × 1200/560、900 高有限视口；验证实际 glyph/fill/hit/适用焦点四边、停稳后的键盘帧唤醒、ref/editor/节点／交互完整代际、Form 同值 reset 与只读 session 门禁；新构建后实跑 focused、精确 inventory、旧 Tree/AutoComplete 与 Form 代表、八项 contracts／保留性，记录命令和产物并提交／推送核 SHA，不重跑无关旧矩阵。
 
 ## 3. 独立复核与发布记录（平台通用）
 

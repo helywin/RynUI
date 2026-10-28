@@ -5051,39 +5051,6 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                                       std::string{state->destination_saved.get().bytes()});
                       }))
                       .layout(LayoutStyle{}.margin_left(dp(1))));
-             TreeSelect(TreeSelectProps{}
-                            .value(state->destination_value)
-                            .open(state->destination_open)
-                            .treeExpandedKeys(state->destination_expanded)
-                            .ref(state->destination_ref)
-                            .allowClear()
-                            .placeholder(u8"gallery.tree-select.selector · 选择交付目标")
-                            .listHeight(160)
-                            .disabled(state->destination_disabled)
-                            .readOnly(state->destination_read_only)
-                            .visible(state->destination_visible)
-                            .onChange([state](String value) {
-                                state->destination_request.set(utf8(
-                                    std::string{state->destination_accept_value.get() ? "接受选择=" : "拒绝选择="} +
-                                    std::string{value.bytes()}));
-                                if (state->destination_accept_value.get()) {
-                                    state->destination_value.set(value);
-                                }
-                            })
-                            .onOpenChange([state](bool open) {
-                                if (open) {
-                                    state->destination_open.set(true);
-                                } else {
-                                    state->destination_closes.set(state->destination_closes.get() + 1);
-                                    if (state->destination_accept_close.get()) {
-                                        state->destination_open.set(false);
-                                    }
-                                }
-                            })
-                            .onTreeExpand(
-                                [state](TreeExpandInfo info) { state->destination_expanded.set(info.expanded_keys); })
-                            .layout(member_control_margin().width(dp(300))),
-                        items());
              Space(
                  SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
                  SpaceContent{[state] {
@@ -5136,6 +5103,39 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                                 .layout(member_control_margin()),
                             [] { Text(u8"gallery.tree-select.restore · 恢复目标选择"); });
                  }});
+             TreeSelect(TreeSelectProps{}
+                            .value(state->destination_value)
+                            .open(state->destination_open)
+                            .treeExpandedKeys(state->destination_expanded)
+                            .ref(state->destination_ref)
+                            .allowClear()
+                            .placeholder(u8"gallery.tree-select.selector · 选择交付目标")
+                            .listHeight(160)
+                            .disabled(state->destination_disabled)
+                            .readOnly(state->destination_read_only)
+                            .visible(state->destination_visible)
+                            .onChange([state](String value) {
+                                state->destination_request.set(utf8(
+                                    std::string{state->destination_accept_value.get() ? "接受选择=" : "拒绝选择="} +
+                                    std::string{value.bytes()}));
+                                if (state->destination_accept_value.get()) {
+                                    state->destination_value.set(value);
+                                }
+                            })
+                            .onOpenChange([state](bool open) {
+                                if (open) {
+                                    state->destination_open.set(true);
+                                } else {
+                                    state->destination_closes.set(state->destination_closes.get() + 1);
+                                    if (state->destination_accept_close.get()) {
+                                        state->destination_open.set(false);
+                                    }
+                                }
+                            })
+                            .onTreeExpand(
+                                [state](TreeExpandInfo info) { state->destination_expanded.set(info.expanded_keys); })
+                            .layout(member_control_margin().width(dp(300))),
+                        items());
              Input(InputProps{}
                        .value(state->destination_note)
                        .ref(state->destination_note_ref)

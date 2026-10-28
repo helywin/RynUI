@@ -2767,15 +2767,27 @@ void test_form_gallery_after_document_scroll() {
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
                 entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
                 auto expected = reference->node;
-                if (entry.identity == "ant.component.breadcrumb" || entry.identity == "ant.component.steps" ||
-                    entry.identity == "ant.component.time-picker" || entry.identity == "ant.component.descriptions" ||
-                    entry.identity == "ant.component.skeleton") {
-                    const auto heading =
-                        entry.identity == "ant.component.breadcrumb"     ? "gallery.breadcrumb.trail "
-                        : entry.identity == "ant.component.steps"        ? "gallery.steps.workflow "
-                        : entry.identity == "ant.component.time-picker"  ? "gallery.time-picker.controlled "
-                        : entry.identity == "ant.component.descriptions" ? "gallery.descriptions.editor "
-                                                                         : "gallery.skeleton.preview ";
+                const std::array<std::pair<std::string_view, std::string_view>, 15> sample_anchors{{
+                    {"ant.component.breadcrumb", "gallery.breadcrumb.trail "},
+                    {"ant.component.steps", "gallery.steps.workflow "},
+                    {"ant.component.time-picker", "gallery.time-picker.controlled "},
+                    {"ant.component.descriptions", "gallery.descriptions.editor "},
+                    {"ant.component.skeleton", "gallery.skeleton.preview "},
+                    {"ant.component.popover", "gallery.popover.editor "},
+                    {"ant.component.message", "gallery.notices.workflow "},
+                    {"ant.component.notification", "gallery.notices.workflow "},
+                    {"ant.component.timeline", "gallery.timeline.workflow "},
+                    {"ant.component.avatar", "gallery.avatar.members "},
+                    {"ant.component.statistic", "gallery.statistic.metrics "},
+                    {"ant.component.rate", "gallery.rate.service "},
+                    {"ant.component.auto-complete", "gallery.auto-complete.contacts "},
+                    {"ant.component.tree", "gallery.tree.project "},
+                    {"ant.component.tree-select", "gallery.tree-select.destination "},
+                }};
+                const auto sample = std::ranges::find_if(
+                    sample_anchors, [&](const auto& value) { return value.first == entry.identity; });
+                if (sample != sample_anchors.end()) {
+                    const auto heading = sample->second;
                     const auto texts = f.host->text().mounted_texts();
                     const auto target = std::ranges::find_if(texts, [&](const auto& t) {
                         return f.text_scene.text_state(t.scene).content().bytes().starts_with(heading);
@@ -7858,8 +7870,16 @@ void test_tree_select_gallery_after_document_scroll() {
     GalleryDocumentViewport scroll;
     GalleryScrollRange navigation_scroll;
     GalleryScrollTranslation navigation_translation;
+    std::optional<bool> previous_narrow;
     const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
         const auto layout = gallery_layout_metrics({width, 900});
+        if (previous_narrow && *previous_narrow != layout.narrow) {
+            navigation_translation.invalidate();
+        }
+        previous_narrow = layout.narrow;
+        if (layout.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+        }
         const auto scroll_root = layout.narrow ? body : document;
         const auto translate = [&] {
             require(scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
@@ -8101,6 +8121,12 @@ void test_tree_select_gallery_after_document_scroll() {
                     glyphs(text(heading).component, bounds(owner)) > 0,
                 "Production anchor missed actual interactive heading");
     };
+    const auto row_content = [&](const auto& row, runtime::ComponentId tree) {
+        const auto r = bounds(row.component);
+        const auto title = bounds(row.title);
+        const float padding = s.components().theme_scope(tree)->snapshot().tree().metrics.padding_inline;
+        return runtime::Rect{title.x - padding, r.y, title.width + 2 * padding, r.height};
+    };
     const auto retained = [&] {
         for (const auto& e : {target_editor, field_editor, *note}) {
             const auto current = editor(e.component);
@@ -8148,120 +8174,185 @@ void test_tree_select_gallery_after_document_scroll() {
         require(index != std::string_view::npos, "TreeSelect close feedback absent");
         return std::stoi(std::string{report.substr(index + marker.size())});
     };
-    reconcile();
-    navigate("TreeSelect", "ant.component.tree-select", "gallery.tree-select.destination", workflow);
-    action("gallery.tree-select.rename", workflow);
-    require(s.tree_select().snapshot(target).label == String{u8"上手指南"}, "Reactive target label did not update");
-    reveal(note->component);
-    click(note->component);
-    key(input::Key::a, input::KeyModifier::control);
-    require(bool(f.inputs->dispatch(
-                input::TextCommitted{String{u8"Gallery destination note"}, f.inputs->sessions().active()})),
-            "TreeSelect note text event failed");
-    sync();
-    action("gallery.tree-select.save", workflow);
-    feedback("gallery.tree-select.feedback", "已保存目标=guide / Gallery destination note");
-    action("gallery.tree-select.value-authority", workflow);
-    open_selector(target);
-    key(input::Key::home);
-    key(input::Key::down);
-    key(input::Key::enter);
-    require(s.tree_select().snapshot(target).value == String{u8"guide"}, "Rejected target choice changed authority");
-    feedback("gallery.tree-select.feedback", "拒绝选择=docs");
-    action("gallery.tree-select.value-authority", workflow);
-    open_selector(target);
-    key(input::Key::home);
-    key(input::Key::down);
-    key(input::Key::enter);
-    require(s.tree_select().snapshot(target).value == String{u8"docs"}, "Accepted parent selection failed");
-    reveal(target_editor.component);
-    std::optional<runtime::ComponentId> clear;
-    for (auto hit : s.interactions().declaration_order()) {
-        const auto& r = s.interactions().require(hit);
-        if (hit != target_editor.interaction && descendant(r.component, target_editor.component)) {
-            require(!clear, "TreeSelect clear locator ambiguous");
-            clear = r.component;
-        }
-    }
-    require(clear.has_value(), "Native TreeSelect clear absent");
-    click(*clear);
-    require(s.tree_select().snapshot(target).value.empty(), "TreeSelect actual clear failed");
-    open_selector(target);
-    const auto archive = s.tree().snapshot(original_target.tree).rows[3];
-    click(archive.title);
-    require(s.tree_select().snapshot(target).value.empty(), "Disabled archive was selected");
-    key(input::Key::escape);
-    action("gallery.tree-select.node-disabled", workflow);
-    open_selector(target);
-    click(archive.title);
-    require(s.tree_select().snapshot(target).value == String{u8"archive"}, "Enabled archive could not be selected");
-    action("gallery.tree-select.node-disabled", workflow);
-    require(s.tree_select().snapshot(target).value == String{u8"archive"}, "Disabling accepted node cleared authority");
-    action("gallery.tree-select.close-authority", workflow);
-    open_selector(target);
-    auto previous_closes = close_count();
-    outside();
-    require(s.tree_select().snapshot(target).open && close_count() == previous_closes + 1,
-            "One focused outside click duplicated close or overrode refusal");
-    action("gallery.tree-select.close-authority", workflow);
-    previous_closes = close_count();
-    outside();
-    require(!s.tree_select().snapshot(target).open && close_count() == previous_closes + 1,
-            "Next outside click could not retry accepted close");
-    for (const auto gate : {"disabled", "readonly", "visible"}) {
-        action(std::string{"gallery.tree-select."} + gate, workflow);
-        require(!s.tree_select().snapshot(target).open, "TreeSelect gate retained popup");
-        if (std::string_view{gate} == "readonly") {
-            reveal(target_editor.component);
-            click(target_editor.component);
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        definition.set_motion_enabled(false);
+        for (const float viewport : {1200.0F, 560.0F}) {
+            width = viewport;
+            definition.set_viewport_width(width);
+            reconcile();
+            std::cout << "TreeSelect begin theme=" << theme_step << " width=" << width << '\n';
+            navigate("TreeSelect", "ant.component.tree-select", "gallery.tree-select.destination", workflow);
+            action("gallery.tree-select.restore", workflow);
+            open_selector(target);
+            key(input::Key::home);
             key(input::Key::down);
-            require(!s.tree_select().snapshot(target).open, "Read-only TreeSelect opened");
-        } else {
-            require(!s.interactions().require(target_editor.interaction).eligible ||
-                        !s.interactions().branch_active(target_editor.interaction),
-                    "TreeSelect hidden/disabled input remained eligible");
+            key(input::Key::down);
+            key(input::Key::enter);
+            require(s.tree_select().snapshot(target).value == String{u8"guide"},
+                    "TreeSelect case normalization failed");
+            if (s.tree_select().snapshot(target).label == String{u8"上手指南"}) {
+                action("gallery.tree-select.rename", workflow);
+            }
+            action("gallery.tree-select.reset", workflow);
+            action("gallery.tree-select.rename", workflow);
+            require(s.tree_select().snapshot(target).label == String{u8"上手指南"},
+                    "Reactive target label did not update");
+            reveal(note->component);
+            click(note->component);
+            key(input::Key::a, input::KeyModifier::control);
+            require(bool(f.inputs->dispatch(
+                        input::TextCommitted{String{u8"Gallery destination note"}, f.inputs->sessions().active()})),
+                    "TreeSelect note text event failed");
+            sync();
+            action("gallery.tree-select.save", workflow);
+            feedback("gallery.tree-select.feedback", "已保存目标=guide / Gallery destination note");
+            action("gallery.tree-select.value-authority", workflow);
+            open_selector(target);
+            key(input::Key::home);
+            key(input::Key::down);
+            key(input::Key::enter);
+            require(s.tree_select().snapshot(target).value == String{u8"guide"},
+                    "Rejected target choice changed authority");
+            feedback("gallery.tree-select.feedback", "拒绝选择=docs");
+            action("gallery.tree-select.value-authority", workflow);
+            open_selector(target);
+            key(input::Key::home);
+            key(input::Key::down);
+            key(input::Key::enter);
+            require(s.tree_select().snapshot(target).value == String{u8"docs"}, "Accepted parent selection failed");
+            open_selector(target);
+            const auto selected_row = s.tree().snapshot(original_target.tree).rows[1];
+            native_fill(row_content(selected_row, original_target.tree), s.tree_select().snapshot(target).popup);
+            require(glyphs(original_target.tree, s.tree_select().snapshot(target).popup, true) > 0,
+                    "Selected TreeSelect popup did not paint actual glyphs");
+            key(input::Key::escape);
+            reveal(target_editor.component);
+            std::optional<runtime::ComponentId> clear;
+            for (auto hit : s.interactions().declaration_order()) {
+                const auto& r = s.interactions().require(hit);
+                if (hit != target_editor.interaction && descendant(r.component, target_editor.component)) {
+                    require(!clear, "TreeSelect clear locator ambiguous");
+                    clear = r.component;
+                }
+            }
+            require(clear.has_value(), "Native TreeSelect clear absent");
+            click(*clear);
+            require(s.tree_select().snapshot(target).value.empty(), "TreeSelect actual clear failed");
+            open_selector(target);
+            const auto archive = s.tree().snapshot(original_target.tree).rows[3];
+            click(archive.title);
+            require(s.tree_select().snapshot(target).value.empty(), "Disabled archive was selected");
+            key(input::Key::escape);
+            action("gallery.tree-select.node-disabled", workflow);
+            open_selector(target);
+            click(archive.title);
+            require(s.tree_select().snapshot(target).value == String{u8"archive"},
+                    "Enabled archive could not be selected");
+            action("gallery.tree-select.node-disabled", workflow);
+            require(s.tree_select().snapshot(target).value == String{u8"archive"},
+                    "Disabling accepted node cleared authority");
+            action("gallery.tree-select.close-authority", workflow);
+            open_selector(target);
+            auto previous_closes = close_count();
+            outside();
+            require(s.tree_select().snapshot(target).open && close_count() == previous_closes + 1,
+                    "One focused outside click duplicated close or overrode refusal");
+            action("gallery.tree-select.close-authority", workflow);
+            previous_closes = close_count();
+            outside();
+            require(!s.tree_select().snapshot(target).open && close_count() == previous_closes + 1,
+                    "Next outside click could not retry accepted close");
+            for (const auto gate : {"disabled", "readonly", "visible"}) {
+                action(std::string{"gallery.tree-select."} + gate, workflow);
+                require(!s.tree_select().snapshot(target).open, "TreeSelect gate retained popup");
+                if (std::string_view{gate} == "readonly") {
+                    reveal(target_editor.component);
+                    click(target_editor.component);
+                    key(input::Key::down);
+                    require(!s.tree_select().snapshot(target).open, "Read-only TreeSelect opened");
+                } else {
+                    require(!s.interactions().require(target_editor.interaction).eligible ||
+                                !s.interactions().branch_active(target_editor.interaction),
+                            "TreeSelect hidden/disabled input remained eligible");
+                }
+                action("gallery.tree-select.restore", workflow);
+                require(s.focus().state().focused == target_editor.interaction &&
+                            !s.tree_select().snapshot(target).open,
+                        "External restore did not recover selector focus without reopening");
+                reveal(target_editor.component);
+                require(!s.tree_select().snapshot(target).open &&
+                            s.interactions().require(target_editor.interaction).eligible &&
+                            s.interactions().branch_active(target_editor.interaction),
+                        "External restore did not recover input without reopening");
+                click(target_editor.component);
+                require(s.focus().state().focused == target_editor.interaction && s.tree_select().snapshot(target).open,
+                        "Restored TreeSelect could not focus/open through native pointer input");
+                key(input::Key::escape);
+            }
+            action("gallery.tree-select.submit", workflow);
+            feedback("gallery.tree-select.form-feedback", "请选择交付目标");
+            open_selector(field);
+            key(input::Key::home);
+            key(input::Key::down);
+            key(input::Key::down);
+            key(input::Key::enter);
+            require(s.tree_select().snapshot(field).value == String{u8"guide"}, "Native Form TreeSelect choice failed");
+            action("gallery.tree-select.submit", workflow);
+            feedback("gallery.tree-select.form-feedback", "已提交目标=guide");
+            action("gallery.tree-select.reset", workflow);
+            action("gallery.tree-select.reset", workflow);
+            require(s.tree_select().snapshot(field).value.empty() &&
+                        f.inputs->editors().require(field_editor.editor).value().empty() &&
+                        s.focus().state().focused == field_editor.interaction && !f.inputs->sessions().active().valid(),
+                    "Focused same-value Form reset changed focus/session or retained value");
+            feedback("gallery.tree-select.form-feedback", "已重置目标");
+            open_selector(target);
+            require(s.focus().request_focus(target_editor.interaction, input::FocusModality::keyboard),
+                    "Native focus setup could not return to already-open selector");
+            sync();
+            static_cast<void>(f.frames.consume_request());
+            require(!f.frames.pending() && s.focus().state().focus_visible,
+                    "Already-open Gallery selector did not settle in keyboard modality");
+            s.focus().dispatch({input::Key::down, input::KeyAction::down});
+            s.focus().dispatch({input::Key::down, input::KeyAction::up});
+            require(f.frames.pending(), "Already-open Gallery keyboard entry did not request a frame");
+            require(f.frames.consume_request(), "Gallery keyboard wake vanished before geometry");
+            sync();
+            key(input::Key::home);
+            const auto focused_row = s.tree().snapshot(original_target.tree).rows[0];
+            require(s.focus().state().focused == focused_row.interaction && s.focus().state().focus_visible,
+                    "Native keyboard wake did not enter Tree");
+            focus_edges(row_content(focused_row, original_target.tree), false);
+            require(glyphs(original_target.tree, s.tree_select().snapshot(target).popup, true) > 0,
+                    "TreeSelect actual popup glyph absent");
+            require(s.hit_test().hit_test({bounds(focused_row.title).x + 2, bounds(focused_row.title).y + 2}) ==
+                        focused_row.interaction,
+                    "TreeSelect row glyph/hit mismatch");
+            key(input::Key::end);
+            key(input::Key::right);
+            key(input::Key::end);
+            const auto last = s.tree().snapshot(original_target.tree);
+            require(last.scroll > 0 && s.focus().state().focused == last.rows.back().interaction,
+                    "TreeSelect End did not reveal last deliverable");
+            focus_edges(row_content(last.rows.back(), original_target.tree), false);
+            require(glyphs(original_target.tree, s.tree_select().snapshot(target).popup, true) > 0,
+                    "Scrolled TreeSelect actual glyph absent");
+            key(input::Key::home);
+            const auto popup = s.tree_select().snapshot(target).popup;
+            require(s.dispatch_scroll({0, -1, popup.x + popup.width / 2, popup.y + popup.height / 2}),
+                    "TreeSelect actual popup wheel was not handled");
+            sync();
+            require(s.tree().snapshot(original_target.tree).scroll > 0, "TreeSelect wheel did not move its own tree");
+            key(input::Key::escape);
+            native_fill(bounds(target_editor.component), {16, 12, width - 32, 876});
+            require(glyphs(target_editor.component, bounds(target_editor.component)) > 0,
+                    "TreeSelect selector glyph absent");
+            retained();
+            std::cout << "TreeSelect theme=" << theme_step << " width=" << width
+                      << " real navigation/business/reset/wake/glyph/fill/hit/focus/retention passed\n";
         }
-        action("gallery.tree-select.restore", workflow);
-        require(s.focus().state().focused == target_editor.interaction && !s.tree_select().snapshot(target).open,
-                "External restore did not recover selector without reopening");
     }
-    action("gallery.tree-select.submit", workflow);
-    feedback("gallery.tree-select.form-feedback", "请选择交付目标");
-    open_selector(field);
-    key(input::Key::home);
-    key(input::Key::down);
-    key(input::Key::down);
-    key(input::Key::enter);
-    require(s.tree_select().snapshot(field).value == String{u8"guide"}, "Native Form TreeSelect choice failed");
-    action("gallery.tree-select.submit", workflow);
-    feedback("gallery.tree-select.form-feedback", "已提交目标=guide");
-    action("gallery.tree-select.reset", workflow);
-    action("gallery.tree-select.reset", workflow);
-    require(s.tree_select().snapshot(field).value.empty() &&
-                f.inputs->editors().require(field_editor.editor).value().empty() &&
-                s.focus().state().focused == field_editor.interaction && !f.inputs->sessions().active().valid(),
-            "Focused same-value Form reset changed focus/session or retained value");
-    feedback("gallery.tree-select.form-feedback", "已重置目标");
-    open_selector(target);
-    key(input::Key::home);
-    const auto focused_row = s.tree().snapshot(original_target.tree).rows[0];
-    const auto row_bounds = bounds(focused_row.component);
-    const auto title_bounds = bounds(focused_row.title);
-    const float title_padding =
-        s.components().theme_scope(original_target.tree)->snapshot().tree().metrics.padding_inline;
-    const runtime::Rect focused_content{title_bounds.x - title_padding, row_bounds.y,
-                                        title_bounds.width + 2 * title_padding, row_bounds.height};
-    focus_edges(focused_content, false);
-    require(glyphs(original_target.tree, s.tree_select().snapshot(target).popup, true) > 0,
-            "TreeSelect actual popup glyph absent");
-    require(s.hit_test().hit_test({bounds(focused_row.title).x + 2, bounds(focused_row.title).y + 2}) ==
-                focused_row.interaction,
-            "TreeSelect row glyph/hit mismatch");
-    key(input::Key::escape);
-    native_fill(bounds(target_editor.component), {16, 12, width - 32, 876});
-    require(glyphs(target_editor.component, bounds(target_editor.component)) > 0, "TreeSelect selector glyph absent");
-    retained();
-    std::cout << "TreeSelect Default/1200 business/glyph/fill/hit/focus/retention passed\n";
 }
 
 void print_gallery_inventory() {
