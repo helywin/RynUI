@@ -106,6 +106,12 @@ public:
     [[nodiscard]] std::size_t pointer_count() const;
     [[nodiscard]] const PointerRouterDiagnostics& diagnostics() const noexcept;
 
+    // One native dispatch may change focus and then deliver an outside press.
+    // The token exists only for that dispatch, including its callbacks.
+    [[nodiscard]] std::optional<std::uint64_t> dispatch_token() const noexcept {
+        return active_dispatch_;
+    }
+
 private:
     friend class PointerDispatchContext;
 
@@ -153,6 +159,8 @@ private:
     Observer observer_;
     bool dispatching_{false};
     bool frame_requested_during_dispatch_{false};
+    std::uint64_t dispatch_sequence_{};
+    std::optional<std::uint64_t> active_dispatch_;
 };
 
 } // namespace ryn::input

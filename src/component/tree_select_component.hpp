@@ -43,6 +43,7 @@ private:
     bool editable(runtime::ComponentId);
     void refresh(runtime::ComponentId);
     void request_open(runtime::ComponentId, bool, bool keyboard = false);
+    void notify_open(runtime::ComponentId, bool);
     void choose(runtime::ComponentId, String);
     void update_theme(runtime::ComponentId);
     WindowComponentServices* services_;

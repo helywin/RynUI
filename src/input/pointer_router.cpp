@@ -92,6 +92,7 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
     }
 
     dispatching_ = true;
+    active_dispatch_ = ++dispatch_sequence_;
     frame_requested_during_dispatch_ = false;
     PointerState* pointer = nullptr;
     try {
@@ -161,11 +162,13 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
             clear_hover(*pointer, event);
         }
         prune_invalid_state(*pointer);
+        active_dispatch_.reset();
         dispatching_ = false;
     } catch (...) {
         if (pointer != nullptr) {
             abort_pointer(*pointer);
         }
+        active_dispatch_.reset();
         dispatching_ = false;
         throw;
     }

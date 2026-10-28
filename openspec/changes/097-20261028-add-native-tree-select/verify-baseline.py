@@ -42,7 +42,7 @@ def compare(old, new, path=""):
     return 1
 
 
-def before_manual_request_fix(path, source):
+def before_shared_request_fixes(path, source):
     if path == "src/component/popover_component.cpp":
         addition = '''
 
@@ -65,15 +65,35 @@ def before_manual_request_fix(path, source):
     // A manual controller may reject an intent without changing its open prop.
     // Finish that delivery so the next explicit dismissal can request again.
     void settle_request() noexcept {
-        if (controlled_) {
+        if (controlled_ && !suppressed_) {
             requested_ = open_;
         }
     }
 
 '''
+    elif path == "src/input/pointer_router.hpp":
+        addition = '''
+    // One native dispatch may change focus and then deliver an outside press.
+    // The token exists only for that dispatch, including its callbacks.
+    [[nodiscard]] std::optional<std::uint64_t> dispatch_token() const noexcept {
+        return active_dispatch_;
+    }
+
+'''
+        fields = '''    std::uint64_t dispatch_sequence_{};
+    std::optional<std::uint64_t> active_dispatch_;
+'''
+        assert source.count(fields) == 1, f"declared dispatch fields drifted: {path}"
+        source = source.replace(fields, "", 1)
+    elif path == "src/input/pointer_router.cpp":
+        for addition, count in [("    active_dispatch_ = ++dispatch_sequence_;\n", 1),
+                                ("        active_dispatch_.reset();\n", 2)]:
+            assert source.count(addition) == count, f"declared dispatch lifetime drifted: {path}"
+            source = source.replace(addition, "")
+        return source
     else:
         return source
-    assert source.count(addition) == 1, f"declared Manual request addition drifted: {path}"
+    assert source.count(addition) == 1, f"declared shared request addition drifted: {path}"
     return source.replace(addition, "\n", 1)
 
 
@@ -97,8 +117,9 @@ def main():
         ], cwd=ROOT, text=True).splitlines()
     for path in protected:
         source = (ROOT / path).read_text(encoding="utf-8")
-        assert before_manual_request_fix(path, source) == blob(path).decode("utf-8").replace("\r\n", "\n"), path
-    print(f"Protected resource, host, input and Gallery files: {len(protected)-2} unchanged; 2 exact Manual request additions")
+        assert before_shared_request_fixes(path, source) == blob(path).decode("utf-8").replace("\r\n", "\n"), path
+    print(f"Protected resource, host, input and Gallery files: {len(protected)-4} unchanged; "
+          "2 exact Manual request additions and 2 exact dispatch-token additions")
     if args.fresh:
         total = 0
         for name in ["default", "dark", "compact", "dark-compact", "compact-dark"]:

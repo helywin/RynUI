@@ -18,7 +18,7 @@ ryn::TreeSelect(
 
 选择与展开分离：点击 switcher 只展开，激活行提交其 key；再次选择当前值请求关闭而不清空，也不重复触发 onChange。未知外部 value 保留并显示原 key。标题更新会刷新接受值的显示；被隐藏或禁用的已接受值保持，不自动改写受控状态。禁用父节点不连带禁用独立可用的子节点；隐藏父节点会隐藏其整条分支。
 
-`value` 与 `defaultValue`、`open` 与 `defaultOpen`、`treeExpandedKeys` 与 `treeDefaultExpandedKeys` 各自互斥。受控父级拒绝用户意图时仍保留接受值／open，下一次意图可重试。选择合法 key 后请求关闭，清空通过 onChange 交付空 String。`onTreeExpand` 的 TreeExpandInfo 提供实际 key、展开集合与动作方向。
+`value` 与 `defaultValue`、`open` 与 `defaultOpen`、`treeExpandedKeys` 与 `treeDefaultExpandedKeys` 各自互斥。受控父级拒绝用户意图时仍保留接受值／open，下一次意图可重试。同一次外部点击引发的焦点退出与弹层关闭只交付一次请求；程序化焦点退出立即交付，Tab 离开也只交付一次。选择合法 key 后请求关闭，清空通过 onChange 交付空 String。`onTreeExpand` 的 TreeExpandInfo 提供实际 key、展开集合与动作方向。
 
 指针点击 selector 打开；键盘 Down／Up／Enter／Space 打开并将焦点交给真实 Tree 行。方向键、Home／End、Enter／Space 使用 Tree 的原生导航、展开和激活。键盘入口跳过禁用／隐藏行；已选项不可操作时回退到可用行，全部不可用时保留 selector 焦点。Escape 关闭子弹层并恢复 selector；Tab／Shift+Tab 按 selector 所在顺序离开到相邻控件。`onFocus/onBlur` 对应 selector 的原生 Input 焦点，因此转入树行也可能触发 selector blur。
 

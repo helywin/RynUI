@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="2"
+	failures="2"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="0"
+	timestamp="2026-10-28T13:19:47"
+	>
+	<testcase name="rynui.tree_select_r2_focused_outside" classname="rynui.tree_select_r2_focused_outside" time="0.137947" status="fail">
+		<failure message="Failed"/>
+		<properties/>
+		<system-out>focused_outside tree=0 first_closes=2 visible=0
+one focused outside click delivered duplicate close requests
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_r2_suppressed_close" classname="rynui.tree_select_r2_suppressed_close" time="0.104807" status="fail">
+		<failure message="Failed"/>
+		<properties/>
+		<system-out>suppressed_close compound=0 closes=2 visible=0
+callback suppression reactivated an already delivered close request
+</system-out>
+	</testcase>
+</testsuite>

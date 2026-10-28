@@ -16,7 +16,7 @@ public:
     // A manual controller may reject an intent without changing its open prop.
     // Finish that delivery so the next explicit dismissal can request again.
     void settle_request() noexcept {
-        if (controlled_) {
+        if (controlled_ && !suppressed_) {
             requested_ = open_;
         }
     }

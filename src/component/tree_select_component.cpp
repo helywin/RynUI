@@ -64,6 +64,8 @@ struct TreeSelectState final {
     bool ready{};
     bool refreshing{};
     bool pending{};
+    bool notifying_close{};
+    std::optional<std::uint64_t> close_dispatch;
 };
 
 using State = std::shared_ptr<TreeSelectState>;
@@ -193,7 +195,6 @@ void TreeSelectComponentHost::refresh(runtime::ComponentId id) {
         const bool constructing_ancestor = services_->nodes().require(s->node).place_generation == 0 && s->visible &&
                                            !s->disabled && !s->read_only && !s->geometry_blocked && window_active_;
         const bool notify = !active && !constructing_ancestor && s->model.suppress();
-        const auto callback = s->on_open;
         const bool input_blocked = !s->visible || s->disabled || s->geometry_blocked || !window_active_;
         if (services_->components().set_branch_active(id, s->visible)) {
             services_->mark_scene_structure_dirty();
@@ -233,8 +234,8 @@ void TreeSelectComponentHost::refresh(runtime::ComponentId id) {
             services_->mark_scene_structure_dirty();
             services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
         }
-        if (notify && callback) {
-            callback(false);
+        if (notify) {
+            notify_open(id, false);
             if (!intact(id)) {
                 return;
             }
@@ -247,12 +248,49 @@ void TreeSelectComponentHost::request_open(runtime::ComponentId id, bool open, b
         return;
     }
     const auto s = state(*services_, id);
-    const bool notify = s->model.request_open(open);
     s->focus_pending = open && keyboard;
-    const auto callback = s->on_open;
+    if (!open && !editable(id)) {
+        refresh(id);
+        return;
+    }
+    const bool notify = s->model.request_open(open);
     refresh(id);
-    if (notify && callback && intact(id)) {
-        callback(open);
+    if (notify && intact(id)) {
+        notify_open(id, open);
+    }
+}
+
+void TreeSelectComponentHost::notify_open(runtime::ComponentId id, bool open) {
+    if (!intact(id)) {
+        return;
+    }
+    const auto s = state(*services_, id);
+    if (open) {
+        s->close_dispatch.reset();
+        const auto callback = s->on_open;
+        if (callback) {
+            callback(true);
+        }
+        return;
+    }
+    const auto dispatch = services_->pointer().dispatch_token();
+    if (s->notifying_close || (dispatch && s->close_dispatch == dispatch)) {
+        return;
+    }
+    s->close_dispatch = dispatch;
+    s->notifying_close = true;
+
+    struct CloseGuard final {
+        State state;
+
+        ~CloseGuard() {
+            state->notifying_close = false;
+        }
+    } guard{s};
+
+    const auto callback = s->on_open;
+    if (callback) {
+        callback(false);
     }
 }
 
@@ -620,7 +658,6 @@ bool TreeSelectComponentHost::on_keyboard_input(const input::KeyboardInputEvent&
                                           : (i + 1) % order.size();
                     target = order[next];
                 }
-                request_open(id, false);
                 if (intact(id)) {
                     services_->focus().defer_focus(target, input::FocusModality::keyboard);
                 }
