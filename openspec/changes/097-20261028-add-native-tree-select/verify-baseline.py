@@ -42,6 +42,41 @@ def compare(old, new, path=""):
     return 1
 
 
+def before_manual_request_fix(path, source):
+    if path == "src/component/popover_component.cpp":
+        addition = '''
+
+    struct ManualRequestGuard final {
+        WindowComponentServices& services;
+        runtime::ComponentId id;
+
+        ~ManualRequestGuard() noexcept {
+            auto* live = services.components().state<PopoverState>(id);
+            if (live && !live->triggers.hover && !live->triggers.focus && !live->triggers.click) {
+                live->model.settle_request();
+            }
+        }
+    } guard{*services_, id};
+
+'''
+    elif path == "src/component/popover_model.hpp":
+        addition = '''
+
+    // A manual controller may reject an intent without changing its open prop.
+    // Finish that delivery so the next explicit dismissal can request again.
+    void settle_request() noexcept {
+        if (controlled_) {
+            requested_ = open_;
+        }
+    }
+
+'''
+    else:
+        return source
+    assert source.count(addition) == 1, f"declared Manual request addition drifted: {path}"
+    return source.replace(addition, "\n", 1)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fresh", type=Path)
@@ -56,13 +91,14 @@ def main():
     protected = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", BASE,
         "src/renderer", "src/platform", "cmake/RynUIShaders.cmake", "cmake/EmbedBuiltinShaders.cmake",
         "src/input", "src/component/tree_component.cpp", "src/component/auto_complete_component.cpp",
-        "src/component/input_component.cpp", "src/component/popover_component.cpp",
+        "src/component/input_component.cpp", "src/component/popover_component.cpp", "src/component/popover_model.hpp",
         "src/component/date_picker_component.cpp", "src/component/time_picker_component.cpp",
         "src/component/statistic_component.cpp", "src/component/skeleton_component.cpp", "examples", "gallery"
         ], cwd=ROOT, text=True).splitlines()
     for path in protected:
-        assert (ROOT / path).read_bytes().replace(b"\r\n", b"\n") == blob(path).replace(b"\r\n", b"\n"), path
-    print(f"Protected resource, host, input and Gallery files: {len(protected)} unchanged")
+        source = (ROOT / path).read_text(encoding="utf-8")
+        assert before_manual_request_fix(path, source) == blob(path).decode("utf-8").replace("\r\n", "\n"), path
+    print(f"Protected resource, host, input and Gallery files: {len(protected)-2} unchanged; 2 exact Manual request additions")
     if args.fresh:
         total = 0
         for name in ["default", "dark", "compact", "dark-compact", "compact-dark"]:

@@ -739,7 +739,8 @@ void TreeSelectComponentHost::synchronize_auxiliary_geometry(runtime::Size, runt
         std::optional<input::InteractionId> target;
         for (const auto& row : tree.rows) {
             const auto* r = services_->interactions().find(row.interaction);
-            if (row.shown && r && r->eligible && services_->interactions().branch_active(row.interaction)) {
+            if (row.shown && r && r->eligible && r->focusable &&
+                services_->interactions().branch_active(row.interaction)) {
                 if (!target || row.selected) {
                     target = row.interaction;
                 }

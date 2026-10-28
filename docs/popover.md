@@ -20,6 +20,8 @@ ryn::Popover(
 
 `open(Prop<bool>)` 为受控显示，`defaultOpen(bool)` 为非受控初值，二者不能并用。`onOpenChange(bool)` 发送用户请求，受控应用拒绝普通关闭时气泡保持显示。`disabled`、隐藏 owner、窗口失活、Spin 或 Modal 输入边界强制抑制陈旧 open；清理独立于请求通知去重，恢复边界不会自行复活旧弹层。显式 open 更新或新触发可恢复。
 
+Manual 模式下，拒绝一次外部点击关闭后，下一次外部点击仍会交付新的关闭请求；无需先改写 open。关闭回调抛出异常后，原异常保留，后续关闭仍可重试。普通 hover/focus/click 组合触发的去重规则保持。
+
 默认 `trigger(Hover)`，`mouseEnterDelay` 与 `mouseLeaveDelay` 均为100ms。`PopoverTriggerMode` 还提供 Manual、Focus、HoverFocus、Click；`triggers(PopoverTriggers{hover, focus, click})` 可以任意组合，三个值均 false 表示 manual，不能与显式 `trigger` 同用。延时须非负、有限且不超过一天。指针进入气泡或逻辑子浮层会取消离开；焦点进入富内容时编辑不会因指针离开而中断。Escape 关闭后同一次 hover/focus 不会立即重开。
 
 使用一个原生入口作为 trigger。真实 Button 保留 onClick 和 Enter/Space 激活，不会重复执行；原生禁用/加载 gate 继续生效。非交互 trigger 由 wrapper 提供键盘入口。点击与 hover 打开不抢内容焦点，键盘激活打开后延迟转移到首个可焦点内容。关闭只在实际需要时恢复有效入口；外部点击保留外部控件的焦点和操作。Tab 沿窗口或所属 Modal 的正常顺序移动。编辑器 IME/draft Escape 和子浮层优先于父 Popover。

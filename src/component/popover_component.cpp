@@ -250,6 +250,19 @@ void PopoverComponentHost::request_open(runtime::ComponentId id, bool open, bool
     }
     const bool notify = s->model.request(open);
     const auto callback = s->on_open;
+
+    struct ManualRequestGuard final {
+        WindowComponentServices& services;
+        runtime::ComponentId id;
+
+        ~ManualRequestGuard() noexcept {
+            auto* live = services.components().state<PopoverState>(id);
+            if (live && !live->triggers.hover && !live->triggers.focus && !live->triggers.click) {
+                live->model.settle_request();
+            }
+        }
+    } guard{*services_, id};
+
     refresh(id);
     if (notify && callback && services_->components().contains(id) && services_->components().scope(id).active()) {
         callback(open);

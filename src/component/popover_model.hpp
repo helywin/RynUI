@@ -12,6 +12,15 @@ public:
     PopoverModel(bool controlled, bool open) : controlled_(controlled), open_(open) {}
 
     void reconcile(bool open);
+
+    // A manual controller may reject an intent without changing its open prop.
+    // Finish that delivery so the next explicit dismissal can request again.
+    void settle_request() noexcept {
+        if (controlled_) {
+            requested_ = open_;
+        }
+    }
+
     [[nodiscard]] bool request(bool open);
     [[nodiscard]] bool suppress();
     void dismiss();
