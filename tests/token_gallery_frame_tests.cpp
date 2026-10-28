@@ -32,6 +32,7 @@
 #include "component/statistic_component.hpp"
 #include "component/rate_component.hpp"
 #include "component/tree_component.hpp"
+#include "component/tree_select_component.hpp"
 #include "component/auto_complete_component.hpp"
 #include "component/tooltip_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
@@ -865,7 +866,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 441, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 458, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -878,7 +879,11 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 274,
+    std::cout << "frame_contract initial_buttons=" << fixture.host->mounted_buttons().size()
+              << " initial_interactions=" << fixture.host->interactions().size()
+              << " live=" << definition.telemetry().live_samples
+              << " theme_content=" << definition.telemetry().theme_content_runs << '\n';
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 340,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -888,7 +893,7 @@ void test_token_gallery_frame_contract() {
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 1319) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 1500) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -906,8 +911,10 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
+    std::cout << "frame_contract visible_interactions=" << fixture.host->scene_composer().interaction_order().size()
+              << '\n';
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 578) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 678) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -916,7 +923,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 68 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 305,
+                initial.reference_content_runs == 126 && initial.live_samples == 307,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -7748,12 +7755,525 @@ void test_tree_autocomplete_gallery_after_document_scroll() {
     }
 }
 
+void test_tree_select_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    std::cout << std::unitbuf;
+    auto definition = make_token_gallery_definition();
+    definition.set_motion_enabled(false);
+    Fixture f;
+    configure_member_metric_fonts(f);
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& s = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                "TreeSelect finite layout failed");
+    };
+    definition.set_viewport_width(width);
+    sync();
+    const auto root = s.components().root(s.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& n = f.nodes.require(s.components().root(id));
+        return runtime::Rect{n.bounds.x + n.translation.x, n.bounds.y + n.translation.y, n.bounds.width,
+                             n.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId owner) {
+        for (auto id = std::optional{child}; id; id = s.components().parent(*id)) {
+            if (*id == owner) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text = [&](std::string_view prefix) {
+        std::optional<ryn::detail::MountedTextComponent> found;
+        for (const auto& t : s.text().mounted_texts()) {
+            if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
+                require(!found, "TreeSelect ambiguous text locator");
+                found = t;
+            }
+        }
+        require(found.has_value(), "TreeSelect required text absent");
+        return *found;
+    };
+    const auto workflow = *s.components().parent(text("gallery.tree-select.destination").component);
+    const auto button = [&](std::string_view prefix, runtime::ComponentId owner, bool exact = false) {
+        std::optional<ryn::detail::MountedButtonComponent> found;
+        for (const auto& t : s.text().mounted_texts()) {
+            const auto content = f.text_scene.text_state(t.scene).content().bytes();
+            if (!descendant(t.component, owner) || (exact ? content != prefix : !content.starts_with(prefix))) {
+                continue;
+            }
+            for (auto parent = s.components().parent(t.component); parent && *parent != owner;
+                 parent = s.components().parent(*parent)) {
+                for (const auto& b : f.host->mounted_buttons()) {
+                    if (b.component == *parent) {
+                        require(!found, "TreeSelect ambiguous button locator");
+                        found = b;
+                    }
+                }
+            }
+        }
+        require(found.has_value(), "TreeSelect required button absent");
+        return *found;
+    };
+    const auto editor = [&](runtime::ComponentId id) {
+        for (const auto& e : f.inputs->mounted_inputs()) {
+            if (e.component == id) {
+                return e;
+            }
+        }
+        throw std::runtime_error("TreeSelect editor absent");
+    };
+    std::vector<runtime::ComponentId> selectors;
+    for (auto id : s.tree_select().mounted()) {
+        if (descendant(id, workflow)) {
+            selectors.push_back(id);
+        }
+    }
+    require(selectors.size() == 2, "Expected destination and Form TreeSelect");
+    const auto target = selectors[0];
+    const auto field = selectors[1];
+    const auto original_target = s.tree_select().snapshot(target);
+    const auto original_field = s.tree_select().snapshot(field);
+    const auto target_editor = editor(original_target.selector);
+    const auto field_editor = editor(original_field.selector);
+    std::optional<ryn::detail::MountedInputComponent> note;
+    for (const auto& e : f.inputs->mounted_inputs()) {
+        if (descendant(e.component, workflow) && e.component != target_editor.component &&
+            e.component != field_editor.component) {
+            require(!note, "TreeSelect note locator is ambiguous");
+            note = e;
+        }
+    }
+    require(note.has_value(), "TreeSelect actual note editor absent");
+    const auto original_target_rows = s.tree().snapshot(original_target.tree).rows;
+    const auto original_field_rows = s.tree().snapshot(original_field.tree).rows;
+    const auto telemetry = definition.telemetry();
+    GalleryDocumentViewport scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto layout = gallery_layout_metrics({width, 900});
+        const auto scroll_root = layout.narrow ? body : document;
+        const auto translate = [&] {
+            require(scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "TreeSelect document translation failed");
+            if (!layout.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "TreeSelect sidebar translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto ref = std::ranges::find_if(surfaces, [&](const auto& item) {
+                return f.surfaces->snapshot(item.component).identity == entry.identity;
+            });
+            require(ref != surfaces.end(), "TreeSelect lost old reference surface");
+            anchors.push_back(
+                gallery_component_navigation_anchor(entry.identity, ref->node, s.text(), f.nodes, scroll_root));
+        }
+        static_cast<void>(scroll.replace_component_anchors(anchors));
+        static_cast<void>(scroll.set_extents(layout.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(layout.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            static_cast<void>(scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    const auto reveal = [&](runtime::ComponentId id) {
+        if (!s.components().in_window_layer(id)) {
+            const auto scroll_root = gallery_layout_metrics({width, 900}).narrow ? body : document;
+            static_cast<void>(scroll.scroll_to(f.nodes.require(s.components().root(id)).bounds.y -
+                                               f.nodes.require(scroll_root).bounds.y - 160));
+        }
+        reconcile();
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto r = bounds(id);
+        const runtime::Point p{r.x + r.width / 2, r.y + r.height / 2};
+        if (!(r.width > 0 && r.height > 0 && p.x >= 16 && p.x < width - 16 && p.y >= 12 && p.y < 888)) {
+            std::cerr << "TreeSelect click rect=" << r.x << ',' << r.y << ',' << r.width << ',' << r.height << '\n';
+            for (const auto& e : f.inputs->mounted_inputs()) {
+                if (e.component == id) {
+                    std::cerr << "Input value=" << f.inputs->editors().require(e.editor).value() << '\n';
+                }
+            }
+            for (const auto& t : s.text().mounted_texts()) {
+                if (descendant(t.component, id)) {
+                    std::cerr << "Click text=" << f.text_scene.text_state(t.scene).content().bytes() << '\n';
+                }
+            }
+        }
+        require(r.width > 0 && r.height > 0 && p.x >= 16 && p.x < width - 16 && p.y >= 12 && p.y < 888,
+                "TreeSelect click outside finite document/window");
+        s.pointer().dispatch(pointer_event(input::PointerAction::down, p, input::PointerButton::primary));
+        s.pointer().dispatch(pointer_event(input::PointerAction::up, p, input::PointerButton::primary));
+        sync();
+    };
+    const auto key = [&](input::Key value, input::KeyModifier modifiers = input::KeyModifier::none) {
+        s.focus().dispatch({value, input::KeyAction::down, modifiers});
+        s.focus().dispatch({value, input::KeyAction::up, modifiers});
+        sync();
+    };
+    const auto action = [&](std::string_view prefix, runtime::ComponentId owner) {
+        const auto b = button(prefix, owner);
+        reveal(b.component);
+        const auto r = bounds(b.component);
+        if (s.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) != b.interaction) {
+            std::cerr << "TreeSelect covered command=" << prefix << " rect=" << r.x << ',' << r.y << ',' << r.width
+                      << ',' << r.height << '\n';
+        }
+        require(s.hit_test().hit_test({r.x + r.width / 2, r.y + r.height / 2}) == b.interaction,
+                "TreeSelect real command hit absent");
+        click(b.component);
+        reconcile();
+    };
+    const auto feedback = [&](std::string_view prefix, std::string_view expected) {
+        require(f.text_scene.text_state(text(prefix).scene).content().bytes().find(expected) != std::string_view::npos,
+                "TreeSelect actual business feedback differs");
+    };
+    const auto within = [](runtime::Rect a, runtime::Rect b) {
+        return a.width <= 0 || a.height <= 0 ||
+               (a.x >= b.x - .02F && a.y >= b.y - .02F && a.x + a.width <= b.x + b.width + .02F &&
+                a.y + a.height <= b.y + b.height + .02F);
+    };
+    const auto glyphs = [&](runtime::ComponentId owner, runtime::Rect allowed, bool window_layer = false) {
+        std::size_t visible{};
+        for (const auto& t : s.text().mounted_texts()) {
+            if (!descendant(t.component, owner) || s.components().in_window_layer(t.component) != window_layer) {
+                continue;
+            }
+            const auto range = f.text_scene.primitive(t.scene).instances;
+            for (auto i = range.first; i < range.first + range.count; ++i) {
+                if (!std::ranges::any_of(s.scene_composer().ordered_scene().commands(), [i](const auto& c) {
+                        return c.kind == graphics::SceneDrawKind::glyph && i >= c.first_instance &&
+                               i - c.first_instance < c.instance_count;
+                    })) {
+                    continue;
+                }
+                const auto& g = f.text_scene.glyph_scene().instances().at(i);
+                const auto& p = g.position_size;
+                const auto& tr = g.translation_opacity;
+                const auto& clip = g.clip_bounds;
+                const auto painted = graphics::intersect_effect_bounds(
+                    {p[0] + tr[0], p[1] + tr[1], p[2], p[3]}, {clip[0], clip[1], clip[2] - clip[0], clip[3] - clip[1]});
+                if (painted.width > 0 && painted.height > 0 && tr[2] > 0 && g.color[3] > 0) {
+                    if (!within(painted, allowed)) {
+                        std::cerr << "TreeSelect glyph=" << f.text_scene.text_state(t.scene).content().bytes()
+                                  << " painted=" << painted.x << ',' << painted.y << ',' << painted.width << ','
+                                  << painted.height << " allowed=" << allowed.x << ',' << allowed.y << ','
+                                  << allowed.width << ',' << allowed.height << '\n';
+                    }
+                    require(within(painted, allowed) &&
+                                within(painted, window_layer ? runtime::Rect{0, 0, width, 900}
+                                                             : runtime::Rect{16, 12, width - 32, 876}),
+                            "TreeSelect actual glyph escaped allocation or viewport");
+                    ++visible;
+                }
+            }
+        }
+        return visible;
+    };
+    const auto focus_edges = [&](runtime::Rect b, bool shadow) {
+        std::array<float, 4> coverage{};
+        for (const auto& command : s.scene_composer().ordered_scene().commands()) {
+            if (command.kind != graphics::SceneDrawKind::rounded_effect) {
+                continue;
+            }
+            for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+                const auto& effect = s.rounded_effects().packed_instances()[i];
+                const auto& g = effect.geometry;
+                const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                          g.shape.rect.width, g.shape.rect.height};
+                if (shape != b || !effect.material.visible ||
+                    g.kind !=
+                        (shadow ? graphics::RoundedEffectKind::outer_shadow : graphics::RoundedEffectKind::outline)) {
+                    continue;
+                }
+                const float gap = shadow ? .5F : g.outline_offset + g.outline_width / 2;
+                const std::array<runtime::Point, 4> points{{{b.x - gap, b.y + b.height / 2},
+                                                            {b.x + b.width / 2, b.y - gap},
+                                                            {b.x + b.width + gap, b.y + b.height / 2},
+                                                            {b.x + b.width / 2, b.y + b.height + gap}}};
+                for (std::size_t j = 0; j < points.size(); ++j) {
+                    const auto p = points[j];
+                    if (!g.ancestor_clip || (p.x >= g.ancestor_clip->bounds.x && p.y >= g.ancestor_clip->bounds.y &&
+                                             p.x < g.ancestor_clip->bounds.x + g.ancestor_clip->bounds.width &&
+                                             p.y < g.ancestor_clip->bounds.y + g.ancestor_clip->bounds.height)) {
+                        coverage[j] =
+                            std::max(coverage[j], graphics::rounded_effect_coverage(p, effect) *
+                                                      effect.material.opacity * effect.material.color.alpha());
+                    }
+                }
+            }
+        }
+        require(std::ranges::all_of(coverage, [shadow](float c) { return c > (shadow ? .001F : .8F); }),
+                "TreeSelect actual keyboard focus lost an edge");
+    };
+    const auto native_fill = [&](runtime::Rect target, runtime::Rect allowed) {
+        bool painted{};
+        for (const auto& command : s.scene_composer().ordered_scene().commands()) {
+            for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+                if (command.kind == graphics::SceneDrawKind::quad) {
+                    const auto& q = s.surfaces().instances().at(i);
+                    const runtime::Rect shape{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1],
+                                              q.bounds[2], q.bounds[3]};
+                    if (shape == target && q.color[3] > 0 && q.opacity > 0) {
+                        require(within(shape, allowed), "TreeSelect actual quad fill escaped allocation");
+                        painted = true;
+                    }
+                } else if (command.kind == graphics::SceneDrawKind::rounded_effect) {
+                    const auto& e = s.rounded_effects().packed_instances()[i];
+                    const auto& g = e.geometry;
+                    const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                              g.shape.rect.width, g.shape.rect.height};
+                    if (shape == target && g.kind == graphics::RoundedEffectKind::outer_shadow && g.blur == 0 &&
+                        g.spread == 0 && e.material.visible) {
+                        const auto clipped =
+                            g.ancestor_clip ? graphics::intersect_effect_bounds(shape, g.ancestor_clip->bounds) : shape;
+                        require(within(clipped, allowed), "TreeSelect actual effect fill escaped allocation");
+                        painted |= clipped.width > 0 && clipped.height > 0 && e.material.opacity > 0 &&
+                                   e.material.color.alpha() > 0;
+                    }
+                }
+            }
+        }
+        require(painted, "TreeSelect actual native fill absent");
+    };
+    const auto navigate = [&](std::string_view caption, std::string_view identity, std::string_view heading,
+                              runtime::ComponentId owner) {
+        std::optional<runtime::ComponentId> navigation;
+        const auto find = [&](auto&& self, runtime::ComponentId id) -> void {
+            if (s.components().root(id) == navigation_root) {
+                navigation = id;
+            }
+            for (auto child : s.components().children(id)) {
+                self(self, child);
+            }
+        };
+        for (auto id : s.components().root_components()) {
+            find(find, id);
+        }
+        require(navigation.has_value(), "Navigation owner missing");
+        const auto b = button(caption, *navigation, true);
+        const auto layout = gallery_layout_metrics({width, 900});
+        const auto scroll_root = layout.narrow ? body : navigation_root;
+        const auto offset = f.nodes.require(b.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (layout.narrow) {
+            static_cast<void>(scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        std::cout << "TreeSelect catalog button=" << bounds(b.component).x << ',' << bounds(b.component).y << ','
+                  << bounds(b.component).width << ',' << bounds(b.component).height
+                  << " lane=" << layout.navigation_lane.x << ',' << layout.navigation_lane.y << ','
+                  << layout.navigation_lane.width << ',' << layout.navigation_lane.height
+                  << " glyphs=" << glyphs(b.component, bounds(b.component)) << '\n';
+        require(within(bounds(b.component), layout.navigation_lane) && glyphs(b.component, bounds(b.component)) > 0,
+                "Real catalog glyph absent");
+        require(!definition.take_navigation_request(), "Unexpected stale catalog request");
+        click(b.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->component_identity == identity &&
+                    request->kind == GalleryNavigationTargetKind::component,
+                "Real catalog requested foreign sample");
+        reconcile(request);
+        const auto actual_root = layout.narrow ? body : document;
+        const auto anchor = gallery_component_navigation_anchor(identity, b.node, s.text(), f.nodes, actual_root);
+        require(near(anchor.offset,
+                     f.nodes.require(s.components().root(text(heading).component)).bounds.y -
+                         f.nodes.require(actual_root).bounds.y,
+                     .02F) &&
+                    glyphs(text(heading).component, bounds(owner)) > 0,
+                "Production anchor missed actual interactive heading");
+    };
+    const auto retained = [&] {
+        for (const auto& e : {target_editor, field_editor, *note}) {
+            const auto current = editor(e.component);
+            require(current.component == e.component && current.editor == e.editor && current.node == e.node &&
+                        current.interaction == e.interaction,
+                    "TreeSelect Gallery replaced full-generation editor identity");
+        }
+        for (auto id : selectors) {
+            const auto current = s.tree_select().snapshot(id);
+            const auto& original = id == target ? original_target : original_field;
+            require(current.selector == original.selector && current.popover == original.popover &&
+                        current.tree == original.tree,
+                    "TreeSelect Gallery replaced private graph generation");
+            const auto rows = s.tree().snapshot(current.tree).rows;
+            const auto& previous = id == target ? original_target_rows : original_field_rows;
+            require(rows.size() == previous.size(), "TreeSelect Gallery changed fixed topology");
+            for (std::size_t i = 0; i < rows.size(); ++i) {
+                require(rows[i].component == previous[i].component && rows[i].interaction == previous[i].interaction &&
+                            rows[i].title == previous[i].title,
+                        "TreeSelect Gallery replaced a retained row");
+            }
+        }
+        require(definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "TreeSelect Gallery reran unrelated composition");
+    };
+    const auto open_selector = [&](runtime::ComponentId id) {
+        const auto a = s.tree_select().snapshot(id);
+        reveal(a.selector);
+        click(a.selector);
+        require(s.tree_select().snapshot(id).open, "TreeSelect pointer open failed");
+        require(!f.inputs->sessions().active().valid(), "Readonly TreeSelect selector started editing session");
+        key(input::Key::down);
+    };
+    const auto outside = [&] {
+        for (auto a : {input::PointerAction::down, input::PointerAction::up}) {
+            s.pointer().dispatch(pointer_event(a, {width - 4, 896}, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto close_count = [&] {
+        const auto report = f.text_scene.text_state(text("gallery.tree-select.feedback").scene).content().bytes();
+        const auto marker = std::string_view{"关闭请求="};
+        const auto index = report.find(marker);
+        require(index != std::string_view::npos, "TreeSelect close feedback absent");
+        return std::stoi(std::string{report.substr(index + marker.size())});
+    };
+    reconcile();
+    navigate("TreeSelect", "ant.component.tree-select", "gallery.tree-select.destination", workflow);
+    action("gallery.tree-select.rename", workflow);
+    require(s.tree_select().snapshot(target).label == String{u8"上手指南"}, "Reactive target label did not update");
+    reveal(note->component);
+    click(note->component);
+    key(input::Key::a, input::KeyModifier::control);
+    require(bool(f.inputs->dispatch(
+                input::TextCommitted{String{u8"Gallery destination note"}, f.inputs->sessions().active()})),
+            "TreeSelect note text event failed");
+    sync();
+    action("gallery.tree-select.save", workflow);
+    feedback("gallery.tree-select.feedback", "已保存目标=guide / Gallery destination note");
+    action("gallery.tree-select.value-authority", workflow);
+    open_selector(target);
+    key(input::Key::home);
+    key(input::Key::down);
+    key(input::Key::enter);
+    require(s.tree_select().snapshot(target).value == String{u8"guide"}, "Rejected target choice changed authority");
+    feedback("gallery.tree-select.feedback", "拒绝选择=docs");
+    action("gallery.tree-select.value-authority", workflow);
+    open_selector(target);
+    key(input::Key::home);
+    key(input::Key::down);
+    key(input::Key::enter);
+    require(s.tree_select().snapshot(target).value == String{u8"docs"}, "Accepted parent selection failed");
+    reveal(target_editor.component);
+    std::optional<runtime::ComponentId> clear;
+    for (auto hit : s.interactions().declaration_order()) {
+        const auto& r = s.interactions().require(hit);
+        if (hit != target_editor.interaction && descendant(r.component, target_editor.component)) {
+            require(!clear, "TreeSelect clear locator ambiguous");
+            clear = r.component;
+        }
+    }
+    require(clear.has_value(), "Native TreeSelect clear absent");
+    click(*clear);
+    require(s.tree_select().snapshot(target).value.empty(), "TreeSelect actual clear failed");
+    open_selector(target);
+    const auto archive = s.tree().snapshot(original_target.tree).rows[3];
+    click(archive.title);
+    require(s.tree_select().snapshot(target).value.empty(), "Disabled archive was selected");
+    key(input::Key::escape);
+    action("gallery.tree-select.node-disabled", workflow);
+    open_selector(target);
+    click(archive.title);
+    require(s.tree_select().snapshot(target).value == String{u8"archive"}, "Enabled archive could not be selected");
+    action("gallery.tree-select.node-disabled", workflow);
+    require(s.tree_select().snapshot(target).value == String{u8"archive"}, "Disabling accepted node cleared authority");
+    action("gallery.tree-select.close-authority", workflow);
+    open_selector(target);
+    auto previous_closes = close_count();
+    outside();
+    require(s.tree_select().snapshot(target).open && close_count() == previous_closes + 1,
+            "One focused outside click duplicated close or overrode refusal");
+    action("gallery.tree-select.close-authority", workflow);
+    previous_closes = close_count();
+    outside();
+    require(!s.tree_select().snapshot(target).open && close_count() == previous_closes + 1,
+            "Next outside click could not retry accepted close");
+    for (const auto gate : {"disabled", "readonly", "visible"}) {
+        action(std::string{"gallery.tree-select."} + gate, workflow);
+        require(!s.tree_select().snapshot(target).open, "TreeSelect gate retained popup");
+        if (std::string_view{gate} == "readonly") {
+            reveal(target_editor.component);
+            click(target_editor.component);
+            key(input::Key::down);
+            require(!s.tree_select().snapshot(target).open, "Read-only TreeSelect opened");
+        } else {
+            require(!s.interactions().require(target_editor.interaction).eligible ||
+                        !s.interactions().branch_active(target_editor.interaction),
+                    "TreeSelect hidden/disabled input remained eligible");
+        }
+        action("gallery.tree-select.restore", workflow);
+        require(s.focus().state().focused == target_editor.interaction && !s.tree_select().snapshot(target).open,
+                "External restore did not recover selector without reopening");
+    }
+    action("gallery.tree-select.submit", workflow);
+    feedback("gallery.tree-select.form-feedback", "请选择交付目标");
+    open_selector(field);
+    key(input::Key::home);
+    key(input::Key::down);
+    key(input::Key::down);
+    key(input::Key::enter);
+    require(s.tree_select().snapshot(field).value == String{u8"guide"}, "Native Form TreeSelect choice failed");
+    action("gallery.tree-select.submit", workflow);
+    feedback("gallery.tree-select.form-feedback", "已提交目标=guide");
+    action("gallery.tree-select.reset", workflow);
+    action("gallery.tree-select.reset", workflow);
+    require(s.tree_select().snapshot(field).value.empty() &&
+                f.inputs->editors().require(field_editor.editor).value().empty() &&
+                s.focus().state().focused == field_editor.interaction && !f.inputs->sessions().active().valid(),
+            "Focused same-value Form reset changed focus/session or retained value");
+    feedback("gallery.tree-select.form-feedback", "已重置目标");
+    open_selector(target);
+    key(input::Key::home);
+    const auto focused_row = s.tree().snapshot(original_target.tree).rows[0];
+    const auto row_bounds = bounds(focused_row.component);
+    const auto title_bounds = bounds(focused_row.title);
+    const float title_padding =
+        s.components().theme_scope(original_target.tree)->snapshot().tree().metrics.padding_inline;
+    const runtime::Rect focused_content{title_bounds.x - title_padding, row_bounds.y,
+                                        title_bounds.width + 2 * title_padding, row_bounds.height};
+    focus_edges(focused_content, false);
+    require(glyphs(original_target.tree, s.tree_select().snapshot(target).popup, true) > 0,
+            "TreeSelect actual popup glyph absent");
+    require(s.hit_test().hit_test({bounds(focused_row.title).x + 2, bounds(focused_row.title).y + 2}) ==
+                focused_row.interaction,
+            "TreeSelect row glyph/hit mismatch");
+    key(input::Key::escape);
+    native_fill(bounds(target_editor.component), {16, 12, width - 32, 876});
+    require(glyphs(target_editor.component, bounds(target_editor.component)) > 0, "TreeSelect selector glyph absent");
+    retained();
+    std::cout << "TreeSelect Default/1200 business/glyph/fill/hit/focus/retention passed\n";
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
     definition.set_motion_enabled(false);
     Fixture f;
     f.surfaces->mount(definition.content, f.inputs.get());
+    std::cout << "initial_buttons=" << f.host->mounted_buttons().size()
+              << " initial_interactions=" << f.host->interactions().size() << '\n';
+    require(f.host->mounted_buttons().size() == 433 && f.host->interactions().size() == 1593,
+            "TreeSelect initial Gallery inventory drifted");
     require(f.host->layout_and_synchronize({1200, 60000}, {0, 0, 1200, 60000}, {24, 20}), "inventory layout failed");
     const auto telemetry = definition.telemetry();
     std::cout << "stable_ids=" << definition.stable_test_ids.size()
@@ -7787,15 +8307,16 @@ void print_gallery_inventory() {
               << " statistics=" << f.host->services().statistic().mounted().size()
               << " rates=" << f.host->services().rate().mounted().size()
               << " auto_completes=" << f.host->services().auto_complete().mounted().size()
-              << " trees=" << f.host->services().tree().mounted().size() << '\n';
+              << " trees=" << f.host->services().tree().mounted().size()
+              << " tree_selects=" << f.host->services().tree_select().mounted().size() << '\n';
     require(
-        definition.stable_test_ids.size() == 441 && definition.navigation_control_count == 93 &&
-            f.host->mounted_buttons().size() == 422 && f.host->interactions().size() == 1533 &&
-            f.host->scene_composer().interaction_order().size() == 753 && telemetry.live_samples == 305 &&
-            telemetry.theme_content_runs == 68 && f.inputs->mounted_inputs().size() == 160 &&
+        definition.stable_test_ids.size() == 458 && definition.navigation_control_count == 93 &&
+            f.host->mounted_buttons().size() == 433 && f.host->interactions().size() == 1593 &&
+            f.host->scene_composer().interaction_order().size() == 771 && telemetry.live_samples == 307 &&
+            telemetry.theme_content_runs == 68 && f.inputs->mounted_inputs().size() == 163 &&
             f.host->services().select().mounted().size() == 24 && f.selections->mounted().size() == 47 &&
             f.host->services().descriptions().mounted().size() == 1 &&
-            f.host->services().skeleton().mounted().size() == 6 && f.host->services().popover().mounted().size() == 2 &&
+            f.host->services().skeleton().mounted().size() == 6 && f.host->services().popover().mounted().size() == 4 &&
             f.host->services().notices().holders().size() == 2 && f.host->services().timeline().mounted().size() == 1 &&
             f.host->services().modal().mounted().size() == 13 && f.host->services().menu().mounted().size() == 2 &&
             f.host->services().dropdown().mounted().size() == 1 &&
@@ -7803,19 +8324,28 @@ void print_gallery_inventory() {
             f.host->services().segmented().mounted().size() == 3 &&
             f.host->services().empty_result().empties().size() == 3 &&
             f.host->services().empty_result().results().size() == 3 &&
-            f.host->services().form().mounted().size() == 4 && f.host->services().form().items().size() == 7 &&
+            f.host->services().form().mounted().size() == 5 && f.host->services().form().items().size() == 8 &&
             f.host->services().date_picker().mounted().size() == 2 &&
             f.host->services().time_picker().mounted().size() == 2 &&
             f.host->services().breadcrumb().mounted().size() == 2 && f.host->services().steps().mounted().size() == 1 &&
             f.host->services().avatar().mounted().size() == 260 && f.host->services().avatar().groups().size() == 1 &&
             f.host->services().statistic().mounted().size() == 2 && f.host->services().rate().mounted().size() == 1 &&
-            f.host->services().auto_complete().mounted().size() == 2 && f.host->services().tree().mounted().size() == 1,
-        "Tree/AutoComplete exact Gallery inventory drifted");
+            f.host->services().auto_complete().mounted().size() == 2 &&
+            f.host->services().tree().mounted().size() == 3 && f.host->services().tree_select().mounted().size() == 2,
+        "TreeSelect exact Gallery inventory drifted");
 }
 } // namespace
 
 int main(int argc, char** argv) {
     try {
+        if (argc == 2 && std::string_view{argv[1]} == "--frame-contract-only") {
+            test_token_gallery_frame_contract();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--tree-select-only") {
+            test_tree_select_gallery_after_document_scroll();
+            return 0;
+        }
         if (argc == 2 && std::string_view{argv[1]} == "--tree-autocomplete-only") {
             test_tree_autocomplete_gallery_after_document_scroll();
             return 0;
@@ -7900,6 +8430,7 @@ int main(int argc, char** argv) {
         test_overlay_and_timeline_gallery_after_document_scroll();
         test_member_metric_gallery_after_document_scroll();
         test_tree_autocomplete_gallery_after_document_scroll();
+        test_tree_select_gallery_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

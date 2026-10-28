@@ -289,6 +289,26 @@ struct GalleryState final {
     ryn::Signal<ryn::String> project_note{ryn::String{u8"项目处理备注"}};
     ryn::Signal<ryn::String> project_saved{ryn::String{u8"尚未保存"}};
     ryn::InputRef project_note_ref;
+    ryn::Signal<ryn::String> destination_value{ryn::String{u8"guide"}};
+    ryn::Signal<bool> destination_open{false};
+    ryn::Signal<ryn::TreeKeys> destination_expanded{ryn::TreeKeys{u8"project", u8"docs"}};
+    ryn::Signal<bool> destination_accept_value{true};
+    ryn::Signal<bool> destination_accept_close{true};
+    ryn::Signal<bool> destination_renamed{false};
+    ryn::Signal<bool> destination_archive_disabled{true};
+    ryn::Signal<bool> destination_disabled{false};
+    ryn::Signal<bool> destination_read_only{false};
+    ryn::Signal<bool> destination_visible{true};
+    ryn::Signal<int> destination_closes{0};
+    ryn::Signal<ryn::String> destination_request{ryn::String{u8"尚未修改"}};
+    ryn::Signal<ryn::String> destination_note{ryn::String{u8"安排项目交付"}};
+    ryn::Signal<ryn::String> destination_saved{ryn::String{u8"尚未保存"}};
+    ryn::TreeSelectRef destination_ref;
+    ryn::InputRef destination_note_ref;
+    ryn::FormRef destination_form;
+    ryn::FormField<ryn::String> destination_field{ryn::String{}};
+    ryn::TreeSelectRef destination_form_ref;
+    ryn::Signal<ryn::String> destination_form_feedback{ryn::String{u8"表单尚未保存"}};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -301,6 +321,7 @@ struct GalleryState final {
     TokenGalleryTelemetry telemetry;
 
     GalleryState() {
+        destination_field.required(ryn::String{u8"请选择交付目标"});
         form_name.required(ryn::String{u8"请输入名称"});
         form_role.required(ryn::String{u8"请选择角色"});
         form_count.required(ryn::String{u8"请输入数量"}).validator([](ryn::InputNumberValue value) {
@@ -787,6 +808,23 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.tree.visible",
     "gallery.tree.locked",
     "gallery.tree.restore",
+    "gallery.tree-select.destination",
+    "gallery.tree-select.feedback",
+    "gallery.tree-select.selector",
+    "gallery.tree-select.value-authority",
+    "gallery.tree-select.close-authority",
+    "gallery.tree-select.rename",
+    "gallery.tree-select.node-disabled",
+    "gallery.tree-select.disabled",
+    "gallery.tree-select.readonly",
+    "gallery.tree-select.visible",
+    "gallery.tree-select.restore",
+    "gallery.tree-select.note",
+    "gallery.tree-select.save",
+    "gallery.tree-select.form",
+    "gallery.tree-select.form-feedback",
+    "gallery.tree-select.submit",
+    "gallery.tree-select.reset",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -4974,6 +5012,200 @@ void add_project_tree_samples(const std::shared_ptr<GalleryState>& state) {
          }});
     ++state->telemetry.live_samples;
 }
+
+void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             const auto items = [state] {
+                 std::vector<TreeSelectItem> assets;
+                 for (int i = 1; i <= 14; ++i) {
+                     assets.emplace_back(utf8("deliverable-" + std::to_string(i)), utf8("交付件 " + std::to_string(i)));
+                 }
+                 return std::vector<TreeSelectItem>{TreeSelectItem{
+                     u8"project",
+                     u8"RynUI 项目",
+                     {TreeSelectItem{
+                          u8"docs",
+                          u8"文档",
+                          {TreeSelectItem{u8"guide", bind([state] {
+                                              return String{state->destination_renamed.get() ? u8"上手指南"
+                                                                                             : u8"使用指南"};
+                                          })},
+                           TreeSelectItem{u8"archive", u8"归档"}.disabled(state->destination_archive_disabled)}},
+                      TreeSelectItem{u8"assets", u8"交付件", std::move(assets)}}}};
+             };
+             Text(TextProps{}
+                      .content(u8"gallery.tree-select.destination · TreeSelect · 层级目标")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.tree-select.feedback · 接受值=" +
+                                      std::string{state->destination_value.get().bytes()} +
+                                      " · 关闭请求=" + std::to_string(state->destination_closes.get()) + " · " +
+                                      std::string{state->destination_request.get().bytes()} + " · " +
+                                      std::string{state->destination_saved.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             TreeSelect(TreeSelectProps{}
+                            .value(state->destination_value)
+                            .open(state->destination_open)
+                            .treeExpandedKeys(state->destination_expanded)
+                            .ref(state->destination_ref)
+                            .allowClear()
+                            .placeholder(u8"gallery.tree-select.selector · 选择交付目标")
+                            .listHeight(160)
+                            .disabled(state->destination_disabled)
+                            .readOnly(state->destination_read_only)
+                            .visible(state->destination_visible)
+                            .onChange([state](String value) {
+                                state->destination_request.set(utf8(
+                                    std::string{state->destination_accept_value.get() ? "接受选择=" : "拒绝选择="} +
+                                    std::string{value.bytes()}));
+                                if (state->destination_accept_value.get()) {
+                                    state->destination_value.set(value);
+                                }
+                            })
+                            .onOpenChange([state](bool open) {
+                                if (open) {
+                                    state->destination_open.set(true);
+                                } else {
+                                    state->destination_closes.set(state->destination_closes.get() + 1);
+                                    if (state->destination_accept_close.get()) {
+                                        state->destination_open.set(false);
+                                    }
+                                }
+                            })
+                            .onTreeExpand(
+                                [state](TreeExpandInfo info) { state->destination_expanded.set(info.expanded_keys); })
+                            .layout(member_control_margin().width(dp(300))),
+                        items());
+             Space(
+                 SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                 SpaceContent{[state] {
+                     Button(ButtonProps{}
+                                .onClick([state] {
+                                    state->destination_accept_value.set(!state->destination_accept_value.get());
+                                })
+                                .layout(member_control_margin()),
+                            [] { Text(u8"gallery.tree-select.value-authority · 接受/拒绝选择"); });
+                     Button(ButtonProps{}
+                                .onClick([state] {
+                                    state->destination_accept_close.set(!state->destination_accept_close.get());
+                                })
+                                .layout(member_control_margin()),
+                            [] { Text(u8"gallery.tree-select.close-authority · 接受/拒绝关闭"); });
+                     Button(ButtonProps{}
+                                .onClick([state] { state->destination_renamed.set(!state->destination_renamed.get()); })
+                                .layout(member_control_margin()),
+                            [] { Text(u8"gallery.tree-select.rename · 切换指南标题"); });
+                     Button(ButtonProps{}
+                                .onClick([state] {
+                                    state->destination_archive_disabled.set(!state->destination_archive_disabled.get());
+                                })
+                                .layout(member_control_margin()),
+                            [] { Text(u8"gallery.tree-select.node-disabled · 禁用/启用归档"); });
+                     Button(
+                         ButtonProps{}
+                             .onClick([state] { state->destination_disabled.set(!state->destination_disabled.get()); })
+                             .layout(member_control_margin()),
+                         [] { Text(u8"gallery.tree-select.disabled · 禁用/启用选择器"); });
+                     Button(ButtonProps{}
+                                .onClick(
+                                    [state] { state->destination_read_only.set(!state->destination_read_only.get()); })
+                                .layout(member_control_margin()),
+                            [] { Text(u8"gallery.tree-select.readonly · 只读/恢复选择"); });
+                     Button(ButtonProps{}
+                                .onClick([state] { state->destination_visible.set(!state->destination_visible.get()); })
+                                .layout(member_control_margin()),
+                            [] { Text(u8"gallery.tree-select.visible · 显隐选择器"); });
+                     Button(ButtonProps{}
+                                .onClick([state] {
+                                    state->destination_accept_value.set(true);
+                                    state->destination_accept_close.set(true);
+                                    state->destination_disabled.set(false);
+                                    state->destination_read_only.set(false);
+                                    state->destination_visible.set(true);
+                                    state->destination_open.set(false);
+                                    static_cast<void>(state->destination_ref.focus());
+                                })
+                                .layout(member_control_margin()),
+                            [] { Text(u8"gallery.tree-select.restore · 恢复目标选择"); });
+                 }});
+             Input(InputProps{}
+                       .value(state->destination_note)
+                       .ref(state->destination_note_ref)
+                       .onChange([state](String value) { state->destination_note.set(value); })
+                       .placeholder(u8"gallery.tree-select.note · 交付备注")
+                       .layout(member_control_margin().width(dp(300))));
+             Button(ButtonProps{}
+                        .onClick([state] {
+                            state->destination_saved.set(
+                                utf8("已保存目标=" + std::string{state->destination_value.get().bytes()} + " / " +
+                                     std::string{state->destination_note.get().bytes()}));
+                        })
+                        .layout(member_control_margin()),
+                    [] { Text(u8"gallery.tree-select.save · 保存目标备注"); });
+             Text(TextProps{}
+                      .content(u8"gallery.tree-select.form · Form · 交付目标")
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          return utf8("gallery.tree-select.form-feedback · " +
+                                      std::string{state->destination_form_feedback.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Form(FormProps{}
+                      .ref(state->destination_form)
+                      .onFinish([state](FormResult) {
+                          state->destination_form_feedback.set(
+                              utf8("已提交目标=" + std::string{state->destination_field.get().bytes()}));
+                      })
+                      .onFinishFailed(
+                          [state](FormResult) { state->destination_form_feedback.set(String{u8"请选择交付目标"}); })
+                      .layout(LayoutStyle{}.width(state->document_width)),
+                  FormContent{[state, items] {
+                      FormItem(FormItemProps{}
+                                   .field(u8"destination", state->destination_field)
+                                   .label(String{u8"交付目标"})
+                                   .control(state->destination_form_ref),
+                               FormItemContent{[state, items] {
+                                   TreeSelect(TreeSelectProps{}
+                                                  .value(state->destination_field.value())
+                                                  .onChange(state->destination_field.onChange())
+                                                  .ref(state->destination_form_ref)
+                                                  .treeDefaultExpandedKeys({u8"project", u8"docs"})
+                                                  .allowClear()
+                                                  .listHeight(160)
+                                                  .disabled(state->destination_field.disabled())
+                                                  .readOnly(state->destination_field.readOnly())
+                                                  .status(state->destination_field.status())
+                                                  .placeholder(u8"请选择表单目标")
+                                                  .layout(member_control_margin().width(dp(280))),
+                                              items());
+                               }});
+                      Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
+                                Button(ButtonProps{}
+                                           .onClick([state] { static_cast<void>(state->destination_form.submit()); })
+                                           .layout(member_control_margin()),
+                                       [] { Text(u8"gallery.tree-select.submit · 提交交付目标"); });
+                                Button(ButtonProps{}
+                                           .onClick([state] {
+                                               static_cast<void>(state->destination_form_ref.focus());
+                                               static_cast<void>(state->destination_form.reset());
+                                               state->destination_form_feedback.set(String{u8"已重置目标"});
+                                           })
+                                           .layout(member_control_margin()),
+                                       [] { Text(u8"gallery.tree-select.reset · 聚焦后重置目标"); });
+                            }});
+                  }});
+         }});
+    state->telemetry.live_samples += 2;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -5080,6 +5312,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_service_rate_samples(state);
                                                         add_contact_autocomplete_samples(state);
                                                         add_project_tree_samples(state);
+                                                        add_tree_select_destination_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

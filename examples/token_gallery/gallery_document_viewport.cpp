@@ -45,6 +45,7 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                     : identity == "ant.component.rate"          ? "gallery.rate.service "
                                     : identity == "ant.component.auto-complete" ? "gallery.auto-complete.contacts "
                                     : identity == "ant.component.tree"          ? "gallery.tree.project "
+                                    : identity == "ant.component.tree-select"   ? "gallery.tree-select.destination "
                                                                                 : "";
     auto node = reference_node;
     if (!sample.empty()) {

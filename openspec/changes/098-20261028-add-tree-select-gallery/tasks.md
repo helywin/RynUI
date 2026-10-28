@@ -2,7 +2,7 @@
 
 ## 1. 真实示例与基础合同（平台通用）
 
-- [ ] 1.1 追加层级目标／备注与 Form String 两个真实流程、目录锚点、stable IDs、如实 partial overlay／生成目录及使用文档；同步新增 Default/1200 有限视口的真实导航／选择／拒绝重试／清空／门禁／提交重置 focused 基础测试和精确 inventory；官方 MSVC windows-msvc-debug 构建、基础 focused、inventory、八项 contracts、generator 与父基线比较通过后提交／推送 main 并核 SHA。
+- [x] 1.1 追加层级目标／备注与 Form String 两个真实流程、目录锚点、stable IDs、如实 partial overlay／生成目录及使用文档；同步新增 Default/1200 有限视口的真实导航／选择／拒绝重试／清空／门禁／提交重置 focused 基础测试和精确 inventory；官方 MSVC windows-msvc-debug 构建、基础 focused、inventory、八项 contracts、generator 与父基线比较通过后提交／推送 main 并核 SHA。
 
 ## 2. 三主题双宽与组合保持（平台通用）
 

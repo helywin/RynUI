@@ -45,6 +45,12 @@ config.tree_select.tokens.tree.indent_size = ryn::dp(20);
 
 inherit、局部 seed/algorithm、override、序列化/hash、dirty 和后代预发布校验均属于 Theme 合同。未启用的局部 seed 不改变继承。最终节点字号／图标字号量化必须在可渲染范围内；失败更新保留原 snapshot，不能靠先发布再在 Text 中抛错。
 
-首版不包含多选／checkbox、搜索、异步、动态拓扑、富节点／popupRender、虚拟化、动画、RTL/Web/AT 及交互 Gallery。首版上限是主动约束，超限配置会拒绝，不静默截断。
+原生首版不包含多选／checkbox、搜索、异步、动态拓扑、富节点／popupRender、虚拟化、动画、RTL/Web/AT。首版上限是主动约束，超限配置会拒绝，不静默截断。交互 Gallery 由 098 独立接入与验收。
 
 平台验收与准确完成状态见 `openspec/changes/097-20261028-add-native-tree-select/tasks.md`。MSVC HEADLESS／Recording 证据不代表实际 GPU／原生窗口、Linux 或系统 IME／AT 通过。
+
+## 交互 Gallery
+
+Gallery 目录中的 TreeSelect 跳到“层级目标”。这里可选择父／叶节点、更新指南标题、启用归档、清空目标及编辑保存备注；接受／拒绝选择和关闭的两个开关独立控制父级回写。禁用／只读／显隐及恢复按钮位于选择器外部，恢复只恢复可操作性，不擅自重新打开被抑制的弹层。
+
+下方“交付目标”使用真实 Form String 字段与必填反馈。提交反馈读取接受值，“聚焦后重置目标”先通过真实 ref 聚焦 selector 再 reset，可重复执行同值重置。该 selector 是只读显示，不启动编辑／IME session。098 的实际验收进度见 [任务](../openspec/changes/098-20261028-add-tree-select-gallery/tasks.md)，不沿用旧批次完整 Gallery 或平台结果。

@@ -798,16 +798,28 @@
     },
     {
       "identity": "ant.component.tree-select",
-      "status": "planned",
-      "summary": "树选择（TreeSelect）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生单值 TreeSelect 已提供固定层级、受控值/开合/展开、清空、键盘与有限列表、Form String 和独立 Theme；098 Gallery 展示目标选择与表单流程，验收状态见 tasks/evidence。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "固定 String key 层级、单选、受控值/开合/展开、清空与响应式节点标题/禁用",
+        "原生 retained Input/Popover/Tree、键盘/有限滚动、独立 Theme 与 Form String reset",
+        "Gallery 目标/备注与表单提交、受控拒绝和门禁恢复；平台通用验证按 098 tasks/evidence 记录"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "多选/checkbox、搜索、动态拓扑、异步、富节点/自定义 popup 与虚拟化",
+        "动画、RTL/Web/辅助技术以及组件 native/GPU/Linux/系统 IME 分平台验收"
       ],
       "evidence_identifiers": [
-        "source:components/tree-select/index.en-US.md"
+        "source:components/tree-select/index.en-US.md",
+        "openspec:097-20261028-add-native-tree-select",
+        "api:include/ryn/tree_select.hpp",
+        "runtime:src/component/tree_select_component.cpp",
+        "test:rynui.tree_select_model",
+        "test:rynui.tree_select_keyboard",
+        "test:rynui.tree_select_form",
+        "gallery.tree-select.destination",
+        "gallery.tree-select.form",
+        "openspec:098-20261028-add-tree-select-gallery"
       ]
     },
     {
