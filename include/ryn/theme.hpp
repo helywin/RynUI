@@ -1639,6 +1639,63 @@ struct TreeThemeConfig final {
     friend bool operator==(const TreeThemeConfig&, const TreeThemeConfig&) = default;
 };
 
+struct TreeSelectControlToken final {
+    Color selector_background;
+    Color hover_border_color;
+    Color active_border_color;
+    Color active_outline_color;
+    Color popup_background;
+    float popup_padding{};
+    float border_radius{};
+    float gap{};
+    ShadowList shadow;
+    std::int32_t z_index_popup{1050};
+
+    [[nodiscard]] auto colors() const {
+        return std::array{selector_background, hover_border_color, active_border_color, active_outline_color,
+                          popup_background};
+    }
+
+    [[nodiscard]] auto metrics() const {
+        return std::array{popup_padding, border_radius, gap};
+    }
+
+    friend bool operator==(const TreeSelectControlToken&, const TreeSelectControlToken&) = default;
+};
+
+struct TreeSelectControlOverride final {
+    std::optional<Color> selector_background;
+    std::optional<Color> hover_border_color;
+    std::optional<Color> active_border_color;
+    std::optional<Color> active_outline_color;
+    std::optional<Color> popup_background;
+    std::optional<LogicalLength> popup_padding;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> gap;
+    std::optional<ShadowList> shadow;
+    std::optional<std::int32_t> z_index_popup;
+    friend bool operator==(const TreeSelectControlOverride&, const TreeSelectControlOverride&) = default;
+};
+
+struct TreeSelectThemeToken final {
+    TreeSelectControlToken selector;
+    TreeThemeToken tree;
+    friend bool operator==(const TreeSelectThemeToken&, const TreeSelectThemeToken&) = default;
+};
+
+struct TreeSelectTokenOverride final {
+    TreeSelectControlOverride selector;
+    TreeTokenOverride tree;
+    friend bool operator==(const TreeSelectTokenOverride&, const TreeSelectTokenOverride&) = default;
+};
+
+struct TreeSelectThemeConfig final {
+    TreeSelectTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TreeSelectThemeConfig&, const TreeSelectThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
@@ -1688,6 +1745,7 @@ struct ThemeConfig final {
     StatisticThemeConfig statistic;
     TreeThemeConfig tree;
     AutoCompleteThemeConfig auto_complete;
+    TreeSelectThemeConfig tree_select;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -2352,6 +2410,10 @@ public:
         return *auto_complete_;
     }
 
+    [[nodiscard]] const TreeSelectThemeToken& tree_select() const noexcept {
+        return *tree_select_;
+    }
+
 private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
@@ -2372,7 +2434,8 @@ private:
         std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
         std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
         std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
-        std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete);
+        std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
+        std::shared_ptr<const TreeSelectThemeToken> tree_select);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2402,6 +2465,7 @@ private:
     std::shared_ptr<const StatisticThemeToken> statistic_;
     std::shared_ptr<const TreeThemeToken> tree_;
     std::shared_ptr<const AutoCompleteThemeToken> auto_complete_;
+    std::shared_ptr<const TreeSelectThemeToken> tree_select_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;

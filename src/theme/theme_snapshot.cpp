@@ -4102,7 +4102,8 @@ ThemeSnapshot::ThemeSnapshot(
     std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
     std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
     std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
-    std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete)
+    std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
+    std::shared_ptr<const TreeSelectThemeToken> tree_select)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
@@ -4111,13 +4112,14 @@ ThemeSnapshot::ThemeSnapshot(
       form_(std::move(form)), breadcrumb_(std::move(breadcrumb)), steps_(std::move(steps)),
       time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), timeline_(std::move(timeline)),
       avatar_(std::move(avatar)), rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
-      auto_complete_(std::move(auto_complete)), descriptions_(std::move(descriptions)), popover_(std::move(popover)),
-      message_(std::move(message)), notification_(std::move(notification)), modal_(std::move(modal)),
-      tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
-      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
-      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
-      table_(std::move(table)), collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      auto_complete_(std::move(auto_complete)), tree_select_(std::move(tree_select)),
+      descriptions_(std::move(descriptions)), popover_(std::move(popover)), message_(std::move(message)),
+      notification_(std::move(notification)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
+      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
+      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
+      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
+      collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4606,6 +4608,38 @@ ThemeSnapshot::ThemeSnapshot(
         status_json << ']';
     }
     status_json << "]}";
+    status_json << ",\"treeSelect\":{\"colors\":[";
+    first = true;
+    for (const auto value : tree_select_->selector.colors()) {
+        color(value);
+    }
+    for (const auto value : tree_select_->tree.colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (const auto value : tree_select_->selector.metrics()) {
+        metric(value);
+    }
+    for (const auto value : tree_select_->tree.metrics.values()) {
+        metric(value);
+    }
+    hash_integer(identity_, tree_select_->tree.metrics.font_family);
+    hash_integer(identity_, tree_select_->selector.z_index_popup);
+    hash_shadow(identity_, tree_select_->selector.shadow);
+    status_json << "],\"fontFamily\":" << static_cast<int>(tree_select_->tree.metrics.font_family)
+                << ",\"zIndexPopup\":" << tree_select_->selector.z_index_popup << ",\"shadow\":[";
+    for (std::size_t i = 0; i < tree_select_->selector.shadow.size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& shadow = tree_select_->selector.shadow[i];
+        status_json << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                    << shadow.blur << ',' << shadow.spread << ',';
+        append_color(status_json, shadow.color);
+        status_json << ']';
+    }
+    status_json << "]}";
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -4744,7 +4778,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            *left.message_ == *right.message_ && *left.notification_ == *right.notification_ &&
            *left.timeline_ == *right.timeline_ && *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ &&
            *left.statistic_ == *right.statistic_ && *left.tree_ == *right.tree_ &&
-           *left.auto_complete_ == *right.auto_complete_;
+           *left.auto_complete_ == *right.auto_complete_ && *left.tree_select_ == *right.tree_select_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -5728,18 +5762,94 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         }
         return token;
     }();
-    return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
-                         std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
-                         std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
-                         std::move(tabs), std::move(modal), std::move(drawer), std::move(popconfirm), std::move(menu),
-                         std::move(dropdown), std::make_shared<const detail::InputTokenSet>(std::move(input)),
-                         std::move(algorithms), std::move(tag), std::move(badge), std::move(alert), std::move(spin),
-                         std::move(progress), std::move(input_number), std::move(pagination), std::move(table),
-                         std::move(collapse), std::move(segmented), std::move(empty), std::move(result),
-                         std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(steps),
-                         std::move(time_picker), std::move(skeleton), std::move(descriptions), std::move(popover),
-                         std::move(message), std::move(notification), std::move(timeline), std::move(avatar),
-                         std::move(rate), std::move(statistic), std::move(tree), std::move(auto_complete));
+    auto tree_select = [&] {
+        auto token = std::make_shared<TreeSelectThemeToken>();
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.tree_select.algorithm;
+        if (inherit) {
+            *token = parent->tree_select();
+        } else {
+            auto component_seed = seed;
+            auto component_map = map;
+            auto component_alias = alias;
+            if (config.tree_select.algorithm) {
+                apply_seed_override(component_seed, config.tree_select.seed);
+                component_map = derive_map(component_seed, algorithms);
+                component_alias = derive_alias(component_seed, component_map, algorithms);
+            }
+            const auto recipe = derive_select(component_seed, component_map, component_alias, algorithms);
+            token->selector = {recipe.colors.selector_background,
+                               recipe.colors.hover_border_color,
+                               recipe.colors.active_border_color,
+                               recipe.colors.active_outline_color,
+                               recipe.colors.popup_background,
+                               recipe.metrics.popup_padding,
+                               recipe.metrics.border_radius,
+                               recipe.metrics.gap,
+                               recipe.shadow,
+                               recipe.z_index_popup};
+            token->tree = detail::derive_tree(component_seed, component_map, component_alias, recipe);
+        }
+        auto& selector = token->selector;
+        const auto& o = config.tree_select.tokens.selector;
+        if (o.selector_background) {
+            selector.selector_background = *o.selector_background;
+        }
+        if (o.hover_border_color) {
+            selector.hover_border_color = *o.hover_border_color;
+        }
+        if (o.active_border_color) {
+            selector.active_border_color = *o.active_border_color;
+        }
+        if (o.active_outline_color) {
+            selector.active_outline_color = *o.active_outline_color;
+        }
+        if (o.popup_background) {
+            selector.popup_background = *o.popup_background;
+        }
+        const auto length = [](float& target, const std::optional<LogicalLength>& value) {
+            if (value) {
+                if (value->is_auto()) {
+                    throw std::invalid_argument("TreeSelect token cannot be auto");
+                }
+                target = value->value();
+            }
+        };
+        length(selector.popup_padding, o.popup_padding);
+        length(selector.border_radius, o.border_radius);
+        length(selector.gap, o.gap);
+        if (o.shadow) {
+            selector.shadow = *o.shadow;
+        }
+        if (o.z_index_popup) {
+            selector.z_index_popup = *o.z_index_popup;
+        }
+        double extents = 0;
+        for (const float value : selector.metrics()) {
+            if (!std::isfinite(value) || value < 0) {
+                throw std::invalid_argument("TreeSelect metrics must be finite and nonnegative");
+            }
+            extents += static_cast<double>(value) * 65536;
+        }
+        if (!std::isfinite(extents) || extents > std::numeric_limits<float>::max() || selector.z_index_popup < 0) {
+            throw std::invalid_argument("TreeSelect combined extents or popup order are invalid");
+        }
+        detail::apply_tree_override(token->tree, config.tree_select.tokens.tree);
+        return token;
+    }();
+    return ThemeSnapshot(
+        std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text), std::move(switch_token),
+        std::move(checkbox), std::move(radio), std::move(typography), std::move(divider), std::move(slider),
+        std::move(tooltip), std::move(select), std::move(card), std::move(tabs), std::move(modal), std::move(drawer),
+        std::move(popconfirm), std::move(menu), std::move(dropdown),
+        std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms), std::move(tag),
+        std::move(badge), std::move(alert), std::move(spin), std::move(progress), std::move(input_number),
+        std::move(pagination), std::move(table), std::move(collapse), std::move(segmented), std::move(empty),
+        std::move(result), std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(steps),
+        std::move(time_picker), std::move(skeleton), std::move(descriptions), std::move(popover), std::move(message),
+        std::move(notification), std::move(timeline), std::move(avatar), std::move(rate), std::move(statistic),
+        std::move(tree), std::move(auto_complete), std::move(tree_select));
 }
 
 } // namespace ryn

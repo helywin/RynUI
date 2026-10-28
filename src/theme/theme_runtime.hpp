@@ -131,6 +131,12 @@ public:
     [[nodiscard]] const AutoCompleteThemeToken& auto_complete_typography() const;
     [[nodiscard]] const AutoCompleteThemeToken& auto_complete_effects() const;
     [[nodiscard]] const AutoCompleteThemeToken& auto_complete_order() const;
+    [[nodiscard]] const TreeSelectThemeToken& tree_select_colors() const;
+    [[nodiscard]] const TreeSelectThemeToken& tree_select_metrics() const;
+    [[nodiscard]] const TreeSelectThemeToken& tree_select_effects() const;
+    [[nodiscard]] const TreeSelectThemeToken& tree_select_order() const;
+    [[nodiscard]] const TreeSelectThemeToken& tree_select_tree_colors() const;
+    [[nodiscard]] const TreeSelectThemeToken& tree_select_tree_metrics() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_colors() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_metrics() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_effects() const;

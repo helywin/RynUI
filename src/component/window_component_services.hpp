@@ -49,6 +49,7 @@ class AvatarComponentHost;
 class RateComponentHost;
 class StatisticComponentHost;
 class TreeComponentHost;
+class TreeSelectComponentHost;
 class BreadcrumbComponentHost;
 class StepsComponentHost;
 class SkeletonComponentHost;
@@ -239,6 +240,10 @@ public:
 
     [[nodiscard]] AutoCompleteComponentHost& auto_complete() noexcept {
         return *auto_complete_;
+    }
+
+    [[nodiscard]] TreeSelectComponentHost& tree_select() noexcept {
+        return *tree_select_;
     }
 
     [[nodiscard]] DatePickerComponentHost& date_picker() noexcept {
@@ -468,6 +473,7 @@ private:
     std::unique_ptr<RateComponentHost> rate_;
     std::unique_ptr<StatisticComponentHost> statistic_;
     std::unique_ptr<TreeComponentHost> tree_;
+    std::unique_ptr<TreeSelectComponentHost> tree_select_;
     std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;
     std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<SkeletonComponentHost> skeleton_;

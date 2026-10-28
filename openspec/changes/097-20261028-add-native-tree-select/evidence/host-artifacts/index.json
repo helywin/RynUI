@@ -1,0 +1,889 @@
+{
+  "baseline": "d438e070c2815c5560dde836adab58b1b0d591ee",
+  "head_before_commit": "d438e070c2815c5560dde836adab58b1b0d591ee",
+  "artifacts": [
+    {
+      "path": "driver.ps1",
+      "sha256": "ab8d8a062d3153342ca4fea8b8bfd3fb938047069cfba86068d34bdfa2df6e71"
+    },
+    {
+      "path": "097-nested-initial-before.log",
+      "sha256": "f2e92c6134128d47332f02349edae8d39a83e1f6c488cd4cdd506861bdd56aa7"
+    },
+    {
+      "path": "097-invalid-autofocus-probe.log",
+      "sha256": "2dce6847a86a648aa83ac79d287df7bbfe2c1ad33ec1fa6d650ed42d1c2108f4"
+    },
+    {
+      "path": "097-initial-readonly-build-error.log",
+      "sha256": "285b7a3e345336b55c67973ec749ec1ca4f2b03312c723fe3953e52781c8f8fd"
+    },
+    {
+      "path": "097-initial-glyphstore-build-error.log",
+      "sha256": "0e70026074ac744f407cd1c1e50eed690380e4e8d898f5e1594ae83b344a234c"
+    },
+    {
+      "path": "097-initial-font-family-build-error.log",
+      "sha256": "0fb41f6e3cc800283bcb9e037521ee15c28b81d02c39df6f8afa9c23ccf94a42"
+    },
+    {
+      "path": "097-initial-form-button-build-error.log",
+      "sha256": "253f6ad2a3615c2406fb20c58f0ff8daa6e4c26777f94760dd07f1ccb5842aa0"
+    },
+    {
+      "path": "097-initial-partial-build.log",
+      "sha256": "89f62bc83c0d844e6a848587e2e9017a50a0e47a26eb0e1317eef32b41da16a0"
+    },
+    {
+      "path": "097-initial-partial-build-result.json",
+      "sha256": "91effbf5316a93be75291452d39aff8d258dd341f0d247272925194132fb3f82"
+    },
+    {
+      "path": "097-initial-partial-build-inventory.json",
+      "sha256": "3ff3089aa70c8f0d7d796f7a7a1214de3c081952f9d82f90fbde81d5f7d54bc5"
+    },
+    {
+      "path": "097-initial-missing-programs.log",
+      "sha256": "d7fbf1381188a5c5821f2155f09d8b58e814e09c3e98cc5843922d71ab5291ba"
+    },
+    {
+      "path": "097-initial-missing-programs-result.json",
+      "sha256": "7b85c2a682d2a75ebf9969406602fa5debda6e6342fae3613e3c07b1757eb266"
+    },
+    {
+      "path": "097-initial-missing-programs.xml",
+      "sha256": "88c9b48700776dc0d9a3ae92491192b3a8bce1ac6673f69dc87c86ea9ebc0b4d"
+    },
+    {
+      "path": "097-host-format.log",
+      "sha256": "addb35cae265b9366f3af1dc789e5403b6ddc93b2a2855ffaa5b97ef1981e5cd"
+    },
+    {
+      "path": "097-host-doctor.json",
+      "sha256": "c852cd193b6ebfe5f839b53d87f99c1cecd6a9a89b9a87c4b376e32ff8624292"
+    },
+    {
+      "path": "097-host-validation.log",
+      "sha256": "6f56789c500cf66fca1bf7c146132b6d140cdfb6081afa69cbd5e1436234e1f5"
+    },
+    {
+      "path": "097-Debug-combined-build.log",
+      "sha256": "1dd78d57425a82d4a07a14f45e755c76985c8797e3f18a8d4edb7f40a0434072"
+    },
+    {
+      "path": "097-Debug-combined-build-result.json",
+      "sha256": "a203c5dfb1eb2e69b02a256837102bf0ecbe84784f9e856482d98a646cfde80c"
+    },
+    {
+      "path": "097-Debug-combined-test.log",
+      "sha256": "7dd5b8f4b2c92319a6b01112312bb7589cc95869726721f193b833af7fc7dadf"
+    },
+    {
+      "path": "097-Debug-combined-test-result.json",
+      "sha256": "d9a1772cbbb3b8eaa146dd29559fbee30d45c4b9be46adff3883b652bcdd595a"
+    },
+    {
+      "path": "097-Debug-combined-build-inventory.json",
+      "sha256": "3ff3089aa70c8f0d7d796f7a7a1214de3c081952f9d82f90fbde81d5f7d54bc5"
+    },
+    {
+      "path": "097-Debug-combined-test.xml",
+      "sha256": "d3b889eb9604f46950f793bc6747bb062f632e7602679686af42899ff206fd4f"
+    },
+    {
+      "path": "097-Debug-combined-test-goldens.log",
+      "sha256": "f094419eb73b3f7c8c2ed717b927c0db6dd3a9f14f9505315ca67183ee068bb8"
+    },
+    {
+      "path": "097-Debug-combined-test-preservation.log",
+      "sha256": "49f6647695c8a21e408d53a311a5440ef4680433f1830519dab4dbc0ce164154"
+    },
+    {
+      "path": "097-Release-combined-build.log",
+      "sha256": "86b5784b4155900d2346784871e3e685416fd510b259dac2164cd6717397f151"
+    },
+    {
+      "path": "097-Release-combined-build-result.json",
+      "sha256": "efe85b8de88c8cd8fffeb8f0a4a7a33f78224d0f1ea8b640b713f56eafe5b09b"
+    },
+    {
+      "path": "097-Release-combined-test.log",
+      "sha256": "cdefc144a32157171c91f8b0f6b93077b8e3cffbd8cecdc9f10db18ad8021843"
+    },
+    {
+      "path": "097-Release-combined-test-result.json",
+      "sha256": "038f86b1114f6ad60720cbd5ad356261eea99a74eea3b55a9bc7a206f4f3f137"
+    },
+    {
+      "path": "097-Release-combined-build-inventory.json",
+      "sha256": "ab2a9ea8ed5fcd03809f090eface7839cdb4b96c53ff53bec393e7bb5243565a"
+    },
+    {
+      "path": "097-Release-combined-test.xml",
+      "sha256": "f6f453e0743ce15229b3f5f559b55e734e26d0fedb7d525903366e49de72b087"
+    },
+    {
+      "path": "097-Release-combined-test-goldens.log",
+      "sha256": "f094419eb73b3f7c8c2ed717b927c0db6dd3a9f14f9505315ca67183ee068bb8"
+    },
+    {
+      "path": "097-Release-combined-test-preservation.log",
+      "sha256": "49f6647695c8a21e408d53a311a5440ef4680433f1830519dab4dbc0ce164154"
+    },
+    {
+      "path": "filtered-ninja.log",
+      "sha256": "dbf907b4548e9e4bb217083c5c1de51a69c4548a77ce40a204c83bb15916c419",
+      "derived_from": "out\\build\\windows-msvc-headless\\.ninja_log"
+    }
+  ],
+  "source": [
+    {
+      "path": "include/ryn/rynui.hpp",
+      "size": 1725,
+      "sha256": "c5d02a063362b01b7f1d2451499424a18f3ac6b62cf89604034ee329e99a777d",
+      "mtime_ns": 1793159920796915600,
+      "staged_git_sha256": "c5d02a063362b01b7f1d2451499424a18f3ac6b62cf89604034ee329e99a777d"
+    },
+    {
+      "path": "include/ryn/theme.hpp",
+      "size": 88983,
+      "sha256": "5a9bd21eace712f7afe2bae66e23f6acdc31e9f2af78ebdff9db23c8507ac96b",
+      "mtime_ns": 1793160077794947600,
+      "staged_git_sha256": "5a9bd21eace712f7afe2bae66e23f6acdc31e9f2af78ebdff9db23c8507ac96b"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "size": 14746,
+      "sha256": "e6421f0cc1cdb93e28f562dc4c2c9d024f0b43077afe0dd05de461de0d50e869",
+      "mtime_ns": 1793159696329214100,
+      "staged_git_sha256": "e6421f0cc1cdb93e28f562dc4c2c9d024f0b43077afe0dd05de461de0d50e869"
+    },
+    {
+      "path": "src/component/tree_select_component.cpp",
+      "size": 33660,
+      "sha256": "f07351a7082b6c29f6b5d5941872174257075e8fc0aabbe052a770a1b2812e05",
+      "mtime_ns": 1793160998466524300,
+      "staged_git_sha256": "f07351a7082b6c29f6b5d5941872174257075e8fc0aabbe052a770a1b2812e05"
+    },
+    {
+      "path": "src/component/tree_select_component.hpp",
+      "size": 1898,
+      "sha256": "86403f2f43e317fbaeb5f93298727a132608938791388a4e3d9e4378cc773c90",
+      "mtime_ns": 1793159774288645300,
+      "staged_git_sha256": "86403f2f43e317fbaeb5f93298727a132608938791388a4e3d9e4378cc773c90"
+    },
+    {
+      "path": "src/component/window_component_services.cpp",
+      "size": 23599,
+      "sha256": "8f6345e7a2654556b9ffdf51d3dcbe2829ccb1effd6fbb1cbc6206640bcadef4",
+      "mtime_ns": 1793159696328689600,
+      "staged_git_sha256": "8f6345e7a2654556b9ffdf51d3dcbe2829ccb1effd6fbb1cbc6206640bcadef4"
+    },
+    {
+      "path": "src/component/window_component_services.hpp",
+      "size": 15846,
+      "sha256": "53c26b35109e22df3f385d9217a089a404fc4de0e6ce40b65d7cfc96e989b7f9",
+      "mtime_ns": 1793159696328165800,
+      "staged_git_sha256": "53c26b35109e22df3f385d9217a089a404fc4de0e6ce40b65d7cfc96e989b7f9"
+    },
+    {
+      "path": "src/theme/theme_runtime.cpp",
+      "size": 100818,
+      "sha256": "4825778a2271066321da039837abe52f9e397b0d36529fa4188e410863a0e4b0",
+      "mtime_ns": 1793160096859581300,
+      "staged_git_sha256": "4825778a2271066321da039837abe52f9e397b0d36529fa4188e410863a0e4b0"
+    },
+    {
+      "path": "src/theme/theme_runtime.hpp",
+      "size": 14698,
+      "sha256": "b89a1105a8dc05e5db20fd1ac68bbfd472a053eed68b7df6467f7acb760f2ac7",
+      "mtime_ns": 1793160077797941600,
+      "staged_git_sha256": "b89a1105a8dc05e5db20fd1ac68bbfd472a053eed68b7df6467f7acb760f2ac7"
+    },
+    {
+      "path": "src/theme/theme_runtime_types.hpp",
+      "size": 6515,
+      "sha256": "7f0c18912f3fcfb9691b66d4e2d01f877324cee89f641088756126501ead5253",
+      "mtime_ns": 1793160077797430600,
+      "staged_git_sha256": "7f0c18912f3fcfb9691b66d4e2d01f877324cee89f641088756126501ead5253"
+    },
+    {
+      "path": "src/theme/theme_snapshot.cpp",
+      "size": 280739,
+      "sha256": "acb117bded1dea397d53a4e02d9a1e4806a840a407af4ef153269325bd4e76eb",
+      "mtime_ns": 1793160133885075800,
+      "staged_git_sha256": "acb117bded1dea397d53a4e02d9a1e4806a840a407af4ef153269325bd4e76eb"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "size": 138588,
+      "sha256": "2d286419298a309333602c6f6a589f54632cf86651e3c45defdfba4ca7ffaa03",
+      "mtime_ns": 1793160604380621900,
+      "staged_git_sha256": "2d286419298a309333602c6f6a589f54632cf86651e3c45defdfba4ca7ffaa03"
+    },
+    {
+      "path": "tests/tree_select_component_tests.cpp",
+      "size": 11172,
+      "sha256": "e350f243fa99d25b669d26dae3d952bbf67b7eded80d4b8787650033880f935d",
+      "mtime_ns": 1793159920795284400,
+      "staged_git_sha256": "e350f243fa99d25b669d26dae3d952bbf67b7eded80d4b8787650033880f935d"
+    },
+    {
+      "path": "tests/tree_select_integration_tests.cpp",
+      "size": 22365,
+      "sha256": "dc850320bea8e33034b0482f2e6a17cecf811621d04860fba503bce7d598d70d",
+      "mtime_ns": 1793161257200250700,
+      "staged_git_sha256": "dc850320bea8e33034b0482f2e6a17cecf811621d04860fba503bce7d598d70d"
+    },
+    {
+      "path": "tests/tree_select_model_tests.cpp",
+      "size": 4481,
+      "sha256": "c00e8e0fd3c06d1e1a63adbe2ce9877913c3fc2182d36e0d6704d530db1de853",
+      "mtime_ns": 1793159399804996300,
+      "staged_git_sha256": "c00e8e0fd3c06d1e1a63adbe2ce9877913c3fc2182d36e0d6704d530db1de853"
+    },
+    {
+      "path": "tests/tree_select_theme_tests.cpp",
+      "size": 7663,
+      "sha256": "06ed1aebbc5f21452e5aa03dbf721d1c7e27c60e725db9f368aac968a209ad1a",
+      "mtime_ns": 1793160470804087400,
+      "staged_git_sha256": "06ed1aebbc5f21452e5aa03dbf721d1c7e27c60e725db9f368aac968a209ad1a"
+    }
+  ],
+  "binaries": [
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_select_model_tests.exe",
+      "size": 30887936,
+      "sha256": "9d11068ea7055f30378efab64b5a24733173279feb46de89c459ade8f6da1256",
+      "mtime_ns": 1793161010342410500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_select_component_tests.exe",
+      "size": 30993920,
+      "sha256": "c585ff92f04f1f99206592ca93e2149b01beaf5c6da41a1e408907d63b75fd0b",
+      "mtime_ns": 1793161011844050500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_select_theme_tests.exe",
+      "size": 2222080,
+      "sha256": "2eeb72d37af27ce6fa3c43cedf64d6c04bfd72f6578faa3a2d44e2b87f867029",
+      "mtime_ns": 1793161010682471200,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_select_integration_tests.exe",
+      "size": 31079936,
+      "sha256": "e2507db4dc544e1bf811e5af612ed2e3dfecf8f05c8f91eabc4030aaf21699dd",
+      "mtime_ns": 1793161334880711700,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_model_tests.exe",
+      "size": 257024,
+      "sha256": "708fb8d62657c1f8b9db6ab285779383a4d0842d6a288ced11edbdb8fa3573d3",
+      "mtime_ns": 1793161335098264200,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_component_tests.exe",
+      "size": 31276032,
+      "sha256": "64fdfbd138c57f70b3bb6d90b53690ff27753c252d04de38dd07c9e0e39f158f",
+      "mtime_ns": 1793161336822020400,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_theme_tests.exe",
+      "size": 2222080,
+      "sha256": "92c1046f1fe8f4e543fd1bae0343433bff2276e0ee50a5245d646534863b3a73",
+      "mtime_ns": 1793161337229711000,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_review_tests.exe",
+      "size": 31132672,
+      "sha256": "7806b5c7c7269d5c1737c51246573cb90913d94cc9b5fb5d04e1a37207576081",
+      "mtime_ns": 1793161336705351300,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_tree_r2_tests.exe",
+      "size": 31046656,
+      "sha256": "86215b3856aa67c12d067142660bf5c1b9e12cfb68f007cd1831afbb3ad95b37",
+      "mtime_ns": 1793161334786523000,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_popover_model_tests.exe",
+      "size": 82944,
+      "sha256": "2922130a9872f1dc148b9f70b9aa30aacc3b42ad8f8f92dade8c328322e5358e",
+      "mtime_ns": 1793161418864690100,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_popover_component_tests.exe",
+      "size": 31126016,
+      "sha256": "28ccfc1cc49c21b6bfbffc78773162504fd1821e0ed962ecdfde0c4870f8968d",
+      "mtime_ns": 1793161422525953300,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_popover_theme_tests.exe",
+      "size": 2119680,
+      "sha256": "cda93e0ba6277c2d059a0a41cbea491d703aa0759b0d582e2ea565664b1f6b4e",
+      "mtime_ns": 1793161419075163900,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_popover_public_api_tests.exe",
+      "size": 30851072,
+      "sha256": "3892d70ddb12da79db6cc212f7d05037148dcaab72ec701f43597c7018130c8b",
+      "mtime_ns": 1793161418356259500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_popover_examples_tests.exe",
+      "size": 30939136,
+      "sha256": "59df5dd002f7f16b15d01d6ff537caddae3697bd4ffdafa6fecb842b12dd334c",
+      "mtime_ns": 1793161422209318900,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_popover_integration_tests.exe",
+      "size": 31193600,
+      "sha256": "59c1f69e0c89c57676fc74afaa7e9f09ca7d55a3054e80373fbd43f6cc6a1339",
+      "mtime_ns": 1793161340931704500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_popover_review_tests.exe",
+      "size": 31177216,
+      "sha256": "773ea17aef40950abed9c889bf767385bac8056e54e2fa6b039172cf020c32c2",
+      "mtime_ns": 1793161340604508200,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_form_model_tests.exe",
+      "size": 1173504,
+      "sha256": "83e9645c8582b733c6a528610be7f7128743fb17851a7fc2721702e929afe6a0",
+      "mtime_ns": 1793161342888155900,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_form_component_tests.exe",
+      "size": 31569920,
+      "sha256": "a893eefe74cbcf041afc0235f6379d6c0795bc7b38d7ada9781965aabcd95ac6",
+      "mtime_ns": 1793161344769173700,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_form_theme_tests.exe",
+      "size": 2165248,
+      "sha256": "dea7d2aa1926c458cdfdc7f4c893e86deb11254a745061f04ce656d53b108ec9",
+      "mtime_ns": 1793161343710656800,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_form_public_api_tests.exe",
+      "size": 1473024,
+      "sha256": "75df4b7f6fd5e4fcbf863c3480d3e11f5fc88e6f18133a47e8df62fcaae67024",
+      "mtime_ns": 1793161343266957000,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_auto_complete_r3_tests.exe",
+      "size": 31154688,
+      "sha256": "d552c3bf9d306bf4fef463bd040a549a4963bca58fc93ad9a62ffd82257c021a",
+      "mtime_ns": 1793161339009730500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_component_failure_retirement_tests.exe",
+      "size": 30943232,
+      "sha256": "3b2a6555d1a1e694b39360da00b208cf4b1bd9b68ae41583bbf8366722e53799",
+      "mtime_ns": 1793161338699565500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_time_picker_review_tests.exe",
+      "size": 31259648,
+      "sha256": "f54acfb6c0daeda617861a10e123628544592e39f1bf36ac97d704022db87e6b",
+      "mtime_ns": 1793161342503564000,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_date_picker_review_tests.exe",
+      "size": 31389696,
+      "sha256": "b3d878fddf3c28ad31e69603506ffbb108a8e009706c60f2329f63a501eb2bd8",
+      "mtime_ns": 1793161342886153900,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_focus_order.exe",
+      "size": 2661376,
+      "sha256": "c2efa7d348b2a7f8878e2c9600a6d4b6fa6313d523b01a75add13324df19400c",
+      "mtime_ns": 1793161345894928500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_focus_state.exe",
+      "size": 2740224,
+      "sha256": "831d9d589ede17b5f4ecef3965f45b9d202a05dc59051907bceb5ad8f99f7314",
+      "mtime_ns": 1793161346015145800,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_focus_lifecycle.exe",
+      "size": 2778112,
+      "sha256": "f30c757077553cb67597ffc817b9fc2208975833204c89bed5cc664b9819dfd4",
+      "mtime_ns": 1793161346334996500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_pointer_route.exe",
+      "size": 2785280,
+      "sha256": "911bf074b964ad7d5ffa1af2508b6da3a8ee5db8a4afd38a6d4a81d0beba656a",
+      "mtime_ns": 1793161346300971500,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_input_component.exe",
+      "size": 31616512,
+      "sha256": "cef23b8687bbe4e07a9507da45ac1e616857f7c57182b56d4c5e386cf89a5c19",
+      "mtime_ns": 1793161345458764800,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_select_component.exe",
+      "size": 31138816,
+      "sha256": "d5043862b5eb78f6cd3a114d0c20076c397ab45eda02c9196d725d023b8a627c",
+      "mtime_ns": 1793161348111482000,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_theme_runtime.exe",
+      "size": 2397184,
+      "sha256": "77153752f2a0516d31821fd436f3d88e8edfa9e5786b03f5d3118477857fe16f",
+      "mtime_ns": 1793161345725645900,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_theme_algorithm.exe",
+      "size": 2088448,
+      "sha256": "ad9e28cb03b39966a23bc3b6eeb38b07c8a9f4faf7316523135b7b8659c02c96",
+      "mtime_ns": 1793161345288155700,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_modal_component.exe",
+      "size": 31476224,
+      "sha256": "a712e0dc50d175f6ba182c82cb56001a50a56acfaa575cb2c451f31fbbf64bbe",
+      "mtime_ns": 1793161348184129000,
+      "configuration": "Debug",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_select_model_tests.exe",
+      "size": 2965504,
+      "sha256": "d180d9640db42b383bcbddab26aac2e4b8def5bb76559b64cb969d2fd2d92601",
+      "mtime_ns": 1793161184991947100,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_select_component_tests.exe",
+      "size": 5740032,
+      "sha256": "11b6ca52d4beffd98fec6eeb32fffaff42daf90311bd9470e6f63c84f763f89d",
+      "mtime_ns": 1793161186225008200,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_select_theme_tests.exe",
+      "size": 836608,
+      "sha256": "3298dffb47e13b27666b59ea8c95c71a9bcd92116b0dc7f3a0813e11ed819cce",
+      "mtime_ns": 1793161186477180000,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_select_integration_tests.exe",
+      "size": 6017536,
+      "sha256": "0754ea56210328ba69b3790e18cd7ab489b0800e6babbbdc114b7b130847f6ca",
+      "mtime_ns": 1793161556317386400,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_model_tests.exe",
+      "size": 50176,
+      "sha256": "6acd32a88e764ad2cbf6e8febdd64487f63c851a159df8f2da5c09dd8550f998",
+      "mtime_ns": 1793161556554132300,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_component_tests.exe",
+      "size": 6290944,
+      "sha256": "4f0be68be38c0218ba5e7511795d7c56a0bf3aff5be0c66a0960f162af365ddc",
+      "mtime_ns": 1793161558327074700,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_theme_tests.exe",
+      "size": 834048,
+      "sha256": "580e491ab6fc11e679950aca00625bf05380ac27d37df4b6e6b21cf15675f4fc",
+      "mtime_ns": 1793161557989435900,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_review_tests.exe",
+      "size": 6019072,
+      "sha256": "f8666c285d12bddfbb0efc6a59f425e1254c6813365f569a6505f29e841d7ebf",
+      "mtime_ns": 1793161557761772600,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_tree_r2_tests.exe",
+      "size": 5765632,
+      "sha256": "0b55252cfdf59987af3c3f6bedbedb43084e174eb6cd0d1cbacd4d765d31192b",
+      "mtime_ns": 1793161555035310200,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_popover_model_tests.exe",
+      "size": 17920,
+      "sha256": "dab5c1d1c757a666aa11bad2fabd0740f48204552a2ec3c2e5366edfe3fe2edf",
+      "mtime_ns": 1793161560704327100,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_popover_component_tests.exe",
+      "size": 5970944,
+      "sha256": "f6051fe5c60fdc71853dd5327bc494b90c61a6425390ee08cd7f042c7b09f33e",
+      "mtime_ns": 1793161562098971600,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_popover_theme_tests.exe",
+      "size": 764928,
+      "sha256": "92449bf711471d07d4ff26f0bd8b04c481f60650a49415c57c2280a4cd2fd99a",
+      "mtime_ns": 1793161560897117800,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_popover_public_api_tests.exe",
+      "size": 3982848,
+      "sha256": "59a5c964a5103e640a241fe4425c4b51d7aa419742d493736d2cfa797943c064",
+      "mtime_ns": 1793161560806499700,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_popover_examples_tests.exe",
+      "size": 5366272,
+      "sha256": "6edc2459532c784e1179eafd62f099aa888ef7ebbc205591bb05b98154aeb8b5",
+      "mtime_ns": 1793161562097970900,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_popover_integration_tests.exe",
+      "size": 6655488,
+      "sha256": "131273cb58103b503a6413f92540f7121888d2390b479fe05543e89b472f453f",
+      "mtime_ns": 1793161563371193400,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_popover_review_tests.exe",
+      "size": 5994496,
+      "sha256": "892c8714b95ea7cc62c987560b9e181c582a16a0b8a20274026487121d4024cc",
+      "mtime_ns": 1793161560497335500,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_form_model_tests.exe",
+      "size": 117248,
+      "sha256": "c4c1f95fac09e39ed502aec5decd51abb0788d36f6ffff65a4681bb673ba366e",
+      "mtime_ns": 1793161563610897400,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_form_component_tests.exe",
+      "size": 6235136,
+      "sha256": "442211250dd98d2c3295ba3fc09fd736fcabbb782c33091880ee78897bfaf27c",
+      "mtime_ns": 1793161565035192400,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_form_theme_tests.exe",
+      "size": 834048,
+      "sha256": "b697a9b047cbada19f771bb980e59479e1de4256cc28279d8a3213d1c89d1166",
+      "mtime_ns": 1793161564854537400,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_form_public_api_tests.exe",
+      "size": 131072,
+      "sha256": "f374ddcd5f862d796bd10dd285a52ec81546f7e2681b1760a67d8bd590924bf9",
+      "mtime_ns": 1793161563810773800,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_auto_complete_r3_tests.exe",
+      "size": 5787648,
+      "sha256": "b1fbd6684bccf0639353fc36498cb82b35fe5f2a3cb72fcb7d122bd6f07279dd",
+      "mtime_ns": 1793161559623728600,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_component_failure_retirement_tests.exe",
+      "size": 5240320,
+      "sha256": "f0e66b8d1bed64b6cb64135c900c19a00887b3d10f7d1b7789094cb945620953",
+      "mtime_ns": 1793161559240377200,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_time_picker_review_tests.exe",
+      "size": 6015488,
+      "sha256": "1076bbbc99b6d3388a0a231fbfe1a21e67468e6fec36ac3d2b9a1d99d624bbae",
+      "mtime_ns": 1793161563374199200,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_date_picker_review_tests.exe",
+      "size": 6418432,
+      "sha256": "164c973502d671f6950f35dbc52b448f20a819e9137d2dbb7a98708ac06f56be",
+      "mtime_ns": 1793161564622646200,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_focus_order.exe",
+      "size": 620544,
+      "sha256": "8d4e0f1d95d152c8c5170906871973bfc93f0c623c67ffce06e9787fbf56663d",
+      "mtime_ns": 1793161565664704700,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_focus_state.exe",
+      "size": 642560,
+      "sha256": "9951f02358365bed65a507577d929e5232d7202ffdea2dc1901ac57eb31769b1",
+      "mtime_ns": 1793161565871312300,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_focus_lifecycle.exe",
+      "size": 654336,
+      "sha256": "788f05411a2608434e0fa20a47493a50dd745de723b29ed9d3d6e4f11fd4f529",
+      "mtime_ns": 1793161566077408500,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_pointer_route.exe",
+      "size": 656384,
+      "sha256": "87d4b6f84bcfdfa4ca899979bf6dc6ff4b59db018c2527973b1fae8319f67d47",
+      "mtime_ns": 1793161566284609500,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_input_component.exe",
+      "size": 5729792,
+      "sha256": "3aca1127e6cc11f8b12279adc96b2b6ce643ba11d19c3cc125c85d008d979833",
+      "mtime_ns": 1793161566089969700,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_select_component.exe",
+      "size": 5615104,
+      "sha256": "25a708ea30a3fcf7a45c0efeafb5feb90181aaa109d1022785f60ae9fd9cd95c",
+      "mtime_ns": 1793161567365261100,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_theme_runtime.exe",
+      "size": 897024,
+      "sha256": "6a700786f5f4c96242d32ffe78c1a9bd1f6aa56877ac4082eacfb917e7263220",
+      "mtime_ns": 1793161565465753100,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_theme_algorithm.exe",
+      "size": 747520,
+      "sha256": "1a59f116d142d71d62721631e11e01a6b3235cb0c73432f45341de8e6a56a654",
+      "mtime_ns": 1793161565274492000,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_modal_component.exe",
+      "size": 6395904,
+      "sha256": "0011226871def220539ebe6f3273d9afa0c303d6107e5a444b9a4226aa82e7aa",
+      "mtime_ns": 1793161567506441000,
+      "configuration": "Release",
+      "stack_reserve": 1048576
+    }
+  ],
+  "products": [
+    {
+      "path": "out/build/windows-msvc-headless/src/CMakeFiles/rynui_components.dir/Debug/component/tree_select_component.cpp.obj",
+      "size": 18264956,
+      "sha256": "ea973e8200578a4739daa92a2424c14ab1d5bb918c3dbcd86b5bade8d9d24c23",
+      "mtime_ns": 1793161007619347300
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/CMakeFiles/rynui_components.dir/Debug/component/window_component_services.cpp.obj",
+      "size": 3405826,
+      "sha256": "35980420f58c7f94dcb3551b8074c7c8599ceaffb9f47cd0815ada4dda3ab13f",
+      "mtime_ns": 1793160235695530400
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/CMakeFiles/rynui_theme.dir/Debug/theme/theme_snapshot.cpp.obj",
+      "size": 3367875,
+      "sha256": "94db6b1d776bf46e6b6a05e6b6529c7edf773e3114ee0dad9195d85e913df465",
+      "mtime_ns": 1793160140072133300
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/CMakeFiles/rynui_theme.dir/Debug/theme/theme_runtime.cpp.obj",
+      "size": 2072529,
+      "sha256": "194a84f8880e1a58cfe3c4f7b3a11ebfc45db4d1793cef4e69fdf29d1e1b7e58",
+      "mtime_ns": 1793160138262686400
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/Debug/rynui_theme.lib",
+      "size": 8824808,
+      "sha256": "ff40e77bea5eeeb7ee88d12f8e60aa2f6a382720ed96633b6a5f35747544f95d",
+      "mtime_ns": 1793160148989486800
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/Debug/rynui_components.lib",
+      "size": 544772780,
+      "sha256": "eedaaf4a6d226425820541f6198611264e623e19ee438a3a8eba3dc3b4d03ac9",
+      "mtime_ns": 1793161008621496400
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/CMakeFiles/rynui_components.dir/Release/component/tree_select_component.cpp.obj",
+      "size": 12616376,
+      "sha256": "3c6b3db13ec7fca3831cc36ada0f7a93da2f82a994426e3fc4d5b845d3b8d103",
+      "mtime_ns": 1793161067054634200
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/CMakeFiles/rynui_components.dir/Release/component/window_component_services.cpp.obj",
+      "size": 1199853,
+      "sha256": "370f2587ce77dd654a0c7557e9b7b222cf925692bd9f81f86a506f18e2d6c52f",
+      "mtime_ns": 1793161079580789700
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/CMakeFiles/rynui_theme.dir/Release/theme/theme_snapshot.cpp.obj",
+      "size": 1579518,
+      "sha256": "0d41c03e0008f15bc403584ed46660b6270f7f462004c52685b871b96e7d2c9a",
+      "mtime_ns": 1793161025653628800
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/CMakeFiles/rynui_theme.dir/Release/theme/theme_runtime.cpp.obj",
+      "size": 972981,
+      "sha256": "0964c2b8ecfcb54bb580ea4cce9b1fac296c572b6cf125064126c573abfbf7fd",
+      "mtime_ns": 1793161022587065300
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/Release/rynui_theme.lib",
+      "size": 4064694,
+      "sha256": "2a04d659935f22ffb5a8209a9befb6f2a62559dfd9eaf91da1acee6d27b5c829",
+      "mtime_ns": 1793161034163112500
+    },
+    {
+      "path": "out/build/windows-msvc-headless/src/Release/rynui_components.lib",
+      "size": 370452498,
+      "sha256": "802dc5a51402c3ee111ffd40ada4f1611497633988c0e6c238c1e662eeeaf9cb",
+      "mtime_ns": 1793161176738967900
+    }
+  ],
+  "goldens": [
+    {
+      "path": "design-tokens/ant-design/6.6.5/golden/default.json",
+      "size": 39737,
+      "sha256": "89eb6613931b87f19ecf827932d35379ae056b26b0faa804c26f53818f68a65f",
+      "mtime_ns": 1793161574241158900
+    },
+    {
+      "path": "design-tokens/ant-design/6.6.5/golden/dark.json",
+      "size": 39734,
+      "sha256": "f77cf60f4bb0e1ad811be384eba20ee4825d3cea919ce4426be003597e7de5fa",
+      "mtime_ns": 1793161574278259000
+    },
+    {
+      "path": "design-tokens/ant-design/6.6.5/golden/compact.json",
+      "size": 39681,
+      "sha256": "d5d37196b445bda1a1b79b2ed064fd1f006d8b0287655dc60518ace53679974c",
+      "mtime_ns": 1793161574316864200
+    },
+    {
+      "path": "design-tokens/ant-design/6.6.5/golden/dark-compact.json",
+      "size": 39688,
+      "sha256": "eeda6fa79ad505a8b43e82bcc3c4a391d593a9ff59b7970a989b5802b4e5b06a",
+      "mtime_ns": 1793161574355448900
+    },
+    {
+      "path": "design-tokens/ant-design/6.6.5/golden/compact-dark.json",
+      "size": 39688,
+      "sha256": "648728c2c86476ceec925ac2f18399f06fc926c317e5589a1cac4f5b0ecc05ce",
+      "mtime_ns": 1793161574392282000
+    }
+  ]
+}

@@ -12,9 +12,31 @@ foreach(tree_r2 IN ITEMS nested_wheel throwing_blur_rollback slot_retirement)
 endforeach()
 
 add_executable(rynui_tree_select_model_tests tree_select_model_tests.cpp)
+add_executable(rynui_tree_select_component_tests tree_select_component_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_select_component_tests)
+target_link_libraries(rynui_tree_select_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tree_select_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(tree_select_case IN ITEMS basic controlled keyboard retained boundaries)
+    add_test(NAME rynui.tree_select_${tree_select_case} COMMAND rynui_tree_select_component_tests ${tree_select_case})
+endforeach()
 rynui_configure_cpp_target(rynui_tree_select_model_tests)
 target_link_libraries(rynui_tree_select_model_tests PRIVATE rynui_components)
 add_test(NAME rynui.tree_select_model COMMAND rynui_tree_select_model_tests)
+add_executable(rynui_tree_select_theme_tests tree_select_theme_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_select_theme_tests)
+target_link_libraries(rynui_tree_select_theme_tests PRIVATE rynui_components)
+add_test(NAME rynui.tree_select_theme COMMAND rynui_tree_select_theme_tests)
+add_executable(rynui_tree_select_integration_tests tree_select_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_select_integration_tests)
+target_link_libraries(rynui_tree_select_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tree_select_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(tree_select_case IN ITEMS form lifecycle rollback positioning matrix)
+    add_test(NAME rynui.tree_select_${tree_select_case} COMMAND rynui_tree_select_integration_tests ${tree_select_case})
+endforeach()
 
 add_executable(rynui_tree_model_tests tree_model_tests.cpp)
 add_executable(rynui_tree_review_tests tree_review_tests.cpp)

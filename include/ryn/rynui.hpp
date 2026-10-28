@@ -8,6 +8,7 @@
 #include <ryn/rate.hpp>
 #include <ryn/statistic.hpp>
 #include <ryn/tree.hpp>
+#include <ryn/tree_select.hpp>
 #include <ryn/form.hpp>
 #include <ryn/breadcrumb.hpp>
 #include <ryn/steps.hpp>

@@ -220,6 +220,7 @@ add_library(rynui_components STATIC
     component/avatar_component.cpp
     component/tree_model.cpp
     component/tree_component.cpp
+    component/tree_select_component.cpp
     component/form_component.cpp
     component/feedback_component.cpp
     component/tag_badge_component.cpp

@@ -20,6 +20,7 @@
 #include "component/rate_component.hpp"
 #include "component/statistic_component.hpp"
 #include "component/tree_component.hpp"
+#include "component/tree_select_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
@@ -128,6 +129,9 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     focus_.set_observer([this] {
         if (!retiring_failed_component_) {
             auto_complete_->on_focus_changed();
+            if (tree_select_) {
+                tree_select_->on_focus_changed();
+            }
         }
     });
     card_ = std::make_unique<CardComponentHost>(*this);
@@ -141,6 +145,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     rate_ = std::make_unique<RateComponentHost>(*this);
     statistic_ = std::make_unique<StatisticComponentHost>(*this);
     tree_ = std::make_unique<TreeComponentHost>(*this);
+    tree_select_ = std::make_unique<TreeSelectComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
     steps_ = std::make_unique<StepsComponentHost>(*this);
     skeleton_ = std::make_unique<SkeletonComponentHost>(*this);

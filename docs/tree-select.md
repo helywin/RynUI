@@ -1,11 +1,50 @@
 # TreeSelect
 
-TreeSelect 的目标是紧凑字段中的单值层级选择。当前正在实现首版，尚未完成原生组合与整体验收，不能作为已交付组件使用。
+TreeSelect 用于紧凑字段中的单值层级选择，组合 retained 原生 Input、Popover 和 Tree。公开头文件为 `<ryn/tree_select.hpp>`，也包含于 `<ryn/rynui.hpp>`。本阶段实现仍在验收，准确状态以 097 tasks／evidence 为准。
 
 公开 API 以 `TreeSelectProps` 和固定 `TreeSelectItem` 描述数据。key 是唯一非空 String，空 value 表示未选，可直接接入 `FormField<String>`。标题、disabled、visible 使用 reactive Prop；最多 1024 个节点、64 层。
 
-选择与展开分离：点击 switcher 只展开，激活行提交其 key；再次选择当前值请求关闭而不清空。未知外部 value 保留并显示原 key。被隐藏或禁用的已接受值保持，不自动改写受控状态。
+```cpp
+ryn::TreeSelect(
+    ryn::TreeSelectProps{}
+        .placeholder(u8"选择项目")
+        .allowClear()
+        .treeDefaultExpandedKeys({u8"project"})
+        .layout(ryn::LayoutStyle{}.width(ryn::dp(280))),
+    {ryn::TreeSelectItem{u8"project", u8"项目",
+                        {ryn::TreeSelectItem{u8"src", u8"源码"},
+                         ryn::TreeSelectItem{u8"docs", u8"文档"}}}});
+```
 
-首版计划复用 retained Input、Popover 和 Tree，提供 clear、受控 value/open/展开、键盘、有限列表、Form 和独立 Theme。多选、搜索、异步、动态拓扑、富节点、虚拟化、动画、RTL/Web/AT 以及 Gallery 不在此范围。
+选择与展开分离：点击 switcher 只展开，激活行提交其 key；再次选择当前值请求关闭而不清空，也不重复触发 onChange。未知外部 value 保留并显示原 key。标题更新会刷新接受值的显示；被隐藏或禁用的已接受值保持，不自动改写受控状态。禁用父节点不连带禁用独立可用的子节点；隐藏父节点会隐藏其整条分支。
 
-平台验收与准确完成状态见 `openspec/changes/097-20261028-add-native-tree-select/tasks.md`；不得把模型测试或规划状态描述为完整组件实现。
+`value` 与 `defaultValue`、`open` 与 `defaultOpen`、`treeExpandedKeys` 与 `treeDefaultExpandedKeys` 各自互斥。受控父级拒绝用户意图时仍保留接受值／open，下一次意图可重试。选择合法 key 后请求关闭，清空通过 onChange 交付空 String。`onTreeExpand` 的 TreeExpandInfo 提供实际 key、展开集合与动作方向。
+
+指针点击 selector 打开；键盘 Down／Up／Enter／Space 打开并将焦点交给真实 Tree 行。方向键、Home／End、Enter／Space 使用 Tree 的原生导航、展开和激活。Escape 关闭子弹层并恢复 selector；Tab／Shift+Tab 按 selector 所在顺序离开到相邻控件。`onFocus/onBlur` 对应 selector 的原生 Input 焦点，因此转入树行也可能触发 selector blur。
+
+`readOnly` 保持 selector 可聚焦但禁止打开、选择和清空；disabled、visible=false、失活、外部输入边界或零面积会取消操作并关闭实际弹层。恢复不自动复活已抑制的弹层，需新的用户打开动作或受控 open 的显式 false→true。祖先弹层构建过程的临时封锁与已提交关闭状态分开处理。
+
+`listHeight` 是有限列表高度，必须正且有限，默认 256 logical px；实际 popup 受窗口限制并匹配 selector 宽度，Tree 自行滚动。LayoutStyle 仅控制外部 selector，不是视觉样式入口。
+
+## Form 与 refs
+
+使用 `FormField<String>` 的 value()/onChange()，在 FormItem 中显式 `.control(ref)`，再把同一 TreeSelectRef 传入 TreeSelect。readOnly()/disabled()/status() 可直接绑定。reset 恢复接受值与显示，保持原 selector/editor/Tree 身份；同值 reset 不产生选择事件。selector 是只读显示入口，不提供自由输入／搜索，也不会建立 IME composition session。
+
+TreeSelectRef 复用 InputRef，支持绑定检查、focus/blur 及只读显示的文本选择；不是 Tree 行 ref。普通更新不重新执行组件组合。回调可销毁 owner；旧完整 generation 停止工作，替代 ref generation 保留。首次 Prop getter 或组合挂载异常可在 Content 内局部捕获，原 owner 会静默退役并保留原始异常。
+
+## Theme
+
+`ThemeConfig::tree_select` 独立于 Select 和 Tree。`.tokens.selector` 控制 selector 背景、hover/active border、active outline，以及 popup 背景、padding、radius、gap、shadow、order；`.tokens.tree` 控制节点内容和适用装饰。selector 的三种 ControlSize／InputVariant／InputStatus 继续复用 Input 原生视觉与字体，树和空状态文字使用树节点字体。
+
+```cpp
+ryn::ThemeConfig config;
+config.tree_select.tokens.selector.popup_padding = ryn::dp(6);
+config.tree_select.tokens.tree.node_selected_background = ryn::Color::rgba8(21, 76, 123);
+config.tree_select.tokens.tree.indent_size = ryn::dp(20);
+```
+
+inherit、局部 seed/algorithm、override、序列化/hash、dirty 和后代预发布校验均属于 Theme 合同。未启用的局部 seed 不改变继承。最终节点字号／图标字号量化必须在可渲染范围内；失败更新保留原 snapshot，不能靠先发布再在 Text 中抛错。
+
+首版不包含多选／checkbox、搜索、异步、动态拓扑、富节点／popupRender、虚拟化、动画、RTL/Web/AT 及交互 Gallery。首版上限是主动约束，超限配置会拒绝，不静默截断。
+
+平台验收与准确完成状态见 `openspec/changes/097-20261028-add-native-tree-select/tasks.md`。MSVC HEADLESS／Recording 证据不代表实际 GPU／原生窗口、Linux 或系统 IME／AT 通过。

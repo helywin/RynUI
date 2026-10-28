@@ -218,6 +218,12 @@ enum class TokenIdentity : std::uint8_t {
     auto_complete_typography,
     auto_complete_effects,
     auto_complete_order,
+    tree_select_colors,
+    tree_select_metrics,
+    tree_select_effects,
+    tree_select_order,
+    tree_select_tree_colors,
+    tree_select_tree_metrics,
     count,
 };
 

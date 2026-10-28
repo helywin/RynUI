@@ -26,6 +26,8 @@
 
 从 owner 创建开始用局部挂载事务；首次 getter、连接、主题同步或子结构异常在自动 slot 回滚之前调用既有 `retire_failed_component`，静默释放输入源并重新抛出原异常。State 由 shared_ptr 保持调用期间对象寿命，但有效性仍取决于 ComponentId、scope 与私有结构完整性；每次用户回调后重取，不以 shared_ptr 代替完整 generation 校验。
 
+selector 固定为原生只读显示，不建立编辑 session；因此 2.3 的输入验证是实际 focus 后 session 仍未启动，而不是伪造一个首版不支持的搜索／preedit 流程。用户 Prop 先在 owner 自有 Scope 中连接为私有 Signal，再传给子组件，避免首次子组件 getter 异常早于组合退役守卫。autoFocus 属于首次布局后的行为，不作为 Content 内局部捕获挂载异常的探针。
+
 ### Theme
 
 TreeSelect 以独立配置提供 selector（Select recipe）与 tree（Tree recipe）两组 override，组件 seed/algorithm 统一解析。快照由共享只读堆对象持有；末尾追加 resolve IIFE、identity、序列化及 dirty，不改旧块。内部 Theme 只映射到 Input、Popover 与 Tree 自有 Token；继承全局字体和算法，最终字号量化边界、有限组合尺寸在发布前验证。保留静态默认 ThemeConfig 的引用路径，不增加大栈临时值。
