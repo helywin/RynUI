@@ -28,6 +28,16 @@ add_executable(rynui_tree_select_theme_tests tree_select_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_tree_select_theme_tests)
 target_link_libraries(rynui_tree_select_theme_tests PRIVATE rynui_components)
 add_test(NAME rynui.tree_select_theme COMMAND rynui_tree_select_theme_tests)
+add_executable(rynui_tree_select_r3_tests tree_select_r3_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_select_r3_tests)
+target_link_libraries(rynui_tree_select_r3_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tree_select_r3_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+foreach(tree_select_case IN ITEMS keyboard_wake cancelled_entry)
+    add_test(NAME rynui.tree_select_r3_${tree_select_case} COMMAND rynui_tree_select_r3_tests ${tree_select_case})
+endforeach()
 add_executable(rynui_tree_select_r2_tests tree_select_r2_tests.cpp)
 rynui_configure_cpp_target(rynui_tree_select_r2_tests)
 target_link_libraries(rynui_tree_select_r2_tests PRIVATE rynui_components)

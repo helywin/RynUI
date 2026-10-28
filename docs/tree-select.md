@@ -20,7 +20,7 @@ ryn::TreeSelect(
 
 `value` 与 `defaultValue`、`open` 与 `defaultOpen`、`treeExpandedKeys` 与 `treeDefaultExpandedKeys` 各自互斥。受控父级拒绝用户意图时仍保留接受值／open，下一次意图可重试。同一次外部点击引发的焦点退出与弹层关闭只交付一次请求；程序化焦点退出立即交付，Tab 离开也只交付一次。选择合法 key 后请求关闭，清空通过 onChange 交付空 String。`onTreeExpand` 的 TreeExpandInfo 提供实际 key、展开集合与动作方向。
 
-指针点击 selector 打开；键盘 Down／Up／Enter／Space 打开并将焦点交给真实 Tree 行。方向键、Home／End、Enter／Space 使用 Tree 的原生导航、展开和激活。键盘入口跳过禁用／隐藏行；已选项不可操作时回退到可用行，全部不可用时保留 selector 焦点。Escape 关闭子弹层并恢复 selector；Tab／Shift+Tab 按 selector 所在顺序离开到相邻控件。`onFocus/onBlur` 对应 selector 的原生 Input 焦点，因此转入树行也可能触发 selector blur。
+指针点击 selector 打开；键盘 Down／Up／Enter／Space 打开并将焦点交给真实 Tree 行。方向键、Home／End、Enter／Space 使用 Tree 的原生导航、展开和激活。键盘打开或进入已打开的弹层会请求焦点转移帧；受控关闭、拒绝、强制抑制或回调失败会终止本轮待聚焦意图，后续程序化打开不会沿用旧意图。键盘入口跳过禁用／隐藏行；已选项不可操作时回退到可用行，全部不可用时保留 selector 焦点。Escape 关闭子弹层并恢复 selector；Tab／Shift+Tab 按 selector 所在顺序离开到相邻控件。`onFocus/onBlur` 对应 selector 的原生 Input 焦点，因此转入树行也可能触发 selector blur。
 
 `readOnly` 保持 selector 可聚焦但禁止打开、选择和清空；disabled、visible=false、失活、外部输入边界或零面积会取消操作并关闭实际弹层。恢复不自动复活已抑制的弹层，需新的用户打开动作或受控 open 的显式 false→true。祖先弹层构建过程的临时封锁与已提交关闭状态分开处理。
 

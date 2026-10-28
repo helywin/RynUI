@@ -194,7 +194,11 @@ void TreeSelectComponentHost::refresh(runtime::ComponentId id) {
         // lasting suppression. Explicit local gates apply immediately.
         const bool constructing_ancestor = services_->nodes().require(s->node).place_generation == 0 && s->visible &&
                                            !s->disabled && !s->read_only && !s->geometry_blocked && window_active_;
-        const bool notify = !active && !constructing_ancestor && s->model.suppress();
+        const bool suppress = !active && !constructing_ancestor;
+        if (suppress) {
+            s->focus_pending = false;
+        }
+        const bool notify = suppress && s->model.suppress();
         const bool input_blocked = !s->visible || s->disabled || s->geometry_blocked || !window_active_;
         if (services_->components().set_branch_active(id, s->visible)) {
             services_->mark_scene_structure_dirty();
@@ -254,9 +258,22 @@ void TreeSelectComponentHost::request_open(runtime::ComponentId id, bool open, b
         return;
     }
     const bool notify = s->model.request_open(open);
-    refresh(id);
-    if (notify && intact(id)) {
-        notify_open(id, open);
+    try {
+        refresh(id);
+        if (notify && intact(id)) {
+            notify_open(id, open);
+        }
+    } catch (...) {
+        s->focus_pending = false;
+        throw;
+    }
+    if (intact(id)) {
+        if (!s->model.open()) {
+            s->focus_pending = false;
+        }
+        if (s->focus_pending) {
+            services_->request_frame();
+        }
     }
 }
 
@@ -439,7 +456,13 @@ void TreeSelectComponentHost::mount(const TreeSelectProps& p, const std::vector<
         return intact(id);
     };
     if ((p.value_ && !bind_value(*p.value_, [](auto& v, String x) { v.model.reconcile_value(std::move(x)); })) ||
-        (p.open_ && !bind_value(*p.open_, [](auto& v, bool x) { v.model.reconcile_open(x); })) ||
+        (p.open_ && !bind_value(*p.open_,
+                                [](auto& v, bool x) {
+                                    v.model.reconcile_open(x);
+                                    if (!x) {
+                                        v.focus_pending = false;
+                                    }
+                                })) ||
         (p.expanded_ && !bind_value(*p.expanded_, [](auto& v, TreeKeys x) { v.expanded.set(std::move(x)); })) ||
         !bind_value(p.visible_, [](auto& v, bool x) { v.visible = x; }) ||
         !bind_value(p.disabled_, [](auto& v, bool x) { v.disabled = x; }) ||
