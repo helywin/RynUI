@@ -1,0 +1,12 @@
+﻿{
+    "stage":  "bench",
+    "label":  "baseline",
+    "configuration":  "Release",
+    "component":  "effect",
+    "iterations":  64,
+    "warmup":  8,
+    "round":  2,
+    "exit":  0,
+    "seconds":  3.5250983999999996,
+    "finishedUtc":  "2026-10-29T18:50:32.2336437Z"
+}

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-ninja"
+	tests="13"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="Ryzen-Workstation"
+	time="2"
+	timestamp="2026-10-30T02:43:25"
+	>
+	<testcase name="rynui.reactive_fanout_contract" classname="rynui.reactive_fanout_contract" time="0.0268905" status="run">
+		<system-out>reactive_fanout: iterations=2 warmup=1 rounds=1 smoke=1; subscriber_scans unavailable; cold means fresh graph, not cold process/cache
+schema,round,mode,k,phase,operation,record,sample,samples,source_updates,observer_runs,source_reads,scheduler_epochs,result_checksum,total_ns,mean_ns,p95_ns,allocations,requested_bytes,largest_request,subscriber_scans
+1,1,stable,1,cold,mount,sample,1,1,0,1,1,0,3,62700,62700,62700,19,768,160,
+1,1,stable,1,cold,mount,summary,0,1,0,1,1,0,3,62700,62700,62700,19,768,160,
+1,1,stable,1,warmup,active_update,sample,1,1,1,1,1,1,9,5000,5000,5000,1,16,16,
+1,1,stable,1,warmup,active_update,summary,0,1,1,1,1,1,9,5000,5000,5000,1,16,16,
+1,1,stable,1,hot,active_update,sample,1,1,1,1,1,1,15,3000,3000,3000,1,16,16,
+1,1,stable,1,hot,active_update,sample,2,1,1,1,1,1,21,2100,2100,2100,1,16,16,
+1,1,stable,1,hot,active_update,summary,0,2,2,2,2,2,21,5100,2550,3000,2,32,16,
+1,1,dynamic,1,cold,mount,sample,1,1,0,1,2,0,3,7200,7200,7200,21,800,160,
+1,1,dynamic,1,cold,mount,summary,0,1,0,1,2,0,3,7200,7200,...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="rynui.effect_range_contract" classname="rynui.effect_range_contract" time="0.120227" status="run">
+		<system-out>effect_range: iterations=2 warmup=1 rounds=1 smoke=1; planning_ns/sort_comparisons unavailable; effect_sync includes packing and Recording enqueue
+schema,round,effects,requested_ranges,mode,phase,record,sample,samples,geometry_updates,material_updates,geometry_input_ranges,material_input_ranges,upload_ranges,uploaded_bytes,packed_hash,update_total_ns,update_p95_ns,sync_total_ns,sync_p95_ns,effect_sync_total_ns,effect_sync_p95_ns,commit_total_ns,commit_p95_ns,sync_mean_ns,update_allocations,update_requested_bytes,update_largest_request,sync_allocations,sync_requested_bytes,sync_largest_request,planning_ns,sort_comparisons,actual_ranges_first_count
+1,1,1000,256,material,cold_sync,sample,1,1,0,0,0,0,1,112000,3170217546376530629,0,0,1179400,1179400,1037800,1037800,19800,19800,1.1794e+06,0,0,0,12,339061,114735,,,0:1000
+1,1,1000,256,material,cold_sync,summary,0,1,0,0,0,0,1,112000,3170217546376530629,0,0,1179400,1179400,1037800,1037800,19800,19800,1.1794e+06,0,0,0,12,339061,114735,,,
+1,1,1000,256,material,warmup,sam...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="rynui.memo" classname="rynui.memo" time="0.0143307" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.batch" classname="rynui.batch" time="0.014419" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.scope_effect" classname="rynui.scope_effect" time="0.01479" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.rounded_effect_math" classname="rynui.portable.rounded_effect_math" time="0.0146923" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.rounded_effect_store" classname="rynui.portable.rounded_effect_store" time="0.0147751" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.rounded_effect_scene" classname="rynui.portable.rounded_effect_scene" time="0.014907" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.rounded_effect_gpu" classname="rynui.portable.rounded_effect_gpu" time="0.0347591" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.rounded_effect_gpu_resources" classname="rynui.portable.rounded_effect_gpu_resources" time="0.015732" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.reactive_source_lifecycle" classname="rynui.portable.reactive_source_lifecycle" time="0.0125048" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.scene_backend" classname="rynui.portable.scene_backend" time="0.484267" status="run">
+		<system-out>glyph_growth round=1 background=0 appended=1000 reallocations=11 capacity=1024 uploads=1000 uploaded_bytes=194208 append_sync_us=5349 restored_handle=1 epoch_reallocations=1 changed_device_limits=1
+glyph_growth round=1 background=1000 appended=1000 reallocations=2 capacity=2000 uploads=1000 uploaded_bytes=192000 append_sync_us=4822 restored_handle=1 epoch_reallocations=1 changed_device_limits=1
+Shared component scene, owned bytes, retry, ordered draw and device epoch passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.backend_boundaries" classname="rynui.portable.backend_boundaries" time="2.40592" status="run">
+		<system-out>Actual headless/Core build graph, negative renderer dependency guards and legal common dependencies passed
+</system-out>
+	</testcase>
+</testsuite>

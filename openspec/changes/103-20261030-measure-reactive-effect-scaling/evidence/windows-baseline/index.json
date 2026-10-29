@@ -1,0 +1,1279 @@
+{
+  "label": "baseline",
+  "head": "c7cb0950e5f66966180436f2e5d17b785a11350b",
+  "records": [
+    {
+      "source": {
+        "path": "out/103-baseline-apply.json",
+        "size": 10390,
+        "sha256": "d74a8feaf4f36085f195d37a3d5e88ba9b0759479809d164aa6fed5ac38e34ff",
+        "mtime_ns": 1793300328978871700
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-apply.json",
+        "size": 10390,
+        "sha256": "d74a8feaf4f36085f195d37a3d5e88ba9b0759479809d164aa6fed5ac38e34ff",
+        "mtime_ns": 1793300330916956400
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r1.csv",
+        "size": 6164378,
+        "sha256": "7d95701a5d4f3cf250f36b9dbcadf8d48c8dc11b313ad1ba7dbfd076d87e78f3",
+        "mtime_ns": 1793299765044257400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r1.csv",
+        "size": 6164378,
+        "sha256": "7d95701a5d4f3cf250f36b9dbcadf8d48c8dc11b313ad1ba7dbfd076d87e78f3",
+        "mtime_ns": 1793300330921486100
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r1.json",
+        "size": 281,
+        "sha256": "451d0071cde8cd1145e1208ae060b0a6dc9c4a58c5b0d08bb4dafa513b1abcc0",
+        "mtime_ns": 1793299765072495600
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r1.json",
+        "size": 269,
+        "sha256": "000dfd4bd6ae6a6ec5abf40c7e3feb9f609709b84d3dc36414fe2173fbb818ac",
+        "mtime_ns": 1793300402665208800
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r1.log",
+        "size": 1218,
+        "sha256": "a81cb5696d9a3c87a6c19f3981db66406705d26b02c67b426a2fa605bde4f056",
+        "mtime_ns": 1793299765044257400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r1.log",
+        "size": 1218,
+        "sha256": "a81cb5696d9a3c87a6c19f3981db66406705d26b02c67b426a2fa605bde4f056",
+        "mtime_ns": 1793300330933070500
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r2.csv",
+        "size": 6164410,
+        "sha256": "641d8c6f8215a33bc2601575671ab1ca0ba7f8fa900da75a13774e42acff5569",
+        "mtime_ns": 1793299832227748100
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r2.csv",
+        "size": 6164410,
+        "sha256": "641d8c6f8215a33bc2601575671ab1ca0ba7f8fa900da75a13774e42acff5569",
+        "mtime_ns": 1793300330936223200
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r2.json",
+        "size": 290,
+        "sha256": "032bfe16e92fe0527a74584c2e2842a8d4a7080e724608149079a33bc959b647",
+        "mtime_ns": 1793299832257723900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r2.json",
+        "size": 278,
+        "sha256": "61703433845a1d0a75fdb6246d809a7d9d42fce2e8ae7174b763a7d99cbe2c1c",
+        "mtime_ns": 1793300402667215100
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r2.log",
+        "size": 1218,
+        "sha256": "a81cb5696d9a3c87a6c19f3981db66406705d26b02c67b426a2fa605bde4f056",
+        "mtime_ns": 1793299832228786400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r2.log",
+        "size": 1218,
+        "sha256": "a81cb5696d9a3c87a6c19f3981db66406705d26b02c67b426a2fa605bde4f056",
+        "mtime_ns": 1793300330948400600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r3.csv",
+        "size": 6164524,
+        "sha256": "a2374aaa300e5f3011f3e742638c2968538a53054bfeeb320e50439f61c4c592",
+        "mtime_ns": 1793299899342572900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r3.csv",
+        "size": 6164524,
+        "sha256": "a2374aaa300e5f3011f3e742638c2968538a53054bfeeb320e50439f61c4c592",
+        "mtime_ns": 1793300330951410200
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r3.json",
+        "size": 290,
+        "sha256": "d1135453e87e087cc846864727a38a633e469ee4df07d3b6d91cfcc28ec048d7",
+        "mtime_ns": 1793299899370169800
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r3.json",
+        "size": 278,
+        "sha256": "50b59147e062f982190f17a41ff19b213f3a122cfbc7468e4f89a83286c09a32",
+        "mtime_ns": 1793300402670217000
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-effect-r3.log",
+        "size": 1218,
+        "sha256": "a81cb5696d9a3c87a6c19f3981db66406705d26b02c67b426a2fa605bde4f056",
+        "mtime_ns": 1793299899343573100
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-effect-r3.log",
+        "size": 1218,
+        "sha256": "a81cb5696d9a3c87a6c19f3981db66406705d26b02c67b426a2fa605bde4f056",
+        "mtime_ns": 1793300330963477000
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r1.csv",
+        "size": 266718,
+        "sha256": "799794fc75878d1d3013ff89fc91c07681b4de9a67ab09ee47695d2629d34633",
+        "mtime_ns": 1793299759369536300
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r1.csv",
+        "size": 266718,
+        "sha256": "799794fc75878d1d3013ff89fc91c07681b4de9a67ab09ee47695d2629d34633",
+        "mtime_ns": 1793300330963477000
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r1.json",
+        "size": 284,
+        "sha256": "eeee6b6ddaee46ede4cd7cce53179231cccefb5914e0f2c8e3d7e2fc1426f127",
+        "mtime_ns": 1793299759394294800
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r1.json",
+        "size": 272,
+        "sha256": "98837d926eb2a03f59ef2a340e710062be8b3dc68a6bfeb0676167ed81e6e20f",
+        "mtime_ns": 1793300402671213500
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r1.log",
+        "size": 1222,
+        "sha256": "8de68caadd1548ad53b7b841c4c4a48660b14f1ba7288f88a24032f9ab3723e1",
+        "mtime_ns": 1793299759370043000
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r1.log",
+        "size": 1222,
+        "sha256": "8de68caadd1548ad53b7b841c4c4a48660b14f1ba7288f88a24032f9ab3723e1",
+        "mtime_ns": 1793300330966005900
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r2.csv",
+        "size": 266664,
+        "sha256": "5c94989348e6d963750516d702d52f5523ec36d2ab22fb728438f46aabf061e9",
+        "mtime_ns": 1793299826533953200
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r2.csv",
+        "size": 266664,
+        "sha256": "5c94989348e6d963750516d702d52f5523ec36d2ab22fb728438f46aabf061e9",
+        "mtime_ns": 1793300330967006200
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r2.json",
+        "size": 284,
+        "sha256": "ece4deb098bbc97f4ed186548207c33b79b3b86dd4c26af3773e7799dc489f0d",
+        "mtime_ns": 1793299826559717000
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r2.json",
+        "size": 272,
+        "sha256": "efcf5de189cf3955270181d689737b227ad876f21125f7e58a566babd8d94837",
+        "mtime_ns": 1793300402671213500
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r2.log",
+        "size": 1222,
+        "sha256": "8de68caadd1548ad53b7b841c4c4a48660b14f1ba7288f88a24032f9ab3723e1",
+        "mtime_ns": 1793299826534957500
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r2.log",
+        "size": 1222,
+        "sha256": "8de68caadd1548ad53b7b841c4c4a48660b14f1ba7288f88a24032f9ab3723e1",
+        "mtime_ns": 1793300330970079200
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r3.csv",
+        "size": 266722,
+        "sha256": "71971ec65675ac0b8573650afd6e66b9289a934a288648cce825e0fa58c4ba22",
+        "mtime_ns": 1793299893550264800
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r3.csv",
+        "size": 266722,
+        "sha256": "71971ec65675ac0b8573650afd6e66b9289a934a288648cce825e0fa58c4ba22",
+        "mtime_ns": 1793300330970589000
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r3.json",
+        "size": 292,
+        "sha256": "a2041196e84dfeba37283a7046a5da32a1a7501242918195fbc8d8946bd948b7",
+        "mtime_ns": 1793299893578633600
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r3.json",
+        "size": 280,
+        "sha256": "25e1a12ae36fc82ad35b814e05d0806e1a025a63945b644ee1b21000cfd8b820",
+        "mtime_ns": 1793300402672719800
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-bench-Release-reactive-r3.log",
+        "size": 1222,
+        "sha256": "8de68caadd1548ad53b7b841c4c4a48660b14f1ba7288f88a24032f9ab3723e1",
+        "mtime_ns": 1793299893550264800
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-bench-Release-reactive-r3.log",
+        "size": 1222,
+        "sha256": "8de68caadd1548ad53b7b841c4c4a48660b14f1ba7288f88a24032f9ab3723e1",
+        "mtime_ns": 1793300330972607300
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-build-Debug.json",
+        "size": 283,
+        "sha256": "c64d53ce1b5adfcae87b870a87f04aa25aa1898eca04871c29880ceff84d802c",
+        "mtime_ns": 1793299403664265900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-build-Debug.json",
+        "size": 271,
+        "sha256": "e204bb090de89f6974c4f5880fd58e659b160ed5788c5f73776bbd41f134423b",
+        "mtime_ns": 1793300402672719800
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-build-Debug.log",
+        "size": 58160,
+        "sha256": "53b773e0a027f6aedf06cb504638c0ab5615c2a36e5cea83aab10fa86cc119c8",
+        "mtime_ns": 1793299403626593200
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-build-Debug.log",
+        "size": 58160,
+        "sha256": "53b773e0a027f6aedf06cb504638c0ab5615c2a36e5cea83aab10fa86cc119c8",
+        "mtime_ns": 1793300330973607300
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-build-Release.json",
+        "size": 285,
+        "sha256": "579a00889ee7f2e5c30be4a2687a3e04913999c4c7fb5c50f071c5504028df98",
+        "mtime_ns": 1793299673839727200
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-build-Release.json",
+        "size": 273,
+        "sha256": "415c9ea0084961b9180e065f3099545a432b38840c8d9a21af1076c9a66b183e",
+        "mtime_ns": 1793300402672719800
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-build-Release.log",
+        "size": 59102,
+        "sha256": "972144c045ea418992a565d63f161a1d508f317f0836a8473fe0507d15ede70e",
+        "mtime_ns": 1793299673807929000
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-build-Release.log",
+        "size": 59102,
+        "sha256": "972144c045ea418992a565d63f161a1d508f317f0836a8473fe0507d15ede70e",
+        "mtime_ns": 1793300330976633100
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-configure-Debug.json",
+        "size": 294,
+        "sha256": "a9f428e99b4ca0927ccc5f27a6f10823f9c2f023a195f8c6f18a953eca58e3c9",
+        "mtime_ns": 1793299138329637300
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-configure-Debug.json",
+        "size": 282,
+        "sha256": "130da5ba956e6a77869c370df99b84892990f9fb6cfb1ba977804110854dc47e",
+        "mtime_ns": 1793300402674253300
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-configure-Debug.log",
+        "size": 5176,
+        "sha256": "4ecde66e109cf74f968c848f21fde9274057eea8143003059ead133f0913f60a",
+        "mtime_ns": 1793299138256624900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-configure-Debug.log",
+        "size": 5176,
+        "sha256": "4ecde66e109cf74f968c848f21fde9274057eea8143003059ead133f0913f60a",
+        "mtime_ns": 1793300330977641800
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-build-Debug.json",
+        "size": 294,
+        "sha256": "44a883436b1d82d7dbc4edcc0393c2fe1820ccd88d803328ddd250595e9ee14a",
+        "mtime_ns": 1793300238350719300
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-build-Debug.json",
+        "size": 282,
+        "sha256": "919502d89085c9dc866b0878bbfb28ab1f6a277ac135bef72c0f95164104243d",
+        "mtime_ns": 1793300402674253300
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-build-Debug.log",
+        "size": 494,
+        "sha256": "e7f798dcb11ff1a7b752873a788c38fb31d692fc136dd808fb228768ac35bc58",
+        "mtime_ns": 1793300238314735100
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-build-Debug.log",
+        "size": 494,
+        "sha256": "e7f798dcb11ff1a7b752873a788c38fb31d692fc136dd808fb228768ac35bc58",
+        "mtime_ns": 1793300330979641900
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-build-Release.json",
+        "size": 296,
+        "sha256": "a1a8235c19793f02ce32c2e796f8df7a0c5af3e6ab2e39792bbc6cc7d5a23a62",
+        "mtime_ns": 1793300244535774700
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-build-Release.json",
+        "size": 284,
+        "sha256": "5de82cab12226bfbb7b6069fd363d0ec83d0ac1786eb7e6f680bb6084cb99e8e",
+        "mtime_ns": 1793300402675258700
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-build-Release.log",
+        "size": 828,
+        "sha256": "d8bfb566067333b61ed0952d72a0ecd3cdfc526c5502831dbc5c3106c01749b7",
+        "mtime_ns": 1793300244497551200
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-build-Release.log",
+        "size": 828,
+        "sha256": "d8bfb566067333b61ed0952d72a0ecd3cdfc526c5502831dbc5c3106c01749b7",
+        "mtime_ns": 1793300330981642200
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-test-Debug.json",
+        "size": 293,
+        "sha256": "3e45b173f088d4593254ea625573fa4be83d1e37f186b381d7de520b8f8f0fe6",
+        "mtime_ns": 1793300240688249100
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-test-Debug.json",
+        "size": 281,
+        "sha256": "ae9a8a38ba7a410c1eb39d8c6f07b6b36f5b703bd697d4229ec9e554f099417f",
+        "mtime_ns": 1793300402675258700
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-test-Debug.log",
+        "size": 2222,
+        "sha256": "48197bc25546653c475a264dc682ef0a25b4c87b26e8542b2ac689f2beb5b247",
+        "mtime_ns": 1793300240661961000
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-test-Debug.log",
+        "size": 2222,
+        "sha256": "48197bc25546653c475a264dc682ef0a25b4c87b26e8542b2ac689f2beb5b247",
+        "mtime_ns": 1793300330983181400
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-test-Debug.xml",
+        "size": 1577,
+        "sha256": "8b35ce73eb299312452b487022204b583447518882287fd6572c19b86f11c760",
+        "mtime_ns": 1793300240661961000
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-test-Debug.xml",
+        "size": 1538,
+        "sha256": "27381af3a7ee29d679e92fc2c185c57fec6ff18829b030eda7df6bcaf3bfd9b0",
+        "mtime_ns": 1793300402676259600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-test-Release.json",
+        "size": 295,
+        "sha256": "e41ff2321eba376e7917eefe758edf5721c3e3ad8112d7ee02b4211ea18968f0",
+        "mtime_ns": 1793300246894656900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-test-Release.json",
+        "size": 283,
+        "sha256": "2de0ae48a7b53e0c700671ef19e6486cda5358300663614036c073acea6f94cc",
+        "mtime_ns": 1793300402676259600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-test-Release.log",
+        "size": 2222,
+        "sha256": "0282b1aac695aa1b0fb2ccca03445bdde297b61b50d07a54b85dc337362f54a7",
+        "mtime_ns": 1793300246866246400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-test-Release.log",
+        "size": 2222,
+        "sha256": "0282b1aac695aa1b0fb2ccca03445bdde297b61b50d07a54b85dc337362f54a7",
+        "mtime_ns": 1793300330986211600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-subscription-test-Release.xml",
+        "size": 1576,
+        "sha256": "6ecb458280673020d31ab0090bd66618a26d0ea6728574870b7a7cb17837c9ea",
+        "mtime_ns": 1793300246866246400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-subscription-test-Release.xml",
+        "size": 1537,
+        "sha256": "c10aab871af7b85341d5d1db774cfe41c8974b72579f9cebcf64bc4258fffd7a",
+        "mtime_ns": 1793300402676259600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-test-Debug.json",
+        "size": 280,
+        "sha256": "23569f168a08887d2f024e781bbf4edcc61867cf8841befc534b4e287ae504d9",
+        "mtime_ns": 1793299408408942900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-test-Debug.json",
+        "size": 268,
+        "sha256": "022102a210092261b3a71740fbf193ce285ee73c912e7c435a75be6c41597e34",
+        "mtime_ns": 1793300402677389400
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-test-Debug.log",
+        "size": 3804,
+        "sha256": "8850941cefe7a9a603f0d92e1e3a3d55ae8a8b37462f62e5c291c77fba7d8b77",
+        "mtime_ns": 1793299408374349500
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-test-Debug.log",
+        "size": 3804,
+        "sha256": "8850941cefe7a9a603f0d92e1e3a3d55ae8a8b37462f62e5c291c77fba7d8b77",
+        "mtime_ns": 1793300330988218100
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-test-Debug.xml",
+        "size": 5200,
+        "sha256": "4859c6c7e4690a0fbb4483216ceae5e9f11e5b00625ff301180d2cb6fd391b85",
+        "mtime_ns": 1793299408374349500
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-test-Debug.xml",
+        "size": 5128,
+        "sha256": "ddce5705f8a667c3576bee1564ab627a06e35cb8aa4d6bfe2813b53b9b906adb",
+        "mtime_ns": 1793300402677389400
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-test-Release.json",
+        "size": 282,
+        "sha256": "3ea903010ba42f493852cd37b41ffdb97abca26b9455ce19cd4c7ffb606c2061",
+        "mtime_ns": 1793299678539164500
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-test-Release.json",
+        "size": 270,
+        "sha256": "a6ead293bc86e99008b5ff07ea8f731d9d7ff7d2c5793be2b84c3ecb6dc95161",
+        "mtime_ns": 1793300402678388600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-test-Release.log",
+        "size": 3804,
+        "sha256": "6984cdca4bcc9bfd63d804e9c95ae6b7a459d14984c0b8d3eb1966529cb4fc09",
+        "mtime_ns": 1793299678509874700
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-test-Release.log",
+        "size": 3804,
+        "sha256": "6984cdca4bcc9bfd63d804e9c95ae6b7a459d14984c0b8d3eb1966529cb4fc09",
+        "mtime_ns": 1793300330991218200
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-baseline-test-Release.xml",
+        "size": 5202,
+        "sha256": "70007b56fe6a84a16a5de9e57cb00e434057b6c2229ad90f984516a9e21451bc",
+        "mtime_ns": 1793299678509874700
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-baseline-test-Release.xml",
+        "size": 5129,
+        "sha256": "2c414e180a7ca0b335f4ba7548b4d68008b2cdf30acc12eae0e7768d0df99b29",
+        "mtime_ns": 1793300402678388600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-environment.json",
+        "size": 621,
+        "sha256": "76ea8f6124c659a4a3aaff559b7c9c2411b88d6e75a0ff9a8062a20d70c4e4bc",
+        "mtime_ns": 1793299342729341000
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-environment.json",
+        "size": 603,
+        "sha256": "1563a5ba51b2bb02fa82701bdb29ebe6af67a05af76b2365f3cc72f19b75d3f9",
+        "mtime_ns": 1793300402678388600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-initial-subscription-Debug.json",
+        "size": 294,
+        "sha256": "828144f61f261f95b89bfb9ec6e1f9d089a593007c7b8ecece21cbcf1b1fd728",
+        "mtime_ns": 1793300020347294900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-initial-subscription-Debug.json",
+        "size": 282,
+        "sha256": "cc3a58d6d017137a1c5b5b0ecc09ed0f0c780fca81d55f72a49c7bca755cd78a",
+        "mtime_ns": 1793300402679388200
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-initial-subscription-Debug.log",
+        "size": 3194,
+        "sha256": "6631c2247e80a70975c4c9b8748ff7cc59da136cef305f5053112df07fe53192",
+        "mtime_ns": 1793300020323475200
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-initial-subscription-Debug.log",
+        "size": 3194,
+        "sha256": "6631c2247e80a70975c4c9b8748ff7cc59da136cef305f5053112df07fe53192",
+        "mtime_ns": 1793300330994925400
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-initial-subscription-Debug.xml",
+        "size": 1550,
+        "sha256": "a7e531861a61955f8217b8fa4e56230b97a7e01678c3b4d59950ecdedded7bbd",
+        "mtime_ns": 1793300020272302500
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-initial-subscription-Debug.xml",
+        "size": 1512,
+        "sha256": "94044c07ddf2e6591d2c7417402ddf6a5326dfd77a38eb61e12d7fed0e99b24d",
+        "mtime_ns": 1793300402679388200
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-initial-target-error-Debug.json",
+        "size": 281,
+        "sha256": "b3acf51a3e6fadea9023ad277f8dbc75b9b06fb28c548a4c5c90ff11c4d74183",
+        "mtime_ns": 1793299140918620400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-initial-target-error-Debug.json",
+        "size": 269,
+        "sha256": "bf0751abb2957389546a1f127300786d0c7f070268ed7fedca8aaec2eea2b00b",
+        "mtime_ns": 1793300402680389900
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-initial-target-error-Debug.log",
+        "size": 956,
+        "sha256": "0d32bdace9284e589020382961b844721437b2a411b236728baf38b35678dd96",
+        "mtime_ns": 1793299140898133000
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-initial-target-error-Debug.log",
+        "size": 956,
+        "sha256": "0d32bdace9284e589020382961b844721437b2a411b236728baf38b35678dd96",
+        "mtime_ns": 1793300330996943800
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-msvc.ps1",
+        "size": 3353,
+        "sha256": "ff2abfa25dff66d8edc47d77f8130195991a0a77b247dcace48b0a3af0fe9cc6",
+        "mtime_ns": 1793299933917014400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-msvc.ps1",
+        "size": 3353,
+        "sha256": "ff2abfa25dff66d8edc47d77f8130195991a0a77b247dcace48b0a3af0fe9cc6",
+        "mtime_ns": 1793300402680389900
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-sizing-bench-Release-effect-r1.csv",
+        "size": 99064,
+        "sha256": "d7b5aff21426cf30d4d3623049f6035552def9891c418efdebc92aa4623e6200",
+        "mtime_ns": 1793299690869898400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-sizing-bench-Release-effect-r1.csv",
+        "size": 99064,
+        "sha256": "d7b5aff21426cf30d4d3623049f6035552def9891c418efdebc92aa4623e6200",
+        "mtime_ns": 1793300330999196800
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-sizing-bench-Release-effect-r1.json",
+        "size": 278,
+        "sha256": "5aba233bdc7da3f28d27135e0f7bd98be438251a119c1ef185b09080399855ee",
+        "mtime_ns": 1793299690891288600
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-sizing-bench-Release-effect-r1.json",
+        "size": 266,
+        "sha256": "13f7329f79566d0917ea866487152c9eef6b0422559c2939e3478cb919299db1",
+        "mtime_ns": 1793300402681388700
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-sizing-bench-Release-effect-r1.log",
+        "size": 1216,
+        "sha256": "6734ffa36bac912d68f94eea39ee9338c1a03215ba81485959e71c2c0cba52f8",
+        "mtime_ns": 1793299690869898400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-sizing-bench-Release-effect-r1.log",
+        "size": 1216,
+        "sha256": "6734ffa36bac912d68f94eea39ee9338c1a03215ba81485959e71c2c0cba52f8",
+        "mtime_ns": 1793300331001720900
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-sizing-bench-Release-reactive-r1.csv",
+        "size": 11664,
+        "sha256": "2dedd52ffbffe83542d6e4fa155b25266a348b29f1e771dc11f40da3f1ed9eea",
+        "mtime_ns": 1793299688525083400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-sizing-bench-Release-reactive-r1.csv",
+        "size": 11664,
+        "sha256": "2dedd52ffbffe83542d6e4fa155b25266a348b29f1e771dc11f40da3f1ed9eea",
+        "mtime_ns": 1793300331002242500
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-sizing-bench-Release-reactive-r1.json",
+        "size": 280,
+        "sha256": "4b111bda90c1ef0dab8c5d38c1c19f617f562f7b49f0ad336b973aab43ee3649",
+        "mtime_ns": 1793299688553296300
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-sizing-bench-Release-reactive-r1.json",
+        "size": 268,
+        "sha256": "dd32bf22edeccc82c85914ba26eea0a72071df66bdb827af7fd1474727c2f47b",
+        "mtime_ns": 1793300402681894400
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-sizing-bench-Release-reactive-r1.log",
+        "size": 1220,
+        "sha256": "d60d2955e5e3180e735d110b58b81110cc04562f1824e33fecd6a519b07f4803",
+        "mtime_ns": 1793299688526091700
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-sizing-bench-Release-reactive-r1.log",
+        "size": 1220,
+        "sha256": "d60d2955e5e3180e735d110b58b81110cc04562f1824e33fecd6a519b07f4803",
+        "mtime_ns": 1793300331003251700
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-source-check-doctor.log",
+        "size": 358,
+        "sha256": "c852cd193b6ebfe5f839b53d87f99c1cecd6a9a89b9a87c4b376e32ff8624292",
+        "mtime_ns": 1793300299531600100
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-source-check-doctor.log",
+        "size": 358,
+        "sha256": "c852cd193b6ebfe5f839b53d87f99c1cecd6a9a89b9a87c4b376e32ff8624292",
+        "mtime_ns": 1793300331004759400
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-source-check-format.log",
+        "size": 318,
+        "sha256": "fd06e1a412aa0efd759c6ad76b1de195d75653b6f9c25c6bd614ea5899d10429",
+        "mtime_ns": 1793300268218877900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-source-check-format.log",
+        "size": 318,
+        "sha256": "fd06e1a412aa0efd759c6ad76b1de195d75653b6f9c25c6bd614ea5899d10429",
+        "mtime_ns": 1793300331005768600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-source-check-strict.log",
+        "size": 13126,
+        "sha256": "f4736176f540478140e18400e70efd39178410a8e6781e266114f7d2886e8dba",
+        "mtime_ns": 1793300303308572300
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-source-check-strict.log",
+        "size": 13126,
+        "sha256": "f4736176f540478140e18400e70efd39178410a8e6781e266114f7d2886e8dba",
+        "mtime_ns": 1793300331005768600
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-summarize.py",
+        "size": 4048,
+        "sha256": "658254771038ec17fe7d0376a99aa5792901f92ab2e22c971b00c1fefd060dc1",
+        "mtime_ns": 1793299340020769000
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-summarize.py",
+        "size": 4048,
+        "sha256": "658254771038ec17fe7d0376a99aa5792901f92ab2e22c971b00c1fefd060dc1",
+        "mtime_ns": 1793300402682900400
+      }
+    },
+    {
+      "source": {
+        "path": "out/103-summary.json",
+        "size": 210051,
+        "sha256": "8782c935da0c4aa88102b0883e4bff2930bade17e183bfaefa4d9c3bc0509dff",
+        "mtime_ns": 1793299900120575400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/103-summary.json",
+        "size": 203193,
+        "sha256": "2354fca72d60e30ba1ed4587b1a0f2570640890d6f72c8b811241c1076e9e055",
+        "mtime_ns": 1793300402682900400
+      }
+    },
+    {
+      "source": {
+        "path": "include/ryn/detail/reactive_runtime.hpp",
+        "size": 2712,
+        "sha256": "3b1dad8ac6c1647a9cc8fdbc9ea6e82f688e2dc159a22a016a0f9a1ba9a18c31",
+        "mtime_ns": 1792732120279462800
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/include/ryn/detail/reactive_runtime.hpp.txt",
+        "size": 2712,
+        "sha256": "3b1dad8ac6c1647a9cc8fdbc9ea6e82f688e2dc159a22a016a0f9a1ba9a18c31",
+        "mtime_ns": 1793300402684407400
+      }
+    },
+    {
+      "source": {
+        "path": "src/reactive/reactive.cpp",
+        "size": 8376,
+        "sha256": "5d553326953a08158bd55639d43903fa37ac7092375dc9d2de8a4cbcdec24b9a",
+        "mtime_ns": 1792768950209930900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/src/reactive/reactive.cpp.txt",
+        "size": 8376,
+        "sha256": "5d553326953a08158bd55639d43903fa37ac7092375dc9d2de8a4cbcdec24b9a",
+        "mtime_ns": 1793300402684407400
+      }
+    },
+    {
+      "source": {
+        "path": "src/graphics/rounded_effect.cpp",
+        "size": 30514,
+        "sha256": "15d12c933895b36a2a107e153010fa5152f8b2442ad6b9ac4524385d03576dff",
+        "mtime_ns": 1792732122815463900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/src/graphics/rounded_effect.cpp.txt",
+        "size": 30514,
+        "sha256": "15d12c933895b36a2a107e153010fa5152f8b2442ad6b9ac4524385d03576dff",
+        "mtime_ns": 1793300402684922700
+      }
+    },
+    {
+      "source": {
+        "path": "src/graphics/rounded_effect.hpp",
+        "size": 9157,
+        "sha256": "d69c8b00e644421e333dab36300af95df82c9877358c936a433495c14835f284",
+        "mtime_ns": 1792732122815463900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/src/graphics/rounded_effect.hpp.txt",
+        "size": 9157,
+        "sha256": "d69c8b00e644421e333dab36300af95df82c9877358c936a433495c14835f284",
+        "mtime_ns": 1793300402685466500
+      }
+    },
+    {
+      "source": {
+        "path": "src/renderer/common/rounded_effect_gpu_resources.cpp",
+        "size": 7471,
+        "sha256": "3f526a0da1acf30e0e93a6b7186c657288fcc94a69e9431276d49f374666eaac",
+        "mtime_ns": 1792732122843631100
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/src/renderer/common/rounded_effect_gpu_resources.cpp.txt",
+        "size": 7471,
+        "sha256": "3f526a0da1acf30e0e93a6b7186c657288fcc94a69e9431276d49f374666eaac",
+        "mtime_ns": 1793300402685466500
+      }
+    },
+    {
+      "source": {
+        "path": "src/renderer/common/rounded_effect_gpu_resources.hpp",
+        "size": 3146,
+        "sha256": "63427cf14a497ec55b1e6c9025a76beeae35ee9645d6c7e67c0c37bded2a6dcd",
+        "mtime_ns": 1792732122844639200
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/src/renderer/common/rounded_effect_gpu_resources.hpp.txt",
+        "size": 3146,
+        "sha256": "63427cf14a497ec55b1e6c9025a76beeae35ee9645d6c7e67c0c37bded2a6dcd",
+        "mtime_ns": 1793300402686474100
+      }
+    },
+    {
+      "source": {
+        "path": "tests/CMakeLists.txt",
+        "size": 143633,
+        "sha256": "c5c423ba68b6c0796ad5d4f92da8f545d649808b65076c6a8ebafd15df54a260",
+        "mtime_ns": 1793299933917014400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/tests/CMakeLists.txt.txt",
+        "size": 143633,
+        "sha256": "c5c423ba68b6c0796ad5d4f92da8f545d649808b65076c6a8ebafd15df54a260",
+        "mtime_ns": 1793300402686474100
+      }
+    },
+    {
+      "source": {
+        "path": "tests/reactive_fanout_benchmark.cpp",
+        "size": 9689,
+        "sha256": "ec429f770e32eac3a725d38a32f9d615366811b47701c4dc1791b1224ab52e74",
+        "mtime_ns": 1793292046219872500
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/tests/reactive_fanout_benchmark.cpp.txt",
+        "size": 9689,
+        "sha256": "ec429f770e32eac3a725d38a32f9d615366811b47701c4dc1791b1224ab52e74",
+        "mtime_ns": 1793300402687474200
+      }
+    },
+    {
+      "source": {
+        "path": "tests/effect_range_benchmark.cpp",
+        "size": 23267,
+        "sha256": "8ea01cee0de36287da974c3f2f6af9b95ef2571a1f1112dd929c2514f44c410c",
+        "mtime_ns": 1793299079245586900
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/tests/effect_range_benchmark.cpp.txt",
+        "size": 23267,
+        "sha256": "8ea01cee0de36287da974c3f2f6af9b95ef2571a1f1112dd929c2514f44c410c",
+        "mtime_ns": 1793300402687474200
+      }
+    },
+    {
+      "source": {
+        "path": "tests/support/scaling_benchmark.hpp",
+        "size": 3129,
+        "sha256": "bf23e9bc317b1accb77f9e79db9045431a10e0c48f827152f5540322ebffc487",
+        "mtime_ns": 1793291787941588800
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/tests/support/scaling_benchmark.hpp.txt",
+        "size": 3129,
+        "sha256": "bf23e9bc317b1accb77f9e79db9045431a10e0c48f827152f5540322ebffc487",
+        "mtime_ns": 1793300402687474200
+      }
+    },
+    {
+      "source": {
+        "path": "tests/support/allocation_probe.hpp",
+        "size": 3262,
+        "sha256": "fc1cdc2cd84f0f06dfe7bdd7ee7cf8606b3714551152c516d2bb636ec5f07607",
+        "mtime_ns": 1793293243791825400
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/tests/support/allocation_probe.hpp.txt",
+        "size": 3262,
+        "sha256": "fc1cdc2cd84f0f06dfe7bdd7ee7cf8606b3714551152c516d2bb636ec5f07607",
+        "mtime_ns": 1793300402688473300
+      }
+    },
+    {
+      "source": {
+        "path": "tests/reactive_subscription_tests.cpp",
+        "size": 13046,
+        "sha256": "15ed29f9bc78df0f973fd7d4a8fb19d9cdfa09b131fc0e7fae57b7ab70663a73",
+        "mtime_ns": 1793300234590569700
+      },
+      "frozen": {
+        "path": "openspec/changes/103-20261030-measure-reactive-effect-scaling/evidence/windows-baseline/source/tests/reactive_subscription_tests.cpp.txt",
+        "size": 13046,
+        "sha256": "15ed29f9bc78df0f973fd7d4a8fb19d9cdfa09b131fc0e7fae57b7ab70663a73",
+        "mtime_ns": 1793300402688978500
+      }
+    }
+  ],
+  "sources": [
+    {
+      "path": "include/ryn/detail/reactive_runtime.hpp",
+      "size": 2712,
+      "sha256": "3b1dad8ac6c1647a9cc8fdbc9ea6e82f688e2dc159a22a016a0f9a1ba9a18c31",
+      "mtime_ns": 1792732120279462800
+    },
+    {
+      "path": "src/reactive/reactive.cpp",
+      "size": 8376,
+      "sha256": "5d553326953a08158bd55639d43903fa37ac7092375dc9d2de8a4cbcdec24b9a",
+      "mtime_ns": 1792768950209930900
+    },
+    {
+      "path": "src/graphics/rounded_effect.cpp",
+      "size": 30514,
+      "sha256": "15d12c933895b36a2a107e153010fa5152f8b2442ad6b9ac4524385d03576dff",
+      "mtime_ns": 1792732122815463900
+    },
+    {
+      "path": "src/graphics/rounded_effect.hpp",
+      "size": 9157,
+      "sha256": "d69c8b00e644421e333dab36300af95df82c9877358c936a433495c14835f284",
+      "mtime_ns": 1792732122815463900
+    },
+    {
+      "path": "src/renderer/common/rounded_effect_gpu_resources.cpp",
+      "size": 7471,
+      "sha256": "3f526a0da1acf30e0e93a6b7186c657288fcc94a69e9431276d49f374666eaac",
+      "mtime_ns": 1792732122843631100
+    },
+    {
+      "path": "src/renderer/common/rounded_effect_gpu_resources.hpp",
+      "size": 3146,
+      "sha256": "63427cf14a497ec55b1e6c9025a76beeae35ee9645d6c7e67c0c37bded2a6dcd",
+      "mtime_ns": 1792732122844639200
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "size": 143633,
+      "sha256": "c5c423ba68b6c0796ad5d4f92da8f545d649808b65076c6a8ebafd15df54a260",
+      "mtime_ns": 1793299933917014400
+    },
+    {
+      "path": "tests/reactive_fanout_benchmark.cpp",
+      "size": 9689,
+      "sha256": "ec429f770e32eac3a725d38a32f9d615366811b47701c4dc1791b1224ab52e74",
+      "mtime_ns": 1793292046219872500
+    },
+    {
+      "path": "tests/effect_range_benchmark.cpp",
+      "size": 23267,
+      "sha256": "8ea01cee0de36287da974c3f2f6af9b95ef2571a1f1112dd929c2514f44c410c",
+      "mtime_ns": 1793299079245586900
+    },
+    {
+      "path": "tests/support/scaling_benchmark.hpp",
+      "size": 3129,
+      "sha256": "bf23e9bc317b1accb77f9e79db9045431a10e0c48f827152f5540322ebffc487",
+      "mtime_ns": 1793291787941588800
+    },
+    {
+      "path": "tests/support/allocation_probe.hpp",
+      "size": 3262,
+      "sha256": "fc1cdc2cd84f0f06dfe7bdd7ee7cf8606b3714551152c516d2bb636ec5f07607",
+      "mtime_ns": 1793293243791825400
+    },
+    {
+      "path": "tests/reactive_subscription_tests.cpp",
+      "size": 13046,
+      "sha256": "15ed29f9bc78df0f973fd7d4a8fb19d9cdfa09b131fc0e7fae57b7ab70663a73",
+      "mtime_ns": 1793300234590569700
+    }
+  ],
+  "binaries": [
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_reactive_fanout_benchmark.exe",
+      "size": 935424,
+      "sha256": "4c2f619d83cbf2b627f044805f8b552eb87b7f02e74ff54ca049c8884314a899",
+      "mtime_ns": 1793299392812178900,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_effect_range_benchmark.exe",
+      "size": 7058432,
+      "sha256": "9a5580eb0e68dc85ef17a3d2b134d47b0c0e78c4b7b0f376675faecc232e6725",
+      "mtime_ns": 1793299393759755400,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_signal_tests.exe",
+      "size": 854016,
+      "sha256": "5de47533848a5c2de3590b7adf9b89cf1920ceac1867c89b46f06ffb7abf9c0a",
+      "mtime_ns": 1793299949696377600,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_memo_tests.exe",
+      "size": 873984,
+      "sha256": "412e5a2b13f18132b15d632871d1540f85b855c665407ee5fc9279a7ff5a9c0c",
+      "mtime_ns": 1793299394189670700,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_batch_tests.exe",
+      "size": 877056,
+      "sha256": "6bb927492186cd313890ea3196cdc362fe24759faf7c01c52fead1b93f809fe7",
+      "mtime_ns": 1793299394607196000,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_scope_effect_tests.exe",
+      "size": 899584,
+      "sha256": "9b7528920510708a3117ee5f45bf5c6885b33b47c8af3942a3c109828643bcf0",
+      "mtime_ns": 1793299395002438200,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Debug/rynui_reactive_subscription_tests.exe",
+      "size": 946688,
+      "sha256": "83699e200499f777b8cac7848ab54d9af743a75b091033173e96e1ceab9acdc7",
+      "mtime_ns": 1793300238255521700,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_reactive_source_lifecycle.exe",
+      "size": 862208,
+      "sha256": "69fcd55453f26cf8bffe09b0989a40c84cc9bef3870409a57a1f0b252337b8dc",
+      "mtime_ns": 1793299396502515300,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_rounded_effect_math.exe",
+      "size": 252928,
+      "sha256": "a95695e2b7d9935c631ffbd518b034c7e4b33e9d357a9e14bd655a1d40ad5eff",
+      "mtime_ns": 1793299395234564600,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_rounded_effect_store.exe",
+      "size": 249856,
+      "sha256": "1d0351ff4ffbe1b33173639c3c750676aef67ad8d55ed6e8918cd7379ecec916",
+      "mtime_ns": 1793299395492604200,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_rounded_effect_scene.exe",
+      "size": 248320,
+      "sha256": "3fc1034a233fcc6f07594a8acaae278bf942bf1303409642692925ea38f6d65a",
+      "mtime_ns": 1793299395747217800,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_rounded_effect_gpu.exe",
+      "size": 270848,
+      "sha256": "833f53484bf22ad1ed26b29fa2a8b076d142748f8f2982f4ca822cffb44a8665",
+      "mtime_ns": 1793299396009914200,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_rounded_effect_gpu_resources.exe",
+      "size": 380928,
+      "sha256": "389f5370fe14362b6f0058ddf751da89651faf9f830763527ddc6401196795f2",
+      "mtime_ns": 1793299396278144200,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_scene_backend.exe",
+      "size": 31429632,
+      "sha256": "46caa5e731484b02cf2a4c073a1c62b63cd072b52d51df02284dc84c23a43b28",
+      "mtime_ns": 1793299403415254300,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_reactive_fanout_benchmark.exe",
+      "size": 59904,
+      "sha256": "98b8a397b593efbcbe5e610f47dd00ba257825376c31ab468f8a7dd64a94412c",
+      "mtime_ns": 1793299662580071400,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_effect_range_benchmark.exe",
+      "size": 1605120,
+      "sha256": "dceea972e65861f20f0c394fc5fe18620acefb1876d2505b03c526efcc61aa64",
+      "mtime_ns": 1793299662844160100,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_signal_tests.exe",
+      "size": 44032,
+      "sha256": "f480aa7bcbdfc53ca02cd6023f0f07a4eb05cb44fa80b92ca63a3dc6010195fc",
+      "mtime_ns": 1793300244175657600,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_memo_tests.exe",
+      "size": 47104,
+      "sha256": "11c42e537e22b1fcdf25e1cbbeeef383ea12ae64ddf3a866f3d067ae9b389837",
+      "mtime_ns": 1793299662994946800,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_batch_tests.exe",
+      "size": 48640,
+      "sha256": "047dfa34764b0e6b0c521a1773325f772916d90e941d2a900e6633385e640443",
+      "mtime_ns": 1793299663144315900,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_scope_effect_tests.exe",
+      "size": 54272,
+      "sha256": "36d3d052ffd116df20589eace8bd06e72cf42afde906820b895f8fc1d1d784f5",
+      "mtime_ns": 1793299663299803100,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/Release/rynui_reactive_subscription_tests.exe",
+      "size": 74240,
+      "sha256": "fdd253d26402bcf7bb7ea897428e11c86d1d5454d928b90252a9a674fff079ea",
+      "mtime_ns": 1793300244483832900,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_reactive_source_lifecycle.exe",
+      "size": 47616,
+      "sha256": "6cac4dc1c8126980738ce64fe253c577482f3ff41cfbd191e181362de0110780",
+      "mtime_ns": 1793299664454586300,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_math.exe",
+      "size": 30208,
+      "sha256": "4366a9eb481904d04496839f21d8aa27e49373c8549d87a5cd4866dc3c447394",
+      "mtime_ns": 1793299663497674000,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_store.exe",
+      "size": 47104,
+      "sha256": "8dad93e7bec3f3bb2afe1d4dbfe31ae6d12afd7d35a0663dc8b761aff658e3f1",
+      "mtime_ns": 1793299663688926700,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_scene.exe",
+      "size": 41472,
+      "sha256": "60aea399070dcc6d799266a1a7b9f69191e3c6ad73225cfb2a66f8f05ecf9b1d",
+      "mtime_ns": 1793299663877862000,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_gpu.exe",
+      "size": 38912,
+      "sha256": "d68fdd6ed36bed153f608b1136d1d933d32a85a21f2722f7efd16d44b1c7acc9",
+      "mtime_ns": 1793299664069199200,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_gpu_resources.exe",
+      "size": 70144,
+      "sha256": "83d324ba48bdd54762a74629b0711402099a439128a5b35d5cd3ecd61fb72bfe",
+      "mtime_ns": 1793299664261085000,
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_scene_backend.exe",
+      "size": 6005248,
+      "sha256": "10944e536d373af0c9130fcaf4abd7bca1d2f8d0756ce2709a1967ff7048d0cd",
+      "mtime_ns": 1793299673794501500,
+      "stack_reserve": 1048576
+    }
+  ],
+  "limits": [
+    "MSVC HEADLESS/RECORDING only",
+    "subscriber scans/sort comparisons/planning time unobserved",
+    "C++ allocation requests only; not peak memory",
+    "all samples retained; no native/GPU/present acceptance",
+    "UTF-8 frozen text uses LF; source records retain original byte hashes; UTF-16 logs/CSV remain exact"
+  ]
+}

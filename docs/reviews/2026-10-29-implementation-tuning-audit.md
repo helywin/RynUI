@@ -323,8 +323,8 @@ Token catalog 的 `runtime` 数量是生成映射分类，不是组件完成率�
 | TUNE-PERF-002 | 已修复并独审 CLEAN：bced2df3、76c469bd；连续增长、变化设备能力及失败重试通过，见 100/evidence/04-final-review.md |
 | TUNE-PERF-003 | Tree 已修复并独审 CLEAN：f595211e；MSVC D/R、三轮局部交互与故障重试见 102/evidence/01-tree-main.md、02-tree-review.md；不代表整页滚动达标 |
 | TUNE-PERF-004 | 已修复并独审 CLEAN：f6aeb746；Table 投影缓存/分页复用的 MSVC D/R、三轮基准与审查见 102/evidence/03-table-main.md、04-final-review.md。仍有逐行状态与 scene 成本，不代表整体常数更新或高刷达标 |
-| TUNE-PERF-005 | 阶段 B3：待高扇出测量后最小修复 |
-| TUNE-PERF-006 | 阶段 B3：待离散 ranges 测量与合并优化 |
+| TUNE-PERF-005 | 103 已完成正式三轮高扇出基线与20项D/R合同，确认扩展性热点；准备有序订阅句柄改造，见 103/evidence/01-baseline.md，尚未声明修复 |
+| TUNE-PERF-006 | 103 已完成三轮离散 ranges/真实bytes基线，store与同步分开计时；准备dirty统一合并，见 103/evidence/01-baseline.md，尚未声明修复 |
 | TUNE-VIS-001 | 阶段 C1：Menu Token 待实施 |
 | TUNE-VIS-002 | 阶段 C1：DatePicker 配方待实施 |
 | TUNE-VIS-003 | 阶段 C1：Table 双 caret 待实施；099 仅完成字符替换 |

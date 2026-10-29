@@ -677,7 +677,37 @@ foreach(glyph_replace_target IN ITEMS glyph_replace_tests glyph_replace_benchmar
 endforeach()
 add_test(NAME rynui.glyph_replace COMMAND rynui_glyph_replace_tests)
 
+add_executable(rynui_reactive_fanout_benchmark reactive_fanout_benchmark.cpp)
+rynui_configure_cpp_target(rynui_reactive_fanout_benchmark)
+target_link_libraries(rynui_reactive_fanout_benchmark PRIVATE rynui_reactive)
+add_test(NAME rynui.reactive_fanout_contract
+    COMMAND rynui_reactive_fanout_benchmark --smoke --iterations 2 --warmup 1 --rounds 1)
+
+add_executable(rynui_reactive_subscription_tests reactive_subscription_tests.cpp)
+rynui_configure_cpp_target(rynui_reactive_subscription_tests)
+target_link_libraries(rynui_reactive_subscription_tests PRIVATE rynui_reactive)
+foreach(subscription_case IN ITEMS order read_write dynamic lifetime initial_exception allocation)
+    add_test(NAME rynui.reactive_subscription_${subscription_case}
+        COMMAND rynui_reactive_subscription_tests ${subscription_case})
+endforeach()
+
+if(TARGET rynui_renderer_recording)
+    add_executable(rynui_effect_range_benchmark effect_range_benchmark.cpp)
+    rynui_configure_cpp_target(rynui_effect_range_benchmark)
+    target_include_directories(rynui_effect_range_benchmark PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(rynui_effect_range_benchmark PRIVATE rynui_renderer_common rynui_renderer_recording)
+    add_test(NAME rynui.effect_range_contract
+        COMMAND rynui_effect_range_benchmark --smoke --iterations 2 --warmup 1 --rounds 1)
+endif()
+
 if(NOT RYNUI_HAS_SDL_GPU)
+    # Reuse existing dependency, batching and reentry contracts in HEADLESS builds.
+    foreach(reactive_contract IN ITEMS signal memo batch scope_effect)
+        add_executable(rynui_${reactive_contract}_tests "${reactive_contract}_tests.cpp")
+        rynui_configure_cpp_target(rynui_${reactive_contract}_tests)
+        target_link_libraries(rynui_${reactive_contract}_tests PRIVATE rynui_reactive)
+        add_test(NAME rynui.${reactive_contract} COMMAND rynui_${reactive_contract}_tests)
+    endforeach()
     add_subdirectory(portable)
     return()
 endif()
