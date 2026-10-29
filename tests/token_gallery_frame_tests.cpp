@@ -3369,6 +3369,8 @@ void test_time_picker_gallery_after_document_scroll() {
                 heading = "gallery.auto-complete.contacts";
             } else if (entry.identity == "ant.component.tree") {
                 heading = "gallery.tree.project";
+            } else if (entry.identity == "ant.component.tree-select") {
+                heading = "gallery.tree-select.destination";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -4059,6 +4061,8 @@ void test_date_picker_gallery_after_document_scroll() {
                 heading = "gallery.auto-complete.contacts";
             } else if (entry.identity == "ant.component.tree") {
                 heading = "gallery.tree.project";
+            } else if (entry.identity == "ant.component.tree-select") {
+                heading = "gallery.tree-select.destination";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
