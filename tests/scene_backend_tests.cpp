@@ -264,6 +264,89 @@ void required_capabilities_and_scene_limits() {
     check(!backend.begin_upload_batch(), "Quad growth preflight underestimated doubled capacity");
 }
 
+void glyph_growth_obeys_resource_limits() {
+    constexpr auto stride = sizeof(GlyphGpuInstance);
+    for (const auto budget : {3 * stride, 4 * stride - 1}) {
+        auto caps = baseline_scene_capabilities();
+        caps.maximum_buffer_bytes = budget;
+        RecordingRenderer backend(caps);
+        SceneResources resources(backend);
+        graphics::GlyphInstanceStore glyphs;
+        graphics::GlyphAtlas atlas;
+        graphics::OrderedScene order;
+        const SceneDeviceMetrics metrics{100, 100, 1};
+        const auto sync = [&] {
+            return resources.synchronize({nullptr, atlas, glyphs, nullptr, metrics});
+        };
+        const std::array<graphics::GlyphInstance, 2> initial{};
+        static_cast<void>(glyphs.append(initial));
+        check(sync() && resources.glyphs().instance_capacity() == 2, "initial bounded Glyph allocation failed");
+        const auto old = resources.attach(order);
+        graphics::GlyphInstance next;
+        next.color = {1, 0, 0, 1};
+        static_cast<void>(glyphs.append(std::span{&next, 1}));
+        check(sync(), "legal Glyph growth failed at the renderer byte limit");
+        check(resources.glyphs().instance_capacity() == 3 && !backend.valid_attachment(old),
+              "Glyph capacity exceeded the byte limit or retained an old attachment");
+        const auto bytes = backend.buffer_bytes(resources.glyphs().instance_buffer());
+        const auto packed = pack_glyph_instance(next, metrics);
+        check(bytes.size() == 3 * stride && same(bytes.subspan(2 * stride), std::as_bytes(std::span{&packed, 1})),
+              "bounded Glyph growth lost its appended bytes");
+        const auto handle = resources.glyphs().instance_buffer();
+        static_cast<void>(glyphs.replace({2, 1}, {}));
+        check(sync() && resources.glyphs().instance_buffer() == handle, "capacity shrink recreated Glyph storage");
+        static_cast<void>(glyphs.append(std::span{&next, 1}));
+        check(sync() && resources.glyphs().instance_buffer() == handle, "capacity restoration recreated Glyph storage");
+
+        static_cast<void>(glyphs.append(std::span{&next, 1}));
+        const auto uploads = backend.counters().uploads;
+        backend.fail_next(RecordingFailure::begin);
+        rejects([&] { sync(); });
+        check(backend.counters().uploads == uploads && !glyphs.geometry_dirty_ranges().empty(),
+              "over-limit Glyph preflight uploaded or lost retry data");
+        static_cast<void>(glyphs.replace({3, 1}, {}));
+        check(!sync(), "over-limit Glyph preflight consumed the pending begin failure");
+        check(sync(), "corrected bounded Glyph scene failed to retry");
+        const auto stale = resources.attach(order);
+        backend.reset_device();
+        check(!backend.valid_attachment(stale) && sync() && resources.glyphs().instance_capacity() == 3 &&
+                  backend.counters().rejected_releases == 0,
+              "device epoch reused stale Glyph capacity or released retired resources");
+    }
+
+    for (const auto failure : {RecordingFailure::create, RecordingFailure::upload, RecordingFailure::commit}) {
+        auto caps = baseline_scene_capabilities();
+        caps.maximum_buffer_bytes = 3 * stride;
+        RecordingRenderer backend(caps);
+        SceneResources resources(backend);
+        graphics::GlyphInstanceStore glyphs;
+        graphics::GlyphAtlas atlas;
+        const SceneDeviceMetrics metrics{100, 100, 1};
+        const auto sync = [&] {
+            return resources.synchronize({nullptr, atlas, glyphs, nullptr, metrics});
+        };
+        const std::array<graphics::GlyphInstance, 2> initial{};
+        static_cast<void>(glyphs.append(initial));
+        check(sync(), "Glyph failure fixture did not initialize");
+        graphics::GlyphInstance next;
+        next.color = {0, 1, 0, 1};
+        static_cast<void>(glyphs.append(std::span{&next, 1}));
+        backend.fail_next(failure);
+        if (failure == RecordingFailure::commit) {
+            check(!sync(), "Glyph failed commit reported success");
+        } else {
+            rejects([&] { sync(); });
+        }
+        check(!glyphs.geometry_dirty_ranges().empty(), "failed bounded growth lost retry data");
+        check(sync() && resources.glyphs().instance_capacity() == 3 && backend.live_resources() == 2,
+              "bounded Glyph allocation did not recover or leaked a resource");
+        const auto packed = pack_glyph_instance(next, metrics);
+        check(same(backend.buffer_bytes(resources.glyphs().instance_buffer()).subspan(2 * stride),
+                   std::as_bytes(std::span{&packed, 1})),
+              "bounded Glyph retry did not restore appended bytes");
+    }
+}
+
 struct Fixture final {
     Signal<String> content{String{u8"共同场景 Hello"}};
     Signal<double> slider_value{25};
@@ -737,6 +820,7 @@ int main() {
         owned_bytes_and_ranges();
         texture_source_lifetime_cancel_and_invalid_ranges();
         required_capabilities_and_scene_limits();
+        glyph_growth_obeys_resource_limits();
         real_scene_transaction_and_epoch();
         slider_scene_locality_and_retry();
         logical_resize_and_recovery();

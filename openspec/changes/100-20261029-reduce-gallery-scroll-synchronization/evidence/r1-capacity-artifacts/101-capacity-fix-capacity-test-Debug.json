@@ -1,0 +1,8 @@
+﻿{
+    "stage":  "capacity-test",
+    "label":  "capacity-fix",
+    "configuration":  "Debug",
+    "exit":  0,
+    "seconds":  0.58521729999999994,
+    "finishedUtc":  "2026-10-29T16:05:04.7522868Z"
+}

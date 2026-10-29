@@ -1,0 +1,8 @@
+﻿{
+    "stage":  "capacity-test",
+    "label":  "capacity-fix",
+    "configuration":  "Release",
+    "exit":  0,
+    "seconds":  0.4218133,
+    "finishedUtc":  "2026-10-29T16:05:26.6723786Z"
+}

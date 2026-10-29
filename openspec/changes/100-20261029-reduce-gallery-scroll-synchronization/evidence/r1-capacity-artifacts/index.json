@@ -1,0 +1,173 @@
+﻿{
+    "baseline":  "673d7181bcc116ebc36d2995cf8c8ced35b3eff2",
+    "records":  [
+                    {
+                        "path":  "101-msvc.ps1",
+                        "sha256":  "291C80F6B29EDA07E4D5BD7A499082935977006602FE510D1A56476752FE5AEE",
+                        "bytes":  2728
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-build-Debug.log",
+                        "sha256":  "E66CD5659D2D0C2A756CFE0E4BEC647642E7B6542669B340F73AEEF0312DA14E",
+                        "bytes":  2390
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-build-Debug.json",
+                        "sha256":  "3F5EB02E95333109DF948FFEA61F990DBD03942E8BE647CFB2C6834E9947C613",
+                        "bytes":  203
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-test-Debug.log",
+                        "sha256":  "6123359A86ABDAA246171DA1DCDCC4D678D98E71938AE07E2FCD3C6000CE0133",
+                        "bytes":  1058
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-test-Debug.json",
+                        "sha256":  "05D0963951DA08ABAE46FDADEA2F14F82CB5435360C01543D7AAD4C6F1D5BF14",
+                        "bytes":  211
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-test-Debug.xml",
+                        "sha256":  "C602F9B5591BA3FAD8650BE9A16583F04A23739DF1DC452329F01E8535C2778D",
+                        "bytes":  818
+                    },
+                    {
+                        "path":  "101-before-test-Debug.log",
+                        "sha256":  "7583944CBDC2A21E0C764254C9EEC2AB7D52604A15FE6409BC3C22871029782E",
+                        "bytes":  3008
+                    },
+                    {
+                        "path":  "101-before-test-Debug.json",
+                        "sha256":  "EBE794272E9FB9BC4A7FF44877E7C25380364E7D911A340536D95656E1AECEA5",
+                        "bytes":  186
+                    },
+                    {
+                        "path":  "101-before-test-Debug.xml",
+                        "sha256":  "B3520D065811F1C96F96AB4330654AA1EB78B86B1ED77961408D8E059465E988",
+                        "bytes":  1305
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-build-Release.log",
+                        "sha256":  "41E5CDB1CDDA47E9136E72DA1F5BA89650DD3B66D02D8672FED7416AA58FA125",
+                        "bytes":  2434
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-build-Release.json",
+                        "sha256":  "B3A0155DB1D1B1EE26B01A64731EF8F51940C4CF225E394ABAB006EC1DC6B087",
+                        "bytes":  205
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-test-Release.log",
+                        "sha256":  "C9A24CE00CF949D9CFC134EAD79F66782761EB874104038B06935E7336385E4C",
+                        "bytes":  1058
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-test-Release.json",
+                        "sha256":  "EBA24D367AAC1A7AA6A13BA54989FB0F92BB3A815A4CC86412BD1205981D5B41",
+                        "bytes":  203
+                    },
+                    {
+                        "path":  "101-capacity-fix-capacity-test-Release.xml",
+                        "sha256":  "C944B4F9ADA67E05CB72DC12ABB6D6040B8B268C3130C42209551B28A4093C28",
+                        "bytes":  818
+                    },
+                    {
+                        "path":  "101-before-test-Release.log",
+                        "sha256":  "DBD80FE58A2AA68DD8EF2654512321A8F66D88F75C1576A3BB7CF00FABA20BC4",
+                        "bytes":  3008
+                    },
+                    {
+                        "path":  "101-before-test-Release.json",
+                        "sha256":  "11BC5B2B14ECA7292C947AEAFD82DD91C8347279B8AABC85EA07192442ED301E",
+                        "bytes":  198
+                    },
+                    {
+                        "path":  "101-before-test-Release.xml",
+                        "sha256":  "01E30679B8FBD798389E1B6F85477CF59A3AD0C156C6FCB307ED265B47ADB6B2",
+                        "bytes":  1305
+                    },
+                    {
+                        "path":  "100-r1-format.log",
+                        "sha256":  "270B0A87625C935B5D1214384158B5BDA7BEF9DB604D17EE5C8528D745723BFC",
+                        "bytes":  1020
+                    },
+                    {
+                        "path":  "100-r1-format-final.log",
+                        "sha256":  "C5FD3137CBAA1443514E0995728EE4AB2DDF70232F6D2BBA614D67044C2472FF",
+                        "bytes":  318
+                    },
+                    {
+                        "path":  "100-r1-doctor.json",
+                        "sha256":  "C852CD193B6EBFE5F839B53D87F99C1CECD6A9A89B9A87C4B376E32FF8624292",
+                        "bytes":  358
+                    },
+                    {
+                        "path":  "100-r1-strict.log",
+                        "sha256":  "7E9CE6A95432C833B0B92D155A800D82C9B5055777AD365F92944DE3C0AB5195",
+                        "bytes":  13036
+                    }
+                ],
+    "artifacts":  [
+                      {
+                          "path":  "src/renderer/common/scene_buffer_capacity.hpp",
+                          "sha256":  "3C967E846AEE6D48B118420ECC669BA0AE201157D5FF8A7F437D25EB3943A406",
+                          "bytes":  1549
+                      },
+                      {
+                          "path":  "src/renderer/common/glyph_gpu_resources.hpp",
+                          "sha256":  "E9C0D7B5063A414603C32E4D5C3A386B6380326E0D50772E19A0C792733619E7",
+                          "bytes":  4310
+                      },
+                      {
+                          "path":  "src/renderer/common/glyph_gpu_resources.cpp",
+                          "sha256":  "7D9652FFB3D71E58E704CEDED8F333B0FD99D8FECD0D537CF4AC1BA223B0D2F0",
+                          "bytes":  9341
+                      },
+                      {
+                          "path":  "src/renderer/common/scene_resources.cpp",
+                          "sha256":  "A0202A9E3B6C5B590A29128EA748378DDAEF12FCD160EEA479E6D6207B344EB8",
+                          "bytes":  7978
+                      },
+                      {
+                          "path":  "tests/scene_backend_tests.cpp",
+                          "sha256":  "D4425FECFE0421DA8DFD54852D21FACE32EB1DE652D8675D9633E6207FC44668",
+                          "bytes":  43106
+                      },
+                      {
+                          "path":  "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_scene_backend.exe",
+                          "sha256":  "F39F5C88957491FB26EF6A70C771F32C0A762DD9D5017FB4BD2B933D61EB00C6",
+                          "bytes":  31319552,
+                          "mtimeUtc":  "2026-10-29T16:05:01.6859028Z"
+                      },
+                      {
+                          "path":  "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_glyph_gpu_resources.exe",
+                          "sha256":  "947517D1A3B342ACD6888F0FD519E90A0AA6FDF58056654AA8245C37B38C561E",
+                          "bytes":  6673920,
+                          "mtimeUtc":  "2026-10-29T16:04:52.4238365Z"
+                      },
+                      {
+                          "path":  "out/build/windows-msvc-headless/tests/portable/Debug/rynui_portable_logical_scene_packing.exe",
+                          "sha256":  "11200D46F6CE4ACDD84C9047289D98F934351867B335B2C310E8D1CD37DAA21F",
+                          "bytes":  6032384,
+                          "mtimeUtc":  "2026-10-29T16:04:51.8334295Z"
+                      },
+                      {
+                          "path":  "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_scene_backend.exe",
+                          "sha256":  "F16F657C69DB1C014DEA83BED0F6CF4C9C49E496CBCD7AC804D0277F74B43F49",
+                          "bytes":  5987840,
+                          "mtimeUtc":  "2026-10-29T16:05:23.9236374Z"
+                      },
+                      {
+                          "path":  "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_glyph_gpu_resources.exe",
+                          "sha256":  "8F443AC6B631AFBF30D0BF9234A5BA1F5D1A87434FAFE5DC2A4DE3B20359D835",
+                          "bytes":  1554944,
+                          "mtimeUtc":  "2026-10-29T16:05:14.4094254Z"
+                      },
+                      {
+                          "path":  "out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_logical_scene_packing.exe",
+                          "sha256":  "BD953F7492566A51FA28369218DD4D09CB44660D0E5ECE16541CFA1158D113F1",
+                          "bytes":  1515008,
+                          "mtimeUtc":  "2026-10-29T16:05:14.1024869Z"
+                      }
+                  ]
+}

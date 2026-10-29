@@ -130,7 +130,11 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         validate_scene_buffer_requirement(capabilities,
                                           quad_buffer_capacity(data.quads ? data.quads->size() : 0, quad_capacity),
                                           sizeof(QuadGpuInstance), false);
-        validate_scene_buffer_requirement(capabilities, data.glyphs.size(), sizeof(GlyphGpuInstance), false);
+        const auto glyph_capacity =
+            glyphs_ && state_->epoch == backend_->device_epoch() ? glyphs_->instance_capacity() : 0;
+        validate_scene_buffer_requirement(
+            capabilities, glyph_buffer_capacity(data.glyphs.size(), glyph_capacity, capabilities.maximum_buffer_bytes),
+            sizeof(GlyphGpuInstance), false);
         validate_scene_buffer_requirement(capabilities, data.effects ? data.effects->live_count() : 0,
                                           sizeof(RoundedEffectGpuInstance), true);
         if (data.atlas.page_count() && (data.atlas.config().page_width > capabilities.maximum_texture_width ||
@@ -171,7 +175,7 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         if (timing) {
             timing->quads = std::chrono::steady_clock::now();
         }
-        glyphs_->synchronize(data.atlas, data.glyphs, data.metrics);
+        glyphs_->synchronize(data.atlas, data.glyphs, data.metrics, capabilities.maximum_buffer_bytes);
         if (timing) {
             timing->glyphs = std::chrono::steady_clock::now();
         }

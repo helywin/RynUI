@@ -1,4 +1,5 @@
 #include "renderer/common/glyph_gpu_resources.hpp"
+#include "renderer/common/scene_buffer_capacity.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -67,11 +68,9 @@ GlyphGpuResources::~GlyphGpuResources() {
 }
 
 void GlyphGpuResources::synchronize(graphics::GlyphAtlas& atlas, graphics::GlyphInstanceStore& instances,
-                                    SceneDeviceMetrics metrics) {
+                                    SceneDeviceMetrics metrics, std::uint64_t maximum_buffer_bytes) {
     validate_scene_device_metrics(metrics);
-    if (instances.size() > std::numeric_limits<std::uint32_t>::max()) {
-        throw std::length_error("Glyph instance buffer exceeds uint32_t capacity");
-    }
+    const auto target_capacity = glyph_buffer_capacity(instances.size(), instance_capacity_, maximum_buffer_bytes);
     const bool full = metrics_ != metrics || instances.size() > instance_capacity_;
     const auto initialized_count = packed_.size();
     packed_.resize(instances.size());
@@ -84,7 +83,7 @@ void GlyphGpuResources::synchronize(graphics::GlyphAtlas& atlas, graphics::Glyph
             convert_range(instances, range, metrics);
         }
         ensure_textures(atlas);
-        const bool replaced_buffer = ensure_instance_buffer(instances);
+        const bool replaced_buffer = ensure_instance_buffer(target_capacity);
         upload_atlas(atlas);
         if (!replaced_buffer) {
             upload_instance_ranges(instances);
@@ -148,16 +147,10 @@ void GlyphGpuResources::ensure_textures(const graphics::GlyphAtlas& atlas) {
     }
 }
 
-bool GlyphGpuResources::ensure_instance_buffer(const graphics::GlyphInstanceStore& instances) {
-    if (instances.size() <= instance_capacity_) {
+bool GlyphGpuResources::ensure_instance_buffer(std::uint32_t target_capacity) {
+    if (target_capacity == instance_capacity_) {
         return false;
     }
-    if (instances.size() > std::numeric_limits<std::uint32_t>::max()) {
-        throw std::length_error("Glyph instance buffer exceeds uint32_t capacity");
-    }
-    const auto target_capacity = static_cast<std::uint32_t>(
-        std::min<std::uint64_t>(std::max<std::uint64_t>(instances.size(), std::uint64_t(instance_capacity_) * 2),
-                                std::numeric_limits<std::uint32_t>::max()));
     const std::size_t byte_count = std::size_t(target_capacity) * sizeof(GlyphGpuInstance);
     auto replacement = api_->create_glyph_buffer(byte_count);
     if (replacement == nullptr) {

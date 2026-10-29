@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <optional>
 #include <vector>
@@ -60,7 +61,8 @@ public:
         metrics_.reset();
     }
 
-    void synchronize(graphics::GlyphAtlas& atlas, graphics::GlyphInstanceStore& instances, SceneDeviceMetrics metrics);
+    void synchronize(graphics::GlyphAtlas& atlas, graphics::GlyphInstanceStore& instances, SceneDeviceMetrics metrics,
+                     std::uint64_t maximum_buffer_bytes = std::numeric_limits<std::uint64_t>::max());
     void set_sparse_upload_coalescing_limit(std::size_t max_span_bytes) noexcept;
 
     [[nodiscard]] GlyphGpuSamplerHandle sampler() const noexcept;
@@ -76,7 +78,7 @@ public:
 
 private:
     void ensure_textures(const graphics::GlyphAtlas& atlas);
-    [[nodiscard]] bool ensure_instance_buffer(const graphics::GlyphInstanceStore& instances);
+    [[nodiscard]] bool ensure_instance_buffer(std::uint32_t target_capacity);
     void upload_atlas(graphics::GlyphAtlas& atlas);
     void upload_instance_ranges(graphics::GlyphInstanceStore& instances);
 
