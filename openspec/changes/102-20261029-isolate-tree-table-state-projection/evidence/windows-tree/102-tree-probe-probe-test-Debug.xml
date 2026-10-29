@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-ninja"
+	tests="2"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="Ryzen-Workstation"
+	time="0"
+	timestamp="2026-10-30T01:01:55"
+	>
+	<testcase name="rynui.glyph_replace" classname="rynui.glyph_replace" time="0.0758927" status="run">
+		<system-out>Glyph equal-length replacement contracts passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.text_scene_service" classname="rynui.portable.text_scene_service" time="0.463734" status="run">
+		<system-out></system-out>
+	</testcase>
+</testsuite>

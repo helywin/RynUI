@@ -1,0 +1,634 @@
+{
+  "measurements": [
+    {
+      "label": "before",
+      "nodes": 128,
+      "round": 1,
+      "samples": 64,
+      "mean_ns": 1417715.625,
+      "p95_ns": 1461200,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 16,
+          "max": 16,
+          "total": 1024
+        },
+        "sync_allocations": {
+          "min": 165,
+          "max": 165,
+          "total": 10560
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "before",
+      "nodes": 128,
+      "round": 2,
+      "samples": 64,
+      "mean_ns": 1451440.625,
+      "p95_ns": 1558100,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 16,
+          "max": 16,
+          "total": 1024
+        },
+        "sync_allocations": {
+          "min": 165,
+          "max": 165,
+          "total": 10560
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "before",
+      "nodes": 128,
+      "round": 3,
+      "samples": 64,
+      "mean_ns": 1431776.5625,
+      "p95_ns": 1485200,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 16,
+          "max": 16,
+          "total": 1024
+        },
+        "sync_allocations": {
+          "min": 165,
+          "max": 165,
+          "total": 10560
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "before",
+      "nodes": 512,
+      "round": 1,
+      "samples": 64,
+      "mean_ns": 22070950.0,
+      "p95_ns": 23380300,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 20,
+          "max": 20,
+          "total": 1280
+        },
+        "sync_allocations": {
+          "min": 549,
+          "max": 549,
+          "total": 35136
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "before",
+      "nodes": 512,
+      "round": 2,
+      "samples": 64,
+      "mean_ns": 22171054.6875,
+      "p95_ns": 24928100,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 20,
+          "max": 20,
+          "total": 1280
+        },
+        "sync_allocations": {
+          "min": 549,
+          "max": 549,
+          "total": 35136
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "before",
+      "nodes": 512,
+      "round": 3,
+      "samples": 64,
+      "mean_ns": 21924342.1875,
+      "p95_ns": 22536500,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 20,
+          "max": 20,
+          "total": 1280
+        },
+        "sync_allocations": {
+          "min": 549,
+          "max": 549,
+          "total": 35136
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "before",
+      "nodes": 1024,
+      "round": 1,
+      "samples": 64,
+      "mean_ns": 98557829.6875,
+      "p95_ns": 124601000,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "sync_allocations": {
+          "min": 1061,
+          "max": 1061,
+          "total": 67904
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "before",
+      "nodes": 1024,
+      "round": 2,
+      "samples": 64,
+      "mean_ns": 94779950.0,
+      "p95_ns": 119294800,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "sync_allocations": {
+          "min": 1061,
+          "max": 1061,
+          "total": 67904
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "before",
+      "nodes": 1024,
+      "round": 3,
+      "samples": 64,
+      "mean_ns": 95523235.9375,
+      "p95_ns": 111492700,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "sync_allocations": {
+          "min": 1061,
+          "max": 1061,
+          "total": 67904
+        },
+        "projected_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "presented_rows": {
+          "min": -1,
+          "max": -1,
+          "total": -64
+        },
+        "composer_rebuilds": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 128,
+      "round": 1,
+      "samples": 64,
+      "mean_ns": 75292.1875,
+      "p95_ns": 93400,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 128,
+      "round": 2,
+      "samples": 64,
+      "mean_ns": 74620.3125,
+      "p95_ns": 81200,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 128,
+      "round": 3,
+      "samples": 64,
+      "mean_ns": 81979.6875,
+      "p95_ns": 140300,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 512,
+      "round": 1,
+      "samples": 64,
+      "mean_ns": 284271.875,
+      "p95_ns": 310100,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 512,
+      "round": 2,
+      "samples": 64,
+      "mean_ns": 274384.375,
+      "p95_ns": 283500,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 512,
+      "round": 3,
+      "samples": 64,
+      "mean_ns": 281390.625,
+      "p95_ns": 296200,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 1024,
+      "round": 1,
+      "samples": 64,
+      "mean_ns": 601412.5,
+      "p95_ns": 816600,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 1024,
+      "round": 2,
+      "samples": 64,
+      "mean_ns": 570764.0625,
+      "p95_ns": 633200,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "label": "tree",
+      "nodes": 1024,
+      "round": 3,
+      "samples": 64,
+      "mean_ns": 582915.625,
+      "p95_ns": 664100,
+      "metrics": {
+        "dispatch_allocations": {
+          "min": 1,
+          "max": 1,
+          "total": 64
+        },
+        "sync_allocations": {
+          "min": 21,
+          "max": 21,
+          "total": 1344
+        },
+        "projected_rows": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        },
+        "presented_rows": {
+          "min": 2,
+          "max": 2,
+          "total": 128
+        },
+        "composer_rebuilds": {
+          "min": 0,
+          "max": 0,
+          "total": 0
+        }
+      }
+    }
+  ]
+}

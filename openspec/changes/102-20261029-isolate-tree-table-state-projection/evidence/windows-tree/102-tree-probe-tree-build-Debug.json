@@ -1,0 +1,12 @@
+{
+    "stage":  "tree-build",
+    "label":  "tree-probe",
+    "configuration":  "Debug",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  1,
+    "exit":  0,
+    "seconds":  12.6018616,
+    "finishedUtc":  "2026-10-29T17:00:59.2826844Z"
+}

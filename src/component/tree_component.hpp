@@ -27,6 +27,12 @@ struct TreeSnapshot final {
     float content_height{};
 };
 
+// Private host counters: projection work cannot be inferred from unchanged scene bytes.
+struct TreeWork final {
+    std::uint64_t projected_rows{};
+    std::uint64_t presented_rows{};
+};
+
 class TreeComponentHost final : public WindowComponentParticipant {
 public:
     explicit TreeComponentHost(WindowComponentServices&);
@@ -38,6 +44,7 @@ public:
     }
 
     [[nodiscard]] TreeSnapshot snapshot(runtime::ComponentId) const;
+    [[nodiscard]] TreeWork work(runtime::ComponentId) const;
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
@@ -59,6 +66,8 @@ public:
 private:
     bool intact(runtime::ComponentId);
     void refresh(runtime::ComponentId, bool);
+    void present(runtime::ComponentId, std::size_t);
+    void entry(runtime::ComponentId, std::size_t);
     void activate(runtime::ComponentId, std::size_t, int);
     runtime::Size measure(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     runtime::Size measure_row(runtime::ComponentId, std::size_t, layout::LayoutEngine&, layout::Constraints);

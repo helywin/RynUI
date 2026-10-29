@@ -3,8 +3,11 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
+#include <bitset>
 #include <cmath>
 #include <limits>
+#include <map>
+#include <set>
 
 namespace ryn::detail {
 namespace {
@@ -32,6 +35,7 @@ struct TreeRow final {
     float switcher_width{};
     float checkbox_width{};
     float icon_width{};
+    runtime::Rect painted_bounds;
 };
 
 struct TreeState final {
@@ -40,6 +44,17 @@ struct TreeState final {
     TreeModel model;
     std::vector<TreeRow> rows;
     std::vector<runtime::ComponentId> required;
+    std::map<std::uint32_t, std::size_t> row_indices;
+    std::vector<std::size_t> shown;
+    std::vector<std::size_t> paint_rows;
+    std::bitset<1024> paint_pending;
+    TreeWork work;
+    runtime::Rect painted_clip;
+    runtime::Rect painted_decoration_clip;
+    runtime::Rect painted_bounds;
+    runtime::Point painted_translation;
+    float painted_opacity{-1};
+    bool paint_all{true};
     Signal<runtime::SemanticTypography> font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> icon_font{runtime::SemanticTypography{}};
     std::array<theme_runtime::Subscription, 2> subscriptions;
@@ -109,27 +124,26 @@ bool contains(runtime::Rect r, float x, float y) {
     return r.width > 0 && r.height > 0 && x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height;
 }
 
-bool descendant(WindowComponentServices& services, runtime::ComponentId child, runtime::ComponentId parent) {
-    for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
-        if (*current == parent) {
-            return true;
-        }
-    }
-    return false;
-}
-
 std::optional<std::size_t> focused_row(WindowComponentServices& services, const TreeState& s) {
     const auto focus = services.focus().state().focused;
     const auto* record = focus ? services.interactions().find(*focus) : nullptr;
     if (!record) {
         return {};
     }
-    for (std::size_t i = 0; i < s.rows.size(); ++i) {
-        if (s.rows[i].view.component.valid() && descendant(services, record->component, s.rows[i].view.component)) {
-            return i;
+    for (auto owner = std::optional{record->component}; owner; owner = services.components().parent(*owner)) {
+        const auto found = s.row_indices.find(owner->index);
+        if (found != s.row_indices.end() && s.rows[found->second].view.component == *owner) {
+            return found->second;
         }
     }
     return {};
+}
+
+void queue_paint(TreeState& s, std::size_t i) {
+    if (!s.paint_pending.test(i)) {
+        s.paint_rows.push_back(i);
+        s.paint_pending.set(i);
+    }
 }
 
 int part(WindowComponentServices& services, const TreeRow& row, float x, float y, bool checkable) {
@@ -202,6 +216,45 @@ TreeSnapshot TreeComponentHost::snapshot(runtime::ComponentId id) const {
     return result;
 }
 
+TreeWork TreeComponentHost::work(runtime::ComponentId id) const {
+    const auto s = state(*services_, id);
+    return s ? s->work : TreeWork{};
+}
+
+void TreeComponentHost::present(runtime::ComponentId id, std::size_t i) {
+    if (!intact(id)) {
+        return;
+    }
+    const auto s = state(*services_, id);
+    if (!s->ready) {
+        return;
+    }
+    auto& row = s->rows[i];
+    const auto colors = services_->components().theme_scope(id)->snapshot().tree().colors;
+    const bool disabled = s->model.disabled || s->model.nodes[i].disabled;
+    queue_paint(*s, i);
+    row.color.set(fg(disabled            ? colors.disabled
+                     : row.view.selected ? colors.node_selected_text
+                     : s->hover == i     ? colors.node_hover_text
+                                         : colors.text));
+    if (intact(id)) {
+        services_->dirty().invalidate(services_->components().root(row.view.component), runtime::DirtyFlags::Material);
+    }
+}
+
+void TreeComponentHost::entry(runtime::ComponentId id, std::size_t i) {
+    if (!intact(id)) {
+        return;
+    }
+    const auto s = state(*services_, id);
+    const auto previous = s->entry;
+    s->entry = i;
+    if (previous && *previous != i) {
+        services_->interactions().set_tab_stop(s->rows[*previous].view.interaction, false);
+    }
+    services_->interactions().set_tab_stop(s->rows[i].view.interaction, true);
+}
+
 void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     if (!intact(id)) {
         return;
@@ -235,18 +288,27 @@ void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         if (!intact(id)) {
             return;
         }
-        const auto shown = s->model.shown();
+        s->paint_all = true;
+        s->shown = s->model.shown();
+        const auto& shown = s->shown;
+        std::bitset<1024> shown_set;
+        for (auto i : shown) {
+            shown_set.set(i);
+        }
         const auto previous_interaction = services_->focus().state().focused;
         const auto previous_focus = focused_row(*services_, *s);
-        if (s->reveal && std::ranges::find(shown, *s->reveal) == shown.end()) {
+        if (s->reveal && !shown_set.test(*s->reveal)) {
             s->reveal.reset();
         }
-        if (geometry && previous_focus && std::ranges::find(shown, *previous_focus) != shown.end()) {
+        if (geometry && previous_focus && shown_set.test(*previous_focus)) {
             s->reveal = previous_focus;
         }
         const auto selected = s->model.normalize(s->model.selected, true);
+        const auto is_selected = [&](std::size_t i) {
+            return !selected.empty() && s->model.nodes[i].key == selected.front();
+        };
         const auto eligible = [&](std::size_t i) {
-            return s->model.eligible(i) && std::ranges::find(shown, i) != shown.end();
+            return s->model.eligible(i) && shown_set.test(i);
         };
         if (previous_focus && eligible(*previous_focus)) {
             s->entry = previous_focus;
@@ -254,7 +316,7 @@ void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         if (!s->entry || !eligible(*s->entry)) {
             s->entry.reset();
             for (auto i : shown) {
-                if (eligible(i) && std::ranges::find(selected, s->model.nodes[i].key) != selected.end()) {
+                if (eligible(i) && is_selected(i)) {
                     s->entry = i;
                     break;
                 }
@@ -269,7 +331,7 @@ void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         std::optional<std::size_t> transfer;
         const bool transfer_focus =
             previous_focus &&
-            (std::ranges::find(shown, *previous_focus) == shown.end() || s->model.disabled ||
+            (!shown_set.test(*previous_focus) || s->model.disabled ||
              (previous_interaction == s->rows[*previous_focus].view.interaction && !eligible(*previous_focus)) ||
              (s->model.nodes[*previous_focus].disabled && !s->rows[*previous_focus].disabled_before));
         if (transfer_focus) {
@@ -281,19 +343,31 @@ void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             s->entry = transfer;
         }
         const bool root_shown = s->model.visible && !shown.empty();
-        geometry |= services_->components().set_branch_active(id, root_shown);
+        bool structure = services_->components().set_branch_active(id, root_shown);
         services_->nodes().require(s->node).out_of_flow = !root_shown;
         const auto checked = s->model.checks(s->model.checked);
+        std::set<std::string_view> checked_set;
+        std::set<std::string_view> half_set;
+        std::set<std::string, std::less<>> expanded_set;
+        for (const auto& key : checked.checked) {
+            checked_set.insert(key.bytes());
+        }
+        for (const auto& key : checked.half_checked) {
+            half_set.insert(key.bytes());
+        }
+        for (const auto& key : s->model.expanded) {
+            expanded_set.emplace(key.bytes());
+        }
         for (std::size_t i = 0; i < s->rows.size(); ++i) {
+            ++s->work.projected_rows;
             auto& row = s->rows[i];
             auto& view = row.view;
-            view.shown = std::ranges::find(shown, i) != shown.end();
-            view.expanded = s->model.open(i);
-            view.selected = std::ranges::find(selected, s->model.nodes[i].key) != selected.end();
-            view.checked = std::ranges::find(checked.checked, s->model.nodes[i].key) != checked.checked.end();
-            view.indeterminate =
-                std::ranges::find(checked.half_checked, s->model.nodes[i].key) != checked.half_checked.end();
-            geometry |= services_->components().set_branch_active(view.component, view.shown);
+            view.shown = shown_set.test(i);
+            view.expanded = s->model.nodes[i].end > i + 1 && expanded_set.contains(s->model.nodes[i].key.bytes());
+            view.selected = is_selected(i);
+            view.checked = checked_set.contains(s->model.nodes[i].key.bytes());
+            view.indeterminate = half_set.contains(s->model.nodes[i].key.bytes());
+            structure |= services_->components().set_branch_active(view.component, view.shown);
             services_->nodes().require(services_->components().root(view.component)).out_of_flow = !view.shown;
             // Keep the wrapper eligible: a disabled Tree row can contain independently enabled native controls.
             services_->interactions().set_eligible(view.interaction, view.shown);
@@ -315,9 +389,9 @@ void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             if (!intact(id)) {
                 return;
             }
-            geometry |= services_->components().set_branch_active(view.switcher, s->model.nodes[i].end > i + 1);
-            geometry |= services_->components().set_branch_active(view.checkbox, s->model.checkable);
-            geometry |= services_->components().set_branch_active(row.check_mark, s->model.checkable && view.checked);
+            structure |= services_->components().set_branch_active(view.switcher, s->model.nodes[i].end > i + 1);
+            structure |= services_->components().set_branch_active(view.checkbox, s->model.checkable);
+            structure |= services_->components().set_branch_active(row.check_mark, s->model.checkable && view.checked);
             if (row.disabled_before != disabled) {
                 row.disabled_before = disabled;
                 if (disabled) {
@@ -339,7 +413,10 @@ void TreeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                 }
             }
         }
-        services_->mark_scene_structure_dirty();
+        if (structure) {
+            services_->mark_scene_structure_dirty();
+        }
+        geometry |= structure;
         services_->dirty().invalidate(s->node, geometry
                                                    ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                          runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
@@ -523,6 +600,7 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
                 auto& row = s->rows[i];
                 row.view.component = region();
                 const auto row_id = row.view.component;
+                s->row_indices.emplace(row_id.index, i);
                 const auto node = c.root(row_id);
                 row.view.interaction = services.interactions().create({row_id, node, {}, true, true, {}, true, false});
                 const auto hit = c.register_scene_fragment(row_id, runtime::SceneFragmentPlacement::before_children);
@@ -545,7 +623,6 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
                     const auto current = state(*services_, id);
                     if (event.kind() == input::PointerEventKind::cancel) {
                         current->pressed.reset();
-                        refresh(id, false);
                         return;
                     }
                     const auto& row = current->rows[i];
@@ -558,10 +635,9 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
                     if (event.kind() == input::PointerEventKind::down) {
                         current->pressed = i;
                         current->pressed_part = zone;
-                        current->entry = i;
+                        entry(id, i);
                         static_cast<void>(event.capture_pointer());
                         event.stop_propagation();
-                        refresh(id, false);
                     } else if (event.kind() == input::PointerEventKind::up) {
                         const auto clip = services_->nodes().content_clip(
                             services_->components().root(row.view.component), current->clip);
@@ -573,7 +649,6 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
                         current->pressed.reset();
                         static_cast<void>(event.release_pointer_capture());
                         event.stop_propagation();
-                        refresh(id, false);
                         if (hit && intact(id)) {
                             activate(id, i, zone);
                         }
@@ -585,11 +660,11 @@ void TreeComponentHost::mount(const TreeProps& p, const std::vector<TreeItem>& i
                     if (intact(id)) {
                         if (value.focused) {
                             const auto current = state(*services_, id);
-                            current->entry = i;
+                            entry(id, i);
                             current->reveal = i;
                             services_->dirty().invalidate(current->node, runtime::DirtyFlags::Layout);
                         }
-                        refresh(id, false);
+                        present(id, i);
                     }
                 };
                 services.interactions().set_focus_handlers(row.view.interaction, std::move(focus));
@@ -734,6 +809,7 @@ runtime::Size TreeComponentHost::measure_row(runtime::ComponentId id, std::size_
     const auto s = state(*services_, id);
     auto& row = s->rows[i];
     const auto m = services_->components().theme_scope(id)->snapshot().tree().metrics;
+    const auto previous_title = row.title_size;
     row.indent = std::min(c.max_width, static_cast<float>(s->model.nodes[i].depth) * m.indent_size);
     float available = std::max(0.0F, c.max_width - row.indent);
     const auto take = [&](float amount) {
@@ -751,6 +827,9 @@ runtime::Size TreeComponentHost::measure_row(runtime::ComponentId id, std::size_
     static_cast<void>(measure(row.view.checkbox, std::min(m.checkbox_size, row.checkbox_width)));
     static_cast<void>(measure(row.view.icon, std::min(m.title_height, row.icon_width)));
     row.title_size = measure(row.view.title, std::max(0.0F, available - 2 * std::min(m.padding_inline, available / 2)));
+    if (row.title_size != previous_title) {
+        queue_paint(*s, i);
+    }
     row.height = std::max({m.title_height, s->model.checkable ? m.checkbox_size : 0, row.title_size.height});
     return c.constrain({row.indent + row.switcher_width + row.checkbox_width + row.icon_width + row.title_size.width +
                             2 * m.padding_inline,
@@ -763,7 +842,7 @@ runtime::Size TreeComponentHost::measure(runtime::ComponentId id, layout::Layout
     }
     const auto s = state(*services_, id);
     const auto m = services_->components().theme_scope(id)->snapshot().tree().metrics;
-    const auto shown = s->model.shown();
+    const auto& shown = s->shown;
     const float padding = shown.empty() ? 0.0F : focus_padding(m);
     const float inline_padding = std::min(padding, c.max_width / 2);
     const float block_padding = std::min(padding, c.max_height / 2);
@@ -792,6 +871,9 @@ void TreeComponentHost::place_row(runtime::ComponentId id, std::size_t i, layout
     }
     const auto s = state(*services_, id);
     const auto& row = s->rows[i];
+    if (row.painted_bounds != r) {
+        queue_paint(*s, i);
+    }
     const auto m = services_->components().theme_scope(id)->snapshot().tree().metrics;
     float x = r.x + row.indent;
     const auto place_center = [&](runtime::ComponentId child, float width, float extent) {
@@ -815,7 +897,7 @@ void TreeComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& e, 
         return;
     }
     const auto s = state(*services_, id);
-    const auto shown = s->model.shown();
+    const auto& shown = s->shown;
     const float padding =
         shown.empty() ? 0.0F : focus_padding(services_->components().theme_scope(id)->snapshot().tree().metrics);
     const float inline_padding = std::min(padding, r.width / 2);
@@ -873,7 +955,7 @@ bool TreeComponentHost::on_keyboard_input(const input::KeyboardInputEvent& event
             return true;
         }
         auto target = index;
-        auto shown = s->model.shown();
+        auto shown = s->shown;
         std::erase_if(shown, [&](auto i) { return !s->model.eligible(i); });
         auto position = std::ranges::find(shown, index);
         if (event.key == input::Key::home) {
@@ -905,7 +987,7 @@ bool TreeComponentHost::on_keyboard_input(const input::KeyboardInputEvent& event
                 target = parent;
             }
         }
-        s->entry = target;
+        entry(id, target);
         s->reveal = target;
         services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout);
         services_->focus().defer_focus(s->rows[target].view.interaction, input::FocusModality::keyboard);
@@ -926,14 +1008,26 @@ void TreeComponentHost::on_pointer_input(const input::PointerInputEvent& event, 
         }
         const auto s = state(*services_, id);
         std::optional<std::size_t> next;
-        for (std::size_t i = 0; event.action != input::PointerAction::cancel && i < s->rows.size(); ++i) {
-            if (hit == s->rows[i].view.interaction && s->model.eligible(i)) {
-                next = i;
+        const auto* target =
+            hit && event.action != input::PointerAction::cancel ? services_->interactions().find(*hit) : nullptr;
+        if (target) {
+            const auto found = s->row_indices.find(target->component.index);
+            if (found != s->row_indices.end()) {
+                const auto i = found->second;
+                if (hit == s->rows[i].view.interaction && s->model.eligible(i)) {
+                    next = i;
+                }
             }
         }
         if (s->hover != next) {
+            const auto previous = s->hover;
             s->hover = next;
-            refresh(id, false);
+            if (previous) {
+                present(id, *previous);
+            }
+            if (next && intact(id)) {
+                present(id, *next);
+            }
         }
     }
 }
@@ -945,6 +1039,7 @@ void TreeComponentHost::on_input_boundary_changed() {
             continue;
         }
         const auto s = state(*services_, id);
+        s->paint_all = true;
         if (s->pressed && !services_->interactions().branch_active(s->rows[*s->pressed].view.interaction)) {
             const auto hit = s->rows[*s->pressed].view.interaction;
             s->pressed.reset();
@@ -971,6 +1066,9 @@ void TreeComponentHost::prepare_auxiliary_layout() {
         if (focus != s->last_focus) {
             s->last_focus = focus;
             if (auto row = focused_row(*services_, *s)) {
+                if (s->model.eligible(*row) && s->rows[*row].view.shown) {
+                    entry(id, *row);
+                }
                 s->reveal = row;
                 services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout);
             }
@@ -1043,15 +1141,33 @@ void TreeComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
         const auto& m = t.metrics;
         const auto& root = services_->nodes().require(s->node);
         const auto clip = services_->nodes().content_clip(s->node, s->clip);
+        const auto decoration_clip =
+            services_->component_clip(id, viewport, document_clip, runtime::ClipPurpose::decoration);
         const float opacity =
             services_->components().branch_active(id) ? services_->nodes().content_opacity(s->node) : 0;
+        const bool paint_all = s->paint_all || s->painted_clip != clip ||
+                               s->painted_decoration_clip != decoration_clip || s->painted_bounds != root.bounds ||
+                               s->painted_translation != root.translation || s->painted_opacity != opacity;
+        s->paint_all = paint_all;
+        s->painted_clip = clip;
+        s->painted_decoration_clip = decoration_clip;
+        s->painted_bounds = root.bounds;
+        s->painted_translation = root.translation;
+        s->painted_opacity = opacity;
         const auto background =
             graphics::make_corner_fill_effects({root.bounds, 0}, {false, false, false, false}, t.colors.background,
                                                opacity, root.translation, graphics::EffectClip{1, clip});
         static_cast<void>(services_->surfaces().update_content_effects(s->background, background));
-        for (std::size_t i = 0; i < s->rows.size(); ++i) {
-            const auto& row = s->rows[i];
+        if (paint_all) {
+            for (std::size_t i = 0; i < s->rows.size(); ++i) {
+                queue_paint(*s, i);
+            }
+        }
+        for (auto i : s->paint_rows) {
+            ++s->work.presented_rows;
+            auto& row = s->rows[i];
             const auto& node = services_->nodes().require(services_->components().root(row.view.component));
+            row.painted_bounds = node.bounds;
             std::vector<graphics::RoundedEffectInstance> effects;
             const float alpha = row.view.shown ? opacity : 0;
             const auto add = [&](runtime::Rect r, float radius, Color color, graphics::EffectClip c) {
@@ -1067,10 +1183,13 @@ void TreeComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
                                         std::min(std::max(0.0F, node.bounds.width - start),
                                                  row.icon_width + row.title_size.width + 2 * m.padding_inline),
                                         node.bounds.height};
-            if (row.view.selected || s->hover == i) {
+            {
+                // Keep the background slot stable across hover/focus changes.
+                const auto background_alpha = row.view.selected || s->hover == i ? 1.0F : 0.0F;
+                const auto color =
+                    row.view.selected ? t.colors.node_selected_background : t.colors.node_hover_background;
                 add(content, m.border_radius,
-                    row.view.selected ? t.colors.node_selected_background : t.colors.node_hover_background,
-                    {1, row_clip});
+                    Color{color.red(), color.green(), color.blue(), color.alpha() * background_alpha}, {1, row_clip});
             }
             if (s->model.checkable) {
                 const auto checkbox =
@@ -1110,6 +1229,9 @@ void TreeComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
                 focused && m.focus_width > 0 ? alpha : 0, node.translation, graphics::EffectClip{2, external}));
             static_cast<void>(services_->surfaces().update_content_effects(row.surface, effects));
         }
+        s->paint_rows.clear();
+        s->paint_pending.reset();
+        s->paint_all = false;
     }
 }
 } // namespace ryn::detail

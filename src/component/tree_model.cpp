@@ -1,6 +1,7 @@
 #include "component/tree_model.hpp"
 #include <algorithm>
 #include <stdexcept>
+#include <set>
 
 namespace ryn::detail {
 void TreeModel::validate() const {
@@ -23,9 +24,12 @@ void TreeModel::validate() const {
 
 TreeKeys TreeModel::normalize(const TreeKeys& input, bool single) const {
     TreeKeys result;
+    std::set<std::string_view> keys;
+    for (const auto& node : nodes) {
+        keys.insert(node.key.bytes());
+    }
     for (const auto& key : input) {
-        if (std::ranges::any_of(nodes, [&](const auto& n) { return n.key == key; }) &&
-            std::ranges::find(result, key) == result.end()) {
+        if (keys.erase(key.bytes()) != 0) {
             result.push_back(key);
             if (single) {
                 break;
@@ -44,10 +48,14 @@ std::vector<std::size_t> TreeModel::shown() const {
     if (!visible) {
         return result;
     }
+    std::set<std::string_view> opened;
+    for (const auto& key : expanded) {
+        opened.insert(key.bytes());
+    }
     for (std::size_t i = 0; i < nodes.size();) {
         if (nodes[i].visible) {
             result.push_back(i);
-            i = open(i) ? i + 1 : nodes[i].end;
+            i = opened.contains(nodes[i].key.bytes()) ? i + 1 : nodes[i].end;
         } else {
             i = nodes[i].end;
         }
@@ -82,9 +90,13 @@ TreeKeys TreeModel::select(std::size_t i) const {
 TreeChecks TreeModel::checks(const TreeKeys& input) const {
     std::vector<bool> full(nodes.size());
     std::vector<bool> half(nodes.size());
+    std::set<std::string_view> explicit_keys;
+    for (const auto& key : input) {
+        explicit_keys.insert(key.bytes());
+    }
     for (std::size_t i = 0; i < nodes.size(); ++i) {
         const auto& n = nodes[i];
-        const bool explicit_value = std::ranges::find(input, n.key) != input.end();
+        const bool explicit_value = explicit_keys.contains(n.key.bytes());
         full[i] = explicit_value ||
                   (!n.disabled && n.parent != tree_no_parent && !nodes[n.parent].disabled && full[n.parent]);
     }

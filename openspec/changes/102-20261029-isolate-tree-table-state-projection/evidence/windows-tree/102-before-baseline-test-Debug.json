@@ -1,0 +1,12 @@
+{
+    "stage":  "baseline-test",
+    "label":  "before",
+    "configuration":  "Debug",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  1,
+    "exit":  8,
+    "seconds":  2.6942741999999997,
+    "finishedUtc":  "2026-10-29T16:50:10.5237094Z"
+}

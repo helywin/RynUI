@@ -1,0 +1,1237 @@
+{
+  "recorded_utc": "2026-10-29T17:06:53.609601+00:00",
+  "base_head": "033bc96bae1dbe5ee028a04f604fba074ed1cfea",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "processor": "AMD64 Family 25 Model 33 Stepping 2, AuthenticAMD",
+  "preset": "windows-msvc-headless",
+  "max_jobs": 2,
+  "sources": [
+    {
+      "path": "src/component/tree_component.cpp",
+      "sha256": "a1c829d5c08770c4c5a73763c1c44d2ab487a873342b59c5c9d6045a90a7708b"
+    },
+    {
+      "path": "src/component/tree_component.hpp",
+      "sha256": "8499faaf2764a9ba91196ec408f4e40171d21f194d74054eceeb11c98267ac64"
+    },
+    {
+      "path": "src/component/tree_model.cpp",
+      "sha256": "643c051a23292d081f71c41a695b6f1dc4f5862f83a5a006fd80a613cb552104"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "sha256": "70b49d2bf57684b99c0f971efc5201ac54284426986f6cf2a65a6a106cd7e092"
+    },
+    {
+      "path": "tests/state_projection_tests.cpp",
+      "sha256": "ade20be40cf3a49b307c24bf8d76265fe79a968c3149c81b87a2a4298005965d"
+    },
+    {
+      "path": "tests/state_projection_benchmark.cpp",
+      "sha256": "b2869b556bb440288e8eb46e523765be75237c8a1c100e507cd9937de6f11406"
+    },
+    {
+      "path": "tests/support/state_projection_fixture.hpp",
+      "sha256": "65225186aa3eeb6b371f8e1de720836c01aabec400e864eef6cf593915ca21e0"
+    },
+    {
+      "path": "tests/support/allocation_probe.hpp",
+      "sha256": "fc1cdc2cd84f0f06dfe7bdd7ee7cf8606b3714551152c516d2bb636ec5f07607"
+    }
+  ],
+  "binaries": [
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_state_projection_tests.exe",
+      "sha256": "8bbdd7856b3e320dfdc9ad0b80278b4e5310587c1952e7aece96b7256898c3a8",
+      "bytes": 31069184,
+      "mtime_utc": "2026-10-29T17:00:59.117285+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_state_projection_benchmark.exe",
+      "sha256": "83edc35db28d08386ad4b96bf85606579d003b90e5404b3471058c829e93d5d8",
+      "bytes": 31182336,
+      "mtime_utc": "2026-10-29T17:00:58.505970+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_component_tests.exe",
+      "sha256": "2e268373892cf433711e8adf12b12d803864c743be8c576d964d4e76eca27475",
+      "bytes": 31331840,
+      "mtime_utc": "2026-10-29T16:57:21.017383+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_model_tests.exe",
+      "sha256": "514b6f13b975c91d18793ca1b9a120945da4f37bcfd779a98d9bccbce3bdeea4",
+      "bytes": 276992,
+      "mtime_utc": "2026-10-29T16:57:17.350047+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_theme_tests.exe",
+      "sha256": "e22cf6d1425f85e843705d8246a89f693e9eb0b51f6413e71d7764ce2aae541c",
+      "bytes": 2222080,
+      "mtime_utc": "2026-10-29T16:57:20.917200+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_review_tests.exe",
+      "sha256": "8b86b4113f6b2832e6bfc7d830a9d2e4a0366b37e99eac172af769ccc0a658ed",
+      "bytes": 31188480,
+      "mtime_utc": "2026-10-29T16:57:20.462551+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_r2_tests.exe",
+      "sha256": "38f0b51c8a4b0e43046dcaa92507621c3f08581b476ab9fa623e9bdd9da1d9aa",
+      "bytes": 31101440,
+      "mtime_utc": "2026-10-29T16:57:08.510647+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_select_component_tests.exe",
+      "sha256": "ea40d74962a5c03ba65446a917a6971556ad373d0a03909a0173be999c20df59",
+      "bytes": 31049728,
+      "mtime_utc": "2026-10-29T16:57:11.609801+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_select_integration_tests.exe",
+      "sha256": "0df26ec050b88559e5afe8e5295fb8f14e50c866651c08484896ac63c1c9bd3b",
+      "bytes": 31135744,
+      "mtime_utc": "2026-10-29T16:57:17.900409+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_select_model_tests.exe",
+      "sha256": "4ee2849ffa040472751c467d72b83d827151a2a332a3369ced7b18548ac0c494",
+      "bytes": 30943232,
+      "mtime_utc": "2026-10-29T16:57:10.091158+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_select_theme_tests.exe",
+      "sha256": "92e08beb7ea2969a7abb80145a1b760b7be9efcc945b6f0251ad88fe84e1ff20",
+      "bytes": 2222080,
+      "mtime_utc": "2026-10-29T16:57:10.551108+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_select_review_tests.exe",
+      "sha256": "3283235c0db4db391f9a6fbfa16ecd5d0ab87ef0daaf20f7eee9c46a55e85ebd",
+      "bytes": 31005184,
+      "mtime_utc": "2026-10-29T16:57:16.769078+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_select_r2_tests.exe",
+      "sha256": "452b46d4f0853addc779bd7f90f5cddd2188b4eac2d90193a6b9f196e4ddf5a9",
+      "bytes": 31021568,
+      "mtime_utc": "2026-10-29T16:57:14.747515+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_tree_select_r3_tests.exe",
+      "sha256": "4a8d0d874d2824966cf84f46535ac394c38f24ade620893e3efdfa8430b17216",
+      "bytes": 30993408,
+      "mtime_utc": "2026-10-29T16:57:13.572574+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Debug\\rynui_glyph_replace_tests.exe",
+      "sha256": "20fb3de999fc3c8e1d01849c486c67b909df23adfdd3cef1d48760bfebefabe9",
+      "bytes": 5917184,
+      "mtime_utc": "2026-10-29T17:01:52.846500+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\portable\\Debug\\rynui_portable_focus_order.exe",
+      "sha256": "f917a6028ec38d1a7819d1366657746aa098f47b708666c44678f5fc72d9d3f4",
+      "bytes": 2661376,
+      "mtime_utc": "2026-10-29T16:57:21.514557+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\portable\\Debug\\rynui_portable_focus_lifecycle.exe",
+      "sha256": "4f8e51ebb6a6b37c70d4d2a5b45c039442941ec4a58c6b654386a18cec137704",
+      "bytes": 2778112,
+      "mtime_utc": "2026-10-29T16:57:21.739483+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\portable\\Debug\\rynui_portable_input_component.exe",
+      "sha256": "ce3f11146d5aa58b64c8ef87b469e807bcbe81cdfe7d3f60bc8630efe0c48b85",
+      "bytes": 31681536,
+      "mtime_utc": "2026-10-29T16:57:22.775273+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\portable\\Debug\\rynui_portable_text_scene_service.exe",
+      "sha256": "3ac9acdae19b34961366caf00082bee11f0efd7d9dffa476e6d8d3ca432e61b6",
+      "bytes": 8948736,
+      "mtime_utc": "2026-10-29T17:01:50.657368+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_state_projection_tests.exe",
+      "sha256": "dc821e420d010f9cab9e7df74ca048be3525d2949112e0ec5052e1567209ef91",
+      "bytes": 4981760,
+      "mtime_utc": "2026-10-29T17:01:39.956975+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_state_projection_benchmark.exe",
+      "sha256": "756b548bfc8a0d32c2cfb6b9b21218a4c9b2b60e64df1ccc0984414b8281672b",
+      "bytes": 5341184,
+      "mtime_utc": "2026-10-29T17:01:36.975748+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_component_tests.exe",
+      "sha256": "0759c2f0a234d5391477107f8998fa4edcca54ee715a0f72ee199a01267cce1e",
+      "bytes": 6302208,
+      "mtime_utc": "2026-10-29T16:59:07.251077+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_model_tests.exe",
+      "sha256": "366d6066ac2271f5c485b2e3cc777ebb32ac49ff9afd5bd4f98c0e6ea5a507b2",
+      "bytes": 54784,
+      "mtime_utc": "2026-10-29T16:59:05.807918+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_theme_tests.exe",
+      "sha256": "70c850c76634027bf992b2007ee0bf3b36eb7f5d8bb7323bc6b482993b616a7f",
+      "bytes": 834048,
+      "mtime_utc": "2026-10-29T16:59:07.419333+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_review_tests.exe",
+      "sha256": "39178cc07db268f2716c47bd49909dba34e48484893a11151d34486e43653416",
+      "bytes": 6031360,
+      "mtime_utc": "2026-10-29T16:59:07.164909+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_r2_tests.exe",
+      "sha256": "0cc776ecc9ddfc82e2bafecf4b416cd850e04319337303362d571e28e5bcbbca",
+      "bytes": 5777408,
+      "mtime_utc": "2026-10-29T16:58:57.095784+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_select_component_tests.exe",
+      "sha256": "2e7c27fc10df6b5eaf473b02ba27b0ff24310a8e2dd3345e04fe0634ed199098",
+      "bytes": 5751808,
+      "mtime_utc": "2026-10-29T16:58:59.652000+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_select_integration_tests.exe",
+      "sha256": "0e64f2abb3663a3ce083999a537a122a4a2eebc0b9aca76f4154c755cd445c58",
+      "bytes": 6028800,
+      "mtime_utc": "2026-10-29T16:59:05.547757+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_select_model_tests.exe",
+      "sha256": "18f6dac10f46ffbab7842d6ad29747338031a4b8228c2468ec8b110d8e5b7829",
+      "bytes": 2965504,
+      "mtime_utc": "2026-10-29T16:58:58.336893+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_select_theme_tests.exe",
+      "sha256": "c9ca9b75ecc228fe669f8181886aec07bc1c82fd8d13a50bec3d7ee583ffd913",
+      "bytes": 836608,
+      "mtime_utc": "2026-10-29T16:58:59.921176+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_select_review_tests.exe",
+      "sha256": "d0990bdcd3be32391a1a08ff62dfacd73e965fba88772f260dffa210b11afc34",
+      "bytes": 5854208,
+      "mtime_utc": "2026-10-29T16:59:04.145874+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_select_r2_tests.exe",
+      "sha256": "9db3a25ae218705514eae0d9f34fc2f40a9b3e12fb88c103d3cc65fdd9f4c3d4",
+      "bytes": 5859840,
+      "mtime_utc": "2026-10-29T16:59:02.591682+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_tree_select_r3_tests.exe",
+      "sha256": "8b388537083f6264cf8136101ecdff273fa20a003d0508864bade509152d1bd7",
+      "bytes": 5718528,
+      "mtime_utc": "2026-10-29T16:59:01.201380+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\Release\\rynui_glyph_replace_tests.exe",
+      "sha256": "2f39e9b5b5a5cc9f91d4bb47fa745e0c11678e869c6156c3e3f789d2086754f1",
+      "bytes": 1520640,
+      "mtime_utc": "2026-10-29T17:02:00.751182+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\portable\\Release\\rynui_portable_focus_order.exe",
+      "sha256": "e88809ad772129605e5be2ac07892da92a7882e0b6b7f806640fe2fceeaa48d2",
+      "bytes": 620544,
+      "mtime_utc": "2026-10-29T16:59:07.646701+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\portable\\Release\\rynui_portable_focus_lifecycle.exe",
+      "sha256": "0ca66fe6a6e2cb74d4403e5e65ba01778a930894fead7d7f4b646d9fffaea62a",
+      "bytes": 653824,
+      "mtime_utc": "2026-10-29T16:59:07.871024+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\portable\\Release\\rynui_portable_input_component.exe",
+      "sha256": "64c99c6d6291e29090135d234c05777a65711634cffe8c0e92533d85d7bc3927",
+      "bytes": 5746688,
+      "mtime_utc": "2026-10-29T16:59:08.611703+00:00",
+      "stack_reserve": 1048576
+    },
+    {
+      "path": "out\\build\\windows-msvc-headless\\tests\\portable\\Release\\rynui_portable_text_scene_service.exe",
+      "sha256": "f7e7e8e46839be6409b2ec3b09d4e5f63dc6bdbd937e7006d3ce291e323bbabd",
+      "bytes": 2947584,
+      "mtime_utc": "2026-10-29T17:01:58.588810+00:00",
+      "stack_reserve": 1048576
+    }
+  ],
+  "records": [
+    {
+      "path": "102-before-baseline-test-Debug.json",
+      "sha256": "9c581c4e126279c0ddad01a4881ae8318efd3ec69b3bdb946868442f31f73e11",
+      "bytes": 278,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-baseline-test-Debug.json",
+      "original_sha256": "b4fa6efa0dc7e493136d9283115027c65ab41bddf6ff99499841b5af8a88a915",
+      "original_bytes": 293,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-baseline-test-Debug.log",
+      "sha256": "9f74362f2690004015abb674c4c5d551a1685e5b8084b7a6f583118c5cc89b68",
+      "bytes": 2070,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-baseline-test-Debug.log",
+      "original_sha256": "9f74362f2690004015abb674c4c5d551a1685e5b8084b7a6f583118c5cc89b68",
+      "original_bytes": 2070,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-baseline-test-Debug.xml",
+      "sha256": "df784cda093b6ce6b9fc2cae8edec59a4cd2242b143b3e7a65ba3d25e43239f1",
+      "bytes": 705,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-baseline-test-Debug.xml",
+      "original_sha256": "58a7d50aa027fd8bf47b116427d6a6c20daeaa569b6f51a972eabf45378e0ad9",
+      "original_bytes": 726,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-baseline-test-Release.json",
+      "sha256": "3dfc3cc08720ac705c389524cc797c06a14d488ae941c8a490dbd5b2ab9a0cc7",
+      "bytes": 281,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-baseline-test-Release.json",
+      "original_sha256": "c960c5f2b073c66932ba1baa531ea32189e3c9e9a08c807f5d86f2754f25ea80",
+      "original_bytes": 296,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-baseline-test-Release.log",
+      "sha256": "80bf8a96a24f174fb01ce5afd3edc46950fc1bc4ef1476391ac46b588ce1fab0",
+      "bytes": 2070,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-baseline-test-Release.log",
+      "original_sha256": "80bf8a96a24f174fb01ce5afd3edc46950fc1bc4ef1476391ac46b588ce1fab0",
+      "original_bytes": 2070,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-baseline-test-Release.xml",
+      "sha256": "86094a3c1107ae732fb809361dc463e9e0ef594c02f15c714f6c1157feeeb18d",
+      "bytes": 708,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-baseline-test-Release.xml",
+      "original_sha256": "a6cb858f6fd62419c4bb5cd0a724e2927af2c1ec16ed5bebc7b836eb66c5a7e7",
+      "original_bytes": 729,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-1000-r1.json",
+      "sha256": "2bf9765485da9e6eaf286f173b29f1bca2601b67a82c036a1112cca5e47e5eb3",
+      "bytes": 265,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-1000-r1.json",
+      "original_sha256": "bd49597972ccca4022ad240b73ede9d69cfb0dbb6b0d1dbe128cb7795f7a0e22",
+      "original_bytes": 280,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-1000-r1.log",
+      "sha256": "7df0e98e9bd2da8d32a88958d1e6d88d0a0a79fcbfdcfede7e1da5056583fee5",
+      "bytes": 26180,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-1000-r1.log",
+      "original_sha256": "7df0e98e9bd2da8d32a88958d1e6d88d0a0a79fcbfdcfede7e1da5056583fee5",
+      "original_bytes": 26180,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-table-1000-r2.json",
+      "sha256": "224a19b64279357fe1570a4b91ef6b0499623fd4940f98459c8b3d74dca0ff19",
+      "bytes": 275,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-1000-r2.json",
+      "original_sha256": "c58441a5047f9ac782b34b53848c1e887fcc1698acb6b6eb5c2acd15484d4df3",
+      "original_bytes": 290,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-1000-r2.log",
+      "sha256": "76d1206d298b6a8a2d776595bcd1f0b51761eb489c1426d0da098b264d00df30",
+      "bytes": 26154,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-1000-r2.log",
+      "original_sha256": "76d1206d298b6a8a2d776595bcd1f0b51761eb489c1426d0da098b264d00df30",
+      "original_bytes": 26154,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-table-1000-r3.json",
+      "sha256": "9f754a430b2a639071f0d642d428168032d44fc1731023a2b77587a8b277fa85",
+      "bytes": 265,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-1000-r3.json",
+      "original_sha256": "757111e93e2ad83ef9bc90d5b611ce1fba27f097410a2bf771e4cf42dd4f0eb3",
+      "original_bytes": 280,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-1000-r3.log",
+      "sha256": "b0bbdd1cbbef779a68c047fdeef3ecb0f031da3d15109cc18c83165cbb50f4e7",
+      "bytes": 26200,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-1000-r3.log",
+      "original_sha256": "b0bbdd1cbbef779a68c047fdeef3ecb0f031da3d15109cc18c83165cbb50f4e7",
+      "original_bytes": 26200,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-table-10000-r1.json",
+      "sha256": "e4eba8125af62f2bb492f278859a4ad49d0a559ff5c171b84cc6faf9547571ee",
+      "bytes": 275,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-10000-r1.json",
+      "original_sha256": "8d8422cc3600d1598598d54b70f6279424cd3d21ab89db2f60ae034bea67cb18",
+      "original_bytes": 290,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-10000-r1.log",
+      "sha256": "19ae8e553483fd4f25b178b44d93d8233c7fd2f9f6e82656e894586cc68647d5",
+      "bytes": 28458,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-10000-r1.log",
+      "original_sha256": "19ae8e553483fd4f25b178b44d93d8233c7fd2f9f6e82656e894586cc68647d5",
+      "original_bytes": 28458,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-table-10000-r2.json",
+      "sha256": "757018f4310d5066d429e7b33934a88f9e22c86323e517ea1e1b641631703c5e",
+      "bytes": 267,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-10000-r2.json",
+      "original_sha256": "a9101de28f4dd39eb624c975cfa16970b166a082beb8f37aad4504df4c0ecb03",
+      "original_bytes": 282,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-10000-r2.log",
+      "sha256": "b4cb04b43b8f26124fc3bb06b17993b33a5d6e78b0a52ce333e4b168aad35358",
+      "bytes": 28422,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-10000-r2.log",
+      "original_sha256": "b4cb04b43b8f26124fc3bb06b17993b33a5d6e78b0a52ce333e4b168aad35358",
+      "original_bytes": 28422,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-table-10000-r3.json",
+      "sha256": "e77a39ec5582a4227f7087c983438f292aa9085081d4fad31d663bd853650b9f",
+      "bytes": 267,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-10000-r3.json",
+      "original_sha256": "cd22744749d4fd6e311616e6ba0d820987c7d3350c1a318ebbb70d8fbd433f87",
+      "original_bytes": 282,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-10000-r3.log",
+      "sha256": "9823cf79590867585902ea44687aa8f87c8266ddc70a74e475febbdb657cefcc",
+      "bytes": 28386,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-10000-r3.log",
+      "original_sha256": "9823cf79590867585902ea44687aa8f87c8266ddc70a74e475febbdb657cefcc",
+      "original_bytes": 28386,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-table-5000-r1.json",
+      "sha256": "ce804c1607dca9c58e7916800654974583ea2bd9bed1e365e5e89c4579cba547",
+      "bytes": 274,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-5000-r1.json",
+      "original_sha256": "c1f16ad5056bdaf154269a3486d70551a0f0e031a44f78a005878788c296b459",
+      "original_bytes": 289,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-5000-r1.log",
+      "sha256": "dcb9f02d39205a4d41364068422fac3fdc6d2d66724562b2747359ed66ae4c16",
+      "bytes": 27358,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-5000-r1.log",
+      "original_sha256": "dcb9f02d39205a4d41364068422fac3fdc6d2d66724562b2747359ed66ae4c16",
+      "original_bytes": 27358,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-table-5000-r2.json",
+      "sha256": "a6f89f2b0ca6c14879e2d256797fa1bd32c3c19dae9614784084290de9dd5274",
+      "bytes": 265,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-5000-r2.json",
+      "original_sha256": "c6ec1d5e5b90e81197040bc326d6d8b7981bd084c1f4c580a3a313785396e164",
+      "original_bytes": 280,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-5000-r2.log",
+      "sha256": "3c71422539a4b7bf1f76aa19478b99c5bf2b52703008f9a64a6369bcceedd969",
+      "bytes": 27376,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-5000-r2.log",
+      "original_sha256": "3c71422539a4b7bf1f76aa19478b99c5bf2b52703008f9a64a6369bcceedd969",
+      "original_bytes": 27376,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-table-5000-r3.json",
+      "sha256": "220ed70d6911ec4fc23373ff870670a79eb52d616d6ac6d268a76ff6589de7ae",
+      "bytes": 274,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-5000-r3.json",
+      "original_sha256": "37073d93ff1906a33ba2fec3a3d3b91054eed7942d25a63a5d50356f230b913c",
+      "original_bytes": 289,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-table-5000-r3.log",
+      "sha256": "8a12b5baaf115bd1115a842332cf29b998f2a5bfcff43da9da52a09019295336",
+      "bytes": 27422,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-table-5000-r3.log",
+      "original_sha256": "8a12b5baaf115bd1115a842332cf29b998f2a5bfcff43da9da52a09019295336",
+      "original_bytes": 27422,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-1024-r1.json",
+      "sha256": "d2c33bd4aac64bd8825ce6b12970086225d18a0015e900068128da440f457e3a",
+      "bytes": 264,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-1024-r1.json",
+      "original_sha256": "f3ce337532fb7b975bcd0769a232093204193b277a76eaff8113863c81c43ef8",
+      "original_bytes": 279,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-1024-r1.log",
+      "sha256": "25fbf052d56166028ee153269028eb93d49acbb39de6cf21f59e9447cb576c53",
+      "bytes": 8680,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-1024-r1.log",
+      "original_sha256": "25fbf052d56166028ee153269028eb93d49acbb39de6cf21f59e9447cb576c53",
+      "original_bytes": 8680,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-1024-r2.json",
+      "sha256": "88c027688ca4f9d86573abbdf526f2ed4bbe342d6222a90adf0306d96e5a0ca0",
+      "bytes": 273,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-1024-r2.json",
+      "original_sha256": "1265b7510ee2ae637351d9c02be2b04653f250f258c6a3c75247933c05caa92d",
+      "original_bytes": 288,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-1024-r2.log",
+      "sha256": "ab69a9a62190b49bf178449098519279c9dea0d6f997f3519d501acf15f4bc5a",
+      "bytes": 8664,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-1024-r2.log",
+      "original_sha256": "ab69a9a62190b49bf178449098519279c9dea0d6f997f3519d501acf15f4bc5a",
+      "original_bytes": 8664,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-1024-r3.json",
+      "sha256": "3e11bf78aa2915a3cbba746298ff2f2805138ca49f717735e5cbbf9cf57969fc",
+      "bytes": 264,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-1024-r3.json",
+      "original_sha256": "e4e13e11d41adaeeb7e966948f5c2e6535d37593a46708ea9a0f174e6860c355",
+      "original_bytes": 279,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-1024-r3.log",
+      "sha256": "30e1a28412eed52912dea0262d9d7e5fe70f2295dbe5f9423b9ac06cf1a37383",
+      "bytes": 8662,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-1024-r3.log",
+      "original_sha256": "30e1a28412eed52912dea0262d9d7e5fe70f2295dbe5f9423b9ac06cf1a37383",
+      "original_bytes": 8662,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-128-r1.json",
+      "sha256": "9cfe5e035abb85c4b904b02b222ddcce18a3101a9ea300e619b46394b1f45cd0",
+      "bytes": 263,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-128-r1.json",
+      "original_sha256": "8158970a045e6679e43a6b054141883de659eeea1642b9c289727878626a4d1e",
+      "original_bytes": 278,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-128-r1.log",
+      "sha256": "670631595272af5e2342a44b8bb93f01d2418a8f7d103ebe57df27899841c3ca",
+      "bytes": 8030,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-128-r1.log",
+      "original_sha256": "670631595272af5e2342a44b8bb93f01d2418a8f7d103ebe57df27899841c3ca",
+      "original_bytes": 8030,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-128-r2.json",
+      "sha256": "923eb74ccfc2837d968076ca0299d4d28ac7621d3fefb1d0a01b7814bd61f82d",
+      "bytes": 273,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-128-r2.json",
+      "original_sha256": "8b4736916053506faa128347dc9f04e8a84c35135ff2982d0cdb82f01b3d505e",
+      "original_bytes": 288,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-128-r2.log",
+      "sha256": "06c804e944b253e946e180ce299dc85ca001e7c1a28524425290f7c1966545a1",
+      "bytes": 8074,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-128-r2.log",
+      "original_sha256": "06c804e944b253e946e180ce299dc85ca001e7c1a28524425290f7c1966545a1",
+      "original_bytes": 8074,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-128-r3.json",
+      "sha256": "d98ccfe714fe3f29fa995cfd76bca7ca323e86df0333ac59e73d7a9883add12c",
+      "bytes": 263,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-128-r3.json",
+      "original_sha256": "548d0e04ccdf331b55c6a648ab630e06edff9a70b1f5f41cf1f477aef6742db5",
+      "original_bytes": 278,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-128-r3.log",
+      "sha256": "0e0bd82a7476fd4303c685893f9a580c7ca7c2e09ddd15d00d93fd00b0910e75",
+      "bytes": 8052,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-128-r3.log",
+      "original_sha256": "0e0bd82a7476fd4303c685893f9a580c7ca7c2e09ddd15d00d93fd00b0910e75",
+      "original_bytes": 8052,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-512-r1.json",
+      "sha256": "98b6c830452d5d576ab00483ab5b21eae1bec915f295087481d976eaaca2aa99",
+      "bytes": 263,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-512-r1.json",
+      "original_sha256": "e4bf735d165386cda064ac1f8116c927029c647becd4c03da4a7f0f14fa9e164",
+      "original_bytes": 278,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-512-r1.log",
+      "sha256": "5ac455103c3906ee8c12612a554eaffd4e8fdf71031e136794722b77ce0fc337",
+      "bytes": 8328,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-512-r1.log",
+      "original_sha256": "5ac455103c3906ee8c12612a554eaffd4e8fdf71031e136794722b77ce0fc337",
+      "original_bytes": 8328,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-512-r2.json",
+      "sha256": "7b753d692d0c8289206e79829e2da360d4abd38a66388d78524089fcf9edc91f",
+      "bytes": 263,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-512-r2.json",
+      "original_sha256": "4d8f3302fbeee1ff1da09af3aae475709a2ef0f2a251b0957ca6084fd632994a",
+      "original_bytes": 278,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-512-r2.log",
+      "sha256": "a2d70dbc41472d04cdaaa44220f4c86f291c5f9e38e2eaf9877c71d5e64e3c20",
+      "bytes": 8324,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-512-r2.log",
+      "original_sha256": "a2d70dbc41472d04cdaaa44220f4c86f291c5f9e38e2eaf9877c71d5e64e3c20",
+      "original_bytes": 8324,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-bench-Release-tree-512-r3.json",
+      "sha256": "c58b78629a4dd3bc125449ec6fe2ef505cb4daf8b656d7f5b53d6985056a6393",
+      "bytes": 263,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-512-r3.json",
+      "original_sha256": "b79a725accd95978cf2e275ace290bf4d4a18aae970a93fed916a1cfb25d9985",
+      "original_bytes": 278,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-bench-Release-tree-512-r3.log",
+      "sha256": "e1864e2bd3232e6fe377f990660ce6c466cee21777349ba15dca5cb7d88289dc",
+      "bytes": 8336,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-bench-Release-tree-512-r3.log",
+      "original_sha256": "e1864e2bd3232e6fe377f990660ce6c466cee21777349ba15dca5cb7d88289dc",
+      "original_bytes": 8336,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-binary-identity.json",
+      "sha256": "3f02c45a304d599c7289eeac5bdffdce6e3bdb0e077288f70420d3577490218c",
+      "bytes": 1197,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-binary-identity.json",
+      "original_sha256": "280bd04a0c989e5c9aeca004768f5d5441842bf6b74878bbcdfde4af6f4194b6",
+      "original_bytes": 1226,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-build-Debug.json",
+      "sha256": "c4b9b54ab515a7830413fac2fbe79241599b8d69d331d3764bdd4bcdbfd5a8b5",
+      "bytes": 262,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-build-Debug.json",
+      "original_sha256": "9ca8e4d772b7fc5c9addf8e49b6827d4f5474cc73b937858c2d4ec40671113fe",
+      "original_bytes": 277,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-build-Debug.log",
+      "sha256": "5f57d3f91edcd7acdbf21b401570305f2aae8e89503a0fc9cda8c9b3ccdb8758",
+      "bytes": 3944,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-build-Debug.log",
+      "original_sha256": "5f57d3f91edcd7acdbf21b401570305f2aae8e89503a0fc9cda8c9b3ccdb8758",
+      "original_bytes": 3944,
+      "normalization": "none"
+    },
+    {
+      "path": "102-before-build-Release.json",
+      "sha256": "0c33baa89ffd3e87b5e8c0500eadd1f8e88af9fdbc9b364cbc16e409f104fdb1",
+      "bytes": 264,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-build-Release.json",
+      "original_sha256": "2f7c61ffc6586a337b8cf98b499a071c84a63ee9b6ab6d98f3b059126401d244",
+      "original_bytes": 279,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-before-build-Release.log",
+      "sha256": "48e4db11b94189527fcc289cd723149a2e6e16947ccece7af94ed6e20cd3d4f1",
+      "bytes": 882,
+      "original_path": "D:\\code\\RynUI\\out\\102-before-build-Release.log",
+      "original_sha256": "48e4db11b94189527fcc289cd723149a2e6e16947ccece7af94ed6e20cd3d4f1",
+      "original_bytes": 882,
+      "normalization": "none"
+    },
+    {
+      "path": "102-msvc.ps1",
+      "sha256": "7e7a52fb56004b8c5ec19c63ccb7ad0d708ee4fd557aaf7792cf3067dcb41e79",
+      "bytes": 3638,
+      "original_path": "D:\\code\\RynUI\\out\\102-msvc.ps1",
+      "original_sha256": "7e7a52fb56004b8c5ec19c63ccb7ad0d708ee4fd557aaf7792cf3067dcb41e79",
+      "original_bytes": 3638,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-apply.json",
+      "sha256": "44dddfe11a1d551198db325360df39c2db1123c30cb59356135a66bb61e4eec4",
+      "bytes": 7836,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-apply.json",
+      "original_sha256": "44dddfe11a1d551198db325360df39c2db1123c30cb59356135a66bb61e4eec4",
+      "original_bytes": 7836,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-1024-r1.json",
+      "sha256": "9bc5d31e87ca316a698070e0812036cb1a206763bff51a31029fdedab2c587f4",
+      "bytes": 262,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-1024-r1.json",
+      "original_sha256": "d15cbd9be9ed685be37c8565bb0dd77013a4ead42c3496366a9deb3981734e32",
+      "original_bytes": 277,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-1024-r1.log",
+      "sha256": "6982c8e02cf80528f2f60c1478f6c74b68d4d0e97f45419496dd71ec0f312e9b",
+      "bytes": 7606,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-1024-r1.log",
+      "original_sha256": "6982c8e02cf80528f2f60c1478f6c74b68d4d0e97f45419496dd71ec0f312e9b",
+      "original_bytes": 7606,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-1024-r2.json",
+      "sha256": "9415cb5bf37043f15fcc6f947343c59c04a9a1ef4c00c48c2239f99bb673aa94",
+      "bytes": 261,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-1024-r2.json",
+      "original_sha256": "f47a44f07e179dbfc604aff6504ebf6f02c728c823581ab93097f9279a98d496",
+      "original_bytes": 276,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-1024-r2.log",
+      "sha256": "b27d11e4cb37cbb076b3f66cbecaaf2b9b29668cb3c1e8394f379180399b23e4",
+      "bytes": 7604,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-1024-r2.log",
+      "original_sha256": "b27d11e4cb37cbb076b3f66cbecaaf2b9b29668cb3c1e8394f379180399b23e4",
+      "original_bytes": 7604,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-1024-r3.json",
+      "sha256": "ae2a9d939b9e1669e6531825a88344137494ee43af14a4b421f4fefe1a5c0dd7",
+      "bytes": 262,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-1024-r3.json",
+      "original_sha256": "9e1d19580aceb10388bf17980d7f6f9873414c4e5dd41936d7df3a867bb2ade4",
+      "original_bytes": 277,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-1024-r3.log",
+      "sha256": "48ecb23dd436e9b9fb9e364440c23b9d7ecb99e743ede1054a2e010d95bccc58",
+      "bytes": 7604,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-1024-r3.log",
+      "original_sha256": "48ecb23dd436e9b9fb9e364440c23b9d7ecb99e743ede1054a2e010d95bccc58",
+      "original_bytes": 7604,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-128-r1.json",
+      "sha256": "5c272de12d7b21b900d78248d3ff2be49a9a35019674614af378a63fc0b0969f",
+      "bytes": 271,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-128-r1.json",
+      "original_sha256": "e6287d438aa832e61791e369f806a10b1dd5582ae3c845e6dc5dafdcd969355f",
+      "original_bytes": 286,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-128-r1.log",
+      "sha256": "975e59d57d542c06d89c6fb468d455d70d68f45ee29a7cb56ddea824dc46212c",
+      "bytes": 7216,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-128-r1.log",
+      "original_sha256": "975e59d57d542c06d89c6fb468d455d70d68f45ee29a7cb56ddea824dc46212c",
+      "original_bytes": 7216,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-128-r2.json",
+      "sha256": "c52494337b417454589da3af0522b51cb0d4cdecc756c3fa061fc71952bcc49d",
+      "bytes": 261,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-128-r2.json",
+      "original_sha256": "2d973fd4333c9d92c4ed924232f11b1aef0f343339a2ef621683c84aa8573dc4",
+      "original_bytes": 276,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-128-r2.log",
+      "sha256": "231ab369aca128b54e13745671bfd0fbfc15d2240003097fc4a51b6402fa40b8",
+      "bytes": 7218,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-128-r2.log",
+      "original_sha256": "231ab369aca128b54e13745671bfd0fbfc15d2240003097fc4a51b6402fa40b8",
+      "original_bytes": 7218,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-128-r3.json",
+      "sha256": "66a37ae04b9966faa78c8c8f7fd3f5d23e437bac185821aab39405803b156464",
+      "bytes": 261,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-128-r3.json",
+      "original_sha256": "4a520ecbd1a6555fcbb7b6e727dc5bca091c58384af37deeb556b42c2fd49762",
+      "original_bytes": 276,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-128-r3.log",
+      "sha256": "4574769dff89325256554cc9d110b93e6f7b85c09d111bfde2892422ea6a2075",
+      "bytes": 7222,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-128-r3.log",
+      "original_sha256": "4574769dff89325256554cc9d110b93e6f7b85c09d111bfde2892422ea6a2075",
+      "original_bytes": 7222,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-512-r1.json",
+      "sha256": "b8030b420ebcc113f221f92b015bb4ffcb212731bac73d0a816aa01ce8b63e21",
+      "bytes": 271,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-512-r1.json",
+      "original_sha256": "3485c16eaeef4cdc282250ab8ab1f35277fb74394755236f51a3b7797d886957",
+      "original_bytes": 286,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-512-r1.log",
+      "sha256": "5a6ea5dbc92931eaed1ab7951adfd13832ee1fd93f5428e5b57419d50c97ed9f",
+      "bytes": 7474,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-512-r1.log",
+      "original_sha256": "5a6ea5dbc92931eaed1ab7951adfd13832ee1fd93f5428e5b57419d50c97ed9f",
+      "original_bytes": 7474,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-512-r2.json",
+      "sha256": "06fb178fc6aa1ebf694dd9e9649f1b95bfc1e0a3ad88285dca3ea2cdc2ecd8ae",
+      "bytes": 271,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-512-r2.json",
+      "original_sha256": "28361b1d0bd805d6b52bac22d378ce17211436aaaa1eb5acc82bc619fe397523",
+      "original_bytes": 286,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-512-r2.log",
+      "sha256": "1bf79a3334f44ae0556d1d959ff11d050b8612a5ea260c31c47d9b8e0f11450f",
+      "bytes": 7474,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-512-r2.log",
+      "original_sha256": "1bf79a3334f44ae0556d1d959ff11d050b8612a5ea260c31c47d9b8e0f11450f",
+      "original_bytes": 7474,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-512-r3.json",
+      "sha256": "6b1d42b430993d4587a6489b76cdf8da6f5b9a0f1a0b7c14d331af2130bbb0d3",
+      "bytes": 261,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-512-r3.json",
+      "original_sha256": "53fbbc992c8c357739975feeb85892bc2967ad7e52302c55b4c372c4fc74b018",
+      "original_bytes": 276,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-bench-Release-tree-512-r3.log",
+      "sha256": "189e3d8c49c726766eeee377a6f80a32ccd251d7f861b5b550f398ee71a37572",
+      "bytes": 7474,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-bench-Release-tree-512-r3.log",
+      "original_sha256": "189e3d8c49c726766eeee377a6f80a32ccd251d7f861b5b550f398ee71a37572",
+      "original_bytes": 7474,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-doctor.json",
+      "sha256": "c852cd193b6ebfe5f839b53d87f99c1cecd6a9a89b9a87c4b376e32ff8624292",
+      "bytes": 358,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-doctor.json",
+      "original_sha256": "c852cd193b6ebfe5f839b53d87f99c1cecd6a9a89b9a87c4b376e32ff8624292",
+      "original_bytes": 358,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-evidence-summary.json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-evidence-summary.json",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-format.log",
+      "sha256": "fd06e1a412aa0efd759c6ad76b1de195d75653b6f9c25c6bd614ea5899d10429",
+      "bytes": 318,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-format.log",
+      "original_sha256": "fd06e1a412aa0efd759c6ad76b1de195d75653b6f9c25c6bd614ea5899d10429",
+      "original_bytes": 318,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-probe-build-Debug.json",
+      "sha256": "51262207a7a362a8ca7a0a5f99c1e0a55449409dfc96ad0e58130e68345d46af",
+      "bytes": 271,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-build-Debug.json",
+      "original_sha256": "dbb08b85ef6706b50d7c107ba5f899456d8e2c2c60aa7582fa895d6e6f4720fa",
+      "original_bytes": 286,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-probe-build-Debug.log",
+      "sha256": "9a19626ce67e015efa5a3a40c2f605f389ea73e92ffd9106c4ffdcba71e1b2d1",
+      "bytes": 624,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-build-Debug.log",
+      "original_sha256": "9a19626ce67e015efa5a3a40c2f605f389ea73e92ffd9106c4ffdcba71e1b2d1",
+      "original_bytes": 624,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-probe-build-Release.json",
+      "sha256": "f84735e07af8464dbf857d099fc53bb1daf85ac4624c598872d804d3e7ebb23b",
+      "bytes": 273,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-build-Release.json",
+      "original_sha256": "774aaf08950412c818b0ba7f9540a811096b3020aeed2cb82e634f5f5f0d3259",
+      "original_bytes": 288,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-probe-build-Release.log",
+      "sha256": "b9a4acc886a44248aa4ddac2d5f93e453013c3b51adbd1d06f31bf92a60eef29",
+      "bytes": 636,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-build-Release.log",
+      "original_sha256": "b9a4acc886a44248aa4ddac2d5f93e453013c3b51adbd1d06f31bf92a60eef29",
+      "original_bytes": 636,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-probe-test-Debug.json",
+      "sha256": "ae9e704813a5ff7210a8198497ba3303b9b90ef9a140da0ff6511aaea97fd978",
+      "bytes": 270,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-test-Debug.json",
+      "original_sha256": "25037566110c86ae766dad794f0a3a9101841a94f98cab1229ddf492df928146",
+      "original_bytes": 285,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-probe-test-Debug.log",
+      "sha256": "328aefe7405aa5906f3b5b33ea4a57f77431df9397afc403c2089f445f75aad7",
+      "bytes": 764,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-test-Debug.log",
+      "original_sha256": "328aefe7405aa5906f3b5b33ea4a57f77431df9397afc403c2089f445f75aad7",
+      "original_bytes": 764,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-probe-test-Debug.xml",
+      "sha256": "2de538f2fc58d3228b6977083e524ee73b043c393ffd8c18343f028fb9a9b3b4",
+      "bytes": 569,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-test-Debug.xml",
+      "original_sha256": "ca4dc3f53450bd8daa4828d06bc35d6d7292ab19b9050b7554395e20e85e27ef",
+      "original_bytes": 587,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-probe-test-Release.json",
+      "sha256": "c064e40f7499339c7e8e20f21a37f61ee03ebede2a6800b48c2c4abae53a9ace",
+      "bytes": 272,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-test-Release.json",
+      "original_sha256": "f3b9bc46a45b6598367397cf10c5fa7ca6d3ee0fab25eba088223d3e5d501978",
+      "original_bytes": 287,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-probe-test-Release.log",
+      "sha256": "ff4ae77db77f78885c823c7696b2a52b6f2b83077839bdc6afb8c9d0b1d2e750",
+      "bytes": 764,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-test-Release.log",
+      "original_sha256": "ff4ae77db77f78885c823c7696b2a52b6f2b83077839bdc6afb8c9d0b1d2e750",
+      "original_bytes": 764,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-probe-test-Release.xml",
+      "sha256": "4759ca7531d19a9e9fa7062b3bd9920350d7913d89b3b35256f65081cccfb7b1",
+      "bytes": 569,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-probe-test-Release.xml",
+      "original_sha256": "88a7d256bb0985b210b569c88ad1f1f2dd64159f6ff9683c25017c7f799223cf",
+      "original_bytes": 587,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-tree-build-Debug.json",
+      "sha256": "81bcd54a4db97d7f88cacd072984cd9e91c956cf72f281261c4298578be7bfd5",
+      "bytes": 271,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-build-Debug.json",
+      "original_sha256": "a05dc19a30743eb549ec7ca463078e3a852101e42054686e0c151f5643033d8b",
+      "original_bytes": 286,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-tree-build-Debug.log",
+      "sha256": "015ca1a3ba90964e832e88a611629db6db97234686582f6a0b5434b0ed00d9c6",
+      "bytes": 866,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-build-Debug.log",
+      "original_sha256": "015ca1a3ba90964e832e88a611629db6db97234686582f6a0b5434b0ed00d9c6",
+      "original_bytes": 866,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-tree-build-Release.json",
+      "sha256": "b4d74d14d39a95b2b7fbd416be3bcede862e7932d35aab169c972c272cd196bb",
+      "bytes": 273,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-build-Release.json",
+      "original_sha256": "ad4feb496df3c43f021636a4a5f9cc4d0e070cfa5e5f315d13c9087f3333ffdf",
+      "original_bytes": 288,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-tree-build-Release.log",
+      "sha256": "48e4db11b94189527fcc289cd723149a2e6e16947ccece7af94ed6e20cd3d4f1",
+      "bytes": 882,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-build-Release.log",
+      "original_sha256": "48e4db11b94189527fcc289cd723149a2e6e16947ccece7af94ed6e20cd3d4f1",
+      "original_bytes": 882,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-tree-test-Debug.json",
+      "sha256": "6ec5d4363f0be5af20e11e3f83082e0d6929bd6c74f42f916070b86217df12d4",
+      "bytes": 270,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-test-Debug.json",
+      "original_sha256": "4dfe8cf8e13f37ef0bb7da26bedc539a6e881887ec37a162b632f46b5dfbb8c3",
+      "original_bytes": 285,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-tree-test-Debug.log",
+      "sha256": "5150b30efa2df4d04553b3d3e7a9f69c0e0bd3fbb0aec9f15e3be145a6887a13",
+      "bytes": 11988,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-test-Debug.log",
+      "original_sha256": "5150b30efa2df4d04553b3d3e7a9f69c0e0bd3fbb0aec9f15e3be145a6887a13",
+      "original_bytes": 11988,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-tree-test-Debug.xml",
+      "sha256": "dd12ad888317b56104fc95863701189e9eb5aadc0920ccb4bf85d9d27e740e24",
+      "bytes": 11754,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-test-Debug.xml",
+      "original_sha256": "57841e95a2a70a1bd529b27b60a7542a75b6796ca3c570125f4db1b6eb3d3743",
+      "original_bytes": 12009,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-tree-test-Release.json",
+      "sha256": "8c5c9879eb10c6f031b9c1b2e53c0bbd44fc746ec625b10ffd58617700594e89",
+      "bytes": 280,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-test-Release.json",
+      "original_sha256": "bc93b73f55335e50dd9923aab8255a29d02a1430a4579995a004a4f2529f90ab",
+      "original_bytes": 295,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-probe-tree-test-Release.log",
+      "sha256": "7e58af65c123a307ad8afae00457adf0fedf6b4018f37c88f75e917078167df2",
+      "bytes": 11988,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-test-Release.log",
+      "original_sha256": "7e58af65c123a307ad8afae00457adf0fedf6b4018f37c88f75e917078167df2",
+      "original_bytes": 11988,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-probe-tree-test-Release.xml",
+      "sha256": "9733fc27191982e6cf59947c1d891ae0141c0a848455d44e0b707713c8f5ead6",
+      "bytes": 11769,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-probe-tree-test-Release.xml",
+      "original_sha256": "6c79bb26ddb58cf41e10d5983f6a4d55a11bbd7c027269e473a1e5ff7ecbb883",
+      "original_bytes": 12024,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-retry-debug-stack.log.gz",
+      "sha256": "29d4ea611e78205bb324c1ed72300702d7957ffc0545196f2364d0b21853b901",
+      "bytes": 2586,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-retry-debug-stack.log",
+      "original_sha256": "dc4facdcbdde718fa34bb419bde4934887fcc1ae58f561ec2f37f36d4e1977d3",
+      "original_bytes": 11262,
+      "normalization": "gzip of exact raw bytes"
+    },
+    {
+      "path": "102-tree-strict.log",
+      "sha256": "03a09658fa7ae702508f0ae5c8d3ba46110ecd6d1814e1ae5f177619d00d5267",
+      "bytes": 10828,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-strict.log",
+      "original_sha256": "03a09658fa7ae702508f0ae5c8d3ba46110ecd6d1814e1ae5f177619d00d5267",
+      "original_bytes": 10828,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-tree-build-Debug.json",
+      "sha256": "e304dfcb1b8af73eef8c8aa309920fe96d4d1b2231a46ea10d96a254ff8f3e39",
+      "bytes": 265,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-build-Debug.json",
+      "original_sha256": "f6cbe42b34126854cd274d4661618794d36a7b2f708a2d10d1dba57894d51580",
+      "original_bytes": 280,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-tree-build-Debug.log",
+      "sha256": "69a7568ed09b19614dd834119c0959563ca8c6cd601e8eae604196b92a788b66",
+      "bytes": 8872,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-build-Debug.log",
+      "original_sha256": "69a7568ed09b19614dd834119c0959563ca8c6cd601e8eae604196b92a788b66",
+      "original_bytes": 8872,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-tree-build-Release.json",
+      "sha256": "36295ece626f4da518058be47ab245ab47397141413ca3bc6060ab3d40e71748",
+      "bytes": 267,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-build-Release.json",
+      "original_sha256": "d6d2123bf6e40da0b6d2caea78427f6c9ab7b2a804145d0cf54fa8fed05464c7",
+      "original_bytes": 282,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-tree-build-Release.log",
+      "sha256": "f86a6b3244327b3455b134e9a2e84f34110937102e807fcd2b209db09cd4ff33",
+      "bytes": 5902,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-build-Release.log",
+      "original_sha256": "f86a6b3244327b3455b134e9a2e84f34110937102e807fcd2b209db09cd4ff33",
+      "original_bytes": 5902,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-tree-test-Debug.json",
+      "sha256": "58b8bd1f57bba95bdfab25d294993736d9285091aa0d8f61f2d25f9dbdd4730d",
+      "bytes": 272,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-test-Debug.json",
+      "original_sha256": "8c924b9f57355be6664c345862bbd2d32b987f9f00fba434e0a21dbaaa866313",
+      "original_bytes": 287,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-tree-test-Debug.log",
+      "sha256": "4ec6f4dafadc259a40a46621f41f86b98182e284151e6c396532448034f76b8d",
+      "bytes": 12950,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-test-Debug.log",
+      "original_sha256": "4ec6f4dafadc259a40a46621f41f86b98182e284151e6c396532448034f76b8d",
+      "original_bytes": 12950,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-tree-test-Debug.xml",
+      "sha256": "584cfa50d9f45ee0a8e469e58153cc6f58475b9dbabc771c4051c461827db2e7",
+      "bytes": 11726,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-test-Debug.xml",
+      "original_sha256": "571112d11e6cde9966a6c4b350a1b2e64db3fb28df3ff9d0e067d8da1007ddf4",
+      "original_bytes": 11981,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-tree-test-Release.json",
+      "sha256": "ff80fbe0033068bd030922a273adcabae063024c9f44c6246ebc1e9e39b4511f",
+      "bytes": 274,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-test-Release.json",
+      "original_sha256": "45baa459ae008cfd52744200df3fd0fb1197ee93dbb2b450b5b7c0ada198fec3",
+      "original_bytes": 289,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "102-tree-tree-test-Release.log",
+      "sha256": "54e4b3be10468e4ef86981eb15f55556a896701d2463ed200a8b9219c5b0eb3e",
+      "bytes": 11988,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-test-Release.log",
+      "original_sha256": "54e4b3be10468e4ef86981eb15f55556a896701d2463ed200a8b9219c5b0eb3e",
+      "original_bytes": 11988,
+      "normalization": "none"
+    },
+    {
+      "path": "102-tree-tree-test-Release.xml",
+      "sha256": "4df79a2ebd04cbe6bf6dc006ef0d95e91469ade1698d89463c2f1f229b4c1e36",
+      "bytes": 11718,
+      "original_path": "D:\\code\\RynUI\\out\\102-tree-tree-test-Release.xml",
+      "original_sha256": "69cf81a764e1da30949d9411eba73f609197773a887daed39b4a40e313c7d8aa",
+      "original_bytes": 11972,
+      "normalization": "UTF-8 without BOM, LF"
+    },
+    {
+      "path": "summary.json",
+      "sha256": "fd2a7fe06f40ac716a59c9c6232a2cff7250b78948b403b78550e9a974353c6a",
+      "bytes": 12688,
+      "normalization": "generated UTF-8 LF"
+    }
+  ],
+  "boundary": "Tree stage only; Table baseline recorded, Table optimization not imported; no GUI/GPU measurement."
+}

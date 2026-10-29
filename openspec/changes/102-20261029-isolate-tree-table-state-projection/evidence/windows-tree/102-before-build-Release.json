@@ -1,0 +1,12 @@
+{
+    "stage":  "build",
+    "label":  "before",
+    "configuration":  "Release",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  1,
+    "exit":  0,
+    "seconds":  17.6107691,
+    "finishedUtc":  "2026-10-29T16:50:30.3167882Z"
+}

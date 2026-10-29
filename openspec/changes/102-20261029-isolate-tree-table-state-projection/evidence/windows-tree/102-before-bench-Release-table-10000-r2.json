@@ -1,0 +1,12 @@
+{
+    "stage":  "bench",
+    "label":  "before",
+    "configuration":  "Release",
+    "component":  "table",
+    "count":  10000,
+    "iterations":  64,
+    "round":  2,
+    "exit":  0,
+    "seconds":  53.3845641,
+    "finishedUtc":  "2026-10-29T16:53:53.5570221Z"
+}

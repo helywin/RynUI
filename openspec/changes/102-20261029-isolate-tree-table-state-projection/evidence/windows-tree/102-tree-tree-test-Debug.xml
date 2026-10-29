@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-ninja"
+	tests="45"
+	failures="1"
+	disabled="0"
+	skipped="0"
+	hostname="Ryzen-Workstation"
+	time="123"
+	timestamp="2026-10-30T00:57:25"
+	>
+	<testcase name="rynui.state_projection_tree_local" classname="rynui.state_projection_tree_local" time="7.63483" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.state_projection_tree_invalidation" classname="rynui.state_projection_tree_invalidation" time="0.155215" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.state_projection_tree_retry" classname="rynui.state_projection_tree_retry" time="111.401" status="fail">
+		<failure message=""/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.tree_r2_nested_wheel" classname="rynui.tree_r2_nested_wheel" time="0.271403" status="run">
+		<system-out>no-range nested wheel: inner=0 outer=32 independent=0
+Tree R2 nested_wheel passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_r2_throwing_blur_rollback" classname="rynui.tree_r2_throwing_blur_rollback" time="0.0996948" status="run">
+		<system-out>throwing blur rollback: original=1 slot_threw=1 blur_escaped=0 blurs=0 editor_live=0 interaction_live=0 text_scenes=1 surfaces=1 session=0 ref=0
+Tree R2 throwing_blur_rollback passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_r2_slot_retirement" classname="rynui.tree_r2_slot_retirement" time="0.506929" status="run">
+		<system-out>slot retirement mode=0 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=1 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=2 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=3 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=4 original=1 blur=0 old_editor=0 resources_at_baseline=1
+slot retirement mode=5 original=1 blur=0 old_editor=0 resources_at_baseline=1
+Tree R2 slot_retirement passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_basic" classname="rynui.tree_select_basic" time="0.152247" status="run">
+		<system-out>basic passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_controlled" classname="rynui.tree_select_controlled" time="0.12948" status="run">
+		<system-out>controlled passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_keyboard" classname="rynui.tree_select_keyboard" time="0.131975" status="run">
+		<system-out>keyboard passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_retained" classname="rynui.tree_select_retained" time="0.122772" status="run">
+		<system-out>retained passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_boundaries" classname="rynui.tree_select_boundaries" time="0.128952" status="run">
+		<system-out>boundaries passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_model" classname="rynui.tree_select_model" time="0.0149953" status="run">
+		<system-out>TreeSelect API and model passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_theme" classname="rynui.tree_select_theme" time="0.271635" status="run">
+		<system-out>TreeSelect Theme passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_r3_keyboard_wake" classname="rynui.tree_select_r3_keyboard_wake" time="0.472789" status="run">
+		<system-out>keyboard_wake key=18 pending=1
+keyboard_wake key=17 pending=1
+keyboard_wake key=2 pending=1
+keyboard_wake key=3 pending=1
+keyboard_wake passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_r3_cancelled_entry" classname="rynui.tree_select_r3_cancelled_entry" time="0.479613" status="run">
+		<system-out>cancelled_entry mode=0 retained_selector=1 blurs=0
+cancelled_entry mode=1 retained_selector=1 blurs=0
+cancelled_entry mode=2 retained_selector=1 blurs=0
+cancelled_entry mode=3 retained_selector=1 blurs=0
+cancelled_entry passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_r2_focused_outside" classname="rynui.tree_select_r2_focused_outside" time="0.484161" status="run">
+		<system-out>focused_outside tree=0 throw=0 first_closes=1 visible=1
+focused_outside tree=0 throw=1 first_closes=1 visible=1
+focused_outside tree=1 throw=0 first_closes=1 visible=1
+focused_outside tree=1 throw=1 first_closes=1 visible=1
+focused_outside passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_r2_suppressed_close" classname="rynui.tree_select_r2_suppressed_close" time="0.216193" status="run">
+		<system-out>suppressed_close compound=0 closes=1 visible=0
+suppressed_close compound=1 closes=1 visible=0
+suppressed_close passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_review_outside_retry" classname="rynui.tree_select_review_outside_retry" time="0.390177" status="run">
+		<system-out>outside_retry direct=0 throw=0 cycle=0 closes=2 visible=0
+outside_retry direct=0 throw=0 cycle=1 closes=4 visible=0
+outside_retry direct=0 throw=1 cycle=0 closes=2 visible=0
+outside_retry direct=0 throw=1 cycle=1 closes=4 visible=0
+outside_retry direct=1 throw=0 cycle=0 closes=2 visible=0
+outside_retry direct=1 throw=0 cycle=1 closes=4 visible=0
+outside_retry direct=1 throw=1 cycle=0 closes=2 visible=0
+outside_retry direct=1 throw=1 cycle=1 closes=4 visible=0
+outside_retry passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_review_disabled_entry" classname="rynui.tree_select_review_disabled_entry" time="0.552038" status="run">
+		<system-out>disabled_entry scenario=0 selector=0
+disabled_entry scenario=1 selector=0
+disabled_entry scenario=2 selector=0
+disabled_entry scenario=3 selector=0
+disabled_entry scenario=4 selector=0
+disabled_entry passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_form" classname="rynui.tree_select_form" time="0.132966" status="run">
+		<system-out>form passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_lifecycle" classname="rynui.tree_select_lifecycle" time="0.906352" status="run">
+		<system-out>lifecycle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_rollback" classname="rynui.tree_select_rollback" time="0.243325" status="run">
+		<system-out>rollback passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_positioning" classname="rynui.tree_select_positioning" time="0.304014" status="run">
+		<system-out>positioning passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_select_matrix" classname="rynui.tree_select_matrix" time="0.884046" status="run">
+		<system-out>matrix passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_mount_rollback" classname="rynui.tree_review_mount_rollback" time="0.54255" status="run">
+		<system-out>mount mode=0 caught=1 tree_count=0 input_count=0
+mount mode=1 caught=1 tree_count=0 input_count=0
+mount mode=2 caught=1 tree_count=0 input_count=0
+mount mode=3 caught=1 tree_count=0 input_count=0
+mount mode=4 caught=1 tree_count=1 input_count=1
+mount mode=5 caught=1 tree_count=1 input_count=1
+mount mode=6 caught=1 tree_count=0 input_count=0
+Tree R1 mount_rollback passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_zero_area" classname="rynui.tree_review_zero_area" time="0.23353" status="run">
+		<system-out>zero cycle=0 selection_delta=0 check_delta=0 focused=0
+zero cycle=1 selection_delta=0 check_delta=0 focused=0
+Tree R1 zero_area passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_translated_checkbox" classname="rynui.tree_review_translated_checkbox" time="0.207763" status="run">
+		<system-out>translation_y=-180 modal_scroll=180 tree_scroll=272 modal_max=184 body_yh=68,176 tree_yh=152,96 last_yh=220,24
+checkbox mode=0 actual_fills=4 center_covered=1
+checkbox mode=1 actual_fills=4 center_covered=1
+checkbox mode=2 actual_fills=4 center_covered=1
+Tree R1 translated_checkbox passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_wheel_handoff" classname="rynui.tree_review_wheel_handoff" time="0.327699" status="run">
+		<system-out>natural Tree modal_scroll=0 -&gt; 48
+Tree R1 wheel_handoff passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_review_focus_clips" classname="rynui.tree_review_focus_clips" time="0.700035" status="run">
+		<system-out>Tree focus width=180 edges=1,1,1,1
+Tree focus width=180 edges=1,1,1,1
+Tree focus width=180 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree focus width=180 edges=1,1,1,1
+Tree focus width=180 edges=1,1,1,1
+Tree focus width=180 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree focus width=180 edges=1,1,1,1
+Tree focus width=180 edges=1,1,1,1
+Tree focus width=180 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree focus width=56 edges=1,1,1,1
+Tree R1 focus_clips passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_basic" classname="rynui.tree_basic" time="0.108745" status="run">
+		<system-out>Tree basic passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_controlled" classname="rynui.tree_controlled" time="0.102783" status="run">
+		<system-out>Tree controlled passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_rich" classname="rynui.tree_rich" time="0.14416" status="run">
+		<system-out>Tree rich passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_scroll" classname="rynui.tree_scroll" time="0.235628" status="run">
+		<system-out>Tree scroll passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_clips" classname="rynui.tree_clips" time="0.10301" status="run">
+		<system-out>Tree clips passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_boundaries" classname="rynui.tree_boundaries" time="0.136156" status="run">
+		<system-out>Tree boundaries passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_mount_lifecycle" classname="rynui.tree_mount_lifecycle" time="0.438033" status="run">
+		<system-out>Tree mount_lifecycle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_lifecycle" classname="rynui.tree_lifecycle" time="0.0947883" status="run">
+		<system-out>Tree lifecycle passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_validation" classname="rynui.tree_validation" time="0.210632" status="run">
+		<system-out>Tree validation passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_reactivity" classname="rynui.tree_reactivity" time="0.487154" status="run">
+		<system-out>Tree reactivity passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_theme_scene" classname="rynui.tree_theme_scene" time="0.16824" status="run">
+		<system-out>Tree theme_scene passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_model" classname="rynui.tree_model" time="0.0272936" status="run">
+		<system-out>Tree model passed: topology, visibility, single selection, disabled conduction, limits
+</system-out>
+	</testcase>
+	<testcase name="rynui.tree_theme" classname="rynui.tree_theme" time="0.452979" status="run">
+		<system-out>Tree Theme passed: recipe, override, algorithm, identities, inheritance, font limits, recovery
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.input_component" classname="rynui.portable.input_component" time="4.11463" status="run">
+		<system-out>Input layout simulated-scale cases=768
+Input lifecycle, layout and controlled callbacks passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.focus_order" classname="rynui.portable.focus_order" time="0.0260418" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.focus_lifecycle" classname="rynui.portable.focus_lifecycle" time="0.079095" status="run">
+		<system-out></system-out>
+	</testcase>
+</testsuite>

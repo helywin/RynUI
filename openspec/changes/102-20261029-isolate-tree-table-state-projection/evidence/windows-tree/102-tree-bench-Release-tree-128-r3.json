@@ -1,0 +1,12 @@
+{
+    "stage":  "bench",
+    "label":  "tree",
+    "configuration":  "Release",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  3,
+    "exit":  0,
+    "seconds":  0.1584245,
+    "finishedUtc":  "2026-10-29T17:02:46.1985900Z"
+}

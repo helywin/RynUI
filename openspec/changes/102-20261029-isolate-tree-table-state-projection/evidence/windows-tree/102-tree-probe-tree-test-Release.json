@@ -1,0 +1,12 @@
+{
+    "stage":  "tree-test",
+    "label":  "tree-probe",
+    "configuration":  "Release",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  1,
+    "exit":  0,
+    "seconds":  5.5675659999999993,
+    "finishedUtc":  "2026-10-29T17:01:47.8222611Z"
+}

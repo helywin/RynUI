@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-ninja"
+	tests="2"
+	failures="2"
+	disabled="0"
+	skipped="0"
+	hostname="Ryzen-Workstation"
+	time="2"
+	timestamp="2026-10-30T00:50:07"
+	>
+	<testcase name="rynui.state_projection_tree_local" classname="rynui.state_projection_tree_local" time="0.333323" status="fail">
+		<failure message=""/>
+		<system-out>moving Tree hover rebuilt scene structure
+</system-out>
+	</testcase>
+	<testcase name="rynui.state_projection_table_cache" classname="rynui.state_projection_table_cache" time="2.513" status="fail">
+		<failure message=""/>
+		<system-out>Table selection repeated sorting or lost actual checkbox feedback
+</system-out>
+	</testcase>
+</testsuite>
