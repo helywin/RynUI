@@ -112,7 +112,7 @@ using AuxiliaryComponentSynchronizer = WindowComponentParticipant;
 struct WindowSyncProfile final {
     std::uint64_t text_nanoseconds{};
     std::uint64_t auxiliary_geometry_nanoseconds{};
-    std::array<std::uint64_t, 16> participant_geometry_nanoseconds{};
+    std::array<std::uint64_t, 64> participant_geometry_nanoseconds{};
     std::uint64_t participant_count{};
     std::uint64_t effect_nanoseconds{};
     std::uint64_t text_fragments_nanoseconds{};

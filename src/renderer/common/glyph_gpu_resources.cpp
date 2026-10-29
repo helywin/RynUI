@@ -13,10 +13,15 @@ namespace {
     return std::runtime_error(error != nullptr && error[0] != '\0' ? error : fallback);
 }
 
-void dirty_ranges(const graphics::GlyphInstanceStore& instances, std::vector<graphics::GlyphInstanceRange>& ranges) {
+void dirty_ranges(const graphics::GlyphInstanceStore& instances, std::vector<graphics::GlyphInstanceRange>& ranges,
+                  std::size_t initialized_count) {
     ranges.clear();
     ranges.insert(ranges.end(), instances.material_dirty_ranges().begin(), instances.material_dirty_ranges().end());
     ranges.insert(ranges.end(), instances.geometry_dirty_ranges().begin(), instances.geometry_dirty_ranges().end());
+    if (instances.size() > initialized_count) {
+        ranges.push_back({static_cast<std::uint32_t>(initialized_count),
+                          static_cast<std::uint32_t>(instances.size() - initialized_count)});
+    }
     std::ranges::sort(ranges, {}, &graphics::GlyphInstanceRange::first);
 
     std::size_t merged_size = 0;
@@ -68,16 +73,15 @@ void GlyphGpuResources::synchronize(graphics::GlyphAtlas& atlas, graphics::Glyph
         throw std::length_error("Glyph instance buffer exceeds uint32_t capacity");
     }
     const bool full = metrics_ != metrics || instances.size() > instance_capacity_;
+    const auto initialized_count = packed_.size();
     packed_.resize(instances.size());
     try {
         if (full) {
             instances.mark_all_dirty();
-            convert_range(instances, {0, static_cast<std::uint32_t>(instances.size())}, metrics);
-        } else {
-            dirty_ranges(instances, dirty_scratch_);
-            for (auto range : dirty_scratch_) {
-                convert_range(instances, range, metrics);
-            }
+        }
+        dirty_ranges(instances, dirty_scratch_, initialized_count);
+        for (auto range : dirty_scratch_) {
+            convert_range(instances, range, metrics);
         }
         ensure_textures(atlas);
         const bool replaced_buffer = ensure_instance_buffer(instances);
@@ -151,7 +155,10 @@ bool GlyphGpuResources::ensure_instance_buffer(const graphics::GlyphInstanceStor
     if (instances.size() > std::numeric_limits<std::uint32_t>::max()) {
         throw std::length_error("Glyph instance buffer exceeds uint32_t capacity");
     }
-    const std::size_t byte_count = instances.size() * sizeof(GlyphGpuInstance);
+    const auto target_capacity = static_cast<std::uint32_t>(
+        std::min<std::uint64_t>(std::max<std::uint64_t>(instances.size(), std::uint64_t(instance_capacity_) * 2),
+                                std::numeric_limits<std::uint32_t>::max()));
+    const std::size_t byte_count = std::size_t(target_capacity) * sizeof(GlyphGpuInstance);
     auto replacement = api_->create_glyph_buffer(byte_count);
     if (replacement == nullptr) {
         throw gpu_failure(*api_, "Failed to create Glyph instance buffer");
@@ -169,7 +176,7 @@ bool GlyphGpuResources::ensure_instance_buffer(const graphics::GlyphInstanceStor
         api_->release_glyph_buffer(instance_buffer_);
     }
     instance_buffer_ = replacement;
-    instance_capacity_ = static_cast<std::uint32_t>(instances.size());
+    instance_capacity_ = target_capacity;
     ++counters_.buffer_reallocations;
     ++counters_.buffer_uploads;
     counters_.buffer_uploaded_bytes += bytes.size();
@@ -196,7 +203,6 @@ void GlyphGpuResources::upload_atlas(graphics::GlyphAtlas& atlas) {
 }
 
 void GlyphGpuResources::upload_instance_ranges(graphics::GlyphInstanceStore& instances) {
-    dirty_ranges(instances, dirty_scratch_);
     if (max_coalesced_upload_bytes_ != 0 && dirty_scratch_.size() > 1) {
         const auto first = dirty_scratch_.front().first;
         const auto& last = dirty_scratch_.back();

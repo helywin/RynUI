@@ -36,6 +36,10 @@ public:
             error = "invalid fake upload";
             return false;
         }
+        if (fail_next_upload) {
+            fail_next_upload = false;
+            return false;
+        }
         ++upload_calls;
         upload_offsets.push_back(offset);
         std::copy(bytes.begin(), bytes.end(), buffer.begin() + offset);
@@ -52,6 +56,7 @@ public:
     int create_calls{0};
     int upload_calls{0};
     int release_calls{0};
+    bool fail_next_upload{};
 };
 
 void test_instance_layout_matches_shader_contract() {
@@ -255,6 +260,55 @@ void test_out_of_order_dirty_planning_and_shifted_suffix() {
             "Quad shifted suffix left stale or missing dirty ranges");
 }
 
+void test_bounded_sparse_upload_coalescing() {
+    using namespace ryn;
+    graphics::QuadInstanceStore store;
+    std::array<graphics::QuadInstance, 128> initial{};
+    static_cast<void>(store.append(initial));
+    RecordingUploadApi api;
+    detail::QuadGpuBuffer gpu(api, store, {100, 100, 1});
+    gpu.set_sparse_upload_coalescing_limit(16 * sizeof(detail::QuadGpuInstance));
+    const auto update = [&](std::uint32_t a, std::uint32_t b, float opacity) {
+        const std::array material{graphics::QuadMaterial{{0.1F, 0.3F, 0.8F, 1}, opacity}};
+        static_cast<void>(store.update_material({a, 1}, material));
+        static_cast<void>(store.update_material({b, 1}, material));
+    };
+    update(0, 5, 0.5F);
+    auto uploads = api.upload_calls;
+    gpu.synchronize(store, {100, 100, 1});
+    require(api.upload_calls == uploads + 1 && api.upload_offsets.back() == 0,
+            "nearby Quad changes were not uploaded together");
+    const auto verify_bytes = [&] {
+        for (std::size_t index = 0; index < store.size(); ++index) {
+            const auto packed = detail::pack_quad_instance(store.at(index), {100, 100, 1});
+            require(std::memcmp(api.buffer.data() + index * sizeof(packed), &packed, sizeof(packed)) == 0,
+                    "coalesced Quad upload changed clean or dirty instance bytes");
+        }
+    };
+    verify_bytes();
+    update(0, 127, 0.7F);
+    uploads = api.upload_calls;
+    gpu.synchronize(store, {100, 100, 1});
+    require(api.upload_calls == uploads + 2, "distant Quad changes ignored the coalescing bound");
+    gpu.set_sparse_upload_coalescing_limit(4 * sizeof(detail::QuadGpuInstance));
+    update(0, 5, 0.8F);
+    uploads = api.upload_calls;
+    gpu.synchronize(store, {100, 100, 1});
+    require(api.upload_calls == uploads + 2, "Quad coalescing exceeded its byte limit");
+    gpu.set_sparse_upload_coalescing_limit(16 * sizeof(detail::QuadGpuInstance));
+    update(0, 5, 0.9F);
+    api.fail_next_upload = true;
+    bool failed{};
+    try {
+        gpu.synchronize(store, {100, 100, 1});
+    } catch (const std::runtime_error&) {
+        failed = true;
+    }
+    require(failed && !store.material_dirty_ranges().empty(), "failed merged Quad upload lost dirty state");
+    gpu.synchronize(store, {100, 100, 1});
+    verify_bytes();
+}
+
 } // namespace
 
 int main() {
@@ -265,6 +319,7 @@ int main() {
         test_sparse_dirty_ranges_and_compaction();
         test_gpu_buffer_growth_and_sparse_synchronization();
         test_out_of_order_dirty_planning_and_shifted_suffix();
+        test_bounded_sparse_upload_coalescing();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -1,0 +1,108 @@
+{
+  "exe": {
+    "path": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "bytes": 16449024,
+    "sha256": "3cb37eb4835a6aabcde5eb56a8965c32a76d62727b6ea6a235fe631fc3b66cad",
+    "mtime_ns": 1793287180563619000
+  },
+  "images_local_only": [
+    {
+      "path": "out/099-native-menu.bmp",
+      "bytes": 4608138,
+      "sha256": "6cb7a733ca1221510d2a1b0bcfca845323c4c2c036bab9641d36176fef219bc3",
+      "mtime_ns": 1793287233300496600
+    },
+    {
+      "path": "out/099-native-table.bmp",
+      "bytes": 4608138,
+      "sha256": "21b569ad606283d1b2ba68d1069347db7f5f207739dc04daf12a3cec0e5b24d1",
+      "mtime_ns": 1793287239797295700
+    },
+    {
+      "path": "out/099-native-pagination.bmp",
+      "bytes": 4608138,
+      "sha256": "229dc551d0983e009484f7f957c9ce76a359aad75fdc4c4e23d664c9389b3dd8",
+      "mtime_ns": 1793287246095706400
+    },
+    {
+      "path": "out/099-native-date-picker.bmp",
+      "bytes": 4608138,
+      "sha256": "1b437dd5bfaa968705f0ad8497918146f7d197e5b8298c9607e7898b7d9855e0",
+      "mtime_ns": 1793287226862162800
+    }
+  ],
+  "files": [
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/.gitattributes",
+      "bytes": 43,
+      "sha256": "04d7b519e20e7ac40a7b554977f329244ddbaff07e166d17ae02ee5836176224",
+      "mtime_ns": 1793287918441775900
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-date-focus-diagnostic.log",
+      "bytes": 848,
+      "sha256": "a17b29e7ad99dac810e56fb5053c306434f916a364cc267127bc2e2508324451",
+      "mtime_ns": 1793287919575615000
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-date-passive-focus-diagnostic.log",
+      "bytes": 848,
+      "sha256": "1d3f0e1559ba8dbf76456d082b3018b8765bda894677a8ecef91b2302dbfe6d8",
+      "mtime_ns": 1793287919576623600
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-date-picker.json",
+      "bytes": 171,
+      "sha256": "7ce8dfd47f63713a54a12d1c4192bb55282acc8c66a288f29f69bae211ba1ff8",
+      "mtime_ns": 1793287919571023800
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-date-picker.log",
+      "bytes": 424,
+      "sha256": "9501d8b9f84528781f7a0d04062e09ef2fcc7f6c8a4b194960fe37e9c7011c41",
+      "mtime_ns": 1793287919571023800
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-menu-scale15-diagnostic.log",
+      "bytes": 836,
+      "sha256": "851529d4836621d02115523ec0e0042443f2c359be292a990dda6171bc4571eb",
+      "mtime_ns": 1793287919575615000
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-menu.json",
+      "bytes": 164,
+      "sha256": "36161f162fcd7f6506d8bdfcf23ecff435770dd618a82395d1eb13fe6727e306",
+      "mtime_ns": 1793287919556955400
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-menu.log",
+      "bytes": 396,
+      "sha256": "c8ede38c5b70c21331dadf2bea006725bd35bcb05e669302ad765f62e47b283d",
+      "mtime_ns": 1793287919555450000
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-pagination.json",
+      "bytes": 161,
+      "sha256": "50e47563f0f58edc00fbe771b310513e1b4b5b8d0a439e28b45e78ccf778d855",
+      "mtime_ns": 1793287919565789400
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-pagination.log",
+      "bytes": 420,
+      "sha256": "9fb8400e79c7413cc2539fc8fe142556033776296c0a0df33ee60ea2078a612b",
+      "mtime_ns": 1793287919565789400
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-table.json",
+      "bytes": 156,
+      "sha256": "e3172568c618af7b512661e7a9453c08e34241a855cb3c0a9550ef6c9f034ad4",
+      "mtime_ns": 1793287919561713000
+    },
+    {
+      "path": "openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/native-artifacts/099-native-table.log",
+      "bytes": 400,
+      "sha256": "0e4a81cb22e8c7a8a12612c470d377c5bbf0421db7205c51f7741a0555334583",
+      "mtime_ns": 1793287919559961900
+    }
+  ]
+}

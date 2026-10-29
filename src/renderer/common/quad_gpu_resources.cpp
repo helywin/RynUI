@@ -70,7 +70,21 @@ void QuadGpuBuffer::synchronize(graphics::QuadInstanceStore& store, SceneDeviceM
                 throw upload_error(*api_, "Failed to create Quad GPU buffer");
             }
         }
-        for (auto range : dirty_.ranges()) {
+        auto upload_ranges = dirty_.ranges();
+        graphics::QuadInstanceRange merged;
+        if (max_coalesced_upload_bytes_ != 0 && upload_ranges.size() > 1) {
+            const auto end = std::uint64_t(upload_ranges.back().first) + upload_ranges.back().count;
+            const auto count = end - upload_ranges.front().first;
+            std::uint64_t dirty_count{};
+            for (const auto range : upload_ranges) {
+                dirty_count += range.count;
+            }
+            if (count * sizeof(QuadGpuInstance) <= max_coalesced_upload_bytes_ && count <= dirty_count * 8) {
+                merged = {upload_ranges.front().first, static_cast<std::uint32_t>(count)};
+                upload_ranges = {&merged, 1};
+            }
+        }
+        for (auto range : upload_ranges) {
             auto bytes = std::as_bytes(std::span(packed_).subspan(range.first, range.count));
             if (!api_->upload(target, std::size_t(range.first) * sizeof(QuadGpuInstance), bytes)) {
                 throw upload_error(*api_, "Failed to upload Quad GPU range");

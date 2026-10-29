@@ -9,6 +9,7 @@
 - 不可见 Input 字形层使用已有 culled 同步路径，恢复显示时保留真实文字、选择、preedit 与完整代际。
 - Gallery 仅在布局变化时重新求目录锚点，普通位移复用有效结果。
 - 滚动验收从采样开始计数，仍拒绝采样期间的额外 reconciliation。
+- 跳过透明 Button loading 分段的几何更新，合并 Gallery 的有界 Quad 上传并复用 Glyph buffer 增长容量；保留原数据、排序、恢复和失败重试合同。
 - 以相同 Release 原生自动滚动复测平均、p95、CPU 分段和资源上传量；不以 Debug/Release 差异冒充优化收益。
 
 ## Capabilities
@@ -23,4 +24,4 @@
 
 ## Impact
 
-限 Input 字形同步、Gallery 目录与采样、对应回归和证据；不增加公开 API、组件功能、字体系统或 renderer ABI。风险是恢复可见时丢字形、锚点缓存失效或测量漏记，须分别回归。原生验收仅本机 Windows，Linux/IME/AT 不在本次声明中。
+限 Input/Button 同步、renderer/common 的 Quad/Glyph 资源同步、Gallery 目录与采样、对应回归和证据；不增加公开 API、组件功能、字体系统或 renderer ABI。风险是恢复可见时丢字形、锚点缓存失效、上传清洁字节失效或测量漏记，须分别回归。原生验收仅本机 Windows，Linux/IME/AT 不在本次声明中。

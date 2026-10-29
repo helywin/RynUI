@@ -1800,6 +1800,9 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     const auto indicator_bounds = content.loading_indicator_bounds.value_or(runtime::Rect{});
     for (std::size_t segment = 0; segment < component::button_loading_segment_count; ++segment) {
         const auto index = component::button_loading_segment_index(segment);
+        if (next[index].opacity == 0.0F) {
+            continue;
+        }
         const auto bounds = spinner_segment_bounds(indicator_bounds, segment);
         next[index] = make_quad(bounds, viewport, next[index].color, next[index].opacity,
                                 0.5F * std::min(bounds.width, bounds.height), node.translation);

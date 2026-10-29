@@ -38,6 +38,10 @@ public:
 
     void synchronize(graphics::QuadInstanceStore& store, SceneDeviceMetrics metrics);
 
+    void set_sparse_upload_coalescing_limit(std::size_t max_span_bytes) noexcept {
+        max_coalesced_upload_bytes_ = max_span_bytes;
+    }
+
     [[nodiscard]] QuadGpuBufferHandle handle() const noexcept {
         return handle_;
     }
@@ -60,5 +64,6 @@ private:
     QuadUploadCounters counters_;
     std::vector<QuadGpuInstance> packed_;
     graphics::DirtyRangeAccumulator<graphics::QuadInstanceRange> dirty_;
+    std::size_t max_coalesced_upload_bytes_{};
 };
 } // namespace ryn::detail

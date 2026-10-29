@@ -52,6 +52,17 @@ ctest --preset windows-msvc-debug
 
 根工程会检查 generator 和编译器。Windows 上没有解析到 MSVC，或 generator 不是 `Ninja Multi-Config` 时，configure 会立即失败。
 
+### Gallery 交互与滚动测量
+
+交互体验和性能测量使用 Release configuration，在上述 Developer PowerShell 中执行：
+
+```powershell
+cmake --build --preset windows-msvc-release --target rynui_token_gallery --parallel 2
+./out/build/windows-msvc/examples/Release/rynui_token_gallery.exe
+```
+
+`--scroll-acceptance` 会短暂打开原生窗口、自动滚动并退出，输出实际 DPI/视口、平均/p95 及同步/上传计数。启动预热不计入滚动采样；请勿同时运行构建或其他性能测试。此结果不替代高刷显示器的手动体验验收；本轮范围与数据见 [100 证据](../../openspec/changes/100-20261029-reduce-gallery-scroll-synchronization/evidence/02-gallery-scroll.md)。
+
 ## HEADLESS / Recording 合同构建
 
 在 x64 Visual Studio Developer Environment 使用独立 preset：

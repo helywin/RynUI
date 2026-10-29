@@ -684,6 +684,63 @@ void test_animated_presentation_retarget_and_motion_policy() {
             "reduced motion did not snap to final retained Button presentation");
 }
 
+void test_transparent_spinner_scroll_and_reveal() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    ryn::Signal<bool> loading{false};
+    fixture.host->mount(
+        ryn::Content{[&] { ryn::Button(ryn::ButtonProps{}.loading(loading), [] { ryn::Text(u8"Moving button"); }); }});
+    require(fixture.synchronize(), "transparent spinner fixture failed");
+    const auto mounted = fixture.host->mounted_buttons().front();
+    const auto range = fixture.host->button_scene().visual_range(mounted.scene);
+    std::array<ryn::graphics::QuadInstance, ryn::component::button_loading_segment_count> hidden;
+    for (std::size_t index = 0; index < hidden.size(); ++index) {
+        hidden[index] = fixture.loading_segment(0, index);
+    }
+    ryn::runtime::NodePropertyWriter writer(fixture.nodes, fixture.dirty);
+    const auto translate = [&](const auto& self, ryn::runtime::NodeId node, ryn::runtime::Point offset) -> void {
+        static_cast<void>(writer.set_translation(node, offset));
+        for (auto child : fixture.nodes.require(node).children) {
+            self(self, child, offset);
+        }
+    };
+    for (const auto offset : {ryn::runtime::Point{40, 20}, ryn::runtime::Point{70, 10}}) {
+        static_cast<void>(loading.set(false));
+        require(fixture.synchronize(), "spinner hide failed");
+        for (std::size_t index = 0; index < hidden.size(); ++index) {
+            hidden[index] = fixture.loading_segment(0, index);
+        }
+        fixture.host->button_scene().instances().clear_dirty_ranges();
+        translate(translate, mounted.node, offset);
+        require(fixture.synchronize(), "transparent spinner scroll failed");
+        for (std::size_t index = 0; index < hidden.size(); ++index) {
+            const auto& current = fixture.loading_segment(0, index);
+            require(current.opacity == 0 && current.bounds == hidden[index].bounds &&
+                        current.translation == hidden[index].translation,
+                    "transparent loading segment generated new geometry");
+        }
+        for (const auto dirty : fixture.host->button_scene().instances().geometry_dirty_ranges()) {
+            require(dirty.first + dirty.count <= range.first + 2 || dirty.first >= range.first + range.count,
+                    "transparent loading segments entered the upload dirty range");
+        }
+        static_cast<void>(loading.set(true));
+        require(fixture.synchronize(), "spinner reveal failed");
+        const auto indicator = fixture.layout.horizontal_content_geometry(mounted.node).loading_indicator_bounds;
+        require(indicator.has_value(), "visible spinner has no allocated indicator");
+        for (std::size_t index = 0; index < hidden.size(); ++index) {
+            const auto& current = fixture.loading_segment(0, index);
+            require(current.opacity > 0 && current.translation == std::array{offset.x, offset.y} &&
+                        current.bounds[0] >= indicator->x && current.bounds[1] >= indicator->y &&
+                        current.bounds[0] + current.bounds[2] <= indicator->x + indicator->width &&
+                        current.bounds[1] + current.bounds[3] <= indicator->y + indicator->height,
+                    "loading reveal used stale position or lost segment geometry");
+        }
+        require(fixture.host->mounted_buttons().front().component == mounted.component &&
+                    fixture.host->button_scene().visual_range(mounted.scene) == range,
+                "spinner visibility changed retained identity or topology");
+    }
+}
+
 void test_retained_loading_spinner_phase_and_policy_lifecycle() {
     Fixture fixture;
     ryn::ThemeConfig theme;
@@ -1954,6 +2011,7 @@ int main() {
         test_solid_border_box_and_focus_modalities_at_simulated_dpi();
         test_animated_presentation_retarget_and_motion_policy();
         test_retained_loading_spinner_phase_and_policy_lifecycle();
+        test_transparent_spinner_scroll_and_reveal();
         test_pointer_keyboard_click_path_and_callback_mutation();
         test_nested_theme_override_updates_button_without_remounting();
         test_text_button_hover_and_theme_keep_foreground_visible();

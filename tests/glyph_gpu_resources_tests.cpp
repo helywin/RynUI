@@ -228,6 +228,30 @@ void test_failure_paths_keep_dirty_state_and_release_resources() {
     }
 }
 
+void test_growing_glyph_buffer_reuses_capacity() {
+    RecordingGpuApi api;
+    ryn::detail::GlyphGpuResources resources(api);
+    ryn::graphics::GlyphAtlas atlas({10, 10, 1});
+    ryn::graphics::GlyphInstanceStore instances;
+    const std::array<ryn::graphics::GlyphInstance, 2> initial{};
+    const std::array<ryn::graphics::GlyphInstance, 1> next{};
+    static_cast<void>(instances.append(initial));
+    resources.synchronize(atlas, instances, {100, 100, 1});
+    static_cast<void>(instances.append(next));
+    resources.synchronize(atlas, instances, {100, 100, 1});
+    const auto allocations = resources.counters().buffer_reallocations;
+    require(resources.instance_capacity() == 4 && allocations == 2, "Glyph buffer did not retain growth capacity");
+    static_cast<void>(instances.append(next));
+    resources.synchronize(atlas, instances, {100, 100, 1});
+    require(resources.counters().buffer_reallocations == allocations &&
+                api.buffers.back().offset == 3 * sizeof(ryn::detail::GlyphGpuInstance) &&
+                api.buffers.back().bytes.size() == sizeof(ryn::detail::GlyphGpuInstance),
+            "Glyph append replaced its buffer or uploaded unrelated storage within capacity");
+    const auto expected = ryn::detail::pack_glyph_instance(instances.at(3), {100, 100, 1});
+    require(std::ranges::equal(api.buffers.back().bytes, std::as_bytes(std::span{&expected, 1})),
+            "new Glyph within spare capacity was not packed and uploaded");
+}
+
 void test_bounded_sparse_upload_coalescing() {
     RecordingGpuApi api;
     ryn::detail::GlyphGpuResources resources(api);
@@ -314,6 +338,7 @@ int main() {
         test_borrowed_atlas_source_and_sparse_buffer_uploads();
         test_failure_paths_keep_dirty_state_and_release_resources();
         test_bounded_sparse_upload_coalescing();
+        test_growing_glyph_buffer_reuses_capacity();
         test_recording_backend_preserves_order_and_page_switches();
         test_zero_effect_scene_does_not_dispatch_effect_pipeline();
     } catch (const std::exception& error) {
