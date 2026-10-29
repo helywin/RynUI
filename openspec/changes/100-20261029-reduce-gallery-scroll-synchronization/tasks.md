@@ -8,4 +8,4 @@
 
 ## 2. Windows 原生滚动
 
-- [ ] 2.1 同配置新构建 MSVC Release Gallery，在用户授权下短暂自动滚动并退出；记录前后平均/p95、CPU/上传量、配置及限制，完成格式、OpenSpec 1.14 doctor/strict、diff 检查和独立审查后提交推送并核远端 SHA。不以性能数字替代 Linux/IME/AT 验收。
+- [x] 2.1 同配置新构建 MSVC Release Gallery，在用户授权下短暂自动滚动并退出；记录前后平均/p95、CPU/上传量、配置及限制，完成格式、OpenSpec 1.14 doctor/strict、diff 检查和独立审查后提交推送并核远端 SHA。不以性能数字替代 Linux/IME/AT 验收。

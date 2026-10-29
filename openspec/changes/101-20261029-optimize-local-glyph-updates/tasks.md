@@ -8,4 +8,4 @@
 ## 2. 平台通用：容量与集成
 
 - [x] 2.1 衔接 100 的资源上限修复；追加 1,000 glyph、容量内删除/恢复、能力上限、上传失败及 epoch 更新的 MSVC HEADLESS Debug/Release 合同与三轮增长计数通过，保留原始日志。
-- [ ] 2.2 main 集成后执行受影响 Text/Input/renderer 合同、format、OpenSpec 1.14 doctor/strict 与 diff check，完成独立审查并记录 TUNE-PERF-001/002 的修复提交及证据；提交推送后核对远端 SHA。
+- [x] 2.2 main 集成后执行受影响 Text/Input/renderer 合同、format、OpenSpec 1.14 doctor/strict 与 diff check，完成独立审查并记录 TUNE-PERF-001/002 的修复提交及证据；提交推送后核对远端 SHA。
