@@ -1,5 +1,6 @@
 #include "component/pagination_component.hpp"
 #include "support/input_fixture.hpp"
+#include "support/bundled_icon_checks.hpp"
 #include <iostream>
 #include <limits>
 
@@ -49,6 +50,10 @@ void controlled() {
     const auto original_count = f.services.components().component_count();
     auto s = f.services.pagination().snapshot(id);
     check(s.pages == 20 && s.current == 5 && s.items.size() <= 11, "initial pagination");
+    ryn_test::require_bundled_icon(f.services, s.items.front(), IconName::LeftOutlined);
+    ryn_test::require_bundled_icon(f.services, s.items.back(), IconName::RightOutlined);
+    const auto jump_wrapper = s.items[2];
+    const auto jump_icon = ryn_test::require_bundled_icon(f.services, jump_wrapper, IconName::EllipsisOutlined);
     click(f, s.items.back());
     check(requests == std::vector<std::size_t>{6} && f.services.pagination().snapshot(id).current == 5,
           "controlled refusal");
@@ -62,6 +67,8 @@ void controlled() {
     total.set(12);
     f.synchronize(600, {0, 0, 600, 240});
     check(f.services.pagination().snapshot(id).current == 2 && requests.size() == 2, "shrink clamp callback");
+    check(ryn_test::find_bundled_icon(f.services, jump_wrapper, IconName::EllipsisOutlined, false) == jump_icon,
+          "Pagination did not hide the retained jump Icon when the slot became a page number");
     size.set(20);
     total.set(0);
     f.synchronize(600, {0, 0, 600, 240});
@@ -69,6 +76,12 @@ void controlled() {
     check(s.pages == 1 && s.current == 1 && s.items.size() == 3 && runs == 1 &&
               f.services.components().component_count() == original_count,
           "retained zero pagination");
+    total.set(200);
+    page.set(5);
+    f.synchronize(600, {0, 0, 600, 240});
+    check(ryn_test::require_bundled_icon(f.services, jump_wrapper, IconName::EllipsisOutlined) == jump_icon &&
+              f.services.components().component_count() == original_count && requests.size() == 2,
+          "Pagination jump/page transition remounted controls or emitted a callback");
     total.set(std::numeric_limits<std::size_t>::max());
     page.set(std::numeric_limits<std::size_t>::max());
     f.synchronize(600, {0, 0, 600, 240});

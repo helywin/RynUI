@@ -2,6 +2,7 @@
 #include "component/select_component.hpp"
 #include "component/modal_component.hpp"
 #include "support/input_fixture.hpp"
+#include "support/bundled_icon_checks.hpp"
 #include <cmath>
 #include <iostream>
 #if defined(_MSC_VER) && defined(_DEBUG)
@@ -89,6 +90,14 @@ void selection_and_identity() {
     const auto original = f.services.date_picker().snapshot(id);
     click(f, bounds(f, original.input));
     check(f.services.date_picker().snapshot(id).visible && original.cells.size() == 42, "pointer open");
+    const std::array navigation_icons{IconName::DoubleLeftOutlined, IconName::LeftOutlined, IconName::RightOutlined,
+                                      IconName::DoubleRightOutlined};
+    std::array<runtime::ComponentId, 4> navigation_components;
+    check(original.navigation.size() >= navigation_icons.size(), "DatePicker navigation inventory");
+    for (std::size_t index = 0; index < navigation_icons.size(); ++index) {
+        navigation_components[index] =
+            ryn_test::require_bundled_icon(f.services, original.navigation[index], navigation_icons[index]);
+    }
     click(f, bounds(f, original.cells[32]));
     auto s = f.services.date_picker().snapshot(id);
     check(s.value == DatePickerValue{CivilDate{2024, 2, 29}} && !s.visible && changes.size() == 1 &&
@@ -96,6 +105,11 @@ void selection_and_identity() {
           "pointer leap selection/focus restore");
     key(f, Key::down);
     key(f, Key::page_down);
+    for (std::size_t index = 0; index < navigation_icons.size(); ++index) {
+        check(ryn_test::require_bundled_icon(f.services, original.navigation[index], navigation_icons[index]) ==
+                  navigation_components[index],
+              "DatePicker month navigation replaced a bundled icon generation");
+    }
     key(f, Key::home);
     key(f, Key::right);
     key(f, Key::enter);

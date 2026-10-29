@@ -6,6 +6,7 @@
 #include "component/popover_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
+#include <ryn/icon.hpp>
 #include <algorithm>
 #include <stdexcept>
 
@@ -320,13 +321,15 @@ void DatePickerComponentHost::mount_items(runtime::ComponentId id) {
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     auto& s = *services.components().state<DateState>(id);
-    const std::array labels{u8"<<", u8"<", u8">", u8">>", u8"", u8"Su", u8"Mo", u8"Tu", u8"We", u8"Th", u8"Fr", u8"Sa"};
+    constexpr std::array navigation_icons{IconName::DoubleLeftOutlined, IconName::LeftOutlined, IconName::RightOutlined,
+                                          IconName::DoubleRightOutlined};
+    const std::array labels{u8"", u8"Su", u8"Mo", u8"Tu", u8"We", u8"Th", u8"Fr", u8"Sa"};
     for (std::size_t i = 0; i < 54; ++i) {
         const auto child = build.mount_component<DateItem>();
         auto& item = build.state<DateItem>(child);
         item.node = build.root(child);
-        if (i < 12) {
-            item.text.set(String::from_utf8(std::u8string_view{labels[i]}).value());
+        if (i >= 4 && i < 12) {
+            item.text.set(String::from_utf8(std::u8string_view{labels[i - 4]}).value());
         }
         if (i < 4) {
             item.months = std::array{-12, -1, 1, 12}[i];
@@ -391,8 +394,13 @@ void DatePickerComponentHost::mount_items(runtime::ComponentId id) {
                 services.scene_composer().remove_fragment(fragment);
                 services.layout().remove_layout(node);
             });
-        build.mount_slot_with_semantic_text_style(child, Content{[&item] { Text(TextProps{}.content(item.text)); }},
-                                                  item.color, item.font);
+        if (i < navigation_icons.size()) {
+            build.mount_slot_with_semantic_text_style(
+                child, Content{[icon = navigation_icons[i]] { Icon(IconProps{}.name(icon)); }}, item.color, item.font);
+        } else {
+            build.mount_slot_with_semantic_text_style(
+                child, Content{[text = item.text] { Text(TextProps{}.content(text)); }}, item.color, item.font);
+        }
         services.layout().set_layout(
             item.node,
             layout::ComponentLayout{

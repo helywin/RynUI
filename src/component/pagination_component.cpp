@@ -2,6 +2,7 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <ryn/button.hpp>
+#include <ryn/icon.hpp>
 #include <algorithm>
 #include <cmath>
 
@@ -12,6 +13,8 @@ thread_local PaginationComponentHost* active_pagination{};
 struct PageItem final {
     runtime::ComponentId component;
     Signal<String> label{String{}};
+    Signal<IconName> icon{IconName::EllipsisOutlined};
+    Signal<bool> icon_visible{false};
     Signal<bool> disabled{false};
     Signal<LogicalLength> extent{dp(32)};
     Signal<ThemeConfig> theme{ThemeConfig{}};
@@ -145,10 +148,12 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                       : index <= targets.size() ? targets[index - 1].first
                                                 : 0;
         const bool active = index > 0 && index < 10 && !jump && item.target == s->current;
-        item.label.set(index == 0    ? String{u8"‹"}
-                       : index == 10 ? String{u8"›"}
-                       : jump        ? String{u8"•••"}
-                                     : String::from_utf8(std::to_string(item.target)).value());
+        const bool navigation_icon = index == 0 || index == 10 || jump;
+        item.icon.set(index == 0    ? IconName::LeftOutlined
+                      : index == 10 ? IconName::RightOutlined
+                                    : IconName::EllipsisOutlined);
+        item.icon_visible.set(navigation_icon);
+        item.label.set(navigation_icon ? String{} : String::from_utf8(std::to_string(item.target)).value());
         item.disabled.set(s->disabled || (index == 0 && s->current == 1) || (index == 10 && s->current == s->pages));
         item.extent.set(dp(s->extent));
         ThemeConfig config;
@@ -160,6 +165,7 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         b.border_radius = dp(token.metrics.border_radius);
         b.default_shadow = ShadowList{};
         b.padding_inline = dp(0);
+        b.icon_gap = dp(0);
         item.theme.set(std::move(config));
         if (services_->components().set_branch_active(item.component, item.shown && !s->hidden)) {
             services_->mark_scene_structure_dirty();
@@ -235,7 +241,10 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
                                              .wave(false)
                                              .layout(LayoutStyle{}.width(item.extent).height(item.extent))
                                              .onClick([this, id, index] { request(id, index); }),
-                                         ButtonContent{[label = item.label] { Text(TextProps{}.content(label)); }});
+                                         ButtonContent{[label = item.label] { Text(TextProps{}.content(label)); }},
+                                         ButtonIcon{[icon = item.icon, visible = item.icon_visible] {
+                                             Icon(IconProps{}.name(icon).visible(visible));
+                                         }});
                               }});
                     }});
             }

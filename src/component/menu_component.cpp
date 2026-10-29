@@ -1,6 +1,7 @@
 #include "component/menu_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
+#include <ryn/icon.hpp>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -22,7 +23,7 @@ struct MenuRow final {
     std::optional<runtime::ComponentId> icon;
     std::optional<runtime::ComponentId> arrow;
     Signal<String> label{String{}};
-    Signal<String> arrow_label{String{u8"›"}};
+    Signal<IconName> arrow_icon{IconName::RightOutlined};
     Signal<runtime::SemanticForeground> foreground{{0, 0, 0, 1}};
     Signal<runtime::SemanticTypography> typography{runtime::SemanticTypography{}};
     bool disabled{};
@@ -208,7 +209,7 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         const auto& font = token.typography;
         row->typography.set({font.font_family, font.font_weight, false, font.font_size, font.line_height});
         if (row->kind == MenuItemKind::SubMenu) {
-            row->arrow_label.set(contains(s->open, row->key) ? String{u8"⌄"} : String{u8"›"});
+            row->arrow_icon.set(contains(s->open, row->key) ? IconName::DownOutlined : IconName::RightOutlined);
         }
     }
     bool reveal = false;
@@ -391,7 +392,7 @@ void MenuComponentHost::mount_rows(runtime::ComponentId id, const std::vector<Me
                     Text(TextProps{}.content(row.label));
                     row.label_component = services.components().children(row_id).back();
                     if (item.kind == MenuItemKind::SubMenu) {
-                        Text(TextProps{}.content(row.arrow_label));
+                        Icon(IconProps{}.name(row.arrow_icon));
                         row.arrow = services.components().children(row_id).back();
                     }
                 }},

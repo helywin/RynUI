@@ -4,6 +4,7 @@
 #include "component/selection_component.hpp"
 #include "component/select_component.hpp"
 #include "support/input_fixture.hpp"
+#include "support/bundled_icon_checks.hpp"
 #include <iostream>
 #include <map>
 
@@ -203,9 +204,13 @@ void controlled_sort_selection_pages() {
     sync(f);
     const auto id = f.services.table().mounted()[0];
     auto s = f.services.table().snapshot(id);
+    const auto sort_icon =
+        ryn_test::require_bundled_icon(f.services, s.sort_buttons[1], IconName::ColumnHeightOutlined);
     click(f, s.sort_buttons[1]);
     check(sorts.size() == 1 && f.services.table().snapshot(id).sort.order == TableSortOrder::None,
           "sort controlled refusal");
+    check(ryn_test::require_bundled_icon(f.services, s.sort_buttons[1], IconName::ColumnHeightOutlined) == sort_icon,
+          "rejected Table sort changed the retained icon");
     click(f, s.rows[0].checkbox);
     check(selections == std::vector<std::vector<String>>{{u8"a"}} && selected.get().empty(),
           "selection controlled refusal");
@@ -213,6 +218,8 @@ void controlled_sort_selection_pages() {
     click(f, s.sort_buttons[1]);
     s = f.services.table().snapshot(id);
     check(s.visible_keys == std::vector<String>{u8"b", u8"c"}, "stable ascending sort/page");
+    check(ryn_test::require_bundled_icon(f.services, s.sort_buttons[1], IconName::ArrowUpOutlined) == sort_icon,
+          "ascending Table sort did not use the retained bundled icon");
     check(bounds(f, s.rows[1].component).y == s.body.y && bounds(f, s.rows[2].component).y > s.body.y,
           "sorted rows were not placed in display order");
     click(f, s.select_all);
@@ -241,8 +248,12 @@ void controlled_sort_selection_pages() {
     check(f.services.table().snapshot(id).sort.order == TableSortOrder::Descend &&
               f.services.table().snapshot(id).visible_keys == std::vector<String>{u8"b", u8"c"},
           "descending sort/page");
+    check(ryn_test::require_bundled_icon(f.services, s.sort_buttons[1], IconName::ArrowDownOutlined) == sort_icon,
+          "descending Table sort did not use the retained bundled icon");
     click(f, s.sort_buttons[1]);
     check(f.services.table().snapshot(id).sort.order == TableSortOrder::None, "sort cycle did not clear");
+    check(ryn_test::require_bundled_icon(f.services, s.sort_buttons[1], IconName::ColumnHeightOutlined) == sort_icon,
+          "cleared Table sort did not restore the retained bundled icon");
 }
 
 void scroll_theme_and_nested_cleanup() {

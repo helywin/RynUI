@@ -1,5 +1,6 @@
 #include "component/menu_component.hpp"
 #include "support/input_fixture.hpp"
+#include "support/bundled_icon_checks.hpp"
 #include <iostream>
 #include <string_view>
 #if defined(_MSC_VER) && defined(_DEBUG)
@@ -70,6 +71,7 @@ void navigation() {
     const auto id = f.services.menu().mounted()[0];
     auto s = f.services.menu().snapshot(id);
     const auto rows = s.rows;
+    const auto arrow = ryn_test::require_bundled_icon(f.services, rows[4], IconName::RightOutlined);
     check(s.active_key == String{u8"a"}, "first enabled row missing");
     f.services.menu().focus_menu(id);
     key(f, Key::down);
@@ -77,8 +79,12 @@ void navigation() {
     key(f, Key::right);
     check(opens.size() == 1 && f.services.menu().snapshot(id).open_keys.empty(),
           "controlled open refusal mutated state");
+    check(ryn_test::require_bundled_icon(f.services, rows[4], IconName::RightOutlined) == arrow,
+          "rejected Menu expansion changed the retained icon");
     open.set(MenuKeys{String{u8"sub"}});
     f.synchronize();
+    check(ryn_test::require_bundled_icon(f.services, rows[4], IconName::DownOutlined) == arrow,
+          "Menu expansion did not update the retained bundled icon");
     key(f, Key::right);
     check(f.services.menu().snapshot(id).active_key == String{u8"child"}, "Right did not enter submenu");
     key(f, Key::enter);

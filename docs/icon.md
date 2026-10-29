@@ -15,6 +15,8 @@ Icon(IconProps{}.name(IconName::WalletTwoTone)
 
 单色图标使用所在 slot 的语义前景色，或 Text Theme/tone。双色图标默认使用 Theme 的 `color_primary`；显式 `tone` 使用对应语义文字色。`twoToneColor` 覆盖主色，可指定副色；省略副色时使用锁定 Ant Design palette 的第一阶浅色并保留主色 alpha。每层的 source opacity 与祖先内容透明度相乘。
 
+内置控件的箭头、展开收起、翻页和排序等操作标识使用正式 `Icon`／`IconName`，不要使用 `>`、`^` 或相似 Unicode 文本字符充当图标。普通页码、日期和标题仍使用 Text；图标采用独立内置资源，不依赖系统文本字体回退是否覆盖这些字符。四类控件的实际平台通用验证见 [099 证据](../openspec/changes/099-20261028-replace-native-control-symbol-placeholders/evidence/01-bundled-control-icons.md)，Gallery 与原生显示进度以 [任务](../openspec/changes/099-20261028-replace-native-control-symbol-placeholders/tasks.md) 为准。
+
 每个 Icon 只有一个 Component/root；内部每个颜色层持有独立保留 TextScene，层的 pivot、位置、字体与 clipping 一致。源变化复用共同层前缀，删除多余层；颜色更新只写 material，旋转只写共同 glyph geometry，均不重新 shaping 或上传 glyph coverage。
 
 `spin(true)` 使用窗口 AnimationRuntime，默认一圈为十个 `motion_unit`（默认一秒）。显式角度与 spin 相加。reduced motion、Theme `motion=false`、`visible(false)`、失活 slot 或窗口失活停止动画并恢复显式角度；恢复有效状态后重新开始。卸载清理所有额外 scene、动画 scope/target，静止图标不保留下一帧 deadline。

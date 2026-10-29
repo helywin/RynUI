@@ -5,6 +5,7 @@
 #include <ryn/button.hpp>
 #include <ryn/checkbox.hpp>
 #include <ryn/flex.hpp>
+#include <ryn/icon.hpp>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -56,7 +57,7 @@ struct TableState final {
     std::vector<float> widths;
     std::vector<TableAlign> alignments;
     std::vector<runtime::ComponentId> sort_buttons;
-    std::vector<Signal<String>> sort_labels;
+    std::vector<Signal<IconName>> sort_icons;
     std::map<std::string, runtime::ComponentId> by_key;
     std::vector<runtime::ComponentId> source_order;
     std::vector<runtime::ComponentId> visible;
@@ -341,9 +342,8 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                                                 .wave(false)
                                                 .disabled(s.blocked)
                                                 .onClick([this, id, column_index] { request_sort(id, column_index); }),
-                                            ButtonContent{[label = s.sort_labels[column_index]] {
-                                                Text(TextProps{}.content(label));
-                                            }});
+                                            ButtonContent{
+                                                [icon = s.sort_icons[column_index]] { Icon(IconProps{}.name(icon)); }});
                                      const auto hit = services.interactions().declaration_order().back();
                                      s.sort_buttons[column_index] = services.interactions().require(hit).component;
                                  }
@@ -544,10 +544,10 @@ void TableComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     active(*services_, s->empty, s->visible.empty() && !s->loading);
     active(*services_, s->loading_label, s->loading);
     for (std::size_t i = 0; i < s->columns.size(); ++i) {
-        s->sort_labels[i].set(s->sort.column_key != s->columns[i].key || s->sort.order == TableSortOrder::None
-                                  ? String{u8"↕"}
-                              : s->sort.order == TableSortOrder::Ascend ? String{u8"↑"}
-                                                                        : String{u8"↓"});
+        s->sort_icons[i].set(s->sort.column_key != s->columns[i].key || s->sort.order == TableSortOrder::None
+                                 ? IconName::ColumnHeightOutlined
+                             : s->sort.order == TableSortOrder::Ascend ? IconName::ArrowUpOutlined
+                                                                       : IconName::ArrowDownOutlined);
     }
     services_->dirty().invalidate(s->node, geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                           runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
@@ -654,7 +654,7 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
     for (const auto& column : s.columns) {
         s.requested_widths.push_back(read_prop(column.width));
         s.alignments.push_back(read_prop(column.align));
-        s.sort_labels.emplace_back(String{u8"↕"});
+        s.sort_icons.emplace_back(IconName::ColumnHeightOutlined);
     }
     s.widths = s.requested_widths;
     s.sort_buttons.resize(s.columns.size());
