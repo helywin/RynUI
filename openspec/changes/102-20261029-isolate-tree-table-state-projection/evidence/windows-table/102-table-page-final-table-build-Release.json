@@ -1,0 +1,12 @@
+{
+    "stage":  "table-build",
+    "label":  "table-page-final",
+    "configuration":  "Release",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  1,
+    "exit":  0,
+    "seconds":  23.2634103,
+    "finishedUtc":  "2026-10-29T18:17:25.7707011Z"
+}

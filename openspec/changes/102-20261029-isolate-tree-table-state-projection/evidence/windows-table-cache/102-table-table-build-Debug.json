@@ -1,0 +1,12 @@
+{
+    "stage":  "table-build",
+    "label":  "table",
+    "configuration":  "Debug",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  1,
+    "exit":  0,
+    "seconds":  63.3086743,
+    "finishedUtc":  "2026-10-29T17:46:23.8723585Z"
+}

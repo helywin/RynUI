@@ -26,6 +26,12 @@ struct TableSnapshot final {
     bool loading{};
 };
 
+struct TableWork final {
+    std::uint64_t copied_records{};
+    std::uint64_t sort_passes{};
+    std::uint64_t visited_rows{};
+};
+
 class TableComponentHost final : public WindowComponentParticipant {
 public:
     explicit TableComponentHost(WindowComponentServices&);
@@ -38,6 +44,7 @@ public:
     }
 
     TableSnapshot snapshot(runtime::ComponentId) const;
+    TableWork work(runtime::ComponentId) const;
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;

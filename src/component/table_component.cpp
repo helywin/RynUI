@@ -8,6 +8,7 @@
 #include <ryn/icon.hpp>
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <limits>
 #include <map>
 #include <set>
@@ -38,6 +39,7 @@ struct RowState final {
     Signal<bool> disabled{false};
     float height{};
     bool header{};
+    bool shown{};
 };
 
 struct TableState final {
@@ -60,8 +62,23 @@ struct TableState final {
     std::vector<Signal<IconName>> sort_icons;
     std::map<std::string, runtime::ComponentId> by_key;
     std::vector<runtime::ComponentId> source_order;
+    std::vector<TableRecord> records;
+    std::optional<std::vector<TableRecord>> pending_records;
+    std::vector<String> sorted_keys;
+    std::vector<runtime::ComponentId> sorted_order;
     std::vector<runtime::ComponentId> visible;
     std::vector<String> selected;
+    std::set<std::string, std::less<>> selected_keys;
+    std::uint64_t projection_revision{1};
+    std::uint64_t sorted_revision{};
+    TableWork work;
+    bool data_dirty{};
+    bool page_dirty{true};
+    bool order_dirty{true};
+    bool refreshing{};
+    bool pending_refresh{};
+    bool pending_geometry{};
+    bool ready{};
     TableSort sort;
     Signal<bool> blocked{false};
     Signal<bool> all_checked{false};
@@ -94,6 +111,19 @@ struct TableState final {
     bool loading{};
     bool show_header{true};
 };
+
+using TableStatePtr = std::shared_ptr<TableState>;
+
+TableStatePtr table_state(WindowComponentServices& services, runtime::ComponentId id) {
+    const auto* stored = services.components().state<TableStatePtr>(id);
+    return stored ? *stored : TableStatePtr{};
+}
+
+bool live(WindowComponentServices& services, runtime::ComponentId id, const TableStatePtr& s) {
+    return table_state(services, id) == s && services.components().scope(id).active();
+}
+
+struct ProjectionInterrupted final {};
 
 void finite_nonnegative(float value, const char* message) {
     if (!std::isfinite(value) || value < 0) {
@@ -140,34 +170,50 @@ void validate_sort(const TableSort& sort, const std::vector<TableColumnSchema>& 
     }
 }
 
-std::vector<String> project_records(TableState& state, const std::vector<TableRecord>& records) {
+template <class Current>
+std::vector<String> sort_records(const TableState& state, const std::vector<TableRecord>& records, Current current) {
     std::vector<const TableRecord*> order;
+    order.reserve(records.size());
     for (const auto& record : records) {
         order.push_back(&record);
     }
-    if (state.sort.order != TableSortOrder::None) {
+    const auto sort = state.sort;
+    if (sort.order != TableSortOrder::None) {
         const auto column =
-            std::ranges::find_if(state.columns, [&](const auto& value) { return value.key == state.sort.column_key; });
+            std::ranges::find_if(state.columns, [&](const auto& value) { return value.key == sort.column_key; });
         if (column != state.columns.end() && column->less) {
+            // User code may replace data/sort, destroy this owner, or reuse its slot.
+            const auto less = column->less;
             std::stable_sort(order.begin(), order.end(), [&](auto a, auto b) {
-                return state.sort.order == TableSortOrder::Descend ? column->less(b->value, a->value)
-                                                                   : column->less(a->value, b->value);
+                if (!current()) {
+                    throw ProjectionInterrupted{};
+                }
+                const bool result =
+                    sort.order == TableSortOrder::Descend ? less(b->value, a->value) : less(a->value, b->value);
+                if (!current()) {
+                    throw ProjectionInterrupted{};
+                }
+                return result;
             });
         }
     }
+    std::vector<String> result;
+    result.reserve(order.size());
+    for (const auto* record : order) {
+        result.push_back(record->key);
+    }
+    return result;
+}
+
+std::pair<std::size_t, std::size_t> page_range(TableState& state, std::size_t count) {
     std::size_t start = 0;
-    std::size_t count = order.size();
     if (state.options.current) {
         const auto pages = std::max(std::size_t{1}, count / state.page_size + (count % state.page_size != 0));
         state.effective_current = std::clamp(state.current, std::size_t{1}, pages);
         start = (state.effective_current - 1) * state.page_size;
         count = std::min(state.page_size, count - start);
     }
-    std::vector<String> result;
-    for (std::size_t i = start; i < start + count; ++i) {
-        result.push_back(order[i]->key);
-    }
-    return result;
+    return {start, count};
 }
 
 runtime::SemanticForeground foreground(Color color) {
@@ -243,7 +289,7 @@ void TableComponentHost::on_destroy() noexcept {
 }
 
 TableSnapshot TableComponentHost::snapshot(runtime::ComponentId id) const {
-    const auto* s = services_->components().state<TableState>(id);
+    const auto s = table_state(*services_, id);
     if (!s) {
         throw std::out_of_range("Table is stale");
     }
@@ -270,12 +316,28 @@ TableSnapshot TableComponentHost::snapshot(runtime::ComponentId id) const {
     return result;
 }
 
+TableWork TableComponentHost::work(runtime::ComponentId id) const {
+    const auto s = table_state(*services_, id);
+    return s ? s->work : TableWork{};
+}
+
 runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, const TableRecord* record, bool header,
                                                    bool shown) {
     auto& build = runtime::require_component_build_context();
     auto& services = *services_;
-    auto& s = *services.components().state<TableState>(id);
+    const auto owner = table_state(services, id);
+    auto& s = *owner;
     const auto row_id = build.mount_component<RowState>(record ? *record : TableRecord{});
+    const auto intact = [&] {
+        if (!live(services, id, owner)) {
+            return false;
+        }
+        if (!services.components().contains(row_id)) {
+            services.retire_failed_component(id);
+            return false;
+        }
+        return true;
+    };
     auto& row = build.state<RowState>(row_id);
     row.node = build.root(row_id);
     row.header = header;
@@ -322,6 +384,9 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                             props.indeterminate(s.all_partial);
                         }
                         Checkbox(std::move(props));
+                        if (!intact()) {
+                            return;
+                        }
                         const auto hit = services.interactions().declaration_order().back();
                         row.checkbox = services.interactions().require(hit).component;
                         if (header) {
@@ -329,11 +394,14 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                         }
                     } else if (header) {
                         Flex(FlexProps{}.align(FlexAlign::Center).gap(dp(4)), FlexContent{[&, column_index] {
-                                 const auto& column = s.columns[column_index];
+                                 const auto column = s.columns[column_index];
                                  if (column.header) {
                                      SlotContentAccess::function (*column.header)();
                                  } else {
                                      Text(TextProps{}.content(column.title));
+                                 }
+                                 if (!intact()) {
+                                     return;
                                  }
                                  if (column.sortable) {
                                      Button(ButtonProps{}
@@ -344,6 +412,9 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                                                 .onClick([this, id, column_index] { request_sort(id, column_index); }),
                                             ButtonContent{
                                                 [icon = s.sort_icons[column_index]] { Icon(IconProps{}.name(icon)); }});
+                                     if (!intact()) {
+                                         return;
+                                     }
                                      const auto hit = services.interactions().declaration_order().back();
                                      s.sort_buttons[column_index] = services.interactions().require(hit).component;
                                  }
@@ -352,13 +423,21 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                         s.columns[column_index].cell(row.record.key, bind([value = row.value] { return value.get(); }));
                     }
                 }};
-                cell.content = region(cell_id, services, content, header ? s.header_foreground : s.foreground,
-                                      header ? s.header_typography : s.typography);
+                const auto content_id = region(cell_id, services, content, header ? s.header_foreground : s.foreground,
+                                               header ? s.header_typography : s.typography);
+                if (!intact()) {
+                    return;
+                }
+                if (!services.components().contains(cell_id) || !services.components().contains(content_id)) {
+                    services.retire_failed_component(id);
+                    return;
+                }
+                cell.content = content_id;
                 services.layout().set_layout(
                     cell.node,
                     layout::ComponentLayout{
                         [this, id, cell_id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                            auto& s = *services_->components().state<TableState>(id);
+                            auto& s = *table_state(*services_, id);
                             auto& cell = *services_->components().state<CellState>(cell_id);
                             const auto padding = s.options.selected && cell.column == 0
                                                      ? 0.0F
@@ -369,7 +448,7 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                             return limits.constrain({limits.max_width, cell.measured.height + s.padding_y * 2});
                         },
                         [this, id, cell_id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
-                            auto& s = *services_->components().state<TableState>(id);
+                            auto& s = *table_state(*services_, id);
                             auto& cell = *services_->components().state<CellState>(cell_id);
                             const auto padding =
                                 s.options.selected && cell.column == 0 ? 0.0F : std::min(s.padding_x, bounds.width / 2);
@@ -386,10 +465,13 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                 row.cells.push_back(cell_id);
             }
         }});
+    if (!intact()) {
+        return {};
+    }
     services.layout().set_layout(
         row.node, layout::ComponentLayout{
                       [this, id, row_id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                          auto& s = *services_->components().state<TableState>(id);
+                          auto& s = *table_state(*services_, id);
                           auto& row = *services_->components().state<RowState>(row_id);
                           row.height = 0;
                           for (std::size_t i = 0; i < row.cells.size(); ++i) {
@@ -402,7 +484,7 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                           return limits.constrain({s.content_width, row.height});
                       },
                       [this, id, row_id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
-                          auto& s = *services_->components().state<TableState>(id);
+                          auto& s = *table_state(*services_, id);
                           auto& row = *services_->components().state<RowState>(row_id);
                           float x = bounds.x;
                           for (std::size_t i = 0; i < row.cells.size(); ++i) {
@@ -416,160 +498,327 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
 
 void TableComponentHost::reconcile(runtime::ComponentId id, std::vector<TableRecord> records) {
     validate_records(records);
-    auto* s = services_->components().state<TableState>(id);
+    const auto s = table_state(*services_, id);
     if (!s) {
         return;
     }
-    const auto shown_keys = project_records(*s, records);
-    std::set<std::string> next_keys;
-    for (const auto& record : records) {
-        next_keys.insert(std::string{record.key.bytes()});
-    }
-    std::vector<runtime::ComponentId> removed;
-    for (auto iterator = s->by_key.begin(); iterator != s->by_key.end();) {
-        if (!next_keys.contains(iterator->first)) {
-            removed.push_back(iterator->second);
-            iterator = s->by_key.erase(iterator);
-        } else {
-            ++iterator;
-        }
-    }
-    for (auto row : removed) {
-        services_->destroy(row);
-    }
-    s->source_order.clear();
-    for (const auto& record : records) {
-        const auto key = std::string{record.key.bytes()};
-        auto found = s->by_key.find(key);
-        if (found == s->by_key.end()) {
-            runtime::ComponentId row;
-            services_->append_slot(s->body, Content{[&] {
-                                       row = mount_row(id, &record, false,
-                                                       std::ranges::find(shown_keys, record.key) != shown_keys.end());
-                                   }});
-            found = s->by_key.emplace(key, row).first;
-        } else {
-            auto& row = *services_->components().state<RowState>(found->second);
-            row.record = record;
-            row.value.set(record.value);
-        }
-        s->source_order.push_back(found->second);
-    }
+    s->pending_records = std::move(records);
+    ++s->projection_revision;
     refresh(id, true);
 }
 
 void TableComponentHost::refresh(runtime::ComponentId id, bool geometry) {
-    auto* s = services_->components().state<TableState>(id);
-    if (!s || !services_->components().scope(id).active()) {
+    const auto s = table_state(*services_, id);
+    if (!s || !live(*services_, id, s)) {
         return;
     }
-    const auto& theme = services_->components().theme_scope(id)->snapshot();
-    const auto& token = theme.table();
-    if (s->options.selected) {
-        s->requested_widths[0] = token.metrics.selection_width;
+    s->pending_refresh = true;
+    s->pending_geometry |= geometry;
+    if (!s->ready || s->refreshing) {
+        return;
     }
-    s->foreground.set(foreground(token.colors.text));
-    s->header_foreground.set(foreground(token.colors.header_text));
-    s->typography.set({theme.text().font_family, theme.text().font_weight, false, token.metrics.font_size,
-                       token.metrics.line_height});
-    s->header_typography.set(
-        {theme.text().font_family, 600, false, token.metrics.font_size, token.metrics.line_height});
-    s->padding_y = s->size == ControlSize::Small    ? token.metrics.padding_block_small
-                   : s->size == ControlSize::Middle ? token.metrics.padding_block_middle
-                                                    : token.metrics.padding_block;
-    s->padding_x = s->size == ControlSize::Large ? token.metrics.padding_inline : token.metrics.padding_inline_small;
-    s->blocked.set(s->loading);
-    std::vector<TableRecord> records;
-    for (auto row : s->source_order) {
-        records.push_back(services_->components().state<RowState>(row)->record);
-    }
-    s->visible.clear();
-    for (const auto& key : project_records(*s, records)) {
-        s->visible.push_back(s->by_key.at(std::string{key.bytes()}));
-    }
-    if (geometry) {
-        // Keep every retained row's interaction block in display order, including
-        // newly appended controls that were declared after external siblings.
-        auto anchor = services_->components().state<RowState>(s->header)->interaction;
-        std::map<std::uint32_t, std::vector<input::InteractionId>> row_interactions;
-        for (auto row : s->source_order) {
-            row_interactions.try_emplace(row.index);
+    s->refreshing = true;
+
+    struct Reset final {
+        TableStatePtr s;
+        bool& geometry;
+        int exceptions{std::uncaught_exceptions()};
+
+        ~Reset() {
+            if (std::uncaught_exceptions() > exceptions) {
+                s->pending_refresh = true;
+                s->pending_geometry |= geometry;
+            }
+            s->refreshing = false;
         }
-        for (auto interaction : services_->interactions().declaration_order()) {
-            for (auto ancestor = std::optional{services_->interactions().require(interaction).component};
-                 ancestor && *ancestor != id; ancestor = services_->components().parent(*ancestor)) {
-                if (*ancestor == s->header) {
-                    anchor = interaction;
+    } reset{s, geometry};
+
+    const auto alive = [&] {
+        return live(*services_, id, s);
+    };
+    while (s->pending_refresh && alive()) {
+        s->pending_refresh = false;
+        geometry = std::exchange(s->pending_geometry, false);
+        if (s->pending_records) {
+            s->records = std::move(*s->pending_records);
+            s->pending_records.reset();
+            s->data_dirty = true;
+        }
+        const auto revision = s->projection_revision;
+        const auto current = [&] {
+            return alive() && s->projection_revision == revision;
+        };
+        const bool sorted_changed = s->sorted_revision != revision;
+        if (sorted_changed) {
+            // This immutable copy owns all values referenced by the user comparator.
+            // Pure selection/border/page refreshes never enter this branch.
+            const auto records = s->records;
+            s->work.copied_records += records.size();
+            ++s->work.sort_passes;
+            try {
+                std::vector<String> sorted;
+                run_untracked([&] { sorted = sort_records(*s, records, current); });
+                if (!current()) {
+                    continue;
+                }
+                s->sorted_keys = std::move(sorted);
+                s->sorted_revision = revision;
+                s->order_dirty = true;
+                s->page_dirty = true;
+            } catch (const ProjectionInterrupted&) {
+                continue;
+            }
+        }
+        if (s->data_dirty) {
+            std::set<std::string, std::less<>> next_keys;
+            for (const auto& record : s->records) {
+                next_keys.emplace(record.key.bytes());
+            }
+            std::vector<runtime::ComponentId> removed;
+            for (auto iterator = s->by_key.begin(); iterator != s->by_key.end();) {
+                if (!next_keys.contains(iterator->first)) {
+                    removed.push_back(iterator->second);
+                    std::erase(s->source_order, iterator->second);
+                    std::erase(s->visible, iterator->second);
+                    iterator = s->by_key.erase(iterator);
+                } else {
+                    ++iterator;
+                }
+            }
+            for (auto row : removed) {
+                services_->destroy(row);
+                if (!alive()) {
+                    return;
+                }
+            }
+            if (!current()) {
+                continue;
+            }
+            const auto [start, count] = page_range(*s, s->sorted_keys.size());
+            std::set<std::string_view> shown_keys;
+            for (std::size_t i = start; i < start + count; ++i) {
+                shown_keys.insert(s->sorted_keys[i].bytes());
+            }
+            std::vector<runtime::ComponentId> source_order;
+            source_order.reserve(s->records.size());
+            for (const auto& record : s->records) {
+                const auto key = std::string{record.key.bytes()};
+                auto found = s->by_key.find(key);
+                if (found == s->by_key.end()) {
+                    runtime::ComponentId row;
+                    services_->append_slot(
+                        s->body,
+                        Content{[&] { row = mount_row(id, &record, false, shown_keys.contains(record.key.bytes())); }});
+                    if (!alive()) {
+                        return;
+                    }
+                    if (!services_->components().contains(row)) {
+                        services_->retire_failed_component(id);
+                        return;
+                    }
+                    found = s->by_key.emplace(key, row).first;
+                } else {
+                    auto* row = services_->components().state<RowState>(found->second);
+                    if (!row) {
+                        services_->retire_failed_component(id);
+                        return;
+                    }
+                    row->record = record;
+                    // Keep the signal alive if a cell binding destroys its own row/owner.
+                    const auto value = row->value;
+                    value.set(record.value);
+                }
+                if (!current()) {
                     break;
                 }
-                if (auto found = row_interactions.find(ancestor->index); found != row_interactions.end()) {
-                    found->second.push_back(interaction);
-                    break;
+                source_order.push_back(found->second);
+            }
+            if (!current()) {
+                continue;
+            }
+            s->source_order = std::move(source_order);
+            s->data_dirty = false;
+            s->order_dirty = true;
+            geometry = true;
+        }
+        if (sorted_changed || s->order_dirty) {
+            std::vector<runtime::ComponentId> sorted_order;
+            sorted_order.reserve(s->sorted_keys.size());
+            for (const auto& key : s->sorted_keys) {
+                sorted_order.push_back(s->by_key.at(std::string{key.bytes()}));
+            }
+            s->sorted_order = std::move(sorted_order);
+            s->page_dirty = true;
+        }
+        if (s->page_dirty) {
+            const auto [start, count] = page_range(*s, s->sorted_order.size());
+            std::vector<runtime::ComponentId> visible(s->sorted_order.begin() + start,
+                                                      s->sorted_order.begin() + start + count);
+            s->visible = std::move(visible);
+            for (auto row_id : s->source_order) {
+                auto* row = services_->components().state<RowState>(row_id);
+                if (!row) {
+                    services_->retire_failed_component(id);
+                    return;
+                }
+                row->shown = false;
+            }
+            for (auto row_id : s->visible) {
+                services_->components().state<RowState>(row_id)->shown = true;
+            }
+            s->page_dirty = false;
+        }
+        const auto& theme = services_->components().theme_scope(id)->snapshot();
+        const auto token = theme.table();
+        const auto text = theme.text();
+        if (s->options.selected) {
+            s->requested_widths[0] = token.metrics.selection_width;
+        }
+        s->foreground.set(foreground(token.colors.text));
+        if (!alive()) {
+            return;
+        }
+        s->header_foreground.set(foreground(token.colors.header_text));
+        if (!alive()) {
+            return;
+        }
+        s->typography.set(
+            {text.font_family, text.font_weight, false, token.metrics.font_size, token.metrics.line_height});
+        if (!alive()) {
+            return;
+        }
+        s->header_typography.set({text.font_family, 600, false, token.metrics.font_size, token.metrics.line_height});
+        if (!alive()) {
+            return;
+        }
+        s->padding_y = s->size == ControlSize::Small    ? token.metrics.padding_block_small
+                       : s->size == ControlSize::Middle ? token.metrics.padding_block_middle
+                                                        : token.metrics.padding_block;
+        s->padding_x =
+            s->size == ControlSize::Large ? token.metrics.padding_inline : token.metrics.padding_inline_small;
+        s->blocked.set(s->loading);
+        if (!alive()) {
+            return;
+        }
+        if (s->order_dirty) {
+            // Keep every retained row's interaction block in display order, including
+            // newly appended controls that were declared after external siblings.
+            const auto* header = services_->components().state<RowState>(s->header);
+            if (!header) {
+                services_->retire_failed_component(id);
+                return;
+            }
+            auto anchor = header->interaction;
+            std::map<std::uint32_t, std::pair<runtime::ComponentId, std::vector<input::InteractionId>>>
+                row_interactions;
+            for (auto row : s->source_order) {
+                row_interactions.try_emplace(row.index, row, std::vector<input::InteractionId>{});
+            }
+            for (auto interaction : services_->interactions().declaration_order()) {
+                for (auto ancestor = std::optional{services_->interactions().require(interaction).component};
+                     ancestor && *ancestor != id; ancestor = services_->components().parent(*ancestor)) {
+                    if (*ancestor == s->header) {
+                        anchor = interaction;
+                        break;
+                    }
+                    if (auto found = row_interactions.find(ancestor->index);
+                        found != row_interactions.end() && found->second.first == *ancestor) {
+                        found->second.second.push_back(interaction);
+                        break;
+                    }
+                }
+            }
+            std::vector<input::InteractionId> order;
+            // Off-page rows are already excluded by branch eligibility. Keeping
+            // the full sorted order makes page changes independent of this work.
+            for (auto row : s->sorted_order) {
+                const auto& interactions = row_interactions.at(row.index).second;
+                order.insert(order.end(), interactions.begin(), interactions.end());
+            }
+            services_->interactions().reorder_after(anchor, order);
+            s->order_dirty = false;
+        }
+        std::size_t selectable = 0;
+        std::size_t checked = 0;
+        for (auto row_id : s->source_order) {
+            auto* row = services_->components().state<RowState>(row_id);
+            if (!row) {
+                services_->retire_failed_component(id);
+                return;
+            }
+            ++s->work.visited_rows;
+            const bool shown = row->shown;
+            active(*services_, row_id, shown);
+            const bool selected = s->selected_keys.contains(row->record.key.bytes());
+            const bool disabled = row->record.selection_disabled;
+            const auto row_checked = row->checked;
+            const auto row_disabled = row->disabled;
+            row_checked.set(selected);
+            if (!alive()) {
+                return;
+            }
+            row_disabled.set(s->loading || disabled);
+            if (!alive()) {
+                return;
+            }
+            if (!services_->components().contains(row_id)) {
+                services_->retire_failed_component(id);
+                return;
+            }
+            if (shown && !disabled) {
+                ++selectable;
+                if (selected) {
+                    ++checked;
                 }
             }
         }
-        std::vector<input::InteractionId> order;
-        auto rows = s->visible;
-        for (auto row : s->source_order) {
-            if (std::ranges::find(s->visible, row) == s->visible.end()) {
-                rows.push_back(row);
+        s->all_checked.set(selectable > 0 && checked == selectable);
+        if (!alive()) {
+            return;
+        }
+        s->all_partial.set(checked > 0 && checked < selectable);
+        if (!alive()) {
+            return;
+        }
+        s->all_disabled.set(s->loading || selectable == 0);
+        if (!alive()) {
+            return;
+        }
+        active(*services_, s->header_viewport, s->show_header);
+        active(*services_, s->empty, s->visible.empty() && !s->loading);
+        active(*services_, s->loading_label, s->loading);
+        for (std::size_t i = 0; i < s->columns.size(); ++i) {
+            s->sort_icons[i].set(s->sort.column_key != s->columns[i].key || s->sort.order == TableSortOrder::None
+                                     ? IconName::ColumnHeightOutlined
+                                 : s->sort.order == TableSortOrder::Ascend ? IconName::ArrowUpOutlined
+                                                                           : IconName::ArrowDownOutlined);
+            if (!alive()) {
+                return;
             }
         }
-        for (auto row : rows) {
-            const auto& interactions = row_interactions.at(row.index);
-            order.insert(order.end(), interactions.begin(), interactions.end());
-        }
-        services_->interactions().reorder_after(anchor, order);
-    }
-    std::size_t selectable = 0;
-    std::size_t checked = 0;
-    for (auto row_id : s->source_order) {
-        auto& row = *services_->components().state<RowState>(row_id);
-        const bool shown = std::ranges::find(s->visible, row_id) != s->visible.end();
-        active(*services_, row_id, shown);
-        const bool selected = std::ranges::find(s->selected, row.record.key) != s->selected.end();
-        row.checked.set(selected);
-        row.disabled.set(s->loading || row.record.selection_disabled);
-        if (shown && !row.record.selection_disabled) {
-            ++selectable;
-            if (selected) {
-                ++checked;
-            }
-        }
-    }
-    s->all_checked.set(selectable > 0 && checked == selectable);
-    s->all_partial.set(checked > 0 && checked < selectable);
-    s->all_disabled.set(s->loading || selectable == 0);
-    active(*services_, s->header_viewport, s->show_header);
-    active(*services_, s->empty, s->visible.empty() && !s->loading);
-    active(*services_, s->loading_label, s->loading);
-    for (std::size_t i = 0; i < s->columns.size(); ++i) {
-        s->sort_icons[i].set(s->sort.column_key != s->columns[i].key || s->sort.order == TableSortOrder::None
-                                 ? IconName::ColumnHeightOutlined
-                             : s->sort.order == TableSortOrder::Ascend ? IconName::ArrowUpOutlined
-                                                                       : IconName::ArrowDownOutlined);
-    }
-    services_->dirty().invalidate(s->node, geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
-                                                          runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
-                                                    : runtime::DirtyFlags::Material);
-    if (geometry) {
-        const auto flags = runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout;
-        services_->dirty().invalidate(services_->components().root(s->body), flags);
-        services_->dirty().invalidate(services_->components().root(s->header_viewport), flags);
-        auto rows = s->source_order;
-        rows.push_back(s->header);
-        for (auto row_id : rows) {
-            const auto& row = *services_->components().state<RowState>(row_id);
-            services_->dirty().invalidate(row.node, flags);
-            for (auto cell : row.cells) {
-                services_->dirty().invalidate(services_->components().root(cell), flags);
+        services_->dirty().invalidate(s->node, geometry
+                                                   ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                         runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
+                                                   : runtime::DirtyFlags::Material);
+        if (geometry) {
+            const auto flags = runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout;
+            services_->dirty().invalidate(services_->components().root(s->body), flags);
+            services_->dirty().invalidate(services_->components().root(s->header_viewport), flags);
+            auto rows = s->source_order;
+            rows.push_back(s->header);
+            for (auto row_id : rows) {
+                const auto& row = *services_->components().state<RowState>(row_id);
+                services_->dirty().invalidate(row.node, flags);
+                for (auto cell : row.cells) {
+                    services_->dirty().invalidate(services_->components().root(cell), flags);
+                }
             }
         }
     }
 }
 
 void TableComponentHost::request_sort(runtime::ComponentId id, std::size_t column) {
-    auto* s = services_->components().state<TableState>(id);
+    auto s = table_state(*services_, id);
     if (!s || s->loading || !s->columns[column].sortable) {
         return;
     }
@@ -586,7 +835,7 @@ void TableComponentHost::request_sort(runtime::ComponentId id, std::size_t colum
 }
 
 void TableComponentHost::request_selection(runtime::ComponentId id, std::optional<String> key, bool selected) {
-    auto* s = services_->components().state<TableState>(id);
+    auto s = table_state(*services_, id);
     if (!s || s->loading || !s->options.selected) {
         return;
     }
@@ -633,8 +882,9 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
     validate_sort(read_prop(options.sort), columns);
     auto& build = runtime::require_component_build_context();
     auto& services = *services_;
-    const auto id = build.mount_component<TableState>();
-    auto& s = build.state<TableState>(id);
+    const auto owner = std::make_shared<TableState>();
+    const auto id = build.mount_component<TableStatePtr>(owner);
+    auto& s = *owner;
     s.node = build.root(id);
     s.columns = std::move(columns);
     s.options = std::move(options);
@@ -648,6 +898,9 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
     s.sort = read_prop(s.options.sort);
     if (s.options.selected) {
         s.selected = read_prop(*s.options.selected);
+        for (const auto& key : s.selected) {
+            s.selected_keys.emplace(key.bytes());
+        }
         s.requested_widths.push_back(32);
         s.alignments.push_back(TableAlign::Center);
     }
@@ -658,8 +911,22 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
     }
     s.widths = s.requested_widths;
     s.sort_buttons.resize(s.columns.size());
-    const auto shown_keys = project_records(s, records);
+    s.records = records;
+    try {
+        s.sorted_keys = sort_records(s, records, [&] { return live(services, id, owner); });
+    } catch (const ProjectionInterrupted&) {
+        return;
+    }
+    s.sorted_revision = s.projection_revision;
+    const auto [page_start, page_count] = page_range(s, records.size());
+    std::set<std::string_view> shown_keys;
+    for (std::size_t i = page_start; i < page_start + page_count; ++i) {
+        shown_keys.insert(s.sorted_keys[i].bytes());
+    }
     runtime::connect_layout_style(build.scope(id), s.options.layout, s.node, services.nodes(), services.dirty());
+    if (!live(services, id, owner)) {
+        return;
+    }
     services.nodes().require(s.node).clip_content = true;
     const auto fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     s.surface = services.surfaces().create_content_range(fragment, {});
@@ -681,17 +948,20 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
             context.on_resource_cleanup(s.header_viewport,
                                         [&services, header_node] { services.layout().remove_layout(header_node); });
             context.mount_slot(s.header_viewport, Content{[&] { s.header = mount_row(id, nullptr, true); }});
+            if (!live(services, id, owner)) {
+                return;
+            }
             services.layout().set_layout(
                 header_node, layout::ComponentLayout{
                                  [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                                     auto& s = *services_->components().state<TableState>(id);
+                                     auto& s = *table_state(*services_, id);
                                      const auto size =
                                          engine.measure_child(services_->components().root(s.header),
                                                               {s.content_width, s.content_width, 0, infinity});
                                      return limits.constrain({limits.max_width, size.height});
                                  },
                                  [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
-                                     auto& s = *services_->components().state<TableState>(id);
+                                     auto& s = *table_state(*services_, id);
                                      engine.place_child(services_->components().root(s.header),
                                                         {bounds.x, bounds.y, s.content_width, bounds.height});
                                  }});
@@ -711,8 +981,10 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
             context.mount_slot(s.body, Content{[&] {
                                    for (const auto& record : records) {
                                        const auto row =
-                                           mount_row(id, &record, false,
-                                                     std::ranges::find(shown_keys, record.key) != shown_keys.end());
+                                           mount_row(id, &record, false, shown_keys.contains(record.key.bytes()));
+                                       if (!live(services, id, owner)) {
+                                           return;
+                                       }
                                        s.by_key.emplace(std::string{record.key.bytes()}, row);
                                        s.source_order.push_back(row);
                                    }
@@ -725,6 +997,9 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                                                     }},
                                                     s.foreground, s.typography, shown_keys.empty() && !s.loading);
                                }});
+            if (!live(services, id, owner)) {
+                return;
+            }
             s.loading_label =
                 region(id, services, Content{[] { Text(u8"Loading…"); }}, s.foreground, s.typography, s.loading);
             const auto loading_fragment =
@@ -737,7 +1012,7 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                 body_node,
                 layout::ComponentLayout{
                     [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                        auto& s = *services_->components().state<TableState>(id);
+                        auto& s = *table_state(*services_, id);
                         s.content_height = 0;
                         for (auto row : s.visible) {
                             s.content_height += engine
@@ -758,7 +1033,7 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                                      : s.content_height)});
                     },
                     [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
-                        auto& s = *services_->components().state<TableState>(id);
+                        auto& s = *table_state(*services_, id);
                         s.body_bounds = bounds;
                         float y = bounds.y;
                         for (auto row_id : s.visible) {
@@ -775,11 +1050,14 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                         }
                     }});
         }});
+    if (!live(services, id, owner)) {
+        return;
+    }
     services.layout().set_layout(
         s.node,
         layout::ComponentLayout{
             [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                auto& s = *services_->components().state<TableState>(id);
+                auto& s = *table_state(*services_, id);
                 const auto& m = services_->components().theme_scope(id)->snapshot().table().metrics;
                 float fixed = 0;
                 std::size_t automatic = 0;
@@ -820,7 +1098,7 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                 return limits.constrain({viewport_width, s.header_height + body.height});
             },
             [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
-                auto& s = *services_->components().state<TableState>(id);
+                auto& s = *table_state(*services_, id);
                 if (s.show_header) {
                     engine.place_child(services_->components().root(s.header_viewport),
                                        {bounds.x, bounds.y, bounds.width, s.header_height});
@@ -840,83 +1118,127 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                 s.scroll_y = std::clamp(s.scroll_y, 0.0F, s.maximum_y);
             }});
     mounted_.push_back(id);
+    s.ready = true;
     refresh(id, true);
+    if (!live(services, id, owner)) {
+        return;
+    }
     auto& scope = build.scope(id);
     connect_prop(scope, source, [this, id](std::vector<TableRecord> value) {
         run_untracked([&] { reconcile(id, std::move(value)); });
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
     connect_prop(scope, s.options.sort, [this, id](TableSort value) {
-        auto& s = *services_->components().state<TableState>(id);
+        auto& s = *table_state(*services_, id);
         validate_sort(value, s.columns);
         if (s.sort != value) {
             s.scroll_y = 0;
+            ++s.projection_revision;
         }
         s.sort = std::move(value);
         refresh(id, true);
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
     if (s.options.selected) {
         connect_prop(scope, *s.options.selected, [this, id](std::vector<String> value) {
-            auto& s = *services_->components().state<TableState>(id);
-            std::set<std::string> seen;
+            auto& s = *table_state(*services_, id);
+            std::set<std::string, std::less<>> seen;
             for (const auto& key : value) {
                 if (key.empty() || !seen.insert(std::string{key.bytes()}).second) {
                     throw std::invalid_argument("Table selectedRowKeys must be nonempty and unique");
                 }
             }
             s.selected = std::move(value);
+            s.selected_keys = std::move(seen);
             refresh(id, false);
         });
+    }
+    if (!live(services, id, owner)) {
+        return;
     }
     if (s.options.current) {
         connect_prop(scope, *s.options.current, [this, id](std::size_t value) {
             positive_size(value);
-            auto& s = *services_->components().state<TableState>(id);
+            auto& s = *table_state(*services_, id);
             s.current = value;
+            s.page_dirty = true;
             s.scroll_y = 0;
             refresh(id, true);
         });
     }
+    if (!live(services, id, owner)) {
+        return;
+    }
     connect_prop(scope, s.options.page_size, [this, id](std::size_t value) {
         positive_size(value);
-        auto& s = *services_->components().state<TableState>(id);
+        auto& s = *table_state(*services_, id);
         s.page_size = value;
+        s.page_dirty = true;
         s.scroll_y = 0;
         refresh(id, true);
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
     connect_prop(scope, s.options.viewport_height, [this, id](float value) {
         finite_nonnegative(value, "Table scrollY must be finite and nonnegative");
-        services_->components().state<TableState>(id)->viewport_height = value;
+        table_state(*services_, id)->viewport_height = value;
         refresh(id, true);
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
     connect_prop(scope, s.options.size, [this, id](ControlSize value) {
         valid_size(value);
-        services_->components().state<TableState>(id)->size = value;
+        table_state(*services_, id)->size = value;
         refresh(id, true);
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
     connect_prop(scope, s.options.loading, [this, id](bool value) {
-        services_->components().state<TableState>(id)->loading = value;
+        table_state(*services_, id)->loading = value;
         refresh(id, true);
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
     connect_prop(scope, s.options.bordered, [this, id](bool value) {
-        services_->components().state<TableState>(id)->bordered = value;
+        table_state(*services_, id)->bordered = value;
         refresh(id, false);
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
     connect_prop(scope, s.options.show_header, [this, id](bool value) {
-        services_->components().state<TableState>(id)->show_header = value;
+        table_state(*services_, id)->show_header = value;
         refresh(id, true);
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
     for (std::size_t i = 0; i < s.columns.size(); ++i) {
         const auto index = i + (s.options.selected ? 1 : 0);
         connect_prop(scope, s.columns[i].width, [this, id, index](float value) {
             finite_nonnegative(value, "Table width must be finite and nonnegative");
-            services_->components().state<TableState>(id)->requested_widths[index] = value;
+            table_state(*services_, id)->requested_widths[index] = value;
             refresh(id, true);
         });
+        if (!live(services, id, owner)) {
+            return;
+        }
         connect_prop(scope, s.columns[i].align, [this, id, index](TableAlign value) {
             valid_align(value);
-            services_->components().state<TableState>(id)->alignments[index] = value;
+            table_state(*services_, id)->alignments[index] = value;
             refresh(id, true);
         });
+        if (!live(services, id, owner)) {
+            return;
+        }
     }
     const auto theme = build.theme_scope();
     for (std::size_t i = 0; i < s.subscriptions.size(); ++i) {
@@ -933,12 +1255,15 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                                    static_cast<void>(theme->text_font_weight());
                                }
                            });
+        if (!live(services, id, owner)) {
+            return;
+        }
     }
 }
 
 void TableComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect document_clip) {
     for (auto id : mounted_) {
-        auto* s = services_->components().state<TableState>(id);
+        auto s = table_state(*services_, id);
         if (!s || !services_->components().branch_active(id)) {
             continue;
         }
@@ -993,7 +1318,7 @@ bool TableComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
     // The hit snapshot already applies clipping. Follow its actual ancestors,
     // handing off at a limit only within the same popup layer.
     for (auto current = std::optional{target->component}; current; current = services_->components().parent(*current)) {
-        auto* s = services_->components().state<TableState>(*current);
+        auto s = table_state(*services_, *current);
         if (s && services_->interactions().component_active(*current) &&
             contains(translated(s->body_bounds, services_->nodes().require(s->node).translation), event.x, event.y)) {
             const auto x = std::clamp(s->scroll_x + event.delta_x * 32.0F, 0.0F, s->maximum_x);
@@ -1017,7 +1342,7 @@ void TableComponentHost::on_pointer_input(const input::PointerInputEvent& event,
                                           std::optional<input::InteractionId>) {
     const auto* target = hit ? services_->interactions().find(*hit) : nullptr;
     for (auto id : mounted_) {
-        auto* s = services_->components().state<TableState>(id);
+        auto s = table_state(*services_, id);
         if (!s) {
             continue;
         }
@@ -1041,7 +1366,7 @@ void TableComponentHost::on_pointer_input(const input::PointerInputEvent& event,
 void TableComponentHost::on_window_active(bool value) {
     if (!value) {
         for (auto id : mounted_) {
-            if (auto* s = services_->components().state<TableState>(id)) {
+            if (auto s = table_state(*services_, id)) {
                 s->hovered.reset();
                 services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
             }
@@ -1051,7 +1376,7 @@ void TableComponentHost::on_window_active(bool value) {
 
 void TableComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
     for (auto id : mounted_) {
-        auto* s = services_->components().state<TableState>(id);
+        auto s = table_state(*services_, id);
         if (!s || !services_->components().branch_active(id)) {
             continue;
         }

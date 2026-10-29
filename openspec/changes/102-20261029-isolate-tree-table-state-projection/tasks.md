@@ -7,8 +7,8 @@
 
 ## 2. 平台通用：Table 投影依赖
 
-- [ ] 2.1 按数据/排序/分页缓存投影并优化 membership；MSVC HEADLESS Debug/Release 验证选择/bordered 零 comparator、排序与分页失效、同 key 更新、增删、受控拒绝/重入及 retained editor/焦点身份。
-- [ ] 2.2 对 1k/5k/10k 行完成三轮选择/翻页计数与微基准，记录 comparator、分配、访问量及 p95，确认纯选择/bordered 不重新排序，附前后原始记录。
+- [x] 2.1 按数据/排序/分页缓存投影并优化 membership；MSVC HEADLESS Debug/Release 验证选择/bordered 零 comparator、排序与分页失效、同 key 更新、增删、受控拒绝/重入及 retained editor/焦点身份。
+- [x] 2.2 对 1k/5k/10k 行完成三轮选择/翻页计数与微基准，记录 comparator、分配、访问量及 p95，确认纯选择/bordered 不重新排序，附前后原始记录。
 
 ## 3. 集成与审查
 

@@ -1,0 +1,12 @@
+{
+    "stage":  "table-focused",
+    "label":  "table-initial",
+    "configuration":  "Debug",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  1,
+    "exit":  8,
+    "seconds":  297.4527065,
+    "finishedUtc":  "2026-10-29T17:51:50.7782544Z"
+}

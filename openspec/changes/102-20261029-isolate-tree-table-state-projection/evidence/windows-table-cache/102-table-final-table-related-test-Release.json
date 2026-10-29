@@ -1,0 +1,12 @@
+{
+    "stage":  "table-related-test",
+    "label":  "table-final",
+    "configuration":  "Release",
+    "component":  "tree",
+    "count":  128,
+    "iterations":  64,
+    "round":  1,
+    "exit":  0,
+    "seconds":  1.7149535,
+    "finishedUtc":  "2026-10-29T18:03:16.5819426Z"
+}

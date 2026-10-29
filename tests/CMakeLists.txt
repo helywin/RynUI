@@ -9,7 +9,7 @@ foreach(projection_target IN ITEMS tests benchmark)
         "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 endforeach()
-foreach(projection_case IN ITEMS tree_local tree_invalidation tree_retry)
+foreach(projection_case IN ITEMS tree_local tree_invalidation tree_retry table_cache table_reentry table_cell_retirement table_retained table_retry)
     add_test(NAME rynui.state_projection_${projection_case} COMMAND rynui_state_projection_tests ${projection_case})
 endforeach()
 

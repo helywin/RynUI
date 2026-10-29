@@ -17,6 +17,8 @@
 3. Table 区分数据/排序结果与分页切片。接受的新数据/排序触发重建，分页复用排序结果；selection、bordered、纯颜色更新不得调用 comparator。使用已有 key/索引表加速 visible/selected membership，避免第二套通用缓存框架。
 4. 用稳定计数证明局部性：Tree 128/512/1024 节点；Table 1k/5k/10k 行 comparator、访问量、分配和 p95。测试回调更新、销毁/重绑、受控拒绝、分页、disabled conduction、富 editor 草稿及完整 generation。所有规模记录三轮，保持原始数据。
 5. worker 只在隔离 checkout 修改 Tree/Table 私有文件与专项测试；构建、CMake 合并及计数运行由父线程集中安排。正式 Windows MSVC/Ninja Multi-Config HEADLESS Debug/Release，最多 2 jobs；无 GUI 操作。
+6. 父集成回归发现的失败边界随本阶段修复：排序成功先标记 order dirty，完整行顺序在临时 vector 成功后才交换；异常保留尚未完成的 geometry 请求，等待下一次正常刷新。富单元格 Text getter 销毁 owner 后，内容交付先核对原 TextSceneId 完整代际，避免写入已退役场景；不改变普通 Text 交付或公开 API。
+7. 首轮实测发现分页仍触发全表 interaction reorder，其逐项去重/查找为二次方工作。Table 按完整 sorted_order 一次排列所有 retained 行后代，只在数据/排序变化时重排；分页通过既有 branch eligibility 跳过隐藏行。直接验证声明顺序保持、实际 Tab 路径、外部邻居及草稿，不修改共享 InteractionRegistry 算法。
 
 ## Risks / Trade-offs
 

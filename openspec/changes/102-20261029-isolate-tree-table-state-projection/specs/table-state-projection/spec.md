@@ -18,6 +18,14 @@
 - **WHEN** 翻页、替换同 key 数据、增删记录或接受新的排序 authority
 - **THEN** 当前页与排序结果符合新输入，未修改的排序不重复运行，保留行后代及外部邻居的正确 Tab 顺序
 
+#### Scenario: Paging preserves the retained interaction order
+- **WHEN** 只有当前页或 pageSize 改变，完整数据和排序结果保持不变
+- **THEN** 复用全量已排序后代的声明顺序，由 branch eligibility 跳过非当前页；不在每次翻页重新排列全表交互，实际 Tab 路径与当前页一致
+
 #### Scenario: Callback reentry and rejection
 - **WHEN** 排序或状态交付期间回调更新、拒绝、销毁或重绑 owner
 - **THEN** 不提交过时投影，不访问旧代对象，替代组件保持有效
+
+#### Scenario: Interrupted sorting projection
+- **WHEN** 排序 comparator 或投影缓冲分配抛异常，随后由普通属性变化触发重试
+- **THEN** 保留原异常，完整重建排序及必要布局，不把残缺行顺序当作有效缓存，保留既有行代际

@@ -1384,6 +1384,10 @@ void mount_text_component(const TextProps& props, bool icon_font) {
     static_cast<void>(connect_prop(
         scope, TextPropsAccess::content(props),
         [text_scene = host.text_scene_, layout = host.layout_, dirty = host.dirty_, scene, node](String content) {
+            // The binding getter may retire its own component before delivering the value.
+            if (!text_scene->contains(scene)) {
+                return;
+            }
             if (!text_scene->set_content(scene, std::move(content))) {
                 return;
             }
