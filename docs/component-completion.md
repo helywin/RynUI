@@ -2,6 +2,8 @@
 
 2026-10-02：用户明确要求补齐已有组件的原生桌面功能；DOM/CSS/HTML、Web 兼容别名不移植。此清单记录执行范围，功能完成与平台验收分开；不通过修改目录状态代替实现。
 
+2026-10-29：既有实现的性能、Ant Design 一致性、布局、动画及字符占位问题，统一见[阶段调优审查与执行路线](reviews/2026-10-29-implementation-tuning-audit.md)。审查冻结于 `ac0d1196`，排除正在进行的 change 100；该文档记录待整改项，不改变下列历史实现与验收状态。
+
 | 组件 | 已观察到的原生功能缺口 | 执行依赖/收尾方式 |
 | --- | --- | --- |
 | Tooltip（新增共用基础） | 040/043 已实现文字/富标题、hover/focus/click/context menu/组合/controlled/手动、Escape/外部关闭、主题、12 方位、pointAtCenter 和向量箭头 | 原生功能 implemented；043 平台通用和 Windows/Linux 原生证据独立记录 |

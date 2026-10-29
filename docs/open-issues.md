@@ -19,6 +19,13 @@
 | `CHANGE-CLOSEOUT-004` | `blocked` | Change 尚不能最终收口 | 8.1 | 等待所有独立平台任务完成 |
 | `GALLERY-SCROLL-PERF-005` | `open` | 长文档滚动尚未稳定满足 240 Hz 帧预算 | Token Gallery / change 008 | 保留当前可见场景裁剪与 glyph 缓存；后续独立评估可见区域更新方案 |
 | `GALLERY-FOUNDATION-SWATCH-006` | `pending` | Foundation 色块遮挡 Token 标识文字 | Token Gallery / change 008 Windows 7.3 | 布局已修复并复测五档，待完整 Windows 视觉验收后关闭 |
+| `TUNE-PERF-001`–`006` | `open` | glyph 更新/扩容、Tree/Table 投影、订阅及 dirty 合并的源码性能风险 | 既有共享运行时与组件；排除 change 100 | 先最小测量，再按阶段修复，见调优审查 |
+| `TUNE-VIS-001`–`007` | `open` | Menu/DatePicker/Table 样式偏差、有限空间可用性、Progress alpha 和 Drawer 阴影 | 已有组件 | 逐项几何及原生视觉验收，见调优审查 |
+| `TUNE-MOTION-001`–`004` | `open` | 选中标记、浮层、展开/滑动和 Notice 动效/计时缺口 | 已有组件 | 保留现有 AnimationRuntime，分家族补齐 |
+| `TUNE-ICON-001`–`003` | `open` | Progress 状态字符、Gallery Loading 省略号和箭头型自定义分隔符 | Progress / Gallery | 正式 Icon 替换；普通文本分隔与计数保留 |
+| `TUNE-THEME-001` / `TUNE-EVIDENCE-001` | `pending` | 全局配置收口与完整视觉/平台证据 | 全部已有实现/映射 | 逐项核对，不把目录状态当验收 |
+
+以上 `TUNE-*` 的触发条件、冻结源码位置、官方对照、修复方向与关闭条件见 [2026-10-29 既有实现审查与分阶段调优](reviews/2026-10-29-implementation-tuning-audit.md)。这些条目登记源码确认的差距或风险；性能绝对耗时和尚未运行的 GPU 视觉结果没有被标为已验证。change 100 的 Input/Gallery 同步优化由原线程继续负责。
 
 ## LINUX-WAYLAND-RESIZE-001
 
