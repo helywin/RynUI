@@ -2,7 +2,7 @@
 
 ## 1. 平台通用同步优化
 
-- [ ] 1.1 剔除 Input 不可见字形层并回归屏幕外更新、恢复 glyph/clip、选择与保留身份；官方 MSVC HEADLESS Debug/Release 运行相关 Input/Text/编辑代表，记录实际结果。
+- [x] 1.1 剔除 Input 不可见字形层并回归屏幕外更新、恢复 glyph/clip、选择与保留身份；官方 MSVC HEADLESS Debug/Release 运行相关 Input/Text/编辑代表，记录实际结果。
 - [ ] 1.2 减少纯滚动锚点扫描并修正采样计数边界；保留布局变化导航与采样区间零额外同步检查，以 Gallery contracts 和相关 Recording 导航回归验证。
 
 ## 2. Windows 原生滚动

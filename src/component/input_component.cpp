@@ -2754,11 +2754,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         text_scene.set_color(state->text_scene, foreground);
         text_scene.set_color(state->selected_scene, channels(presentation.colors[7]));
         text_scene.set_color(state->placeholder_scene, channels(presentation.colors[5]));
+        const bool glyph_selection_visible = selection_visible && display.selection.begin() != display.selection.end();
         text_scene.set_opacity(state->text_scene, display.placeholder ? 0.0F : 1.0F);
-        text_scene.set_opacity(state->selected_scene, state->focused && !state->disabled && !display.placeholder &&
-                                                              display.selection.begin() != display.selection.end()
-                                                          ? 1.0F
-                                                          : 0.0F);
+        text_scene.set_opacity(state->selected_scene, glyph_selection_visible ? 1.0F : 0.0F);
         text_scene.set_opacity(state->placeholder_scene, display.placeholder ? 1.0F : 0.0F);
         const auto& viewport_node = host_->nodes().require(state->viewport);
         graphics::GlyphPlacement placement{
@@ -2766,6 +2764,13 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         const auto scene_started =
             sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         for (const auto id : {state->text_scene, state->selected_scene, state->placeholder_scene}) {
+            const bool visible = id == state->text_scene       ? !display.placeholder
+                                 : id == state->selected_scene ? glyph_selection_visible
+                                                               : display.placeholder;
+            if (!visible || state->geometry.clip.width <= 0.0F || state->geometry.clip.height <= 0.0F) {
+                static_cast<void>(text_scene.synchronize_culled(id));
+                continue;
+            }
             if (sync_profiling_enabled_) {
                 ++sync_profile_.text_scene_calls;
             }

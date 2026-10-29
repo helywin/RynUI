@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-ninja"
+	tests="13"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="Ryzen-Workstation"
+	time="3"
+	timestamp="2026-10-29T22:26:22"
+	>
+	<testcase name="rynui.time_picker_review_reset" classname="rynui.time_picker_review_reset" time="0.301726" status="run">
+		<system-out>TimePicker review reset passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.date_picker_review_form_reset" classname="rynui.date_picker_review_form_reset" time="0.405632" status="run">
+		<system-out>DatePicker R1 form_reset passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.form_component" classname="rynui.form_component" time="1.79791" status="run">
+		<system-out>Form retained component flows passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.text_scene_service" classname="rynui.portable.text_scene_service" time="0.329025" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.input_component" classname="rynui.portable.input_component" time="2.76443" status="run">
+		<system-out>Input layout simulated-scale cases=768
+Input lifecycle, layout and controlled callbacks passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.input_actions" classname="rynui.portable.input_actions" time="0.233317" status="run">
+		<system-out>Native Input family actions passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.input_gpu" classname="rynui.portable.input_gpu" time="0.146331" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.input_caret_blink" classname="rynui.portable.input_caret_blink" time="0.0526873" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.focus_lifecycle" classname="rynui.portable.focus_lifecycle" time="0.0226716" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.text_input_session" classname="rynui.portable.text_input_session" time="0.015414" status="run">
+		<system-out>Text session, composition and area passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.input_display" classname="rynui.portable.input_display" time="0.021004" status="run">
+		<system-out>InputDisplay composition-range cycles=20000 allocations=0 atomic_failures=37
+Composition display and caret scrolling passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.text_area" classname="rynui.portable.text_area" time="0.618809" status="run">
+		<system-out>TextArea sizing/props/retained multiline contracts passed
+</system-out>
+	</testcase>
+	<testcase name="rynui.portable.select_component" classname="rynui.portable.select_component" time="0.501595" status="run">
+		<system-out></system-out>
+	</testcase>
+</testsuite>

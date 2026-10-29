@@ -942,10 +942,15 @@ void retained_scene_layers() {
             "Input hit clip does not match supplied ancestor clip");
     value.set(String{});
     f.synchronize();
-    const auto opacity = [&](detail::TextSceneId id) {
-        return f.scene.glyph_scene().instances().at(f.scene.primitive(id).instances.first).translation_opacity[2];
+    const auto visible = [&](detail::TextSceneId id) {
+        const auto range = f.scene.primitive(id).instances;
+        if (range.count == 0) {
+            return false;
+        }
+        const auto& glyph = f.scene.glyph_scene().instances().at(range.first);
+        return glyph.translation_opacity[2] > 0 && glyph.clip_bounds[2] > 0 && glyph.clip_bounds[3] > 0;
     };
-    require(opacity(layers.base) == 0 && opacity(layers.selected) == 0 && opacity(layers.placeholder) > 0,
+    require(!visible(layers.base) && !visible(layers.selected) && visible(layers.placeholder),
             "placeholder visibility reused or leaked another layer");
     require(f.buttons.destroy(mounted.component), "retained Input destruction failed");
     require(f.scene.size() == 0 && f.buttons.button_scene().instances().size() == 0 &&
@@ -1101,7 +1106,7 @@ void translated_input_text_matches_full_rebuild() {
                         "whole-pixel Input scroll rebuilt retained glyph geometry");
             }
             const auto geometry = f.inputs.layout_snapshot(mounted.component);
-            for (const auto id : {layers.base, layers.placeholder}) {
+            for (const auto id : {layers.base}) {
                 const auto range = f.scene.primitive(id).instances;
                 require(range.count > 0, "translated Input text fixture has no glyphs");
                 std::vector<graphics::GlyphInstance> observed;
@@ -1140,12 +1145,67 @@ void translated_input_text_matches_full_rebuild() {
         f.synchronize(280, {0, 0, 280, 180});
         const auto resized = f.inputs.layout_snapshot(mounted.component);
         require(resized.clip.x + resized.clip.width <= 280.0001F && resized.clip.y + resized.clip.height <= 180.0001F &&
-                    f.scene.primitive(layers.base).instances.first <
-                        f.scene.primitive(layers.selected).instances.first &&
-                    f.scene.primitive(layers.selected).instances.first <=
-                        f.scene.primitive(layers.placeholder).instances.first,
-                "Input resize clip or text layer order changed after scroll");
+                    f.scene.primitive(layers.base).instances.count > 0 &&
+                    f.scene.primitive(layers.selected).instances.count == 0 &&
+                    f.scene.primitive(layers.placeholder).instances.count == 0,
+                "Input resize clip or invisible text layer culling changed after scroll");
     }
+}
+
+void culled_input_layers_restore() {
+    Fixture f;
+    Signal<String> value{String{u8"Visible 中文"}};
+    InputRef reference;
+    f.inputs.mount(Content{[&] { Input(InputProps{}.value(value).placeholder(u8"Hint 中文").ref(reference)); }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto layers = f.inputs.text_layers(mounted.component);
+    const auto visible = [&](detail::TextSceneId id) {
+        const auto range = f.scene.primitive(id).instances;
+        if (range.count == 0) {
+            return false;
+        }
+        const auto& glyph = f.scene.glyph_scene().instances().at(range.first);
+        return glyph.translation_opacity[2] > 0 && glyph.clip_bounds[2] > 0 && glyph.clip_bounds[3] > 0;
+    };
+    require(visible(layers.base) && !visible(layers.selected) && !visible(layers.placeholder) &&
+                f.scene.record_counters(layers.selected).synchronizations == 0 &&
+                f.scene.record_counters(layers.placeholder).synchronizations == 0,
+            "transparent Input layers were synchronized");
+    require(reference.focus() && reference.select(0, 3), "culled Input selection setup failed");
+    f.synchronize();
+    require(visible(layers.selected), "selected Input layer did not appear");
+    const auto stamp = f.inputs.sessions().active();
+    f.synchronize(320, {0, 180, 320, 60});
+    require(!visible(layers.base) && !visible(layers.selected) && !visible(layers.placeholder),
+            "fully clipped Input left drawable glyphs");
+    const auto syncs = f.scene.record_counters(layers.base).synchronizations;
+    const auto patches = f.scene.record_counters(layers.base).geometry_patches;
+    value.set(String{u8"Updated offscreen 中文"});
+    for (int step = 0; step < 8; ++step) {
+        f.synchronize(320, {0, 180, 320, 60});
+    }
+    require(f.scene.record_counters(layers.base).synchronizations == syncs &&
+                f.scene.record_counters(layers.base).geometry_patches == patches &&
+                f.buttons.focus().state().focused == mounted.interaction && f.inputs.sessions().active() == stamp,
+            "culled Input repeated glyph work or changed input authority");
+    f.synchronize();
+    require(visible(layers.base) &&
+                f.scene.text_state(layers.base).content() == String{u8"Updated offscreen 中文"}.view() &&
+                f.inputs.mounted_inputs().front().component == mounted.component &&
+                f.inputs.mounted_inputs().front().editor == mounted.editor && reference.bound(),
+            "Input reveal lost glyph content, editor or generation");
+    require(bool(f.inputs.dispatch(CompositionChanged{String{u8"预编辑"}, {3, 0}, stamp})),
+            "culled Input preedit setup failed");
+    f.synchronize(320, {0, 180, 320, 60});
+    f.synchronize();
+    require(visible(layers.base) && f.inputs.display_snapshot(mounted.component).composing &&
+                f.inputs.sessions().active() == stamp,
+            "Input culling cancelled preedit or failed to reveal it");
+    require(bool(f.inputs.dispatch(TextCommitted{String{}, stamp})), "culled Input preedit cancellation failed");
+    value.set(String{});
+    f.synchronize();
+    require(!visible(layers.base) && visible(layers.placeholder), "Input placeholder did not restore after culling");
 }
 
 void composition_display() {
@@ -1243,6 +1303,7 @@ int main() {
         input_pixel_grid();
         translated_subtree_geometry();
         translated_input_text_matches_full_rebuild();
+        culled_input_layers_restore();
         composition_display();
         std::cout << "Input lifecycle, layout and controlled callbacks passed\n";
     } catch (const std::exception& error) {
