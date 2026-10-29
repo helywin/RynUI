@@ -1,0 +1,8 @@
+﻿{
+    "stage":  "capacity-test",
+    "label":  "device-limits",
+    "configuration":  "Debug",
+    "exit":  0,
+    "seconds":  0.5827863,
+    "finishedUtc":  "2026-10-29T16:16:32.4119237Z"
+}

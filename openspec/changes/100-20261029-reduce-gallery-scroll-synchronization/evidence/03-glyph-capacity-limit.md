@@ -30,4 +30,6 @@ clang-format 22.1.3 全量检查 804 个已跟踪源码，0 failures；显式 Op
 
 原始 before/after build/test 日志、JUnit、驱动脚本、源码和现有 EXE 指纹见 `r1-capacity-artifacts/index.json`。本阶段是实际重新构建和运行；未重复 Gallery 长矩阵或 native 性能测量。既有原生数据仍仅对应上一阶段产物，不将这些资源回归扩大为 240 Hz、Linux/GPU/IME/AT 验收。
 
+后续 101 证据整理将 UTF-8 JSON/XML/脚本复制按 Git 约定统一 LF，索引保存归一化后和原始文件的 hash；UTF-16 原始日志字节不变。该调整仅修正跨 checkout 的证据核对，不更改测试结果。
+
 100 task 2.1 保持未勾选，待独立复核和最终收口。

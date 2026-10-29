@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <numbers>
@@ -219,6 +220,15 @@ GlyphInstanceRange GlyphInstanceStore::replace(GlyphInstanceRange range, std::sp
         return {range.first, 0};
     }
 
+    if (range.count == instances.size()) {
+        static_assert(std::is_trivially_copyable_v<GlyphInstance>);
+        // Prepare the only potentially throwing work before changing the retained instances.
+        geometry_dirty_ranges_.reserve_for_append();
+        std::memmove(instances_.data() + range.first, instances.data(), instances.size_bytes());
+        geometry_dirty_ranges_.append(range);
+        return range;
+    }
+
     if (range.count == 0) {
         static_assert(std::is_trivially_copyable_v<GlyphInstance>);
         std::span<const GlyphInstance> source = instances;
@@ -252,16 +262,12 @@ GlyphInstanceRange GlyphInstanceStore::replace(GlyphInstanceRange range, std::sp
     replacement.insert(replacement.end(), instances_.begin() + range.first + range.count, instances_.end());
     instances_.swap(replacement);
 
-    if (range.count == instances.size()) {
-        geometry_dirty_ranges_.append({range.first, static_cast<std::uint32_t>(instances.size())});
-    } else {
-        material_dirty_ranges_.discard_shifted(range.first);
-        geometry_dirty_ranges_.discard_shifted(range.first);
-        geometry_dirty_ranges_.append({
-            range.first,
-            static_cast<std::uint32_t>(instances_.size() - range.first),
-        });
-    }
+    material_dirty_ranges_.discard_shifted(range.first);
+    geometry_dirty_ranges_.discard_shifted(range.first);
+    geometry_dirty_ranges_.append({
+        range.first,
+        static_cast<std::uint32_t>(instances_.size() - range.first),
+    });
     return {range.first, static_cast<std::uint32_t>(instances.size())};
 }
 

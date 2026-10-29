@@ -46,6 +46,7 @@ public:
 
     void fail_next(RecordingFailure failure, std::size_t after = 0) noexcept;
     void reset_device();
+    void reset_device(SceneBackendCapabilities capabilities);
 
     void set_surface_available(bool value) noexcept {
         surface_available_ = value;
@@ -130,7 +131,7 @@ private:
                 std::uint32_t page = graphics::invalid_glyph_atlas_page, void* texture = nullptr);
 
     std::thread::id owner_{std::this_thread::get_id()};
-    const SceneBackendCapabilities capabilities_;
+    SceneBackendCapabilities capabilities_;
     std::uint64_t epoch_{1};
     bool batch_{};
     bool surface_available_{true};

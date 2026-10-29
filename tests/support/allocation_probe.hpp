@@ -12,16 +12,26 @@
 namespace ryn_test::allocation {
 inline thread_local bool tracking = false;
 inline thread_local std::size_t count = 0;
+inline thread_local std::size_t requested_bytes = 0;
+inline thread_local std::size_t largest_request = 0;
 inline thread_local std::size_t fail_at = std::numeric_limits<std::size_t>::max();
 
-inline void record() {
-    if (tracking && count++ == fail_at) {
-        throw std::bad_alloc();
+inline void record(std::size_t size) {
+    if (tracking) {
+        requested_bytes += size;
+        if (size > largest_request) {
+            largest_request = size;
+        }
+        if (count++ == fail_at) {
+            throw std::bad_alloc();
+        }
     }
 }
 
 inline void begin(std::size_t fail = std::numeric_limits<std::size_t>::max()) {
     count = 0;
+    requested_bytes = 0;
+    largest_request = 0;
     fail_at = fail;
     tracking = true;
 }
@@ -32,7 +42,7 @@ inline std::size_t end() {
 }
 
 inline void* allocate(std::size_t size) {
-    record();
+    record(size);
     if (void* pointer = std::malloc(size == 0 ? 1 : size)) {
         return pointer;
     }
@@ -40,7 +50,7 @@ inline void* allocate(std::size_t size) {
 }
 
 inline void* aligned(std::size_t size, std::size_t alignment) {
-    record();
+    record(size);
 #if defined(_MSC_VER)
     if (void* pointer = _aligned_malloc(size == 0 ? 1 : size, alignment)) {
         return pointer;

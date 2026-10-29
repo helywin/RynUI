@@ -44,6 +44,11 @@ void RecordingRenderer::reset_device() {
     draws_.clear();
 }
 
+void RecordingRenderer::reset_device(SceneBackendCapabilities capabilities) {
+    reset_device();
+    capabilities_ = capabilities;
+}
+
 bool RecordingRenderer::begin_upload_batch() {
     require_owner();
     if (batch_) {

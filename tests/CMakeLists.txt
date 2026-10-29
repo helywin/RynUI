@@ -657,6 +657,14 @@ foreach(name IN ITEMS pagination_component table_component table_theme table_pub
     add_test(NAME rynui.${name} COMMAND rynui_${name}_tests)
 endforeach()
 
+foreach(glyph_replace_target IN ITEMS glyph_replace_tests glyph_replace_benchmark)
+    add_executable(rynui_${glyph_replace_target} "${glyph_replace_target}.cpp")
+    rynui_configure_cpp_target(rynui_${glyph_replace_target})
+    target_include_directories(rynui_${glyph_replace_target} PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(rynui_${glyph_replace_target} PRIVATE rynui_graphics rynui_text)
+endforeach()
+add_test(NAME rynui.glyph_replace COMMAND rynui_glyph_replace_tests)
+
 if(NOT RYNUI_HAS_SDL_GPU)
     add_subdirectory(portable)
     return()

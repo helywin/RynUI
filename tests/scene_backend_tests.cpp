@@ -6,8 +6,10 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <iostream>
 #include <limits>
+#include <string_view>
 
 namespace {
 using namespace ryn;
@@ -345,6 +347,94 @@ void glyph_growth_obeys_resource_limits() {
                    std::as_bytes(std::span{&packed, 1})),
               "bounded Glyph retry did not restore appended bytes");
     }
+}
+
+void glyph_continuous_growth(std::size_t round, std::uint32_t background = 0) {
+    constexpr std::uint32_t count = 1000;
+    constexpr auto stride = sizeof(GlyphGpuInstance);
+    RecordingRenderer backend;
+    {
+        SceneResources resources(backend);
+        graphics::GlyphInstanceStore glyphs;
+        graphics::GlyphAtlas atlas;
+        const SceneDeviceMetrics metrics{600, 800, 1.5F};
+        const auto sync = [&] {
+            return resources.synchronize({nullptr, atlas, glyphs, nullptr, metrics});
+        };
+        const std::vector<graphics::GlyphInstance> retained_background(background);
+        static_cast<void>(glyphs.append(retained_background));
+        check(sync(), "Glyph growth background failed to initialize");
+        const auto initial_uploads = backend.counters().uploads;
+        const auto initial_bytes = backend.counters().uploaded_bytes;
+        const auto start = std::chrono::steady_clock::now();
+        for (std::uint32_t index = 0; index < count; ++index) {
+            graphics::GlyphInstance next;
+            next.position_size = {static_cast<float>(index), 1, 12, 16};
+            next.color = {0.25F, 0.5F, 0.75F, 1};
+            static_cast<void>(glyphs.append(std::span{&next, 1}));
+            check(sync(), "continuous Glyph growth failed");
+        }
+        const auto elapsed =
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count();
+        const auto allocations = resources.glyphs().counters().buffer_reallocations;
+        const auto capacity = resources.glyphs().instance_capacity();
+        const auto uploads = backend.counters().uploads - initial_uploads;
+        const auto uploaded_bytes = backend.counters().uploaded_bytes - initial_bytes;
+        const auto total_count = count + background;
+        check(allocations <= 11 && capacity >= total_count && capacity < total_count * 2,
+              "continuous Glyph growth recreated storage for individual appends or over-reserved");
+        check(uploads == count && uploaded_bytes < 3 * count * stride,
+              "continuous Glyph append re-uploaded the whole store inside spare capacity");
+        const auto check_bytes = [&] {
+            const auto bytes = backend.buffer_bytes(resources.glyphs().instance_buffer());
+            for (std::uint32_t index = 0; index < glyphs.size(); ++index) {
+                const auto packed = pack_glyph_instance(glyphs.at(index), metrics);
+                check(same(bytes.subspan(index * stride, stride), std::as_bytes(std::span{&packed, 1})),
+                      "continuous Glyph growth changed retained packed bytes");
+            }
+        };
+        check_bytes();
+        const auto handle = resources.glyphs().instance_buffer();
+        const std::vector tail(glyphs.instances().begin() + total_count - 100, glyphs.instances().end());
+        static_cast<void>(glyphs.replace({total_count - 100, 100}, {}));
+        check(sync() && resources.glyphs().instance_buffer() == handle, "Glyph tail deletion recreated buffer");
+        static_cast<void>(glyphs.append(tail));
+        check(sync() && resources.glyphs().instance_buffer() == handle &&
+                  resources.glyphs().counters().buffer_reallocations == allocations,
+              "Glyph tail restoration did not retain capacity");
+        check_bytes();
+        backend.reset_device();
+        check(sync() && resources.glyphs().counters().buffer_reallocations == 1 && backend.live_resources() == 2 &&
+                  backend.counters().rejected_releases == 0,
+              "continuous Glyph growth failed device epoch reconstruction");
+        check_bytes();
+        static_cast<void>(glyphs.replace({3, total_count - 3}, {}));
+        auto replacement_capabilities = baseline_scene_capabilities();
+        replacement_capabilities.maximum_buffer_bytes = 3 * stride;
+        backend.reset_device(replacement_capabilities);
+        check(sync() && resources.glyphs().instance_capacity() == 3,
+              "new device reused the previous larger Glyph capacity or stale capability limit");
+        check_bytes();
+        graphics::GlyphInstance extra;
+        extra.color = {1, 0, 0, 1};
+        static_cast<void>(glyphs.append(std::span{&extra, 1}));
+        const auto old_uploads = backend.counters().uploads;
+        backend.fail_next(RecordingFailure::begin);
+        rejects([&] { sync(); });
+        check(backend.counters().uploads == old_uploads && !glyphs.geometry_dirty_ranges().empty(),
+              "new device limit failed to reject before uploading");
+        check(!backend.begin_upload_batch(), "new device limit preflight consumed the injected begin failure");
+        replacement_capabilities.maximum_buffer_bytes = 4 * stride;
+        backend.reset_device(replacement_capabilities);
+        check(sync() && resources.glyphs().instance_capacity() == 4 && backend.counters().rejected_releases == 0,
+              "new larger device limit failed to restore a valid Glyph scene");
+        check_bytes();
+        std::cout << "glyph_growth round=" << round << " background=" << background << " appended=" << count
+                  << " reallocations=" << allocations << " capacity=" << capacity << " uploads=" << uploads
+                  << " uploaded_bytes=" << uploaded_bytes << " append_sync_us=" << elapsed
+                  << " restored_handle=1 epoch_reallocations=1 changed_device_limits=1\n";
+    }
+    check(backend.live_resources() == 0, "continuous Glyph growth leaked resources");
 }
 
 struct Fixture final {
@@ -815,12 +905,22 @@ void upload_exceptions_release_temporary_resources() {
 }
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
     try {
+        if (argc == 2 && std::string_view(argv[1]) == "--glyph-growth-counts") {
+            for (std::size_t round = 1; round <= 3; ++round) {
+                glyph_continuous_growth(round);
+                glyph_continuous_growth(round, 1000);
+            }
+            return 0;
+        }
+        check(argc == 1, "unknown scene backend test option");
         owned_bytes_and_ranges();
         texture_source_lifetime_cancel_and_invalid_ranges();
         required_capabilities_and_scene_limits();
         glyph_growth_obeys_resource_limits();
+        glyph_continuous_growth(1);
+        glyph_continuous_growth(1, 1000);
         real_scene_transaction_and_epoch();
         slider_scene_locality_and_retry();
         logical_resize_and_recovery();

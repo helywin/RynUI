@@ -2,6 +2,7 @@
 #include "text/text_scene_service.hpp"
 #include "text/text_caret_map.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -259,6 +260,53 @@ void test_dirty_paths_remain_per_text_and_sparse() {
                 fixture.service.revisions(last).content == 2 && fixture.service.revisions(first).tone == 2 &&
                 fixture.service.revisions(last).tone == 2,
             "per-Text content, tone, constraint, or placement revision was lost");
+}
+
+void test_equal_length_content_update_retains_store_and_neighbor_ranges() {
+    Fixture fixture;
+    const auto first = fixture.create(ryn::String{u8"A"});
+    const auto middle = fixture.create(ryn::String{u8"1000"});
+    const auto last = fixture.create(ryn::String{u8"C"});
+    static_cast<void>(fixture.service.set_placement(first, Fixture::placement(10)));
+    static_cast<void>(fixture.service.set_placement(middle, Fixture::placement(30)));
+    static_cast<void>(fixture.service.set_placement(last, Fixture::placement(80)));
+    require(fixture.service.synchronize_all(), "equal-length Text fixtures did not synchronize");
+    const auto first_primitive = fixture.service.primitive(first);
+    const auto target = fixture.service.primitive(middle).instances;
+    const auto last_primitive = fixture.service.primitive(last);
+    require(target.count == 4, "numeric Text fixture did not create four glyphs");
+    auto& store = fixture.service.glyph_scene().instances();
+    const auto* retained = store.instances().data();
+    const std::vector<ryn::graphics::GlyphInstance> before(store.instances().begin(), store.instances().end());
+    const auto commands = fixture.service.ordered_scene().commands();
+    const std::vector<ryn::graphics::SceneDrawCommand> saved_commands(commands.begin(), commands.end());
+    const auto compactions = fixture.service.counters().range_compactions;
+    const auto rebuilds = fixture.service.record_counters(middle).instance_rebuilds;
+    store.clear_dirty_ranges();
+
+    require(fixture.service.set_content(middle, ryn::String{u8"1001"}) && fixture.service.synchronize(middle),
+            "equal-length Text content update failed");
+    require(store.instances().data() == retained && store.size() == before.size() &&
+                fixture.service.primitive(middle).instances == target &&
+                fixture.service.primitive(first).instances == first_primitive.instances &&
+                fixture.service.primitive(first).draw_ranges == first_primitive.draw_ranges &&
+                fixture.service.primitive(first).line_ranges == first_primitive.line_ranges &&
+                fixture.service.primitive(last).instances == last_primitive.instances &&
+                fixture.service.primitive(last).draw_ranges == last_primitive.draw_ranges &&
+                fixture.service.primitive(last).line_ranges == last_primitive.line_ranges,
+            "Text content update rebuilt the store or remapped a neighbor primitive");
+    require(std::ranges::equal(store.instances().first(target.first), std::span{before}.first(target.first)) &&
+                std::ranges::equal(store.instances().subspan(target.first + target.count),
+                                   std::span{before}.subspan(target.first + target.count)) &&
+                !std::ranges::equal(store.instances().subspan(target.first, target.count),
+                                    std::span{before}.subspan(target.first, target.count)),
+            "Text content update failed to change the target locally");
+    require(std::ranges::equal(store.geometry_dirty_ranges(), std::array{target}) &&
+                store.material_dirty_ranges().empty() &&
+                std::ranges::equal(fixture.service.ordered_scene().commands(), saved_commands) &&
+                fixture.service.counters().range_compactions == compactions &&
+                fixture.service.record_counters(middle).instance_rebuilds == rebuilds + 1,
+            "equal-length Text update changed dirty, compaction or ordered range contracts");
 }
 
 void test_scroll_translation_preserves_glyphs() {
@@ -601,6 +649,7 @@ int main() {
         test_multiple_texts_share_font_atlas_scene_and_upload_plan();
         test_destroy_compacts_ranges_and_rejects_stale_generations();
         test_dirty_paths_remain_per_text_and_sparse();
+        test_equal_length_content_update_retains_store_and_neighbor_ranges();
         test_shared_shape_views();
         test_scroll_translation_preserves_glyphs();
         test_ordered_scene_batch_matches_serial_and_recovers_after_cancel();

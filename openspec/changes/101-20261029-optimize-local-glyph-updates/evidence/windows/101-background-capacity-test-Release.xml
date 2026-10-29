@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-ninja"
+	tests="3"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="Ryzen-Workstation"
+	time="0"
+	timestamp="2026-10-30T00:20:03"
+	>
+	<testcase name="rynui.portable.logical_scene_packing" classname="rynui.portable.logical_scene_packing" time="0.0096652" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.glyph_gpu_resources" classname="rynui.portable.glyph_gpu_resources" time="0.0095587" status="run">
+		<system-out></system-out>
+	</testcase>
+	<testcase name="rynui.portable.scene_backend" classname="rynui.portable.scene_backend" time="0.289979" status="run">
+		<system-out>glyph_growth round=1 background=0 appended=1000 reallocations=11 capacity=1024 uploads=1000 uploaded_bytes=194208 append_sync_us=651 restored_handle=1 epoch_reallocations=1 changed_device_limits=1
+glyph_growth round=1 background=1000 appended=1000 reallocations=2 capacity=2000 uploads=1000 uploaded_bytes=192000 append_sync_us=709 restored_handle=1 epoch_reallocations=1 changed_device_limits=1
+Shared component scene, owned bytes, retry, ordered draw and device epoch passed
+</system-out>
+	</testcase>
+</testsuite>
