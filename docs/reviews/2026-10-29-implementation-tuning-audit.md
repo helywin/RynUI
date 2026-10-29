@@ -305,3 +305,41 @@ Token catalog 的 `runtime` 数量是生成映射分类，不是组件完成率�
 本轮交付为审查结果、全量范围矩阵和分阶段整改入口。代码修复、当前基线性能测量、逐组件 GPU 截图/动画及分平台验收尚未执行；本文未把任何待修复项标为完成。
 
 本轮轻量核对：Ant Design 6.6.5 baseline checker（含 self-test）、`openspec doctor --json`、strict validate（100/100）、`git diff --check` 均通过；三份文档的本地链接存在性检查通过，覆盖表为 50 行、问题 ID 共 22 项，未来实现 checkbox 均未勾选。独立文档复核及关键源码抽查未发现阻止交付的问题。以上均不包含新的 C++ 构建、性能或平台视觉验收。
+
+## 11. 实施跟踪（2026-10-29 启动）
+
+用户已明确要求实施本报告并允许多 agent。以上第 1–10 节保留原审查事实；本节持续记录实施，不把原报告改写为已修复。当前新代码基线为 `dd3e71f775fb8d4f1f46aeeff5ea444ba816e54d`；099 已完成四控件图标范围，100 已完成三个实现阶段，但独立审查发现 GPU 容量上限 P2，收口仍待修复与复核。
+
+两个首批 change 进入 apply：
+
+- [101 局部 glyph 更新](../../openspec/changes/101-20261029-optimize-local-glyph-updates/tasks.md)：等长替换及容量增长补验。GPU 上限小修由父线程在 100 内处理，避免与 worker 重复修改。
+- [102 Tree/Table 状态投影](../../openspec/changes/102-20261029-isolate-tree-table-state-projection/tasks.md)：Tree hover/focus 与 Table 选择/排序隔离。
+
+隔离 worker 先完成各自源码、测试与可重复输入；父线程集中安排正式构建与基准，避免并发编译/性能测试占用电脑。每个完成项必须关联实现 SHA 和实际证据。后续阶段按第 8 节继续，不把尚未启动项从范围中删除，不以规划或 handoff 勾选完成。
+
+| 问题 | 当前实施状态 |
+| --- | --- |
+| TUNE-PERF-001 | 101：已规划，待实现与验证 |
+| TUNE-PERF-002 | 100 已有倍增实现；上限预检 P2 待父修复，101 补持续增长验收 |
+| TUNE-PERF-003 | 102：已规划，待实现与验证 |
+| TUNE-PERF-004 | 102：已规划，待实现与验证 |
+| TUNE-PERF-005 | 阶段 B3：待高扇出测量后最小修复 |
+| TUNE-PERF-006 | 阶段 B3：待离散 ranges 测量与合并优化 |
+| TUNE-VIS-001 | 阶段 C1：Menu Token 待实施 |
+| TUNE-VIS-002 | 阶段 C1：DatePicker 配方待实施 |
+| TUNE-VIS-003 | 阶段 C1：Table 双 caret 待实施；099 仅完成字符替换 |
+| TUNE-VIS-004 | 阶段 C2：短窗口日期/footer 可达待实施 |
+| TUNE-VIS-005 | 阶段 C2：极窄 Tabs 待实施 |
+| TUNE-VIS-006 | 阶段 C3：Progress alpha 待实施 |
+| TUNE-VIS-007 | 阶段 C3：Drawer 阴影待实施 |
+| TUNE-MOTION-001 | 阶段 D1：选择控件状态动画待实施 |
+| TUNE-MOTION-002 | 阶段 D2：浮层进退场待实施 |
+| TUNE-MOTION-003 | 阶段 D3：几何动画待实施 |
+| TUNE-MOTION-004 | 阶段 D4：Notice 计时/反馈动画待实施 |
+| TUNE-ICON-001 | 阶段 C1：Progress 状态 Icon 待实施 |
+| TUNE-ICON-002 | 阶段 C1：Gallery Loading slot 待实施 |
+| TUNE-ICON-003 | 阶段 C1：Gallery Breadcrumb 自定义箭头待实施 |
+| TUNE-THEME-001 | 阶段 E1：全局配置与优先级待实施 |
+| TUNE-EVIDENCE-001 | 分阶段积累实际证据；50 项状态矩阵、原生动画和各平台结果分别跟踪 |
+
+阶段 E2/E3 的 multiple/tags、搜索/勾选、Form 布局/动态字段/校验、Table 过滤/固定列、日期时间范围/locale、动态拓扑/虚拟化/图片等补齐仍在待办范围，后续按实际业务流拆分。Linux、系统 IME/AT、用户高刷体验保持独立待验；本次规划不声称这些边界已通过。
