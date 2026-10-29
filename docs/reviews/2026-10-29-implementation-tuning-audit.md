@@ -322,7 +322,7 @@ Token catalog 的 `runtime` 数量是生成映射分类，不是组件完成率�
 | TUNE-PERF-001 | 已修复并独审 CLEAN：76c469bd；MSVC D/R 回归、三轮基准与证据边界见 101/evidence/01-main-validation.md、02-final-review.md |
 | TUNE-PERF-002 | 已修复并独审 CLEAN：bced2df3、76c469bd；连续增长、变化设备能力及失败重试通过，见 100/evidence/04-final-review.md |
 | TUNE-PERF-003 | Tree 已修复并独审 CLEAN：f595211e；MSVC D/R、三轮局部交互与故障重试见 102/evidence/01-tree-main.md、02-tree-review.md；不代表整页滚动达标 |
-| TUNE-PERF-004 | Table 投影缓存/分页复用已完成 MSVC D/R 回归与三轮基准，待独审；见 102/evidence/03-table-main.md。仍有逐行状态与 scene 成本，不代表整体常数更新或高刷达标 |
+| TUNE-PERF-004 | 已修复并独审 CLEAN：f6aeb746；Table 投影缓存/分页复用的 MSVC D/R、三轮基准与审查见 102/evidence/03-table-main.md、04-final-review.md。仍有逐行状态与 scene 成本，不代表整体常数更新或高刷达标 |
 | TUNE-PERF-005 | 阶段 B3：待高扇出测量后最小修复 |
 | TUNE-PERF-006 | 阶段 B3：待离散 ranges 测量与合并优化 |
 | TUNE-VIS-001 | 阶段 C1：Menu Token 待实施 |

@@ -12,4 +12,4 @@
 
 ## 3. 集成与审查
 
-- [ ] 3.1 main 集成后运行 Tree/Table 及受影响 TreeSelect/Focus/输入合同，format、OpenSpec 1.14 doctor/strict、diff 通过；独立审查后更新 TUNE-PERF-003/004 证据，提交推送并核对远端 SHA。
+- [x] 3.1 main 集成后运行 Tree/Table 及受影响 TreeSelect/Focus/输入合同，format、OpenSpec 1.14 doctor/strict、diff 通过；独立审查后更新 TUNE-PERF-003/004 证据，提交推送并核对远端 SHA。
