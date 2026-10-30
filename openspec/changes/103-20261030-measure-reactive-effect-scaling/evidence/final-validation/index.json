@@ -1,0 +1,30 @@
+{
+  "implementation_head": "f9c9bacd8ca0d07f4e3af98f777fa7f20720c1e5",
+  "records": [
+    {
+      "source": "out/103-final-doctor.json",
+      "source_sha256": "c852cd193b6ebfe5f839b53d87f99c1cecd6a9a89b9a87c4b376e32ff8624292",
+      "frozen": "103-final-doctor.json",
+      "sha256": "fd7971f21ceb39e849f278df05333927f8ab71f87caa7df15e7082db3df2de46"
+    },
+    {
+      "source": "out/103-final-strict.log",
+      "source_sha256": "453827adcfe9200030182b3cf383d942345445140e0a577881b1d4ce597a0fa4",
+      "frozen": "103-final-strict.log",
+      "sha256": "a777ba0e23a3c8e0b2a77c6f9198006f19f2ed5aec790efaaa503b3c83c6c582"
+    },
+    {
+      "source": "out/103-final-apply.json",
+      "source_sha256": "a4395c89e8111b18a06bd46cab7bdbf5d3d35ac5aecf6de935f0282ea8f82924",
+      "frozen": "103-final-apply.json",
+      "sha256": "1c76f43a6e1db91c0214920a6508ff197e533bb330c2b785506e726e12d4f593"
+    },
+    {
+      "source": "out/103-final-diff-check.log",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "frozen": "103-final-diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "normalization": "Frozen copies use UTF-8/LF and strip trailing line whitespace; source SHA256 records original out bytes."
+}

@@ -250,7 +250,7 @@ Token catalog 的 `runtime` 数量是生成映射分类，不是组件完成率�
 
 - [ ] B1：TUNE-PERF-001、002，等长 glyph 更新和 buffer 容量策略。
 - [ ] B2：TUNE-PERF-003、004，Tree hover/焦点与 Table 选择/排序投影隔离。
-- [ ] B3：测量 TUNE-PERF-005、006；有证据再做订阅/dirty 合并最小改造。
+- [x] B3：测量 TUNE-PERF-005、006；有证据再做订阅/dirty 合并最小改造。103 已完成，证据与取舍见下方实施状态。
 - [ ] 保持受控状态、草稿、节点/ref 身份和失败恢复；每个修复有自己的可重复输入和前后计数，不用整体 Gallery 波动代替归因。
 
 ### 阶段 C 先修布局、绘制与图标
@@ -323,8 +323,8 @@ Token catalog 的 `runtime` 数量是生成映射分类，不是组件完成率�
 | TUNE-PERF-002 | 已修复并独审 CLEAN：bced2df3、76c469bd；连续增长、变化设备能力及失败重试通过，见 100/evidence/04-final-review.md |
 | TUNE-PERF-003 | Tree 已修复并独审 CLEAN：f595211e；MSVC D/R、三轮局部交互与故障重试见 102/evidence/01-tree-main.md、02-tree-review.md；不代表整页滚动达标 |
 | TUNE-PERF-004 | 已修复并独审 CLEAN：f6aeb746；Table 投影缓存/分页复用的 MSVC D/R、三轮基准与审查见 102/evidence/03-table-main.md、04-final-review.md。仍有逐行状态与 scene 成本，不代表整体常数更新或高刷达标 |
-| TUNE-PERF-005 | 103 有序订阅句柄及异常队列恢复已通过本轮新构建 D/R 各23/23和三轮同口径对照，见 103/evidence/02-implementation.md；额外 slot/handle 存储取舍已记录，独审待收口，不代表整页高刷达标 |
-| TUNE-PERF-006 | 103 延迟dirty归一化与两个有序span归并已通过本轮 D/R、实际bytes/hash/ranges及失败重试对照，见 103/evidence/02-implementation.md；独审待收口，完整sync不冒称纯planning |
+| TUNE-PERF-005 | 已修复并独审 CLEAN：f9c9bacd；103 有序订阅句柄及异常队列恢复通过本轮新构建 D/R 各23/23和三轮同口径对照，见 103/evidence/02-implementation.md、03-final-review.md；额外 slot/handle 存储取舍保留，不代表整页高刷达标 |
+| TUNE-PERF-006 | 已修复并独审 CLEAN：f9c9bacd；103 延迟dirty归一化与两个有序span归并通过本轮 D/R、实际bytes/hash/ranges及失败重试对照，见 103/evidence/02-implementation.md、03-final-review.md；完整sync不冒称纯planning |
 | TUNE-VIS-001 | 阶段 C1：Menu Token 待实施 |
 | TUNE-VIS-002 | 阶段 C1：DatePicker 配方待实施 |
 | TUNE-VIS-003 | 阶段 C1：Table 双 caret 待实施；099 仅完成字符替换 |

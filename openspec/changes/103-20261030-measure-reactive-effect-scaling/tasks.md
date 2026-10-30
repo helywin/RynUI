@@ -21,7 +21,7 @@ worker 的 source-only 交接保留在 evidence/source-handoff.md。父线程现
 ## 4. 平台通用：回归与独立审查
 
 - [x] 4.1 父线程执行正式 Debug/Release HEADLESS CTest（含现有 signal/memo/batch/scope/source lifecycle、rounded effect 和 scene backend 合同），至少三轮同口径前后测量并保存全部结果；不得用历史 100/101 或 Gallery 波动计算本变更收益。
-- [ ] 4.2 独立源码/证据审查完成，检查工作量真值、异常/销毁/重入/失败恢复与不可观测项；整理实际测试命令、平台、SHA、残余风险后由父分阶段提交并立即安全推送，不主动 archive。
+- [x] 4.2 独立源码/证据审查完成，检查工作量真值、异常/销毁/重入/失败恢复与不可观测项；整理实际测试命令、平台、SHA、残余风险后由父分阶段提交并立即安全推送，不主动 archive。
 
 ## 5. OS 与真实设备边界
 
