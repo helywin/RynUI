@@ -1,7 +1,0 @@
-Cwd: C:/Users/jiang/.t3/worktrees/RynUI/t3-6f192459
-
-& C:/Users/jiang/AppData/Local/pnpm/bin/openspec.cmd --version
-1.14.0
-
-& 'C:/Program Files/nodejs/node.exe' 'C:/Users/jiang/AppData/Local/pnpm/global/v11/571d8138cbe6cca8ed77baade632db40d9ff691763fbc5f585da857bbb3b1d1f/node_modules/@fission-ai/openspec/bin/openspec.js' --version
-1.14.0

@@ -1580,10 +1580,9 @@ target_compile_definitions(
 )
 add_test(NAME rynui.default_font_chain COMMAND rynui_default_font_chain_tests)
 if(WIN32)
-    add_test(NAME rynui.typography_windows_evidence
+    add_test(NAME rynui.typography_windows_evidence_schema
         COMMAND "${Python3_EXECUTABLE}" -B
             "${PROJECT_SOURCE_DIR}/tools/verify_typography_windows_evidence.py"
-            --evidence "${PROJECT_SOURCE_DIR}/openspec/changes/034-20261001-complete-typography-and-divider/evidence/windows-typography.json"
             --self-test)
 endif()
 
@@ -2582,7 +2581,6 @@ add_test(
     NAME rynui.windows_text_evidence
     COMMAND ${CMAKE_COMMAND}
         "-DEVIDENCE_REPORT=${PROJECT_SOURCE_DIR}/openspec/changes/002-20260826-build-text-and-cjk-rendering-foundation/evidence/windows-msvc.md"
-        "-DEVIDENCE_SCREENSHOT=${PROJECT_SOURCE_DIR}/openspec/changes/002-20260826-build-text-and-cjk-rendering-foundation/evidence/windows-msvc-debug.png"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_text_evidence.cmake"
 )
 
@@ -2590,7 +2588,6 @@ add_test(
     NAME rynui.linux_text_evidence
     COMMAND ${CMAKE_COMMAND}
         "-DEVIDENCE_REPORT=${PROJECT_SOURCE_DIR}/openspec/changes/003-20260827-build-text-component-foundation/evidence/linux-gcc.md"
-        "-DEVIDENCE_SCREENSHOT=${PROJECT_SOURCE_DIR}/openspec/changes/003-20260827-build-text-component-foundation/evidence/linux-gcc-debug.png"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_linux_text_evidence.cmake"
 )
 

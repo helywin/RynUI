@@ -1,6 +1,6 @@
 # Ant Design 6.5.0 → 6.6.5 官方来源审查
 
-本账本由 2026-09-22 的两个官方 tag 离线 checkout 生成。机器可核对的逐文件 SHA256、Token identity 和目录候选见 [source-diff.json](source-diff.json)；`python -B tools/audit_ant_design_665.py --old-source <6.5.0 checkout> --new-source <6.6.5 checkout> --check --self-test` 可复算。运行时与构建均不得读取浮动 `latest`。
+本账本由 2026-09-22 的两个官方 tag 离线 checkout 生成。机器可核对的逐文件 SHA256、Token identity 和目录候选见 [固定 source-diff 夹具](../../../../tests/fixtures/ant-design-6.6.5/source-diff.json)；`python -B tools/audit_ant_design_665.py --old-source <6.5.0 checkout> --new-source <6.6.5 checkout> --check --self-test` 可复算。运行时与构建均不得读取浮动 `latest`。
 
 | 项目 | 6.5.0 | 6.6.5 |
 | --- | --- | --- |

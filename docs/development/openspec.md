@@ -33,4 +33,10 @@ git diff --check
 
 `doctor` 检查 OpenSpec 根目录与引用健康；strict validate 检查 spec/change 结构。两者均不证明 C++ 功能、GPU、真实窗口或设备验收通过。
 
+## 验收结果的保存
+
+执行测试后，只在 change 的 Markdown 中记录平台/preset、命令、通过/失败数量、结论及必要限制。原始日志、CSV/JSON/XML、截图/逐帧图、源码副本和产物索引留在已忽略的 `out/`，不进入 Git；具体约束见根目录 `AGENTS.md`。
+
+2026-10-30 已清理历史 evidence 运行产物，保留文字结果。旧文档中的原始附件路径属于历史记录；本机归档位于 `out/evidence-archive-20261030/`。Git 历史未重写，需要追溯时仍可从旧提交取回。必要的确定性测试输入与 schema 已移至 `tests/fixtures/`，不以历史截图存在与否判定当前功能是否通过。
+
 若 `openspec --version` 仍返回旧版，用 `Get-Command openspec`（Windows）或 `command -v openspec`（Linux/macOS）确认 PATH 实际解析的全局入口。旧的 1.4.1 CLI 不支持仓库要求的 `doctor`；应修复全局版本或 PATH，不跳过校验。

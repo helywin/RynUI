@@ -1,0 +1,657 @@
+{
+  "scope": "windows-native",
+  "status": "passed",
+  "preset": "windows-msvc",
+  "toolchain": "MSVC x64",
+  "generator": "Ninja Multi-Config",
+  "clean_configure_exit_code": 0,
+  "build_exit_codes": {
+    "Debug": 0,
+    "Release": 0
+  },
+  "fixture": true,
+  "runs": [
+    {
+      "id": "scale-1.0",
+      "configuration": "Debug",
+      "fields": {
+        "render_scale": "1",
+        "system_display_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "passed",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/committed.png"
+        },
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/editing.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    },
+    {
+      "id": "scale-1.25",
+      "configuration": "Debug",
+      "fields": {
+        "render_scale": "1.25",
+        "system_display_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "passed",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/committed.png"
+        },
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/editing.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    },
+    {
+      "id": "scale-1.5",
+      "configuration": "Debug",
+      "fields": {
+        "render_scale": "1.5",
+        "system_display_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "passed",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/committed.png"
+        },
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/editing.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    },
+    {
+      "id": "scale-2.0",
+      "configuration": "Debug",
+      "fields": {
+        "render_scale": "2",
+        "system_display_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "passed",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/committed.png"
+        },
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/editing.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    },
+    {
+      "id": "dark-1.0",
+      "configuration": "Debug",
+      "fields": {
+        "render_scale": "1",
+        "system_display_scale": "1.25",
+        "copy_only": "false",
+        "theme": "dark",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "passed",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/committed.png"
+        },
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/editing.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    },
+    {
+      "id": "dark-2.0",
+      "configuration": "Debug",
+      "fields": {
+        "render_scale": "2",
+        "system_display_scale": "1.25",
+        "copy_only": "false",
+        "theme": "dark",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "passed",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/committed.png"
+        },
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/editing.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    },
+    {
+      "id": "copy-only",
+      "configuration": "Debug",
+      "fields": {
+        "render_scale": "1.25",
+        "system_display_scale": "1.25",
+        "copy_only": "true",
+        "theme": "light",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "not-applicable",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    },
+    {
+      "id": "system-scale",
+      "configuration": "Debug",
+      "fields": {
+        "render_scale": "1.25",
+        "system_display_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "passed",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/committed.png"
+        },
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/editing.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    },
+    {
+      "id": "release",
+      "configuration": "Release",
+      "fields": {
+        "render_scale": "1.25",
+        "system_display_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "edit": "passed",
+        "submits": "1",
+        "quad_draws": "1",
+        "glyph_draws": "1",
+        "effect_draws": "1"
+      },
+      "fonts": {
+        "regular": {
+          "path": "fixture-regular.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "path": "fixture-strong.ttf",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "path": "fixture-italic.ttf",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        }
+      },
+      "exit_code": 0,
+      "screenshots": [
+        {
+          "path": "fixture/committed.png"
+        },
+        {
+          "path": "fixture/copied.png"
+        },
+        {
+          "path": "fixture/dividers.png"
+        },
+        {
+          "path": "fixture/editing.png"
+        },
+        {
+          "path": "fixture/expanded.png"
+        },
+        {
+          "path": "fixture/headings.png"
+        },
+        {
+          "path": "fixture/link-focus.png"
+        },
+        {
+          "path": "fixture/multiline-expanded.png"
+        },
+        {
+          "path": "fixture/semantics.png"
+        }
+      ]
+    }
+  ]
+}

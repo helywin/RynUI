@@ -10,6 +10,6 @@ Password 合同包括 reactive visibilityToggle 不重建、隐藏不保留 suff
 
 Search 合同包括受控回写拒绝清空时仍发送空候选及 Clear 来源、loading 只拦截提交、共用 Props、reactive searchIcon、自定义内容优先、Filled 普通/hover/pressed material、Underlined Text action、Small 共同最小高度和图标 action 最小方形尺寸。更新 Input Theme 颜色不重新 shape、挂载或重建；增大 Small Input 字号同时更新两侧高度。动作鼠标焦点只在所属 Input 已聚焦时保留 Input 焦点/选择/IME，其他情况下 Button 正常获取焦点。
 
-上游源码合同保存于 ../source-contract.json：Ant Design 6.6.5 的锁定 commit、Search.tsx、style/search.ts、Password.tsx 的 SHA256 及本地原生映射。未引入组件私有 renderer/平台上传路径。
+上游源码合同保存于 [固定测试夹具](../../../../../tests/fixtures/ant-design-6.6.5/input-source-contract.json)：Ant Design 6.6.5 的锁定 commit、Search.tsx、style/search.ts、Password.tsx 的 SHA256 及本地原生映射。未引入组件私有 renderer/平台上传路径。
 
 对应命令：以 common Debug/Release preset 构建上述 rynui_portable_* 目标，并运行相同名称的 CTest 正则。完整 Gallery 和真实窗口/GPU/OS 验收由后续任务独立记录。

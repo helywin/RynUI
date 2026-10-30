@@ -1,3 +1,0 @@
-# Preserve raw command output, including tool-emitted whitespace and line endings.
-logs/*.log -text -whitespace
-logs/r3-tests-*.json -text -whitespace

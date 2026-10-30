@@ -10,7 +10,6 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CHANGE = ROOT / "openspec/changes/014-20260925-compose-search-from-input-and-button"
 SOURCE_ROOT = ROOT / "out/upstream-ant-design-6.6.5"
 
 
@@ -20,9 +19,9 @@ def require(condition: bool, message: str) -> None:
 
 
 def verify() -> None:
-    contract = json.loads((CHANGE / "evidence/source-contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((ROOT / "tests/fixtures/ant-design-6.6.5/search-source-contract.json").read_text(encoding="utf-8"))
     manifest = json.loads((ROOT / "gallery/ant-design/6.6.5/source-manifest.json").read_text(encoding="utf-8"))
-    source_diff = json.loads((ROOT / "openspec/changes/012-20260922-upgrade-ant-design-reference-to-6-6-5/evidence/source-diff.json").read_text(encoding="utf-8"))
+    source_diff = json.loads((ROOT / "tests/fixtures/ant-design-6.6.5/source-diff.json").read_text(encoding="utf-8"))
     version = contract["upstream_version"]
     commit = contract["upstream_commit"]
     require(version == manifest["upstream"]["version"] == source_diff["upstream"]["new_version"],

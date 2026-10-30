@@ -1,8 +1,0 @@
-﻿{
-    "stage":  "capacity-test",
-    "label":  "device-limits",
-    "configuration":  "Release",
-    "exit":  0,
-    "seconds":  0.416555,
-    "finishedUtc":  "2026-10-29T16:16:50.3374776Z"
-}

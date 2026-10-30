@@ -7,13 +7,12 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CHANGE = ROOT / "openspec/changes/011-20260922-build-switch-and-checkbox-on-shared-control-runtime"
 
 
 def verify() -> None:
-    contract = json.loads((CHANGE / "evidence/source-contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((ROOT / "tests/fixtures/ant-design-6.6.5/selection-source-contract.json").read_text(encoding="utf-8"))
     manifest = json.loads((ROOT / "gallery/ant-design/6.6.5/source-manifest.json").read_text(encoding="utf-8"))
-    diff = json.loads((ROOT / "openspec/changes/012-20260922-upgrade-ant-design-reference-to-6-6-5/evidence/source-diff.json").read_text(encoding="utf-8"))
+    diff = json.loads((ROOT / "tests/fixtures/ant-design-6.6.5/source-diff.json").read_text(encoding="utf-8"))
     assert contract["upstream_version"] == manifest["upstream"]["version"] == diff["upstream"]["new_version"]
     assert contract["upstream_commit"] == manifest["upstream"]["commit"] == diff["upstream"]["new_commit"]
     sources = {entry["path"]: entry for entry in diff["sources"]}

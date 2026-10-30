@@ -1,9 +1,0 @@
-Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-6f192459/out/build/windows-msvc-headless
-    Start 43: rynui.statistic_formatting
-1/2 Test #43: rynui.statistic_formatting .......   Passed    0.99 sec
-    Start 45: rynui.statistic_lifecycle
-2/2 Test #45: rynui.statistic_lifecycle ........   Passed    5.69 sec
-
-100% tests passed, 0 tests failed out of 2
-
-Total Test time (real) =   6.70 sec

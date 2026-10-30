@@ -214,7 +214,7 @@ def main() -> int:
         self_test()
     repo = Path(__file__).resolve().parents[1]
     result = build(repo, args.old_source.resolve(), args.new_source.resolve())
-    output = repo / "openspec/changes/012-20260922-upgrade-ant-design-reference-to-6-6-5/evidence/source-diff.json"
+    output = repo / "tests/fixtures/ant-design-6.6.5/source-diff.json"
     data = (json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     if args.write:
         output.parent.mkdir(parents=True, exist_ok=True)

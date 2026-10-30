@@ -67,7 +67,7 @@ searchIcon 接收 reactive IconSource；未提供 SearchButtonContent 时 action
 
 鼠标点击 Search action 时，若所属输入框已聚焦则保留焦点、选择及 IME；其他情况下 action 正常获得鼠标焦点，键盘可始终按资格聚焦。
 
-行为/样式基线核对 [6.6.5 Search](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/Search.tsx)、[Search style](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/style/search.ts) 和 [Password](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/Password.tsx)，052 的 source-contract.json 保存内容 hash。HTML/DOM 事件对象由原生 typed 回调取代。
+行为/样式基线核对 [6.6.5 Search](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/Search.tsx)、[Search style](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/style/search.ts) 和 [Password](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/Password.tsx)，[固定 source contract](../tests/fixtures/ant-design-6.6.5/input-source-contract.json) 保存内容 hash。HTML/DOM 事件对象由原生 typed 回调取代。
 
 ## 收尾进度
 

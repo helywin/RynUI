@@ -75,11 +75,18 @@ def self_test(data, directory):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--evidence', required=True, type=Path)
+    parser.add_argument('--evidence', type=Path)
     parser.add_argument('--self-test', action='store_true')
     args = parser.parse_args()
-    evidence = json.loads(args.evidence.read_text(encoding='utf-8'))
-    validate(evidence, args.evidence.parent)
     if args.self_test:
-        self_test(evidence, args.evidence.parent)
-    print('Windows Typography/Divider native evidence passed')
+        fixture = Path(__file__).resolve().parents[1] / 'tests/fixtures/acceptance/typography-windows.json'
+        data = json.loads(fixture.read_text(encoding='utf-8'))
+        validate(data, fixture.parent, False)
+        self_test(data, fixture.parent)
+        print('Windows Typography/Divider evidence schema self-test passed')
+    if args.evidence:
+        evidence = json.loads(args.evidence.read_text(encoding='utf-8'))
+        validate(evidence, args.evidence.parent)
+        print('Windows Typography/Divider native evidence passed')
+    if not args.self_test and not args.evidence:
+        parser.error('select --self-test or --evidence')

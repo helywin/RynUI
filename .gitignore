@@ -5,3 +5,9 @@
 *.user
 __pycache__/
 *.py[cod]
+
+# Execution artifacts stay in out/. Evidence contains result summaries only.
+*.log
+**/evidence/**
+!**/evidence/**/
+!**/evidence/**/*.md

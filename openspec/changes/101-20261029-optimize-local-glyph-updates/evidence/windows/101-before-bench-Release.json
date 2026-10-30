@@ -1,8 +1,0 @@
-﻿{
-    "stage":  "bench",
-    "label":  "before",
-    "configuration":  "Release",
-    "exit":  0,
-    "seconds":  4.8952561999999995,
-    "finishedUtc":  "2026-10-29T16:03:48.2460908Z"
-}

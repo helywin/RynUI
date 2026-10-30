@@ -14,9 +14,6 @@ from pathlib import Path
 import check_ant_design_current_baseline as baseline
 
 
-CHANGE = "012-20260922-upgrade-ant-design-reference-to-6-6-5"
-
-
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -56,7 +53,7 @@ def validate_schema(value: object, schema: dict, location: str = "$" ) -> None:
 
 def expected(repo: Path) -> dict:
     token_lock = json.loads((repo / "design-tokens/ant-design/6.6.5/sources.lock.yaml").read_text(encoding="utf-8"))
-    diff_path = repo / "openspec/changes" / CHANGE / "evidence/source-diff.json"
+    diff_path = repo / "tests/fixtures/ant-design-6.6.5/source-diff.json"
     generated = (repo / "examples/token_gallery/generated_ant_design_reference_catalog.inc").read_text(encoding="utf-8")
     match = re.search(r'kAntDesignReferenceCatalogHash = "([0-9a-f]{64})";', generated)
     if match is None:
@@ -80,7 +77,7 @@ def expected(repo: Path) -> dict:
 
 
 def within_evidence(repo: Path, path: str) -> Path:
-    target_root = (repo / "openspec/changes" / CHANGE / "evidence").resolve()
+    target_root = (repo / "out/ant-design-6.6.5").resolve()
     target = (target_root / path).resolve()
     if not target.is_relative_to(target_root) or "6.5.0" in path or "008-" in path:
         raise ValueError(f"old or external evidence path: {path}")
@@ -153,7 +150,7 @@ def main() -> int:
     args = parser.parse_args()
     repo = args.repo_root.resolve()
     baseline.check(repo)
-    schema = json.loads((repo / "openspec/changes" / CHANGE / "evidence/passed-evidence.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads((repo / "tests/fixtures/ant-design-6.6.5/passed-evidence.schema.json").read_text(encoding="utf-8"))
     if args.self_test:
         self_test(repo, schema)
     if args.evidence:

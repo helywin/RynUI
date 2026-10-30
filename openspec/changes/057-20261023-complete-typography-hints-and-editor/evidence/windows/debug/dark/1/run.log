@@ -1,8 +1,0 @@
-editor_shell=16,279.72,1248,72.4
-typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1 copy_only=false theme=dark clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=30 quad_draws=368 glyph_draws=436 effect_draws=260 hints=passed multiline_edit=passed resize=passed idle_polls=3 components=91 rasterizations=341
-font=regular family=Segoe UI Variable Text path=C:\WINDOWS\FONTS\SEGUIVAR.TTF face_index=0 weight=400 italic=0
-font=strong family=Segoe UI path=C:\WINDOWS\FONTS\SEGUISB.TTF face_index=0 weight=600 italic=0
-font=italic family=Segoe UI path=C:\WINDOWS\FONTS\SEGOEUII.TTF face_index=0 weight=400 italic=1
-font=monospace family=Cascadia Mono path=C:\WINDOWS\FONTS\CASCADIAMONO.TTF face_index=0 weight=400 italic=0
-font_fallback=requested weight 500 could not be resolved; using the regular face
-disposed=1 exit_code=0
