@@ -44,46 +44,82 @@ void reactive_layer_anchor() noexcept {}
 ReactiveSource::~ReactiveSource() {
     // Computation closures can retain observers longer than a dynamically
     // removed source. Drop its borrowed pointer before the source is released.
-    for (const auto& subscriber : subscribers_) {
-        if (const auto observer = subscriber.lock()) {
+    for (auto index = first_subscriber_; index != invalid_slot; index = subscribers_[index].next) {
+        if (const auto observer = subscribers_[index].observer.lock()) {
             observer->forget(*this);
         }
     }
 }
 
-void ReactiveSource::subscribe(const std::shared_ptr<ObserverNode>& observer) {
-    for (auto iterator = subscribers_.begin(); iterator != subscribers_.end();) {
-        const auto subscriber = iterator->lock();
-        if (!subscriber) {
-            iterator = subscribers_.erase(iterator);
-        } else {
-            if (subscriber.get() == observer.get()) {
-                return;
-            }
-            ++iterator;
-        }
+ReactiveSource::Subscription ReactiveSource::subscribe(const std::shared_ptr<ObserverNode>& observer) {
+    std::size_t index{};
+    if (free_slot_ != invalid_slot) {
+        index = free_slot_;
+        free_slot_ = subscribers_[index].next;
+    } else {
+        index = subscribers_.size();
+        // Complete the only potentially throwing operation before publishing links.
+        subscribers_.emplace_back();
     }
-    subscribers_.emplace_back(observer);
+    auto& slot = subscribers_[index];
+    slot.observer = observer;
+    slot.identity = observer.get();
+    slot.previous = last_subscriber_;
+    slot.next = invalid_slot;
+    if (last_subscriber_ != invalid_slot) {
+        subscribers_[last_subscriber_].next = index;
+    } else {
+        first_subscriber_ = index;
+    }
+    last_subscriber_ = index;
+    return {index, slot.generation};
 }
 
-void ReactiveSource::unsubscribe(const ObserverNode* observer) noexcept {
-    std::erase_if(subscribers_, [observer](const auto& subscriber) {
-        const auto locked = subscriber.lock();
-        return !locked || locked.get() == observer;
-    });
+void ReactiveSource::unsubscribe(Subscription subscription, const ObserverNode* observer) noexcept {
+    if (subscription.index >= subscribers_.size()) {
+        return;
+    }
+    const auto& slot = subscribers_[subscription.index];
+    if (slot.generation == subscription.generation && slot.identity == observer) {
+        release_slot(subscription.index);
+    }
+}
+
+void ReactiveSource::release_slot(std::size_t index) noexcept {
+    auto& slot = subscribers_[index];
+    if (slot.previous != invalid_slot) {
+        subscribers_[slot.previous].next = slot.next;
+    } else {
+        first_subscriber_ = slot.next;
+    }
+    if (slot.next != invalid_slot) {
+        subscribers_[slot.next].previous = slot.previous;
+    } else {
+        last_subscriber_ = slot.previous;
+    }
+    slot.observer.reset();
+    slot.identity = nullptr;
+    slot.previous = invalid_slot;
+    slot.next = free_slot_;
+    free_slot_ = index;
+    ++slot.generation;
+    if (slot.generation == 0) {
+        slot.generation = 1;
+    }
 }
 
 void ReactiveSource::notify_observers() {
     auto& scheduler = Scheduler::current();
     scheduler.begin_notification();
-    for (auto iterator = subscribers_.begin(); iterator != subscribers_.end();) {
-        const auto subscriber = iterator->lock();
+    for (auto index = first_subscriber_; index != invalid_slot;) {
+        const auto next = subscribers_[index].next;
+        const auto subscriber = subscribers_[index].observer.lock();
         if (!subscriber) {
-            iterator = subscribers_.erase(iterator);
+            release_slot(index);
         } else {
             scheduler.schedule(subscriber);
-            ++iterator;
         }
+        index = next;
     }
     scheduler.end_notification();
 }
@@ -99,8 +135,8 @@ void ObserverNode::run() {
     if (!active_) {
         return;
     }
-    for (auto* dependency : dependencies_) {
-        dependency->unsubscribe(this);
+    for (const auto& dependency : dependencies_) {
+        dependency.source->unsubscribe(dependency.subscription, this);
     }
     dependencies_.clear();
 
@@ -122,8 +158,8 @@ void ObserverNode::deactivate() noexcept {
     }
     active_ = false;
     queued_ = false;
-    for (auto* dependency : dependencies_) {
-        dependency->unsubscribe(this);
+    for (const auto& dependency : dependencies_) {
+        dependency.source->unsubscribe(dependency.subscription, this);
     }
     dependencies_.clear();
 }
@@ -137,15 +173,23 @@ ObserverPhase ObserverNode::phase() const noexcept {
 }
 
 void ObserverNode::track(ReactiveSource& source) {
-    if (std::find(dependencies_.begin(), dependencies_.end(), &source) != dependencies_.end()) {
+    if (!active_ || std::ranges::any_of(dependencies_,
+                                        [&source](const auto& dependency) { return dependency.source == &source; })) {
         return;
     }
-    dependencies_.push_back(&source);
-    source.subscribe(shared_from_this());
+    // Reserve the observer side before linking the source. A failed source growth
+    // removes the placeholder, so both sides remain consistent without callbacks.
+    dependencies_.push_back({&source, {}});
+    try {
+        dependencies_.back().subscription = source.subscribe(shared_from_this());
+    } catch (...) {
+        dependencies_.pop_back();
+        throw;
+    }
 }
 
 void ObserverNode::forget(ReactiveSource& source) noexcept {
-    std::erase(dependencies_, &source);
+    std::erase_if(dependencies_, [&source](const auto& dependency) { return dependency.source == &source; });
 }
 
 Scheduler& Scheduler::current() noexcept {
@@ -218,9 +262,22 @@ void Scheduler::end_observer() {
 
 void Scheduler::process_queue(std::vector<std::shared_ptr<ObserverNode>>& queue) {
     current_queue_.swap(queue);
-    for (const auto& observer : current_queue_) {
-        observer->queued_ = false;
-        observer->run();
+    std::size_t index{};
+    try {
+        for (; index < current_queue_.size(); ++index) {
+            const auto& observer = current_queue_[index];
+            observer->queued_ = false;
+            observer->run();
+        }
+    } catch (...) {
+        // Unexecuted entries are discarded, not carried into the next flush.
+        // Processed entries (including the thrower) may already have queued a
+        // later epoch; keep those pending entries and their queued flags intact.
+        for (auto remaining = index + 1; remaining < current_queue_.size(); ++remaining) {
+            current_queue_[remaining]->queued_ = false;
+        }
+        current_queue_.clear();
+        throw;
     }
     current_queue_.clear();
 }

@@ -1,0 +1,12 @@
+﻿{
+    "stage":  "subscription-build",
+    "label":  "before-fix",
+    "configuration":  "Release",
+    "component":  "reactive",
+    "iterations":  64,
+    "warmup":  8,
+    "round":  1,
+    "exit":  0,
+    "seconds":  1.6535227,
+    "finishedUtc":  "2026-10-29T19:01:42.4190245Z"
+}

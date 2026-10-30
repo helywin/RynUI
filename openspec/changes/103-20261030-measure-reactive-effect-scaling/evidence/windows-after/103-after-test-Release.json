@@ -1,0 +1,12 @@
+﻿{
+    "stage":  "test",
+    "label":  "after",
+    "configuration":  "Release",
+    "component":  "reactive",
+    "iterations":  64,
+    "warmup":  8,
+    "round":  1,
+    "exit":  0,
+    "seconds":  2.4552396,
+    "finishedUtc":  "2026-10-30T06:29:48.9466632Z"
+}

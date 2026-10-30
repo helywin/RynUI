@@ -68,12 +68,7 @@ void RoundedEffectGpuResources::synchronize_validated(graphics::RoundedEffectSto
         convert_range(source, range, metrics);
         dirty_ranges_.push_back(range);
     } else {
-        for (const auto range : store.geometry_dirty_ranges()) {
-            append_dirty_range(dirty_ranges_, range);
-        }
-        for (const auto range : store.material_dirty_ranges()) {
-            append_dirty_range(dirty_ranges_, range);
-        }
+        merge_dirty_ranges(store.geometry_dirty_ranges(), store.material_dirty_ranges());
         if (dirty_ranges_.empty()) {
             instance_count_ = static_cast<std::uint32_t>(source.size());
             metrics_ = metrics;
@@ -151,29 +146,28 @@ const RoundedEffectGpuResourceCounters& RoundedEffectGpuResources::counters() co
     return counters_;
 }
 
-void RoundedEffectGpuResources::append_dirty_range(std::vector<graphics::RoundedEffectInstanceRange>& ranges,
-                                                   graphics::RoundedEffectInstanceRange range) {
-    if (range.count == 0) {
-        return;
-    }
-    ranges.push_back(range);
-    std::ranges::sort(ranges, {}, &graphics::RoundedEffectInstanceRange::first);
-    std::size_t merged_count = 0;
-    for (const auto candidate : ranges) {
-        if (merged_count == 0) {
-            ranges[merged_count++] = candidate;
-            continue;
+void RoundedEffectGpuResources::merge_dirty_ranges(std::span<const graphics::RoundedEffectInstanceRange> geometry,
+                                                   std::span<const graphics::RoundedEffectInstanceRange> material) {
+    dirty_ranges_.reserve(geometry.size() + material.size());
+    std::size_t geometry_index{};
+    std::size_t material_index{};
+    while (geometry_index < geometry.size() || material_index < material.size()) {
+        const auto candidate =
+            material_index == material.size() || (geometry_index < geometry.size() &&
+                                                  geometry[geometry_index].first <= material[material_index].first)
+                ? geometry[geometry_index++]
+                : material[material_index++];
+        if (!dirty_ranges_.empty()) {
+            auto& prior = dirty_ranges_.back();
+            const auto prior_end = static_cast<std::uint64_t>(prior.first) + prior.count;
+            const auto candidate_end = static_cast<std::uint64_t>(candidate.first) + candidate.count;
+            if (candidate.first <= prior_end) {
+                prior.count = static_cast<std::uint32_t>(std::max(prior_end, candidate_end) - prior.first);
+                continue;
+            }
         }
-        auto& prior = ranges[merged_count - 1];
-        const auto prior_end = static_cast<std::uint64_t>(prior.first) + prior.count;
-        const auto candidate_end = static_cast<std::uint64_t>(candidate.first) + candidate.count;
-        if (candidate.first <= prior_end) {
-            prior.count = static_cast<std::uint32_t>(std::max(prior_end, candidate_end) - prior.first);
-        } else {
-            ranges[merged_count++] = candidate;
-        }
+        dirty_ranges_.push_back(candidate);
     }
-    ranges.resize(merged_count);
 }
 
 std::uint32_t RoundedEffectGpuResources::next_capacity(std::size_t required) {

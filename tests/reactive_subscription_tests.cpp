@@ -62,6 +62,43 @@ void subscription_order() {
     require(delivered.empty(), "disposed ordered observers still ran");
 }
 
+void subscription_slot_reuse() {
+    ryn::Signal<int> source{0};
+    std::vector<char> delivered;
+    ryn::Scope foreign_scope;
+    for (const char name : {'A', 'C'}) {
+        ryn::effect(foreign_scope, [&, name] {
+            static_cast<void>(source.get());
+            delivered.push_back(name);
+        });
+    }
+    for (int cycle = 0; cycle < 32; ++cycle) {
+        auto retired = ryn::detail::observe(ryn::detail::ObserverPhase::effect, [&] {
+            static_cast<void>(source.get());
+            delivered.push_back('B');
+        });
+        const auto retained = ryn::detail::observe(ryn::detail::ObserverPhase::effect, [&] {
+            static_cast<void>(source.get());
+            delivered.push_back('D');
+        });
+        retired->deactivate();
+        const auto replacement = ryn::detail::observe(ryn::detail::ObserverPhase::effect, [&] {
+            static_cast<void>(source.get());
+            delivered.push_back('E');
+        });
+        retired.reset();
+        delivered.clear();
+        source.set(cycle + 1);
+        require(delivered == std::vector<char>({'A', 'C', 'D', 'E'}),
+                "reused subscription slot lost tail order or retired a foreign observer");
+        retained->deactivate();
+        replacement->deactivate();
+    }
+    delivered.clear();
+    source.set(33);
+    require(delivered == std::vector<char>({'A', 'C'}), "transient subscription cleanup damaged foreign observers");
+}
+
 void read_write_order() {
     enum class Write { none, before_read, after_read };
     ryn::Signal<int> trigger{0};
@@ -245,6 +282,136 @@ void initial_exception() {
     require(healthy_runs == 3, "healthy observer did not dispose after failed mount");
 }
 
+void flush_exception() {
+    ryn::Signal<int> source{0};
+    int first_runs{};
+    int following_runs{};
+    int observed{};
+    ryn::Scope scope;
+    ryn::effect(scope, [&] {
+        ++first_runs;
+        const int value = source.get();
+        if (value == 1) {
+            throw InitialFailure{91};
+        }
+    });
+    ryn::effect(scope, [&] {
+        observed = source.get();
+        ++following_runs;
+    });
+    bool original_exception{};
+    try {
+        source.set(1);
+    } catch (const InitialFailure& error) {
+        original_exception = error.payload == 91;
+    }
+    require(original_exception, "flush changed the original callback exception");
+    source.set(2);
+    require(first_runs == 3 && following_runs == 2 && observed == 2,
+            "failed flush retained an old queue or duplicated subsequent delivery");
+    scope.dispose();
+    source.set(3);
+    require(first_runs == 3 && following_runs == 2, "failed flush prevented final disposal");
+}
+
+void flush_exception_preserves_later_epochs() {
+    ryn::Signal<int> source{0};
+    ryn::Signal<int> first_retry{0};
+    ryn::Signal<int> throwing_retry{0};
+    bool queue_first{};
+    bool throw_once{};
+    int first_runs{};
+    int throwing_runs{};
+    int following_runs{};
+    int observed{};
+    ryn::Scope scope;
+    ryn::effect(scope, [&] {
+        ++first_runs;
+        const int value = source.get();
+        static_cast<void>(first_retry.get());
+        if (value == 1 && queue_first) {
+            queue_first = false;
+            first_retry.set(1);
+        }
+    });
+    ryn::effect(scope, [&] {
+        ++throwing_runs;
+        const int value = source.get();
+        static_cast<void>(throwing_retry.get());
+        if (value == 1 && throw_once) {
+            throw_once = false;
+            throwing_retry.set(1);
+            throw InitialFailure{92};
+        }
+    });
+    ryn::effect(scope, [&] {
+        observed = source.get();
+        ++following_runs;
+    });
+    queue_first = true;
+    throw_once = true;
+    bool original_exception{};
+    try {
+        source.set(1);
+    } catch (const InitialFailure& error) {
+        original_exception = error.payload == 92;
+    }
+    require(original_exception && first_runs == 2 && throwing_runs == 2 && following_runs == 1,
+            "throwing observer did not stop the current queue");
+    const auto epoch = ryn::detail::Scheduler::current().epoch();
+    source.set(2);
+    require(first_runs == 3 && throwing_runs == 3 && following_runs == 2 && observed == 2,
+            "exception cleanup lost or duplicated a separately queued later epoch");
+    require(ryn::detail::Scheduler::current().epoch() == epoch + 1,
+            "resuming the queued observers introduced an extra epoch");
+    scope.dispose();
+    first_retry.set(2);
+    throwing_retry.set(2);
+    source.set(3);
+    require(first_runs == 3 && throwing_runs == 3 && following_runs == 2,
+            "resumed later-epoch observers did not dispose");
+}
+
+void flush_exception_preserves_other_phases() {
+    ryn::Signal<int> source{0};
+    std::shared_ptr<ryn::detail::ObserverNode> binding;
+    int memo_runs{};
+    int binding_runs{};
+    int effect_runs{};
+    int observed{};
+    const auto memo = ryn::detail::observe(ryn::detail::ObserverPhase::memo, [&] {
+        ++memo_runs;
+        if (source.get() == 1) {
+            binding->deactivate();
+            throw InitialFailure{93};
+        }
+    });
+    binding = ryn::detail::observe(ryn::detail::ObserverPhase::binding, [&] {
+        static_cast<void>(source.get());
+        ++binding_runs;
+    });
+    const auto effect = ryn::detail::observe(ryn::detail::ObserverPhase::effect, [&] {
+        observed = source.get();
+        ++effect_runs;
+    });
+    bool original_exception{};
+    try {
+        source.set(1);
+    } catch (const InitialFailure& error) {
+        original_exception = error.payload == 93;
+    }
+    require(original_exception && memo_runs == 2 && binding_runs == 1 && effect_runs == 1 && !binding->active(),
+            "memo failure executed later phases or lost foreign disposal");
+    source.set(2);
+    require(memo_runs == 3 && binding_runs == 1 && effect_runs == 2 && observed == 2,
+            "memo failure replayed old work or discarded another phase's pending observer");
+    memo->deactivate();
+    effect->deactivate();
+    source.set(3);
+    require(memo_runs == 3 && binding_runs == 1 && effect_runs == 2,
+            "cross-phase failure prevented final observer cleanup");
+}
+
 void subscription_growth_failure() {
     std::size_t failures{};
     for (std::size_t population = 1; population <= 16; ++population) {
@@ -347,11 +514,19 @@ int main(int argc, char** argv) {
                 std::cout << "PASS " << name << '\n';
             }
         };
-        run("order", subscription_order);
+        run("order", [] {
+            subscription_order();
+            subscription_slot_reuse();
+        });
         run("read_write", read_write_order);
         run("dynamic", dynamic_disposal);
         run("lifetime", source_and_scope_lifetime);
         run("initial_exception", initial_exception);
+        run("flush_exception", [] {
+            flush_exception();
+            flush_exception_preserves_later_epochs();
+            flush_exception_preserves_other_phases();
+        });
         run("allocation", subscription_growth_failure);
         require(matched, "unknown case name");
     } catch (const std::exception& error) {

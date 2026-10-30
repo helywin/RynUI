@@ -15,12 +15,12 @@ worker 的 source-only 交接保留在 evidence/source-handoff.md。父线程现
 
 ## 3. 平台通用：证据后的最小算法改造
 
-- [ ] 3.1 只有 2.1/2.2 有证据支持时才选择保留稳定依赖或稳定句柄的最小 Reactive 改造，保持异常/销毁/动态依赖/重入合同并通过相应 CTest；若证据不支持改造，记录独审认可的不改决定，不能仅凭源码准备勾选。
-- [ ] 3.2 只有 2.1/2.2 有证据支持时才选择共同 effect dirty 的统一合并或有序归并，保持两组并集、上传失败重试、owner/epoch 与 packed bytes 合同并通过相应 CTest；无收益证据时记录不改决定。
+- [x] 3.1 只有 2.1/2.2 有证据支持时才选择保留稳定依赖或稳定句柄的最小 Reactive 改造，保持异常/销毁/动态依赖/重入合同并通过相应 CTest；若证据不支持改造，记录独审认可的不改决定，不能仅凭源码准备勾选。
+- [x] 3.2 只有 2.1/2.2 有证据支持时才选择共同 effect dirty 的统一合并或有序归并，保持两组并集、上传失败重试、owner/epoch 与 packed bytes 合同并通过相应 CTest；无收益证据时记录不改决定。
 
 ## 4. 平台通用：回归与独立审查
 
-- [ ] 4.1 父线程执行正式 Debug/Release HEADLESS CTest（含现有 signal/memo/batch/scope/source lifecycle、rounded effect 和 scene backend 合同），至少三轮同口径前后测量并保存全部结果；不得用历史 100/101 或 Gallery 波动计算本变更收益。
+- [x] 4.1 父线程执行正式 Debug/Release HEADLESS CTest（含现有 signal/memo/batch/scope/source lifecycle、rounded effect 和 scene backend 合同），至少三轮同口径前后测量并保存全部结果；不得用历史 100/101 或 Gallery 波动计算本变更收益。
 - [ ] 4.2 独立源码/证据审查完成，检查工作量真值、异常/销毁/重入/失败恢复与不可观测项；整理实际测试命令、平台、SHA、残余风险后由父分阶段提交并立即安全推送，不主动 archive。
 
 ## 5. OS 与真实设备边界

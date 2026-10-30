@@ -1,0 +1,12 @@
+﻿{
+    "stage":  "subscription-build",
+    "label":  "resume",
+    "configuration":  "Debug",
+    "component":  "reactive",
+    "iterations":  64,
+    "warmup":  8,
+    "round":  1,
+    "exit":  0,
+    "seconds":  2.8123608,
+    "finishedUtc":  "2026-10-30T06:17:30.7944625Z"
+}

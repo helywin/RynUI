@@ -1,0 +1,12 @@
+﻿{
+    "stage":  "build",
+    "label":  "after",
+    "configuration":  "Debug",
+    "component":  "reactive",
+    "iterations":  64,
+    "warmup":  8,
+    "round":  1,
+    "exit":  0,
+    "seconds":  181.4506021,
+    "finishedUtc":  "2026-10-30T06:25:48.8080937Z"
+}

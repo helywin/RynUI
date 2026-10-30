@@ -458,13 +458,16 @@ bool RoundedEffectStore::update_material(RoundedEffectId id, RoundedEffectMateri
         return false;
     }
     const bool visibility_changed = drawable(*slot.instance) != drawable(candidate);
+    if (!visibility_changed && slot.packed_index.has_value()) {
+        // Prepare metadata before publishing the otherwise nonthrowing update.
+        material_dirty_ranges_.append({*slot.packed_index, 1});
+    }
     slot.instance->material = material;
     ++diagnostics_.material_updates;
     if (visibility_changed) {
         compact_dirty_ = true;
     } else if (slot.packed_index.has_value()) {
         packed_instances_[*slot.packed_index].material = material;
-        mark_dirty(material_dirty_ranges_, {*slot.packed_index, 1});
     }
     return true;
 }
@@ -477,22 +480,28 @@ bool RoundedEffectStore::update_geometry(RoundedEffectId id, RoundedEffectGeomet
     if (slot.instance->geometry == geometry) {
         return false;
     }
-    slot.instance->geometry = std::move(geometry);
-    ++diagnostics_.geometry_updates;
+    bool needs_compaction = true;
+    bool patch_packed = false;
     if (!compact_dirty_ && compact_clip_.has_value()) {
         const bool was_packed = slot.packed_index.has_value();
         const bool remains_drawable =
-            drawable(*slot.instance) &&
-            !empty(intersect_effect_bounds(rounded_effect_bounds(*slot.instance), *compact_clip_));
+            drawable(candidate) && !empty(intersect_effect_bounds(rounded_effect_bounds(candidate), *compact_clip_));
         if (was_packed == remains_drawable) {
-            if (was_packed) {
-                packed_instances_[*slot.packed_index].geometry = slot.instance->geometry;
-                mark_dirty(geometry_dirty_ranges_, {*slot.packed_index, 1});
-            }
-            return true;
+            needs_compaction = false;
+            patch_packed = was_packed;
         }
     }
-    compact_dirty_ = true;
+    if (patch_packed) {
+        geometry_dirty_ranges_.append({*slot.packed_index, 1});
+    }
+    slot.instance->geometry = std::move(geometry);
+    ++diagnostics_.geometry_updates;
+    if (patch_packed) {
+        packed_instances_[*slot.packed_index].geometry = slot.instance->geometry;
+    }
+    if (needs_compaction) {
+        compact_dirty_ = true;
+    }
     return true;
 }
 
@@ -531,7 +540,7 @@ bool RoundedEffectStore::compact(runtime::Rect window_clip) {
     material_dirty_ranges_.clear();
     geometry_dirty_ranges_.clear();
     if (!packed_instances_.empty()) {
-        geometry_dirty_ranges_.push_back({
+        geometry_dirty_ranges_.append({
             0,
             static_cast<std::uint32_t>(packed_instances_.size()),
         });
@@ -560,11 +569,11 @@ std::span<const std::byte> RoundedEffectStore::bytes(RoundedEffectInstanceRange 
 }
 
 std::span<const RoundedEffectInstanceRange> RoundedEffectStore::material_dirty_ranges() const noexcept {
-    return material_dirty_ranges_;
+    return material_dirty_ranges_.ranges();
 }
 
 std::span<const RoundedEffectInstanceRange> RoundedEffectStore::geometry_dirty_ranges() const noexcept {
-    return geometry_dirty_ranges_;
+    return geometry_dirty_ranges_.ranges();
 }
 
 void RoundedEffectStore::clear_dirty_ranges() noexcept {
@@ -619,30 +628,6 @@ void RoundedEffectStore::advance_generation(Slot& slot) noexcept {
     if (slot.generation == 0) {
         slot.generation = 1;
     }
-}
-
-void RoundedEffectStore::mark_dirty(std::vector<RoundedEffectInstanceRange>& ranges, RoundedEffectInstanceRange range) {
-    if (range.count == 0) {
-        return;
-    }
-    ranges.push_back(range);
-    std::ranges::sort(ranges, {}, &RoundedEffectInstanceRange::first);
-    std::size_t merged_count = 0;
-    for (const auto candidate : ranges) {
-        if (merged_count == 0) {
-            ranges[merged_count++] = candidate;
-            continue;
-        }
-        auto& prior = ranges[merged_count - 1];
-        const auto prior_end = static_cast<std::uint64_t>(prior.first) + prior.count;
-        const auto candidate_end = static_cast<std::uint64_t>(candidate.first) + candidate.count;
-        if (candidate.first <= prior_end) {
-            prior.count = static_cast<std::uint32_t>(std::max(prior_end, candidate_end) - prior.first);
-        } else {
-            ranges[merged_count++] = candidate;
-        }
-    }
-    ranges.resize(merged_count);
 }
 
 void RoundedEffectStore::validate_clip(runtime::Rect clip) {

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -22,14 +24,35 @@ public:
     ReactiveSource& operator=(const ReactiveSource&) = delete;
     virtual ~ReactiveSource();
 
-    void subscribe(const std::shared_ptr<ObserverNode>& observer);
-    void unsubscribe(const ObserverNode* observer) noexcept;
-
 protected:
     void notify_observers();
 
 private:
-    std::vector<std::weak_ptr<ObserverNode>> subscribers_;
+    friend class ObserverNode;
+
+    static constexpr std::size_t invalid_slot = std::numeric_limits<std::size_t>::max();
+
+    struct Subscription final {
+        std::size_t index{invalid_slot};
+        std::uint64_t generation{};
+    };
+
+    struct SubscriberSlot final {
+        std::weak_ptr<ObserverNode> observer;
+        const ObserverNode* identity{};
+        std::size_t previous{invalid_slot};
+        std::size_t next{invalid_slot};
+        std::uint64_t generation{1};
+    };
+
+    [[nodiscard]] Subscription subscribe(const std::shared_ptr<ObserverNode>& observer);
+    void unsubscribe(Subscription subscription, const ObserverNode* observer) noexcept;
+    void release_slot(std::size_t index) noexcept;
+
+    std::vector<SubscriberSlot> subscribers_;
+    std::size_t first_subscriber_{invalid_slot};
+    std::size_t last_subscriber_{invalid_slot};
+    std::size_t free_slot_{invalid_slot};
 };
 
 class ObserverNode final : public std::enable_shared_from_this<ObserverNode> {
@@ -52,9 +75,14 @@ private:
     void track(ReactiveSource& source);
     void forget(ReactiveSource& source) noexcept;
 
+    struct Dependency final {
+        ReactiveSource* source{};
+        ReactiveSource::Subscription subscription;
+    };
+
     ObserverPhase phase_;
     std::function<void()> callback_;
-    std::vector<ReactiveSource*> dependencies_;
+    std::vector<Dependency> dependencies_;
     bool active_{true};
     bool queued_{false};
 };

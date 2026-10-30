@@ -1,0 +1,12 @@
+﻿{
+    "stage":  "subscription-test",
+    "label":  "resume",
+    "configuration":  "Debug",
+    "component":  "reactive",
+    "iterations":  64,
+    "warmup":  8,
+    "round":  1,
+    "exit":  0,
+    "seconds":  0.18622999999999998,
+    "finishedUtc":  "2026-10-30T06:17:38.9474110Z"
+}

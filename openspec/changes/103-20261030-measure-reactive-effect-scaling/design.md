@@ -49,7 +49,7 @@
 - [时钟和 allocator 干扰] → 保留所有样本，输出实际工作量、配置与 p95；短默认值仅用于方便运行，不等于稳定性能结论。
 - [观察范围有限] → subscriber 扫描次数、排序比较次数、纯 planning 时间均不可观测；现有输出足以做初步扩展性 baseline，精确归因另需内部计数。
 - [Recording 成本遮挡] → 分列 store/effect sync/transaction commit；保持同机同数据、同 instrumentation 的前后比较。
-- [未编译代码] → 本轮明确禁止构建/运行，checkbox 全部不勾，父正式验证后才形成完成证据。
+- [源码交接边界] → 首批 worker 禁止构建/运行，原交接保持 source-only；后续父线程仅按正式验证与 evidence 逐项勾选。
 
 ## Migration Plan
 

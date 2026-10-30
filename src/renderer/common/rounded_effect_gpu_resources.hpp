@@ -61,8 +61,8 @@ public:
 
 private:
     void synchronize_validated(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics);
-    static void append_dirty_range(std::vector<graphics::RoundedEffectInstanceRange>& ranges,
-                                   graphics::RoundedEffectInstanceRange range);
+    void merge_dirty_ranges(std::span<const graphics::RoundedEffectInstanceRange> geometry,
+                            std::span<const graphics::RoundedEffectInstanceRange> material);
     [[nodiscard]] static std::uint32_t next_capacity(std::size_t required);
     void convert_range(std::span<const graphics::RoundedEffectInstance> source,
                        graphics::RoundedEffectInstanceRange range, SceneDeviceMetrics metrics);

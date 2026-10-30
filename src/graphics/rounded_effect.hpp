@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/dirty_ranges.hpp"
 #include "graphics/glyph_scene.hpp"
 #include "runtime/geometry.hpp"
 
@@ -173,7 +174,6 @@ private:
     [[nodiscard]] Slot& require_slot(RoundedEffectId id);
     [[nodiscard]] const Slot& require_slot(RoundedEffectId id) const;
     static void advance_generation(Slot& slot) noexcept;
-    static void mark_dirty(std::vector<RoundedEffectInstanceRange>& ranges, RoundedEffectInstanceRange range);
     static void validate_clip(runtime::Rect clip);
     void note_capacity_growth(std::size_t slots_before, std::size_t order_before, std::size_t packed_before) noexcept;
 
@@ -181,8 +181,8 @@ private:
     std::vector<std::uint32_t> free_slots_;
     std::vector<RoundedEffectId> draw_order_;
     std::vector<RoundedEffectInstance> packed_instances_;
-    std::vector<RoundedEffectInstanceRange> material_dirty_ranges_;
-    std::vector<RoundedEffectInstanceRange> geometry_dirty_ranges_;
+    DirtyRangeAccumulator<RoundedEffectInstanceRange> material_dirty_ranges_;
+    DirtyRangeAccumulator<RoundedEffectInstanceRange> geometry_dirty_ranges_;
     std::optional<runtime::Rect> compact_clip_;
     RoundedEffectStoreDiagnostics diagnostics_;
     bool compact_dirty_{true};

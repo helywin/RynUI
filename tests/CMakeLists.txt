@@ -686,9 +686,18 @@ add_test(NAME rynui.reactive_fanout_contract
 add_executable(rynui_reactive_subscription_tests reactive_subscription_tests.cpp)
 rynui_configure_cpp_target(rynui_reactive_subscription_tests)
 target_link_libraries(rynui_reactive_subscription_tests PRIVATE rynui_reactive)
-foreach(subscription_case IN ITEMS order read_write dynamic lifetime initial_exception allocation)
+foreach(subscription_case IN ITEMS order read_write dynamic lifetime initial_exception flush_exception allocation)
     add_test(NAME rynui.reactive_subscription_${subscription_case}
         COMMAND rynui_reactive_subscription_tests ${subscription_case})
+endforeach()
+
+add_executable(rynui_effect_dirty_retry_tests effect_dirty_retry_tests.cpp)
+rynui_configure_cpp_target(rynui_effect_dirty_retry_tests)
+target_include_directories(rynui_effect_dirty_retry_tests PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(rynui_effect_dirty_retry_tests PRIVATE rynui_graphics)
+foreach(effect_dirty_case IN ITEMS material geometry)
+    add_test(NAME rynui.effect_dirty_retry_${effect_dirty_case}
+        COMMAND rynui_effect_dirty_retry_tests ${effect_dirty_case})
 endforeach()
 
 if(TARGET rynui_renderer_recording)
