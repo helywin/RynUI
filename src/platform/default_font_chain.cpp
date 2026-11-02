@@ -296,6 +296,15 @@ void append_unique(std::vector<FontDescriptor>& descriptors, FontDescriptor desc
             }
         }
     }
+    // Text/CJK families do not cover the OS symbol and emoji repertoire. Keep
+    // both fallbacks: one covered probe (including a custom smiley) cannot stand
+    // in for their full repertoire. FreeType renders their outline coverage into
+    // the existing grayscale atlas; no color-font pipeline is required.
+    for (const auto family : {L"Segoe UI Symbol", L"Segoe UI Emoji"}) {
+        if (auto resolved = resolve_family(*collection.get(), family)) {
+            append_unique(result, std::move(*resolved));
+        }
+    }
     return result;
 }
 

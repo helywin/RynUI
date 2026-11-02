@@ -1571,7 +1571,7 @@ add_test(NAME rynui.font_runtime COMMAND rynui_font_runtime_tests)
 
 add_executable(rynui_default_font_chain_tests default_font_chain_tests.cpp)
 rynui_configure_cpp_target(rynui_default_font_chain_tests)
-target_link_libraries(rynui_default_font_chain_tests PRIVATE rynui_default_fonts)
+target_link_libraries(rynui_default_font_chain_tests PRIVATE rynui_default_fonts rynui_text)
 target_compile_definitions(
     rynui_default_font_chain_tests
     PRIVATE

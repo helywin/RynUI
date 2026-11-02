@@ -21,7 +21,7 @@
 
 ## 4. Windows 原生验收
 
-- [ ] 4.1 补全可光栅的系统emoji fallback，运行default_font_chain和实际shape/raster回归，保持正文Unicode/字素统计与无字体文件普通启动。
+- [x] 4.1 补全可光栅的系统emoji fallback，运行default_font_chain和实际shape/raster回归，保持正文Unicode/字素统计与无字体文件普通启动。
 - [ ] 4.2 接入并验证SDL系统I-beam资源生命周期；用Release窗口检查输入区、非输入区及退役/退出行为。
 - [ ] 4.3 正式windows-msvc Release重建最终Gallery（含内嵌shader），短暂打开检查本批25项场景；只记录实测DPI/平台，不代表Linux或系统IME/AT。
 

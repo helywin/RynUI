@@ -1,4 +1,5 @@
 #include "platform/default_font_chain.hpp"
+#include "text/text_engine.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -131,6 +132,52 @@ void test_custom_font_precedes_platform_defaults() {
             "custom UI font chain lost Latin coverage");
     require(static_cast<bool>(fonts->find_glyph(identities, U'中', std::nullopt)),
             "custom UI font chain lost system or bundled CJK fallback");
+}
+
+void test_windows_system_emoji_rendering() {
+#if defined(_WIN32)
+    auto created = ryn::font::FontRuntime::create();
+    require(static_cast<bool>(created), "Font Runtime initialization failed");
+    auto fonts = std::move(created.runtime);
+    ryn::detail::DefaultFontChainRequest request;
+    request.raster = {14, 1.0F};
+    // Ordinary application startup has no deployed validation font files.
+    auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    require(static_cast<bool>(chain) && !chain.uses_bundled_fallbacks,
+            "Windows system-only UI font chain did not load");
+    ryn::text::TextEngine engine{*fonts};
+    const auto verify = [&](const std::vector<ryn::font::FontIdentity>& identities) {
+        for (const auto scalar : {U'\U0001F642', U'\U0001F469', U'\U0001F4BB'}) {
+            const auto selected = fonts->find_glyph(identities, scalar, std::nullopt);
+            require(selected && !selected.glyph.used_replacement && selected.glyph.resolved_codepoint == scalar,
+                    "Windows system font chain did not select an exact emoji glyph");
+            const auto raster = fonts->rasterize(selected.glyph.font, selected.glyph.glyph_id);
+            require(raster && raster.glyph && raster.glyph->width > 0 && raster.glyph->height > 0 &&
+                        std::ranges::any_of(raster.glyph->coverage, [](std::uint8_t value) { return value > 0; }),
+                    "Windows system emoji did not produce visible grayscale atlas coverage");
+        }
+        for (const auto& source : {ryn::String{u8"中文 / RynUI 🙂"}, ryn::String{u8"é🙂中文"},
+                                   ryn::String{u8"אבג مرحبا 👩‍💻"}}) {
+            const auto shaped = engine.shape(source.view(), identities);
+            require(shaped && shaped.text.replacement_count == 0 &&
+                        shaped.text.normalized_size_bytes == source.size_bytes(),
+                    "Windows system fallback replaced or changed valid Gallery text");
+            require(shaped.text.scalars == ryn::text::decode_utf8(source.view()),
+                    "Windows emoji fallback changed the original Unicode scalars");
+            require(std::ranges::all_of(shaped.text.glyphs, [](const auto& glyph) { return glyph.glyph_id != 0; }),
+                    "Windows emoji shaping emitted a missing glyph");
+        }
+    };
+    verify(chain.identities());
+    for (const auto scale : {1.0F, 1.5F, 2.0F}) {
+        auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, scale);
+        for (const auto family : {ryn::SystemFontFamily::ui_sans, ryn::SystemFontFamily::ui_monospace}) {
+            verify(resolver(family, 400, false, 16));
+            verify(resolver(family, 700, false, 14));
+            verify(resolver(family, 400, true, 14));
+        }
+    }
+#endif
 }
 
 void test_invalid_custom_font_fails_fast() {
@@ -377,6 +424,7 @@ void test_custom_monospace_font_precedes_platform() {
 int main() {
     try {
         test_default_ui_font_chain();
+        test_windows_system_emoji_rendering();
         test_monospace_chain_resolution();
         test_weight_and_slant_face_selection();
         test_injected_styled_faces();
