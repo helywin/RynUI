@@ -1,7 +1,9 @@
 #include "component/feedback_component.hpp"
 #include "support/input_fixture.hpp"
+#include <cmath>
 #include <iostream>
 #include <limits>
+#include <numbers>
 
 namespace {
 using namespace ryn;
@@ -73,6 +75,18 @@ void alert_controlled() {
     check(!f.services.feedback().alert_snapshot(id).has_description && action_mounts == 1 &&
               f.services.feedback().alert_snapshot(id).close == initial.close,
           "Alert reactive update remounted slots");
+    const auto single_body = bounds(f, initial.body);
+    const auto single_message = bounds(f, initial.message);
+    const auto single_icon = bounds(f, initial.icon);
+    check(single_body.height == single_message.height &&
+              std::abs(single_message.y + single_message.height / 2 - single_icon.y - single_icon.height / 2) < .01F &&
+              f.nodes.require(f.services.components().root(initial.description)).out_of_flow,
+          "empty Alert description retained a phantom line or displaced the message from its icon");
+    description.set(String{u8"Read details again / 详情"});
+    f.synchronize();
+    check(!f.nodes.require(f.services.components().root(initial.description)).out_of_flow &&
+              bounds(f, initial.description).y >= bounds(f, initial.message).y + bounds(f, initial.message).height,
+          "restored Alert description lost its retained vertical layout");
     visible.set(false);
     f.synchronize();
     check(!f.services.focus().state().focused && !f.services.components().branch_active(id),
@@ -251,6 +265,51 @@ void progress_geometry_and_validation() {
     check(rejected, "Progress accepted nonfinite percent");
     f.services.destroy(id);
     check(f.scene.size() == 0 && !f.services.next_frame_deadline(), "Progress teardown retained scene");
+}
+
+void dashboard_rail_and_progress_share_round_caps() {
+    Fixture f;
+    Signal<float> percent{0};
+    f.services.mount(Content{[&] { Progress(ProgressProps{}.type(ProgressType::Dashboard).percent(percent)); }});
+    f.synchronize();
+    const auto id = f.services.feedback().progress().front();
+    const auto component_count = f.services.components().component_count();
+    const auto live = f.services.rounded_effects().live_count();
+    const auto remaining = resolve_theme({}).progress().colors.remaining;
+    const auto rail = std::ranges::find_if(f.services.rounded_effects().packed_instances(), [&](const auto& effect) {
+        return effect.material.color == remaining && effect.geometry.kind == graphics::RoundedEffectKind::arc;
+    });
+    check(rail != f.services.rounded_effects().packed_instances().end(), "Dashboard rail is not a finite arc");
+    const auto saved_rail = *rail;
+    const auto arc = std::get<graphics::RoundedArcPath>(rail->geometry.path);
+    const auto shape = rail->geometry.shape;
+    const auto radius = shape.radius;
+    const runtime::Point start{shape.rect.x + radius + radius * std::cos(arc.start_radians),
+                               shape.rect.y + radius + radius * std::sin(arc.start_radians)};
+    check(graphics::rounded_effect_coverage({start.x, start.y + rail->geometry.outline_width / 4}, *rail) > 0.99F,
+          "Dashboard background cap is still cut at its centerline endpoint height");
+    check(std::ranges::count_if(f.services.rounded_effects().packed_instances(),
+                                [&](const auto& effect) {
+                                    return effect.material.color == remaining && effect.material.opacity > 0;
+                                }) == 1,
+          "Dashboard rail duplicated translucent arc samples");
+    percent.set(25);
+    f.synchronize();
+    const auto foreground =
+        std::ranges::find_if(f.services.rounded_effects().packed_instances(), [&](const auto& effect) {
+            return effect.material.color == f.services.feedback().progress_snapshot(id).color;
+        });
+    check(foreground != f.services.rounded_effects().packed_instances().end() &&
+              foreground->geometry.kind == graphics::RoundedEffectKind::arc &&
+              foreground->geometry.shape == saved_rail.geometry.shape &&
+              foreground->geometry.outline_width == saved_rail.geometry.outline_width,
+          "Dashboard foreground does not share its rail centerline/caps");
+    const auto progress = std::get<graphics::RoundedArcPath>(foreground->geometry.path);
+    check(progress.start_radians == arc.start_radians &&
+              std::abs(progress.sweep_radians - arc.sweep_radians / 4) < 0.0001F &&
+              f.services.components().component_count() == component_count &&
+              f.services.rounded_effects().live_count() == live,
+          "Dashboard progress changed topology or lost its finite angular range");
 }
 
 void spin_input_lifetime_and_nesting() {
@@ -452,6 +511,7 @@ int main() {
         hidden_alert_reflows_siblings();
         spin_retained_and_motion();
         progress_geometry_and_validation();
+        dashboard_rail_and_progress_share_round_caps();
         spin_input_lifetime_and_nesting();
         themes_slots_and_narrow_layout();
         invalid_mounts_and_close_retirement();

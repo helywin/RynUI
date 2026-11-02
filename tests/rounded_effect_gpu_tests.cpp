@@ -6,6 +6,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -200,6 +201,64 @@ void test_zero_blur_pixel_coverage_and_quadrant_seams() {
     }
 }
 
+void test_path_packing_coverage_bounds_and_transparency() {
+    using namespace ryn;
+    std::vector<graphics::RoundedEffectInstance> paths;
+    paths.push_back(graphics::make_arc_effect({80.25F, 80.5F}, 32, 6, 127.5F, 285, Color{0, 0, 0, 0.3F}));
+    paths.push_back(graphics::make_dashed_outline_effect({{20.25F, 30.5F, 100, 40}, 8}, 2, {3, 3, 0.75F},
+                                                         Color{0.1F, 0.4F, 0.9F, 0.85F}));
+    paths.push_back(graphics::make_dashed_outline_effect(
+        {{20.25F, 30.5F, 100, 40}, 8}, 2, {3, 3, -2.25F, {true, false, true, false}}, Color{0.1F, 0.4F, 0.9F, 0.85F}));
+    for (unsigned side = 0; side < 4; ++side) {
+        const auto horizontal = side < 2;
+        paths.push_back(graphics::make_tooltip_fill_effect(
+            {{20.25F, 30.5F, horizontal ? 80.0F : 40.0F, horizontal ? 40.0F : 80.0F}, 6},
+            {static_cast<graphics::TooltipArrowSide>(side), 40, 8, 8}, Color{0, 0, 0, 0.85F}));
+    }
+    for (auto& path : paths) {
+        path.geometry.translation = {0.125F, 0.375F};
+        path.geometry.ancestor_clip = graphics::EffectClip{7, {0, 0, 115, 105}};
+        path.material.opacity = 0.7F;
+        for (const auto scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+            const detail::SceneDeviceMetrics metrics{320, 280, scale};
+            const auto packed = detail::pack_rounded_effect_instance(path, metrics);
+            const auto bounds = graphics::rounded_effect_bounds(path, 1 / scale);
+            const auto left = (packed.clip_rect[0] + 1) * metrics.pixel_width / 2;
+            const auto top = (1 - packed.clip_rect[1]) * metrics.pixel_height / 2;
+            const auto right = left + packed.clip_rect[2] * metrics.pixel_width / 2;
+            const auto bottom = top - packed.clip_rect[3] * metrics.pixel_height / 2;
+            require(near(packed.effect_params[1], path.geometry.outline_width * scale) &&
+                        packed.material_params[1] == 1,
+                    "path stroke or AA width lost its physical-unit packing");
+            for (auto y = static_cast<int>(bounds.y * scale) - 1;
+                 y <= static_cast<int>((bounds.y + bounds.height) * scale) + 1; ++y) {
+                for (auto x = static_cast<int>(bounds.x * scale) - 1;
+                     x <= static_cast<int>((bounds.x + bounds.width) * scale) + 1; ++x) {
+                    const runtime::Point pixel{x + 0.5F, y + 0.5F};
+                    const runtime::Point logical{pixel.x / scale, pixel.y / scale};
+                    const auto clipped = logical.x < 0 || logical.y < 0 || logical.x > 115 || logical.y > 105;
+                    const auto expected = clipped ? 0 : graphics::rounded_effect_coverage(logical, path, 1 / scale);
+                    const auto actual = detail::rounded_effect_gpu_coverage_reference(pixel, packed);
+                    require(near(actual, expected, 0.0008F),
+                            "packed finite path differs from logical geometry or hard clip");
+                    if (actual > 0.001F) {
+                        require(pixel.x >= left - 0.001F && pixel.x <= right + 0.001F && pixel.y >= top - 0.001F &&
+                                    pixel.y <= bottom + 0.001F,
+                                "path has nonzero coverage outside submitted raster bounds");
+                    }
+                    const auto fragment = detail::rounded_effect_gpu_fragment_reference(pixel, packed);
+                    require(near(fragment[3], path.material.color.alpha() * 0.7F * actual) &&
+                                fragment[3] <= path.material.color.alpha() * 0.7F + 0.0001F,
+                            "path accumulated alpha through overlapping sub-shapes");
+                }
+            }
+        }
+    }
+    const auto empty = graphics::make_arc_effect({80, 80}, 32, 6, 127.5F, 0, Color{0, 0, 0});
+    require(detail::pack_rounded_effect_instance(empty, {320, 280, 1}) == detail::RoundedEffectGpuInstance{},
+            "zero-sweep path still submitted a raster footprint");
+}
+
 } // namespace
 
 int main() {
@@ -211,6 +270,7 @@ int main() {
         test_straight_alpha_and_overlapping_layer_contract();
         test_invalid_metrics_rejected_and_clipped_pack_is_degenerate();
         test_zero_blur_pixel_coverage_and_quadrant_seams();
+        test_path_packing_coverage_bounds_and_transparency();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

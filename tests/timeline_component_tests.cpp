@@ -1,5 +1,6 @@
 #include "support/timeline_fixture.hpp"
 #include "component/select_component.hpp"
+#include "support/bundled_icon_checks.hpp"
 #include <ryn/flex.hpp>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
@@ -195,6 +196,58 @@ void empty_flow() {
     sync(f);
     check(f.services.timeline().snapshot(id).items[0].viewport == item, "flow recovery remounted item");
 }
+
+void loading_icon_motion() {
+    Fixture f;
+    Signal<bool> loading{true};
+    Signal<bool> visible{true};
+    f.services.mount(Content{[&] {
+        Timeline(TimelineProps{}.visible(visible), {TimelineItem{u8"loading", u8"Check project"}.loading(loading)});
+    }});
+    sync(f);
+    const auto owner = f.services.timeline().mounted().front();
+    const auto region = f.services.timeline().snapshot(owner).items.front().icon;
+    const auto icon = ryn_test::require_bundled_icon(f.services, region, IconName::LoadingOutlined);
+    const auto initial = f.services.text().icon_snapshot(icon);
+    const auto count = f.services.components().component_count();
+    const auto& metric = f.services.components().theme_scope(owner)->snapshot().timeline().metrics;
+    check(initial.spin && !initial.layers.empty() && !f.services.next_frame_deadline() &&
+              bounds(f, region).height == metric.icon_size,
+          "Timeline loading did not use the complete semantic icon box under reduced motion");
+    for (const auto layer : initial.layers) {
+        check(f.scene.primitive(layer).instances.count > 0,
+              "Timeline loading icon did not publish its actual raster glyph");
+    }
+    f.services.set_motion_preference(animation::MotionPreference::normal);
+    sync(f);
+    check(f.services.next_frame_deadline().has_value(), "visible Timeline loading icon did not animate");
+    static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(250000)));
+    sync(f);
+    check(f.services.text().icon_snapshot(icon).angle_degrees > 0,
+          "Timeline loading animation did not rotate the retained icon");
+    check(f.services.layout_and_synchronize({600, 800}, {0, 500, 600, 100}), "offscreen Timeline sync failed");
+    check(!f.services.next_frame_deadline() && !f.services.text().icon_snapshot(icon).spin,
+          "offscreen Timeline loading kept an animation deadline");
+    sync(f);
+    check(f.services.next_frame_deadline().has_value(), "onscreen Timeline loading failed to resume");
+    loading.set(false);
+    sync(f);
+    check(!f.services.next_frame_deadline(), "completed Timeline loading kept an animation deadline");
+    loading.set(true);
+    sync(f);
+    visible.set(false);
+    sync(f);
+    check(!f.services.next_frame_deadline(), "hidden Timeline loading kept an animation deadline");
+    visible.set(true);
+    sync(f);
+    check(f.services.components().component_count() == count &&
+              ryn_test::require_bundled_icon(f.services, region, IconName::LoadingOutlined) == icon,
+          "Timeline loading transitions remounted the icon");
+    check(f.services.destroy(owner), "Timeline loading teardown failed");
+    sync(f);
+    check(!f.services.next_frame_deadline() && f.services.animations().diagnostics().targets == 0,
+          "Timeline loading teardown leaked animation resources");
+}
 } // namespace
 
 int main() {
@@ -203,6 +256,7 @@ int main() {
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
     try {
+        loading_icon_motion();
         retained_layout();
         visual_status_and_material();
         empty_flow();

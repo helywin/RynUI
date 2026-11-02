@@ -10,6 +10,10 @@ using namespace ryn;
 using namespace ryn::input;
 using Fixture = ryn_test::input_component::Fixture;
 
+void publish_tooltip_theme(Signal<ThemeConfig>& theme, const ThemeConfig& config) {
+    theme.set(config);
+}
+
 void check(bool value, const char* message) {
     if (!value) {
         throw std::runtime_error(message);
@@ -395,9 +399,10 @@ void delayed_hover_and_focus() {
     check(f.services.text().scene_service().size() == scene_count, "Tooltip remounted text on show");
     const auto paint = f.services.components().paint_traversal();
     const auto popup = f.services.components().children(id)[1];
+    const auto commands = f.services.scene_composer().ordered_scene().commands();
     check(f.services.components().in_window_layer(paint.back().component) &&
-              f.services.components().parent(paint.back().component) == f.services.components().children(id)[2] &&
-              f.services.components().in_window_layer(popup),
+              f.services.components().in_window_layer(popup) && !commands.empty() &&
+              commands.back().kind == graphics::SceneDrawKind::glyph,
           "Tooltip text was not topmost");
     const auto quad_updates = f.services.surfaces().diagnostics();
     f.synchronize();
@@ -490,8 +495,10 @@ void controlled_disabled_and_reentrancy() {
 
 void theme_and_geometry_updates() {
     Fixture f;
-    ThemeConfig config;
-    Signal<ThemeConfig> theme{config};
+    auto config_storage = std::make_unique<ThemeConfig>();
+    auto& config = *config_storage;
+    auto theme_storage = std::make_unique<Signal<ThemeConfig>>(config);
+    auto& theme = *theme_storage;
     Signal<bool> arrow{true};
     int runs{};
     f.services.mount(Content{[&] {
@@ -517,28 +524,36 @@ void theme_and_geometry_updates() {
         return count;
     };
     const auto with_arrow = glyph_count();
+    const auto arrow_paths = [&] {
+        return std::ranges::count_if(f.services.rounded_effects().packed_instances(), [](const auto& effect) {
+            return effect.geometry.kind == graphics::RoundedEffectKind::tooltip_fill;
+        });
+    };
+    check(arrow_paths() == 1, "Tooltip arrow and body must share one fill path");
     config.tooltip.tokens.background = Color::rgba8(200, 0, 0);
     config.tooltip.tokens.text = Color::rgba8(255, 255, 0);
-    theme.set(config);
+    publish_tooltip_theme(theme, config);
     f.synchronize();
     check(f.nodes.require(node).measure_count == measures && runs == 1 &&
               f.services.surfaces().diagnostics().geometry_updates == before.geometry_updates,
           "Tooltip color update remeasured or remounted geometry");
     arrow.set(false);
     f.synchronize();
-    check(glyph_count() + 1 == with_arrow, "hiding arrow left stale drawn glyph");
+    check(glyph_count() == with_arrow && arrow_paths() == 0,
+          "hiding arrow changed title glyphs or left its old fill path");
     config.tooltip.tokens.max_width = dp(60);
-    theme.set(config);
+    publish_tooltip_theme(theme, config);
     f.synchronize();
     check(f.services.tooltip().snapshot(id).bounds.width <= 60 && f.nodes.require(node).measure_count > measures,
           "Tooltip maxWidth did not remeasure");
     config.typography.tokens.font_weight = 700;
-    theme.set(config);
+    publish_tooltip_theme(theme, config);
     f.synchronize();
     const auto popup_text = f.services.components().children(popup).front();
     check(f.services.text().resolved_typography(popup_text).font_weight == 700,
           "Tooltip ignored theme font weight update");
-    const auto normal = resolve_theme({});
+    static const ThemeConfig default_config;
+    const auto normal = resolve_theme(default_config);
     check(normal.tooltip().max_width == 250 && normal.tooltip().z_index_popup == normal.seed().z_index_popup_base + 70,
           "Ant Tooltip defaults wrong");
     ThemeConfig dark;
@@ -548,7 +563,7 @@ void theme_and_geometry_updates() {
     compact.algorithms = {ThemeAlgorithm::Compact};
     check(resolve_theme(compact).tooltip().metrics() != normal.tooltip().metrics(), "Compact Tooltip missing");
     const auto parent = resolve_theme(config);
-    check(resolve_theme({}, &parent).tooltip() == parent.tooltip(), "Tooltip inheritance missing");
+    check(resolve_theme(default_config, &parent).tooltip() == parent.tooltip(), "Tooltip inheritance missing");
     ThemeConfig component;
     component.tooltip.algorithm = true;
     component.tooltip.seed.control_height = dp(40);
@@ -564,6 +579,102 @@ void theme_and_geometry_updates() {
     f.synchronize(1, {0, 0, 1, 1});
     check(f.services.tooltip().snapshot(id).bounds.width <= 1, "tiny width was not clamped");
 }
+
+void joined_arrow_coverage_and_retirement() {
+    for (const auto alpha : {0.85F, 1.0F}) {
+        Fixture f;
+        auto config = std::make_unique<ThemeConfig>();
+        config->tooltip.tokens.background = Color{0, 0, 0, alpha};
+        config->tooltip.tokens.shadow = ShadowList{};
+        auto theme = std::make_unique<Signal<ThemeConfig>>(*config);
+        Signal<TooltipPlacement> placement{TooltipPlacement::Top};
+        Signal<bool> arrow{true};
+        f.services.mount(Content{[&] {
+            Theme(ThemeProps{}.config(*theme), ThemeContent{[&] {
+                      Tooltip(TooltipProps{}
+                                  .title(String{u8"seam"})
+                                  .open(true)
+                                  .trigger(TooltipTriggerMode::Manual)
+                                  .placement(placement)
+                                  .arrow(arrow)
+                                  .autoAdjustOverflow(false)
+                                  .layout(LayoutStyle{}.width(dp(80)).height(dp(24)).margin_left(dp(110)).margin_top(
+                                      dp(90))),
+                              TooltipTrigger{[] { Text(u8"anchor"); }});
+                  }});
+        }});
+        f.synchronize();
+        const auto id = f.services.tooltip().mounted().front();
+        const auto children = f.services.components().children(id);
+        const std::vector<runtime::ComponentId> retained(children.begin(), children.end());
+        for (const auto where :
+             {TooltipPlacement::Top, TooltipPlacement::Bottom, TooltipPlacement::Left, TooltipPlacement::Right}) {
+            placement.set(where);
+            f.synchronize();
+            const auto effects = f.services.rounded_effects().packed_instances();
+            const auto fill = std::ranges::find_if(effects, [](const auto& effect) {
+                return effect.geometry.kind == graphics::RoundedEffectKind::tooltip_fill;
+            });
+            check(fill != effects.end() && std::ranges::count_if(effects,
+                                                                 [](const auto& effect) {
+                                                                     return effect.geometry.kind ==
+                                                                            graphics::RoundedEffectKind::tooltip_fill;
+                                                                 }) == 1,
+                  "Tooltip joined path is missing or duplicated");
+            const auto path = std::get<graphics::TooltipArrowPath>(fill->geometry.path);
+            const auto body = fill->geometry.shape.rect;
+            const auto side = static_cast<unsigned>(path.side);
+            const runtime::Point seam{side == 2   ? body.x + body.width
+                                      : side == 3 ? body.x
+                                                  : body.x + path.center,
+                                      side == 0   ? body.y + body.height
+                                      : side == 1 ? body.y
+                                                  : body.y + path.center};
+            const runtime::Point normal{side == 2   ? 1.0F
+                                        : side == 3 ? -1.0F
+                                                    : 0,
+                                        side == 0   ? 1.0F
+                                        : side == 1 ? -1.0F
+                                                    : 0};
+            check(side == static_cast<unsigned>(where) / 3 && fill->material.color.alpha() == alpha,
+                  "Tooltip join has the wrong direction or transparency");
+            for (const auto offset : {-0.25F, 0.0F, 0.25F, 1.0F}) {
+                const auto coverage =
+                    graphics::rounded_effect_coverage({seam.x + normal.x * offset, seam.y + normal.y * offset}, *fill);
+                check(std::abs(coverage - 1) < 0.0001F, "Tooltip body/arrow base is still a partially covered seam");
+            }
+            check(std::ranges::none_of(
+                      f.services.scene_composer().ordered_scene().commands(),
+                      [&](const auto& command) {
+                          if (command.kind != graphics::SceneDrawKind::quad) {
+                              return false;
+                          }
+                          for (std::uint32_t i = 0; i < command.instance_count; ++i) {
+                              const auto& quad = f.services.surfaces().instances().at(command.first_instance + i);
+                              if (quad.opacity > 0 && quad.color[3] > 0 && quad.bounds[2] > 0 && quad.bounds[3] > 0) {
+                                  return true;
+                              }
+                          }
+                          return false;
+                      }),
+                  "Tooltip still overlays a separate body Quad below its translucent joined fill");
+            check(std::equal(retained.begin(), retained.end(), f.services.components().children(id).begin()),
+                  "Tooltip placement remounted retained content/arrow regions");
+        }
+        arrow.set(false);
+        f.synchronize();
+        check(std::ranges::none_of(
+                  f.services.rounded_effects().packed_instances(),
+                  [](const auto& effect) { return effect.geometry.kind == graphics::RoundedEffectKind::tooltip_fill; }),
+              "disabled Tooltip arrow left stale joined geometry");
+        arrow.set(true);
+        f.synchronize();
+        check(std::equal(retained.begin(), retained.end(), f.services.components().children(id).begin()),
+              "Tooltip arrow visibility replaced retained regions");
+        check(f.services.destroy(id) && f.services.surfaces().size() == 0 && f.scene.size() == 0,
+              "Tooltip joined fill retirement leaked resources");
+    }
+}
 } // namespace
 
 int main() {
@@ -573,6 +684,7 @@ int main() {
         delayed_hover_and_focus();
         controlled_disabled_and_reentrancy();
         theme_and_geometry_updates();
+        joined_arrow_coverage_and_retirement();
         rich_title_and_actions();
         context_composition_and_controlled_click();
         nested_and_destroyed_trigger_actions();

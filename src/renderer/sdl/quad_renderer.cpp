@@ -30,7 +30,7 @@ ShaderSelection select_shader_format(SDL_GPUDevice* device) {
 }
 
 SDL_GPUShader* create_shader(SDL_GPUDevice* device, std::string_view filename, const char* entrypoint,
-                             SDL_GPUShaderFormat format, SDL_GPUShaderStage stage) {
+                             SDL_GPUShaderFormat format, SDL_GPUShaderStage stage, Uint32 uniform_count = 0) {
     const auto code = builtin_shader_bytes(filename);
     SDL_GPUShaderCreateInfo info{};
     info.code_size = code.size();
@@ -38,6 +38,7 @@ SDL_GPUShader* create_shader(SDL_GPUDevice* device, std::string_view filename, c
     info.entrypoint = entrypoint;
     info.format = format;
     info.stage = stage;
+    info.num_uniform_buffers = uniform_count;
     return SDL_CreateGPUShader(device, &info);
 }
 
@@ -56,7 +57,7 @@ SdlQuadRenderer::SdlQuadRenderer(PlatformState& platform, bool debug_mode)
     shader_format_ = selection.name;
 
     auto* vertex_shader = create_shader(device, std::string("quad.vertex.") + selection.extension, "VSMain",
-                                        selection.format, SDL_GPU_SHADERSTAGE_VERTEX);
+                                        selection.format, SDL_GPU_SHADERSTAGE_VERTEX, 1);
     if (vertex_shader == nullptr) {
         throw std::runtime_error(sdl_error("Failed to create Quad vertex shader"));
     }
@@ -250,6 +251,8 @@ runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame(animation::Animatio
         return runtime::FrameSubmissionResult::deferred;
     }
 
+    const auto viewport = quad_viewport_uniform(width, height);
+    SDL_PushGPUVertexUniformData(command, 0, &viewport, sizeof(viewport));
     SDL_GPUColorTargetInfo target{};
     target.texture = swapchain;
     target.clear_color = SDL_FColor{0.035F, 0.050F, 0.085F, 1.0F};

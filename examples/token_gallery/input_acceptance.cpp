@@ -58,6 +58,14 @@ public:
         return true;
     }
 
+    void bind_text_pointer_query(ryn::input::TextPointerQuery query) noexcept override {
+        platform_.bind_text_pointer_query(std::move(query));
+    }
+
+    bool synchronize_pointer_cursor() noexcept override {
+        return platform_.synchronize_pointer_cursor();
+    }
+
     ryn::input::TextInputProperties properties;
     std::size_t starts{};
     std::size_t cancels{};
@@ -73,8 +81,10 @@ int run_input_acceptance(int argc, char** argv) {
     try {
         std::optional<float> requested_scale;
         std::filesystem::path directory;
+        bool cursor_check{};
         for (int index = 1; index < argc; ++index) {
             const std::string_view argument = argv[index];
+            cursor_check = cursor_check || argument == "--cursor-check";
             if (argument.starts_with("--acceptance-scale=")) {
                 requested_scale = std::stof(std::string{argument.substr(19)});
             }
@@ -118,6 +128,7 @@ int run_input_acceptance(int argc, char** argv) {
         TracedInputPlatform traced{platform};
         detail::InputComponentHost inputs{services, traced, platform};
         inputs.set_display_scale(scale);
+        require_input(platform.set_pointer_display_scale(scale), "Input pointer scale failed");
         services.set_motion_preference(animation::MotionPreference::reduced);
         Signal<ThemeConfig> theme{ThemeConfig{}};
         Signal<InputVariant> variant{InputVariant::Outlined};
@@ -402,6 +413,42 @@ int run_input_acceptance(int argc, char** argv) {
             pointer(interaction, SDL_EVENT_MOUSE_BUTTON_UP);
         };
         draw("initial");
+        if (cursor_check) {
+            struct RestorePointer final {
+                float x{};
+                float y{};
+
+                RestorePointer() {
+                    static_cast<void>(SDL_GetGlobalMouseState(&x, &y));
+                }
+
+                ~RestorePointer() {
+                    static_cast<void>(SDL_WarpMouseGlobal(x, y));
+                }
+            } restore;
+
+            auto* window = static_cast<SDL_Window*>(platform.window());
+            require_input(SDL_RaiseWindow(window), "Input cursor window activation failed");
+            const auto verify_cursor = [&](runtime::Point point, bool text) {
+                SDL_WarpMouseInWindow(window, point.x * scale / metrics.pixel_density,
+                                      point.y * scale / metrics.pixel_density);
+                platform.delay(50);
+                static_cast<void>(platform.poll_events());
+                require_input(SDL_GetMouseFocus() == window && platform.synchronize_pointer_cursor(),
+                              "Input cursor could not observe the native mouse");
+                require_input((SDL_GetCursor() != SDL_GetDefaultCursor()) == text,
+                              "Input native I-beam/default cursor did not match the hit target");
+            };
+            const auto viewport = inputs.layout_snapshot(mounted[0].component).viewport;
+            verify_cursor({viewport.x + viewport.width / 2, viewport.y + viewport.height / 2}, true);
+            const auto disabled = inputs.layout_snapshot(mounted[3].component).viewport;
+            verify_cursor({disabled.x + disabled.width / 2, disabled.y + disabled.height / 2}, false);
+            const auto& action = nodes.require(services.interactions().require(clear_action).node);
+            verify_cursor({action.bounds.x + action.translation.x + action.bounds.width / 2,
+                           action.bounds.y + action.translation.y + action.bounds.height / 2},
+                          false);
+            std::cout << "native_cursor=passed text=1 disabled=default action=default restore_on_scope_exit=1\n";
+        }
         detail::TextSceneId count_label_scene;
         for (const auto& text : services.text().mounted_texts()) {
             if (scene.text_state(text.scene).content().bytes() == "4 / 20") {

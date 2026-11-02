@@ -39,7 +39,7 @@ struct ShaderSelection {
 }
 
 [[nodiscard]] SDL_GPUShader* create_shader(SDL_GPUDevice* device, std::string_view filename, SDL_GPUShaderFormat format,
-                                           SDL_GPUShaderStage stage, Uint32 sampler_count) {
+                                           SDL_GPUShaderStage stage, Uint32 sampler_count, Uint32 uniform_count = 0) {
     const auto code = builtin_shader_bytes(filename);
     SDL_GPUShaderCreateInfo info{};
     info.code_size = code.size();
@@ -48,6 +48,7 @@ struct ShaderSelection {
     info.format = format;
     info.stage = stage;
     info.num_samplers = sampler_count;
+    info.num_uniform_buffers = uniform_count;
     return SDL_CreateGPUShader(device, &info);
 }
 
@@ -105,10 +106,10 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
 
-    auto build_pipeline = [&](const char* name, Uint32 pitch, const auto& attributes,
-                              Uint32 fragment_samplers) -> void* {
+    auto build_pipeline = [&](const char* name, Uint32 pitch, const auto& attributes, Uint32 fragment_samplers,
+                              Uint32 vertex_uniforms = 0) -> void* {
         auto* vertex = create_shader(device, std::string(name) + ".vertex." + selection.extension, selection.format,
-                                     SDL_GPU_SHADERSTAGE_VERTEX, 0);
+                                     SDL_GPU_SHADERSTAGE_VERTEX, 0, vertex_uniforms);
         if (vertex == nullptr) {
             throw std::runtime_error(sdl_error("Failed to create vertex shader"));
         }
@@ -134,7 +135,7 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
         SDL_GPUVertexAttribute{3, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT, 36},
         SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 40},
     };
-    quad_pipeline_ = build_pipeline("quad", sizeof(QuadGpuInstance), quad_attributes, 0);
+    quad_pipeline_ = build_pipeline("quad", sizeof(QuadGpuInstance), quad_attributes, 0, 1);
     try {
         const std::array glyph_attributes{
             SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
@@ -602,6 +603,8 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(animation::Animati
         ++counters_.no_texture_frames;
         return runtime::FrameSubmissionResult::deferred;
     }
+    const auto viewport = quad_viewport_uniform(width, height);
+    SDL_PushGPUVertexUniformData(command, 0, &viewport, sizeof(viewport));
     SDL_GPUColorTargetInfo target{};
     target.texture = swapchain;
     target.clear_color =
@@ -684,6 +687,8 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
         cleanup();
         return false;
     }
+    const auto viewport = quad_viewport_uniform(width, height);
+    SDL_PushGPUVertexUniformData(command, 0, &viewport, sizeof(viewport));
     SDL_GPUColorTargetInfo target{};
     target.texture = texture;
     target.clear_color = {clear_color_.red(), clear_color_.green(), clear_color_.blue(), clear_color_.alpha()};

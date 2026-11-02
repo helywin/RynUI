@@ -482,16 +482,39 @@ std::size_t RetainedSurfaceService::synchronize_effects(Record& record, const Re
     return updates;
 }
 
-bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip, bool clip_window_layers,
-                                                       std::span<const runtime::ComponentId> document_clip_roots,
-                                                       runtime::Rect document_clip) {
+bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip, runtime::Rect document_clip,
+                                                       std::optional<float> logical_antialias_guard) {
     bool topology_changed = false;
-    const auto in_document_clip = [&](runtime::ComponentId component) {
-        if (document_clip_roots.empty() || components_->in_window_layer(component)) {
+    const auto ancestor_clip = [&](runtime::ComponentId component, const runtime::Node& node,
+                                   runtime::ClipPurpose purpose) {
+        const auto base = components_->in_window_layer(component) ? window_clip : document_clip;
+        return node.clip_boundary || !node.parent ? base : nodes_->content_clip(*node.parent, base, purpose);
+    };
+    const auto needs_clip = [&](graphics::QuadInstanceRange range, runtime::Rect clip, bool window_layer) {
+        // The GPU viewport already clips the complete window. Keep fully
+        // contained fills on the compact Quad path; only crossing a stricter
+        // content clip needs the clip-capable effect representation.
+        if (clip == window_clip) {
             return false;
         }
-        for (auto ancestor = std::optional{component}; ancestor; ancestor = components_->parent(*ancestor)) {
-            if (std::ranges::find(document_clip_roots, *ancestor) != document_clip_roots.end()) {
+        for (std::uint32_t i = 0; i < range.count; ++i) {
+            const auto& q = instances_.at(range.first + i);
+            if (q.bounds[2] <= 0 || q.bounds[3] <= 0) {
+                continue;
+            }
+            // Keep a window layer's existing clip representation stable during
+            // scrolls and opacity transitions, including fully contained dots.
+            // Material-only changes must not tear down the retained draw range.
+            if (window_layer || !logical_antialias_guard) {
+                // Without device density, containment of the AA support domain
+                // cannot be proved; conversion preserves the hard clip.
+                return true;
+            }
+            const auto guard = *logical_antialias_guard;
+            const auto left = q.bounds[0] + q.translation[0] - guard;
+            const auto top = q.bounds[1] + q.translation[1] - guard;
+            if (left < clip.x || top < clip.y || left + q.bounds[2] + 2 * guard > clip.x + clip.width ||
+                top + q.bounds[3] + 2 * guard > clip.y + clip.height) {
                 return true;
             }
         }
@@ -508,71 +531,67 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
         topology_changed = true;
         return true;
     };
+    const auto synchronize_fills = [&](auto& record, runtime::Rect clip) {
+        const auto count = static_cast<std::size_t>(record.range.count);
+        while (record.clipped_fill_ids.size() > count) {
+            static_cast<void>(effect_scene_.store().remove(record.clipped_fill_ids.back()));
+            record.clipped_fill_ids.pop_back();
+            topology_changed = true;
+        }
+        record.clipped_fill_ids.reserve(count);
+        for (std::uint32_t i = 0; i < record.range.count; ++i) {
+            const auto& q = instances_.at(record.range.first + i);
+            const auto radius = std::min(q.corner_radius, std::min(q.bounds[2], q.bounds[3]) / 2);
+            auto fill = graphics::make_shadow_effect(
+                {{q.bounds[0], q.bounds[1], q.bounds[2], q.bounds[3]}, radius},
+                ShadowLayer{ShadowKind::outer, {}, 0, 0, Color{q.color[0], q.color[1], q.color[2], q.color[3]}},
+                {q.translation[0], q.translation[1]}, graphics::EffectClip{1, clip});
+            fill.material.opacity = q.opacity;
+            if (i == record.clipped_fill_ids.size()) {
+                record.clipped_fill_ids.push_back(effect_scene_.store().add(fill));
+                topology_changed = true;
+            } else {
+                const auto id = record.clipped_fill_ids[i];
+                diagnostics_.effect_geometry_updates += effect_scene_.store().update_geometry(id, fill.geometry);
+                diagnostics_.effect_material_updates += effect_scene_.store().update_material(id, fill.material);
+            }
+        }
+    };
     for (auto& slot : slots_) {
         if (!slot.record) {
             continue;
         }
         auto& record = *slot.record;
-        const bool document = in_document_clip(record.component);
-        // Document admission is independent of the existing window-layer policy.
-        const bool enabled = document || (clip_window_layers && components_->in_window_layer(record.component));
-        if (!components_->branch_active(record.component) || !enabled) {
-            if (clear_fills(record)) {
+        if (!components_->branch_active(record.component)) {
+            static_cast<void>(clear_fills(record));
+            if (record.inherited_effect_clip) {
                 static_cast<void>(synchronize_effects(record, record.effects));
+                record.inherited_effect_clip = false;
             }
             continue;
         }
         const auto& node = nodes_->require(record.node);
-        if (node.clip_boundary || !node.parent) {
-            continue;
-        }
-        bool clipped = false;
-        for (auto parent = node.parent; parent; parent = nodes_->require(*parent).parent) {
-            const auto& ancestor = nodes_->require(*parent);
-            clipped = clipped || ancestor.clip_content;
-            if (ancestor.clip_boundary) {
-                break;
-            }
-        }
-        if (!clipped && record.clipped_fill_ids.empty()) {
-            continue;
-        }
-        const auto base_clip = document ? document_clip : window_clip;
-        const auto clip = nodes_->content_clip(*node.parent, base_clip);
-        const auto clipping = graphics::EffectClip{1, clip};
+        const auto clip = ancestor_clip(record.component, node, runtime::ClipPurpose::content);
         auto effects = record.effects;
-        effects.ancestor_clip =
-            graphics::EffectClip{1, nodes_->content_clip(*node.parent, base_clip, runtime::ClipPurpose::decoration)};
-        if (record.effects.ancestor_clip) {
-            effects.ancestor_clip->bounds =
-                graphics::intersect_effect_bounds(effects.ancestor_clip->bounds, record.effects.ancestor_clip->bounds);
-        }
-        static_cast<void>(synchronize_effects(record, effects));
-        const auto count = static_cast<std::size_t>(record.range.count) * 4;
-        if (record.clipped_fill_ids.empty()) {
-            record.clipped_fill_ids.reserve(count);
-        }
-        for (std::uint32_t index = 0; index < record.range.count; ++index) {
-            const auto& visual = instances_.at(record.range.first + index);
-            const auto radius = std::min(visual.corner_radius, std::min(visual.bounds[2], visual.bounds[3]) / 2);
-            const auto fills = graphics::make_corner_fill_effects(
-                {{visual.bounds[0], visual.bounds[1], visual.bounds[2], visual.bounds[3]}, radius},
-                {true, true, true, true}, Color{visual.color[0], visual.color[1], visual.color[2], visual.color[3]},
-                visual.opacity, {visual.translation[0], visual.translation[1]}, clipping);
-            for (std::size_t corner = 0; corner < fills.size(); ++corner) {
-                const auto position = static_cast<std::size_t>(index) * 4 + corner;
-                if (position == record.clipped_fill_ids.size()) {
-                    record.clipped_fill_ids.push_back(effect_scene_.store().add(fills[corner]));
-                    topology_changed = true;
-                } else {
-                    const auto id = record.clipped_fill_ids[position];
-                    diagnostics_.effect_geometry_updates +=
-                        effect_scene_.store().update_geometry(id, fills[corner].geometry);
-                    diagnostics_.effect_material_updates +=
-                        effect_scene_.store().update_material(id, fills[corner].material);
-                }
+        const auto decoration_clip = ancestor_clip(record.component, node, runtime::ClipPurpose::decoration);
+        if (decoration_clip != window_clip) {
+            if (effects.ancestor_clip) {
+                effects.ancestor_clip->bounds =
+                    graphics::intersect_effect_bounds(decoration_clip, effects.ancestor_clip->bounds);
+            } else {
+                effects.ancestor_clip = graphics::EffectClip{1, decoration_clip};
             }
         }
+        const bool inherited_clip = effects.ancestor_clip != record.effects.ancestor_clip;
+        if (inherited_clip || record.inherited_effect_clip) {
+            static_cast<void>(synchronize_effects(record, effects));
+        }
+        record.inherited_effect_clip = inherited_clip;
+        if (!needs_clip(record.range, clip, components_->in_window_layer(record.component))) {
+            static_cast<void>(clear_fills(record));
+            continue;
+        }
+        synchronize_fills(record, clip);
     }
     for (auto& slot : content_slots_) {
         if (!slot.record || !components_->contains(slot.record->fragment)) {
@@ -580,68 +599,30 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
         }
         auto& record = *slot.record;
         const auto component = components_->fragment_component(record.fragment);
-        const bool document = in_document_clip(component);
-        const bool enabled = document || (clip_window_layers && components_->in_window_layer(component));
-        if (!components_->branch_active(component) || !enabled) {
+        if (!components_->branch_active(component)) {
             static_cast<void>(clear_fills(record));
             continue;
         }
         const auto& node = nodes_->require(components_->root(component));
-        if (node.clip_boundary || !node.parent) {
+        const auto clip = ancestor_clip(component, node, runtime::ClipPurpose::content);
+        if (!needs_clip(record.range, clip, components_->in_window_layer(component))) {
+            static_cast<void>(clear_fills(record));
             continue;
         }
-        bool clipped = false;
-        for (auto parent = node.parent; parent; parent = nodes_->require(*parent).parent) {
-            const auto& ancestor = nodes_->require(*parent);
-            clipped = clipped || ancestor.clip_content;
-            if (ancestor.clip_boundary) {
-                break;
-            }
-        }
-        if (!clipped && record.clipped_fill_ids.empty()) {
-            continue;
-        }
-        const auto clip =
-            graphics::EffectClip{1, nodes_->content_clip(*node.parent, document ? document_clip : window_clip)};
-        const auto count = static_cast<std::size_t>(record.range.count) * 4;
-        while (record.clipped_fill_ids.size() > count) {
-            static_cast<void>(effect_scene_.store().remove(record.clipped_fill_ids.back()));
-            record.clipped_fill_ids.pop_back();
-            topology_changed = true;
-        }
-        record.clipped_fill_ids.reserve(count);
-        for (std::uint32_t index = 0; index < record.range.count; ++index) {
-            const auto& visual = instances_.at(record.range.first + index);
-            const auto radius = std::min(visual.corner_radius, std::min(visual.bounds[2], visual.bounds[3]) / 2);
-            const auto fills = graphics::make_corner_fill_effects(
-                {{visual.bounds[0], visual.bounds[1], visual.bounds[2], visual.bounds[3]}, radius},
-                {true, true, true, true}, Color{visual.color[0], visual.color[1], visual.color[2], visual.color[3]},
-                visual.opacity, {visual.translation[0], visual.translation[1]}, clip);
-            for (std::size_t corner = 0; corner < fills.size(); ++corner) {
-                const auto position = static_cast<std::size_t>(index) * 4 + corner;
-                if (position == record.clipped_fill_ids.size()) {
-                    record.clipped_fill_ids.push_back(effect_scene_.store().add(fills[corner]));
-                    topology_changed = true;
-                } else {
-                    const auto id = record.clipped_fill_ids[position];
-                    diagnostics_.effect_geometry_updates +=
-                        effect_scene_.store().update_geometry(id, fills[corner].geometry);
-                    diagnostics_.effect_material_updates +=
-                        effect_scene_.store().update_material(id, fills[corner].material);
-                }
-            }
-        }
+        synchronize_fills(record, clip);
     }
     return topology_changed;
 }
 
-bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip, bool clip_window_layers,
-                                             std::span<const runtime::ComponentId> document_clip_roots,
-                                             std::optional<runtime::Rect> document_clip) {
+bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip, std::optional<runtime::Rect> document_clip,
+                                             std::optional<float> logical_antialias_guard) {
     ensure_owner_thread();
-    // Visit previous conversions even after their enabling owner disappears.
-    const bool fills_changed = synchronize_clipped_fills(window_clip, clip_window_layers, document_clip_roots,
-                                                         document_clip.value_or(window_clip));
+    if (logical_antialias_guard && (!std::isfinite(*logical_antialias_guard) || *logical_antialias_guard <= 0)) {
+        throw std::invalid_argument("logical antialias guard must be finite and positive");
+    }
+    // Visit previous conversions after clipping or layer ownership changes too.
+    const bool fills_changed =
+        synchronize_clipped_fills(window_clip, document_clip.value_or(window_clip), logical_antialias_guard);
     const bool packed_changed = effect_scene_.store().compact(window_clip);
     if (!fills_changed && !packed_changed) {
         return false;
@@ -781,9 +762,9 @@ void RetainedSurfaceService::bind_fragment(const Record& record) {
             }
         };
         const auto fills = std::span{record.clipped_fill_ids};
-        append(fills.first(static_cast<std::size_t>(offset) * 4));
+        append(fills.first(offset));
         append(record.effect_primitive.before_fill);
-        append(fills.subspan(static_cast<std::size_t>(offset) * 4));
+        append(fills.subspan(offset));
         append(record.effect_primitive.after_fill);
         composer_->set_fragment(record.fragment, commands, record.interaction);
         return;

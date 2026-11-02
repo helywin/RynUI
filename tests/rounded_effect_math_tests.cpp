@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <numbers>
 #include <stdexcept>
 
 namespace {
@@ -190,6 +191,100 @@ void test_zero_blur_and_inset_curved_edges_are_antialiased() {
             "inset draw bounds clipped away surface antialiasing");
 }
 
+void test_finite_arc_caps_and_empty_sweep() {
+    using namespace ryn;
+    const auto arc = graphics::make_arc_effect({80, 80}, 40, 8, 127.5F, 285, Color{0, 0, 0, 0.3F});
+    const auto theta = 127.5F * std::numbers::pi_v<float> / 180;
+    const runtime::Point start{80 + 40 * std::cos(theta), 80 + 40 * std::sin(theta)};
+    require(graphics::rounded_effect_coverage({start.x, start.y + 2}, arc) > 0.99F &&
+                graphics::rounded_effect_coverage({start.x, start.y + 5}, arc) == 0 &&
+                graphics::rounded_effect_coverage({80, 120}, arc) == 0,
+            "Dashboard round cap was horizontally cut or the 75-degree gap filled");
+    const auto end_theta = (127.5F + 285) * std::numbers::pi_v<float> / 180;
+    const runtime::Point end{80 + 40 * std::cos(end_theta), 80 + 40 * std::sin(end_theta)};
+    require(near(graphics::rounded_effect_coverage({start.x, start.y + 2}, arc),
+                 graphics::rounded_effect_coverage({end.x, end.y + 2}, arc)),
+            "Dashboard cap coverage is not symmetric");
+    const auto empty = graphics::make_arc_effect({80, 80}, 40, 8, 127.5F, 0, Color{0, 0, 0});
+    require(graphics::rounded_effect_coverage(start, empty) == 0 && graphics::rounded_effect_bounds(empty).width == 0,
+            "zero-sweep arc left a round dot or raster region");
+    const auto disk = graphics::make_arc_effect({80, 80}, 0, 8, 0, 360, Color{0, 0, 0});
+    require(graphics::rounded_effect_coverage({80, 80}, disk) == 1 && graphics::rounded_effect_bounds(disk).width == 10,
+            "zero-radius finite arc did not retain its round stroke footprint");
+}
+
+void test_continuous_rounded_perimeter_and_dash_seam() {
+    using namespace ryn;
+    constexpr auto pi = std::numbers::pi_v<float>;
+    const graphics::LogicalRoundedRect centerline{{21, 21, 118, 38}, 7};
+    const auto top = graphics::rounded_rect_path_sample({38, 21}, centerline);
+    require(near(top.coordinate, 10) && near(top.length, 2 * (118 + 38 - 4 * 7) + 2 * pi * 7),
+            "rounded path did not measure its full continuous perimeter");
+    const auto curve =
+        graphics::rounded_rect_path_sample({132 + 7 * std::cos(-pi / 4), 28 + 7 * std::sin(-pi / 4)}, centerline);
+    require(near(curve.coordinate, 104 + 7 * pi / 4) && near(curve.distance, 0),
+            "rounded dash parameter follows projected x instead of arc length");
+    const auto mixed = graphics::rounded_rect_path_sample({21, 21}, centerline, {false, true, false, true});
+    require(near(mixed.length, 2 * (118 + 38) + (pi / 2 - 2) * 14),
+            "Compact mixed corners lost their perimeter ownership");
+    const auto dash =
+        graphics::make_dashed_outline_effect({{20, 20, 120, 40}, 8}, 2, {5, 5, 2.5F}, Color{0, 0, 0, 0.4F});
+    const auto before =
+        runtime::Point{28 + 7 * std::cos(3 * pi / 2 - 0.1F / 7), 28 + 7 * std::sin(3 * pi / 2 - 0.1F / 7)};
+    require(graphics::rounded_effect_coverage(before, dash) > 0.99F &&
+                graphics::rounded_effect_coverage({28.1F, 21}, dash) > 0.99F,
+            "closing dash restarted or truncated its phase at the rounded corner");
+    require(graphics::rounded_effect_bounds(dash) == runtime::Rect{19, 19, 122, 42},
+            "dashed border clipped its external AA support");
+}
+
+void test_tooltip_union_has_no_internal_base_boundary() {
+    using namespace ryn;
+    for (unsigned side = 0; side < 4; ++side) {
+        const auto horizontal = side < 2;
+        const graphics::LogicalRoundedRect body{{20, 20, horizontal ? 80.0F : 40.0F, horizontal ? 40.0F : 80.0F}, 6};
+        const auto fill = graphics::make_tooltip_fill_effect(
+            body, {static_cast<graphics::TooltipArrowSide>(side), 40, 8, 8}, Color{0, 0, 0, 0.85F});
+        const runtime::Point seam{side == 2   ? 60.0F
+                                  : side == 3 ? 20.0F
+                                              : 60.0F,
+                                  side == 0   ? 60.0F
+                                  : side == 1 ? 20.0F
+                                              : 60.0F};
+        const runtime::Point normal{side == 2 ? 1.0F : side == 3 ? -1.0F : 0, side == 0 ? 1.0F : side == 1 ? -1.0F : 0};
+        for (const auto t : {-0.25F, 0.0F, 0.25F, 1.0F}) {
+            require(near(graphics::rounded_effect_coverage({seam.x + t * normal.x, seam.y + t * normal.y}, fill), 1),
+                    "Tooltip base remains a half-covered internal edge");
+        }
+        require(near(graphics::rounded_effect_coverage({seam.x + 8 * normal.x, seam.y + 8 * normal.y}, fill), 0.5F),
+                "Tooltip triangle tip lost antialiased coverage");
+    }
+}
+
+void test_path_geometry_validation() {
+    using namespace ryn;
+    require_invalid([] { static_cast<void>(graphics::make_arc_effect({0, 0}, 10, 2, 0, 361, Color{})); },
+                    "arc accepted a sweep beyond a complete turn");
+    require_invalid([] { static_cast<void>(graphics::make_arc_effect({0, 0}, -1, 2, 0, 10, Color{})); },
+                    "arc accepted a negative radius");
+    require_invalid(
+        [] { static_cast<void>(graphics::make_dashed_outline_effect({{0, 0, 40, 20}, 4}, 1, {3, -1, 0}, Color{})); },
+        "dash accepted a negative gap");
+    require_invalid(
+        [] {
+            static_cast<void>(graphics::make_tooltip_fill_effect(
+                {{0, 0, 40, 20}, 4}, {graphics::TooltipArrowSide::bottom, 3, 5, 8}, Color{}));
+        },
+        "Tooltip base was allowed to cross a rounded corner");
+    require_invalid(
+        [] {
+            auto value = outer({{0, 0, 40, 20}, 4});
+            value.geometry.path = graphics::RoundedArcPath{0, 1};
+            graphics::validate_rounded_effect(value);
+        },
+        "shadow accepted path-only parameters");
+}
+
 } // namespace
 
 int main() {
@@ -199,6 +294,10 @@ int main() {
         test_shadow_and_outline_coverage();
         test_bounds_and_validation();
         test_zero_blur_and_inset_curved_edges_are_antialiased();
+        test_finite_arc_caps_and_empty_sweep();
+        test_continuous_rounded_perimeter_and_dash_seam();
+        test_tooltip_union_has_no_internal_base_boundary();
+        test_path_geometry_validation();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

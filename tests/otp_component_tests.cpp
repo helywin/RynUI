@@ -141,6 +141,42 @@ void retained_api_and_mask() {
           "OTP dispose leaked resources");
 }
 
+void empty_caret_centers_in_cell() {
+    Fixture f;
+    Signal<ControlSize> size{ControlSize::Middle};
+    Signal<OTPMask> mask{OTPMask{}};
+    OTPRef ref;
+    f.inputs.mount(Content{[&] { OTP(OTPProps{}.length(4).defaultValue(u8"12").size(size).mask(mask).ref(ref)); }});
+    f.synchronize();
+    const auto group = f.services.otp().mounted().front().component;
+    const auto ids = f.services.otp().cell_components(group);
+    const auto empty = cell(f, ids[2]);
+    check(ref.focus(), "empty OTP focus failed");
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        f.inputs.set_display_scale(scale);
+        for (const auto control_size : {ControlSize::Small, ControlSize::Middle, ControlSize::Large}) {
+            size.set(control_size);
+            for (const float phase : {0.0F, 0.25F, 0.5F, 0.75F}) {
+                check(f.buttons.layout_and_synchronize({640, 240}, {0, 0, 640, 240}, {20 + phase / scale, 20}),
+                      "OTP caret layout failed");
+                const auto geometry = f.inputs.layout_snapshot(empty.component);
+                const auto bounds = f.nodes.require(empty.node).bounds;
+                const float center = geometry.caret.x + geometry.caret.width / 2;
+                check(std::abs(center - (bounds.x + bounds.width / 2)) <= 0.501F / scale,
+                      "empty OTP caret was biased to the right of the cell center");
+                check(std::abs(geometry.caret.y + geometry.caret.height / 2 - (bounds.y + bounds.height / 2)) <=
+                          0.501F / scale,
+                      "empty OTP caret was not vertically centered");
+                check(cell(f, ids[2]).editor == empty.editor, "OTP centering replaced its editor");
+            }
+        }
+    }
+    mask.set({true, String{u8"*"}});
+    f.synchronize();
+    check(f.inputs.display_snapshot(ids[0]).text == "*" && f.inputs.display_snapshot(ids[2]).text.empty(),
+          "OTP centering changed masked or empty cell content");
+}
+
 void transactions() {
     Fixture f;
     Signal<String> value{String{u8"abcd"}};
@@ -277,6 +313,7 @@ void visual_matrix_and_separator_rollback() {
 int main() {
     try {
         retained_api_and_mask();
+        empty_caret_centers_in_cell();
         transactions();
         invalid_mounts();
         visual_matrix_and_separator_rollback();

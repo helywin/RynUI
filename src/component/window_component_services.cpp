@@ -35,8 +35,10 @@
 #include "component/pagination_component.hpp"
 #include "component/table_component.hpp"
 #include "component/empty_result_component.hpp"
+#include "component/input_component.hpp"
 
 #include <chrono>
+#include <cmath>
 
 #include <algorithm>
 #include <stdexcept>
@@ -172,13 +174,25 @@ void WindowComponentServices::attach_input_host(WindowComponentParticipant& part
     if (input_host_ != nullptr) {
         throw std::logic_error("window already has an Input component host");
     }
+    input::TextPointerQuery query;
+    if (text_edit_) {
+        query = [this](runtime::Point point) {
+            return text_pointer_at(point);
+        };
+    }
     attach(participant);
     input_host_ = &participant;
+    if (text_edit_) {
+        text_edit_->bind_text_pointer_query(std::move(query));
+    }
 }
 
 void WindowComponentServices::detach_input_host(WindowComponentParticipant& participant) noexcept {
     if (input_host_ == &participant) {
         input_host_ = nullptr;
+        if (text_edit_) {
+            text_edit_->bind_text_pointer_query({});
+        }
     }
     detach(participant);
 }
@@ -205,6 +219,36 @@ void WindowComponentServices::bind_clipboard(input::TextClipboard& clipboard) {
     for (auto* participant : participants_) {
         participant->on_clipboard_bound();
     }
+}
+
+bool WindowComponentServices::text_pointer_at(runtime::Point point) {
+    if (!input_runtime_) {
+        return false;
+    }
+    const auto hit = hit_test_.hit_test(point);
+    if (!hit) {
+        return false;
+    }
+    const auto* interaction = interactions_.find(*hit);
+    if (!interaction || !interaction->eligible || !interactions_.branch_active(*hit)) {
+        return false;
+    }
+    const auto contains = [point](runtime::Rect rect) {
+        return point.x >= rect.x && point.x < rect.x + rect.width && point.y >= rect.y &&
+               point.y < rect.y + rect.height;
+    };
+    for (const auto& mounted : input_runtime_->mounted_inputs()) {
+        if (mounted.interaction != *hit) {
+            continue;
+        }
+        const auto* editor = input_runtime_->editors().find(mounted.editor);
+        if (!editor || editor->disabled()) {
+            return false;
+        }
+        const auto geometry = input_runtime_->layout_snapshot(mounted.component);
+        return contains(geometry.viewport) && contains(geometry.clip);
+    }
+    return false;
 }
 
 void WindowComponentServices::detach(WindowComponentParticipant& participant) noexcept {
@@ -498,10 +542,31 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
         text_scene.finish_ordered_scene_batch();
-        std::vector<runtime::ComponentId> clipped_roots(timeline_->mounted().begin(), timeline_->mounted().end());
-        clipped_roots.insert(clipped_roots.end(), statistic_->mounted().begin(), statistic_->mounted().end());
-        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height},
-                                      modal_->visible() || notices_->visible(), clipped_roots, clip)) {
+        std::optional<float> logical_antialias_guard;
+        const auto read_density = [&](TextSceneId scene) {
+            // Inspect the current chain, including a DPI update that has not
+            // reshaped an offscreen scene yet. This does not invoke a resolver
+            // or allocate another font-chain vector on every scroll frame.
+            const auto reference = text_scene.text_state(scene).font_chain();
+            if (reference.empty()) {
+                return;
+            }
+            if (clipping_density_font_ != reference.front()) {
+                clipping_antialias_guard_.reset();
+                const auto metrics = text_scene.font_metrics(reference.front());
+                if (metrics && std::isfinite(metrics.metrics.display_scale) && metrics.metrics.display_scale > 0) {
+                    clipping_antialias_guard_ = 1 / metrics.metrics.display_scale;
+                }
+                clipping_density_font_ = reference.front();
+            }
+            logical_antialias_guard = clipping_antialias_guard_;
+        };
+        if (!text_.mounted_texts().empty()) {
+            read_density(text_.mounted_texts().front().scene);
+        } else if (input_runtime_ && !input_runtime_->mounted_inputs().empty()) {
+            read_density(input_runtime_->text_scene(input_runtime_->mounted_inputs().front().component));
+        }
+        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height}, clip, logical_antialias_guard)) {
             scene_structure_dirty_ = true;
         }
     }
@@ -550,6 +615,9 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
         focus_.synchronize();
     }
     dirty_->clear();
+    if (text_edit_) {
+        text_edit_->synchronize_pointer_cursor();
+    }
     return true;
 }
 

@@ -58,6 +58,15 @@ namespace {
     if (encoded == 2.0F) {
         return RoundedEffectKind::outline;
     }
+    if (encoded == 3.0F) {
+        return RoundedEffectKind::arc;
+    }
+    if (encoded == 4.0F) {
+        return RoundedEffectKind::dashed_outline;
+    }
+    if (encoded == 5.0F) {
+        return RoundedEffectKind::tooltip_fill;
+    }
     throw std::invalid_argument("Rounded effect GPU kind is invalid");
 }
 
@@ -69,6 +78,12 @@ namespace {
         return 1.0F;
     case RoundedEffectKind::outline:
         return 2.0F;
+    case RoundedEffectKind::arc:
+        return 3.0F;
+    case RoundedEffectKind::dashed_outline:
+        return 4.0F;
+    case RoundedEffectKind::tooltip_fill:
+        return 5.0F;
     }
     throw std::invalid_argument("Rounded effect kind is invalid");
 }
@@ -109,7 +124,7 @@ RoundedEffectGpuInstance pack_rounded_effect_instance(const RoundedEffectInstanc
     }
 
     const auto& color = instance.material.color;
-    return {
+    RoundedEffectGpuInstance packed{
         {
             -1.0F + 2.0F * pixel_bounds.x / metrics.pixel_width,
             1.0F - 2.0F * pixel_bounds.y / metrics.pixel_height,
@@ -133,6 +148,37 @@ RoundedEffectGpuInstance pack_rounded_effect_instance(const RoundedEffectInstanc
         },
         {instance.material.opacity, 1.0F, 0.0F, 0.0F},
     };
+    const auto& geometry = instance.geometry;
+    if (const auto* arc = std::get_if<graphics::RoundedArcPath>(&geometry.path)) {
+        packed.shadow_params = {geometry.shape.radius * scale, arc->start_radians, arc->sweep_radians, 0};
+    } else if (const auto* dash = std::get_if<graphics::RoundedDashPath>(&geometry.path)) {
+        auto centerline = geometry.shape;
+        const auto width = geometry.outline_width;
+        centerline.rect = {centerline.rect.x + width / 2, centerline.rect.y + width / 2, centerline.rect.width - width,
+                           centerline.rect.height - width};
+        centerline.radius = std::max(0.0F, centerline.radius - width / 2);
+        const auto length = graphics::rounded_rect_path_sample({centerline.rect.x, centerline.rect.y}, centerline,
+                                                               dash->rounded_corners)
+                                .length;
+        const auto requested = dash->length + dash->gap;
+        const auto count = std::max(1.0F, std::floor(length / requested + 0.5F));
+        const auto period = length / count;
+        const auto ratio = dash->length / requested;
+        packed.shadow_params = {geometry.shape.radius * scale, period * ratio * scale, period * (1 - ratio) * scale,
+                                std::remainder(dash->phase, period) * scale};
+        unsigned mask{};
+        for (unsigned corner = 0; corner < 4; ++corner) {
+            if (dash->rounded_corners[corner]) {
+                mask |= 1U << corner;
+            }
+        }
+        packed.material_params[2] = static_cast<float>(mask);
+    } else if (const auto* arrow = std::get_if<graphics::TooltipArrowPath>(&geometry.path)) {
+        packed.shadow_params = {geometry.shape.radius * scale, arrow->center * scale, arrow->half_width * scale,
+                                arrow->length * scale};
+        packed.material_params[2] = static_cast<float>(arrow->side);
+    }
+    return packed;
 }
 
 float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const RoundedEffectGpuInstance& instance) {
@@ -186,6 +232,23 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
                                               outline_offset + outline_width + half_aa, distance);
         return std::clamp(inner * outer, 0.0F, 1.0F);
     }
+    case RoundedEffectKind::arc:
+        return gaussian_edge(graphics::arc_signed_distance(point_pixels, shape, outline_width, {offset_x, offset_y}), 0,
+                             antialias_width);
+    case RoundedEffectKind::dashed_outline: {
+        const auto mask = static_cast<unsigned>(instance.material_params[2]);
+        graphics::RoundedDashPath dash{offset_x, offset_y, blur};
+        for (unsigned corner = 0; corner < 4; ++corner) {
+            dash.rounded_corners[corner] = (mask & (1U << corner)) != 0;
+        }
+        return graphics::dashed_outline_coverage(point_pixels, shape, outline_width, dash, antialias_width);
+    }
+    case RoundedEffectKind::tooltip_fill:
+        return gaussian_edge(
+            graphics::tooltip_signed_distance(
+                point_pixels, shape,
+                {static_cast<graphics::TooltipArrowSide>(instance.material_params[2]), offset_x, offset_y, blur}),
+            0, antialias_width);
     }
     return 0.0F;
 }

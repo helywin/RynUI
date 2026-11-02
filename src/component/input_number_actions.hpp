@@ -24,8 +24,8 @@ struct InputNumberActions final {
 InputNumberActions mount_input_number_actions(WindowComponentServices&, input::InteractionId parent,
                                               std::function<void(InputNumberStepDirection)>);
 void configure_input_number_actions(WindowComponentServices&, const InputNumberActions&, const InputNumberThemeToken&,
-                                    float height, float border_width, bool visible, std::array<bool, 2> enabled,
-                                    InputVariant);
+                                    float height, float border_width, float border_radius, bool visible,
+                                    std::array<bool, 2> enabled, InputVariant);
 void paint_input_number_actions(WindowComponentServices&, const InputNumberActions&, runtime::Rect clip);
 
 } // namespace ryn::detail

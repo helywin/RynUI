@@ -10,17 +10,27 @@ endif()
 file(READ "${SHADER_SOURCE}" shader)
 
 foreach(required IN ITEMS
-        "fwidth(input.uv)"
+        "register(b0, space1)"
+        "viewportPixels"
         "pixelExtent"
         "radiusPixels"
         "centeredPixels"
-        "fwidth(distance)")
+        "guardNdc"
+        "guardPixels"
+        "all(pixelExtent > 0.0) ? 1.0 : 0.0"
+        "* clipRect.zw + guardNdc"
+        "smoothstep(-0.5, 0.5, distance)")
     string(FIND "${shader}" "${required}" found)
     if(found EQUAL -1)
         message(FATAL_ERROR
             "Quad shader is missing pixel-space rounded rectangle contract: ${required}")
     endif()
 endforeach()
+
+string(FIND "${shader}" "fwidth(distance)" derivative_width)
+if(NOT derivative_width EQUAL -1)
+    message(FATAL_ERROR "Quad shader must use the common fixed one-physical-pixel coverage width")
+endif()
 
 string(FIND
     "${shader}"

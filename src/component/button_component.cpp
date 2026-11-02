@@ -1676,54 +1676,20 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
     const float width = std::min(token.border_width, 0.5F * std::min(node.bounds.width, node.bounds.height));
     std::vector<graphics::RoundedEffectInstance> effects;
     if (width > 0) {
-        const float band = std::min(0.5F * node.bounds.height, std::max(radius, width));
         const float period = token.dash_length + token.dash_gap;
-        const double horizontal_count = std::ceil(static_cast<double>(node.bounds.width) / period);
-        const double vertical_count = std::ceil(static_cast<double>(node.bounds.height - 2.0F * band) / period);
-        const double count = 2 * (horizontal_count + vertical_count) * (state.compact ? 4 : 1);
+        const auto corners = state.compact ? state.compact->corners : std::array{true, true, true, true};
+        const graphics::LogicalRoundedRect centerline{{node.bounds.x + width / 2, node.bounds.y + width / 2,
+                                                       node.bounds.width - width, node.bounds.height - width},
+                                                      std::max(0.0F, radius - width / 2)};
+        const auto perimeter =
+            graphics::rounded_rect_path_sample({node.bounds.x, node.bounds.y}, centerline, corners).length;
+        const double count = std::ceil(static_cast<double>(perimeter) / period);
         if (!std::isfinite(period) || !std::isfinite(count) || count > component::retained_content_visual_capacity) {
-            throw std::length_error("Button dashed border exceeds 4096 effects");
+            throw std::length_error("Button dashed border exceeds 4096 path intervals");
         }
-        effects.reserve(static_cast<std::size_t>(count));
-        const graphics::LogicalRoundedRect shape{{node.bounds.x + width, node.bounds.y + width,
-                                                  std::max(0.0F, node.bounds.width - 2.0F * width),
-                                                  std::max(0.0F, node.bounds.height - 2.0F * width)},
-                                                 std::max(0.0F, radius - width)};
-        const auto append = [&](runtime::Rect segment) {
-            segment.x += node.translation.x;
-            segment.y += node.translation.y;
-            const float right = std::min(segment.x + segment.width, clip.x + clip.width);
-            const float bottom = std::min(segment.y + segment.height, clip.y + clip.height);
-            segment.x = std::max(segment.x, clip.x);
-            segment.y = std::max(segment.y, clip.y);
-            segment.width = std::max(0.0F, right - segment.x);
-            segment.height = std::max(0.0F, bottom - segment.y);
-            if (segment.width <= 0 || segment.height <= 0) {
-                return;
-            }
-            if (state.compact) {
-                const auto corners = graphics::make_corner_outline_effects(
-                    shape, state.compact->corners, width, 0, state.presentation_border, 1, node.translation,
-                    graphics::EffectClip{effects.size() + 1, segment});
-                effects.insert(effects.end(), corners.begin(), corners.end());
-            } else {
-                effects.push_back(graphics::make_outline_effect(shape, width, 0, state.presentation_border, 1,
-                                                                node.translation,
-                                                                graphics::EffectClip{effects.size() + 1, segment}));
-            }
-        };
-        for (std::size_t index = 0; index < static_cast<std::size_t>(horizontal_count); ++index) {
-            const float offset = static_cast<float>(index) * period;
-            const float length = std::min(token.dash_length, node.bounds.width - offset);
-            append({node.bounds.x + offset, node.bounds.y, length, band});
-            append({node.bounds.x + offset, node.bounds.y + node.bounds.height - band, length, band});
-        }
-        for (std::size_t index = 0; index < static_cast<std::size_t>(vertical_count); ++index) {
-            const float offset = static_cast<float>(index) * period;
-            const float length = std::min(token.dash_length, node.bounds.height - 2.0F * band - offset);
-            append({node.bounds.x, node.bounds.y + band + offset, width, length});
-            append({node.bounds.x + node.bounds.width - width, node.bounds.y + band + offset, width, length});
-        }
+        effects.push_back(graphics::make_dashed_outline_effect(
+            {node.bounds, radius}, width, {token.dash_length, token.dash_gap, 0, corners}, state.presentation_border, 1,
+            node.translation, graphics::EffectClip{1, clip}));
     }
     if (!state.decoration_range.valid() && !effects.empty()) {
         if (!state.decoration_fragment.valid()) {

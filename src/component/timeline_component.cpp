@@ -28,6 +28,7 @@ struct ItemState final {
     Signal<String> title_text{String{}};
     Signal<runtime::SemanticForeground> icon_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticTypography> icon_font{runtime::SemanticTypography{}};
+    Signal<bool> spin{false};
     component::RetainedSurfaceId surface;
     std::shared_ptr<std::vector<TailRange>> tails{std::make_shared<std::vector<TailRange>>()};
     runtime::Rect frame;
@@ -148,6 +149,9 @@ void TimelineComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         }
         item.icon_color.set(foreground(tone_color(t.colors, s->model[i].tone)));
         item.icon_font.set({t.metrics.font_family, 400, false, t.metrics.icon_size, t.metrics.icon_size});
+        if (!root_visible || !item.snapshot.visible || !item.snapshot.loading || item.custom_icon) {
+            item.spin.set(false);
+        }
         geometry |= services_->components().set_branch_active(item.snapshot.viewport, item.snapshot.visible);
         services_->nodes().require(services_->components().root(item.snapshot.viewport)).out_of_flow =
             !item.snapshot.visible;
@@ -317,11 +321,11 @@ void TimelineComponentHost::mount(const TimelineProps& props, const std::vector<
                                }
                            }},
                            s.text_color, s.font);
-                item.snapshot.icon = region(item.snapshot.viewport, Content{[slot = items[i].icon_] {
+                item.snapshot.icon = region(item.snapshot.viewport, Content{[slot = items[i].icon_, spin = item.spin] {
                                                 if (slot) {
                                                     SlotContentAccess::function (*slot)();
                                                 } else {
-                                                    Icon(IconProps{}.name(IconName::LoadingOutlined));
+                                                    Icon(IconProps{}.name(IconName::LoadingOutlined).spin(spin));
                                                 }
                                             }},
                                             item.icon_color, item.icon_font);
@@ -528,6 +532,10 @@ void TimelineComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
             const auto color = tone_color(t.colors, s->model[s->order[position].item].tone);
             std::vector<graphics::RoundedEffectInstance> effects;
             const auto dot = offset(item.snapshot.dot, {root.bounds.x, root.bounds.y + item.frame.y});
+            const auto icon_bounds = offset(item.icon_frame, origin);
+            const auto icon_visible = intersect(icon_bounds, clip);
+            item.spin.set(!item.custom_icon && item.snapshot.loading && opacity > 0 && icon_visible.width > 0 &&
+                          icon_visible.height > 0);
             if (!item.custom_icon && !item.snapshot.loading && dot.width > 0) {
                 auto fill = graphics::make_corner_fill_effects({dot, dot.width / 2}, {true, true, true, true},
                                                                t.colors.dot_background, opacity, root.translation,

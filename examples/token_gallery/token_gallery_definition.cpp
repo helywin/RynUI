@@ -1752,9 +1752,8 @@ void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
             ryn::Switch(ryn::SwitchProps{}.size(ryn::SwitchSize::Small).direction(ryn::SwitchDirection::RightToLeft),
                         ryn::SwitchSlots{ryn::SwitchCheckedContent{
                                              [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
-                                         ryn::SwitchUncheckedContent{[] {
-                                             ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CloseCircleFilled));
-                                         }}});
+                                         ryn::SwitchUncheckedContent{
+                                             [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CloseOutlined)); }}});
             ryn::ThemeConfig custom;
             custom.switch_.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
             custom.switch_.algorithm = true;
@@ -2198,9 +2197,17 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
            }});
     sample(3, "gallery.modal.confirm-loading", String{u8"确认加载中"},
            ModalProps{}.confirmLoading(state->modal_loading), ModalContent{[state] {
-               Text(u8"确认在加载时禁用，取消仍可使用。");
-               Button(ButtonProps{}.onClick([state] { state->modal_loading.set(!state->modal_loading.get()); }),
-                      [] { Text(u8"切换确认加载状态"); });
+               Flex(
+                   FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+                       Text(u8"确认在加载时禁用，取消仍可使用。");
+                       Button(
+                           ButtonProps{}
+                               .layout(
+                                   LayoutStyle{}.margin_left(dp(4)).margin_top(dp(4)).margin_right(dp(4)).margin_bottom(
+                                       dp(4)))
+                               .onClick([state] { state->modal_loading.set(!state->modal_loading.get()); }),
+                           [] { Text(u8"切换确认加载状态"); });
+                   }});
            }});
     sample(4, "gallery.modal.custom-footer", String{u8"自定义标题与页脚"}, ModalProps{}.footer(ModalFooterMode::None),
            ModalContent{[] { Text(u8"标题和页脚使用独立内容插槽。"); }},

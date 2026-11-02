@@ -11,12 +11,14 @@ struct NumberActionState final {
     runtime::NodeId node;
     input::InteractionId interaction;
     component::RetainedSurfaceId surface;
+    component::RetainedSurfaceId background;
     input::PressableBehavior press;
     bool hovered{};
     bool enabled{};
     bool visible{};
     bool down{};
     float border_width{};
+    float border_radius{};
     InputVariant variant{InputVariant::Outlined};
     InputNumberThemeToken token;
     Signal<runtime::SemanticForeground> foreground{runtime::SemanticForeground{}};
@@ -57,10 +59,14 @@ InputNumberActions mount_input_number_actions(WindowComponentServices& host, inp
                         host.focus().cancel_interaction(s->interaction);
                         host.interactions().remove(s->interaction);
                         host.surfaces().destroy(s->surface);
+                        host.surfaces().destroy_content_range(s->background);
                         host.layout().remove_layout(s->node);
                     }
                 });
                 state.interaction = host.interactions().create({id, state.node, parent, false, false, {}});
+                const auto background =
+                    inner.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
+                state.background = host.surfaces().create_content_range(background, {});
                 const auto fragment =
                     inner.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
                 graphics::QuadInstance quad;
@@ -105,8 +111,9 @@ InputNumberActions mount_input_number_actions(WindowComponentServices& host, inp
 }
 
 void configure_input_number_actions(WindowComponentServices& host, const InputNumberActions& actions,
-                                    const InputNumberThemeToken& token, float height, float border_width, bool visible,
-                                    std::array<bool, 2> enabled, InputVariant variant) {
+                                    const InputNumberThemeToken& token, float height, float border_width,
+                                    float border_radius, bool visible, std::array<bool, 2> enabled,
+                                    InputVariant variant) {
     if (!host.components().contains(actions.group)) {
         return;
     }
@@ -124,6 +131,7 @@ void configure_input_number_actions(WindowComponentServices& host, const InputNu
         s->token = token;
         s->variant = variant;
         s->border_width = border_width;
+        s->border_radius = border_radius;
         s->enabled = visible && enabled[i];
         if (!s->enabled) {
             s->hovered = false;
@@ -166,13 +174,20 @@ void paint_input_number_actions(WindowComponentServices& host, const InputNumber
             return q;
         };
         const auto bounds = node.bounds;
-        const std::array quads{
+        std::array quads{
             quad(bounds, color),
             quad({bounds.x, bounds.y, std::min(s->border_width, bounds.width), bounds.height},
                  s->token.handle_border_color),
             quad({bounds.x, bounds.y, bounds.width, s->down ? std::min(s->border_width, bounds.height) : 0.0F},
                  s->token.handle_border_color)};
+        quads[0].opacity = 0;
         static_cast<void>(host.surfaces().update(s->surface, quads));
+        const float radius =
+            std::min(std::max(0.0F, s->border_radius - s->border_width), std::min(bounds.width, bounds.height) / 2);
+        const auto background = graphics::make_corner_fill_effects({bounds, radius}, {false, !s->down, s->down, false},
+                                                                   color, s->visible ? node.opacity : 0,
+                                                                   node.translation, graphics::EffectClip{1, clip});
+        host.surfaces().update_content_effects(s->background, background);
         component::RetainedSurfaceEffects effects;
         effects.shape = {bounds, 0};
         effects.translation = node.translation;

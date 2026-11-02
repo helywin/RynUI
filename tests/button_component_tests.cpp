@@ -1351,7 +1351,8 @@ void test_ghost_dashed_gaps_and_material_only_theme_updates() {
     const auto coverage = [&](ryn::runtime::Point point) {
         float result{};
         for (const auto& effect : fixture.host->rounded_effects().packed_instances()) {
-            if (effect.geometry.kind == ryn::graphics::RoundedEffectKind::outline && effect.geometry.ancestor_clip) {
+            if (effect.geometry.kind == ryn::graphics::RoundedEffectKind::dashed_outline &&
+                effect.geometry.ancestor_clip) {
                 const auto clip = effect.geometry.ancestor_clip->bounds;
                 if (point.x >= clip.x && point.x < clip.x + clip.width && point.y >= clip.y &&
                     point.y < clip.y + clip.height) {
@@ -1364,6 +1365,7 @@ void test_ghost_dashed_gaps_and_material_only_theme_updates() {
     require(coverage({bounds.x + 13.5F, bounds.y + 0.5F}) > 0.5F && coverage({bounds.x + 16.5F, bounds.y + 0.5F}) == 0,
             "Ghost dashed coverage filled the gap or lost dash");
     const auto effects = fixture.host->snapshot(id).dashed_effects;
+    require(effects == 1, "Ghost dashed border should use one continuous path");
     const auto shapes =
         fixture.text_scene.text_state(fixture.host->text().mounted_texts()[0].scene).counters().shape_count;
     clear_observation_state(fixture);
@@ -1387,7 +1389,13 @@ void test_ghost_dashed_gaps_and_material_only_theme_updates() {
     changed.button.tokens.dash_gap = ryn::dp(9);
     theme.set(changed);
     require(!fixture.dirty.geometry_nodes().empty() && fixture.synchronize() &&
-                fixture.host->snapshot(id).dashed_effects < effects,
+                fixture.host->snapshot(id).dashed_effects == effects &&
+                std::ranges::any_of(fixture.host->rounded_effects().packed_instances(),
+                                    [](const auto& effect) {
+                                        const auto* dash =
+                                            std::get_if<ryn::graphics::RoundedDashPath>(&effect.geometry.path);
+                                        return dash && dash->gap == 9;
+                                    }),
             "Button dash metric failed to request geometry refresh");
     variant.set(ryn::ButtonVariant::Outlined);
     require(fixture.synchronize() && fixture.host->snapshot(id).dashed_effects == 0,

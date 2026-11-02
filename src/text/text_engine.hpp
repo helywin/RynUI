@@ -263,6 +263,10 @@ public:
         return content_.view();
     }
 
+    [[nodiscard]] std::span<const font::FontIdentity> font_chain() const noexcept {
+        return fallback_chain_;
+    }
+
     [[nodiscard]] StringView display_content() const noexcept {
         return ellipsis_.rows ? displayed_.view() : content_.view();
     }

@@ -1849,6 +1849,7 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     }
     if (state->number) {
         model.preferred_width = theme.input_number().control_width;
+        model.flush_suffix = true;
     }
     model.padding_block = size_tokens.padding_block;
     if (state->variant == InputVariant::Borderless || state->variant == InputVariant::Underlined) {
@@ -2497,7 +2498,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         const auto snap = [&](float value) {
             return std::round(value * display_scale_) / display_scale_;
         };
-        const auto caret_left = std::clamp(snap(state->geometry.caret_x), caret_clip.x,
+        const float caret_origin = state->otp && display.text.empty() ? viewport.x + (viewport.width - thickness) / 2
+                                                                      : state->geometry.caret_x;
+        const auto caret_left = std::clamp(snap(caret_origin), caret_clip.x,
                                            std::max(caret_clip.x, caret_clip.x + caret_clip.width - thickness));
         const auto caret_top = state->textarea
                                    ? viewport.y + static_cast<float>(caret_stop.line) * state->typography.line_height -
@@ -2876,10 +2879,10 @@ void InputComponentHost::refresh_number(runtime::ComponentId component) {
         state->active && !state->disabled && !state->read_only && editor && !number.composition_active;
     const auto& theme = host_->components().theme_scope(component)->snapshot();
     const auto& tokens = theme.input_number();
-    const auto height =
-        std::max(0.0F, state->layout.control_height - 2 * (state->layout.padding_block + state->layout.border_width));
+    const auto height = std::max(0.0F, state->layout.control_height - 2 * state->layout.border_width);
     configure_input_number_actions(
         *host_, number.actions, tokens, height, theme.seed().line_width,
+        state->variant == InputVariant::Underlined ? 0 : derive_input_tokens(theme).size(state->size).border_radius,
         number.controls && !state->disabled && !state->read_only,
         {editable && number.model.stepped(InputNumberStepDirection::Up) != number.model.value(),
          editable && number.model.stepped(InputNumberStepDirection::Down) != number.model.value()},

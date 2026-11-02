@@ -879,7 +879,7 @@ void TreeComponentHost::place_row(runtime::ComponentId id, std::size_t i, layout
     const auto place_center = [&](runtime::ComponentId child, float width, float extent) {
         const float side = std::max(0.0F, std::min({width, extent, r.height}));
         e.place_child(services_->components().root(child),
-                      {x + (width - side) / 2, r.y + (r.height - side) / 2, side, side});
+                      {x + (width - side) / 2, r.y + (r.height - side) / 2, side, side}, true, true);
         x += width;
     };
     place_center(row.view.switcher, row.switcher_width, m.switcher_size);

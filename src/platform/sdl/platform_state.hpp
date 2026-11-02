@@ -13,6 +13,7 @@
 namespace ryn::detail {
 
 using PlatformWindowHandle = void*;
+using PlatformCursorHandle = void*;
 
 enum class PlatformStage {
     sdl_init,
@@ -145,6 +146,24 @@ public:
         return false;
     }
 
+    [[nodiscard]] virtual std::optional<runtime::Point> mouse_position(PlatformWindowHandle) const noexcept {
+        return {};
+    }
+
+    virtual PlatformCursorHandle create_text_cursor() noexcept {
+        return nullptr;
+    }
+
+    virtual bool set_cursor(PlatformCursorHandle) noexcept {
+        return false;
+    }
+
+    [[nodiscard]] virtual PlatformCursorHandle current_cursor() const noexcept {
+        return nullptr;
+    }
+
+    virtual void destroy_cursor(PlatformCursorHandle) noexcept {}
+
     virtual bool init_video() = 0;
     virtual void quit() noexcept = 0;
     virtual PlatformWindowHandle create_window(const char* title, int width, int height, bool high_pixel_density) = 0;
@@ -172,6 +191,10 @@ public:
     bool stop() noexcept override;
     bool cancel() noexcept override;
     bool set_area(const input::WindowTextInputArea&) noexcept override;
+    void bind_text_pointer_query(input::TextPointerQuery) noexcept override;
+    bool synchronize_pointer_cursor() noexcept override;
+    // Custom render density may differ from the display's normal logical scale.
+    bool set_pointer_display_scale(float) noexcept;
     PlatformState(const PlatformState&) = delete;
     PlatformState& operator=(const PlatformState&) = delete;
     PlatformState(PlatformState&&) = delete;
@@ -205,6 +228,9 @@ private:
     input::TextInputSessionStamp text_session_;
     std::uint64_t text_started_at_{};
     bool text_stop_pending_{};
+    input::TextPointerQuery text_pointer_query_;
+    PlatformCursorHandle text_cursor_{};
+    float pointer_display_scale_{};
     PlatformEventDiagnostics event_diagnostics_;
 };
 

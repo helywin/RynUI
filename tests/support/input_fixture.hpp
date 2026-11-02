@@ -23,6 +23,23 @@ struct Platform final : TextInputPlatform, TextClipboard {
     int reads{};
     int writes{};
     std::function<void()> on_clipboard;
+    TextPointerQuery pointer_query;
+    std::optional<runtime::Point> pointer_position;
+    bool text_cursor{};
+    int cursor_syncs{};
+
+    void bind_text_pointer_query(TextPointerQuery query) noexcept override {
+        pointer_query = std::move(query);
+        if (!pointer_query) {
+            text_cursor = false;
+        }
+    }
+
+    bool synchronize_pointer_cursor() noexcept override {
+        ++cursor_syncs;
+        text_cursor = pointer_position && pointer_query && pointer_query(*pointer_position);
+        return true;
+    }
 
     bool start(TextInputSessionStamp, const TextInputProperties& value) noexcept override {
         ++starts;

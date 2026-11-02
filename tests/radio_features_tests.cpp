@@ -498,6 +498,155 @@ void solid_fill_has_no_inner_frame() {
     }
 }
 
+void blend_effect(std::array<float, 3>& color, runtime::Point point, const graphics::RoundedEffectInstance& effect,
+                  float scale) {
+    if (!effect.material.visible) {
+        return;
+    }
+    const auto bounds = graphics::rounded_effect_bounds(effect, 1 / scale);
+    if (point.x < bounds.x || point.x >= bounds.x + bounds.width || point.y < bounds.y ||
+        point.y >= bounds.y + bounds.height) {
+        return;
+    }
+    const auto alpha = graphics::rounded_effect_coverage(point, effect, 1 / scale) * effect.material.opacity *
+                       effect.material.color.alpha();
+    const std::array source{effect.material.color.red(), effect.material.color.green(), effect.material.color.blue()};
+    for (std::size_t channel = 0; channel < color.size(); ++channel) {
+        color[channel] = source[channel] * alpha + color[channel] * (1 - alpha);
+    }
+}
+
+std::array<float, 3> ordered_frame_color(Fixture& f, runtime::Point point, float scale) {
+    std::array<float, 3> color{1, 1, 1};
+    const auto effects = f.services.surfaces().effects().packed_instances();
+    for (const auto command : f.services.scene_composer().ordered_scene().commands()) {
+        if (command.kind == graphics::SceneDrawKind::rounded_effect) {
+            for (std::uint32_t i = 0; i < command.instance_count; ++i) {
+                blend_effect(color, point, effects[command.first_instance + i], scale);
+            }
+        }
+    }
+    return color;
+}
+
+void selected_shared_edge_coverage() {
+    const std::array<RadioValue, 3> values{false, true, 1.0};
+    for (const bool translucent : {false, true}) {
+        for (const auto style : {RadioButtonStyle::Outline, RadioButtonStyle::Solid}) {
+            for (const auto direction : {RadioDirection::LeftToRight, RadioDirection::RightToLeft}) {
+                for (const auto orientation : {RadioGroupOrientation::Horizontal, RadioGroupOrientation::Vertical}) {
+                    Fixture f;
+                    detail::SelectionComponentHost host{f.services};
+                    ThemeConfig config;
+                    const auto primary = Color::rgba8(22, 119, 255, translucent ? 144 : 255);
+                    config.radio.tokens.primary = primary;
+                    config.radio.tokens.border = Color::rgba8(92, 34, 110, 192);
+                    config.radio.tokens.button_background = Color::rgba8(255, 255, 255);
+                    config.radio.tokens.button_checked_background = Color::rgba8(255, 255, 255);
+                    config.radio.tokens.button_solid_checked_background = primary;
+                    const auto radio = resolve_theme(config).radio();
+                    Signal<RadioSelection> selected{RadioSelection{false}};
+                    Signal<RadioOptionType> type{RadioOptionType::Button};
+                    host.mount(Content{[&] {
+                        Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                                  RadioGroup(RadioGroupProps{}
+                                                 .options({{false, u8"false"}, {true, u8"true"}, {1.0, u8"数字"}})
+                                                 .selection(selected)
+                                                 .size(RadioSize::Small)
+                                                 .optionType(type)
+                                                 .buttonStyle(style)
+                                                 .direction(direction)
+                                                 .orientation(orientation));
+                              }});
+                    }});
+                    f.synchronize(420);
+                    const auto creates = f.services.surfaces().diagnostics().creates;
+                    const auto mounts = f.services.components().mount_runs();
+                    const std::array ranges{host.snapshot(host.mounted()[0].component).button_range,
+                                            host.snapshot(host.mounted()[1].component).button_range,
+                                            host.snapshot(host.mounted()[2].component).button_range};
+                    std::size_t half_coverage_samples = 0;
+                    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+                        for (const float phase : {0.0F, 0.25F, 0.5F, 0.75F}) {
+                            for (std::size_t index = 0; index < values.size(); ++index) {
+                                selected.set(RadioSelection{values[index]});
+                                require(f.buttons.layout_and_synchronize({420, 240}, {0, 0, 420, 240},
+                                                                         {12 + phase / scale, 12 + phase / scale}),
+                                        "shared edge coverage layout failed");
+                                const auto item = host.mounted()[index];
+                                const auto& node = f.nodes.require(item.node);
+                                auto rect = node.bounds;
+                                rect.x += node.translation.x;
+                                rect.y += node.translation.y;
+                                const graphics::LogicalRoundedRect shape{
+                                    rect, std::min(radio.button_radius_small, std::min(rect.width, rect.height) / 2)};
+                                const auto corners = host.snapshot(item.component).rounded_corners;
+                                const auto fill = style == RadioButtonStyle::Solid
+                                                      ? radio.button_solid_checked_background
+                                                      : radio.button_checked_background;
+                                const auto border = style == RadioButtonStyle::Solid ? fill : radio.primary;
+                                const graphics::LogicalRoundedRect inner{
+                                    {rect.x + radio.line_width, rect.y + radio.line_width,
+                                     rect.width - 2 * radio.line_width, rect.height - 2 * radio.line_width},
+                                    std::max(0.0F, shape.radius - radio.line_width)};
+                                const auto fills = graphics::make_corner_fill_effects(shape, corners, fill);
+                                const auto borders = graphics::make_corner_outline_effects(
+                                    inner, corners, radio.line_width, 0, border, border == fill ? 0 : 1);
+                                const auto check = [&](runtime::Point point) {
+                                    std::array<float, 3> expected{1, 1, 1};
+                                    for (const auto& effect : fills) {
+                                        blend_effect(expected, point, effect, scale);
+                                    }
+                                    for (const auto& effect : borders) {
+                                        blend_effect(expected, point, effect, scale);
+                                    }
+                                    const auto actual = ordered_frame_color(f, point, scale);
+                                    for (std::size_t channel = 0; channel < actual.size(); ++channel) {
+                                        require(std::abs(actual[channel] - expected[channel]) < 0.0005F,
+                                                "shared border AA was consumed or polluted by a neighbor stroke");
+                                    }
+                                    ++half_coverage_samples;
+                                };
+                                const bool vertical = orientation == RadioGroupOrientation::Vertical;
+                                const float first = vertical ? rect.y : rect.x;
+                                const float last = vertical ? rect.y + rect.height : rect.x + rect.width;
+                                for (const float edge :
+                                     {first, first + radio.line_width, last - radio.line_width, last}) {
+                                    for (const float offset : {-0.49F, -0.25F, 0.0F, 0.25F, 0.49F}) {
+                                        const float coordinate = edge + offset / scale;
+                                        check(vertical ? runtime::Point{rect.x + rect.width / 2, coordinate}
+                                                       : runtime::Point{coordinate, rect.y + rect.height / 2});
+                                    }
+                                    // Also sample actual physical pixel centers as the item's phase moves.
+                                    for (const float pixel : {-1.0F, 0.0F, 1.0F}) {
+                                        const float coordinate = (std::floor(edge * scale) + 0.5F + pixel) / scale;
+                                        check(vertical ? runtime::Point{rect.x + rect.width / 2, coordinate}
+                                                       : runtime::Point{coordinate, rect.y + rect.height / 2});
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    require(half_coverage_samples == 1536, "shared edge coverage matrix missed fractional samples");
+                    require(f.services.surfaces().diagnostics().creates == creates &&
+                                f.services.components().mount_runs() == mounts,
+                            "shared border ownership recreated retained resources");
+                    for (std::size_t index = 0; index < ranges.size(); ++index) {
+                        require(host.snapshot(host.mounted()[index].component).button_range == ranges[index],
+                                "shared border ownership replaced the member's retained range");
+                    }
+                    type.set(RadioOptionType::Default);
+                    f.synchronize(420);
+                    for (const auto& effect : f.services.surfaces().effects().packed_instances()) {
+                        require(effect.material.opacity == 0 || effect.geometry.shape.rect.width <= radio.size + 1,
+                                "leaving Button mode retained a group background");
+                    }
+                }
+            }
+        }
+    }
+}
+
 void radio_tokens_and_corner_math() {
     ThemeConfig config;
     const auto baseline = resolve_theme(config);
@@ -677,6 +826,7 @@ int main() {
         buttons_and_local_theme();
         dynamic_button_edges();
         solid_fill_has_no_inner_frame();
+        selected_shared_edge_coverage();
         radio_tokens_and_corner_math();
         constrained_button_geometry();
         finite_feedback();

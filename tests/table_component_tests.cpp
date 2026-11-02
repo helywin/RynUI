@@ -3,6 +3,7 @@
 #include "component/modal_component.hpp"
 #include "component/selection_component.hpp"
 #include "component/select_component.hpp"
+#include "component/tag_badge_component.hpp"
 #include "support/input_fixture.hpp"
 #include "support/bundled_icon_checks.hpp"
 #include <iostream>
@@ -737,10 +738,281 @@ void empty_body_horizontal_wheel() {
               f.services.surfaces().size() == 0 && !f.services.hit_test().hit_test({x, y}),
           "empty Table body background cleanup leaked");
 }
+
+bool descendant(Fixture& f, runtime::ComponentId child, runtime::ComponentId ancestor) {
+    for (auto current = std::optional{child}; current; current = f.services.components().parent(*current)) {
+        if (*current == ancestor) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool contains(runtime::Rect r, runtime::Point p) {
+    return r.width > 0 && r.height > 0 && p.x >= r.x && p.y >= r.y && p.x < r.x + r.width && p.y < r.y + r.height;
+}
+
+float fill_coverage(Fixture& f, Color color, runtime::Point point) {
+    float result = 0;
+    for (const auto& command : f.services.scene_composer().ordered_scene().commands()) {
+        for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+            if (command.kind == graphics::SceneDrawKind::quad) {
+                const auto& q = f.services.surfaces().instances().at(i);
+                const runtime::Rect r{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1], q.bounds[2],
+                                      q.bounds[3]};
+                if (q.color == std::array{color.red(), color.green(), color.blue(), color.alpha()} &&
+                    contains(r, point)) {
+                    result = std::max(result, q.opacity * q.color[3]);
+                }
+            } else if (command.kind == graphics::SceneDrawKind::rounded_effect) {
+                const auto& effect = f.services.rounded_effects().packed_instances()[i];
+                if (effect.material.color == color && effect.material.visible &&
+                    (!effect.geometry.ancestor_clip || contains(effect.geometry.ancestor_clip->bounds, point))) {
+                    result = std::max(result, graphics::rounded_effect_coverage(point, effect, 1 / f.font_scale) *
+                                                  effect.material.opacity * color.alpha());
+                }
+            }
+        }
+    }
+    return result;
+}
+
+void table_child_fills_respect_body_clip() {
+    for (const auto scale : {0.5F, 1.0F, 1.5F}) {
+        Fixture f;
+        f.font_scale = scale;
+        const auto checkbox_color = Color::rgba8(191, 49, 65);
+        const auto number_color = Color::rgba8(37, 171, 103);
+        auto theme = std::make_shared<ThemeConfig>();
+        theme->checkbox.tokens.background = checkbox_color;
+        theme->checkbox.tokens.border = checkbox_color;
+        theme->input.tokens.background = number_color;
+        theme->input.tokens.hover_background = number_color;
+        theme->input.tokens.active_background = number_color;
+        MessageRef notices;
+        f.services.mount(Content{[&] {
+            Theme(ThemeProps{}.config(*theme), ThemeContent{[&] {
+                      Table(TableProps<Row>{}
+                                .dataSource(data())
+                                .rowKey([](const Row& row) { return row.id; })
+                                .columns({TableColumn<Row>{u8"checked", u8"Checked",
+                                                           [](TableCell<Row>) { Checkbox(CheckboxProps{}); }}
+                                              .width(120),
+                                          TableColumn<Row>{u8"number", u8"Number",
+                                                           [](TableCell<Row> cell) {
+                                                               InputNumber(InputNumberProps{}.defaultValue(
+                                                                   static_cast<double>(cell.value().amount)));
+                                                           }}
+                                              .width(180),
+                                          TableColumn<Row>{u8"status", u8"Status",
+                                                           [](TableCell<Row>) {
+                                                               Tag(TagProps{}.color(PresetColor::Cyan),
+                                                                   TagContent{[] { Text(u8"Editable"); }});
+                                                           }}
+                                              .width(180)})
+                                .scrollY(80));
+                      MessageHolder(MessageHolderProps{}.ref(notices));
+                  }});
+        }});
+        sync(f);
+        const auto table = f.services.table().mounted().front();
+        const auto original = f.services.table().snapshot(table);
+        const auto first_row = original.rows.front().component;
+        const auto checkbox = f.selections.mounted().front().component;
+        const auto number = f.inputs.mounted_inputs().front().component;
+        const auto tag = f.services.tag_badge().tags().front();
+        const auto tag_color = f.services.tag_badge().tag_snapshot(tag).palette.background;
+        const std::array controls{checkbox, number, tag};
+        const std::array next_controls{f.selections.mounted()[1].component, f.inputs.mounted_inputs()[1].component,
+                                       f.services.tag_badge().tags()[1]};
+        const std::array colors{checkbox_color, number_color, tag_color};
+        float scroll = 0;
+        for (std::size_t i = 0; i < controls.size(); ++i) {
+            check(descendant(f, controls[i], first_row), "Table clipping fixture did not keep first-row controls");
+            const auto r = bounds(f, controls[i]);
+            const runtime::Point center{r.x + r.width / 2, r.y + r.height / 2};
+            check(fill_coverage(f, colors[i], center) > .5F, "Table clipping fixture has no real control fill");
+            scroll = std::max(scroll, center.y - original.body.y + 4);
+        }
+        check(scroll < original.maximum_y &&
+                  f.services.dispatch_scroll(
+                      {0, -scroll / 32, original.body.x + original.body.width - 2, original.body.y + 4}),
+              "Table clipping fixture did not scroll controls into header");
+        sync(f);
+        const auto verify = [&] {
+            const auto state = f.services.table().snapshot(table);
+            for (std::size_t i = 0; i < controls.size(); ++i) {
+                const auto r = bounds(f, controls[i]);
+                const runtime::Point center{r.x + r.width / 2, r.y + r.height / 2};
+                check(center.y < state.body.y && fill_coverage(f, colors[i], center) == 0,
+                      "Table child fill survived in the header above its body clip");
+                const auto hit = f.services.hit_test().hit_test(center);
+                check(!hit || !descendant(f, f.services.interactions().require(*hit).component, first_row),
+                      "Table child hit survived above body clip");
+                const auto next = bounds(f, next_controls[i]);
+                const runtime::Point visible{next.x + next.width / 2, next.y + next.height / 2};
+                check(contains(state.body, visible) && fill_coverage(f, colors[i], visible) > .5F,
+                      "visible Table child fill was removed instead of clipped");
+            }
+            std::size_t ink_above = 0;
+            std::size_t visible_above = 0;
+            const auto& atlas = f.scene.atlas();
+            const auto aw = atlas.config().page_width;
+            const auto ah = atlas.config().page_height;
+            for (const auto& text : f.services.text().mounted_texts()) {
+                if (!descendant(f, text.component, tag)) {
+                    continue;
+                }
+                for (const auto& range : f.scene.primitive(text.scene).draw_ranges) {
+                    const auto bytes = atlas.page_bytes(range.atlas_page);
+                    for (auto i = range.instances.first; i < range.instances.first + range.instances.count; ++i) {
+                        const auto& g = f.scene.glyph_scene().instances().at(i);
+                        const int x0 = static_cast<int>(std::lround(g.uv_rect[0] * aw));
+                        const int y0 = static_cast<int>(std::lround(g.uv_rect[1] * ah));
+                        const int x1 = static_cast<int>(std::lround(g.uv_rect[2] * aw));
+                        const int y1 = static_cast<int>(std::lround(g.uv_rect[3] * ah));
+                        for (int y = y0; y < y1; ++y) {
+                            for (int x = x0; x < x1; ++x) {
+                                if (bytes[static_cast<std::size_t>(y) * aw + x] < 32) {
+                                    continue;
+                                }
+                                const auto point = graphics::glyph_vertex(
+                                    g, {(static_cast<float>(x - x0) + .5F) / static_cast<float>(x1 - x0),
+                                        (static_cast<float>(y - y0) + .5F) / static_cast<float>(y1 - y0)});
+                                const bool above = point.y < state.body.y;
+                                ink_above += above;
+                                visible_above += above && point.x >= g.clip_bounds[0] && point.x <= g.clip_bounds[2] &&
+                                                 point.y >= g.clip_bounds[1] && point.y <= g.clip_bounds[3] &&
+                                                 g.translation_opacity[2] > 0;
+                            }
+                        }
+                    }
+                }
+            }
+            check(ink_above > 0 && visible_above == 0, "Table text ink clipping fixture or effective clip failed");
+        };
+        verify();
+        const auto live_effects = f.services.rounded_effects().live_count();
+        check(notices.open(u8"table-clip", MessageProps{}.content(u8"Status").duration(0)),
+              "Table clipping coexisting notice did not open");
+        sync(f);
+        verify();
+        check(notices.close(u8"table-clip"), "Table clipping coexisting notice did not close");
+        sync(f);
+        verify();
+        check(f.services.rounded_effects().live_count() == live_effects,
+              "notice layer transition leaked Table clipped fills");
+        check(f.services.table().snapshot(table).rows.front().component == first_row &&
+                  f.selections.mounted().front().component == checkbox &&
+                  f.inputs.mounted_inputs().front().component == number && f.services.tag_badge().tags().front() == tag,
+              "Table clip conversion remounted controls");
+    }
+}
+
+void fill_conversion_restores_quad_ranges() {
+    Fixture f;
+    f.services.mount(Content{
+        [] { Flex(FlexProps{}, FlexContent{[] { Button(ButtonProps{}.wave(false), [] { Text(u8"Content"); }); }}); }});
+    sync(f);
+    const auto owner = f.buttons.mounted_buttons().front().component;
+    const auto parent = f.services.components().parent(owner).value();
+    auto& clip_node = f.nodes.require(f.services.components().root(parent));
+    clip_node.bounds = {10, 10, 30, 30};
+    clip_node.clip_content = true;
+    clip_node.clip_decorations = false;
+    auto& owner_node = f.nodes.require(f.services.components().root(owner));
+    owner_node.bounds = {11.5F, 12, 16, 16};
+    owner_node.translation = {};
+    const auto fragment =
+        f.services.components().register_scene_fragment(owner, runtime::SceneFragmentPlacement::after_children);
+    const graphics::QuadInstance fill{{11.5F, 12, 16, 16}, {1, 0, 1, 1}, 1, 0, {}};
+    const std::array visuals{fill, fill, fill};
+    auto& surfaces = f.services.surfaces();
+    const auto range = surfaces.create_content_range(fragment, visuals);
+    const auto surface_fragment =
+        f.services.components().register_scene_fragment(owner, runtime::SceneFragmentPlacement::after_children);
+    std::array surface_visuals{fill, fill};
+    surface_visuals[0].color = {1, 0, 0, 1};
+    surface_visuals[1].color = {0, 0, 1, 1};
+    component::RetainedSurfaceEffects decoration;
+    decoration.shape = {{11.5F, 12, 16, 16}, 0};
+    decoration.shadows = {ShadowLayer{ShadowKind::outer, {1, 0}, 0, 0, Color::rgba8(0, 255, 0)}};
+    decoration.focus_enabled = false;
+    decoration.shadow_fill_offset = 1;
+    const auto surface = surfaces.create_surface(owner, owner_node.id, surface_fragment, surface_visuals, decoration);
+    const runtime::Rect window{0, 0, 640, 240};
+    const auto rebuild = [&] {
+        static_cast<void>(surfaces.compact_effects(window, window, 2));
+        f.services.scene_composer().rebuild(window);
+    };
+    const auto count = [&](graphics::SceneDrawKind kind) {
+        std::size_t result = 0;
+        for (const auto& command : f.services.scene_composer().ordered_scene().commands()) {
+            if (command.kind != kind) {
+                continue;
+            }
+            for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+                if (kind == graphics::SceneDrawKind::quad) {
+                    result += surfaces.instances().at(i).color == fill.color;
+                } else if (kind == graphics::SceneDrawKind::rounded_effect) {
+                    result += surfaces.effects().packed_instances()[i].material.color == Color::rgba8(255, 0, 255);
+                }
+            }
+        }
+        return result;
+    };
+    rebuild();
+    check(count(graphics::SceneDrawKind::quad) == 0 && count(graphics::SceneDrawKind::rounded_effect) == 3,
+          "AA support crossing ancestor clip did not convert each content fill exactly once");
+    std::vector<Color> surface_order;
+    for (const auto& command : f.services.scene_composer().ordered_scene().commands()) {
+        if (command.kind != graphics::SceneDrawKind::rounded_effect) {
+            continue;
+        }
+        for (auto i = command.first_instance; i < command.first_instance + command.instance_count; ++i) {
+            const auto color = surfaces.effects().packed_instances()[i].material.color;
+            if (color == Color::rgba8(255, 0, 0) || color == Color::rgba8(0, 255, 0) ||
+                color == Color::rgba8(0, 0, 255)) {
+                surface_order.push_back(color);
+            }
+        }
+    }
+    check(surface_order == std::vector{Color::rgba8(255, 0, 0), Color::rgba8(0, 255, 0), Color::rgba8(0, 0, 255)},
+          "clipped surface changed shadow_fill_offset paint order");
+    const auto shadow = surfaces.shadow_effects(surface).front();
+    check(!surfaces.effects().at(shadow).geometry.ancestor_clip,
+          "passive content clip cropped outward surface decoration");
+    clip_node.clip_decorations = true;
+    rebuild();
+    check(surfaces.effects().at(shadow).geometry.ancestor_clip->bounds == clip_node.bounds,
+          "ancestor decoration clip did not restrict the shadow");
+    static_cast<void>(surfaces.update_content_range(range, std::span{visuals}.first(1)));
+    rebuild();
+    check(count(graphics::SceneDrawKind::rounded_effect) == 1,
+          "shrinking clipped content range retained obsolete effects");
+    f.services.components().set_window_layer(owner, 10);
+    rebuild();
+    check(count(graphics::SceneDrawKind::quad) == 1 && count(graphics::SceneDrawKind::rounded_effect) == 0,
+          "window-layer clip boundary retained old ancestor conversion");
+    f.services.components().set_window_layer(owner, std::nullopt);
+    rebuild();
+    check(count(graphics::SceneDrawKind::quad) == 0 && count(graphics::SceneDrawKind::rounded_effect) == 1,
+          "returning from window layer did not restore ancestor clipping");
+    clip_node.clip_content = false;
+    rebuild();
+    check(count(graphics::SceneDrawKind::quad) == 1 && count(graphics::SceneDrawKind::rounded_effect) == 0,
+          "disabled ancestor clip did not restore the original Quad range");
+    check(!surfaces.effects().at(shadow).geometry.ancestor_clip,
+          "removed ancestor clip left the shadow geometry clipped");
+    check(surfaces.destroy_content_range(range), "clipped content range cleanup failed");
+    check(surfaces.destroy(surface), "clipped surface cleanup failed");
+}
 } // namespace
 
 int main() {
     try {
+        table_child_fills_respect_body_clip();
+        fill_conversion_restores_quad_ranges();
         empty_body_horizontal_wheel();
         retained_business_rows();
         controlled_sort_selection_pages();

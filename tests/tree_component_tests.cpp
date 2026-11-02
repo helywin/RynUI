@@ -41,6 +41,22 @@ void basic() {
     const auto id = f.services.tree().mounted()[0];
     auto s = f.services.tree().snapshot(id);
     check(s.rows.size() == 3 && s.rows[1].shown && s.rows[0].expanded, "documented Tree example did not expand");
+    const auto& metrics = f.services.components().theme_scope(id)->snapshot().tree().metrics;
+    for (const auto& row : s.rows) {
+        const auto line = bounds(f, row.component);
+        const auto checkbox = bounds(f, row.checkbox);
+        const auto switcher = bounds(f, row.switcher);
+        const auto title = bounds(f, row.title);
+        check(std::abs(checkbox.width - metrics.checkbox_size) < .01F &&
+                  std::abs(checkbox.height - metrics.checkbox_size) < .01F,
+              "Tree checkbox collapsed to its smaller checkmark measurement");
+        for (const auto part : {checkbox, switcher, title}) {
+            check(std::abs(part.y + part.height / 2 - line.y - line.height / 2) < .01F,
+                  "Tree row regions did not share a vertical center");
+        }
+        check(std::abs(switcher.width - metrics.switcher_size) < .01F,
+              "Tree switcher collapsed to its smaller glyph measurement");
+    }
     click(f, s.rows[0].checkbox);
     s = f.services.tree().snapshot(id);
     check(s.checked == TreeKeys{u8"project", u8"src", u8"docs"} && s.half_checked.empty(),
@@ -168,6 +184,13 @@ void rich() {
     sync(f);
     check(f.services.components().component_count() == count && mounts == 1,
           "presentation update remounted rich slots");
+    const auto rich_row = f.services.tree().snapshot(id).rows[1];
+    const auto rich_line = bounds(f, rich_row.component);
+    for (const auto part : {rich_row.switcher, rich_row.checkbox, rich_row.title}) {
+        const auto r = bounds(f, part);
+        check(std::abs(r.y + r.height / 2 - rich_line.y - rich_line.height / 2) < .01F,
+              "rich Tree row did not center its allocated glyph/checkbox/title regions");
+    }
     disabled.set(true);
     sync(f);
     click(f, button.component);

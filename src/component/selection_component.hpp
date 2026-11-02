@@ -136,6 +136,9 @@ private:
     void apply_group_button_style(runtime::ComponentId, RadioButtonStyle);
     void apply_group_block(runtime::ComponentId, bool);
     void publish_radio_button(SelectionState&);
+    [[nodiscard]] std::array<graphics::RoundedEffectInstance, 9>
+    radio_button_effects(const SelectionState&, std::array<bool, 4> border_sides = {true, true, true, true}) const;
+    void publish_radio_group_backgrounds(RadioGroupState&);
     [[nodiscard]] CompactBorder compact_border(const SelectionState&) const;
     [[nodiscard]] runtime::Size measure_radio_group(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place_radio_group(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);

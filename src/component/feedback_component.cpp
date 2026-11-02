@@ -5,13 +5,11 @@
 #include <ryn/icon.hpp>
 #include <algorithm>
 #include <cmath>
-#include <numbers>
 
 namespace ryn::detail {
 namespace {
 thread_local FeedbackComponentHost* active_feedback{};
-constexpr std::size_t arc_points = 192;
-constexpr std::size_t progress_layers = arc_points + 2;
+constexpr std::size_t progress_layers = 2;
 
 struct AlertState final {
     runtime::NodeId node;
@@ -265,6 +263,7 @@ void FeedbackComponentHost::refresh_alert(runtime::ComponentId id, bool geometry
     active(*services_, id, s->snapshot.visible);
     active(*services_, s->snapshot.icon, s->show_icon);
     active(*services_, s->snapshot.description, description);
+    services_->nodes().require(services_->components().root(s->snapshot.description)).out_of_flow = !description;
     active(*services_, s->snapshot.close, s->snapshot.closable);
     const auto hit = s->snapshot.close_interaction;
     if (services_->interactions().set_eligible(hit, s->snapshot.visible && s->snapshot.closable)) {
@@ -885,10 +884,9 @@ void FeedbackComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
         const auto& t = services_->components().theme_scope(id)->snapshot().progress();
         const auto& m = t.metrics;
         const auto r = node.bounds;
-        std::array<graphics::QuadInstance, progress_layers> quads;
-        for (auto& q : quads) {
-            q.opacity = 0;
-        }
+        const auto clip = graphics::EffectClip{
+            1, services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip))};
+        std::array<graphics::RoundedEffectInstance, progress_layers> fills;
         if (s->snapshot.type == ProgressType::Line) {
             const auto info = s->show_info ? std::min(r.width, m.info_width + m.info_gap) : 0;
             const auto stroke =
@@ -896,9 +894,16 @@ void FeedbackComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
             const runtime::Rect track{r.x, r.y + (r.height - stroke) / 2, std::max(0.0F, r.width - info), stroke};
             s->snapshot.track = track;
             s->snapshot.sweep_degrees = 0;
-            quads[0] = quad(node, track, t.colors.remaining, m.line_radius);
-            quads[1] = quad(node, {track.x, track.y, track.width * s->snapshot.percent / 100, track.height},
-                            s->snapshot.color, m.line_radius);
+            const auto fill = [&](runtime::Rect bounds, Color color) {
+                auto effect = graphics::make_shadow_effect(
+                    {bounds, std::min(m.line_radius, std::min(bounds.width, bounds.height) / 2)},
+                    ShadowLayer{ShadowKind::outer, {}, 0, 0, color}, node.translation, clip);
+                effect.material.opacity = node.opacity;
+                return effect;
+            };
+            fills[0] = fill(track, t.colors.remaining);
+            fills[1] =
+                fill({track.x, track.y, track.width * s->snapshot.percent / 100, track.height}, s->snapshot.color);
         } else {
             const auto diameter = std::min(r.width, r.height);
             const auto stroke = diameter * m.circle_stroke_ratio;
@@ -911,56 +916,12 @@ void FeedbackComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
             const auto fraction = s->snapshot.percent / 100;
             s->snapshot.track = {cx - diameter / 2, cy - diameter / 2, diameter, diameter};
             s->snapshot.sweep_degrees = sweep * fraction;
-            for (std::size_t i = 0; i < arc_points; ++i) {
-                const auto point = [&](float turn, Color color, float opacity) {
-                    const auto angle = (start + sweep * turn) * std::numbers::pi_v<float> / 180;
-                    return quad(node,
-                                {cx + radius * std::cos(angle) - stroke / 2, cy + radius * std::sin(angle) - stroke / 2,
-                                 stroke, stroke},
-                                color, stroke / 2, opacity);
-                };
-                const auto turn = static_cast<float>(i) / static_cast<float>(arc_points - 1);
-                const auto previous = static_cast<float>(i == 0 ? 0 : i - 1) / static_cast<float>(arc_points - 1);
-                quads[2 + i] = point(std::min(turn, fraction), s->snapshot.color,
-                                     fraction > 0 && previous <= fraction ? 1.0F : 0.0F);
-            }
-        }
-        const auto clip = graphics::EffectClip{
-            1, services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip))};
-        std::array<graphics::RoundedEffectInstance, progress_layers> fills;
-        for (std::size_t i = 0; i < quads.size(); ++i) {
-            const auto& q = quads[i];
-            // Zero-blur rounded fill uses the existing effect clip contract, including window layers.
-            fills[i] = graphics::make_shadow_effect(
-                {{q.bounds[0], q.bounds[1], q.bounds[2], q.bounds[3]}, q.corner_radius},
-                ShadowLayer{ShadowKind::outer, {}, 0, 0, Color{q.color[0], q.color[1], q.color[2], q.color[3]}},
-                node.translation, clip);
-            fills[i].material.opacity = q.opacity;
-        }
-        if (s->snapshot.type != ProgressType::Line) {
-            const auto diameter = std::min(r.width, r.height);
-            const auto stroke = diameter * m.circle_stroke_ratio;
-            const auto inner_radius = std::max(0.0F, diameter / 2 - stroke);
-            const auto cx = r.x + r.width / 2;
-            const auto cy = r.y + r.height / 2;
-            auto rail_clip = clip;
-            if (s->snapshot.type == ProgressType::Dashboard) {
-                const auto cutoff = cy + (diameter - stroke) / 2 * std::cos(37.5F * std::numbers::pi_v<float> / 180);
-                rail_clip.bounds = graphics::intersect_effect_bounds(
-                    rail_clip.bounds,
-                    {r.x + node.translation.x, r.y + node.translation.y, r.width, std::max(0.0F, cutoff - r.y)});
-            }
-            // A single rail avoids alpha accumulation between overlapping arc samples.
-            if (inner_radius > 0 && stroke > 0) {
-                fills[0] = graphics::make_outline_effect(
-                    {{cx - inner_radius, cy - inner_radius, inner_radius * 2, inner_radius * 2}, inner_radius}, stroke,
-                    0, t.colors.remaining, node.opacity, node.translation, rail_clip);
-            } else {
-                fills[0] = graphics::make_shadow_effect(
-                    {{cx - diameter / 2, cy - diameter / 2, diameter, diameter}, diameter / 2},
-                    ShadowLayer{ShadowKind::outer, {}, 0, 0, t.colors.remaining}, node.translation, rail_clip);
-                fills[0].material.opacity = node.opacity;
-            }
+            // Both paths use the same finite centerline and round caps. A
+            // single rail avoids translucent overlap and horizontal cutoffs.
+            fills[0] = graphics::make_arc_effect({cx, cy}, radius, stroke, start, sweep, t.colors.remaining,
+                                                 node.opacity, node.translation, clip);
+            fills[1] = graphics::make_arc_effect({cx, cy}, radius, stroke, start, sweep * fraction, s->snapshot.color,
+                                                 node.opacity, node.translation, clip);
         }
         static_cast<void>(services_->surfaces().update_content_effects(s->surface, fills));
     }

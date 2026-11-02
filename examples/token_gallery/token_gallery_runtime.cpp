@@ -332,6 +332,7 @@ private:
             if (event.width > 0 && event.height > 0) {
                 const auto metrics = platform_->window_metrics();
                 const float next_render_scale = fixed_render_scale_ ? *render_scale_ : metrics.display_scale;
+                static_cast<void>(platform_->set_pointer_display_scale(next_render_scale));
                 if (std::abs(next_render_scale - *render_scale_) > 0.0001F) {
                     auto resolver =
                         ryn::detail::make_default_ui_font_resolver(*fonts_, *font_chain_, next_render_scale);
@@ -978,6 +979,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
     try {
         std::optional<std::filesystem::path> snapshot_path;
         std::string_view snapshot_control;
+        std::string_view snapshot_label;
         for (int index = 1; index < argc; ++index) {
             const std::string_view argument = argv[index];
             if (argument.starts_with("--snapshot=")) {
@@ -986,6 +988,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     throw std::invalid_argument("--snapshot requires a BMP path");
                 }
                 snapshot_path = std::filesystem::path{value};
+            } else if (argument.starts_with("--snapshot-label=")) {
+                snapshot_label = argument.substr(std::string_view{"--snapshot-label="}.size());
+                if (snapshot_label.empty()) {
+                    throw std::invalid_argument("--snapshot-label requires a stable Gallery label prefix");
+                }
             } else if (argument.starts_with("--snapshot-control=")) {
                 snapshot_control = argument.substr(std::string_view{"--snapshot-control="}.size());
                 if (snapshot_control != "menu" && snapshot_control != "table" && snapshot_control != "pagination" &&
@@ -1002,6 +1009,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const bool snapshot_scrollbar_hover = has_argument(argc, argv, "--snapshot-scrollbar=hover");
         const bool snapshot_scrollbar_pressed = has_argument(argc, argv, "--snapshot-scrollbar=pressed");
         bool snapshot_positioned = false;
+        bool snapshot_label_positioned = false;
+        ryn::runtime::ComponentId snapshot_label_owner;
         unsigned snapshot_control_stage{};
         ryn::runtime::ComponentId snapshot_control_owner;
         bool snapshot_navigation_positioned = false;
@@ -1042,7 +1051,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
              (!snapshot_path || snapshot_middle || snapshot_password || snapshot_navigation_hover ||
               snapshot_navigation_click || snapshot_scrollbar_hover || snapshot_scrollbar_pressed)) ||
             (snapshot_password && (snapshot_middle || snapshot_navigation_hover || snapshot_navigation_click ||
-                                   snapshot_scrollbar_hover || snapshot_scrollbar_pressed))) {
+                                   snapshot_scrollbar_hover || snapshot_scrollbar_pressed)) ||
+            (!snapshot_label.empty() && (!snapshot_path || !snapshot_control.empty() || snapshot_middle ||
+                                         snapshot_password || snapshot_navigation_hover || snapshot_navigation_click ||
+                                         snapshot_scrollbar_hover || snapshot_scrollbar_pressed))) {
             throw std::invalid_argument("--snapshot is a separate visual acceptance mode");
         }
         if ((selection_dark && selection_compact) || ((selection_dark || selection_compact) && !selection_acceptance &&
@@ -1079,6 +1091,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         }
         const auto initial_metrics = platform.window_metrics();
         float render_scale = acceptance_scale.value_or(initial_metrics.display_scale);
+        static_cast<void>(platform.set_pointer_display_scale(render_scale));
         const auto logical_viewport =
             token_gallery_logical_viewport(initial_metrics.pixel_width, initial_metrics.pixel_height, render_scale);
         viewport = {logical_viewport.width, logical_viewport.height};
@@ -1978,8 +1991,28 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 return 5;
             }
             if (snapshot_path && step == ryn::runtime::FrameLoopStep::submitted) {
-                if (!snapshot_control.empty() &&
-                    snapshot_control_stage < (snapshot_control == "date-picker" ? 3U : 2U)) {
+                if (!snapshot_label.empty() && !snapshot_label_positioned) {
+                    bool found{};
+                    for (const auto& text : services.text().mounted_texts()) {
+                        if (!text_scene.text_state(text.scene).content().bytes().starts_with(snapshot_label)) {
+                            continue;
+                        }
+                        const auto bounds = nodes.require(services.components().root(text.component)).bounds;
+                        const auto root = nodes.require(definition.narrow_layout() ? body_root : document_root).bounds;
+                        if (bounds.width > 0 && bounds.height > 0) {
+                            static_cast<void>(document_viewport.scroll_to(std::max(0.0F, bounds.y - root.y - 40)));
+                            snapshot_label_owner = text.component;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        throw std::logic_error("snapshot label has no mounted Gallery target");
+                    }
+                    snapshot_label_positioned = true;
+                    frame_requests.request_frame();
+                } else if (!snapshot_control.empty() &&
+                           snapshot_control_stage < (snapshot_control == "date-picker" ? 3U : 2U)) {
                     if (snapshot_control_stage == 0) {
                         const auto mounted = snapshot_control == "menu"         ? services.menu().mounted()
                                              : snapshot_control == "table"      ? services.table().mounted()
@@ -2003,7 +2036,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                         }
                         const auto bounds =
                             services.nodes().require(services.components().root(snapshot_control_owner)).bounds;
-                        const auto root = services.nodes().require(document_root).bounds;
+                        const auto root =
+                            services.nodes().require(definition.narrow_layout() ? body_root : document_root).bounds;
                         static_cast<void>(document_viewport.scroll_to(std::max(0.0F, bounds.y - root.y - 100.0F)));
                     } else {
                         auto target = ryn::runtime::ComponentId{};
@@ -2149,12 +2183,21 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     if (snapshot_navigation_hover && application.pointer().diagnostics().hover_enters == 0) {
                         throw std::logic_error("component navigation hover was not delivered");
                     }
+                    if (!snapshot_label.empty()) {
+                        const auto& target = nodes.require(services.components().root(snapshot_label_owner));
+                        const auto top = target.bounds.y + target.translation.y;
+                        const auto lane = scroll_presentation.document_lane;
+                        if (std::max(top, lane.y) >= std::min(top + target.bounds.height, lane.y + lane.height)) {
+                            throw std::logic_error("snapshot label did not enter the actual document viewport");
+                        }
+                    }
                     if (!renderer.save_frame_bmp(*snapshot_path)) {
                         std::cerr << "snapshot_error=" << renderer.last_error() << '\n';
                         return 6;
                     }
                     std::cout << "snapshot=" << snapshot_path->string() << " gpu_driver=" << renderer.gpu_driver()
                               << " control=" << (snapshot_control.empty() ? "none" : snapshot_control)
+                              << " label=" << (snapshot_label.empty() ? "none" : snapshot_label)
                               << " display_scale=" << render_scale << " theme=" << (snapshot_dark ? "dark" : "light")
                               << " navigation="
                               << (snapshot_navigation_hover   ? "hover"

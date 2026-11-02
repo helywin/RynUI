@@ -3,6 +3,8 @@
 #include "input/text_clipboard_commands.hpp"
 #include "input/text_input_session.hpp"
 
+#include <utility>
+
 namespace ryn::detail {
 
 // The platform text-input session belongs to the window, independent of the
@@ -30,6 +32,14 @@ public:
 
     [[nodiscard]] input::TextClipboardCommands& clipboard() noexcept {
         return clipboard_;
+    }
+
+    void bind_text_pointer_query(input::TextPointerQuery query) noexcept {
+        platform_->bind_text_pointer_query(std::move(query));
+    }
+
+    void synchronize_pointer_cursor() noexcept {
+        static_cast<void>(platform_->synchronize_pointer_cursor());
     }
 
 private:

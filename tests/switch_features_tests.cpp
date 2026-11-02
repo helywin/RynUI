@@ -109,6 +109,90 @@ void retained_content_and_direction() {
     require(f.services.components().branch_active(on.component), "Switch did not recover content from zero width");
 }
 
+void content_moves_with_handle_and_reverses() {
+    for (const auto size : {SwitchSize::Middle, SwitchSize::Small}) {
+        for (const auto direction : {SwitchDirection::LeftToRight, SwitchDirection::RightToLeft}) {
+            Fixture f;
+            detail::SelectionComponentHost host{f.services};
+            f.services.set_motion_preference(animation::MotionPreference::normal);
+            Signal<bool> checked{false};
+            Signal<bool> loading{false};
+            Signal<bool> disabled{false};
+            int runs{};
+            host.mount(Content{[&] {
+                Switch(SwitchProps{}
+                           .checked(checked)
+                           .loading(loading)
+                           .disabled(disabled)
+                           .size(size)
+                           .direction(direction)
+                           .wave(false),
+                       SwitchSlots{SwitchCheckedContent{[&] {
+                                       ++runs;
+                                       Icon(IconProps{}.name(IconName::CheckOutlined));
+                                   }},
+                                   SwitchUncheckedContent{[&] {
+                                       ++runs;
+                                       Icon(IconProps{}.name(IconName::CloseCircleFilled));
+                                   }}});
+            }});
+            f.synchronize();
+            const auto item = host.mounted().front();
+            const auto on = f.services.text().mounted_texts()[0];
+            const auto off = f.services.text().mounted_texts()[1];
+            const auto on_region = *f.services.components().parent(on.component);
+            const auto off_region = *f.services.components().parent(off.component);
+            const auto region_bounds = [&](runtime::ComponentId id) {
+                return f.nodes.require(f.services.components().root(id)).bounds;
+            };
+            const auto start_on = region_bounds(on_region);
+            const auto start_off = region_bounds(off_region);
+            const auto measures = f.nodes.require(item.node).measure_count;
+            const auto mounts = f.services.components().mount_runs();
+            const auto on_shapes = f.scene.text_state(on.scene).counters().shape_count;
+            const auto off_shapes = f.scene.text_state(off.scene).counters().shape_count;
+            checked.set(true);
+            f.synchronize();
+            require(region_bounds(off_region) == start_off && region_bounds(on_region) == start_on &&
+                        f.services.components().branch_active(off.component),
+                    "Switch replaced content before its handle animation advanced");
+            static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(100000)));
+            f.synchronize();
+            const auto middle_on = region_bounds(on_region);
+            const auto middle_off = region_bounds(off_region);
+            const float sign = direction == SwitchDirection::LeftToRight ? 1.0F : -1.0F;
+            const auto& token = f.services.components().theme_scope(item.component)->snapshot().switch_token();
+            const float handle_size = size == SwitchSize::Small ? token.handle_size_small : token.handle_size;
+            const auto travel = f.nodes.require(item.node).bounds.width - handle_size - 2 * token.track_padding;
+            require(sign * (middle_on.x - start_on.x) > 1 && sign * (middle_off.x - start_off.x) > 1 &&
+                        near(middle_on.x - start_on.x, sign * travel / 2) &&
+                        near(middle_off.x - start_off.x, sign * travel / 2) &&
+                        f.services.components().branch_active(on.component) &&
+                        f.services.components().branch_active(off.component),
+                    "Switch content did not slide continuously with its moving handle");
+            checked.set(false);
+            f.synchronize();
+            require(region_bounds(on_region) == middle_on && region_bounds(off_region) == middle_off,
+                    "Switch content jumped on a rapid reversal");
+            loading.set(true);
+            disabled.set(true);
+            static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(500000)));
+            loading.set(false);
+            disabled.set(false);
+            f.synchronize();
+            require(region_bounds(on_region) == start_on && region_bounds(off_region) == start_off &&
+                        !f.services.components().branch_active(on.component) &&
+                        f.services.components().branch_active(off.component) && !f.services.next_frame_deadline(),
+                    "Switch content failed to recover its unchecked geometry and idle state");
+            require(runs == 2 && f.services.components().mount_runs() == mounts &&
+                        f.nodes.require(item.node).measure_count == measures &&
+                        f.scene.text_state(on.scene).counters().shape_count == on_shapes &&
+                        f.scene.text_state(off.scene).counters().shape_count == off_shapes,
+                    "Switch content motion remounted, measured or reshaped its retained slots");
+        }
+    }
+}
+
 void reference_and_callback_lifecycle() {
     SwitchRef reference;
     require(!reference.bound() && !reference.focus() && !reference.blur(), "Unbound SwitchRef was usable");
@@ -469,6 +553,14 @@ void continuous_handle_feedback() {
                         return f.services.surfaces().instances().at(range.first + 1).bounds;
                     };
                     const auto base = bounds();
+                    const auto texts = f.services.text().mounted_texts();
+                    const std::array regions{*f.services.components().parent(texts[0].component),
+                                             *f.services.components().parent(texts[1].component)};
+                    const auto content_bounds = [&] {
+                        return std::array{f.nodes.require(f.services.components().root(regions[0])).bounds,
+                                          f.nodes.require(f.services.components().root(regions[1])).bounds};
+                    };
+                    const auto base_content = content_bounds();
                     const auto measures = f.nodes.require(item.node).measure_count;
                     const auto mounts = f.services.components().mount_runs();
                     const auto point = f.nodes.require(item.node).bounds;
@@ -491,17 +583,28 @@ void continuous_handle_feedback() {
                     };
                     press(true);
                     require(bounds() == base, "Switch press jumped before animation advanced");
+                    require(content_bounds() == base_content, "Switch content jumped at press start");
                     tick(50000);
                     require(near(bounds()[2], base[2] * (1 + 0.3F * 0.129162F)),
                             "Switch press stretch did not interpolate");
+                    const auto content_index = initially_checked ? 0U : 1U;
+                    const auto press_sign = (initially_checked != (direction == SwitchDirection::RightToLeft)) ? -1 : 1;
+                    const auto padding =
+                        f.services.components().theme_scope(item.component)->snapshot().switch_token().track_padding;
+                    const auto content_travel = size == SwitchSize::Small ? padding : 2 * padding;
+                    require(near(content_bounds()[content_index].x,
+                                 base_content[content_index].x + press_sign * content_travel * .129162F),
+                            "Switch content press shift did not follow its handle inset animation");
                     tick(200000);
                     const auto held = bounds();
+                    const auto held_content = content_bounds();
                     const bool at_right = initially_checked != (direction == SwitchDirection::RightToLeft);
                     require(near(held[2], base[2] * 1.3F) && near(held[3], base[3]) &&
                                 (at_right ? near(held[0] + held[2], base[0] + base[2]) : near(held[0], base[0])),
                             "Switch held stretch changed its fixed outer edge");
                     press(false);
                     require(bounds() == held, "Switch release instantly shrank or moved the handle");
+                    require(content_bounds() == held_content, "Switch content jumped at release start");
                     tick(250000);
                     const auto moving = bounds();
                     require(near(moving[2], base[2] * (1 + 0.3F * (1 - 0.129162F))),
@@ -509,16 +612,21 @@ void continuous_handle_feedback() {
                     require(moving[2] > base[2] && moving[2] < held[2] &&
                                 (at_right ? moving[0] < held[0] : moving[0] > held[0]),
                             "Switch release did not shrink and move together");
+                    const auto moving_content = content_bounds();
                     press(true);
                     require(bounds() == moving, "Switch rapid re-press jumped geometry");
+                    require(content_bounds() == moving_content, "Switch rapid re-press jumped content");
                     tick(450000);
                     const auto reverse_held = bounds();
+                    const auto reverse_content = content_bounds();
                     require(near(reverse_held[2], held[2]), "Switch reverse held stretch failed");
                     press(false);
                     require(bounds() == reverse_held, "Switch reverse release jumped geometry");
+                    require(content_bounds() == reverse_content, "Switch reverse release jumped content");
                     tick(650000);
                     require(bounds() == base && !f.services.next_frame_deadline(),
                             "Switch reverse transition did not settle to original circle/idle");
+                    require(content_bounds() == base_content, "Switch reversed content did not settle to its base");
                     require(content_runs == 2 && f.nodes.require(item.node).measure_count == measures &&
                                 f.services.components().mount_runs() == mounts,
                             "Switch handle animation measured or remounted retained content");
@@ -554,7 +662,9 @@ void controlled_handle_and_press_cancellation() {
         Signal<ThemeConfig> theme{ThemeConfig{}};
         host.mount(Content{[&] {
             Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
-                      Switch(SwitchProps{}.checked(checked).disabled(disabled).loading(loading).wave(false));
+                      Switch(SwitchProps{}.checked(checked).disabled(disabled).loading(loading).wave(false),
+                             SwitchSlots{SwitchCheckedContent{[] { Text(u8"On"); }},
+                                         SwitchUncheckedContent{[] { Text(u8"Off"); }}});
                   }});
         }});
         f.synchronize();
@@ -569,9 +679,19 @@ void controlled_handle_and_press_cancellation() {
         static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(200000)));
         f.synchronize();
         const auto held = handle();
+        const auto texts = f.services.text().mounted_texts();
+        const auto content = [&] {
+            return std::array{
+                f.nodes.require(f.services.components().root(*f.services.components().parent(texts[0].component)))
+                    .bounds,
+                f.nodes.require(f.services.components().root(*f.services.components().parent(texts[1].component)))
+                    .bounds};
+        };
+        const auto held_content = content();
         checked.set(true);
         f.synchronize();
         require(handle() == held, "Controlled checked during press jumped geometry");
+        require(content() == held_content, "Controlled checked during press jumped content");
         static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(250000)));
         f.synchronize();
         require(near(handle()[2], held[2]) && handle()[0] > held[0],
@@ -608,6 +728,7 @@ void controlled_handle_and_press_cancellation() {
 int main() {
     try {
         retained_content_and_direction();
+        content_moves_with_handle_and_reverses();
         reference_and_callback_lifecycle();
         invalid_content_and_reference();
         theme_and_handle_feedback();

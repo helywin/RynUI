@@ -166,6 +166,63 @@ void retained_editing_and_requests() {
           "Modal disposal leaked retained resources");
 }
 
+void confirmation_body_spacing() {
+    Fixture f;
+    Signal<bool> loading{true};
+    runtime::ComponentId message;
+    runtime::ComponentId action;
+    f.services.mount(Content{[&] {
+        Modal(ModalProps{}.open().title(u8"确认加载中").confirmLoading(loading), ModalContent{[&] {
+                  Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[&] {
+                           Text(u8"确认在加载时禁用，取消仍可使用。");
+                           message = f.services.text().mounted_texts().back().component;
+                           Button(ButtonProps{}
+                                      .layout(LayoutStyle{}
+                                                  .margin_left(dp(4))
+                                                  .margin_top(dp(4))
+                                                  .margin_right(dp(4))
+                                                  .margin_bottom(dp(4)))
+                                      .onClick([loading] { loading.set(!loading.get()); }),
+                                  [] { Text(u8"切换确认加载状态"); });
+                           action = f.buttons.mounted_buttons().back().component;
+                       }});
+              }});
+    }});
+    sync(f);
+    const auto original = f.services.modal().snapshot(f.services.modal().mounted().front());
+    const auto label = bounds(f, message);
+    const auto button = bounds(f, action);
+    check(button.y >= label.y + label.height + 8, "confirmation body action overlapped its explanatory text");
+    const auto focused = interaction(f, action);
+    static_cast<void>(f.services.focus().request_focus(focused, FocusModality::keyboard));
+    check(f.services.focus().state().focused == focused, "confirmation action focus failed");
+    sync(f);
+    for (const auto& mounted : f.buttons.mounted_buttons()) {
+        if (mounted.component != action) {
+            continue;
+        }
+        const auto& effect = f.services.surfaces().focus_effect(mounted.scene);
+        const auto distance = effect.geometry.outline_offset + effect.geometry.outline_width / 2;
+        const std::array points{runtime::Point{button.x - distance, button.y + button.height / 2},
+                                runtime::Point{button.x + button.width + distance, button.y + button.height / 2},
+                                runtime::Point{button.x + button.width / 2, button.y - distance},
+                                runtime::Point{button.x + button.width / 2, button.y + button.height + distance}};
+        for (const auto point : points) {
+            const auto clip = effect.geometry.ancestor_clip;
+            check(!clip || (point.x >= clip->bounds.x && point.y >= clip->bounds.y &&
+                            point.x <= clip->bounds.x + clip->bounds.width &&
+                            point.y <= clip->bounds.y + clip->bounds.height),
+                  "confirmation body clipped a side of the action focus outline");
+            check(effect.material.opacity > 0 && graphics::rounded_effect_coverage(point, effect) > .5F,
+                  "confirmation body action did not draw all four focus edges");
+        }
+    }
+    click(f, action);
+    check(!loading.get() && f.services.focus().state().focused == focused &&
+              f.services.modal().snapshot(f.services.modal().mounted().front()).body == original.body,
+          "confirmation loading toggle replaced the retained body or focus");
+}
+
 void nested_and_callback_lifetime() {
     Signal<bool> first{false}, second{false};
     InputRef outside, parent, child;
@@ -915,6 +972,7 @@ int main() {
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
     try {
+        confirmation_body_spacing();
         retained_editing_and_requests();
         nested_and_callback_lifetime();
         no_entries_custom_slots_and_flow();

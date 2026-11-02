@@ -597,6 +597,102 @@ void range_atomicity_and_sizes() {
     check(rejected && conflict.inputs.editors().size() == 0, "conflicting mode acquired editor resources");
 }
 
+void stepper_follows_allocated_width() {
+    for (const bool stretch : {false, true}) {
+        for (const auto size : {ControlSize::Small, ControlSize::Middle, ControlSize::Large}) {
+            for (const float width : {90.0F, 180.0F, 280.0F}) {
+                Fixture f;
+                Signal<bool> disabled{false};
+                Signal<bool> read_only{false};
+                f.inputs.mount(Content{[&] {
+                    const auto mount = [&] {
+                        auto props =
+                            InputNumberProps{}.defaultValue(1).size(size).disabled(disabled).readOnly(read_only);
+                        if (!stretch) {
+                            props.layout(LayoutStyle{}.width(dp(width)));
+                        }
+                        InputNumber(std::move(props));
+                    };
+                    if (stretch) {
+                        Flex(FlexProps{}.vertical(true).layout(LayoutStyle{}.width(dp(width))), FlexContent{mount});
+                    } else {
+                        mount();
+                    }
+                }});
+                f.synchronize();
+                const auto mounted = f.inputs.mounted_inputs().front();
+                const auto actions = f.inputs.number_actions(mounted.component);
+                const auto rect = f.nodes.require(mounted.node).bounds;
+                const auto up = f.nodes.require(f.services.components().root(actions[0])).bounds;
+                const auto down = f.nodes.require(f.services.components().root(actions[1])).bounds;
+                const auto tokens = detail::derive_input_tokens(resolve_theme());
+                check(std::abs(rect.width - width) < 0.01F, "InputNumber fixture did not allocate its requested width");
+                check(std::abs(up.x + up.width - (rect.x + rect.width - tokens.border_width)) < 0.01F &&
+                          std::abs(down.x - up.x) < 0.01F && std::abs(down.width - up.width) < 0.01F,
+                      "numeric handlers stayed beside the value instead of the allocated trailing edge");
+                check(std::abs(up.y - (rect.y + tokens.border_width)) < 0.01F &&
+                          std::abs(up.y + up.height - down.y) < 0.01F &&
+                          std::abs(down.y + down.height - (rect.y + rect.height - tokens.border_width)) < 0.01F,
+                      "numeric handler halves did not span the control interior");
+                const auto geometry = f.inputs.layout_snapshot(mounted.component);
+                check(geometry.viewport.x + geometry.viewport.width <= up.x, "numeric editor overlapped its handlers");
+                const auto background_coverage = [&](runtime::Rect bounds, runtime::Point point) {
+                    float result{};
+                    for (const auto& effect : f.services.rounded_effects().packed_instances()) {
+                        if (effect.geometry.shape.rect != bounds ||
+                            effect.material.color != resolve_theme().input_number().handle_background ||
+                            !effect.geometry.ancestor_clip) {
+                            continue;
+                        }
+                        const auto clip = effect.geometry.ancestor_clip->bounds;
+                        if (point.x >= clip.x && point.x < clip.x + clip.width && point.y >= clip.y &&
+                            point.y < clip.y + clip.height) {
+                            result = std::max(result, graphics::rounded_effect_coverage(point, effect));
+                        }
+                    }
+                    return result;
+                };
+                check(background_coverage(up, {up.x + up.width / 2, up.y + up.height / 2}) > .99F &&
+                          background_coverage(down, {down.x + down.width / 2, down.y + down.height / 2}) > .99F &&
+                          background_coverage(up, {up.x + up.width - .1F, up.y + .1F}) < .01F &&
+                          background_coverage(down, {down.x + down.width - .1F, down.y + down.height - .1F}) < .01F,
+                      "numeric handler background escaped the rounded input corners");
+                std::array<float, 2> ink_centers{};
+                for (std::size_t i = 0; i < actions.size(); ++i) {
+                    bool found{};
+                    for (const auto& text : f.services.text().mounted_texts()) {
+                        auto parent = f.services.components().parent(text.component);
+                        if (!parent || *parent != actions[i]) {
+                            continue;
+                        }
+                        const auto range = f.scene.primitive(text.scene).instances;
+                        check(range.count == 1, "numeric arrow missing its bundled glyph");
+                        const auto& glyph = f.scene.glyph_scene().instances().at(range.first);
+                        ink_centers[i] =
+                            glyph.position_size[0] + glyph.position_size[2] / 2 + glyph.translation_opacity[0];
+                        found = true;
+                    }
+                    check(found, "numeric handler lost its retained Icon");
+                }
+                check(std::abs(ink_centers[0] - ink_centers[1]) <= 0.51F,
+                      "numeric up/down glyphs were not on the same horizontal axis");
+                for (auto* gate : {&disabled, &read_only}) {
+                    gate->set(true);
+                    f.synchronize();
+                    check(!f.services.components().branch_active(actions[0]) &&
+                              !f.services.components().branch_active(actions[1]),
+                          "disabled/readonly number retained visible handlers");
+                    gate->set(false);
+                    f.synchronize();
+                }
+                check(f.inputs.mounted_inputs().front().editor == mounted.editor &&
+                          f.inputs.number_actions(mounted.component) == actions,
+                      "numeric geometry changes remounted the editor or handlers");
+            }
+        }
+    }
+}
+
 void synchronous_disposal() {
     for (const bool step : {false, true}) {
         Fixture f;
@@ -666,6 +762,7 @@ int main() {
         native_steps_preedit_and_lifecycle();
         spin_preserves_numeric_input_gates();
         range_atomicity_and_sizes();
+        stepper_follows_allocated_width();
         synchronous_disposal();
         focus_redirect_and_blur_disposal();
     } catch (const std::exception& error) {

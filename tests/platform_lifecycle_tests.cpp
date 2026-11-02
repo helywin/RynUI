@@ -86,14 +86,53 @@ public:
 
     void delay(std::uint32_t) noexcept override {}
 
+    std::optional<ryn::runtime::Point> mouse_position(PlatformWindowHandle) const noexcept override {
+        return mouse;
+    }
+
+    ryn::detail::PlatformCursorHandle create_text_cursor() noexcept override {
+        calls.emplace_back("create_cursor");
+        ++cursor_creates;
+        return cursor_create_failure ? nullptr : &cursor_token_;
+    }
+
+    bool set_cursor(ryn::detail::PlatformCursorHandle cursor) noexcept override {
+        calls.emplace_back(cursor ? "text_cursor" : "default_cursor");
+        if (cursor_set_failure) {
+            return false;
+        }
+        text_cursor = cursor != nullptr;
+        selected_cursor = cursor;
+        return true;
+    }
+
+    ryn::detail::PlatformCursorHandle current_cursor() const noexcept override {
+        return selected_cursor;
+    }
+
+    void destroy_cursor(ryn::detail::PlatformCursorHandle cursor) noexcept override {
+        calls.emplace_back("destroy_cursor");
+        if (cursor == &cursor_token_) {
+            ++cursor_destroys;
+        }
+    }
+
     std::vector<std::string> calls;
     bool high_pixel_density_requested{false};
     bool device_live{};
+    std::optional<ryn::runtime::Point> mouse;
+    bool text_cursor{};
+    ryn::detail::PlatformCursorHandle selected_cursor{};
+    bool cursor_create_failure{};
+    bool cursor_set_failure{};
+    int cursor_creates{};
+    int cursor_destroys{};
 
 private:
     FailurePoint failure_;
     int window_token_{0};
     int device_token_{0};
+    int cursor_token_{};
 };
 
 void require(bool condition, const char* message) {
@@ -141,6 +180,79 @@ void test_success_cleanup() {
         require_calls(api.calls, {"init", "create_window"});
     }
     require_calls(api.calls, {"init", "create_window", "destroy_window", "quit"});
+}
+
+void test_text_pointer_cursor() {
+    FakePlatformApi api(FailurePoint::none);
+    {
+        auto created = PlatformState::create(api, {});
+        require(bool(created), "cursor platform create failed");
+        auto& platform = *created.state;
+        bool text = true;
+        ryn::runtime::Point observed;
+        platform.bind_text_pointer_query([&](ryn::runtime::Point point) {
+            observed = point;
+            return text;
+        });
+        static_cast<void>(platform.poll_events());
+        require(api.cursor_creates == 0, "mouse outside window allocated cursor");
+        api.mouse = ryn::runtime::Point{10, 20};
+        static_cast<void>(platform.poll_events());
+        require(api.text_cursor && api.cursor_creates == 1 && observed == ryn::runtime::Point{10, 20},
+                "event pump did not select cached text cursor in logical coordinates");
+        const auto unchanged = api.calls.size();
+        require(platform.synchronize_pointer_cursor() && api.calls.size() == unchanged,
+                "unchanged text cursor was recreated or resubmitted");
+        text = false;
+        static_cast<void>(platform.wait_events(0));
+        require(!api.text_cursor, "wait event pump did not restore ordinary cursor");
+        text = true;
+        require(platform.set_pointer_display_scale(2.5F) && platform.synchronize_pointer_cursor(),
+                "custom render scale cursor sync failed");
+        require(api.text_cursor && api.cursor_creates == 1 && observed == ryn::runtime::Point{5, 10},
+                "custom render density or cursor reuse failed");
+        int another_window_cursor{};
+        api.selected_cursor = &another_window_cursor;
+        api.mouse.reset();
+        const auto foreign_calls = api.calls.size();
+        require(platform.synchronize_pointer_cursor() && api.selected_cursor == &another_window_cursor &&
+                    api.calls.size() == foreign_calls,
+                "inactive window reset another window's cursor");
+        api.mouse = ryn::runtime::Point{10, 20};
+        require(platform.synchronize_pointer_cursor() && api.selected_cursor != &another_window_cursor &&
+                    api.selected_cursor != nullptr,
+                "returning window trusted stale per-window cursor state");
+        api.mouse.reset();
+        require(platform.synchronize_pointer_cursor() && !api.text_cursor,
+                "pointer leaving window retained text cursor");
+        api.mouse = ryn::runtime::Point{10, 20};
+        require(platform.synchronize_pointer_cursor() && api.text_cursor, "returning pointer lost text cursor");
+        platform.bind_text_pointer_query({});
+        require(!api.text_cursor, "detaching editor query retained text cursor");
+        platform.bind_text_pointer_query([](ryn::runtime::Point) -> bool { throw std::runtime_error("query failed"); });
+        require(platform.synchronize_pointer_cursor() && !api.text_cursor, "failed query did not restore cursor");
+        platform.bind_text_pointer_query([](ryn::runtime::Point) { return true; });
+        api.cursor_set_failure = true;
+        require(!platform.synchronize_pointer_cursor(), "native set failure was hidden");
+        api.cursor_set_failure = false;
+        require(platform.synchronize_pointer_cursor() && api.text_cursor, "native set failure did not retry");
+    }
+    require(api.cursor_creates == 1 && api.cursor_destroys == 1 && !api.text_cursor,
+            "native cursor resource was leaked or left selected");
+    const auto size = api.calls.size();
+    require(size >= 4 && api.calls[size - 4] == "default_cursor" && api.calls[size - 3] == "destroy_cursor" &&
+                api.calls[size - 2] == "destroy_window" && api.calls[size - 1] == "quit",
+            "cursor teardown did not precede window/video teardown");
+
+    FakePlatformApi retry(FailurePoint::none);
+    auto created = PlatformState::create(retry, {});
+    retry.mouse = ryn::runtime::Point{1, 1};
+    retry.cursor_create_failure = true;
+    created.state->bind_text_pointer_query([](ryn::runtime::Point) { return true; });
+    require(!created.state->synchronize_pointer_cursor() && !retry.text_cursor, "cursor creation failure was hidden");
+    retry.cursor_create_failure = false;
+    require(created.state->synchronize_pointer_cursor() && retry.text_cursor && retry.cursor_creates == 2,
+            "cursor creation failure did not retry");
 }
 
 void test_gpu_failure_preserves_host(FailurePoint point) {
@@ -373,6 +485,7 @@ int main() {
         test_resources_retired_before_binding_rebuild();
         test_shared_scene_retirement_and_binding_order();
         test_success_cleanup();
+        test_text_pointer_cursor();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

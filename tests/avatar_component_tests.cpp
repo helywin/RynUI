@@ -81,6 +81,37 @@ void text_case() {
     check(first.natural_text_width > first.viewport.width && first.font_size < 14 && first.font_size >= .5F &&
               ink(f, first.content) > 0,
           "Avatar did not auto-fit real shaped text");
+    const auto check_text_center = [&] {
+        const auto r = bounds(f, id);
+        bool seen = false;
+        for (const auto& text : f.services.text().mounted_texts()) {
+            if (!descendant(f, text.component, first.content)) {
+                continue;
+            }
+            const auto& state = f.scene.text_state(text.scene);
+            const auto metrics = state.shaped().default_metrics;
+            const auto line = bounds(f, text.component);
+            float ascent = metrics.ascent;
+            float descent = metrics.descent;
+            for (const auto& glyph : state.shaped().glyphs) {
+                const auto actual = f.scene.font_metrics(glyph.font);
+                check(static_cast<bool>(actual), "Avatar fallback font metrics missing");
+                ascent = std::max(ascent, actual.metrics.ascent);
+                descent = std::min(descent, actual.metrics.descent);
+            }
+            const auto em_center = line.y + state.measurement().first_baseline - (ascent + descent) / 2;
+            check(std::abs(em_center - r.y - r.height / 2) < .01F,
+                  "Avatar text font metrics were not centered in the allocated avatar");
+            seen = true;
+        }
+        check(seen && ink(f, first.content) > 0, "Avatar centering fixture emitted no visible text");
+    };
+    check_text_center();
+    for (const auto& value : {String{u8"江"}, String{u8"M2"}, String{u8"+126"}}) {
+        text.set(value);
+        sync(f);
+        check_text_center();
+    }
     check(std::ranges::any_of(f.services.rounded_effects().packed_instances(),
                               [](const auto& e) {
                                   return e.material.visible && e.geometry.shape.rect.width == 32 &&
@@ -162,6 +193,21 @@ void group() {
     const auto original_count = f.services.components().component_count();
     check(first.overflow_count == 2 && first.items[0].inline_visible && first.items[2].overflow_visible,
           "AvatarGroup overflow count/order wrong");
+    const auto& token = f.services.components().theme_scope(id)->snapshot().avatar();
+    for (const auto child : {first.items[0].inline_avatar, first.items[1].inline_avatar}) {
+        const auto r = bounds(f, child);
+        const runtime::Point inner_edge{r.x + r.width / 2, r.y + token.metrics.border_width / 2};
+        const bool border_inside =
+            std::ranges::any_of(f.services.rounded_effects().packed_instances(), [&](const auto& effect) {
+                return effect.geometry.kind == graphics::RoundedEffectKind::outline &&
+                       std::abs(effect.geometry.shape.rect.width + 2 * token.metrics.border_width - r.width) < .01F &&
+                       effect.material.color == token.colors.group_border &&
+                       (!effect.geometry.ancestor_clip ||
+                        contains(effect.geometry.ancestor_clip->bounds, inner_edge)) &&
+                       graphics::rounded_effect_coverage(inner_edge, effect) > .5F;
+            });
+        check(border_inside, "AvatarGroup border was painted outside the avatar's allocated circle");
+    }
     check(std::abs(bounds(f, first.items[1].inline_avatar).x - bounds(f, first.items[0].inline_avatar).x - 24) < .01F,
           "AvatarGroup actual overlap geometry wrong");
     click(f, first.overflow);

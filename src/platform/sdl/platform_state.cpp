@@ -105,6 +105,32 @@ public:
         return SDL_SetTextInputArea(static_cast<SDL_Window*>(window), &rect, value.cursor);
     }
 
+    std::optional<runtime::Point> mouse_position(PlatformWindowHandle window) const noexcept override {
+        if (SDL_GetMouseFocus() != static_cast<SDL_Window*>(window)) {
+            return {};
+        }
+        runtime::Point point;
+        static_cast<void>(SDL_GetMouseState(&point.x, &point.y));
+        return point;
+    }
+
+    PlatformCursorHandle create_text_cursor() noexcept override {
+        return SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
+    }
+
+    bool set_cursor(PlatformCursorHandle cursor) noexcept override {
+        return SDL_SetCursor(cursor ? static_cast<SDL_Cursor*>(cursor) : SDL_GetDefaultCursor());
+    }
+
+    PlatformCursorHandle current_cursor() const noexcept override {
+        const auto cursor = SDL_GetCursor();
+        return cursor == SDL_GetDefaultCursor() ? nullptr : cursor;
+    }
+
+    void destroy_cursor(PlatformCursorHandle cursor) noexcept override {
+        SDL_DestroyCursor(static_cast<SDL_Cursor*>(cursor));
+    }
+
     bool init_video() override {
         return SDL_Init(SDL_INIT_VIDEO);
     }
@@ -205,6 +231,12 @@ PlatformState::PlatformState(PlatformApi& api) : api_(&api), owner_thread_(std::
 }
 
 PlatformState::~PlatformState() {
+    if (text_cursor_) {
+        if (api_->current_cursor() == text_cursor_) {
+            static_cast<void>(api_->set_cursor(nullptr));
+        }
+        api_->destroy_cursor(text_cursor_);
+    }
     if (text_session_.valid() || text_stop_pending_) {
         static_cast<void>(stop());
     }
@@ -270,6 +302,7 @@ const PlatformEvents& PlatformState::poll_events() {
         throw;
     }
     record_event_pump();
+    static_cast<void>(synchronize_pointer_cursor());
     return events_;
 }
 
@@ -287,6 +320,7 @@ const PlatformEvents& PlatformState::wait_events(std::uint32_t timeout_milliseco
         throw;
     }
     record_event_pump();
+    static_cast<void>(synchronize_pointer_cursor());
     return events_;
 }
 
@@ -335,6 +369,60 @@ bool PlatformState::set_area(const input::WindowTextInputArea& area) noexcept {
         return false;
     }
     return api_->set_text_input_area(window_, area);
+}
+
+void PlatformState::bind_text_pointer_query(input::TextPointerQuery query) noexcept {
+    text_pointer_query_ = std::move(query);
+    if (!text_pointer_query_) {
+        static_cast<void>(synchronize_pointer_cursor());
+    }
+}
+
+bool PlatformState::set_pointer_display_scale(float scale) noexcept {
+    if (!is_owner_thread() || !std::isfinite(scale) || scale <= 0) {
+        return false;
+    }
+    pointer_display_scale_ = scale;
+    return true;
+}
+
+bool PlatformState::synchronize_pointer_cursor() noexcept {
+    if (!is_owner_thread()) {
+        return false;
+    }
+    const auto point = api_->mouse_position(window_);
+    if (!point) {
+        // SDL's current cursor is shared by its windows. An inactive window
+        // must not reset a cursor already selected by another window.
+        if (text_cursor_ && api_->current_cursor() == text_cursor_) {
+            return api_->set_cursor(nullptr);
+        }
+        return true;
+    }
+    bool text = false;
+    if (text_pointer_query_) {
+        if (point && std::isfinite(point->x) && std::isfinite(point->y)) {
+            const auto metrics = window_metrics();
+            const auto scale = pointer_display_scale_ > 0 ? metrics.pixel_density / pointer_display_scale_
+                                                          : metrics.coordinate_to_logical_scale();
+            try {
+                text = text_pointer_query_({point->x * scale, point->y * scale});
+            } catch (...) {
+                text = false;
+            }
+        }
+    }
+    if (text && !text_cursor_) {
+        text_cursor_ = api_->create_text_cursor();
+        if (!text_cursor_) {
+            return false;
+        }
+    }
+    const auto desired = text ? text_cursor_ : nullptr;
+    if (api_->current_cursor() == desired) {
+        return true;
+    }
+    return api_->set_cursor(desired);
 }
 
 input::ClipboardReadResult PlatformState::read_text() {

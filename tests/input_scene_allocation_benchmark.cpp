@@ -40,6 +40,7 @@ void run(std::size_t iterations, bool composing) {
     detail::RoundedEffectGpuResources effects{api};
     std::size_t dispatch_allocations{};
     std::size_t sync_allocations{};
+    std::array<std::size_t, 4> synchronization_allocations{};
     const auto cycle = [&](std::size_t index) {
         preedit.selection = {index % 6, 1};
         const auto before_dispatch = ryn_test::allocation::count;
@@ -52,12 +53,19 @@ void run(std::size_t iterations, bool composing) {
         }
         const auto after_dispatch = ryn_test::allocation::count;
         sync();
+        const auto after_core = ryn_test::allocation::count;
         quads.synchronize(f.buttons.button_scene().instances(), {320, 9000, 1});
+        const auto after_quad = ryn_test::allocation::count;
         glyphs.synchronize(f.scene.atlas(), f.scene.glyph_scene().instances(), {320, 9000, 1});
+        const auto after_glyph = ryn_test::allocation::count;
         effects.synchronize(f.buttons.rounded_effects(), {320, 9000, 1});
         if (ryn_test::allocation::tracking) {
             dispatch_allocations += after_dispatch - before_dispatch;
             sync_allocations += ryn_test::allocation::count - after_dispatch;
+            synchronization_allocations[0] += after_core - after_dispatch;
+            synchronization_allocations[1] += after_quad - after_core;
+            synchronization_allocations[2] += after_glyph - after_quad;
+            synchronization_allocations[3] += ryn_test::allocation::count - after_glyph;
         }
         static_cast<void>(f.frames.consume_request());
     };
@@ -103,6 +111,10 @@ void run(std::size_t iterations, bool composing) {
     std::cout << "inputs=256 mode=" << (composing ? "composition-selection" : "selection") << " updates=" << iterations
               << " allocations=" << allocations << " elapsed_ms=" << elapsed << '\n';
     std::cout << "dispatch_allocations=" << dispatch_allocations << " sync_allocations=" << sync_allocations << '\n';
+    std::cout << "core_allocations=" << synchronization_allocations[0]
+              << " quad_allocations=" << synchronization_allocations[1]
+              << " glyph_allocations=" << synchronization_allocations[2]
+              << " effect_allocations=" << synchronization_allocations[3] << '\n';
     require(allocations == 0, "Input retained scene allocates after warmup");
     require(api.texture_uploads == textures && api.effect_uploads == effect_uploads,
             "Input range update uploaded atlas/effects");

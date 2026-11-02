@@ -18,6 +18,7 @@
 - 文字和 Icon 分别核对 linebox/baseline/ink。优先修复共享测量/放置契约，再修具体调用者的错误约束；不在 Gallery 字符串前后加空格或固定像素偏移。
 - 系统 fallback 加入真实可光栅的候选并验证 Unicode shape；正文 emoji 保留，控件箭头仍用 bundled Icon。逻辑鼠标样式不暴露 SDL，平台宿主负责系统 cursor 资源生命周期。
 - Switch 保留两套 retained 内容，按状态和手柄几何裁剪/放置，并验证动画中间态、反向与停稳；不通过重建掩盖位置错误。
+- 有限圆弧、周长虚线和 Tooltip 联合填充使用 typed logical path，由共同 renderer 打包及 shader 解释新增 kind；复用 112-byte Effect 布局，不增加组件私有 GPU 路径。Quad/Glyph/Effect instance 大小仍为 48/96/112 bytes。
 
 ## Risks / Trade-offs
 

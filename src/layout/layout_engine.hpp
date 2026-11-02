@@ -138,6 +138,7 @@ struct InputContentLayout final {
     float gap{4.0F};
     bool prefix{};
     bool suffix{};
+    bool flush_suffix{};
     friend constexpr bool operator==(InputContentLayout, InputContentLayout) = default;
 };
 

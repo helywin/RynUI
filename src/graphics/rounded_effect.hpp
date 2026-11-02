@@ -12,6 +12,7 @@
 #include <limits>
 #include <optional>
 #include <span>
+#include <variant>
 #include <vector>
 
 namespace ryn::graphics {
@@ -20,7 +21,36 @@ enum class RoundedEffectKind : std::uint8_t {
     outer_shadow,
     inset_shadow,
     outline,
+    arc,
+    dashed_outline,
+    tooltip_fill,
 };
+
+struct RoundedArcPath final {
+    float start_radians{};
+    float sweep_radians{};
+    friend constexpr bool operator==(RoundedArcPath, RoundedArcPath) = default;
+};
+
+struct RoundedDashPath final {
+    float length{};
+    float gap{};
+    float phase{};
+    std::array<bool, 4> rounded_corners{true, true, true, true};
+    friend constexpr bool operator==(RoundedDashPath, RoundedDashPath) = default;
+};
+
+enum class TooltipArrowSide : std::uint8_t { bottom, top, right, left };
+
+struct TooltipArrowPath final {
+    TooltipArrowSide side{TooltipArrowSide::bottom};
+    float center{};
+    float half_width{};
+    float length{};
+    friend constexpr bool operator==(TooltipArrowPath, TooltipArrowPath) = default;
+};
+
+using RoundedEffectPath = std::variant<std::monostate, RoundedArcPath, RoundedDashPath, TooltipArrowPath>;
 
 struct LogicalRoundedRect final {
     runtime::Rect rect;
@@ -46,6 +76,7 @@ struct RoundedEffectGeometry final {
     float outline_offset{};
     runtime::Point translation;
     std::optional<EffectClip> ancestor_clip;
+    RoundedEffectPath path;
 
     friend bool operator==(const RoundedEffectGeometry&, const RoundedEffectGeometry&) = default;
 };
@@ -74,6 +105,24 @@ struct RoundedEffectInstance final {
                                                         runtime::Point translation = {},
                                                         std::optional<EffectClip> ancestor_clip = std::nullopt);
 
+// Finite clockwise circular centerline with round caps; zero sweep is empty.
+[[nodiscard]] RoundedEffectInstance make_arc_effect(runtime::Point center, float radius, float width,
+                                                    float start_degrees, float sweep_degrees, Color color,
+                                                    float opacity = 1, runtime::Point translation = {},
+                                                    std::optional<EffectClip> ancestor_clip = {});
+
+// The declared shape is the outer border box. Whole-perimeter fitting keeps
+// every dash/gap equal at the closing seam; phase is a logical path distance.
+[[nodiscard]] RoundedEffectInstance make_dashed_outline_effect(LogicalRoundedRect shape, float width,
+                                                               RoundedDashPath pattern, Color color, float opacity = 1,
+                                                               runtime::Point translation = {},
+                                                               std::optional<EffectClip> ancestor_clip = {});
+
+[[nodiscard]] RoundedEffectInstance make_tooltip_fill_effect(LogicalRoundedRect shape, TooltipArrowPath arrow,
+                                                             Color color, float opacity = 1,
+                                                             runtime::Point translation = {},
+                                                             std::optional<EffectClip> ancestor_clip = {});
+
 void validate_rounded_effect(const RoundedEffectInstance& instance);
 
 // Corner order: top-left, top-right, bottom-right, bottom-left. Each quadrant
@@ -92,6 +141,24 @@ make_corner_shadow_effects(LogicalRoundedRect shape, std::array<bool, 4> rounded
                            runtime::Point translation = {}, std::optional<EffectClip> ancestor_clip = {});
 
 [[nodiscard]] float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shape) noexcept;
+
+struct RoundedPathSample final {
+    float distance{};
+    float coordinate{};
+    float length{};
+};
+
+// Logical geometry helpers also feed the renderer's packed reference; no GPU
+// types or backend dependencies cross this boundary.
+[[nodiscard]] RoundedPathSample rounded_rect_path_sample(runtime::Point point, LogicalRoundedRect shape,
+                                                         std::array<bool, 4> rounded_corners = {true, true, true,
+                                                                                                true});
+[[nodiscard]] float arc_signed_distance(runtime::Point point, LogicalRoundedRect centerline, float width,
+                                        RoundedArcPath arc) noexcept;
+[[nodiscard]] float tooltip_signed_distance(runtime::Point point, LogicalRoundedRect shape,
+                                            TooltipArrowPath arrow) noexcept;
+[[nodiscard]] float dashed_outline_coverage(runtime::Point point, LogicalRoundedRect shape, float width,
+                                            RoundedDashPath dash, float antialias_width);
 
 [[nodiscard]] float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance& instance,
                                             float antialias_width = 1.0F);

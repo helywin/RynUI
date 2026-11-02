@@ -1,4 +1,5 @@
 #include "renderer/common/quad_gpu_resources.hpp"
+#include "renderer/common/rounded_effect_packing.hpp"
 #include "graphics/quad_primitive.hpp"
 
 #include <algorithm>
@@ -74,6 +75,139 @@ void test_instance_layout_matches_shader_contract() {
     require(ryn::detail::quad_attribute_bindings == expected,
             "Quad attribute metadata does not match the shader contract");
     require(ryn::detail::quad_vertex_count == 6, "Quad vertex count is incorrect");
+    require(sizeof(ryn::detail::QuadViewportUniform) == 16, "Quad vertex uniform must occupy one constant slot");
+}
+
+std::array<float, 4> over(std::array<float, 4> source, std::array<float, 4> destination) {
+    return {source[0] * source[3] + destination[0] * (1 - source[3]),
+            source[1] * source[3] + destination[1] * (1 - source[3]),
+            source[2] * source[3] + destination[2] * (1 - source[3]), source[3] + destination[3] * (1 - source[3])};
+}
+
+void test_shape_raster_guard_and_composited_edges() {
+    using namespace ryn;
+    constexpr std::array scales{1.0F, 1.25F, 1.5F, 2.0F};
+    constexpr std::array phases{0.0F, 0.25F, 0.5F, 0.75F};
+    constexpr std::array radii{0.0F, 4.0F, 8.0F};
+    constexpr std::array corners{runtime::Point{0, 0}, runtime::Point{1, 0}, runtime::Point{1, 1},
+                                 runtime::Point{0, 0}, runtime::Point{1, 1}, runtime::Point{0, 1}};
+    bool saw_outside_coverage{};
+    const auto viewport = detail::quad_viewport_uniform(160, 120);
+    for (const auto scale : scales) {
+        const detail::SceneDeviceMetrics metrics{160, 120, scale};
+        for (const auto phase_x : phases) {
+            for (const auto phase_y : phases) {
+                for (const auto radius : radii) {
+                    for (const auto alpha : {1.0F, 0.65F}) {
+                        const auto x = 20 + phase_x;
+                        const auto y = 25 + phase_y;
+                        const auto extent = 16 * scale;
+                        // Split position and motion so the guard cannot hide a
+                        // dropped translation or accidentally resize the shape.
+                        const graphics::QuadInstance outer{{(x - 1.125F) / scale, (y + 0.375F) / scale, 16, 16},
+                                                           {0.05F, 0.4F, 1, alpha},
+                                                           0.8F,
+                                                           radius,
+                                                           {1.125F / scale, -0.375F / scale}};
+                        auto inner = outer;
+                        inner.bounds[0] += 1;
+                        inner.bounds[1] += 1;
+                        inner.bounds[2] -= 2;
+                        inner.bounds[3] -= 2;
+                        inner.corner_radius = std::max(0.0F, radius - 1);
+                        inner.color = {1, 1, 1, alpha};
+                        const auto packed = detail::pack_quad_instance(outer, metrics);
+                        const auto packed_inner = detail::pack_quad_instance(inner, metrics);
+                        for (const auto corner : corners) {
+                            const auto vertex = detail::quad_gpu_vertex_reference(packed, corner, viewport);
+                            const auto pixel_x = (vertex.position_ndc.x + 1) * 80;
+                            const auto pixel_y = (1 - vertex.position_ndc.y) * 60;
+                            const auto expected_x = x + corner.x * extent + (corner.x * 2 - 1);
+                            const auto expected_y = y + corner.y * extent + (corner.y * 2 - 1);
+                            require(std::abs(pixel_x - expected_x) < 0.0001F &&
+                                        std::abs(pixel_y - expected_y) < 0.0001F,
+                                    "Quad triangles did not include the full physical AA guard");
+                            require(std::abs(vertex.pixel_extent.width - extent) < 0.0001F &&
+                                        std::abs(vertex.pixel_extent.height - extent) < 0.0001F &&
+                                        std::abs(vertex.centered_pixels.x -
+                                                 ((corner.x - 0.5F) * extent + corner.x * 2 - 1)) < 0.0001F &&
+                                        std::abs(vertex.centered_pixels.y -
+                                                 ((corner.y - 0.5F) * extent + corner.y * 2 - 1)) < 0.0001F,
+                                    "Quad draw guard changed the shape extent or local SDF coordinates");
+                        }
+                        const auto effect = [&](const graphics::QuadInstance& q) {
+                            auto fill = graphics::make_shadow_effect(
+                                {{q.bounds[0], q.bounds[1], q.bounds[2], q.bounds[3]}, q.corner_radius},
+                                ShadowLayer{
+                                    ShadowKind::outer, {}, 0, 0, Color{q.color[0], q.color[1], q.color[2], q.color[3]}},
+                                {q.translation[0], q.translation[1]});
+                            fill.material.opacity = q.opacity;
+                            return detail::pack_rounded_effect_instance(fill, metrics);
+                        };
+                        const auto expected_outer = effect(outer);
+                        const auto expected_inner = effect(inner);
+                        for (auto py = 23; py <= static_cast<int>(y + extent) + 2; ++py) {
+                            for (auto px = 18; px <= static_cast<int>(x + extent) + 2; ++px) {
+                                const runtime::Point sample{px + 0.5F, py + 0.5F};
+                                const auto actual_outer = detail::quad_gpu_fragment_reference(sample, packed, viewport);
+                                const auto actual_inner =
+                                    detail::quad_gpu_fragment_reference(sample, packed_inner, viewport);
+                                // Existing clipped-effect coverage is an independent
+                                // one-physical-pixel oracle. Sampling also applies
+                                // the VS triangle bounds, not only the ideal SDF.
+                                const auto reference_outer =
+                                    detail::rounded_effect_gpu_fragment_reference(sample, expected_outer);
+                                const auto reference_inner =
+                                    detail::rounded_effect_gpu_fragment_reference(sample, expected_inner);
+                                constexpr std::array<float, 4> background{0.9F, 0.95F, 0.85F, 1};
+                                const auto actual = over(actual_inner, over(actual_outer, background));
+                                const auto expected = over(reference_inner, over(reference_outer, background));
+                                for (std::size_t channel = 0; channel < actual.size(); ++channel) {
+                                    require(std::abs(actual[channel] - expected[channel]) < 0.0002F,
+                                            "Quad/source-over border differs from common physical AA coverage");
+                                }
+                                if ((sample.x < x || sample.x > x + extent || sample.y < y || sample.y > y + extent) &&
+                                    reference_outer[3] > 0.001F) {
+                                    require(actual_outer[3] > 0.001F,
+                                            "nonzero outer AA coverage lies outside submitted Quad triangles");
+                                    saw_outside_coverage = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    require(saw_outside_coverage, "raster regression did not exercise coverage outside nominal shape bounds");
+}
+
+void test_zero_area_and_viewport_raster_clipping() {
+    using namespace ryn;
+    const auto viewport = detail::quad_viewport_uniform(100, 80);
+    for (const auto size : {runtime::Size{0, 16}, runtime::Size{16, 0}, runtime::Size{0, 0}}) {
+        const graphics::QuadInstance shape{{20, 20, size.width, size.height}, {1, 0, 0, 1}, 1, 4, {}};
+        const auto packed = detail::pack_quad_instance(shape, {100, 80, 1});
+        const auto first = detail::quad_gpu_vertex_reference(packed, {0, 0}, viewport);
+        const auto last = detail::quad_gpu_vertex_reference(packed, {1, 1}, viewport);
+        require((size.width == 0 && first.position_ndc.x == last.position_ndc.x) ||
+                    (size.height == 0 && first.position_ndc.y == last.position_ndc.y),
+                "zero-area Quad expanded into visible triangles");
+        require(detail::quad_gpu_fragment_reference({20.25F, 20.25F}, packed, viewport)[3] == 0,
+                "zero-area Quad gained AA coverage");
+    }
+    const auto packed = detail::pack_quad_instance({{-2, -2, 16, 16}, {1, 0, 0, 1}, 1, 0, {}}, {100, 80, 1});
+    require(detail::quad_gpu_fragment_reference({-0.5F, 4.5F}, packed, viewport)[3] == 0 &&
+                detail::quad_gpu_fragment_reference({4.5F, -0.5F}, packed, viewport)[3] == 0 &&
+                detail::quad_gpu_fragment_reference({0.5F, 0.5F}, packed, viewport)[3] == 1,
+            "Quad AA guard escaped the physical viewport");
+    bool rejected{};
+    try {
+        static_cast<void>(detail::quad_viewport_uniform(0, 80));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected, "Quad vertex viewport accepted zero physical width");
 }
 
 void test_initial_upload_preserves_instance_bytes() {
@@ -314,6 +448,8 @@ void test_bounded_sparse_upload_coalescing() {
 int main() {
     try {
         test_instance_layout_matches_shader_contract();
+        test_shape_raster_guard_and_composited_edges();
+        test_zero_area_and_viewport_raster_clipping();
         test_initial_upload_preserves_instance_bytes();
         test_full_retry_after_batch_submit_failure();
         test_sparse_dirty_ranges_and_compaction();

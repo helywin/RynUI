@@ -22,6 +22,109 @@ void require(bool value, const char* message) {
 
 using Fixture = ryn_test::input_component::Fixture;
 
+void text_pointer_cursor_regions() {
+    Fixture f;
+    Signal<bool> disabled{false};
+    Signal<bool> read_only{false};
+    f.inputs.mount(Content{[&] {
+        Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                 Input(InputProps{}.defaultValue(u8"text").allowClear(true).disabled(disabled).readOnly(read_only));
+             }});
+    }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto owner = f.services.components().parent(mounted.component).value();
+    const auto viewport = f.inputs.layout_snapshot(mounted.component).viewport;
+    const runtime::Point point{viewport.x + viewport.width / 2, viewport.y + viewport.height / 2};
+    f.platform.pointer_position = point;
+    f.synchronize();
+    require(f.platform.pointer_query && f.platform.text_cursor, "editor viewport did not select text cursor");
+    const auto& root = f.nodes.require(mounted.node);
+    require(!f.services.text_pointer_at({root.bounds.x, root.bounds.y}),
+            "Input border or padding selected the text cursor");
+    bool action_checked = false;
+    for (const auto& record : f.services.hit_test().records()) {
+        if (record.interaction == mounted.interaction || record.parent != mounted.interaction ||
+            !record.effective_eligible) {
+            continue;
+        }
+        const auto bounds = record.translated_bounds;
+        const runtime::Point action{bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
+        if (f.services.hit_test().hit_test(action) == record.interaction) {
+            require(!f.services.text_pointer_at(action), "Input clear action selected text cursor");
+            action_checked = true;
+        }
+    }
+    require(action_checked, "Input cursor fixture did not reach the real clear action");
+    read_only.set(true);
+    f.synchronize();
+    require(f.platform.text_cursor, "read-only selectable text lost text cursor");
+    disabled.set(true);
+    static_cast<void>(f.platform.synchronize_pointer_cursor());
+    require(!f.platform.text_cursor, "disabled editor retained cursor without pointer movement");
+    disabled.set(false);
+    f.synchronize();
+    require(f.platform.text_cursor, "enabled editor did not restore cursor after layout");
+    static_cast<void>(f.services.set_input_blocked(mounted.component, true));
+    static_cast<void>(f.platform.synchronize_pointer_cursor());
+    require(!f.platform.text_cursor, "blocked editor exposed text cursor");
+    static_cast<void>(f.services.set_input_blocked(mounted.component, false));
+    f.synchronize(320, {0, 0, point.x - 1, 240});
+    require(!f.platform.text_cursor, "clipped editor selected text cursor outside its document clip");
+    f.synchronize();
+    require(f.platform.text_cursor, "visible editor cursor did not recover");
+    require(f.services.destroy(mounted.component), "cursor owner retirement failed");
+    static_cast<void>(f.platform.synchronize_pointer_cursor());
+    require(!f.platform.text_cursor, "retired owner retained cursor without pointer movement");
+    f.services.append_slot(owner, Content{[] { Input(InputProps{}.defaultValue(u8"replacement")); }});
+    f.synchronize();
+    require(f.platform.text_cursor, "replacement generation did not restore cursor at the same pointer position");
+
+    for (int family = 0; family < 6; ++family) {
+        Fixture typed;
+        typed.inputs.mount(Content{[&] {
+            switch (family) {
+            case 0:
+                Password(PasswordProps{}.defaultValue(u8"password"));
+                break;
+            case 1:
+                TextArea(TextAreaProps{}.defaultValue(u8"first\nsecond"));
+                break;
+            case 2:
+                OTP(OTPProps{}.length(4));
+                break;
+            case 3:
+                InputNumber(InputNumberProps{}.defaultValue(3));
+                break;
+            case 4:
+                AutoComplete(AutoCompleteProps{});
+                break;
+            default:
+                Select(SelectProps{}.options({{1, u8"One"}}).showSearch());
+                break;
+            }
+        }});
+        typed.synchronize();
+        require(!typed.inputs.mounted_inputs().empty(), "cursor family has no retained text editor");
+        const auto input = typed.inputs.mounted_inputs().front();
+        const auto area = typed.inputs.layout_snapshot(input.component).viewport;
+        typed.platform.pointer_position = runtime::Point{area.x + area.width / 2, area.y + area.height / 2};
+        typed.synchronize();
+        require(typed.platform.text_cursor, "compound editor viewport did not select text cursor");
+        if (family == 3) {
+            for (const auto action : typed.inputs.number_actions(input.component)) {
+                const auto& node = typed.nodes.require(typed.services.components().root(action));
+                const runtime::Point center{node.bounds.x + node.translation.x + node.bounds.width / 2,
+                                            node.bounds.y + node.translation.y + node.bounds.height / 2};
+                require(!typed.services.text_pointer_at(center), "InputNumber stepper selected text cursor");
+            }
+        }
+        typed.platform.pointer_position.reset();
+        static_cast<void>(typed.platform.synchronize_pointer_cursor());
+        require(!typed.platform.text_cursor, "pointer leaving the window retained editor cursor");
+    }
+}
+
 void public_reference_and_properties() {
     Fixture f;
     InputRef reference;
@@ -1279,6 +1382,7 @@ void composition_display() {
 
 int main() {
     try {
+        text_pointer_cursor_regions();
         input_without_button_host();
         public_reference_and_properties();
         reference_mount_rollback_and_callbacks();

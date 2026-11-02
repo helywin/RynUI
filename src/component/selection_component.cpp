@@ -303,6 +303,9 @@ struct RadioGroupState final {
     runtime::NodeId node;
     input::InteractionId anchor;
     runtime::SceneFragmentId fragment;
+    component::RetainedSurfaceId button_backgrounds;
+    bool backgrounds_dirty{true};
+    std::vector<graphics::RoundedEffectInstance> background_effects;
     std::vector<runtime::ComponentId> options;
     std::vector<std::unique_ptr<GeneratedRadioOption>> generated;
     std::vector<RadioOption> source_options;
@@ -583,6 +586,7 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
     if (state.radio && state.group.valid()) {
         if (auto* group = services_->components().state<RadioGroupState>(state.group); group && !group->reconciling) {
             std::erase(group->options, state.component);
+            group->backgrounds_dirty = true;
             group->needs_refresh = true;
             if (!group->controlled && state.value == group->value) {
                 group->value.reset();
@@ -1114,6 +1118,7 @@ void SelectionComponentHost::place_radio_group(runtime::ComponentId id, layout::
 }
 
 void SelectionComponentHost::refresh_radio_group(RadioGroupState& group, bool measure) {
+    group.backgrounds_dirty = true;
     group.joined =
         !group.options.empty() && services_->nodes().require(group.node).children.size() == group.options.size();
     for (const auto option : group.options) {
@@ -1531,12 +1536,15 @@ void SelectionComponentHost::synchronize_switch_content(SelectionState& state) {
         return;
     }
     bool changed = false;
+    const auto track = services_->nodes().require(state.node).bounds;
     for (const auto branch : {state.checked_content, state.unchecked_content}) {
         if (branch.valid()) {
             const auto& bounds = services_->nodes().require(services_->components().root(branch)).bounds;
-            const bool selected = branch == (state.checked ? state.checked_content : state.unchecked_content);
-            changed |=
-                services_->components().set_branch_active(branch, selected && bounds.width > 0 && bounds.height > 0);
+            const bool visible =
+                bounds.width > 0 && bounds.height > 0 &&
+                std::min(bounds.x + bounds.width, track.x + track.width) > std::max(bounds.x, track.x) &&
+                std::min(bounds.y + bounds.height, track.y + track.height) > std::max(bounds.y, track.y);
+            changed |= services_->components().set_branch_active(branch, visible);
         }
     }
     if (changed) {
@@ -1557,12 +1565,14 @@ void SelectionComponentHost::place_switch_content(SelectionState& state, layout:
         const bool rtl = state.direction == SwitchDirection::RightToLeft;
         const float left = std::min(bounds.width, checked != rtl ? near : far);
         const float width = std::max(0.0F, bounds.width - near - far);
-        const bool active =
-            !state.disabled && !state.loading && (state.press.pressed() || state.focus.keyboard_pressed);
-        const float offset =
-            active ? (state.size == SwitchSize::Small ? token.track_padding : 2 * token.track_padding) : 0;
+        const float progress = std::clamp(state.presented_checked, 0.0F, 1.0F);
+        const float hidden = checked ? 1 - progress : progress;
+        const float travel = std::max(0.0F, bounds.width - token.handle_size - 2 * token.track_padding);
+        const float press = state.presented_handle_insets[checked ? 0 : 1];
+        const float offset = (state.size == SwitchSize::Small ? token.track_padding : 2 * token.track_padding) * press;
         const float shift = (checked != rtl ? -1.0F : 1.0F) * std::min(offset, width);
-        const runtime::Rect content{bounds.x + left + shift, bounds.y, width, bounds.height};
+        const runtime::Rect content{bounds.x + left + shift + (checked != rtl ? -1 : 1) * hidden * travel, bounds.y,
+                                    width, bounds.height};
         const auto node = services_->components().root(branch);
         const auto& retained = services_->nodes().require(node);
         if (retained.bounds != content || retained.translation != services_->nodes().require(state.node).translation) {
@@ -1972,59 +1982,141 @@ void SelectionComponentHost::publish_radio_button(SelectionState& state) {
     if (!state.button_range.valid()) {
         state.button_range = services_->surfaces().create_content_range(state.button_fragment, {});
     }
+    auto* group = services_->components().state<RadioGroupState>(state.group);
+    if (group) {
+        group->backgrounds_dirty = true;
+    }
+    if (group && group->joined) {
+        // Joined fills precede every border. Shared borders have one owner, so
+        // neither a later fill nor another translucent stroke consumes its AA.
+        services_->surfaces().update_content_effects(state.button_range, {});
+    } else {
+        const auto effects = radio_button_effects(state);
+        services_->surfaces().update_content_effects(state.button_range, effects);
+    }
+    if (const auto compact = state.compact_context.lock()) {
+        compact->publish_seams();
+    }
+}
+
+std::array<graphics::RoundedEffectInstance, 9>
+SelectionComponentHost::radio_button_effects(const SelectionState& state, std::array<bool, 4> border_sides) const {
     const auto& radio = services_->components().theme_scope(state.component)->snapshot().radio();
     const auto shape = state.effects.shape;
-    auto clip = resolved_clip(state);
+    const auto clip = resolved_clip(state);
     const float stroke = std::min(radio.line_width, std::min(shape.rect.width, shape.rect.height) / 2);
     const graphics::LogicalRoundedRect inner{{shape.rect.x + stroke, shape.rect.y + stroke,
                                               std::max(0.0F, shape.rect.width - 2 * stroke),
                                               std::max(0.0F, shape.rect.height - 2 * stroke)},
                                              std::max(0.0F, shape.radius - stroke)};
-    if (const auto* group = services_->components().state<RadioGroupState>(state.group); group && group->joined) {
-        const auto found = std::ranges::find(group->options, state.component);
-        if (found != group->options.end() && found != group->options.begin()) {
-            const auto* previous = find(*std::prev(found));
-            if (previous && previous->checked && !state.checked) {
-                const bool vertical = group->orientation == RadioGroupOrientation::Vertical;
-                const bool rtl = group->direction == RadioDirection::RightToLeft;
-                // The selected neighbor already owns this shared border. Clip this item's underpaint and
-                // border before that region, rather than covering it and restoring it with another AA layer.
-                const auto translation = state.effects.translation;
-                auto bounds = clip ? clip->bounds
-                                   : runtime::Rect{shape.rect.x + translation.x - 1, shape.rect.y + translation.y - 1,
-                                                   shape.rect.width + 2, shape.rect.height + 2};
-                const float right = bounds.x + bounds.width;
-                const float bottom = bounds.y + bounds.height;
-                if (vertical) {
-                    bounds.y = std::clamp(shape.rect.y + translation.y + stroke, bounds.y, bottom);
-                    bounds.height = bottom - bounds.y;
-                } else if (rtl) {
-                    bounds.width = std::max(
-                        0.0F, std::min(right, shape.rect.x + translation.x + shape.rect.width - stroke) - bounds.x);
-                } else {
-                    bounds.x = std::clamp(shape.rect.x + translation.x + stroke, bounds.x, right);
-                    bounds.width = right - bounds.x;
-                }
-                clip = graphics::EffectClip{1, bounds};
-            }
-        }
-    }
     std::array<graphics::RoundedEffectInstance, 9> effects;
     const auto fill = graphics::make_corner_fill_effects(shape, state.rounded_corners, state.button_fill, 1,
                                                          state.effects.translation, clip);
+    auto border_shape = inner;
+    auto border_clip = clip;
+    if (border_clip) {
+        // An omitted joined side is a half-plane, not a displaced visible edge.
+        // Move its SDF boundary beyond the viewport, then restrict the remaining
+        // straight sides to this item's inner boundary on that side. This keeps
+        // the selected owner's entire support without a device-dependent inset.
+        const auto extent =
+            std::max({viewport_.width, viewport_.height, shape.rect.width, shape.rect.height}) + 2 * stroke;
+        auto bounds = border_clip->bounds;
+        const auto trim = [&](std::size_t side, float boundary) {
+            if (border_sides[side]) {
+                return;
+            }
+            if (side == 0) {
+                const auto bottom = bounds.y + bounds.height;
+                bounds.y = std::max(bounds.y, boundary);
+                bounds.height = std::max(0.0F, bottom - bounds.y);
+                border_shape.rect.y -= extent;
+                border_shape.rect.height += extent;
+            } else if (side == 1) {
+                bounds.width = std::max(0.0F, std::min(bounds.x + bounds.width, boundary) - bounds.x);
+                border_shape.rect.width += extent;
+            } else if (side == 2) {
+                bounds.height = std::max(0.0F, std::min(bounds.y + bounds.height, boundary) - bounds.y);
+                border_shape.rect.height += extent;
+            } else {
+                const auto right = bounds.x + bounds.width;
+                bounds.x = std::max(bounds.x, boundary);
+                bounds.width = std::max(0.0F, right - bounds.x);
+                border_shape.rect.x -= extent;
+                border_shape.rect.width += extent;
+            }
+        };
+        trim(0, shape.rect.y + stroke + state.effects.translation.y);
+        trim(1, shape.rect.x + shape.rect.width - stroke + state.effects.translation.x);
+        trim(2, shape.rect.y + shape.rect.height - stroke + state.effects.translation.y);
+        trim(3, shape.rect.x + stroke + state.effects.translation.x);
+        border_clip->bounds = bounds;
+    }
     const auto border = graphics::make_corner_outline_effects(
-        inner, state.rounded_corners, stroke, 0, state.button_border,
-        state.button_border == state.button_fill ? 0.0F : 1.0F, state.effects.translation, clip);
+        border_shape, state.rounded_corners, stroke, 0, state.button_border,
+        state.button_border == state.button_fill ? 0.0F : 1.0F, state.effects.translation, border_clip);
     std::copy(fill.begin(), fill.end(), effects.begin());
     std::copy(border.begin(), border.end(), effects.begin() + 4);
-    // Preserve the retained range's identity and capacity; border ownership needs no extra seam layer.
+    // Preserve the retained range's identity and capacity.
     effects[8] = graphics::make_shadow_effect({{shape.rect.x, shape.rect.y, 0, 0}, 0}, ShadowLayer{},
                                               state.effects.translation, clip);
     effects[8].material.opacity = 0;
-    services_->surfaces().update_content_effects(state.button_range, effects);
-    if (const auto compact = state.compact_context.lock()) {
-        compact->publish_seams();
+    return effects;
+}
+
+void SelectionComponentHost::publish_radio_group_backgrounds(RadioGroupState& group) {
+    if (!group.backgrounds_dirty) {
+        return;
     }
+    auto& effects = group.background_effects;
+    effects.clear();
+    if (group.joined) {
+        const auto active = [this](const SelectionState* state) {
+            return state && state->radio_button && services_->components().branch_active(state->component);
+        };
+        std::size_t count = 0;
+        for (const auto id : group.options) {
+            count += active(find(id)) ? 1 : 0;
+        }
+        effects.resize(count * 9);
+        std::size_t fill_cursor = 0;
+        std::size_t border_cursor = count * 4;
+        const auto priority = [](const SelectionState& state) {
+            return state.checked ? 3 : state.hovered || state.press.pressed() ? 2 : state.disabled ? 0 : 1;
+        };
+        const auto leading = group.orientation == RadioGroupOrientation::Vertical ? 0U
+                             : group.direction == RadioDirection::RightToLeft     ? 1U
+                                                                                  : 3U;
+        const auto trailing = (leading + 2U) % 4U;
+        for (const bool selected : {false, true}) {
+            for (std::size_t index = 0; index < group.options.size(); ++index) {
+                const auto* state = find(group.options[index]);
+                if (active(state) && state->checked == selected) {
+                    std::array sides{true, true, true, true};
+                    if (index > 0) {
+                        const auto* previous = find(group.options[index - 1]);
+                        if (active(previous)) {
+                            sides[leading] = priority(*state) > priority(*previous);
+                        }
+                    }
+                    if (index + 1 < group.options.size()) {
+                        const auto* next = find(group.options[index + 1]);
+                        if (active(next)) {
+                            sides[trailing] = priority(*state) >= priority(*next);
+                        }
+                    }
+                    const auto item = radio_button_effects(*state, sides);
+                    std::copy_n(item.begin(), 4, effects.begin() + static_cast<std::ptrdiff_t>(fill_cursor));
+                    std::copy(item.begin() + 4, item.end(),
+                              effects.begin() + static_cast<std::ptrdiff_t>(border_cursor));
+                    fill_cursor += 4;
+                    border_cursor += 5;
+                }
+            }
+        }
+    }
+    services_->surfaces().update_content_effects(group.button_backgrounds, effects);
+    group.backgrounds_dirty = false;
 }
 
 CompactBorder SelectionComponentHost::compact_border(const SelectionState& state) const {
@@ -2048,6 +2140,11 @@ void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpo
     for (const auto& item : mounted_) {
         if (auto* state = find(item.component); state && services_->components().branch_active(item.component)) {
             update_geometry(*state, viewport);
+        }
+    }
+    for (const auto id : groups_) {
+        if (auto* group = services_->components().state<RadioGroupState>(id)) {
+            publish_radio_group_backgrounds(*group);
         }
     }
 }
@@ -2849,6 +2946,9 @@ struct RadioGroupPropsAccess {
         };
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.services_->components().state<RadioGroupState>(component)) {
+                if (current->button_backgrounds.valid()) {
+                    host.services_->surfaces().destroy_content_range(current->button_backgrounds);
+                }
                 host.services_->pointer().cancel_interaction(current->anchor);
                 host.services_->focus().cancel_interaction(current->anchor);
                 static_cast<void>(host.services_->interactions().remove(current->anchor));
@@ -2862,6 +2962,9 @@ struct RadioGroupPropsAccess {
             {component, state.node, host.parent_interaction(component), true, false, {}});
         state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
         host.services_->scene_composer().set_fragment(state.fragment, {}, state.anchor);
+        const auto backgrounds =
+            build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
+        state.button_backgrounds = host.services_->surfaces().create_content_range(backgrounds, {});
         if (content) {
             build.mount_slot(component, *content);
         } else {

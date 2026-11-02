@@ -841,9 +841,11 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 if (node.children.size() != 3) {
                     throw std::logic_error("Input layout requires three slots");
                 }
-                const float frame = 2.0F * (current.padding_inline + current.border_width);
+                const float frame = current.padding_inline + 2 * current.border_width +
+                                    (current.flush_suffix ? 0 : current.padding_inline);
                 const float outer_width = current.preferred_width > 0
-                                              ? std::min(content_constraint.max_width, current.preferred_width)
+                                              ? std::clamp(current.preferred_width, content_constraint.min_width,
+                                                           content_constraint.max_width)
                                               : content_constraint.max_width;
                 const float inner_width = subtract_extent(outer_width, frame);
                 const float height = std::min(current.control_height, content_constraint.max_height);
@@ -855,8 +857,10 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 const auto prefix =
                     measure_node(node.children[0], {0, current.prefix ? remaining : 0, 0, inner_height});
                 remaining = subtract_extent(remaining, prefix.width);
+                const float suffix_height =
+                    current.flush_suffix ? subtract_extent(height, 2 * current.border_width) : inner_height;
                 const auto suffix =
-                    measure_node(node.children[2], {0, current.suffix ? remaining : 0, 0, inner_height});
+                    measure_node(node.children[2], {0, current.suffix ? remaining : 0, 0, suffix_height});
                 remaining = subtract_extent(remaining, suffix.width);
                 const auto editable = measure_node(
                     node.children[1], {std::isfinite(remaining) ? remaining : 0, remaining, 0, inner_height});
@@ -1084,17 +1088,27 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                 }
                 const auto inset = std::min(node.bounds.width * 0.5F, current.padding_inline + current.border_width);
                 const auto top = std::min(node.bounds.height * 0.5F, current.border_width + current.padding_block);
-                const auto height = std::max(0.0F, node.bounds.height - 2.0F * top);
                 float cursor = node.bounds.x + inset;
-                const auto end = node.bounds.x + node.bounds.width - inset;
+                const auto right_inset =
+                    current.flush_suffix ? std::min(node.bounds.width / 2, current.border_width) : inset;
+                const auto end = node.bounds.x + node.bounds.width - right_inset;
+                const auto suffix_width =
+                    std::min(nodes_->require(node.children[2]).layout_size.width, std::max(0.0F, end - cursor));
                 for (std::size_t index = 0; index < 3; ++index) {
                     const auto child = node.children[index];
                     const auto size = nodes_->require(child).layout_size;
-                    const auto width = std::min(size.width, std::max(0.0F, end - cursor));
-                    const auto child_height = std::min(height, size.height);
-                    place_node(child,
-                               {cursor, node.bounds.y + top + (height - child_height) * 0.5F, width, child_height},
-                               index == 1, false);
+                    const auto remaining = std::max(0.0F, end - cursor);
+                    const auto width =
+                        index == 1 ? std::max(0.0F, remaining - suffix_width - (current.suffix ? current.gap : 0))
+                                   : std::min(size.width, remaining);
+                    const float child_top = index == 2 && current.flush_suffix
+                                                ? std::min(node.bounds.height / 2, current.border_width)
+                                                : top;
+                    const auto child_height = std::min(std::max(0.0F, node.bounds.height - 2 * child_top), size.height);
+                    place_node(
+                        child,
+                        {cursor, node.bounds.y + (node.bounds.height - child_height) * 0.5F, width, child_height},
+                        index == 1, false);
                     cursor += width;
                     if ((index == 0 && current.prefix) || (index == 1 && current.suffix)) {
                         cursor = std::min(end, cursor + current.gap);

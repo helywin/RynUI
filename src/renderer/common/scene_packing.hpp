@@ -43,6 +43,26 @@ inline constexpr std::array<QuadAttributeBinding, 5> quad_attribute_bindings{{
 }};
 inline constexpr std::uint32_t quad_vertex_count = 6;
 
+// Vertex constants describe the render target, independently of retained shape
+// bytes. Both Quad consumers use this physical extent for a one-pixel draw guard.
+struct alignas(16) QuadViewportUniform final {
+    std::array<float, 4> pixel_extent{};
+};
+
+static_assert(sizeof(QuadViewportUniform) == 16);
+
+struct QuadVertexReference final {
+    runtime::Point position_ndc;
+    runtime::Point centered_pixels;
+    runtime::Size pixel_extent;
+};
+
+[[nodiscard]] QuadViewportUniform quad_viewport_uniform(std::uint32_t pixel_width, std::uint32_t pixel_height);
+[[nodiscard]] QuadVertexReference quad_gpu_vertex_reference(const QuadGpuInstance& instance, runtime::Point corner,
+                                                            QuadViewportUniform viewport);
+[[nodiscard]] std::array<float, 4>
+quad_gpu_fragment_reference(runtime::Point point_pixels, const QuadGpuInstance& instance, QuadViewportUniform viewport);
+
 struct alignas(16) GlyphGpuInstance {
     std::array<float, 4> position_size{};
     std::array<float, 4> uv_rect{};

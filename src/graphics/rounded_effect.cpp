@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <numbers>
 #include <stdexcept>
 #include <utility>
 
@@ -76,6 +77,66 @@ void validate_rect(runtime::Rect rect, const char* message) {
     rect.x += point.x;
     rect.y += point.y;
     return rect;
+}
+
+constexpr float pi = std::numbers::pi_v<float>;
+constexpr float turn = 2 * pi;
+
+float positive_mod(float value, float period) noexcept {
+    const auto result = std::fmod(value, period);
+    return result < 0 ? result + period : result;
+}
+
+struct ClosestBoundary final {
+    float square_distance{std::numeric_limits<float>::infinity()};
+    float coordinate{};
+    float length{};
+
+    void consider(runtime::Point point, runtime::Point candidate, float along) noexcept {
+        const auto dx = point.x - candidate.x;
+        const auto dy = point.y - candidate.y;
+        const auto square = dx * dx + dy * dy;
+        if (square < square_distance) {
+            square_distance = square;
+            coordinate = along;
+        }
+    }
+
+    void line(runtime::Point point, runtime::Point first, runtime::Point last) noexcept {
+        const auto dx = last.x - first.x;
+        const auto dy = last.y - first.y;
+        const auto extent = std::hypot(dx, dy);
+        const auto t =
+            extent > 0
+                ? std::clamp(((point.x - first.x) * dx + (point.y - first.y) * dy) / (extent * extent), 0.0F, 1.0F)
+                : 0.0F;
+        consider(point, {first.x + t * dx, first.y + t * dy}, length + t * extent);
+        length += extent;
+    }
+
+    void arc(runtime::Point point, runtime::Point center, float radius, float start) noexcept {
+        if (radius <= 0) {
+            return;
+        }
+        const auto sample = [&](float angle) {
+            consider(point, {center.x + radius * std::cos(start + angle), center.y + radius * std::sin(start + angle)},
+                     length + angle * radius);
+        };
+        sample(0);
+        sample(pi / 2);
+        const auto angle = positive_mod(std::atan2(point.y - center.y, point.x - center.x) - start, turn);
+        if (angle <= pi / 2) {
+            sample(angle);
+        }
+        length += pi / 2 * radius;
+    }
+};
+
+float corner_radius(runtime::Point point, LogicalRoundedRect shape, std::array<bool, 4> corners) noexcept {
+    const auto right = point.x >= shape.rect.x + shape.rect.width / 2;
+    const auto bottom = point.y >= shape.rect.y + shape.rect.height / 2;
+    const auto corner = bottom ? (right ? 2U : 3U) : (right ? 1U : 0U);
+    return corners[corner] ? shape.radius : 0;
 }
 
 [[nodiscard]] RoundedEffectGeometry geometry_of(const RoundedEffectInstance& instance) {
@@ -162,6 +223,54 @@ RoundedEffectInstance make_outline_effect(LogicalRoundedRect shape, float width,
     return instance;
 }
 
+RoundedEffectInstance make_arc_effect(runtime::Point center, float radius, float width, float start_degrees,
+                                      float sweep_degrees, Color color, float opacity, runtime::Point translation,
+                                      std::optional<EffectClip> ancestor_clip) {
+    if (!finite(start_degrees) || !finite(sweep_degrees) || sweep_degrees < 0 || sweep_degrees > 360 ||
+        !finite(radius) || radius < 0) {
+        throw std::invalid_argument("Circular arc angles/radius are invalid");
+    }
+    RoundedEffectInstance instance;
+    instance.geometry.shape = {{center.x - radius, center.y - radius, 2 * radius, 2 * radius}, radius};
+    instance.geometry.kind = RoundedEffectKind::arc;
+    instance.geometry.outline_width = width;
+    instance.geometry.translation = translation;
+    instance.geometry.ancestor_clip = std::move(ancestor_clip);
+    instance.geometry.path = RoundedArcPath{std::remainder(start_degrees, 360.0F) * pi / 180, sweep_degrees * pi / 180};
+    instance.material = {color, opacity, true};
+    validate_rounded_effect(instance);
+    return instance;
+}
+
+RoundedEffectInstance make_dashed_outline_effect(LogicalRoundedRect shape, float width, RoundedDashPath pattern,
+                                                 Color color, float opacity, runtime::Point translation,
+                                                 std::optional<EffectClip> ancestor_clip) {
+    RoundedEffectInstance instance;
+    instance.geometry.shape = shape;
+    instance.geometry.kind = RoundedEffectKind::dashed_outline;
+    instance.geometry.outline_width = width;
+    instance.geometry.translation = translation;
+    instance.geometry.ancestor_clip = std::move(ancestor_clip);
+    instance.geometry.path = pattern;
+    instance.material = {color, opacity, true};
+    validate_rounded_effect(instance);
+    return instance;
+}
+
+RoundedEffectInstance make_tooltip_fill_effect(LogicalRoundedRect shape, TooltipArrowPath arrow, Color color,
+                                               float opacity, runtime::Point translation,
+                                               std::optional<EffectClip> ancestor_clip) {
+    RoundedEffectInstance instance;
+    instance.geometry.shape = shape;
+    instance.geometry.kind = RoundedEffectKind::tooltip_fill;
+    instance.geometry.translation = translation;
+    instance.geometry.ancestor_clip = std::move(ancestor_clip);
+    instance.geometry.path = arrow;
+    instance.material = {color, opacity, true};
+    validate_rounded_effect(instance);
+    return instance;
+}
+
 void validate_rounded_effect(const RoundedEffectInstance& instance) {
     const auto& geometry = instance.geometry;
     validate_rect(geometry.shape.rect, "Rounded effect shape must be finite and non-negative");
@@ -176,16 +285,61 @@ void validate_rounded_effect(const RoundedEffectInstance& instance) {
     switch (geometry.kind) {
     case RoundedEffectKind::outer_shadow:
     case RoundedEffectKind::inset_shadow:
-        if (geometry.outline_width != 0.0F || geometry.outline_offset != 0.0F) {
+        if (geometry.outline_width != 0.0F || geometry.outline_offset != 0.0F ||
+            !std::holds_alternative<std::monostate>(geometry.path)) {
             throw std::invalid_argument("Shadow effect cannot contain outline geometry");
         }
         break;
     case RoundedEffectKind::outline:
         if (geometry.outline_width <= 0.0F || geometry.blur != 0.0F || geometry.spread != 0.0F ||
-            geometry.offset != LogicalOffset{}) {
+            geometry.offset != LogicalOffset{} || !std::holds_alternative<std::monostate>(geometry.path)) {
             throw std::invalid_argument("Outline effect geometry is invalid");
         }
         break;
+    case RoundedEffectKind::arc: {
+        const auto* arc = std::get_if<RoundedArcPath>(&geometry.path);
+        if (!arc || !finite(arc->start_radians) || std::abs(arc->start_radians) > pi || !finite(arc->sweep_radians) ||
+            arc->sweep_radians < 0 || arc->sweep_radians > turn ||
+            geometry.shape.rect.width != geometry.shape.rect.height ||
+            geometry.shape.radius != geometry.shape.rect.width / 2 || geometry.outline_offset != 0 ||
+            geometry.offset != LogicalOffset{} || geometry.blur != 0 || geometry.spread != 0) {
+            throw std::invalid_argument("Circular arc geometry is invalid");
+        }
+        break;
+    }
+    case RoundedEffectKind::dashed_outline: {
+        const auto* dash = std::get_if<RoundedDashPath>(&geometry.path);
+        if (!dash || !finite(dash->length) || dash->length <= 0 || !finite(dash->gap) || dash->gap < 0 ||
+            !finite(dash->phase) || !finite(dash->length + dash->gap) || geometry.outline_width <= 0 ||
+            geometry.outline_width > maximum_radius || geometry.outline_offset != 0 ||
+            geometry.offset != LogicalOffset{} || geometry.blur != 0 || geometry.spread != 0) {
+            throw std::invalid_argument("Dashed outline geometry is invalid");
+        }
+        const auto sample = rounded_rect_path_sample({}, geometry.shape, dash->rounded_corners);
+        if (!finite(sample.length) || !finite(sample.length / (dash->length + dash->gap))) {
+            throw std::invalid_argument("Dashed outline perimeter is not representable");
+        }
+        break;
+    }
+    case RoundedEffectKind::tooltip_fill: {
+        const auto* arrow = std::get_if<TooltipArrowPath>(&geometry.path);
+        const auto horizontal = arrow && arrow->side <= TooltipArrowSide::top;
+        const auto extent = horizontal ? geometry.shape.rect.width : geometry.shape.rect.height;
+        const auto tolerance = extent * std::numeric_limits<float>::epsilon() * 4;
+        if (!arrow || arrow->side > TooltipArrowSide::left || geometry.shape.rect.width <= 0 ||
+            geometry.shape.rect.height <= 0 || !finite(arrow->center) || !finite(arrow->half_width) ||
+            arrow->half_width <= 0 || !finite(arrow->length) || arrow->length <= 0 ||
+            arrow->center - arrow->half_width < geometry.shape.radius - tolerance ||
+            arrow->center + arrow->half_width > extent - geometry.shape.radius + tolerance ||
+            geometry.outline_width != 0 || geometry.outline_offset != 0 || geometry.offset != LogicalOffset{} ||
+            geometry.blur != 0 || geometry.spread != 0 || !finite(geometry.shape.rect.x - arrow->length) ||
+            !finite(geometry.shape.rect.y - arrow->length) ||
+            !finite(geometry.shape.rect.x + geometry.shape.rect.width + arrow->length) ||
+            !finite(geometry.shape.rect.y + geometry.shape.rect.height + arrow->length)) {
+            throw std::invalid_argument("Tooltip arrow must fit a straight body edge");
+        }
+        break;
+    }
     default:
         throw std::invalid_argument("Rounded effect kind is invalid");
     }
@@ -211,6 +365,115 @@ float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shap
     const float outside = std::hypot(std::max(qx, 0.0F), std::max(qy, 0.0F));
     const float inside = std::min(std::max(qx, qy), 0.0F);
     return outside + inside - radius;
+}
+
+RoundedPathSample rounded_rect_path_sample(runtime::Point point, LogicalRoundedRect shape,
+                                           std::array<bool, 4> rounded_corners) {
+    const auto r = std::clamp(shape.radius, 0.0F, std::min(shape.rect.width, shape.rect.height) / 2);
+    const auto x = shape.rect.x;
+    const auto y = shape.rect.y;
+    const auto right = x + shape.rect.width;
+    const auto bottom = y + shape.rect.height;
+    const std::array radii{rounded_corners[0] ? r : 0, rounded_corners[1] ? r : 0, rounded_corners[2] ? r : 0,
+                           rounded_corners[3] ? r : 0};
+    ClosestBoundary closest;
+    closest.line(point, {x + radii[0], y}, {right - radii[1], y});
+    closest.arc(point, {right - radii[1], y + radii[1]}, radii[1], -pi / 2);
+    closest.line(point, {right, y + radii[1]}, {right, bottom - radii[2]});
+    closest.arc(point, {right - radii[2], bottom - radii[2]}, radii[2], 0);
+    closest.line(point, {right - radii[2], bottom}, {x + radii[3], bottom});
+    closest.arc(point, {x + radii[3], bottom - radii[3]}, radii[3], pi / 2);
+    closest.line(point, {x, bottom - radii[3]}, {x, y + radii[0]});
+    closest.arc(point, {x + radii[0], y + radii[0]}, radii[0], pi);
+    return {std::sqrt(closest.square_distance), closest.coordinate, closest.length};
+}
+
+float arc_signed_distance(runtime::Point point, LogicalRoundedRect centerline, float width,
+                          RoundedArcPath arc) noexcept {
+    if (arc.sweep_radians <= 0 || width <= 0) {
+        return std::numeric_limits<float>::infinity();
+    }
+    const auto radius = centerline.rect.width / 2;
+    const runtime::Point relative{point.x - centerline.rect.x - radius, point.y - centerline.rect.y - radius};
+    const auto angle = positive_mod(std::atan2(relative.y, relative.x) - arc.start_radians, turn);
+    auto distance = std::abs(std::hypot(relative.x, relative.y) - radius);
+    if (arc.sweep_radians < turn && angle > arc.sweep_radians) {
+        const auto endpoint_distance = [&](float theta) {
+            return std::hypot(relative.x - radius * std::cos(theta), relative.y - radius * std::sin(theta));
+        };
+        distance =
+            std::min(endpoint_distance(arc.start_radians), endpoint_distance(arc.start_radians + arc.sweep_radians));
+    }
+    return distance - width / 2;
+}
+
+float dashed_outline_coverage(runtime::Point point, LogicalRoundedRect shape, float width, RoundedDashPath dash,
+                              float antialias_width) {
+    if (shape.rect.width <= 0 || shape.rect.height <= 0) {
+        return 0;
+    }
+    auto outer = shape;
+    outer.radius = corner_radius(point, shape, dash.rounded_corners);
+    const auto outer_coverage = gaussian_edge(rounded_rect_signed_distance(point, outer), 0, antialias_width);
+    auto inner = shape;
+    inner.rect = {shape.rect.x + width, shape.rect.y + width, shape.rect.width - 2 * width,
+                  shape.rect.height - 2 * width};
+    inner.radius = std::max(0.0F, outer.radius - width);
+    const auto inner_coverage = gaussian_edge(rounded_rect_signed_distance(point, inner), 0, antialias_width);
+    auto centerline = shape;
+    centerline.rect = {shape.rect.x + width / 2, shape.rect.y + width / 2, shape.rect.width - width,
+                       shape.rect.height - width};
+    centerline.radius = std::max(0.0F, shape.radius - width / 2);
+    const auto sample = rounded_rect_path_sample(point, centerline, dash.rounded_corners);
+    if (sample.length <= 0 || dash.gap == 0) {
+        return outer_coverage * (1 - inner_coverage);
+    }
+    const auto requested_period = dash.length + dash.gap;
+    const auto count = std::max(1.0F, std::floor(sample.length / requested_period + 0.5F));
+    const auto period = sample.length / count;
+    const auto length = period * (dash.length / requested_period);
+    const auto phase = positive_mod(sample.coordinate + std::remainder(dash.phase, period), period);
+    const auto distance = phase <= length ? std::min(phase, length - phase) : -std::min(phase - length, period - phase);
+    return outer_coverage * (1 - inner_coverage) * smoothstep(-antialias_width / 2, antialias_width / 2, distance);
+}
+
+float tooltip_signed_distance(runtime::Point point, LogicalRoundedRect shape, TooltipArrowPath arrow) noexcept {
+    point.x -= shape.rect.x;
+    point.y -= shape.rect.y;
+    auto width = shape.rect.width;
+    auto height = shape.rect.height;
+    auto center = arrow.center;
+    if (arrow.side == TooltipArrowSide::top) {
+        point = {width - point.x, height - point.y};
+        center = width - center;
+    } else if (arrow.side == TooltipArrowSide::right) {
+        point = {height - point.y, point.x};
+        center = height - center;
+        std::swap(width, height);
+    } else if (arrow.side == TooltipArrowSide::left) {
+        point = {point.y, width - point.x};
+        std::swap(width, height);
+    }
+    const auto radius = shape.radius;
+    ClosestBoundary boundary;
+    boundary.line(point, {radius, 0}, {width - radius, 0});
+    boundary.arc(point, {width - radius, radius}, radius, -pi / 2);
+    boundary.line(point, {width, radius}, {width, height - radius});
+    boundary.arc(point, {width - radius, height - radius}, radius, 0);
+    // The base is internal to the union. Excluding it from the boundary
+    // removes both the glyph phase seam and double-alpha overlap.
+    boundary.line(point, {width - radius, height}, {center + arrow.half_width, height});
+    boundary.line(point, {center + arrow.half_width, height}, {center, height + arrow.length});
+    boundary.line(point, {center, height + arrow.length}, {center - arrow.half_width, height});
+    boundary.line(point, {center - arrow.half_width, height}, {radius, height});
+    boundary.arc(point, {radius, height - radius}, radius, pi / 2);
+    boundary.line(point, {0, height - radius}, {0, radius});
+    boundary.arc(point, {radius, radius}, radius, pi);
+    const auto in_body = rounded_rect_signed_distance(point, {{0, 0, width, height}, radius}) <= 0;
+    const auto in_arrow = point.y >= height && point.y <= height + arrow.length &&
+                          std::abs(point.x - center) <= arrow.half_width * (1 - (point.y - height) / arrow.length);
+    const auto distance = std::sqrt(boundary.square_distance);
+    return in_body || in_arrow ? -distance : distance;
 }
 
 float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance& instance, float antialias_width) {
@@ -243,6 +506,16 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
                                               geometry.outline_offset + geometry.outline_width + half_aa, distance);
         return std::clamp(inner * outer, 0.0F, 1.0F);
     }
+    case RoundedEffectKind::arc:
+        return gaussian_edge(
+            arc_signed_distance(point, base, geometry.outline_width, std::get<RoundedArcPath>(geometry.path)), 0,
+            antialias_width);
+    case RoundedEffectKind::dashed_outline:
+        return dashed_outline_coverage(point, base, geometry.outline_width, std::get<RoundedDashPath>(geometry.path),
+                                       antialias_width);
+    case RoundedEffectKind::tooltip_fill:
+        return gaussian_edge(tooltip_signed_distance(point, base, std::get<TooltipArrowPath>(geometry.path)), 0,
+                             antialias_width);
     }
     return 0.0F;
 }
@@ -254,8 +527,12 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
     }
     const auto& geometry = instance.geometry;
     runtime::Rect bounds = translate(geometry.shape.rect, geometry.translation);
-    if (empty(bounds)) {
+    if (empty(bounds) && geometry.kind != RoundedEffectKind::arc) {
         return bounds;
+    }
+    if (geometry.kind == RoundedEffectKind::arc &&
+        (geometry.outline_width <= 0 || std::get<RoundedArcPath>(geometry.path).sweep_radians <= 0)) {
+        return {bounds.x, bounds.y, 0, 0};
     }
     switch (geometry.kind) {
     case RoundedEffectKind::outer_shadow: {
@@ -275,6 +552,28 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
     case RoundedEffectKind::outline:
         bounds = expand(bounds, geometry.outline_offset + geometry.outline_width + antialias_guard);
         break;
+    case RoundedEffectKind::arc:
+        bounds = expand(bounds, geometry.outline_width / 2 + antialias_guard);
+        break;
+    case RoundedEffectKind::dashed_outline:
+        bounds = expand(bounds, antialias_guard);
+        break;
+    case RoundedEffectKind::tooltip_fill: {
+        const auto& arrow = std::get<TooltipArrowPath>(geometry.path);
+        if (arrow.side == TooltipArrowSide::bottom) {
+            bounds.height += arrow.length;
+        } else if (arrow.side == TooltipArrowSide::top) {
+            bounds.y -= arrow.length;
+            bounds.height += arrow.length;
+        } else if (arrow.side == TooltipArrowSide::right) {
+            bounds.width += arrow.length;
+        } else {
+            bounds.x -= arrow.length;
+            bounds.width += arrow.length;
+        }
+        bounds = expand(bounds, antialias_guard);
+        break;
+    }
     }
     if (geometry.ancestor_clip.has_value()) {
         bounds = intersect_effect_bounds(bounds, geometry.ancestor_clip->bounds);

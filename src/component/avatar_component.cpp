@@ -426,9 +426,13 @@ void AvatarComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
                                                    node.translation, graphics::EffectClip{1, clip});
             effects.insert(effects.end(), fill.begin(), fill.end());
             if (s->grouped) {
+                const auto border = std::min(t.metrics.border_width, side / 2);
+                const graphics::LogicalRoundedRect inner{
+                    {shape.rect.x + border, shape.rect.y + border, side - 2 * border, side - 2 * border},
+                    std::max(0.0F, shape.radius - border)};
                 const auto ring = graphics::make_corner_outline_effects(
-                    shape, {true, true, true, true}, std::min(t.metrics.border_width, side / 2), 0,
-                    t.colors.group_border, opacity, node.translation, graphics::EffectClip{1, clip});
+                    inner, {true, true, true, true}, border, 0, t.colors.group_border, opacity, node.translation,
+                    graphics::EffectClip{1, clip});
                 effects.insert(effects.end(), ring.begin(), ring.end());
             }
         }

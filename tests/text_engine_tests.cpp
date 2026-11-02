@@ -164,6 +164,37 @@ void test_measurement_uses_shaped_metrics() {
             "empty text did not preserve a deterministic line box");
 }
 
+void test_compact_line_boxes_center_font_metrics() {
+    Fixture fixture;
+    for (const String value : {String{u8"Control"}, String{u8"受控 / Checked"}, String{u8""}, String{u8"中\nM2"}}) {
+        const auto shaped = fixture.shape(value);
+        require(static_cast<bool>(shaped), "compact text did not shape");
+        constexpr float line_height = 12;
+        const auto measured =
+            fixture.engine.measure(shaped.text, {line_height, std::numeric_limits<float>::infinity()});
+        require(static_cast<bool>(measured), "compact text did not measure");
+        std::size_t index{};
+        for (const auto& line : measured.measurement.lines) {
+            float ascent = shaped.text.default_metrics.ascent;
+            float descent = -shaped.text.default_metrics.descent;
+            for (std::size_t i = line.glyph_begin; i < line.glyph_begin + line.glyph_count; ++i) {
+                const auto font = shaped.text.glyphs[measured.measurement.visual_glyphs[i]].font;
+                const auto metrics = fixture.fonts->metrics(font);
+                require(static_cast<bool>(metrics), "compact glyph metrics missing");
+                ascent = std::max(ascent, metrics.metrics.ascent);
+                descent = std::max(descent, -metrics.metrics.descent);
+            }
+            require(ascent + descent > line_height, "compact fixture did not exercise negative leading");
+            const float font_center = line.baseline + (descent - ascent) / 2;
+            require(std::abs(font_center - (static_cast<float>(index) + 0.5F) * line_height) < 0.001F,
+                    "font metric box shifted below its compact line box");
+            ++index;
+        }
+        require(std::abs(measured.measurement.height - static_cast<float>(index) * line_height) < 0.001F,
+                "compact centering changed line spacing or layout height");
+    }
+}
+
 void test_wrapping_respects_cluster_boundaries() {
     Fixture fixture;
     constexpr float line_height = 20.0F;
@@ -231,6 +262,7 @@ int main() {
         test_utf8_decoder_and_lossy_boundary();
         test_fallback_runs_clusters_and_ligatures();
         test_measurement_uses_shaped_metrics();
+        test_compact_line_boxes_center_font_metrics();
         test_wrapping_respects_cluster_boundaries();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

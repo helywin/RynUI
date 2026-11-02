@@ -439,7 +439,10 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
             descent = std::max(descent, -metrics.metrics.descent);
         }
         const float content_height = ascent + descent;
-        const float baseline = top + std::max(0.0F, (config.line_height - content_height) * 0.5F) + ascent;
+        // Line height is the layout box, not a minimum font-metric height.
+        // Fonts with tall ascenders/descenders need symmetric negative leading
+        // too; clamping it shifts every compact control's text downward.
+        const float baseline = top + (config.line_height - content_height) * 0.5F + ascent;
 
         float pen_x = 0.0F;
         for (std::size_t glyph = glyph_begin; glyph < glyph_end; ++glyph) {

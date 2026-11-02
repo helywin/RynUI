@@ -152,6 +152,7 @@ public:
     bool set_input_boundary(std::optional<runtime::ComponentId> root);
     bool set_input_blocked(runtime::ComponentId root, bool blocked);
     void request_frame() noexcept;
+    [[nodiscard]] bool text_pointer_at(runtime::Point point);
     [[nodiscard]] runtime::Rect component_clip(runtime::ComponentId id, runtime::Size viewport,
                                                runtime::Rect document_clip,
                                                runtime::ClipPurpose purpose = runtime::ClipPurpose::content) const;
@@ -448,6 +449,8 @@ private:
     std::unique_ptr<WindowTextEditServices> text_edit_;
     input::TextClipboard* clipboard_{};
     InputComponentHost* input_runtime_{};
+    std::optional<font::FontIdentity> clipping_density_font_;
+    std::optional<float> clipping_antialias_guard_;
     std::unique_ptr<TypographyComponentHost> typography_;
     std::unique_ptr<DividerComponentHost> divider_;
     std::unique_ptr<SpaceAddonHost> space_addon_;
