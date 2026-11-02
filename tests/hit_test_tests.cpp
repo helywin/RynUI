@@ -262,6 +262,42 @@ void test_stale_snapshot_entries_and_invalid_traversals_are_safe() {
             "replacement interaction was not hittable after snapshot rebuild");
 }
 
+void test_geometry_misses_skip_branch_checks_without_caching_activity() {
+    ryn::runtime::NodeStore nodes;
+    ryn::runtime::ComponentHost components(nodes);
+    ryn::runtime::ComponentId parent;
+    std::array<ryn::runtime::ComponentId, 2> children;
+    components.mount(ryn::Content{[&] {
+        parent = mount_parent(Children{[&] {
+            for (auto& child : children) {
+                child = mount_leaf();
+            }
+        }});
+    }});
+    ryn::input::InteractionRegistry registry(components, nodes);
+    std::array<ryn::input::HitTestPaintEntry, 2> entries;
+    for (std::size_t i = 0; i < children.size(); ++i) {
+        commit(nodes, components.root(children[i]), {10, 10, 20, 20});
+        entries[i] = {register_interaction(registry, components, children[i]), std::nullopt};
+    }
+    ryn::input::HitTestSnapshot snapshot(registry, nodes);
+    snapshot.rebuild(entries, {0, 0, 100, 100});
+    require(registry.set_input_blocked(children[1], true), "dynamic branch block failed");
+    require(!snapshot.hit_test({80, 80}) && snapshot.diagnostics().branch_checks == 0,
+            "geometric miss traversed live component branches");
+    require(snapshot.hit_test({15, 15}) == entries[0].interaction && snapshot.diagnostics().branch_checks == 2,
+            "geometric candidates bypassed the live blocked branch");
+    require(registry.set_input_boundary(children[1]) && !snapshot.hit_test({15, 15}),
+            "input boundary change was cached across queries");
+    require(registry.set_input_blocked(children[1], false) && snapshot.hit_test({15, 15}) == entries[1].interaction,
+            "unblocked candidate stayed stale without a snapshot rebuild");
+    require(components.set_branch_active(parent, false) && !snapshot.hit_test({15, 15}),
+            "inactive component ancestor remained hittable");
+    require(registry.remove(entries[1].interaction), "stale off-point setup failed");
+    require(!snapshot.hit_test({80, 80}) && snapshot.diagnostics().stale_skips == 1,
+            "geometry rejection lost stale record diagnostics");
+}
+
 } // namespace
 
 int main() {
@@ -271,6 +307,7 @@ int main() {
         test_margin_committed_bounds_and_missing_layout();
         test_wrapped_flex_commits_hit_test_bounds();
         test_stale_snapshot_entries_and_invalid_traversals_are_safe();
+        test_geometry_misses_skip_branch_checks_without_caching_activity();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

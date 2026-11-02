@@ -170,6 +170,7 @@ struct HitTestDiagnostics final {
     std::uint64_t records_refreshed{0};
     std::uint64_t queries{0};
     std::uint64_t records_examined{0};
+    std::uint64_t branch_checks{0};
     std::uint64_t hits{0};
     std::uint64_t stale_skips{0};
 

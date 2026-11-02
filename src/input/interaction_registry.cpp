@@ -524,8 +524,11 @@ std::optional<InteractionId> HitTestSnapshot::hit_test(runtime::Point point) {
             continue;
         }
         if (!iterator->has_committed_layout || !iterator->effective_eligible || !interaction->eligible ||
-            !registry_->branch_active(iterator->interaction) || !contains(iterator->effective_clip, point) ||
-            !contains(iterator->translated_bounds, point)) {
+            !contains(iterator->effective_clip, point) || !contains(iterator->translated_bounds, point)) {
+            continue;
+        }
+        ++diagnostics_.branch_checks;
+        if (!registry_->branch_active(iterator->interaction)) {
             continue;
         }
         ++diagnostics_.hits;

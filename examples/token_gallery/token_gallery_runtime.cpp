@@ -1,4 +1,5 @@
 #include "token_gallery_definition.hpp"
+#include "acceptance_events.hpp"
 #include "gallery_document_viewport.hpp"
 #include "gallery_layout.hpp"
 #include "reference_surface.hpp"
@@ -1066,6 +1067,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             return 1;
         }
         auto& platform = *platform_result.state;
+        acceptance::FixtureEventFilter event_filter{smoke_mode || scroll_acceptance || scrollbar_acceptance};
         if (motion_disabled) {
             definition.set_motion_enabled(false);
         }
@@ -1156,6 +1158,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
 
         std::size_t smoke_stage = 0;
         std::size_t scroll_stage = 0;
+        std::size_t scroll_warmup_frames = 0;
         std::size_t scrollbar_stage = 0;
         constexpr std::size_t scrollbar_drag_steps = 240;
         constexpr std::size_t scrollbar_drag_stages = scrollbar_drag_steps + 2;
@@ -1172,6 +1175,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         float navigation_after_drag = 0.0F;
         float document_after_track = 0.0F;
         std::uint64_t scroll_started_milliseconds = 0;
+        std::int64_t scroll_input_nanoseconds = 0;
+        std::int64_t scroll_input_max_nanoseconds = 0;
+        std::uint64_t scroll_input_queries = 0;
+        std::uint64_t scroll_input_branch_checks = 0;
         std::uint64_t scroll_finished_milliseconds = 0;
         std::uint64_t rasterizations_before_scroll = 0;
         std::size_t automated_input_events = 0;
@@ -1885,7 +1892,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 }
                 ++scrollbar_stage;
             }
-            if (scroll_acceptance && scroll_stage == 0 && !submitter.anchors_ready()) {
+            if (scroll_acceptance && scroll_stage == 0 && (!submitter.anchors_ready() || scroll_warmup_frames < 3)) {
                 frame_requests.request_frame();
             } else if (scroll_acceptance && scroll_stage < 240 && elapsed >= 250 + 4 * scroll_stage) {
                 if (scroll_stage == 0) {
@@ -1893,12 +1900,22 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     submitter.reset_frame_timings();
                     scroll_started_milliseconds = elapsed;
                 }
-                const bool changed = scroll_stage == 239
-                                         ? document_viewport.scroll_to(document_viewport.snapshot().maximum_offset)
-                                         : document_viewport.scroll_by(48.0F);
-                if (changed) {
-                    frame_requests.request_frame();
-                }
+                // Exercise the same component routing as a wheel event. The
+                // document gutter avoids scrolling a nested editor or list.
+                const auto& track = scroll_presentation.document.track;
+                const float delta =
+                    scroll_stage == 239 ? -(document_viewport.snapshot().maximum_offset / 48.0F + 1.0F) : -1.0F;
+                const auto hit_before = application.hit_test().diagnostics();
+                const auto input_started = std::chrono::steady_clock::now();
+                events.inject_scroll_at(track.x - 4.0F, track.y + track.height * .5F, delta);
+                const auto input_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                               std::chrono::steady_clock::now() - input_started)
+                                               .count();
+                scroll_input_nanoseconds += input_elapsed;
+                scroll_input_max_nanoseconds = std::max(scroll_input_max_nanoseconds, input_elapsed);
+                const auto& hit_after = application.hit_test().diagnostics();
+                scroll_input_queries += hit_after.queries - hit_before.queries;
+                scroll_input_branch_checks += hit_after.branch_checks - hit_before.branch_checks;
                 ++scroll_stage;
             }
             const std::size_t smoke_stage_count = search_acceptance || password_acceptance || clear_acceptance ? 6
@@ -1937,6 +1954,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 ++smoke_stage;
             }
             const auto step = loop.step();
+            if (scroll_acceptance && scroll_stage == 0 && step == ryn::runtime::FrameLoopStep::submitted) {
+                ++scroll_warmup_frames;
+            }
             if (scrollbar_expected_offset.has_value()) {
                 const bool document_drag = narrow_acceptance || scrollbar_stage - 9 < scrollbar_drag_stages;
                 const float offset =
@@ -2257,9 +2277,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                                                                                                           : 0U;
         const bool scroll_failed =
             scroll_acceptance &&
-            (scroll_stage != 240 || document.maximum_offset <= 0.0F || document.offset != document.maximum_offset ||
-             document_diagnostics.translation_passes < 2 || submitter.reconciliation_syncs() != 0 ||
-             submitter.anchor_refreshes() != 0 ||
+            (scroll_stage != 240 || events.scroll_events() < scroll_stage || document.maximum_offset <= 0.0F ||
+             document.offset != document.maximum_offset || document_diagnostics.translation_passes < 2 ||
+             submitter.reconciliation_syncs() != 0 || submitter.anchor_refreshes() != 0 ||
              submitter.last_visible_scene().fragments_visible >= submitter.last_visible_scene().fragments_considered ||
              telemetry.content_runs != 1 || render.frame_submissions < 2);
         const bool scrollbar_failed =
@@ -2476,7 +2496,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                   << " navigation_drag=" << (navigation_drag_passed ? "passed" : "not-run")
                   << " document_track=" << (document_track_passed ? "passed" : "not-run")
                   << " document_drag=" << (document_drag_passed ? "passed" : "not-run")
-                  << " scroll_acceptance_steps=" << scroll_stage
+                  << " scroll_acceptance_steps=" << scroll_stage << " scroll_warmup_frames=" << scroll_warmup_frames
+                  << " scroll_input_avg_us="
+                  << (scroll_stage ? scroll_input_nanoseconds / (1000.0 * scroll_stage) : 0.0)
+                  << " scroll_input_max_us=" << scroll_input_max_nanoseconds / 1000.0
+                  << " scroll_input_queries=" << scroll_input_queries
+                  << " scroll_input_branch_checks=" << scroll_input_branch_checks
                   << " scroll_sequence_ms=" << (scroll_finished_milliseconds - scroll_started_milliseconds)
                   << " input_latin=" << (input_latin ? "passed" : "not-run")
                   << " input_selection=" << (input_selection ? "passed" : "not-run")

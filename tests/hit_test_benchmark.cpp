@@ -115,6 +115,18 @@ ryn::runtime::ComponentId mount_leaf() {
     return ryn::runtime::require_component_build_context().mount_component<TestState>();
 }
 
+void mount_nested_records(std::size_t depth, std::size_t count, std::vector<ryn::runtime::ComponentId>& components) {
+    if (depth == 0) {
+        for (std::size_t index = 0; index < count; ++index) {
+            components.push_back(mount_leaf());
+        }
+        return;
+    }
+    auto& context = ryn::runtime::require_component_build_context();
+    const auto parent = context.mount_component<TestState>();
+    context.mount_slot(parent, ryn::Content{[&] { mount_nested_records(depth - 1, count, components); }});
+}
+
 void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
@@ -127,16 +139,14 @@ int main() {
     try {
         constexpr std::size_t record_count = 1'000;
         constexpr std::size_t query_count = 10'000;
+        constexpr std::size_t component_depth = 8;
+        constexpr std::size_t blocked_roots = 200;
 
         ryn::runtime::NodeStore nodes;
         ryn::runtime::ComponentHost components(nodes);
         std::vector<ryn::runtime::ComponentId> component_ids;
         component_ids.reserve(record_count);
-        components.mount(ryn::Content{[&] {
-            for (std::size_t index = 0; index < record_count; ++index) {
-                component_ids.push_back(mount_leaf());
-            }
-        }});
+        components.mount(ryn::Content{[&] { mount_nested_records(component_depth, record_count, component_ids); }});
 
         ryn::input::InteractionRegistry registry(components, nodes);
         registry.reserve(record_count);
@@ -166,6 +176,9 @@ int main() {
         ryn::input::HitTestSnapshot snapshot(registry, nodes);
         snapshot.reserve(record_count);
         snapshot.rebuild(paint_entries, {0.0F, 0.0F, 2'000.0F, 2'000.0F});
+        for (std::size_t index = 0; index < blocked_roots; ++index) {
+            require(registry.set_input_blocked(component_ids[index], true), "benchmark input block setup failed");
+        }
         const auto stable_capacity = snapshot.capacity();
 
         allocation_probe::count.store(0, std::memory_order_relaxed);
@@ -183,9 +196,12 @@ int main() {
         require(snapshot.capacity() == stable_capacity, "steady-state HitTest query changed snapshot capacity");
         require(snapshot.diagnostics().records_examined == record_count * query_count,
                 "dense HitTest benchmark did not scan the expected records");
+        require(snapshot.diagnostics().branch_checks == 0, "off-point records traversed blocked component ancestors");
 
         std::cout << "hit_test_records=" << record_count << " queries=" << query_count
-                  << " records_examined=" << snapshot.diagnostics().records_examined << " allocations=" << allocations
+                  << " component_depth=" << component_depth << " blocked_roots=" << blocked_roots
+                  << " records_examined=" << snapshot.diagnostics().records_examined
+                  << " branch_checks=" << snapshot.diagnostics().branch_checks << " allocations=" << allocations
                   << " elapsed_us=" << elapsed_microseconds << '\n';
     } catch (const std::exception& error) {
         allocation_probe::tracking.store(false, std::memory_order_relaxed);

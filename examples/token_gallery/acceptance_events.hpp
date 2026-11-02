@@ -5,6 +5,15 @@
 namespace rynui::example::acceptance {
 inline constexpr Uint64 fixture_timestamp = std::numeric_limits<Uint64>::max();
 
+inline bool resize_window(SDL_Window* window, int width, int height) {
+    if ((SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED) != 0) {
+        if (!SDL_RestoreWindow(window) || !SDL_SyncWindow(window)) {
+            return false;
+        }
+    }
+    return SDL_SetWindowSize(window, width, height) && SDL_SyncWindow(window);
+}
+
 class FixtureEventFilter final {
 public:
     explicit FixtureEventFilter(bool enabled) : enabled_(enabled) {
@@ -14,8 +23,9 @@ public:
                     const auto type = event->type;
                     const bool input = type == SDL_EVENT_KEY_DOWN || type == SDL_EVENT_KEY_UP ||
                                        type == SDL_EVENT_MOUSE_MOTION || type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
-                                       type == SDL_EVENT_MOUSE_BUTTON_UP || type == SDL_EVENT_WINDOW_FOCUS_LOST ||
-                                       type == SDL_EVENT_WINDOW_FOCUS_GAINED;
+                                       type == SDL_EVENT_MOUSE_BUTTON_UP || type == SDL_EVENT_MOUSE_WHEEL ||
+                                       type == SDL_EVENT_TEXT_INPUT || type == SDL_EVENT_TEXT_EDITING ||
+                                       type == SDL_EVENT_WINDOW_FOCUS_LOST || type == SDL_EVENT_WINDOW_FOCUS_GAINED;
                     return !input || event->common.timestamp == fixture_timestamp;
                 },
                 nullptr);
