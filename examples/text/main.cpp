@@ -69,11 +69,17 @@ class TextComponentSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
     TextComponentSubmitter(ryn::detail::TextComponentHost& host, ryn::detail::TextSceneService& scene,
                            ryn::detail::SceneResources& resources, ryn::detail::SdlSceneRenderer& renderer,
-                           ryn::runtime::Size& viewport) noexcept
-        : host_(&host), scene_(&scene), resources_(&resources), renderer_(&renderer), viewport_(&viewport) {}
+                           ryn::runtime::Size& viewport, ryn::detail::PlatformState& platform) noexcept
+        : host_(&host), scene_(&scene), resources_(&resources), renderer_(&renderer), viewport_(&viewport),
+          platform_(&platform) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime frame_time) override {
         try {
+            const auto metrics = platform_->window_metrics();
+            if (metrics.pixel_width <= 0 || metrics.pixel_height <= 0) {
+                return ryn::runtime::FrameSubmissionResult::deferred;
+            }
+            *viewport_ = {metrics.logical_width(), metrics.logical_height()};
             const ryn::runtime::Rect clip{
                 48.0F,
                 48.0F,
@@ -84,7 +90,12 @@ public:
                 last_error_ = "Text component layout or scene synchronization failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
-            if (!resources_->synchronize({nullptr, scene_->atlas(), scene_->glyph_scene().instances(), nullptr, {}})) {
+            if (!resources_->synchronize({nullptr,
+                                          scene_->atlas(),
+                                          scene_->glyph_scene().instances(),
+                                          nullptr,
+                                          {static_cast<std::uint32_t>(metrics.pixel_width),
+                                           static_cast<std::uint32_t>(metrics.pixel_height), metrics.display_scale}})) {
                 throw std::runtime_error(renderer_->last_error());
             }
             if (!renderer_->attach_scene(resources_->attach(scene_->ordered_scene()))) {
@@ -111,6 +122,7 @@ private:
     ryn::detail::SceneResources* resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
     ryn::runtime::Size* viewport_;
+    ryn::detail::PlatformState* platform_;
     std::string last_error_;
 };
 
@@ -191,7 +203,7 @@ int main(int argc, char** argv) {
 
         ryn::detail::SdlSceneRenderer renderer(platform);
         ryn::detail::SceneResources resources(renderer);
-        TextComponentSubmitter submitter(application, scene, resources, renderer, viewport);
+        TextComponentSubmitter submitter(application, scene, resources, renderer, viewport, platform);
         PlatformFrameEvents events(platform);
         ryn::runtime::OnDemandFrameLoop loop(frame_requests, events, submitter, 10);
 

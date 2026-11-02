@@ -18,6 +18,6 @@
 
 - [x] 4.1 经全新 Astra 独立审查并修复可达问题，保持 Theme/IIFE/ordinal/GPU ABI，受影响检查、format22、显式1.14 doctor/strict、diff 通过；记录准确证据并只推 main、核远端 SHA。
 
-## 5. Linux 原生发布验收（独立平台，待实际机器）
+## 5. Linux 原生发布验收（独立平台）
 
-- [ ] 5.1 在实际 Linux 正式 GCC/Clang preset 验证内嵌 shader、Vulkan/SPIR-V、Fontconfig 系统字体及无资源目录启动，独立记录/提交，不重复平台通用逻辑，不由 Windows 结果勾选。
+- [x] 5.1 在实际 Linux 正式 GCC/Clang preset 验证内嵌 shader、Vulkan/SPIR-V、Fontconfig 系统字体及无资源目录启动，独立记录/提交，不重复平台通用逻辑，不由 Windows 结果勾选。结果见 `evidence/linux-native-validation.md`。
