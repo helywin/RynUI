@@ -396,7 +396,7 @@ int run_radio_acceptance(int argc, char** argv) {
         compact.algorithms = {ThemeAlgorithm::Compact};
         theme.set(compact);
         draw("compact");
-        require_radio(SDL_SetWindowSize(window, 1420, 900), "Radio resize failed");
+        require_radio(acceptance::resize_window(window, 1420, 900), "Radio resize failed");
         platform.delay(100);
         draw("resized");
         require_radio(metrics.coordinate_width == 1420, "Radio resize geometry wrong");

@@ -1066,12 +1066,13 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    // The appended popup and Timeline note also retain their own editors after Form.
-    require(fixture.inputs->mounted_inputs().size() == 156 &&
-                fixture.host->services().select().mounted().size() == 24 &&
-                fixture.host->services().card().mounted().size() == 7 &&
-                fixture.host->services().tabs().mounted().size() == 14 &&
-                fixture.host->services().modal().mounted().size() == 13,
+    // Later gallery entries append editors and controls. Keep the minimum
+    // inventory here; the assertions below verify the original samples.
+    require(fixture.inputs->mounted_inputs().size() >= 156 &&
+                fixture.host->services().select().mounted().size() >= 24 &&
+                fixture.host->services().card().mounted().size() >= 7 &&
+                fixture.host->services().tabs().mounted().size() >= 14 &&
+                fixture.host->services().modal().mounted().size() >= 13,
             "Gallery Input/Search/Password/Typography/TextArea/OTP/Select samples absent");
     const auto samples = fixture.inputs->mounted_inputs();
     const auto variants = std::array{ryn::InputVariant::Outlined, ryn::InputVariant::Filled,
@@ -1175,6 +1176,7 @@ void test_live_input_samples() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery Search frame did not submit");
     fixture.inputs->set_window_active(false);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery blur frame failed");
+    static_cast<void>(drain_animation_frames(*fixture.host, loop, "Gallery Input blur did not settle"));
     const auto final = definition.telemetry();
     require(final.content_runs == initial.content_runs, "Gallery Input reran root content");
     require(final.theme_content_runs == initial.theme_content_runs, "Gallery Input reran Theme content");
@@ -2590,12 +2592,23 @@ void test_empty_and_result_gallery_after_document_scroll() {
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
                 entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
                 auto expected = reference->node;
-                const auto heading = entry.identity == "ant.component.breadcrumb"    ? "gallery.breadcrumb.trail "
-                                     : entry.identity == "ant.component.steps"       ? "gallery.steps.workflow "
-                                     : entry.identity == "ant.component.time-picker" ? "gallery.time-picker.controlled "
-                                     : entry.identity == "ant.component.descriptions" ? "gallery.descriptions.editor "
-                                     : entry.identity == "ant.component.skeleton"     ? "gallery.skeleton.preview "
-                                                                                      : "";
+                const auto heading =
+                    entry.identity == "ant.component.breadcrumb"      ? "gallery.breadcrumb.trail "
+                    : entry.identity == "ant.component.steps"         ? "gallery.steps.workflow "
+                    : entry.identity == "ant.component.time-picker"   ? "gallery.time-picker.controlled "
+                    : entry.identity == "ant.component.descriptions"  ? "gallery.descriptions.editor "
+                    : entry.identity == "ant.component.skeleton"      ? "gallery.skeleton.preview "
+                    : entry.identity == "ant.component.popover"       ? "gallery.popover.editor "
+                    : entry.identity == "ant.component.message"       ? "gallery.notices.workflow "
+                    : entry.identity == "ant.component.notification"  ? "gallery.notices.workflow "
+                    : entry.identity == "ant.component.timeline"      ? "gallery.timeline.workflow "
+                    : entry.identity == "ant.component.avatar"        ? "gallery.avatar.members "
+                    : entry.identity == "ant.component.statistic"     ? "gallery.statistic.metrics "
+                    : entry.identity == "ant.component.rate"          ? "gallery.rate.service "
+                    : entry.identity == "ant.component.auto-complete" ? "gallery.auto-complete.contacts "
+                    : entry.identity == "ant.component.tree"          ? "gallery.tree.project "
+                    : entry.identity == "ant.component.tree-select"   ? "gallery.tree-select.destination "
+                                                                      : "";
                 if (std::string_view{heading}.size() > 0) {
                     const auto texts = f.host->text().mounted_texts();
                     const auto target = std::ranges::find_if(texts, [&](const auto& t) {
@@ -5766,6 +5779,7 @@ void test_overlay_and_timeline_gallery_after_document_scroll() {
     };
     const auto popup_editor = editor_in(original_popup.content);
     const auto timeline_editor = editor_in(original_timeline.items[2].content);
+    const auto initial_input_count = f.inputs->mounted_inputs().size();
     const auto initial_telemetry = definition.telemetry();
     GalleryDocumentViewport document_scroll;
     GalleryScrollRange navigation_scroll;
@@ -6238,7 +6252,8 @@ void test_overlay_and_timeline_gallery_after_document_scroll() {
             action("gallery.notices.clear");
             require(!notice("project-review") && !notice("project-save") &&
                         !services.components().contains(*live_message) && !services.components().contains(*entry) &&
-                        !services.components().contains(editor.component) && f.inputs->mounted_inputs().size() == 156,
+                        !services.components().contains(editor.component) &&
+                        f.inputs->mounted_inputs().size() == initial_input_count,
                     "Notice clear retained a transient entry/editor");
             navigate("Timeline", "ant.component.timeline", "gallery.timeline.workflow", timeline_owner);
             reveal(timeline_editor.component);
@@ -8435,6 +8450,10 @@ int main(int argc, char** argv) {
     try {
         if (argc == 2 && std::string_view{argv[1]} == "--frame-contract-only") {
             test_token_gallery_frame_contract();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--input-only") {
+            test_live_input_samples();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--tree-select-only") {

@@ -61,7 +61,7 @@
 
 ## 9. Linux 专属验收
 
-- [ ] 9.1 使用 `linux-gcc` clean configure 和 `linux-clang` Debug build，完成受 Linux 分支影响的 CTest，核对 Ninja Multi-Config、标准 C++20、steady clock/display cadence adapter、BUNDLED Wayland/libdecor、Vulkan/SPIR-V 与 evidence identity，保存独立 Linux 结果
+- [x] 9.1 使用 `linux-gcc` clean configure 和 `linux-clang` Debug build，完成受 Linux 分支影响的 CTest，核对 Ninja Multi-Config、标准 C++20、steady clock/display cadence adapter、BUNDLED Wayland/libdecor、Vulkan/SPIR-V 与 evidence identity，保存独立 Linux 结果
 - [ ] 9.2 在原生 Linux Wayland/GCC/Vulkan/SPIR-V 真实窗口以至少两档实际 display scale 操作 Button enter/down/up/leave、keyboard focus、loading、Theme motion on/off 与 injected reduced policy；记录 compositor、nominal refresh、driver、font、scale、退出码、frame/animation diagnostics 和 evidence path，不以 X11 代替
 - [ ] 9.3 人工核对视觉过渡连续、focus ring 瞬时、spinner retained、motion disabled/reduced 静态状态、不同 refresh 下稳定且 DPI 无裁切或抖动；等待动画完成后确认窗口无持续 submit/busy loop
 - [ ] 9.4 运行 Linux 平台分支 tests、evidence passed contract、dependency/shader/lock/license/cache 检查、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Linux animation runtime` 提交并推送 Linux evidence，核对 remote SHA，不修改 Windows 清单
@@ -69,3 +69,5 @@
 ## 10. Change 收口
 
 - [ ] 10.1 在准备 archive 时运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、最终受影响 CTest/benchmark、public dependency、lock/license/cache、`git diff --check`、remote SHA 与 clean worktree 检查；确认平台通用、Windows 与 Linux checkbox/evidence 各自真实完成，README、AGENTS、architecture、generated docs 与 OpenSpec 职责未混写，本项不替代任何平台验收
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

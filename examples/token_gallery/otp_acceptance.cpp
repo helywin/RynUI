@@ -417,7 +417,7 @@ int run_otp_acceptance(int argc, char** argv) {
                         join(services.otp().cells(groups[6])) == String{u8"abcdef"},
                     "OTP length changed retained prefix or hidden source");
         auto* window = static_cast<SDL_Window*>(platform.window());
-        require_otp(SDL_SetWindowSize(window, 1420, 1000), "OTP window resize failed");
+        require_otp(acceptance::resize_window(window, 1420, 1000), "OTP window resize failed");
         platform.delay(100);
         draw("resized-window");
         click(mounted_cell(5, 2));

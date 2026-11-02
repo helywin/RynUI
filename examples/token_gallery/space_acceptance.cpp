@@ -350,7 +350,7 @@ int run_space_acceptance(int argc, char** argv) {
         const auto last_nested = buttons.mounted_buttons()[8];
         require_space(services.destroy(last_nested.component), "Space nested deletion failed");
         draw("nested-single");
-        require_space(SDL_SetWindowSize(window, 1420, 900), "Space resize failed");
+        require_space(acceptance::resize_window(window, 1420, 900), "Space resize failed");
         platform.delay(100);
         width.set(dp(450));
         draw("resized");

@@ -11,7 +11,10 @@ inline bool resize_window(SDL_Window* window, int width, int height) {
             return false;
         }
     }
-    return SDL_SetWindowSize(window, width, height) && SDL_SyncWindow(window);
+    int actual_width{};
+    int actual_height{};
+    return SDL_SetWindowSize(window, width, height) && SDL_SyncWindow(window) &&
+           SDL_GetWindowSize(window, &actual_width, &actual_height) && actual_width == width && actual_height == height;
 }
 
 class FixtureEventFilter final {
@@ -24,7 +27,6 @@ public:
                     const bool input = type == SDL_EVENT_KEY_DOWN || type == SDL_EVENT_KEY_UP ||
                                        type == SDL_EVENT_MOUSE_MOTION || type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
                                        type == SDL_EVENT_MOUSE_BUTTON_UP || type == SDL_EVENT_MOUSE_WHEEL ||
-                                       type == SDL_EVENT_TEXT_INPUT || type == SDL_EVENT_TEXT_EDITING ||
                                        type == SDL_EVENT_WINDOW_FOCUS_LOST || type == SDL_EVENT_WINDOW_FOCUS_GAINED;
                     return !input || event->common.timestamp == fixture_timestamp;
                 },

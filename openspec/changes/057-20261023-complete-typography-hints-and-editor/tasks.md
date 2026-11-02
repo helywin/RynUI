@@ -20,4 +20,6 @@
 
 ### Linux
 
-- [ ] 4.2 在实际 Linux 机器 linux-native Debug/Release 构建与受影响 native CTest，完成对应 Vulkan/SPIR-V/系统字体/输入/DPI/resize 窗口验收，独立记录并提交 evidence；不重复 common，也不使用 Windows/WSLg 结果替代。
+- [x] 4.2 在实际 Linux 机器 linux-native Debug/Release 构建与受影响 native CTest，完成对应 Vulkan/SPIR-V/系统字体/输入/DPI/resize 窗口验收，独立记录并提交 evidence；不重复 common，也不使用 Windows/WSLg 结果替代。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

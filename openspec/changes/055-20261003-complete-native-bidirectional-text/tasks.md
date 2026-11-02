@@ -26,4 +26,6 @@
 
 ### Linux
 
-- [ ] 5.2 在实际Linux机器linux-native Debug/Release完成affected native CTest/Gallery smoke及对应window/GPU/system font/input/DPI/resize证据，独立提交；不重复共同逻辑，不用Windows结果代替。
+- [x] 5.2 在实际Linux机器linux-native Debug/Release完成affected native CTest/Gallery smoke及对应window/GPU/system font/input/DPI/resize证据，独立提交；不重复共同逻辑，不用Windows结果代替。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

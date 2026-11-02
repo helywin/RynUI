@@ -35,9 +35,9 @@ struct CoverageCase final {
 
 void capture_coverage(detail::PlatformState& platform, detail::SdlSceneRenderer& renderer,
                       const std::filesystem::path& directory, float scale, bool dark) {
-    const auto metrics = platform.window_metrics();
-    const detail::SceneDeviceMetrics device{static_cast<std::uint32_t>(metrics.pixel_width),
-                                            static_cast<std::uint32_t>(metrics.pixel_height), scale};
+    auto metrics = platform.window_metrics();
+    detail::SceneDeviceMetrics device{static_cast<std::uint32_t>(metrics.pixel_width),
+                                      static_cast<std::uint32_t>(metrics.pixel_height), scale};
     const Color background = dark ? Color::rgba8(24, 24, 24) : Color::rgba8(255, 255, 255);
     const Color ink = dark ? Color::rgba8(235, 235, 235) : Color::rgba8(20, 20, 20);
     std::vector<CoverageCase> cases;
@@ -95,11 +95,16 @@ void capture_coverage(detail::PlatformState& platform, detail::SdlSceneRenderer&
     static_cast<void>(quads.append(std::span{&quad, 1}));
     ordered.append_quad(0, 1);
     detail::SceneResources resources{renderer};
-    require_rounded(resources.synchronize({&quads, atlas, glyphs, &effects, device}), "Coverage upload");
-    require_rounded(renderer.attach_scene(resources.attach(ordered)), "Coverage attach");
     renderer.set_clear_color(background);
     for (int frame = 0; frame < 2; ++frame) {
         static_cast<void>(platform.poll_events());
+        // Wayland may finish the initial configure/maximize after GPU setup.
+        // Keep the packed projection and the pixel reference on the same extent.
+        metrics = platform.window_metrics();
+        device = {static_cast<std::uint32_t>(metrics.pixel_width), static_cast<std::uint32_t>(metrics.pixel_height),
+                  scale};
+        require_rounded(resources.synchronize({&quads, atlas, glyphs, &effects, device}), "Coverage upload");
+        require_rounded(renderer.attach_scene(resources.attach(ordered)), "Coverage attach");
         require_rounded(renderer.submit_frame(animation::AnimationTime{}) != runtime::FrameSubmissionResult::failed,
                         "Coverage GPU frame");
         platform.delay(25);
@@ -393,7 +398,8 @@ int run_rounded_acceptance(int argc, char** argv) {
         draw("inactive", 5500000);
         require_rounded(!buttons.snapshot(mounted[0].component).wave_active && !services.next_frame_deadline(),
                         "Rounded inactive cancellation");
-        require_rounded(SDL_SetWindowSize(static_cast<SDL_Window*>(platform.window()), 1420, 1000), "Rounded resize");
+        require_rounded(acceptance::resize_window(static_cast<SDL_Window*>(platform.window()), 1420, 1000),
+                        "Rounded resize");
         platform.delay(100);
         draw("resized", 5600000);
         static_cast<void>(frames.consume_request());

@@ -20,4 +20,6 @@
 
 ### Linux
 
-- [ ] 4.2 在实际 Linux 原生机器完成窗口系统/GPU/系统字体/输入与缩放验收，独立保存日志和截图；不重复平台通用逻辑，不使用 Windows 证据勾选。
+- [x] 4.2 在实际 Linux 原生机器完成窗口系统/GPU/系统字体/输入与缩放验收，独立保存日志和截图；不重复平台通用逻辑，不使用 Windows 证据勾选。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

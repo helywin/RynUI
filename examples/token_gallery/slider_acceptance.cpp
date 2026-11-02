@@ -446,9 +446,9 @@ int run_slider_acceptance(int argc, char** argv) {
         compact.algorithms = {ThemeAlgorithm::Compact};
         theme.set(compact);
         draw("compact");
-        const int resized_height = with_editing ? 1180 : (with_marks ? 960 : 720);
+        const int resized_height = with_editing ? 900 : (with_marks ? 960 : 720);
         const int resized_width = with_editing ? 1420 : 900;
-        require(SDL_SetWindowSize(window, resized_width, resized_height), "Slider native resize failed");
+        require(acceptance::resize_window(window, resized_width, resized_height), "Slider native resize failed");
         platform.delay(100);
         metrics = platform.window_metrics();
         width.set(dp(280));

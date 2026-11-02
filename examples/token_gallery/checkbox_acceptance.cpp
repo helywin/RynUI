@@ -329,7 +329,7 @@ int run_checkbox_acceptance(int argc, char** argv) {
         compact.algorithms = {ThemeAlgorithm::Compact};
         theme.set(compact);
         draw("compact");
-        require_checkbox(SDL_SetWindowSize(window, 1420, 900), "Checkbox resize failed");
+        require_checkbox(acceptance::resize_window(window, 1420, 900), "Checkbox resize failed");
         platform.delay(100);
         draw("resized");
         require_checkbox(metrics.coordinate_width == 1420, "Checkbox resize geometry wrong");

@@ -1,3 +1,4 @@
+#include "acceptance_events.hpp"
 #include "component/select_component.hpp"
 #include "component/input_component.hpp"
 #include "platform/default_font_chain.hpp"
@@ -337,7 +338,7 @@ int run_select_acceptance(int argc, char** argv) {
         click(long_selector);
         draw("edge-popup");
         require(selects.snapshot(long_id).above, "native Select did not flip at lower edge");
-        require(SDL_SetWindowSize(static_cast<SDL_Window*>(platform.window()), 1100, 900),
+        require(acceptance::resize_window(static_cast<SDL_Window*>(platform.window()), 1100, 900),
                 "native Select resize failed");
         platform.delay(100);
         require(edge_translation.apply(long_node, 0, nodes, dirty).changed, "native Select translation reset failed");

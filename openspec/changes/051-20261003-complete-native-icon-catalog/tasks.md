@@ -28,4 +28,6 @@
 
 ### Linux
 
-- [ ] 6.2 在实际 Linux 机器完成本 change 的 GPU/shader/窗口/字体/DPI/input/resize/spin/清理集成验收并保存日志/readback/身份，独立提交；不重复平台通用合同。
+- [x] 6.2 在实际 Linux 机器完成本 change 的 GPU/shader/窗口/字体/DPI/input/resize/spin/清理集成验收并保存日志/readback/身份，独立提交；不重复平台通用合同。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

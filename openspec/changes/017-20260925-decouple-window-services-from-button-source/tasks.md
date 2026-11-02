@@ -13,4 +13,6 @@
 
 ## 3. Linux 待验
 
-- [ ] 3.1 用户安排后在原生 Wayland GCC/Clang 正式 preset 运行受影响构建/平台集成测试和真实 Vulkan/SPIR-V、Fontconfig、窗口验证；不以 WSLg/XWayland 代替
+- [x] 3.1 用户安排后在原生 Wayland GCC/Clang 正式 preset 运行受影响构建/平台集成测试和真实 Vulkan/SPIR-V、Fontconfig、窗口验证；不以 WSLg/XWayland 代替
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

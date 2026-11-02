@@ -16,9 +16,11 @@
 
 ## 4. Linux 专属回归
 
-- [ ] 4.1 后续在真实 Linux 用正式 GCC/Clang preset 构建并运行受影响 CTest
-- [ ] 4.2 后续在原生 Wayland 窗口检查附属动作、输入会话、主题与退出，独立记录 Vulkan/SPIR-V/Fontconfig 证据并英文提交
+- [x] 4.1 后续在真实 Linux 用正式 GCC/Clang preset 构建并运行受影响 CTest
+- [x] 4.2 后续在原生 Wayland 窗口检查附属动作、输入会话、主题与退出，独立记录 Vulkan/SPIR-V/Fontconfig 证据并英文提交
 
 ## 5. 收口
 
 - [ ] 5.1 准备 archive 时再核对各平台证据与任务；不自动 push 或 archive
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

@@ -18,4 +18,6 @@
 
 ## 5. Linux 原生验收
 
-- [ ] 5.1 实际 Linux GCC/Clang native preset 构建，验证 Vulkan/SPIR-V/Fontconfig/Wayland Tooltip 输入/定位/scale/resize，独立保存 evidence 并提交；不重复通用合同，不以 Windows 结果代替。
+- [x] 5.1 实际 Linux GCC/Clang native preset 构建，验证 Vulkan/SPIR-V/Fontconfig/Wayland Tooltip 输入/定位/scale/resize，独立保存 evidence 并提交；不重复通用合同，不以 Windows 结果代替。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

@@ -431,7 +431,7 @@ int run_text_area_acceptance(int argc, char** argv) {
         require_area(inputs.editors().require(mounted[5].editor).selection().caret == stop.byte,
                      "TextArea resized two-dimensional pointer missed caret");
         auto* window = static_cast<SDL_Window*>(platform.window());
-        require_area(SDL_SetWindowSize(window, 1420, 1000), "TextArea window resize failed");
+        require_area(acceptance::resize_window(window, 1420, 1000), "TextArea window resize failed");
         platform.delay(100);
         draw("resized-window");
         const auto after = inputs.layout_snapshot(mounted[5].component).viewport;

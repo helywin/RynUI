@@ -16,7 +16,7 @@
 
 ### Linux
 
-- [ ] 3.2 实际Linux机器linux-native Debug/Release运行对应Vulkan/SPIR-V shader/window/DPI矩阵和像素检查、resize/输入/idle/dispose，记录该平台独立evidence并提交；不重复共同逻辑，不用Windows结果代替。
+- [x] 3.2 实际Linux机器linux-native Debug/Release运行对应Vulkan/SPIR-V shader/window/DPI矩阵和像素检查、resize/输入/idle/dispose，记录该平台独立evidence并提交；不重复共同逻辑，不用Windows结果代替。结果见 `evidence/linux-native.md`。
 
 ## 4. 平台通用：填充接缝与 Switch 手柄
 
@@ -30,4 +30,4 @@
 
 ### Linux
 
-- [ ] 5.2 实际Linux机器linux-native Debug/Release完成对应Switch中间帧、RadioButton填充的Vulkan/SPIR-V窗口矩阵及检查，记录独立evidence并提交；不重复共同逻辑。
+- [x] 5.2 实际Linux机器linux-native Debug/Release完成对应Switch中间帧、RadioButton填充的Vulkan/SPIR-V窗口矩阵及检查，记录独立evidence并提交；不重复共同逻辑。结果见 `evidence/linux-native.md`。

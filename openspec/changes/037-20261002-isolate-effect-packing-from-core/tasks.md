@@ -16,4 +16,6 @@
 
 ## 4. Linux 原生验收
 
-- [ ] 4.1 在实际 Linux 机器使用 native GCC 或 Clang preset 构建 Debug/Release，运行受影响 shader/font/lifetime 集成与真实 Gallery resize/Typography/Selection 验收，独立记录并提交 Linux evidence；通用合同无需重复，Windows 不替代本项。
+- [x] 4.1 在实际 Linux 机器使用 native GCC 或 Clang preset 构建 Debug/Release，运行受影响 shader/font/lifetime 集成与真实 Gallery resize/Typography/Selection 验收，独立记录并提交 Linux evidence；通用合同无需重复，Windows 不替代本项。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

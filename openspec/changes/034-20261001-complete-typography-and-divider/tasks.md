@@ -52,10 +52,12 @@
 
 ## 9. Linux 验收（Linux）
 
-- [ ] 9.1 在真实 Linux 的正式 `linux-gcc`/`linux-clang` preset 完成受影响构建与平台分支 CTest（Fontconfig weight/slant 匹配、`ui_monospace` 系统等宽字族解析、Vulkan/SPIR-V、Ninja Multi-Config），独立记录 Linux 构建证据
+- [x] 9.1 在真实 Linux 的正式 `linux-gcc`/`linux-clang` preset 完成受影响构建与平台分支 CTest（Fontconfig weight/slant 匹配、`ui_monospace` 系统等宽字族解析、Vulkan/SPIR-V、Ninja Multi-Config），独立记录 Linux 构建证据
 - [ ] 9.2 在原生 Wayland 真实窗口以至少两档实际 display scale 检查标题层级、真字重与斜体、`code`/`keyboard` 等宽字形与回退、装饰对齐、省略展开、复制与编辑、Link 激活及 Divider 各形式，保存截图、compositor、driver、font、scale、诊断与退出码；不以 XWayland、WSLg 或 Windows 结果代替
 - [ ] 9.3 运行 Linux 受影响测试与 evidence contract，以英文提交 Linux 证据文件，不修改 Windows 清单
 
 ## 10. 收口（准备 archive 时执行）
 
 - [ ] 10.1 在准备 archive 时核对平台通用、Windows 与 Linux 各自 checkbox 与 evidence 是否真实完成，运行最终 strict validate、`git diff --check`、remote SHA 与 clean worktree 检查，并只复测本次新增改动实际影响的测试项；确认 README、AGENTS、architecture、generated Token 文档与 OpenSpec 职责未混写；本项不替代任何平台验收，也不自动 archive 或 push
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

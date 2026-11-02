@@ -1,3 +1,4 @@
+#include "acceptance_events.hpp"
 #include "component/tabs_component.hpp"
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
@@ -348,7 +349,8 @@ int run_tabs_acceptance(int argc, char** argv) {
         width.set(dp(160));
         draw("narrow");
         require(bounds(overflow).width == 160, "native narrow Tabs width failed");
-        require(SDL_SetWindowSize(static_cast<SDL_Window*>(platform.window()), 1100, 900), "native Tabs resize failed");
+        require(acceptance::resize_window(static_cast<SDL_Window*>(platform.window()), 1100, 900),
+                "native Tabs resize failed");
         platform.delay(100);
         draw("resized");
         require(bounds(themed).x + bounds(themed).width <= viewport.width &&

@@ -1,3 +1,4 @@
+#include "acceptance_events.hpp"
 #include "component/divider_component.hpp"
 #include "component/input_component.hpp"
 #include "component/typography_component.hpp"
@@ -428,7 +429,7 @@ int run_typography_acceptance(int argc, char** argv) {
                 "native Link pointer/disabled failed");
         (void)services.focus().request_focus(link_actions[0], input::FocusModality::keyboard);
         draw("link-focus");
-        require(SDL_SetWindowSize(static_cast<SDL_Window*>(platform.window()), 1100, 900),
+        require(acceptance::resize_window(static_cast<SDL_Window*>(platform.window()), 1100, 900),
                 "native typography window resize failed");
         platform.delay(100);
         select_page(1);
@@ -459,17 +460,37 @@ int run_typography_acceptance(int argc, char** argv) {
         auto italic = detail::resolve_platform_face(SystemFontFamily::ui_sans, 400, true);
         auto mono = detail::resolve_platform_face(SystemFontFamily::ui_monospace, 400, false);
         require(regular && strong && italic && mono, "platform face resolution missing");
-        require(regular->source_path != strong->source_path || regular->face_index != strong->face_index,
-                "strong resolved to regular face");
-        require(italic->italic &&
-                    (regular->source_path != italic->source_path || regular->face_index != italic->face_index),
-                "italic resolved to regular face");
+        const bool strong_matched =
+            regular->source_path != strong->source_path || regular->face_index != strong->face_index;
+        const bool italic_matched = italic->italic && (regular->source_path != italic->source_path ||
+                                                       regular->face_index != italic->face_index);
+        const auto regular_chain = resolver(SystemFontFamily::ui_sans, 400, false, 14);
+        const auto require_style = [&](bool matched, std::uint32_t weight, bool slanted) {
+            if (matched) {
+                return;
+            }
+            const auto fallback = resolver(SystemFontFamily::ui_sans, weight, slanted, 14);
+            const auto diagnostic = "requested weight " + std::to_string(weight) + (slanted ? " italic" : "") +
+                                    " resolved to an already loaded face; no styled face available";
+            const bool same_metrics =
+                std::ranges::equal(fallback, regular_chain, [&](const auto left, const auto right) {
+                    const auto a = fonts->metrics(left);
+                    const auto b = fonts->metrics(right);
+                    return a && b && a.metrics == b.metrics;
+                });
+            require(same_metrics && std::ranges::find(font_chain.diagnostic_fallbacks, diagnostic) !=
+                                        font_chain.diagnostic_fallbacks.end(),
+                    "unavailable platform style did not preserve and diagnose regular fallback");
+        };
+        require_style(strong_matched, 600, false);
+        require_style(italic_matched, 400, true);
         require(std::ranges::any_of(requests, [](const auto& r) { return r.family == SystemFontFamily::ui_monospace; }),
                 "code never requested monospace");
         std::cout << "typography_acceptance=passed gpu_driver=" << renderer.gpu_driver()
                   << " shader_format=" << renderer.shader_format() << " system_display_scale=" << metrics.display_scale
-                  << " render_scale=" << scale << " copy_only=" << (copy_only ? "true" : "false")
-                  << " theme=" << (dark ? "dark" : "light")
+                  << " render_scale=" << scale << " strong_face=" << (strong_matched ? "matched" : "fallback")
+                  << " italic_face=" << (italic_matched ? "matched" : "fallback")
+                  << " copy_only=" << (copy_only ? "true" : "false") << " theme=" << (dark ? "dark" : "light")
                   << " clipboard=passed ellipsis=passed edit=" << (input ? "passed" : "not-applicable")
                   << " link=passed divider=passed submits=" << renderer.counters().frame_submissions
                   << " quad_draws=" << renderer.counters().quad_draws

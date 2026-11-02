@@ -26,4 +26,6 @@
 
 ## 7. Linux 原生验收
 
-- [ ] 7.1 实际 Linux GCC/Clang native preset 验证 Vulkan/SPIR-V/Fontconfig/Wayland 多端与编辑输入/DPI/resize，独立保存 evidence 并提交，不重复已通过的平台通用合同。
+- [x] 7.1 实际 Linux GCC/Clang native preset 验证 Vulkan/SPIR-V/Fontconfig/Wayland 多端与编辑输入/DPI/resize，独立保存 evidence 并提交，不重复已通过的平台通用合同。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

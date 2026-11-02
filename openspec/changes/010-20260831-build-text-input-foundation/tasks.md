@@ -81,7 +81,7 @@
 
 ## 10. Linux 专属验收
 
-- [ ] 10.1 使用`linux-gcc` clean configure和`linux-clang` Debug build，完成Linux分支相关CTest，核对Ninja Multi-Config、标准C++20、utf8proc/SDL3 BUNDLED、Wayland text input/clipboard、Fontconfig和Vulkan/SPIR-V来源，保存独立Linux build evidence
+- [x] 10.1 使用`linux-gcc` clean configure和`linux-clang` Debug build，完成Linux分支相关CTest，核对Ninja Multi-Config、标准C++20、utf8proc/SDL3 BUNDLED、Wayland text input/clipboard、Fontconfig和Vulkan/SPIR-V来源，保存独立Linux build evidence
 - [ ] 10.2 在原生Linux Wayland真实窗口以至少两档实际display scale验证系统IME composition/candidate/commit/cancel、候选窗位置、Ctrl shortcuts、selection/clipboard/undo/redo、Theme/status与caret idle；保存compositor/IME/driver/font/scale/diagnostics/exit code，不以X11代替且不要求截图
 - [ ] 10.3 人工核对CJK/Latin/emoji、prefix/suffix、placeholder/selection/caret/composition underline、Default/error focus、clip/scroll和DPI无裁切；运行Linux evidence passed contract、dependency/shader/lock/license/Fontconfig/cache检查
 - [ ] 10.4 运行Linux平台分支tests、OpenSpec strict validate与`git diff --check`；以英文 `test: validate Linux text input` 提交并推送Linux evidence，核对remote SHA，不修改Windows清单
@@ -89,3 +89,5 @@
 ## 11. Change 收口
 
 - [ ] 11.1 在准备archive时运行`openspec doctor --json`、`openspec validate --all --strict --no-interactive`、最终受影响CTest/benchmark、public dependency、lock/license/cache、`git diff --check`、remote SHA与clean worktree检查；确认平台通用、Windows与Linux checkbox/evidence各自真实完成，README、AGENTS、architecture、generated docs与OpenSpec职责未混写，本项不替代任何平台验收
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

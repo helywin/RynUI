@@ -48,7 +48,7 @@ int run_tooltip_acceptance(int argc, char** argv) {
         auto created = detail::PlatformState::create(config);
         require_tooltip(bool(created), "Tooltip window creation failed");
         auto& platform = *created.state;
-        FixtureEventFilter event_filter{with_content};
+        FixtureEventFilter event_filter{true};
         auto metrics = platform.window_metrics();
         const float scale = requested_scale.value_or(metrics.display_scale);
         require_tooltip(std::isfinite(scale) && scale > 0, "Tooltip scale invalid");
@@ -255,8 +255,20 @@ int run_tooltip_acceptance(int argc, char** argv) {
             poll();
         };
         const auto anchor_center = [&](runtime::ComponentId id) {
-            const auto b = nodes.require(services.components().root(id)).bounds;
-            return runtime::Point{b.x + b.width / 2, b.y + b.height / 2};
+            const auto target = std::ranges::find_if(buttons.mounted_buttons(), [&](const auto& candidate) {
+                auto owner = std::optional{candidate.component};
+                while (owner) {
+                    if (*owner == id) {
+                        return true;
+                    }
+                    owner = services.components().parent(*owner);
+                }
+                return false;
+            });
+            require_tooltip(target != buttons.mounted_buttons().end(), "Tooltip trigger button missing");
+            const auto& node = nodes.require(target->node);
+            const auto b = node.bounds;
+            return runtime::Point{b.x + node.translation.x + b.width / 2, b.y + node.translation.y + b.height / 2};
         };
         const auto hover = [&](runtime::ComponentId id) {
             pointer(SDL_EVENT_MOUSE_MOTION, anchor_center(id));
@@ -378,7 +390,7 @@ int run_tooltip_acceptance(int argc, char** argv) {
         draw("no-arrow");
         const int resized_width = with_content ? 1420 : 760;
         const int resized_height = with_content ? 900 : 600;
-        require_tooltip(SDL_SetWindowSize(window, resized_width, resized_height), "Tooltip resize failed");
+        require_tooltip(acceptance::resize_window(window, resized_width, resized_height), "Tooltip resize failed");
         platform.delay(100);
         draw("resized");
         require_tooltip(runs == 1 && host.snapshot(first).visible && metrics.coordinate_width == resized_width,

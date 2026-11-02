@@ -311,7 +311,8 @@ int run_bidi_acceptance(int argc, char** argv) {
         theme.set(dark);
         draw("dark-compact");
         theme.set(ThemeConfig{});
-        SDL_SetWindowSize(static_cast<SDL_Window*>(platform.window()), 1420, 1000);
+        require_bidi(acceptance::resize_window(static_cast<SDL_Window*>(platform.window()), 1420, 1000),
+                     "Bidi window resize failed");
         platform.delay(100);
         draw("resized-window");
         require_bidi(mixed_ref.focus() && mixed_ref.select(2, 2), "Bidi affinity focus");

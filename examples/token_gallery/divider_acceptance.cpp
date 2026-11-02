@@ -1,3 +1,4 @@
+#include "acceptance_events.hpp"
 #include "component/divider_component.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
@@ -198,7 +199,7 @@ int run_divider_acceptance(int argc, char** argv) {
         theme.set(compact);
         draw("compact");
         auto* window = static_cast<SDL_Window*>(platform.window());
-        require_divider(SDL_SetWindowSize(window, 1420, 900), "Divider resize failed");
+        require_divider(acceptance::resize_window(window, 1420, 900), "Divider resize failed");
         platform.delay(100);
         draw("resized");
         require_divider(metrics.coordinate_width == 1420 && host.snapshot(blank).left.width < initial_width,

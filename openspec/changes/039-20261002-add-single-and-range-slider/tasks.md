@@ -14,4 +14,6 @@
 
 ## 4. Linux 原生验收
 
-- [ ] 4.1 在实际 Linux native preset 验证新增 keys normalization 与 Vulkan Slider 窗口/输入/DPI/resize，保存独立 Linux evidence 并提交；不重复平台通用合同，Windows 结果不替代此项。
+- [x] 4.1 在实际 Linux native preset 验证新增 keys normalization 与 Vulkan Slider 窗口/输入/DPI/resize，保存独立 Linux evidence 并提交；不重复平台通用合同，Windows 结果不替代此项。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

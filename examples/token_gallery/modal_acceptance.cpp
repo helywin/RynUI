@@ -1,3 +1,4 @@
+#include "acceptance_events.hpp"
 #include "component/modal_component.hpp"
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
@@ -285,7 +286,7 @@ int run_modal_acceptance(int argc, char** argv) {
         centered.set(true);
         mask.set({false, true});
         draw("centered-maskless");
-        require(SDL_SetWindowSize(static_cast<SDL_Window*>(platform.window()), 1100, 800),
+        require(acceptance::resize_window(static_cast<SDL_Window*>(platform.window()), 1100, 800),
                 "native Modal resize failed");
         platform.delay(100);
         draw("resized");

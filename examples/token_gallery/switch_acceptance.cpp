@@ -388,7 +388,7 @@ int run_switch_acceptance(int argc, char** argv) {
         compact.algorithms = {ThemeAlgorithm::Compact};
         theme.set(compact);
         draw("compact");
-        require_switch(SDL_SetWindowSize(window, 1420, 900), "Switch resize failed");
+        require_switch(acceptance::resize_window(window, 1420, 900), "Switch resize failed");
         platform.delay(100);
         draw("resized");
         require_switch(metrics.coordinate_width == 1420 && nodes.require(mounted[6].node).bounds.width > 0,

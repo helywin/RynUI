@@ -320,7 +320,7 @@ int run_button_acceptance(int argc, char** argv) {
         compact.algorithms = {ThemeAlgorithm::Compact};
         theme.set(compact);
         draw("compact");
-        require_button(SDL_SetWindowSize(window, 1420, 900), "Button resize failed");
+        require_button(acceptance::resize_window(window, 1420, 900), "Button resize failed");
         platform.delay(100);
         draw("resized");
         require_button(metrics.coordinate_width == 1420 && nodes.require(block.node).bounds.width < initial_block_width,

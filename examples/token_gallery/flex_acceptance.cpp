@@ -258,7 +258,7 @@ int run_flex_acceptance(int argc, char** argv) {
         theme.set(dark);
         draw("dark");
         check_baselines();
-        require_flex(SDL_SetWindowSize(window, 1420, 900), "Flex resize failed");
+        require_flex(acceptance::resize_window(window, 1420, 900), "Flex resize failed");
         platform.delay(100);
         draw("resized");
         check_baselines();

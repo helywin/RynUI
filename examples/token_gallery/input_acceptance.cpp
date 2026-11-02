@@ -518,7 +518,7 @@ int run_input_acceptance(int argc, char** argv) {
         require_input(clear_searches == 1 && search_value.get().empty(), "Native Search Clear source failed");
         search_value.set(String{u8"after resize"});
         auto* window = static_cast<SDL_Window*>(platform.window());
-        require_input(SDL_SetWindowSize(window, 1420, 1000), "Input resize failed");
+        require_input(acceptance::resize_window(window, 1420, 1000), "Input resize failed");
         platform.delay(100);
         draw("resized");
         click(search_action);
@@ -541,14 +541,15 @@ int run_input_acceptance(int argc, char** argv) {
                               renderer.counters().frame_submissions == submissions,
                           "Native Input did not idle");
         }
-        require_input(content_runs == 1 && metrics.coordinate_width == 1420 &&
-                          inputs.text_scene(mounted[0].component) == first_scene &&
-                          std::ranges::equal(mounted, inputs.mounted_inputs(),
-                                             [](const auto& before, const auto& after) {
-                                                 return before.component == after.component &&
-                                                        before.editor == after.editor && before.node == after.node &&
-                                                        before.interaction == after.interaction;
-                                             }),
+        require_input(content_runs == 1, "Native Input reran content");
+        require_input(metrics.coordinate_width == 1420, "Native Input resize did not reach 1420 coordinates");
+        require_input(inputs.text_scene(mounted[0].component) == first_scene, "Native Input replaced text scene");
+        require_input(std::ranges::equal(mounted, inputs.mounted_inputs(),
+                                         [](const auto& before, const auto& after) {
+                                             return before.component == after.component &&
+                                                    before.editor == after.editor && before.node == after.node &&
+                                                    before.interaction == after.interaction;
+                                         }),
                       "Native Input replaced retained owners");
         services.dispose();
         require_input(!email_ref.bound() && !password_ref.bound() && !clear_ref.bound() && !count_ref.bound() &&

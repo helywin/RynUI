@@ -20,4 +20,6 @@
 
 ### Linux
 
-- [ ] 4.2 在实际 Linux 机器完成本 change 的窗口/GPU/shader/系统字体/input/DPI、resize 与 idle/销毁验收，保存证据并独立提交；不重复平台通用合同。
+- [x] 4.2 在实际 Linux 机器完成本 change 的窗口/GPU/shader/系统字体/input/DPI、resize 与 idle/销毁验收，保存证据并独立提交；不重复平台通用合同。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

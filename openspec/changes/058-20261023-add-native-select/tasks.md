@@ -24,4 +24,6 @@
 
 ### Linux
 
-- [ ] 5.2 实际 Linux linux-native Debug/Release 构建与受影响 native tests，完成对应 Vulkan/SPIR-V/系统字体/输入/缩放/resize 的实际窗口验收，独立记录 evidence 并提交、push、核对 SHA；不重复common，不使用Windows或WSLg替代。
+- [x] 5.2 实际 Linux linux-native Debug/Release 构建与受影响 native tests，完成对应 Vulkan/SPIR-V/系统字体/输入/缩放/resize 的实际窗口验收，独立记录 evidence 并提交、push、核对 SHA；不重复common，不使用Windows或WSLg替代。
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

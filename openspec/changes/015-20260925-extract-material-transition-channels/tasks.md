@@ -19,4 +19,6 @@
 
 ## 4. Linux 待验边界
 
-- [ ] 4.1 用户安排 Linux 验证后，再在原生 Wayland GCC/Clang 正式 preset 运行受影响构建/平台集成测试并记录 Vulkan/SPIR-V、Fontconfig 和真实窗口结果；不以 WSLg/XWayland 代替
+- [x] 4.1 用户安排 Linux 验证后，再在原生 Wayland GCC/Clang 正式 preset 运行受影响构建/平台集成测试并记录 Vulkan/SPIR-V、Fontconfig 和真实窗口结果；不以 WSLg/XWayland 代替
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。

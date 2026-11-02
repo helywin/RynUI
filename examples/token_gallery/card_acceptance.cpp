@@ -1,3 +1,4 @@
+#include "acceptance_events.hpp"
 #include "component/card_component.hpp"
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
@@ -317,7 +318,8 @@ int run_card_acceptance(int argc, char** argv) {
         draw("narrow");
         require(bounds(main).width == 160 && bounds(editor.component).width <= 112,
                 "native narrow Card content escaped available width");
-        require(SDL_SetWindowSize(static_cast<SDL_Window*>(platform.window()), 1100, 900), "native Card resize failed");
+        require(acceptance::resize_window(static_cast<SDL_Window*>(platform.window()), 1100, 900),
+                "native Card resize failed");
         platform.delay(100);
         draw("resized");
         require(bounds(main).x + bounds(main).width <= viewport.width &&

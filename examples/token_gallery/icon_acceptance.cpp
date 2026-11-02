@@ -260,7 +260,7 @@ int run_icon_acceptance(int argc, char** argv) {
         }
         visible.set(true);
         auto* window = static_cast<SDL_Window*>(platform.window());
-        require_icon(SDL_SetWindowSize(window, 1420, 1000), "Icon resize failed");
+        require_icon(acceptance::resize_window(window, 1420, 1000), "Icon resize failed");
         platform.delay(100);
         draw("resized");
         const auto button = buttons.mounted_buttons()[0];
@@ -300,6 +300,9 @@ int run_icon_acceptance(int argc, char** argv) {
         draw("popup-spin");
         require_icon(services.next_frame_deadline().has_value(), "popup spin did not start");
         open.set(false);
+        // The preceding Button activation also starts a finite wave. Let it
+        // finish before checking that the closed popup no longer spins.
+        microseconds += 2'000'000;
         draw("popup-closed");
         require_icon(!services.next_frame_deadline(), "closed popup retained spin");
         services.set_window_active(false);

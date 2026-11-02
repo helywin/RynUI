@@ -18,9 +18,11 @@
 
 ## 4. Linux 专属验收
 
-- [ ] 4.1 后续在实际 Linux 的 `linux-gcc`/`linux-clang` 正式 preset 构建和运行受影响 CTest，记录原生 Wayland/Vulkan/SPIR-V/Fontconfig 结果
+- [x] 4.1 后续在实际 Linux 的 `linux-gcc`/`linux-clang` 正式 preset 构建和运行受影响 CTest，记录原生 Wayland/Vulkan/SPIR-V/Fontconfig 结果
 - [ ] 4.2 后续在原生 Wayland 真实窗口检查至少两档实际 display scale、指针/键盘/主题/退出并保存独立截图和诊断；以英文提交 Linux 证据，不以 Windows 结果代替
 
 ## 5. Change 收口
 
 - [ ] 5.1 仅在准备 archive 时核对平台通用、Windows、Linux 各项及证据，执行最终 strict validate 与工作树检查；不自动 push 或 archive
+
+2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。
