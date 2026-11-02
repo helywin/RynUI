@@ -22,7 +22,7 @@ Astra xhigh 分析定位：一次 Gallery 滚轮路由会查询同一点约 15 �
 
 `SDL_VIDEODRIVER=wayland SDL_GPU_DRIVER=vulkan .../Release/rynui_token_gallery --scroll-acceptance` 两次通过：每次实际分发 240 次滚轮、3,600 次 hit queries，branch checks=0；平均输入分发 320.934 / 310.569 µs，最大 1,313.95 / 482.283 µs。完成到底部 clamp，content runs=1，translation-only 阶段 reconciliation / anchor refresh 均为 0。这里测的是输入分发，不是 GPU 帧耗时；不与不同 viewport 的修复前调试测量计算倍数。
 
-`--scrollbar-acceptance` 通过：连续拖动、头部导航、侧栏 wheel/drag、文档 track/drag 均通过。验收使用程序内部事件注入，过滤外部输入、等待初始配置/锚点稳定后计时；没有操作桌面鼠标或键盘。用户实际鼠标手感仍由用户确认。
+`--scrollbar-acceptance` 通过：连续拖动、头部导航、侧栏 wheel/drag、文档 track/drag 均通过。验收使用程序内部事件注入，过滤外部输入、等待初始配置/锚点稳定后计时；没有操作桌面鼠标或键盘。2026-11-02 用户完成手动验收，确认“鼠标滚动没问题了，不卡了”。
 
 ## 原生组件与 GPU 读回
 
@@ -43,6 +43,6 @@ python tools/run_background_wayland.py --log-dir out/background-smoke -- \
 
 工具仅在独立 headless Mutter、私有 Wayland socket / D-Bus / runtime 下创建窗口，使用内存 GSettings 与本地 GIO，不连接当前桌面；超时退出并清理，不回退前台。实际后台 minimal Vulkan/SPIR-V smoke exit 0。动画 readback 在本机 headless compositor 的 swapchain 等待超时，后台动画矩阵未通过，保留此限制，不修改 renderer 掩盖它；此前原生 GPU 结果不由后台 smoke 代替。
 
-系统 IME 候选窗、跨实际显示器/DPI、人工视觉与鼠标手感仍待用户安排。Windows 清单保持原状态，不自动 archive。
+系统 IME 候选窗、跨实际显示器/DPI 与其他人工视觉验收仍待用户安排。滚轮手感已由用户确认通过。Windows 清单保持原状态，不自动 archive。
 
-本轮共更新 44 个 change 的 47 个已验任务；各任务链接到本摘要。change 100 的 3.2 单独保留为用户手动确认滚轮流畅度，当前未勾选。未通过或尚未进行的项目保持未勾选，不因同一 change 的其他测试通过而关闭。
+截至 2026-11-02，共更新 44 个 change 的 48 个已验任务；各任务链接到本摘要。change 100 的 3.2 已根据用户实际反馈勾选，change 100 为 6/6 完成。未通过或尚未进行的项目保持未勾选，不因同一 change 的其他测试通过而关闭。
