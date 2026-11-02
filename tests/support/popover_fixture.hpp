@@ -1,6 +1,6 @@
 #pragma once
 #include "component/popover_component.hpp"
-#include "support/input_fixture.hpp"
+#include "input_fixture.hpp"
 #include <iostream>
 
 namespace ryn_test::popover {

@@ -42,6 +42,11 @@ struct FontDescriptor {
     bool italic{};
 };
 
+enum class PlatformFontRole {
+    ui,
+    monospace,
+};
+
 #if defined(_WIN32)
 template <typename T> class ComHandle final {
 public:
@@ -238,11 +243,6 @@ private:
 
 [[nodiscard]] bool same_face(const FontDescriptor& left, const FontDescriptor& right);
 void append_unique(std::vector<FontDescriptor>& descriptors, FontDescriptor descriptor);
-
-enum class PlatformFontRole {
-    ui,
-    monospace,
-};
 
 [[nodiscard]] std::vector<FontDescriptor> windows_system_fonts(PlatformFontRole role) {
     constexpr std::array latin_families{
@@ -506,6 +506,13 @@ resolve_fontconfig_family(FcConfig& config, const char* language, char32_t cover
     if (italic && FcPatternAddInteger(request.get(), FC_SLANT, FC_SLANT_ITALIC) == FcFalse) {
         return std::nullopt;
     }
+    if (coverage_probe != U'\0') {
+        const std::unique_ptr<FcCharSet, decltype(&FcCharSetDestroy)> charset{FcCharSetCreate(), FcCharSetDestroy};
+        if (!charset || FcCharSetAddChar(charset.get(), static_cast<FcChar32>(coverage_probe)) == FcFalse ||
+            FcPatternAddCharSet(request.get(), FC_CHARSET, charset.get()) == FcFalse) {
+            return std::nullopt;
+        }
+    }
     if (FcConfigSubstitute(&config, request.get(), FcMatchPattern) == FcFalse) {
         return std::nullopt;
     }
@@ -538,7 +545,7 @@ resolve_fontconfig_family(FcConfig& config, const char* language, char32_t cover
         false,
         true,
         fontconfig_raster_policy(*match),
-        static_cast<std::uint32_t>(matched_weight),
+        static_cast<std::uint32_t>(FcWeightToOpenType(matched_weight)),
         matched_slant != FC_SLANT_ROMAN,
     };
 }

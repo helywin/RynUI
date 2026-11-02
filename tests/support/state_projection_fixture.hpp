@@ -2,7 +2,7 @@
 #include "component/selection_component.hpp"
 #include "component/table_component.hpp"
 #include "component/tree_component.hpp"
-#include "support/timeline_fixture.hpp"
+#include "timeline_fixture.hpp"
 #include <functional>
 #include <utility>
 

@@ -42,7 +42,8 @@ endforeach()
 file(READ "${AGENTS_FILE}" agents)
 foreach(workflow IN ITEMS
         "每完成一个可独立验证的小阶段就创建一次 Git commit"
-        "不主动 push、创建 PR 或 archive change"
+        "不主动创建 PR 或 archive change"
+        "每完成一次 Git commit，立即安全 fetch/rebase、push，并核对远端 SHA"
         "平台无关的实现")
     string(FIND "${agents}" "${workflow}" found)
     if(found EQUAL -1)

@@ -106,7 +106,7 @@ Flex/Space Props 和 flex child `LayoutStyle` 的普通响应式更新 SHALL 在
 - **THEN** 所有相关订阅和 child 资源已释放，更新不访问 stale identity 且不请求新帧
 
 ### Requirement: 平台边界保持 DPI 下的逻辑 UI 尺寸
-SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，并把 window coordinate、drawable pixel 与 RynUI logical coordinate 分开；layout token 和 `LogicalLength` MUST 保持 logical value，内容 viewport MUST 由 drawable pixel size 除以 display scale 得到，pointer coordinate MUST 按 pixel density 与 display scale 映射到相同 logical coordinate。字体 coverage MUST 按载入时 display scale 使用独立 raster pixel size，raster face 与 shaping face MUST 相互独立，shaping/measure 与 scene quad MUST 继续使用 logical coordinate，Glyph Atlas key MUST 区分实际 raster size与量化后的物理像素相位；glyph bitmap quad MUST 对齐其栅格化使用的物理像素原点，1:1 显示时不得因任意 logical 小数位置再次线性移采样。linear sampling 的 glyph quad MUST 包含透明 guard pixel，不得在 coverage 边界直接截断。
+SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，区分 window、drawable 与 logical coordinate。layout token 和 `LogicalLength` MUST 保持 logical value；viewport MUST 为 drawable size / display scale，pointer MUST 按 pixel density / display scale 映射。字体 MUST 使用独立 raster/shaping face，coverage 随 display scale 栅格化，shaping、measure 与 quad 保持 logical units。Atlas key MUST 区分 raster size 和量化物理相位；bitmap quad MUST 对齐 raster origin，避免二次移采样，并包含透明 guard pixel，防止 linear sampling 裁切 coverage。
 
 #### Scenario: Windows 150% 缩放保持设计尺寸
 - **WHEN** Windows display scale 为 1.5、window coordinate 与 drawable pixel size 都是 960×720

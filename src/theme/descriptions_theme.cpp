@@ -104,11 +104,10 @@ void apply_descriptions_override(DescriptionsThemeToken& token, const Descriptio
         }
         sum += value * 4;
     }
+    constexpr auto maximum_font_pixels = std::numeric_limits<int>::max() / 64;
     if (!std::isfinite(sum) || m.line_height <= 0 || m.title_line_height <= 0 || m.font_size < .5F ||
-        m.title_font_size < .5F || static_cast<double>(m.font_size) >= std::numeric_limits<long>::max() ||
-        static_cast<double>(m.title_font_size) >= std::numeric_limits<long>::max() ||
-        static_cast<double>(m.font_size) >= std::numeric_limits<std::uint32_t>::max() ||
-        static_cast<double>(m.title_font_size) >= std::numeric_limits<std::uint32_t>::max() ||
+        m.title_font_size < .5F || std::round(static_cast<double>(m.font_size)) > maximum_font_pixels ||
+        std::round(static_cast<double>(m.title_font_size)) > maximum_font_pixels ||
         (m.font_family != SystemFontFamily::ui_sans && m.font_family != SystemFontFamily::ui_monospace) ||
         m.title_font_weight < 1 || m.title_font_weight > 1000) {
         throw std::invalid_argument("Descriptions final typography or combined extents are invalid");

@@ -1,5 +1,5 @@
 #pragma once
-#include "support/input_fixture.hpp"
+#include "input_fixture.hpp"
 #include <cmath>
 #include <iostream>
 

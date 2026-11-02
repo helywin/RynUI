@@ -77,10 +77,10 @@ void apply_timeline_override(TimelineThemeToken& t, const TimelineTokenOverride&
         }
         sum += value * 4;
     }
+    constexpr auto maximum_font_pixels = std::numeric_limits<int>::max() / 64;
     if (!std::isfinite(sum) || m.font_size < .5F || m.line_height <= 0 || m.icon_size < .5F ||
-        static_cast<double>(m.font_size) >= std::numeric_limits<long>::max() ||
-        static_cast<double>(m.font_size) >= std::numeric_limits<std::uint32_t>::max() ||
-        static_cast<double>(m.icon_size) >= std::numeric_limits<long>::max() ||
+        std::round(static_cast<double>(m.font_size)) > maximum_font_pixels ||
+        std::round(static_cast<double>(m.icon_size)) > maximum_font_pixels ||
         (m.font_family != SystemFontFamily::ui_sans && m.font_family != SystemFontFamily::ui_monospace)) {
         throw std::invalid_argument("Timeline final typography or combined extents are invalid");
     }

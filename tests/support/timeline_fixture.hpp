@@ -1,6 +1,6 @@
 #pragma once
 #include "component/timeline_component.hpp"
-#include "support/input_fixture.hpp"
+#include "input_fixture.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>

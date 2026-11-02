@@ -60,7 +60,7 @@ void test_default_ui_font_chain() {
             const auto resized = resolver(family, weight, false, 16);
             require(static_cast<bool>(fonts->find_glyph(resized, U'\uFFFD', std::nullopt)),
                     "resized/styled default font resolver dropped the Unicode replacement glyph");
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__linux__)
             for (const auto scalar : {U'م', U'ר', U'ب', U'א'}) {
                 require(static_cast<bool>(fonts->find_glyph(resized, scalar, std::nullopt)),
                         "resized/styled default font resolver dropped Arabic/Hebrew coverage");

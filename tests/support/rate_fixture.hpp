@@ -1,7 +1,7 @@
 #pragma once
 #include "component/rate_component.hpp"
 #include "component/tooltip_component.hpp"
-#include "support/input_fixture.hpp"
+#include "input_fixture.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>

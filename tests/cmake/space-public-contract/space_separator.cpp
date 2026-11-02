@@ -1,5 +1,5 @@
 #include <ryn/space.hpp>
 
 void invalid_separator() {
-    ryn::SpaceProps{}.separator([] {});
+    ryn::SpaceProps{}.separator(true);
 }
