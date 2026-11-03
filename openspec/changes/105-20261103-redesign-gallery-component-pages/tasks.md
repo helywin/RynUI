@@ -23,8 +23,8 @@
 
 - [x] 3.1 提取 Button、Input 五分组和 TreeSelect 样例及 C++/头文件映射，保留现有 typed Props、controlled/uncontrolled 与流程语义；完成标准为 3.2 的原有行为断言及 factory 隔离通过。
 - [x] 3.2 将上述组件的 Gallery frame 用例改为 page/sample/test ID 定位，自动验证 Button 状态、Input/Password/Search/TextArea/OTP 编辑与草稿、TreeSelect 目标/备注/Form/受控拒绝；运行对应页面定向用例及受影响组件测试。
-- [ ] 3.3 迁移通用/布局/导航真实样例，包括 Typography/Divider 从目录卡移出、Flex/Space/Icon、Breadcrumb/Steps/Menu/Dropdown/Pagination/Tabs；完成标准为 3.4 的归属和原有交互断言通过。
-- [ ] 3.4 更新这一批样例的页面自动用例，验证唯一主归属、关联入口、无关页面 factory 零调用和原有状态行为，构建相应 targets 并运行定向 CTest。
+- [x] 3.3 迁移通用/布局/导航真实样例，包括 Typography/Divider 从目录卡移出、Flex/Space/Icon、Breadcrumb/Steps/Menu/Dropdown/Pagination/Tabs；完成标准为 3.4 的归属和原有交互断言通过。
+- [x] 3.4 更新这一批样例的页面自动用例，验证唯一主归属、关联入口、无关页面 factory 零调用和原有状态行为，构建相应 targets 并运行定向 CTest。
 - [ ] 3.5 迁移其余数据录入/展示/反馈样例与 Theme/Token 内容，拆分混合 add_* 函数，指定跨组件流程的主归属；对未实现/已弃用条目生成说明页；完成标准为 3.6 的全部旧 ID 映射与行为测试通过。
 - [ ] 3.6 自动核对旧 458 个 stable test ID 的 page/sample 或 shell/文档归属，校验 replacement 清单，移除全页固定 307 live samples 和全局 mounted 序号假设；执行迁移页面的定向 Gallery 测试，保留原功能断言而非仅更新数量。
 - [ ] 3.7 为已登记样例提供可展开的原生 C++ 片段、真实 public header/API/token 入口，自动验证片段与样例出处、公开符号和有效路径；本阶段只检查登记片段，不生成未实现 API 或完整 Web API 表。

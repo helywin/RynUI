@@ -3,6 +3,15 @@
 #include "component/otp_component.hpp"
 #include "component/tree_select_component.hpp"
 #include "component/form_component.hpp"
+#include "component/breadcrumb_component.hpp"
+#include "component/divider_component.hpp"
+#include "component/dropdown_component.hpp"
+#include "component/menu_component.hpp"
+#include "component/pagination_component.hpp"
+#include "component/selection_component.hpp"
+#include "component/steps_component.hpp"
+#include "component/tabs_component.hpp"
+#include "component/typography_component.hpp"
 #include "support/input_fixture.hpp"
 
 #include <algorithm>
@@ -24,6 +33,7 @@ void require(bool value, const char* message) {
 
 struct Fixture final : ryn_test::input_component::Fixture {
     ReferenceSurfaceHost surfaces{buttons};
+    ryn::detail::SelectionComponentHost selections{services};
     GalleryPageModel model;
     GallerySamplePage active;
     std::unique_ptr<GalleryPageController> pages;
@@ -49,8 +59,10 @@ struct Fixture final : ryn_test::input_component::Fixture {
     }
 
     void show(std::string_view identity, GalleryInputFamily family = GalleryInputFamily::input) {
-        require(pages->request(model.find(identity)->route(family)) && pages->process() && !pages->failed(),
-                "sample page navigation failed");
+        if (!pages->request(model.find(identity)->route(family)) || !pages->process() || pages->failed()) {
+            throw std::runtime_error("sample page navigation failed: " + std::string{identity} + " / " +
+                                     pages->last_error());
+        }
         sync();
     }
 
@@ -98,8 +110,9 @@ struct Fixture final : ryn_test::input_component::Fixture {
         const auto target = active.target(test_id);
         require(target.valid() && within(target, owner), "registered command is outside its sample");
         for (const auto& button : buttons.mounted_buttons()) {
-            if (button.component == target) {
-                require(services.focus().request_focus(button.interaction, input::FocusModality::keyboard),
+            if (within(button.component, target)) {
+                require(services.focus().state().focused == button.interaction ||
+                            services.focus().request_focus(button.interaction, input::FocusModality::keyboard),
                         "sample command focus failed");
                 key(input::Key::enter);
                 return;
@@ -112,6 +125,33 @@ struct Fixture final : ryn_test::input_component::Fixture {
         services.focus().dispatch({key, input::KeyAction::down});
         services.focus().dispatch({key, input::KeyAction::up});
         sync();
+    }
+
+    void activate(runtime::ComponentId component) {
+        for (const auto id : services.interactions().declaration_order()) {
+            const auto& record = services.interactions().require(id);
+            if (within(record.component, component) && record.focusable && record.eligible &&
+                services.interactions().branch_active(id)) {
+                require(services.focus().state().focused == id ||
+                            services.focus().request_focus(id, input::FocusModality::keyboard),
+                        "activation focus failed");
+                key(input::Key::enter);
+                return;
+            }
+        }
+        throw std::runtime_error("registered component has no eligible activation target");
+    }
+
+    void verify_factories() {
+        std::size_t expected{};
+        for (const auto& descriptor : gallery_samples()) {
+            const auto& route = model.current();
+            const bool selected =
+                descriptor.component_identity == route.component_identity && descriptor.family == route.family;
+            require(active.sample_runs(descriptor.identity) == (selected ? 1 : 0), "unrelated page factory ran");
+            expected += selected;
+        }
+        require(surfaces.mounted_surfaces().size() == expected, "inactive page surfaces remained alive");
     }
 
     void open(runtime::ComponentId tree) {
@@ -386,6 +426,118 @@ void test_button_search_and_otp_contracts() {
             "OTP secret survived a family round trip");
 }
 
+void test_layout_and_navigation_pages() {
+    Fixture f;
+    for (const auto identity : {"typography", "divider", "flex", "space", "icon", "breadcrumb", "steps", "menu",
+                                "dropdown", "pagination", "tabs"}) {
+        f.show(std::string{"ant.component."} + identity);
+        f.verify_factories();
+        require(f.active.telemetry().content_runs == 1 && f.services.tree_select().mounted().empty(),
+                "layout/navigation page constructed an unrelated workflow");
+    }
+    f.show("ant.component.typography");
+    const auto ellipsis = f.active.target("gallery.typography.ellipsis");
+    const auto text = f.services.typography().snapshot(ellipsis);
+    require(text.truncated && text.copy_available && !text.expanded &&
+                text.original.bytes().size() > text.displayed.bytes().size(),
+            "Typography ellipsis/copy original was lost");
+    f.activate(f.active.target("gallery.typography.link"));
+    require(f.active.telemetry().activations == 1, "Typography Link callback was lost");
+    f.show("ant.component.divider");
+    const auto dotted = f.services.divider().snapshot(f.active.target("gallery.divider.small-dotted-rtl"));
+    require(dotted.variant == DividerVariant::Dotted && dotted.direction == DividerDirection::RightToLeft &&
+                f.services.divider().snapshot(f.active.target("gallery.divider.vertical-dotted")).vertical,
+            "Divider variant/direction examples changed");
+    f.show("ant.component.flex");
+    const auto stretch = f.services.components().root(f.active.target("gallery.flex.default-stretch"));
+    const auto children = f.nodes.require(stretch).children;
+    require(children.size() == 2 && f.nodes.require(children[0]).bounds.height == 64 &&
+                f.nodes.require(children[1]).bounds.height == 22,
+            "Flex default stretch behavior changed");
+    f.show("ant.component.space");
+    for (const auto identity : {"separator", "baseline", "compact.small", "compact.middle", "compact.large",
+                                "compact.vertical-rtl", "compact.mixed", "addon.variants"}) {
+        require(f.active.target(std::string{"gallery.space."} + identity).valid(), "Space composition target was lost");
+    }
+    f.show("ant.component.icon");
+    const auto source = f.active.target("gallery.icon.retained-source");
+    const auto before = f.services.text().icon_snapshot(source);
+    f.action("gallery.sample.icon.catalog", "gallery.icon.rotate");
+    require(f.services.text().icon_snapshot(source).angle_degrees == 45, "retained Icon rotation changed");
+    f.action("gallery.sample.icon.catalog", "gallery.icon.change-source");
+    require(f.services.text().icon_snapshot(source).source != before.source, "reactive Icon source did not change");
+    f.action("gallery.sample.icon.catalog", "gallery.icon.toggle-spin");
+    require(f.services.text().icon_snapshot(f.active.target("gallery.icon.spin")).spin, "Icon spin control changed");
+    f.show("ant.component.breadcrumb");
+    const auto trail = f.active.target("gallery.breadcrumb.component");
+    const auto initial = f.services.breadcrumb().snapshot(trail);
+    require(initial.items.size() == 3, "Breadcrumb typed items changed");
+    const auto draft = f.editor("gallery.sample.breadcrumb.trail", "gallery.breadcrumb.draft");
+    f.replace(draft, String{u8"层级草稿"});
+    f.action("gallery.sample.breadcrumb.trail", "gallery.breadcrumb.visible");
+    require(!f.services.components().branch_active(initial.items[1]), "Breadcrumb visibility did not update");
+    f.action("gallery.sample.breadcrumb.trail", "gallery.breadcrumb.restore");
+    require(f.services.components().branch_active(initial.items[1]) &&
+                f.inputs.editors().require(draft.editor).value() == "层级草稿",
+            "Breadcrumb restore lost retained editor");
+    f.show("ant.component.steps");
+    const auto steps = f.active.target("gallery.steps.component");
+    const auto note = f.editor("gallery.sample.steps.workflow", "gallery.steps.draft");
+    f.replace(note, String{u8"流程备注"});
+    f.action("gallery.sample.steps.workflow", "gallery.steps.next");
+    require(f.services.steps().snapshot(steps).current == 1, "Steps Next did not advance controlled state");
+    f.action("gallery.sample.steps.workflow", "gallery.steps.status");
+    require(f.services.steps().snapshot(steps).statuses[1] == StepsStatus::Error, "Steps controlled status changed");
+    f.action("gallery.sample.steps.workflow", "gallery.steps.reset");
+    require(f.services.steps().snapshot(steps).current == 0 &&
+                f.inputs.editors().require(note.editor).value() == "流程备注",
+            "Steps reset lost its retained note");
+    f.show("ant.component.menu");
+    const auto menu = f.active.target("gallery.menu.inline");
+    f.services.menu().focus_menu(menu);
+    f.key(input::Key::home);
+    f.key(input::Key::down);
+    f.key(input::Key::enter);
+    require(f.services.menu().snapshot(menu).selected_keys == MenuKeys{String{u8"tasks"}},
+            "Menu selection callback changed");
+    f.action("gallery.sample.menu.inline", "gallery.menu.disabled");
+    require(!f.services.interactions().require(f.services.menu().snapshot(menu).interaction).eligible,
+            "Menu disabled control changed");
+    f.show("ant.component.dropdown");
+    const auto dropdown = f.active.target("gallery.dropdown.actions");
+    f.action("gallery.sample.dropdown.actions", "gallery.dropdown.actions");
+    require(f.services.dropdown().snapshot(dropdown).geometry.visible, "Dropdown command trigger did not open");
+    f.key(input::Key::escape);
+    require(!f.services.dropdown().snapshot(dropdown).geometry.visible, "Dropdown Escape did not close");
+    f.show("ant.component.pagination");
+    const auto pagination = f.active.target("gallery.pagination.controlled");
+    const auto pages = f.services.pagination().snapshot(pagination);
+    require(pages.pages == 3 && pages.page_size == 4 && pages.current == 1, "Pagination total/page size changed");
+    const auto next = std::ranges::find(pages.targets, std::size_t{2});
+    require(next != pages.targets.end(), "Pagination target page is missing");
+    f.activate(pages.items[static_cast<std::size_t>(next - pages.targets.begin())]);
+    require(f.services.pagination().snapshot(pagination).current == 2, "Pagination controlled callback changed");
+    f.show("ant.component.tabs");
+    const auto tabs = f.active.target("gallery.tabs.controlled-retained");
+    const auto panels = f.services.tabs().snapshot(tabs);
+    require(panels.key == String{u8"draft"} && panels.panels.size() == 3, "Tabs typed panels changed");
+    std::optional<ryn::detail::MountedInputComponent> retained;
+    for (const auto& input : f.inputs.mounted_inputs()) {
+        if (f.within(input.component, panels.panels[0])) {
+            retained = input;
+            break;
+        }
+    }
+    require(retained.has_value(), "Tabs draft editor was lost");
+    f.replace(*retained, String{u8"标签草稿"});
+    f.activate(panels.headers[1]);
+    require(f.services.tabs().snapshot(tabs).key == String{u8"settings"}, "Tabs header did not select its panel");
+    f.activate(panels.headers[0]);
+    require(f.inputs.editors().require(retained->editor).value() == "标签草稿" &&
+                f.services.tabs().snapshot(tabs).panels == panels.panels,
+            "Tabs round trip replaced retained state");
+}
+
 } // namespace
 
 int main() {
@@ -394,6 +546,7 @@ int main() {
         test_input_semantics_and_draft_round_trip();
         test_sensitive_and_tree_select_workflow();
         test_button_search_and_otp_contracts();
+        test_layout_and_navigation_pages();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

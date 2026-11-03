@@ -26,11 +26,13 @@ Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-2026110
 
 ## 样例登记与迁移
 
-[GallerySampleDescriptor](../../examples/token_gallery/gallery_sample_registry.hpp) 登记稳定 sample identity、canonical page/family、标题、实际 C++ 构造函数和公开头文件。首批登记 Button、Input 的五个分组和 TreeSelect，共 14 个真实样例组。每次只运行对应 page/family 的构造函数；其他条目的目录状态不因暂未迁移样例而改变。完整 458 个历史 ID 的映射和其余组件仍按 change 的后续任务迁移。
+[GallerySampleDescriptor](../../examples/token_gallery/gallery_sample_registry.hpp) 登记稳定 sample identity、canonical page/family、标题、实际 C++ 构造函数和公开头文件。当前登记 14 个组件页、29 个真实样例组：首批 Button/Input 五组/TreeSelect，以及 Typography、Divider、Flex、Space、Icon、Breadcrumb、Steps、Menu、Dropdown、Pagination、Tabs。每次只运行对应 page/family 的构造函数；其他条目的目录状态不因暂未迁移样例而改变。完整 458 个历史 ID 的映射和其余组件仍按 change 的后续任务迁移。
 
 活动页的 `target(test_id)` 直接解析构造时登记的组件身份。登记只发生在 mount，并由所属组件的 resource cleanup 删除；测试通过 sample owner 验证归属。滚动和普通属性更新不扫描正文文案，不使用全局 mounted 数组偏移定位目标。这些运行时 ID 只属于当前页面状态，不进入 `GalleryPageDraft`。
 
 普通非受控 Input/Search/TextArea 用保存的已提交值设置新实例的 `defaultValue`，并组合原有 change/submit 回调；受控值仍使用原有 Signal/FormField。TreeSelect 保存选择、交付备注、表单值和展开键，open、focus 与 session 总是重新开始。代码片段的展开 UI 和公开 API 内容由后续页面 shell 任务接入，目前登记的函数/头文件映射不等同于已展示代码片段。
+
+Typography/Divider 的真实实例已提取为各自页面工厂；总览不需要调用它们。Bidi 的 Text/Paragraph 归 Typography，编辑器归对应 Input 家族；方向控制有各页自己的目标 ID。Pagination 独立页使用 `gallery.pagination.controlled`，Table 的联动分页保留同一构造能力并使用 `gallery.table.pagination`，防止把同一历史 ID 重复归属两页。含 Space/Radio/Checkbox 的页面宿主仍须建立既有 `SelectionComponentHost`，和旧原生 Gallery 的宿主装配一致。
 
 ## 定向自动检查
 
