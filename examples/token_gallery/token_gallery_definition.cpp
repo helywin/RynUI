@@ -17,6 +17,7 @@
 #include <cmath>
 #include <memory>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -6603,6 +6604,33 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
     if (!model.valid(route)) {
         throw std::invalid_argument("Gallery sample page route is not registered");
     }
+    std::vector<GallerySampleFactory> selected_factories;
+    std::set<std::string_view> registered;
+    const auto add_factory = [&](const GallerySampleFactory& factory) {
+        const auto& descriptor = factory.descriptor;
+        if (!registered.insert(descriptor.identity).second) {
+            throw std::invalid_argument("Gallery registry view duplicates a sample identity");
+        }
+        if (route.kind == descriptor.kind && descriptor.component_identity == route.component_identity &&
+            descriptor.family == route.family) {
+            selected_factories.push_back(factory);
+        }
+    };
+    if (options.registry) {
+        for (const auto& entry : *options.registry) {
+            const auto found = std::ranges::find_if(sample_factories, [&entry](const auto& factory) {
+                return factory.descriptor.identity == entry.identity;
+            });
+            if (found == sample_factories.end()) {
+                throw std::invalid_argument("Gallery registry view contains an unknown factory");
+            }
+            add_factory(*found);
+        }
+    } else {
+        for (const auto& factory : sample_factories) {
+            add_factory(factory);
+        }
+    }
     auto state = std::make_shared<GalleryState>();
     state->page_family = route.family;
     state->page_component = route.component_identity;
@@ -6630,40 +6658,54 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
                                : step == 1 ? ryn::IconSource{ryn::IconName::WalletTwoTone}
                                            : icon_vector_sample());
     }
+    const ryn::Signal<ryn::LogicalLength> card_width{ryn::dp(784)};
+    const ryn::Signal<ryn::LogicalLength> card_padding{ryn::dp(12)};
+    const auto set_width = [state, card_width, card_padding, document_spacing = options.document_spacing](float width) {
+        if (!std::isfinite(width) || width <= 0) {
+            throw std::invalid_argument("Gallery sample width must be positive and finite");
+        }
+        const auto& algorithms = state->theme.get().algorithms;
+        const bool compact = std::ranges::find(algorithms, ryn::ThemeAlgorithm::Compact) != algorithms.end();
+        const float padding = document_spacing ? (compact || width < 560 ? 16.0F : 24.0F) : 12.0F;
+        const auto inner = std::max(1.0F, width - padding * 2);
+        card_width.set(ryn::dp(width));
+        card_padding.set(ryn::dp(padding));
+        state->document_width.set(ryn::dp(inner));
+        state->cell_width.set(ryn::dp(std::min(260.0F, inner)));
+        state->narrow_layout.set(width < 560);
+    };
+    set_width(card_width.get().value());
     auto runs = std::make_shared<std::map<std::string, std::uint64_t>>();
     return {
-        ryn::Content{[state, route, runs, footer = std::move(options.footer)] {
+        ryn::Content{[state, route, runs, card_width, card_padding, selected_factories = std::move(selected_factories),
+                      footer = std::move(options.footer)] {
             GalleryDraftBuild draft_build{state};
             ++state->telemetry.content_runs;
             bool has_sample{};
-            for (const auto& factory : sample_factories) {
+            for (const auto& factory : selected_factories) {
                 const auto& descriptor = factory.descriptor;
-                if (route.kind != descriptor.kind || descriptor.component_identity != route.component_identity ||
-                    descriptor.family != route.family) {
-                    continue;
-                }
                 has_sample = true;
                 ++(*runs)[std::string{descriptor.identity}];
-                ReferenceSurface(
-                    ReferenceSurfaceProps{}
-                        .identity(descriptor.identity)
-                        .role(ReferenceSurfaceRole::example)
-                        .layout(ryn::LayoutStyle{}.width(
-                            ryn::bind([width = state->document_width] { return ryn::dp(width.get().value() + 24); }))),
-                    [state, factory, footer] {
-                        ryn::Flex(ryn::FlexProps{}.vertical(true).align(ryn::FlexAlign::Start).gap(ryn::dp(12)),
-                                  [state, factory, footer] {
-                                      ryn::Text(ryn::TextProps{}.content(utf8(factory.descriptor.title)));
-                                      if (state->page_family == GalleryInputFamily::password ||
-                                          state->page_family == GalleryInputFamily::otp) {
-                                          ryn::Text(u8"离开此分组会清空输入；不保留密码或验证码草稿。");
-                                      }
-                                      factory.mount(state);
-                                      if (footer) {
-                                          footer(factory.descriptor, state->document_width);
-                                      }
-                                  });
-                    });
+                ReferenceSurface(ReferenceSurfaceProps{}
+                                     .identity(descriptor.identity)
+                                     .role(ReferenceSurfaceRole::example)
+                                     .content_padding(card_padding)
+                                     .layout(ryn::LayoutStyle{}.width(card_width)),
+                                 [state, factory, footer] {
+                                     ryn::Flex(
+                                         ryn::FlexProps{}.vertical(true).align(ryn::FlexAlign::Start).gap(ryn::dp(12)),
+                                         [state, factory, footer] {
+                                             ryn::Text(ryn::TextProps{}.content(utf8(factory.descriptor.title)));
+                                             if (state->page_family == GalleryInputFamily::password ||
+                                                 state->page_family == GalleryInputFamily::otp) {
+                                                 ryn::Text(u8"离开此分组会清空输入；不保留密码或验证码草稿。");
+                                             }
+                                             factory.mount(state);
+                                             if (footer) {
+                                                 footer(factory.descriptor, state->document_width);
+                                             }
+                                         });
+                                 });
             }
             if (!has_sample && route.kind == GalleryPageKind::component) {
                 const auto* entry = find_ant_design_reference_entry(route.component_identity);
@@ -6686,15 +6728,7 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
                 }
             });
         },
-        [state](float width) {
-            if (!std::isfinite(width) || width <= 0) {
-                throw std::invalid_argument("Gallery sample width must be positive and finite");
-            }
-            const auto inner = std::max(1.0F, width - 24);
-            state->document_width.set(ryn::dp(inner));
-            state->cell_width.set(ryn::dp(std::min(260.0F, inner)));
-            state->narrow_layout.set(width < 560);
-        },
+        set_width,
         [state] { return state->telemetry; },
         [runs](std::string_view identity) {
             const auto found = runs->find(std::string{identity});
@@ -6704,7 +6738,10 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
             const auto found = state->targets.find(std::string{identity});
             return found == state->targets.end() ? ryn::runtime::ComponentId{} : found->second;
         },
-        [state](const ryn::ThemeConfig& config) { state->theme.set(config); },
+        [state, set_width, card_width](const ryn::ThemeConfig& config) {
+            state->theme.set(config);
+            set_width(card_width.get().value());
+        },
         [state]() -> std::optional<ryn::ThemeConfig> {
             auto result = std::move(state->theme_request);
             state->theme_request.reset();

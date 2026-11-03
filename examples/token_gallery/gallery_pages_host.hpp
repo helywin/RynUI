@@ -3,6 +3,7 @@
 #include "gallery_page_layout.hpp"
 #include "gallery_page_model.hpp"
 #include "gallery_scroll_region.hpp"
+#include "gallery_sample_registry.hpp"
 #include "reference_surface.hpp"
 
 #include "input/platform_input.hpp"
@@ -51,7 +52,8 @@ public:
     using Copy = std::function<void(const ryn::String&)>;
 
     GalleryPagesHost(ReferenceSurfaceHost& surfaces, ryn::detail::InputComponentHost& inputs,
-                     ryn::runtime::FrameRequestState& frames, Copy copy = {});
+                     ryn::runtime::FrameRequestState& frames, Copy copy = {},
+                     std::span<const GallerySampleDescriptor> registry = gallery_samples());
     ~GalleryPagesHost();
     GalleryPagesHost(const GalleryPagesHost&) = delete;
     GalleryPagesHost& operator=(const GalleryPagesHost&) = delete;
@@ -61,6 +63,7 @@ public:
     // Process only between individual input dispatches, never inside a callback.
     bool process();
     bool dispatch(const ryn::input::PlatformInputEvent& event);
+    bool inject_scroll_at(float x, float y, float delta_y);
     bool synchronize(ryn::runtime::Size viewport);
     void set_theme(const ryn::ThemeConfig& theme);
     [[nodiscard]] ryn::ThemeConfig theme() const;

@@ -325,6 +325,9 @@ def validate_input_evidence(repo_root: Path, overlay: dict[str, dict[str, object
     if not re.search(r"(?m)^- \[x\] 8\.1 ", tasks):
         raise ValueError("Input partial cannot use an incomplete/planning-only journey")
     cmake = (repo_root / "tests/CMakeLists.txt").read_text(encoding="utf-8")
+    gallery_registration = 'include("${PROJECT_SOURCE_DIR}/cmake/RynUIGalleryTests.cmake")'
+    if gallery_registration in cmake:
+        cmake += (repo_root / "cmake/RynUIGalleryTests.cmake").read_text(encoding="utf-8")
     for name in ("input_journey", "input_component", "token_gallery_frame"):
         if not re.search(rf"add_test\(\s*NAME\s+rynui\.{name}\s", cmake):
             raise ValueError(f"Input evidence test is not registered: {name}")

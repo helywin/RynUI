@@ -26,7 +26,8 @@
         "BUILD_TESTING": "ON",
         "RYNUI_BUILD_EXAMPLES": "ON",
         "RYNUI_DEPENDENCY_MODE": "BUNDLED",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "RYNUI_CONFIGURE_PRESET": "${presetName}"
       }
     },
     {
@@ -68,6 +69,16 @@
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "g++",
         "RYNUI_EXPECTED_TOOLCHAIN": "gcc"
+      }
+    },
+    {
+      "name": "linux-gcc-headless",
+      "displayName": "Linux GCC / portable Core and Recording",
+      "inherits": "linux-gcc",
+      "cacheVariables": {
+        "RYNUI_PLATFORM_BACKEND": "HEADLESS",
+        "RYNUI_RENDER_BACKENDS": "RECORDING",
+        "RYNUI_BUILD_EXAMPLES": "OFF"
       }
     },
     {
@@ -171,6 +182,16 @@
       "name": "linux-clang-system-release",
       "configurePreset": "linux-clang-system",
       "configuration": "Release"
+    },
+    {
+      "name": "linux-gcc-headless-debug",
+      "configurePreset": "linux-gcc-headless",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-headless-release",
+      "configurePreset": "linux-gcc-headless",
+      "configuration": "Release"
     }
   ],
   "testPresets": [
@@ -266,6 +287,20 @@
     {
       "name": "linux-clang-system-release",
       "configurePreset": "linux-clang-system",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "linux-gcc-headless-debug",
+      "configurePreset": "linux-gcc-headless",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "linux-gcc-headless-release",
+      "configurePreset": "linux-gcc-headless",
       "configuration": "Release",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error" }

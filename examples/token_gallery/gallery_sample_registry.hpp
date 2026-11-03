@@ -30,6 +30,9 @@ struct GallerySampleDescriptor final {
 
 struct GallerySamplePageOptions final {
     bool readable_labels{};
+    bool document_spacing{};
+    // Optional internal registry view; entries must refer to existing real factories.
+    std::optional<std::span<const GallerySampleDescriptor>> registry;
     std::function<void(const GallerySampleDescriptor&, ryn::Signal<ryn::LogicalLength>)> footer;
 };
 

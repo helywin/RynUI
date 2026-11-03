@@ -40,6 +40,11 @@ struct ReferenceSurfacePropsAccess final {
         return props.visible_;
     }
 
+    [[nodiscard]] static const std::optional<ryn::Prop<ryn::LogicalLength>>&
+    content_padding(const ReferenceSurfaceProps& props) noexcept {
+        return props.content_padding_;
+    }
+
     [[nodiscard]] static const ryn::LayoutStyle& layout(const ReferenceSurfaceProps& props) noexcept {
         return props.layout_;
     }
@@ -56,6 +61,7 @@ struct ReferenceSurfaceComponentState final {
     std::optional<ryn::Color> swatch;
     bool elevated{};
     bool visible{true};
+    float content_padding{};
     GalleryScrollbarVisualState scrollbar_visual;
     ReferenceSurfaceVisualData visuals;
     ryn::component::RetainedSurfaceEffects effects;
@@ -277,6 +283,28 @@ void apply_elevated(ReferenceSurfaceHost& host, ryn::runtime::ComponentId compon
     }
     state->elevated = elevated;
     refresh_material(host, *state);
+}
+
+void apply_padding(ReferenceSurfaceHost& host, ryn::runtime::ComponentId component, ryn::LogicalLength value) {
+    const float padding = value.value();
+    if (!std::isfinite(padding) || padding < 0) {
+        throw std::invalid_argument("ReferenceSurface padding must be finite and nonnegative");
+    }
+    auto* state = host.find_state(component);
+    if (!state || state->content_padding == padding) {
+        return;
+    }
+    state->content_padding = padding;
+    ryn::layout::FlexLayout model;
+    model.direction = ryn::layout::FlexDirection::vertical;
+    model.main_gap = 4;
+    model.cross_gap = 4;
+    model.padding = {padding, padding, padding, padding};
+    model.item_policy = ryn::layout::FlexItemPolicy::sequential;
+    host.application().layout().set_layout(state->node, model);
+    host.application().dirty().invalidate(state->node, ryn::runtime::DirtyFlags::Measure |
+                                                           ryn::runtime::DirtyFlags::Layout |
+                                                           ryn::runtime::DirtyFlags::HitTest);
 }
 
 void apply_visible(ReferenceSurfaceHost& host, ryn::runtime::ComponentId component, bool visible) {
@@ -544,6 +572,14 @@ void ReferenceSurface(ReferenceSurfaceProps props, ReferenceSurfaceContent conte
                         ? ryn::layout::Padding{}
                         : ryn::layout::Padding{12.0F, 12.0F, 12.0F, 12.0F};
     model.item_policy = ryn::layout::FlexItemPolicy::sequential;
+    if (const auto& padding = detail::ReferenceSurfacePropsAccess::content_padding(props)) {
+        const float value = ryn::detail::read_prop(*padding).value();
+        if (!std::isfinite(value) || value < 0) {
+            throw std::invalid_argument("ReferenceSurface padding must be finite and nonnegative");
+        }
+        model.padding = {value, value, value, value};
+    }
+    state.content_padding = model.padding.left;
     host.application().layout().set_layout(state.node, model);
     build.on_resource_cleanup(component, [layout = &host.application().layout(), node = state.node] {
         static_cast<void>(layout->remove_layout(node));
@@ -584,6 +620,11 @@ void ReferenceSurface(ReferenceSurfaceProps props, ReferenceSurfaceContent conte
     static_cast<void>(
         ryn::detail::connect_prop(scope, detail::ReferenceSurfacePropsAccess::visible(props),
                                   [&host, component](bool value) { apply_visible(host, component, value); }));
+
+    if (const auto& padding = detail::ReferenceSurfacePropsAccess::content_padding(props)) {
+        static_cast<void>(ryn::detail::connect_prop(
+            scope, *padding, [&host, component](ryn::LogicalLength value) { apply_padding(host, component, value); }));
+    }
 
     const ReferenceSurfaceContent children{[&state, &content] {
         if (state.role == ReferenceSurfaceRole::reference) {

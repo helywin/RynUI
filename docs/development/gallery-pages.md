@@ -89,3 +89,20 @@ ctest --preset linux-gcc-release -R '^rynui.gallery_pages_host$' --output-on-fai
 ```
 
 [宿主夹具](../../tests/gallery_pages_host_tests.cpp) 验证 73 页、1440/960/728/480/360 的 lane 几何与 resize 身份、目录/正文独立 wheel、TOC 同页跳转、跨页锚点恢复、别名 Enter、主题身份、组合输入、弹层 wheel、窄目录输入边界/Escape 和焦点显露。它使用模拟文本平台与 CPU 场景，未打开桌面窗口。历史 `--smoke` 与组件 `--*-acceptance` 只保留为有限兼容测试入口，不提供第二种交互产品模式。
+
+## 工作量与有限原生验收
+
+`linux-gcc-headless` 提供 HEADLESS/Recording 的正式 Ninja Multi-Config preset，通用 Gallery targets 不依赖原生示例开关；Windows 对应 `windows-msvc-headless`。实际新页面宿主 benchmark 通过与 native adapter 共用的 `inject_scroll_at` 分发 wheel，分开记录输入、layout、其余 host sync、上传和 Recording cull/submit。它比较只登记 Button 的视图与完整真实登记，检查未访问 factory、往返活资源、稳定 idle；没有通过直接 scroll_by 或固定 FPS 推导流畅程度。
+
+```sh
+cmake --preset linux-gcc-headless
+cmake --build --preset linux-gcc-headless-release --target rynui_gallery_pages_benchmark rynui_gallery_pages_host_tests rynui_gallery_page_acceptance_tests
+ctest --preset linux-gcc-headless-release -R '^rynui.(gallery_pages_benchmark|gallery_pages_host|gallery_page_acceptance_(options|runner))$' --output-on-failure
+python tools/run_gallery_page_acceptance.py out/build/linux-gcc/examples/Release/rynui_token_gallery --preset linux-gcc --timeout 20 --log-dir out/gallery-pages/linux
+```
+
+[有限入口](../../examples/token_gallery/gallery_page_acceptance.hpp) 默认依次测试 11 个页面/家族，轮换 1440/960/728/480/360 和 Default/Dark/Compact，检查页面替换、几何、native draw、系统字体、host input area/cursor 同步以及输入/弹层退役。`--page=input/password` 指定家族；`--page=button --sample=gallery.sample.button.basics` 指定真实样例锚点；可重复 `--page=`。`--page-width=480` 固定宽度，`--page-timeout=20` 限制有限流程，`--page-output=out/.../result.json` 指定 JSON；这些参数都要求 `--page-acceptance`，未知参数/页面/样例、错误范围和仓库 out 外输出在创建窗口之前拒绝。
+
+[runner](../../tools/run_gallery_page_acceptance.py) 在 Linux 固定使用私有 Mutter headless Wayland 与独立 D-Bus，不回退当前桌面。默认矩阵校验实际编译的 preset/configuration/toolchain、renderer backend/shader、系统字体、提交数和 host 同步；参数、退出码、超时、过期结果拒绝和 [schema](../../tests/fixtures/gallery-page-acceptance.schema.json) 有无窗口自动检查。指定不含编辑器的单页会报告较窄的输入覆盖；不能据此代替默认矩阵或系统 IME 验收。Windows runner 只接受实际 MSVC/D3D12 结果。
+
+文档卡使用 24-unit 内边距，Compact 或紧凑的正文宽度降为 16；卡片外宽与内部宽度一同更新。正文发生失败时使用失败页自己的短 extent，焦点落到恢复控件，保持稳定 idle；过滤总览不会留下隐藏行的长空白。上述 CPU/Recording 结果与实际 native 结果分别记录在 change evidence，原始文件只在 out。

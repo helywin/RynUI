@@ -62,11 +62,11 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 
 Typography 与 Divider 的基础能力已有 Windows Debug/Release、D3D12/DXIL 真实窗口验收，覆盖系统缩放和四档渲染缩放，见 [034 清单](openspec/changes/034-20261001-complete-typography-and-divider/tasks.md)与[Windows 证据](openspec/changes/034-20261001-complete-typography-and-divider/evidence/windows-typography.md)。新增操作/省略提示与多行编辑的独立验收见 [057 清单](openspec/changes/057-20261023-complete-typography-hints-and-editor/tasks.md)；Linux 原生 Wayland 验收仍待完成。
 
-单行 `Input` 已接入 Gallery，并完成平台通用测试和 Windows Debug/Release 构建验收；真实系统输入法、候选窗与视觉效果仍需分别完成 Windows 和 Linux 验收。动画和 Gallery 也有待完成的平台验收，具体进度见 [Input](openspec/changes/010-20260831-build-text-input-foundation/tasks.md)、[动画](openspec/changes/009-20260829-build-animation-runtime-foundation/tasks.md)和 [Gallery](openspec/changes/008-20260829-build-ant-design-reference-gallery/tasks.md) 清单。
+单行 `Input` 已接入 Gallery，并完成平台通用测试和 Windows Debug/Release 构建验收；真实系统输入法、候选窗与视觉效果仍需分别完成 Windows 和 Linux 验收。动画和 Gallery 也有待完成的平台验收，具体进度见 [Input](openspec/changes/010-20260831-build-text-input-foundation/tasks.md)、[动画](openspec/changes/009-20260829-build-animation-runtime-foundation/tasks.md)和 [Gallery 独立页面](openspec/changes/105-20261103-redesign-gallery-component-pages/tasks.md) 清单。
 
 ## 构建与体验
 
-建议先运行 `rynui_token_gallery`，浏览设计变量、组件支持状态以及 Button / Input 交互样例。
+建议先运行 `rynui_token_gallery`，按独立组件页浏览真实支持范围、交互样例、C++ 与 Design Token；未实现项提供说明页。入口和定向检查见 [Gallery 页面说明](docs/development/gallery-pages.md)。
 
 | 平台 | 工具链 | 当前 GPU 路径 |
 | --- | --- | --- |
@@ -108,7 +108,7 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 
 | 可执行文件 | 适合了解什么 |
 | --- | --- |
-| `rynui_token_gallery` | 从这里开始：主题、组件支持范围、目录导航与 Button / Input 交互 |
+| `rynui_token_gallery` | 从这里开始：独立组件页、真实状态、主题与 C++ 示例 |
 | `rynui_minimal` | 响应式状态到 GPU 绘制的最小闭环 |
 | `rynui_text_demo` | 中英文排版、字体回退与文本更新 |
 | `rynui_button_demo` | 按钮状态、鼠标与键盘交互 |

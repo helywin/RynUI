@@ -40,10 +40,10 @@
 
 ## 5. 工作量边界与自动平台入口（平台通用，依赖 4）
 
-- [ ] 5.1 为现有 Gallery benchmark 增加 page mount/switch 和真实 `GalleryEvents::inject_scroll_at` 分发计数，区分输入、布局、同步、上传，记录所用配置；完成标准为 5.2 的工作量和资源断言通过，不以直接 scroll_by 代替输入路径。
-- [ ] 5.2 使用同一 preset/configuration 运行定向 benchmark 与 Recording 回归，验证未访问页 factory 零调用、加未访问样例不增加当前页样例工作、往返无活资源增长、正常稳定 idle；只记录分项实际结果，不添加固定 FPS 或改善百分比断言。
-- [ ] 5.3 实现 `--page-acceptance` 有限自动入口及相应 runner/schema：指定页/分组导航、resize、主题、popup/输入退役、绘制/host geometry 断言，输出路径限制在 out；完成标准为参数/退出码/超时/证据 schema 自动测试通过。
-- [ ] 5.4 在选定通用平台用 CMakePresets 构建相关最终 targets，执行受影响页面、catalog、viewport、lifecycle、frame、benchmark/contract 集成集；记录实际 preset、Debug/Release 与通过数，确认 Core/renderer 依赖守卫保持，无全量 CTest 或原生矩阵要求。
+- [x] 5.1 为现有 Gallery benchmark 增加 page mount/switch 和真实 `GalleryEvents::inject_scroll_at` 分发计数，区分输入、布局、同步、上传，记录所用配置；完成标准为 5.2 的工作量和资源断言通过，不以直接 scroll_by 代替输入路径。
+- [x] 5.2 使用同一 preset/configuration 运行定向 benchmark 与 Recording 回归，验证未访问页 factory 零调用、加未访问样例不增加当前页样例工作、往返无活资源增长、正常稳定 idle；只记录分项实际结果，不添加固定 FPS 或改善百分比断言。
+- [x] 5.3 实现 `--page-acceptance` 有限自动入口及相应 runner/schema：指定页/分组导航、resize、主题、popup/输入退役、绘制/host geometry 断言，输出路径限制在 out；完成标准为参数/退出码/超时/证据 schema 自动测试通过。
+- [x] 5.4 在选定通用平台用 CMakePresets 构建相关最终 targets，执行受影响页面、catalog、viewport、lifecycle、frame、benchmark/contract 集成集；记录实际 preset、Debug/Release 与通过数，确认 Core/renderer 依赖守卫保持，无全量 CTest 或原生矩阵要求。
 
 ## 6. Windows 自动平台集成（依赖 5）
 

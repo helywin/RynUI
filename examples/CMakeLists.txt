@@ -79,6 +79,7 @@ target_link_libraries(
     rynui_token_gallery
     PRIVATE
         rynui_gallery_pages_host
+        rynui_gallery_page_acceptance
         rynui_token_gallery_definition
         rynui_token_gallery_reference_surface
         rynui_token_gallery_document_viewport
@@ -90,6 +91,10 @@ target_link_libraries(
 target_compile_definitions(
     rynui_token_gallery
     PRIVATE
+        "RYNUI_GALLERY_SOURCE_ROOT=\"${PROJECT_SOURCE_DIR}\""
+        "RYNUI_GALLERY_PRESET=\"${RYNUI_CONFIGURE_PRESET}\""
+        "RYNUI_GALLERY_TOOLCHAIN=\"${CMAKE_CXX_COMPILER_ID}\""
+        "RYNUI_GALLERY_CONFIGURATION=\"$<CONFIG>\""
         "RYNUI_TOKEN_CATALOG_HASH=\"${rynui_token_catalog_sha256}\""
         "RYNUI_WINDOW_SYSTEM=\"${rynui_token_gallery_window_system}\""
 )

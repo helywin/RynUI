@@ -33,7 +33,18 @@ for entry in sheen_commands:
     if "/std:c17" in command or "-std:c17" in command:
         assert "/experimental:c11atomics" in command, "MSVC must avoid SheenBidi's Windows SDK atomic fallback"
     else:
-        assert "-std=" in command and any(value in command for value in ("c17", "c18", "c23")), command
+        # CMake may omit -std when a newer compiler default already meets c_std_17.
+        # Probe that actual invocation rather than assuming the flag must exist.
+        import shlex
+        arguments = shlex.split(command)
+        compiler = arguments[0]
+        language_flags = [item for item in arguments[1:] if item.startswith("-std=")]
+        macros = subprocess.run([compiler, *language_flags, "-dM", "-E", "-x", "c", "-"],
+                                input="", capture_output=True, text=True, check=True).stdout
+        standard = next(line.split()[-1].rstrip("Ll") for line in macros.splitlines()
+                        if line.startswith("#define __STDC_VERSION__ "))
+        assert int(standard) >= 201710, "SheenBidi requires at least C17"
+        assert "#define __STDC_NO_ATOMICS__ 1" not in macros, "SheenBidi requires standard atomics"
 effect_packing = [entry for entry in commands
                   if entry["file"].replace("\\", "/").endswith("/rounded_effect_packing.cpp")]
 assert effect_packing and all("rynui_renderer_common.dir" in entry["command"] for entry in effect_packing)

@@ -83,6 +83,11 @@ public:
         return *this;
     }
 
+    ReferenceSurfaceProps& content_padding(ryn::Prop<ryn::LogicalLength> value) {
+        content_padding_ = std::move(value);
+        return *this;
+    }
+
     ReferenceSurfaceProps& layout(ryn::LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -98,6 +103,7 @@ private:
     ryn::Prop<bool> elevated_{false};
     ryn::Prop<bool> visible_{true};
     ryn::LayoutStyle layout_;
+    std::optional<ryn::Prop<ryn::LogicalLength>> content_padding_;
 };
 
 struct ReferenceSurfaceContentSlot final {};

@@ -2,6 +2,7 @@
 #include "gallery_sample_registry.hpp"
 #include "component/selection_component.hpp"
 #include "component/select_component.hpp"
+#include "component/popover_component.hpp"
 #include <algorithm>
 #include "support/input_fixture.hpp"
 
@@ -70,6 +71,12 @@ void test_pages_and_geometry() {
                       << snapshot.layout.content.x << ',' << snapshot.layout.content.width << '\n';
             throw std::runtime_error("document lanes do not match responsive metrics");
         }
+        const auto card = f.services.components().root(f.host.target("gallery.sample.button.basics"));
+        const auto& card_node = f.nodes.require(card);
+        const auto& content_node = f.nodes.require(card_node.children.front());
+        const float expected_padding = snapshot.layout.document_width < 560 ? 16 : 24;
+        require(std::abs(content_node.bounds.x - card_node.bounds.x - expected_padding) < 0.1F,
+                "example card spacing differs from design");
         require(snapshot.document.maximum_offset > 0, "component long page lost intrinsic height");
         require(f.host.sample_runs("gallery.sample.button.basics") == 1, "Button sample should mount once");
     }
@@ -132,6 +139,69 @@ input::InteractionId interaction(Fixture& f, runtime::ComponentId owner) {
     throw std::runtime_error("target has no eligible interaction");
 }
 
+void test_failed_page_viewport_and_focus() {
+    ryn_test::input_component::Fixture f;
+    ReferenceSurfaceHost surfaces(f.buttons);
+    ryn::detail::SelectionComponentHost selections(f.services);
+    const GallerySampleDescriptor invalid{.identity = "not-a-real-factory"};
+    GalleryPagesHost host(surfaces, f.inputs, f.frames, {}, std::span{&invalid, 1});
+    host.mount({1440, 900});
+    require(host.snapshot().failed && host.synchronize({1440, 900}), "failed page has no recoverable shell");
+    const auto snapshot = host.snapshot();
+    require(snapshot.document.viewport_extent == snapshot.layout.document.height &&
+                snapshot.document.maximum_offset == 0,
+            "failure page kept a stale scroll extent");
+    const auto focused = f.services.focus().state().focused;
+    require(focused.has_value(), "failure recovery controls have no keyboard focus");
+    auto component = std::optional{f.services.interactions().require(*focused).component};
+    while (component && *component != snapshot.page) {
+        component = f.services.components().parent(*component);
+    }
+    require(component.has_value(), "failure focus escaped recovery controls");
+    static_cast<void>(f.frames.consume_request());
+    require(host.synchronize({1440, 900}) && !host.pending() && !f.frames.pending(),
+            "failed page is retrying in a busy loop");
+}
+
+void test_empty_overview_reflow() {
+    Fixture f;
+    const auto root = f.host.snapshot().page;
+    const auto extent = f.host.snapshot().document.content_extent;
+    f.key(input::Key::k, input::KeyModifier::control);
+    f.host.dispatch(input::TextCommitted{String{u8"no-such-component"}, f.inputs.sessions().active()});
+    f.sync();
+    require(f.host.model().results().empty() && f.host.snapshot().page == root,
+            "empty overview filtering changed page");
+    require(f.host.snapshot().document.content_extent < extent - 2000,
+            "hidden overview rows retain phantom layout gaps");
+}
+
+void test_header_controls() {
+    Fixture f;
+    const auto page = f.host.snapshot().page;
+    const auto activate = [&f](std::string_view identity, input::Key key) {
+        const auto target = interaction(f, f.host.target(identity));
+        static_cast<void>(f.services.focus().request_focus(target, input::FocusModality::keyboard));
+        require(f.services.focus().state().focused == target, "header control cannot be focused");
+        f.key(key);
+    };
+    activate("gallery.shell.theme", input::Key::space);
+    const auto dark = f.host.theme();
+    require(std::ranges::find(dark.algorithms, ThemeAlgorithm::Dark) != dark.algorithms.end(),
+            "header theme button did not switch Dark");
+    activate("gallery.shell.compact", input::Key::space);
+    const auto theme = f.host.theme();
+    require(std::ranges::find(theme.algorithms, ThemeAlgorithm::Compact) != theme.algorithms.end() &&
+                std::ranges::find(theme.algorithms, ThemeAlgorithm::Dark) != theme.algorithms.end(),
+            "Compact lost Dark base theme");
+    activate("gallery.shell.settings", input::Key::enter);
+    const auto popover = f.services.popover().mounted().front();
+    require(f.services.popover().snapshot(popover).geometry.visible, "header settings popover did not open");
+    f.key(input::Key::escape);
+    require(!f.services.popover().snapshot(popover).geometry.visible && f.host.snapshot().page == page,
+            "header settings close replaced active page");
+}
+
 void test_keyboard_theme_and_boundaries() {
     Fixture f;
     f.show("ant.component.input");
@@ -144,6 +214,10 @@ void test_keyboard_theme_and_boundaries() {
     config.seed.motion = false;
     f.host.set_theme(config);
     f.sync();
+    const auto sample = f.services.components().root(f.host.target("gallery.sample.input.basics"));
+    require(std::abs(f.nodes.require(f.nodes.require(sample).children.front()).bounds.x -
+                     f.nodes.require(sample).bounds.x - 16) < 0.1F,
+            "Compact did not update example padding in place");
     require(f.host.snapshot().page == page && f.services.components().contains(input.component),
             "theme remounted controls");
     require(f.services.focus().request_focus(input.interaction, input::FocusModality::keyboard), "editor focus failed");
@@ -196,6 +270,16 @@ void test_focus_and_independent_scroll() {
     Fixture f;
     f.show("ant.component.button");
     const auto snapshot = f.host.snapshot();
+    const auto bar = gallery_scrollbar_geometry(snapshot.layout.document_track, snapshot.document);
+    static_cast<void>(f.frames.consume_request());
+    f.host.dispatch(input::PointerInputEvent{input::PointerIdentity::mouse(), input::PointerAction::move,
+                                             input::PointerButton::none, bar.thumb.x + 3,
+                                             bar.thumb.y + bar.thumb.height / 2});
+    require(f.frames.pending(), "scrollbar hover did not wake its visual frame");
+    f.sync();
+    require(f.surfaces.snapshot(f.host.target("gallery.shell.document.thumb")).scrollbar_visual.thumb_hover,
+            "named scrollbar did not receive hover feedback");
+
     f.host.dispatch(
         input::ScrollInputEvent{0, -3, snapshot.layout.navigation.x + 50, snapshot.layout.navigation.y + 200});
     f.sync();
@@ -235,6 +319,9 @@ int main() {
     try {
         test_pages_and_geometry();
         test_wheel_and_routes();
+        test_failed_page_viewport_and_focus();
+        test_empty_overview_reflow();
+        test_header_controls();
         test_keyboard_theme_and_boundaries();
         test_focus_and_independent_scroll();
         test_all_pages();

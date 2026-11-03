@@ -15,6 +15,7 @@ add_custom_command(
 add_library(
     rynui_token_gallery_definition STATIC
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/ant_design_reference_catalog.cpp"
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/reference_surface.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_model.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_page_model.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_test_inventory.cpp"
@@ -34,7 +35,6 @@ target_link_libraries(rynui_token_gallery_definition PUBLIC RynUI::RynUI)
 
 add_library(
     rynui_token_gallery_reference_surface STATIC
-    "${PROJECT_SOURCE_DIR}/examples/token_gallery/reference_surface.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_page_controller.cpp"
 )
 
@@ -75,3 +75,7 @@ target_include_directories(rynui_gallery_pages_host PUBLIC "${PROJECT_SOURCE_DIR
     PRIVATE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(rynui_gallery_pages_host PUBLIC
     rynui_token_gallery_reference_surface rynui_token_gallery_document_viewport PRIVATE rynui_components)
+
+add_library(rynui_gallery_page_acceptance STATIC "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_page_acceptance.cpp")
+rynui_configure_cpp_target(rynui_gallery_page_acceptance)
+target_link_libraries(rynui_gallery_page_acceptance PUBLIC rynui_token_gallery_definition)

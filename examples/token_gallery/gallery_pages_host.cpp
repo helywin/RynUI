@@ -328,6 +328,7 @@ struct GalleryPagesHost::Impl final {
     runtime::FrameRequestState& frames;
     Copy copy;
     GalleryPageModel pages;
+    std::vector<GallerySampleDescriptor> registry;
     std::unique_ptr<GalleryPageController> controller;
     std::shared_ptr<Document> document;
     GalleryPageViewport document_scroll;
@@ -387,9 +388,9 @@ struct GalleryPagesHost::Impl final {
     std::uint64_t presented_generation{};
 
     Impl(ReferenceSurfaceHost& surface_host, ryn::detail::InputComponentHost& input_host,
-         runtime::FrameRequestState& frame_state, Copy clipboard)
+         runtime::FrameRequestState& frame_state, Copy clipboard, std::span<const GallerySampleDescriptor> entries)
         : surfaces(surface_host), app(surfaces.application()), inputs(input_host), services(app.services()),
-          frames(frame_state), copy(std::move(clipboard)) {}
+          frames(frame_state), copy(std::move(clipboard)), registry(entries.begin(), entries.end()) {}
 
     [[nodiscard]] bool within(runtime::ComponentId child, runtime::ComponentId owner) const;
     [[nodiscard]] runtime::ComponentId surface(std::string_view identity,
@@ -879,7 +880,7 @@ GalleryPageContent GalleryPagesHost::Impl::build_page(const GalleryPageRoute& ro
     doc->ticket = controller->ticket();
     doc->width.set(dp(metrics.document_width));
     doc->sections.push_back(section_info(GalleryPageSection::usage));
-    const bool examples = std::ranges::any_of(gallery_samples(), [&route](const auto& sample) {
+    const bool examples = std::ranges::any_of(registry, [&route](const auto& sample) {
         return sample.kind == route.kind && sample.component_identity == route.component_identity &&
                sample.family == route.family;
     });
@@ -897,6 +898,8 @@ GalleryPageContent GalleryPagesHost::Impl::build_page(const GalleryPageRoute& ro
     doc->sections.push_back(section_info(GalleryPageSection::sources));
     GallerySamplePageOptions options;
     options.readable_labels = true;
+    options.document_spacing = true;
+    options.registry = registry;
     options.footer = [this, weak = std::weak_ptr{doc}](const GallerySampleDescriptor& descriptor,
                                                        Signal<LogicalLength> width) {
         const auto locked = weak.lock();
@@ -1044,39 +1047,43 @@ void GalleryPagesHost::Impl::build_overview(const std::shared_ptr<Document>& doc
     }
     paragraph(text(counts), doc->width, TextTone::Secondary);
     paragraph(String{u8"状态来自声明范围，选择组件查看真实示例、公开 API 和缺失能力。"}, doc->width);
-    for (const auto& category : ant_design_reference_categories()) {
-        paragraph(text(gallery_category_title(category.category)), doc->width, TextTone::Primary, 18, 28, 500);
-        for (const auto& page : pages.pages()) {
-            const auto* entry = page.entry;
-            if (entry->category != category.category) {
-                continue;
-            }
-            const auto shown = bind([this, entry] {
-                static_cast<void>(navigation_revision.get());
-                return std::ranges::any_of(pages.results(),
-                                           [entry](const auto& result) { return result.page->entry == entry; });
-            });
-            ReferenceSurface(
-                ReferenceSurfaceProps{}
-                    .identity(entry->identity)
-                    .role(ReferenceSurfaceRole::document_note)
-                    .visible(shown)
-                    .layout(LayoutStyle{}.width(doc->width).height(bind([shown] {
-                        return shown.get() ? auto_length : dp(0);
-                    }))),
-                [this, doc, entry] {
-                    Button(ButtonProps{}.type(ButtonType::Text).onClick([this, entry] {
-                        request(pages.find(entry->identity)->route());
-                    }),
-                           [entry] {
-                               Text(text(std::string{entry->english_name} + " " + std::string{entry->chinese_name}));
-                           });
-                    paragraph(text(std::string{gallery_page_status_label(entry->support_status)} + " · " +
-                                   std::string{entry->summary}),
-                              doc->width, TextTone::Secondary, 12, 20);
+    Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(0)).layout(LayoutStyle{}.width(doc->width)), [this,
+                                                                                                                 doc] {
+        for (const auto& category : ant_design_reference_categories()) {
+            paragraph(text(gallery_category_title(category.category)), doc->width, TextTone::Primary, 18, 28, 500);
+            for (const auto& page : pages.pages()) {
+                const auto* entry = page.entry;
+                if (entry->category != category.category) {
+                    continue;
+                }
+                const auto shown = bind([this, entry] {
+                    static_cast<void>(navigation_revision.get());
+                    return std::ranges::any_of(pages.results(),
+                                               [entry](const auto& result) { return result.page->entry == entry; });
                 });
+                ReferenceSurface(ReferenceSurfaceProps{}
+                                     .identity(entry->identity)
+                                     .role(ReferenceSurfaceRole::document_note)
+                                     .visible(shown)
+                                     .layout(LayoutStyle{}
+                                                 .width(doc->width)
+                                                 .margin_bottom(bind([shown] { return shown.get() ? dp(12) : dp(0); }))
+                                                 .height(bind([shown] { return shown.get() ? auto_length : dp(0); }))),
+                                 [this, doc, entry] {
+                                     Button(ButtonProps{}.type(ButtonType::Text).onClick([this, entry] {
+                                         request(pages.find(entry->identity)->route());
+                                     }),
+                                            [entry] {
+                                                Text(text(std::string{entry->english_name} + " " +
+                                                          std::string{entry->chinese_name}));
+                                            });
+                                     paragraph(text(std::string{gallery_page_status_label(entry->support_status)} +
+                                                    " · " + std::string{entry->summary}),
+                                               doc->width, TextTone::Secondary, 12, 20);
+                                 });
+            }
         }
-    }
+    });
 }
 
 void GalleryPagesHost::Impl::build_component(const std::shared_ptr<Document>& doc) {
@@ -1129,7 +1136,7 @@ void GalleryPagesHost::Impl::build_tokens(const std::shared_ptr<Document>& doc) 
 void GalleryPagesHost::Impl::api(const std::shared_ptr<Document>& doc) {
     heading(doc, GalleryPageSection::api);
     std::set<std::string_view> shown;
-    for (const auto& descriptor : gallery_samples()) {
+    for (const auto& descriptor : registry) {
         if (descriptor.kind != doc->route.kind || descriptor.component_identity != doc->route.component_identity ||
             descriptor.family != doc->route.family) {
             continue;
@@ -1183,7 +1190,7 @@ void GalleryPagesHost::Impl::related(const std::shared_ptr<Document>& doc) {
 void GalleryPagesHost::Impl::token_values(const std::shared_ptr<Document>& doc) {
     heading(doc, GalleryPageSection::tokens);
     std::set<std::string_view> shown;
-    for (const auto& descriptor : gallery_samples()) {
+    for (const auto& descriptor : registry) {
         if (descriptor.kind == doc->route.kind && descriptor.component_identity == doc->route.component_identity &&
             descriptor.family == doc->route.family) {
             const auto* source = gallery_sample_source(descriptor.identity);
@@ -1444,7 +1451,7 @@ bool GalleryPagesHost::Impl::synchronize(runtime::Size size) {
                 }
                 anchors.push_back({std::string{section.identity}, app.components().root(id)});
             }
-            for (const auto& sample : gallery_samples()) {
+            for (const auto& sample : registry) {
                 if (sample.kind == document->route.kind &&
                     sample.component_identity == document->route.component_identity &&
                     sample.family == document->route.family) {
@@ -1472,6 +1479,15 @@ bool GalleryPagesHost::Impl::synchronize(runtime::Size size) {
         }
         static_cast<void>(document_scroll.apply(app.nodes(), app.dirty()));
     }
+    if (controller->failed() && app.components().contains(controller->root())) {
+        static_cast<void>(
+            document_scroll.set_page(controller->generation(), app.components().root(controller->root()), {}));
+        presented_generation = controller->generation();
+        static_cast<void>(document_scroll.refresh(metrics.document.height, app.nodes()));
+        static_cast<void>(document_scroll.apply(app.nodes(), app.dirty()));
+        resize_anchor.reset();
+        jump_after_layout = false;
+    }
     navigation_geometry = gallery_scrollbar_geometry(metrics.navigation_track, navigation_scroll.snapshot());
     document_geometry = gallery_scrollbar_geometry(metrics.document_track, document_scroll.snapshot());
     navigation_track_height.set(dp(navigation_geometry.track.height));
@@ -1488,7 +1504,7 @@ bool GalleryPagesHost::Impl::synchronize(runtime::Size size) {
     }
     if (enter_after_layout) {
         enter_after_layout = false;
-        const auto entry = target("gallery.page.enter");
+        const auto entry = controller->failed() ? controller->root() : target("gallery.page.enter");
         for (const auto id : services.interactions().declaration_order()) {
             const auto* record = services.interactions().find(id);
             if (record && record->focusable && within(record->component, entry)) {
@@ -1524,6 +1540,8 @@ void GalleryPagesHost::Impl::place_bars() {
 bool GalleryPagesHost::Impl::pointer(const input::PointerInputEvent& event) {
     const bool boundary = services.interactions().input_boundary().has_value();
     if (!boundary) {
+        const auto previous_navigation = navigation_bar.visual_state();
+        const auto previous_document = document_bar.visual_state();
         const auto handle = [this, &event](GalleryScrollbarController& bar, const GalleryScrollbarGeometry& geometry,
                                            GalleryScrollRangeSnapshot range, auto&& scroll_to) {
             const auto action = bar.dispatch(event, geometry, range.viewport_extent, range.offset);
@@ -1540,6 +1558,9 @@ bool GalleryPagesHost::Impl::pointer(const input::PointerInputEvent& event) {
         if (!consumed) {
             consumed = handle(document_bar, document_geometry, document_scroll.snapshot(),
                               [this](float value) { return document_scroll.scroll_to(value); });
+        }
+        if (previous_navigation != navigation_bar.visual_state() || previous_document != document_bar.visual_state()) {
+            frames.request_frame();
         }
         if (consumed) {
             frames.request_frame();
@@ -1703,6 +1724,13 @@ bool GalleryPagesHost::Impl::dispatch(const input::PlatformInputEvent& event) {
         },
         event);
     // No component callback remains on the stack at this safe boundary.
+    if (services.interactions().input_boundary()) {
+        const bool navigation_reset = navigation_bar.reset();
+        const bool document_reset = document_bar.reset();
+        if (navigation_reset || document_reset) {
+            frames.request_frame();
+        }
+    }
     static_cast<void>(process());
     work.input_nanoseconds +=
         std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - started).count();
@@ -1732,8 +1760,9 @@ void GalleryPagesHost::Impl::shutdown() noexcept {
 }
 
 GalleryPagesHost::GalleryPagesHost(ReferenceSurfaceHost& surfaces, ryn::detail::InputComponentHost& inputs,
-                                   runtime::FrameRequestState& frames, Copy copy)
-    : impl_(std::make_unique<Impl>(surfaces, inputs, frames, std::move(copy))) {}
+                                   runtime::FrameRequestState& frames, Copy copy,
+                                   std::span<const GallerySampleDescriptor> registry)
+    : impl_(std::make_unique<Impl>(surfaces, inputs, frames, std::move(copy), registry)) {}
 
 GalleryPagesHost::~GalleryPagesHost() {
     shutdown();
@@ -1785,6 +1814,10 @@ bool GalleryPagesHost::process() {
 
 bool GalleryPagesHost::dispatch(const input::PlatformInputEvent& event) {
     return impl_->dispatch(event);
+}
+
+bool GalleryPagesHost::inject_scroll_at(float x, float y, float delta_y) {
+    return dispatch(input::ScrollInputEvent{0, delta_y, x, y});
 }
 
 bool GalleryPagesHost::synchronize(runtime::Size viewport) {

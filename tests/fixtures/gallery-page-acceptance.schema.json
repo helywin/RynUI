@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "platform", "preset", "configuration", "toolchain", "backend", "shader", "font_source", "error", "system_fonts", "host_input_area", "host_cursor_sync", "checks", "submitted_frames", "cases", "passed"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "platform": {"type": "string", "enum": ["linux", "windows"]},
+    "preset": {"type": "string", "minLength": 1},
+    "configuration": {"type": "string", "enum": ["Debug", "Release"]},
+    "toolchain": {"type": "string", "enum": ["GNU", "Clang", "MSVC"]},
+    "backend": {"type": "string"},
+    "shader": {"type": "string"},
+    "font_source": {"type": "string"},
+    "error": {"type": "string"},
+    "system_fonts": {"type": "boolean"},
+    "host_input_area": {"type": "boolean"},
+    "host_cursor_sync": {"type": "boolean"},
+    "checks": {"type": "integer", "minimum": 0},
+    "submitted_frames": {"type": "integer", "minimum": 0},
+    "cases": {"type": "integer", "minimum": 0},
+    "passed": {"type": "boolean"}
+  }
+}
