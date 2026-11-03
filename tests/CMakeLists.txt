@@ -2061,6 +2061,12 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_gallery_document_contract.cmake"
 )
 
+add_executable(rynui_gallery_page_viewport_tests gallery_page_viewport_tests.cpp)
+rynui_configure_cpp_target(rynui_gallery_page_viewport_tests)
+target_include_directories(rynui_gallery_page_viewport_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_gallery_page_viewport_tests PRIVATE rynui_token_gallery_document_viewport rynui_runtime)
+add_test(NAME rynui.gallery_page_viewport COMMAND rynui_gallery_page_viewport_tests)
+
 add_executable(
     rynui_gallery_document_viewport_tests
     gallery_document_viewport_tests.cpp

@@ -41,6 +41,7 @@ add_library(
 add_library(
     rynui_token_gallery_document_viewport STATIC
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_viewport.cpp"
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_page_viewport.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_scroll_region.cpp"
 )
 rynui_configure_cpp_target(rynui_token_gallery_document_viewport)
