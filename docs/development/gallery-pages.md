@@ -20,6 +20,8 @@ Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-2026110
 
 `GalleryPageDraft` 只允许字符串、布尔、整数、数值和字符串列表，不接受组件/ref/Signal、编辑器或场景句柄。factory 以这些值重建新状态；save hook 只读取已提交业务值。Password/OTP 不调用 save hook，离页清除敏感值，但可保留与输入值无关的页面滚动锚点。不能把整个样例状态对象存入草稿，也不能恢复旧 preedit、选区、撤销栈或 popup open 状态。
 
+后续组件的业务值使用内部 [typed codec](../../examples/token_gallery/gallery_draft_codec.hpp) 转成上述基础值：保留 optional 的空值、variant 的类型、选择顺序和完整无符号整数；日期/时间重新经过公开值类型的合法性检查。它不支持 Prop/ref/callback 等运行状态。页面字段的接入仍需按 owner 显式登记，codec 测试通过不代表其余组件迁移完成。
+
 退役先使旧 generation ticket 失效，再保存草稿、取消属于旧 root 的 pointer 状态与 focus，调用 `before_retire` 取消 Gallery 自有 scrollbar drag，然后通过宿主销毁页面。既有输入参与者负责取消 session/preedit、弹层、keyboard press、caret 和动画。异步/延迟操作捕获弱 `GalleryPageTicket`，检查 `valid()` 后才能访问页面。挂载或保存失败仍清理旧资源，并显示可手动重试的说明页；不会自动重建忙循环。
 
 页面代码只使用 `ryn::*Props`、typed slots 和现有公开组件；内部 host、controller、ticket 与稳定测试身份不进入 `include/ryn/`。稳定身份按 page → family → sample → test 的层次登记；与文案、挂载序号、Node/Interaction/Scene identity 无关。后续样例登记层负责旧 test ID 的唯一归属映射，切页后所有运行时句柄必须重新解析。
