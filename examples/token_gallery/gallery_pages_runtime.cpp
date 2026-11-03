@@ -1,6 +1,7 @@
 #include "gallery_pages_runtime.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
+#include "component/collapse_component.hpp"
 #include "gallery_pages_host.hpp"
 #include "token_gallery_definition.hpp"
 
@@ -19,6 +20,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
+#include <memory>
+#include <SDL3/SDL.h>
 
 namespace rynui::example {
 namespace {
@@ -229,6 +232,32 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         }
         throw std::runtime_error("Gallery page acceptance deadline exceeded");
     };
+    const auto read_frame = [&](const std::string& name) {
+        const auto path = options.output.parent_path() / (name + ".bmp");
+        check(renderer.save_frame_bmp(path), "Space visual frame readback failed");
+        const auto utf8 = path.u8string();
+        std::unique_ptr<SDL_Surface, decltype(&SDL_DestroySurface)> image{
+            SDL_LoadBMP(reinterpret_cast<const char*>(utf8.c_str())), SDL_DestroySurface};
+        check(bool(image), "Space visual BMP could not be decoded");
+        return image;
+    };
+    const auto check_pixel = [&](SDL_Surface* image, runtime::Point point, Color expected) {
+        float red{};
+        float green{};
+        float blue{};
+        float alpha{};
+        check(SDL_ReadSurfacePixelFloat(image, static_cast<int>(point.x), static_cast<int>(point.y), &red, &green,
+                                        &blue, &alpha),
+              "Space visual pixel is outside its render target");
+        if (std::abs(red - expected.red()) > .02F || std::abs(green - expected.green()) > .02F ||
+            std::abs(blue - expected.blue()) > .02F) {
+            std::cerr << "space_pixel=" << point.x << ',' << point.y << " expected=" << expected.red() << ','
+                      << expected.green() << ',' << expected.blue() << " actual=" << red << ',' << green << ',' << blue
+                      << '\n';
+            throw std::runtime_error("Space GPU fill or focus has a clipped row or partition seam");
+        }
+        ++result.checks;
+    };
     constexpr std::array widths{1440, 960, 728, 480, 360};
     input::TextInputSessionStamp previous_session;
     runtime::ComponentId previous_root;
@@ -323,6 +352,140 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             events.inject_scroll_at(popup.popup.x + popup.popup.width - 4, popup.popup.y + 4, -0.25F);
             check(pages.snapshot().document.offset == offset, "native popup wheel leaked to document");
             render();
+        }
+        if (route.component_identity == "ant.component.space") {
+            auto header_route = route;
+            header_route.section = GalleryPageSection::usage;
+            header_route.sample_identity.clear();
+            pages.request(header_route);
+            pages.process();
+            render();
+            const auto entry = pages.target("gallery.page.enter");
+            for (const auto id : app.interactions().declaration_order()) {
+                const auto* record = app.interactions().find(id);
+                if (record && record->focusable && record->eligible && owns(app, record->component, entry)) {
+                    static_cast<void>(app.focus().request_focus(id, input::FocusModality::keyboard));
+                    break;
+                }
+            }
+            render();
+            const auto viewport = pages.target("gallery.shell.document.viewport");
+            check(app.focus().state().focused.has_value() && app.focus().state().focus_visible &&
+                      owns(app, app.interactions().require(*app.focus().state().focused).component, entry),
+                  "Space entry did not receive visible keyboard focus");
+            const auto viewport_bounds = app.nodes().require(app.components().root(viewport)).bounds;
+            check(std::abs(viewport_bounds.x - snapshot.layout.document.x) < 1 &&
+                      std::abs(viewport_bounds.width - snapshot.layout.document.width) < 1,
+                  "Space document viewport lost its focus gutters");
+            const auto header = read_frame("space-" + std::to_string(i) + "-header");
+            bool focus_checked{};
+            const auto background = app.components().theme_scope(root)->snapshot().alias().color_background_container;
+            for (const auto& button : app.mounted_buttons()) {
+                if (!owns(app, button.component, entry)) {
+                    continue;
+                }
+                const auto& effect = app.services().surfaces().focus_effect(button.scene);
+                check(effect.material.opacity > 0 && effect.material.color.alpha() > 0,
+                      "Space entry has no visible focus decoration");
+                auto rect = effect.geometry.shape.rect;
+                rect.x += effect.geometry.translation.x;
+                rect.y += effect.geometry.translation.y;
+                const auto distance = effect.geometry.outline_offset + effect.geometry.outline_width / 2;
+                const auto opacity = effect.material.color.alpha() * effect.material.opacity;
+                const Color expected{effect.material.color.red() * opacity + background.red() * (1 - opacity),
+                                     effect.material.color.green() * opacity + background.green() * (1 - opacity),
+                                     effect.material.color.blue() * opacity + background.blue() * (1 - opacity)};
+                for (const auto point : {runtime::Point{rect.x - distance, rect.y + rect.height / 2},
+                                         runtime::Point{rect.x + rect.width + distance, rect.y + rect.height / 2},
+                                         runtime::Point{rect.x + rect.width / 2, rect.y - distance},
+                                         runtime::Point{rect.x + rect.width / 2, rect.y + rect.height + distance}}) {
+                    check_pixel(header.get(), {point.x * events.scale, point.y * events.scale}, expected);
+                }
+                focus_checked = true;
+            }
+            check(focus_checked, "Space page has no focused entry control");
+            for (const auto identity :
+                 {"gallery.space.compact.small", "gallery.space.compact.middle", "gallery.space.compact.large"}) {
+                const auto owner = pages.target(identity);
+                const auto mounted = app.mounted_buttons();
+                const auto found = std::ranges::find_if(mounted, [&](const auto& button) {
+                    return owns(app, button.component, owner) &&
+                           app.snapshot(button.component).type == ButtonType::Primary;
+                });
+                check(found != mounted.end(), "Space Compact primary action is missing");
+                const auto component = found->component;
+                const auto node = found->node;
+                const auto lane = pages.snapshot().layout.document;
+                const auto& initial = app.nodes().require(node);
+                const auto target_y = initial.bounds.y + initial.translation.y + initial.bounds.height / 2;
+                events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2,
+                                        -(target_y - lane.y - lane.height / 2) / 48);
+                render();
+                const auto offset = pages.snapshot().document.offset;
+                const auto extent = pages.snapshot().document.maximum_offset;
+                events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2, -(extent + 48) / 48);
+                render();
+                events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2, (extent + 48) / 48);
+                render();
+                check(pages.snapshot().document.offset == 0, "Space scroll roundtrip did not visit the top");
+                events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2, -offset / 48);
+                render();
+                check(app.components().contains(component) && pages.snapshot().page == root,
+                      "Space scroll roundtrip remounted its retained content");
+                const auto& current = app.nodes().require(node);
+                const auto color = app.snapshot(component).presentation_background;
+                const auto image = read_frame("space-" + std::to_string(i) + "-" + std::string{identity});
+                const auto center_x =
+                    (current.bounds.x + current.translation.x + current.bounds.width / 2) * events.scale;
+                const auto center_y =
+                    (current.bounds.y + current.translation.y + current.bounds.height / 2) * events.scale;
+                for (int delta = -2; delta <= 2; ++delta) {
+                    check_pixel(
+                        image.get(),
+                        {(current.bounds.x + current.translation.x + 2) * events.scale, std::floor(center_y) + delta},
+                        color);
+                    check_pixel(
+                        image.get(),
+                        {std::floor(center_x) + delta, (current.bounds.y + current.translation.y + 2) * events.scale},
+                        color);
+                }
+            }
+            auto source_route = route;
+            source_route.section = GalleryPageSection::sources;
+            source_route.sample_identity.clear();
+            pages.request(source_route);
+            pages.process();
+            render();
+            const auto source_owner = pages.target("gallery.page.sources.content");
+            bool expanded{};
+            for (const auto id : app.services().collapse().mounted()) {
+                if (!owns(app, id, source_owner)) {
+                    continue;
+                }
+                const auto panel = app.services().collapse().snapshot(id).panels.front();
+                if (!panel.expanded) {
+                    for (const auto interaction : app.interactions().declaration_order()) {
+                        const auto* record = app.interactions().find(interaction);
+                        if (record && record->focusable && record->eligible &&
+                            owns(app, record->component, panel.header)) {
+                            static_cast<void>(app.focus().request_focus(interaction, input::FocusModality::keyboard));
+                            pages.dispatch(input::KeyboardInputEvent{input::Key::space, input::KeyAction::down});
+                            pages.dispatch(input::KeyboardInputEvent{input::Key::space, input::KeyAction::up});
+                            break;
+                        }
+                    }
+                    render();
+                }
+                expanded = app.services().collapse().snapshot(id).panels.front().expanded;
+                break;
+            }
+            check(expanded, "Space source disclosure did not expand");
+            const auto lane = pages.snapshot().layout.document;
+            events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2,
+                                    -(pages.snapshot().document.maximum_offset + 48) / 48);
+            render();
+            static_cast<void>(read_frame("space-" + std::to_string(i) + "-sources"));
+            std::cout << "space_scroll_visual=passed case=" << i << " compact_sizes=3 focus_sides=4\n";
         }
         previous_root = root;
         previous_route = route;

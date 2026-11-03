@@ -3,10 +3,13 @@
 #include "component/selection_component.hpp"
 #include "component/select_component.hpp"
 #include "component/popover_component.hpp"
+#include "component/collapse_component.hpp"
 #include <algorithm>
 #include "support/input_fixture.hpp"
 
 #include <iostream>
+#include <map>
+#include <memory>
 #include <cmath>
 #include <stdexcept>
 
@@ -148,7 +151,7 @@ void test_failed_page_viewport_and_focus() {
     host.mount({1440, 900});
     require(host.snapshot().failed && host.synchronize({1440, 900}), "failed page has no recoverable shell");
     const auto snapshot = host.snapshot();
-    require(snapshot.document.viewport_extent == snapshot.layout.document.height &&
+    require(snapshot.document.viewport_extent == snapshot.layout.content.height &&
                 snapshot.document.maximum_offset == 0,
             "failure page kept a stale scroll extent");
     const auto focused = f.services.focus().state().focused;
@@ -313,6 +316,139 @@ void test_all_pages() {
         require(f.host.target("gallery.page.sources").valid(), "catalog page has no sources section");
     }
 }
+
+void test_navigation_left_alignment() {
+    Fixture f;
+    const auto page = f.host.snapshot().page;
+    for (const auto width : {1440.0F, 960.0F, 728.0F}) {
+        f.viewport.width = width;
+        for (int theme = 0; theme != 3; ++theme) {
+            auto config = std::make_unique<ThemeConfig>();
+            if (theme != 0) {
+                config->algorithms = {theme == 1 ? ThemeAlgorithm::Dark : ThemeAlgorithm::Compact};
+            }
+            f.host.set_theme(*config);
+            f.sync();
+            const auto navigation = f.host.target("gallery.shell.navigation.viewport");
+            std::map<std::string, float> lefts;
+            for (const auto& text : f.services.text().mounted_texts()) {
+                if (!within(f, text.component, navigation)) {
+                    continue;
+                }
+                const auto caption = f.scene.text_state(text.scene).content().bytes();
+                if (caption != "组件总览" && caption != "设计介绍" && caption != "Design Token" &&
+                    caption != "Button 按钮" && caption != "Space 间距" && caption != "Typography 排版") {
+                    continue;
+                }
+                for (const auto& button : f.buttons.mounted_buttons()) {
+                    if (within(f, text.component, button.component)) {
+                        lefts[std::string{caption}] =
+                            f.nodes.require(f.services.components().root(text.component)).bounds.x;
+                        break;
+                    }
+                }
+            }
+            require(lefts.size() == 6, "navigation alignment fixture lost a real row");
+            const auto start = lefts.at("组件总览");
+            require(std::abs(lefts.at("设计介绍") - start) < .05F && std::abs(lefts.at("Design Token") - start) < .05F,
+                    "navigation entry labels did not share a left edge");
+            require(std::abs(lefts.at("Button 按钮") - start - 12) < .05F &&
+                        std::abs(lefts.at("Space 间距") - start - 12) < .05F &&
+                        std::abs(lefts.at("Typography 排版") - start - 12) < .05F,
+                    "component navigation did not preserve a common indented left edge");
+            require(f.host.snapshot().page == page, "navigation alignment updates remounted the page");
+        }
+    }
+}
+
+void test_document_focus_gutters() {
+    Fixture f;
+    f.show("ant.component.space");
+    const auto page = f.host.snapshot().page;
+    for (const auto width : {1440.0F, 960.0F, 728.0F, 480.0F, 360.0F}) {
+        f.viewport.width = width;
+        f.sync();
+        const auto metrics = f.host.snapshot().layout;
+        const auto viewport = f.host.target("gallery.shell.document.viewport");
+        const auto bounds = f.nodes.require(f.services.components().root(viewport)).bounds;
+        require(std::abs(bounds.x - metrics.document.x) < .05F &&
+                    std::abs(bounds.width - metrics.document.width) < .05F && metrics.content.x - bounds.x >= 8 &&
+                    bounds.x + bounds.width - metrics.content.x - metrics.content.width >= 8,
+                "document viewport consumed the content gutters");
+        const auto entry = f.host.target("gallery.page.enter");
+        const auto focus = interaction(f, entry);
+        static_cast<void>(f.services.focus().request_focus(focus, input::FocusModality::keyboard));
+        f.sync();
+        require(f.services.focus().state().focused == focus && f.services.focus().state().focus_visible,
+                "page entry did not retain visible keyboard focus");
+        bool checked{};
+        for (const auto& button : f.buttons.mounted_buttons()) {
+            if (!within(f, button.component, entry)) {
+                continue;
+            }
+            const auto& effect = f.services.surfaces().focus_effect(button.scene);
+            auto rect = effect.geometry.shape.rect;
+            rect.x += effect.geometry.translation.x;
+            rect.y += effect.geometry.translation.y;
+            const auto outset = effect.geometry.outline_offset + effect.geometry.outline_width / 2;
+            require(effect.geometry.ancestor_clip.has_value(), "page entry focus lost its ancestor clip");
+            const auto clip = effect.geometry.ancestor_clip->bounds;
+            for (const auto point : {runtime::Point{rect.x - outset, rect.y + rect.height / 2},
+                                     runtime::Point{rect.x + rect.width + outset, rect.y + rect.height / 2},
+                                     runtime::Point{rect.x + rect.width / 2, rect.y - outset},
+                                     runtime::Point{rect.x + rect.width / 2, rect.y + rect.height + outset}}) {
+                require(point.x >= clip.x && point.x < clip.x + clip.width && point.y >= clip.y &&
+                            point.y < clip.y + clip.height && graphics::rounded_effect_coverage(point, effect) > .99F,
+                        "page entry focus decoration was clipped at a document edge");
+            }
+            checked = true;
+        }
+        require(checked && f.host.snapshot().page == page, "focus gutter fixture lost or remounted its entry");
+    }
+}
+
+void test_source_paragraph_flow() {
+    Fixture f;
+    f.show("ant.component.space");
+    runtime::ComponentId source;
+    ryn::detail::CollapsePanelSnapshot panel;
+    for (const auto id : f.services.collapse().mounted()) {
+        for (const auto& candidate : f.services.collapse().snapshot(id).panels) {
+            for (const auto& text : f.services.text().mounted_texts()) {
+                if (within(f, text.component, candidate.title) &&
+                    f.scene.text_state(text.scene).content().bytes() == "锁定版本与参考来源") {
+                    source = id;
+                    panel = candidate;
+                }
+            }
+        }
+    }
+    require(source.valid(), "source disclosure is missing");
+    static_cast<void>(f.services.focus().request_focus(interaction(f, panel.header), input::FocusModality::keyboard));
+    f.key(input::Key::space);
+    require(f.services.collapse().snapshot(source).panels.front().expanded, "source disclosure did not expand");
+    for (const auto width : {1440.0F, 728.0F, 360.0F}) {
+        f.viewport.width = width;
+        f.sync();
+        std::vector<runtime::Rect> paragraphs;
+        bool wrapped{};
+        for (const auto& text : f.services.text().mounted_texts()) {
+            if (within(f, text.component, panel.body)) {
+                const auto rect = f.nodes.require(f.services.components().root(text.component)).bounds;
+                paragraphs.push_back(rect);
+                wrapped = wrapped || f.scene.text_state(text.scene).measurement().lines.size() > 1;
+                require(rect.width <= f.host.snapshot().layout.content.width - 32 + .05F,
+                        "source paragraph exceeded the disclosure's content width");
+            }
+        }
+        require(paragraphs.size() == 7 && wrapped, "source metadata was dropped or did not wrap");
+        std::ranges::sort(paragraphs, {}, &runtime::Rect::y);
+        for (std::size_t i = 1; i < paragraphs.size(); ++i) {
+            require(paragraphs[i].y >= paragraphs[i - 1].y + paragraphs[i - 1].height + 7.9F,
+                    "source paragraphs overlap instead of flowing vertically");
+        }
+    }
+}
 } // namespace
 
 int main() {
@@ -325,6 +461,9 @@ int main() {
         test_keyboard_theme_and_boundaries();
         test_focus_and_independent_scroll();
         test_all_pages();
+        test_navigation_left_alignment();
+        test_document_focus_gutters();
+        test_source_paragraph_flow();
         std::cout << "Gallery pages host checks passed\n";
         return 0;
     } catch (const std::exception& error) {

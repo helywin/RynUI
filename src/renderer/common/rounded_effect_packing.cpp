@@ -89,7 +89,7 @@ namespace {
 }
 
 [[nodiscard]] bool contains(runtime::Rect rect, runtime::Point point) noexcept {
-    return point.x >= rect.x && point.y >= rect.y && point.x <= rect.x + rect.width && point.y <= rect.y + rect.height;
+    return point.x >= rect.x && point.y >= rect.y && point.x < rect.x + rect.width && point.y < rect.y + rect.height;
 }
 
 } // namespace
@@ -107,21 +107,29 @@ RoundedEffectGpuInstance pack_rounded_effect_instance(const RoundedEffectInstanc
         // valid; a transparent, zero-area quad submits no fragments.
         return {};
     }
-    const auto pixel_bounds = scale_rect(logical_bounds, scale);
+    // The rasterizer quantizes vertices to a subpixel grid. Keep its domain
+    // conservative at hard clip edges; the pixel shader owns the exact clip.
+    const float pixel_left = std::max(0.0F, std::floor(logical_bounds.x * scale));
+    const float pixel_top = std::max(0.0F, std::floor(logical_bounds.y * scale));
+    const float pixel_right =
+        std::min(static_cast<float>(metrics.pixel_width), std::ceil((logical_bounds.x + logical_bounds.width) * scale));
+    const float pixel_bottom = std::min(static_cast<float>(metrics.pixel_height),
+                                        std::ceil((logical_bounds.y + logical_bounds.height) * scale));
+    const runtime::Rect pixel_bounds{pixel_left, pixel_top, pixel_right - pixel_left, pixel_bottom - pixel_top};
 
     auto logical_shape = instance.geometry.shape.rect;
     logical_shape.x += instance.geometry.translation.x;
     logical_shape.y += instance.geometry.translation.y;
     const auto pixel_shape = scale_rect(logical_shape, scale);
-    auto pixel_clip = runtime::Rect{
-        0.0F,
-        0.0F,
-        static_cast<float>(metrics.pixel_width),
-        static_cast<float>(metrics.pixel_height),
-    };
+    auto logical_clip = viewport;
     if (instance.geometry.ancestor_clip.has_value()) {
-        pixel_clip = intersect_effect_bounds(pixel_clip, scale_rect(instance.geometry.ancestor_clip->bounds, scale));
+        logical_clip = intersect_effect_bounds(logical_clip, instance.geometry.ancestor_clip->bounds);
     }
+    // Scale shared endpoints once, rather than separately scaling an origin
+    // and extent and adding them again at the partition boundary.
+    const std::array pixel_clip{logical_clip.x * scale, logical_clip.y * scale,
+                                (logical_clip.x + logical_clip.width) * scale,
+                                (logical_clip.y + logical_clip.height) * scale};
 
     const auto& color = instance.material.color;
     RoundedEffectGpuInstance packed{
@@ -132,7 +140,7 @@ RoundedEffectGpuInstance pack_rounded_effect_instance(const RoundedEffectInstanc
             -2.0F * pixel_bounds.height / metrics.pixel_height,
         },
         {pixel_shape.x, pixel_shape.y, pixel_shape.width, pixel_shape.height},
-        {pixel_clip.x, pixel_clip.y, pixel_clip.x + pixel_clip.width, pixel_clip.y + pixel_clip.height},
+        pixel_clip,
         {color.red(), color.green(), color.blue(), color.alpha()},
         {
             instance.geometry.shape.radius * scale,

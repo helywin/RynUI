@@ -222,9 +222,9 @@ float TooltipDistance(float2 samplePoint, float4 shape, float radius, float3 arr
 
 float4 PSMain(VertexOutput input) : SV_Target0 {
     float2 samplePosition = input.position.xy;
-    float clipDistance = min(min(samplePosition.x - input.clipBounds.x, input.clipBounds.z - samplePosition.x),
-                             min(samplePosition.y - input.clipBounds.y, input.clipBounds.w - samplePosition.y));
-    clip(clipDistance);
+    if (any(samplePosition < input.clipBounds.xy) || any(samplePosition >= input.clipBounds.zw)) {
+        discard;
+    }
 
     float4 shape = input.shapeRect;
     float radius = input.shadowParams.x;

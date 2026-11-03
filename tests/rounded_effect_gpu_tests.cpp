@@ -236,7 +236,7 @@ void test_path_packing_coverage_bounds_and_transparency() {
                      x <= static_cast<int>((bounds.x + bounds.width) * scale) + 1; ++x) {
                     const runtime::Point pixel{x + 0.5F, y + 0.5F};
                     const runtime::Point logical{pixel.x / scale, pixel.y / scale};
-                    const auto clipped = logical.x < 0 || logical.y < 0 || logical.x > 115 || logical.y > 105;
+                    const auto clipped = logical.x < 0 || logical.y < 0 || logical.x >= 115 || logical.y >= 105;
                     const auto expected = clipped ? 0 : graphics::rounded_effect_coverage(logical, path, 1 / scale);
                     const auto actual = detail::rounded_effect_gpu_coverage_reference(pixel, packed);
                     require(near(actual, expected, 0.0008F),
@@ -259,6 +259,63 @@ void test_path_packing_coverage_bounds_and_transparency() {
             "zero-sweep path still submitted a raster footprint");
 }
 
+bool raster_contains(ryn::runtime::Point pixel, const ryn::detail::RoundedEffectGpuInstance& packed,
+                     ryn::detail::SceneDeviceMetrics metrics) {
+    const auto quantize = [](float value) {
+        return std::round(value * 256) / 256;
+    };
+    const auto left = quantize((packed.clip_rect[0] + 1) * metrics.pixel_width / 2);
+    const auto top = quantize((1 - packed.clip_rect[1]) * metrics.pixel_height / 2);
+    const auto right = quantize((packed.clip_rect[0] + packed.clip_rect[2] + 1) * metrics.pixel_width / 2);
+    const auto bottom = quantize((1 - packed.clip_rect[1] - packed.clip_rect[3]) * metrics.pixel_height / 2);
+    return pixel.x >= left && pixel.x < right && pixel.y >= top && pixel.y < bottom;
+}
+
+void test_partition_raster_ownership_after_translation() {
+    using namespace ryn;
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        const detail::SceneDeviceMetrics metrics{512, 512, scale};
+        for (const float origin : {0.0F, 2048.0F, 8192.0F, 32768.0F}) {
+            for (const float delta : {-0.000122F, -0.0000305F, -0.0000076F, 0.0F, 0.0000076F, 0.0000305F, 0.000122F}) {
+                const runtime::Point translation{80.5F / scale - 40 + delta, 100.5F / scale - origin - 16 + delta};
+                const graphics::LogicalRoundedRect shape{{20, origin, 40, 32}, 6};
+                for (const float alpha : {0.47F, 1.0F}) {
+                    const auto effects = graphics::make_corner_fill_effects(
+                        shape, {false, true, true, false}, Color{0.1F, 0.4F, 0.9F, alpha}, 1, translation,
+                        graphics::EffectClip{1, {0, 0, 512 / scale, 512 / scale}});
+                    std::array<detail::RoundedEffectGpuInstance, 4> packed;
+                    for (std::size_t i = 0; i < effects.size(); ++i) {
+                        packed[i] = detail::pack_rounded_effect_instance(effects[i], metrics);
+                    }
+                    const int center_x =
+                        static_cast<int>((shape.rect.x + translation.x + shape.rect.width / 2) * scale);
+                    const int center_y =
+                        static_cast<int>((shape.rect.y + translation.y + shape.rect.height / 2) * scale);
+                    for (int y = center_y - 1; y <= center_y + 1; ++y) {
+                        for (int x = center_x - 1; x <= center_x + 1; ++x) {
+                            const runtime::Point pixel{x + .5F, y + .5F};
+                            float result{};
+                            for (const auto& item : packed) {
+                                if (raster_contains(pixel, item, metrics)) {
+                                    const auto source = detail::rounded_effect_gpu_fragment_reference(pixel, item)[3];
+                                    result = source + result * (1 - source);
+                                }
+                            }
+                            if (!near(result, alpha, .0001F)) {
+                                std::cerr << "partition raster mismatch scale=" << scale << " origin=" << origin
+                                          << " delta=" << delta << " pixel=" << pixel.x << ',' << pixel.y
+                                          << " expected=" << alpha << " actual=" << result << '\n';
+                                throw std::runtime_error(
+                                    "partition fill has a raster gap or duplicate alpha after translation");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 } // namespace
 
 int main() {
@@ -271,6 +328,7 @@ int main() {
         test_invalid_metrics_rejected_and_clipped_pack_is_degenerate();
         test_zero_blur_pixel_coverage_and_quadrant_seams();
         test_path_packing_coverage_bounds_and_transparency();
+        test_partition_raster_ownership_after_translation();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

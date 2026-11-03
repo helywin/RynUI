@@ -368,6 +368,7 @@ struct GalleryPagesHost::Impl final {
     Signal<LogicalLength> gap{dp(24)};
     Signal<LogicalLength> navigation_width{dp(240)};
     Signal<LogicalLength> document_width{dp(880)};
+    Signal<LogicalLength> document_viewport_width{dp(944)};
     Signal<LogicalLength> document_margin{dp(56)};
     Signal<LogicalLength> document_right_margin{dp(56)};
     Signal<LogicalLength> toc_width{dp(160)};
@@ -481,8 +482,9 @@ void GalleryPagesHost::Impl::update_metrics(runtime::Size size) {
     gap.set(dp(metrics.gap));
     navigation_width.set(dp(metrics.navigation_width));
     document_width.set(dp(metrics.document_width));
-    document_margin.set(dp(metrics.content.x - outer.get().value() - metrics.navigation_width));
-    document_right_margin.set(dp(metrics.wide ? metrics.toc.x - metrics.content.x - metrics.content.width : 0));
+    document_viewport_width.set(dp(metrics.document.width));
+    document_margin.set(dp(metrics.document.x - (metrics.narrow ? 0 : outer.get().value() + metrics.navigation_width)));
+    document_right_margin.set(dp(metrics.wide ? metrics.toc.x - metrics.document.x - metrics.document.width : 0));
     toc_width.set(dp(metrics.wide ? 160 : 0));
     drawer_width.set(std::min(280.0F, std::max(1.0F, size.width - 32)));
     if (document) {
@@ -506,18 +508,18 @@ void GalleryPagesHost::Impl::build_shell() {
                 Flex(FlexProps{}
                          .align(FlexAlign::Start)
                          .gap(dp(0))
-                         .layout(LayoutStyle{}
-                                     .width(bind([w = window_width, x = outer] {
-                                         return dp(w.get().value() - 2 * x.get().value());
-                                     }))
-                                     .margin_left(outer)
-                                     .margin_top(dp(16))),
+                         .layout(LayoutStyle{}.width(window_width).margin_top(dp(16))),
                      [this] {
                          ReferenceSurface(ReferenceSurfaceProps{}
                                               .identity("gallery.shell.navigation.viewport")
                                               .role(ReferenceSurfaceRole::document_note)
                                               .visible(bind([value = narrow] { return !value.get(); }))
-                                              .layout(LayoutStyle{}.width(navigation_width).height(body_height)),
+                                              .layout(LayoutStyle{}
+                                                          .width(navigation_width)
+                                                          .height(body_height)
+                                                          .margin_left(bind([value = narrow, x = outer] {
+                                                              return value.get() ? dp(0) : x.get();
+                                                          }))),
                                           [this] {
                                               Flex(FlexProps{}
                                                        .vertical(true)
@@ -533,7 +535,7 @@ void GalleryPagesHost::Impl::build_shell() {
                                               .identity("gallery.shell.document.viewport")
                                               .role(ReferenceSurfaceRole::document_note)
                                               .layout(LayoutStyle{}
-                                                          .width(document_width)
+                                                          .width(document_viewport_width)
                                                           .height(body_height)
                                                           .margin_left(document_margin)
                                                           .margin_right(document_right_margin)),
@@ -733,7 +735,13 @@ void GalleryPagesHost::Impl::build_navigation() {
                            .size(ControlSize::Small)
                            .onClick([this, route] { request(route); })
                            .layout(LayoutStyle{}.width(width).height(dp(32))),
-                       [label] { Text(label); });
+                       [label, width] {
+                           Flex(FlexProps{}
+                                    .justify(FlexJustify::Start)
+                                    .align(FlexAlign::Center)
+                                    .layout(LayoutStyle{}.width(width)),
+                                [label] { Text(label); });
+                       });
             };
             link(String{u8"组件总览"}, {});
             link(String{u8"设计介绍"}, {GalleryPageKind::introduction});
@@ -801,14 +809,22 @@ void GalleryPagesHost::Impl::build_navigation() {
                                                 invalidate_navigation();
                                             })
                                             .layout(LayoutStyle{}.width(width).height(dp(32))),
-                                        [this, category, index] {
-                                            Text(TextProps{}
-                                                     .content(bind([this, category, index] {
+                                        [this, category, index, width] {
+                                            Flex(FlexProps{}
+                                                     .justify(FlexJustify::Start)
+                                                     .align(FlexAlign::Center)
+                                                     .gap(dp(4))
+                                                     .layout(LayoutStyle{}.width(width)),
+                                                 [this, category, index] {
+                                                     Icon(IconProps{}.name(bind([this, index] {
                                                          static_cast<void>(navigation_revision.get());
-                                                         return text(std::string{category_open[index] ? "▾ " : "▸ "} +
-                                                                     std::string{category.chinese_name});
-                                                     }))
-                                                     .tone(TextTone::Secondary));
+                                                         return category_open[index] ? IconName::DownOutlined
+                                                                                     : IconName::RightOutlined;
+                                                     })));
+                                                     Text(TextProps{}
+                                                              .content(text(category.chinese_name))
+                                                              .tone(TextTone::Secondary));
+                                                 });
                                         });
                                  for (const auto& page : pages.pages()) {
                                      const auto* entry = page.entry;
@@ -847,24 +863,34 @@ void GalleryPagesHost::Impl::build_navigation() {
                                              auto props = std::make_unique<ThemeProps>();
                                              props->config(config);
                                              Theme(std::move(*props), [this, entry, width] {
-                                                 Button(ButtonProps{}
-                                                            .type(ButtonType::Text)
-                                                            .size(ControlSize::Small)
-                                                            .layout(LayoutStyle{}.width(width).height(dp(36)))
-                                                            .onClick([this, entry] {
-                                                                auto family = GalleryInputFamily::input;
-                                                                for (const auto& result : pages.results()) {
-                                                                    if (result.page->entry == entry) {
-                                                                        family = result.family;
-                                                                        break;
-                                                                    }
-                                                                }
-                                                                request(pages.find(entry->identity)->route(family));
-                                                            }),
-                                                        [entry] {
-                                                            Text(text(std::string{entry->english_name} + " " +
-                                                                      std::string{entry->chinese_name}));
-                                                        });
+                                                 Button(
+                                                     ButtonProps{}
+                                                         .type(ButtonType::Text)
+                                                         .size(ControlSize::Small)
+                                                         .layout(LayoutStyle{}.width(width).height(dp(36)))
+                                                         .onClick([this, entry] {
+                                                             auto family = GalleryInputFamily::input;
+                                                             for (const auto& result : pages.results()) {
+                                                                 if (result.page->entry == entry) {
+                                                                     family = result.family;
+                                                                     break;
+                                                                 }
+                                                             }
+                                                             request(pages.find(entry->identity)->route(family));
+                                                         }),
+                                                     [entry, width] {
+                                                         Flex(FlexProps{}
+                                                                  .justify(FlexJustify::Start)
+                                                                  .align(FlexAlign::Center)
+                                                                  .layout(LayoutStyle{}.width(width)),
+                                                              [entry] {
+                                                                  Text(TextProps{}
+                                                                           .content(text(
+                                                                               std::string{entry->english_name} + " " +
+                                                                               std::string{entry->chinese_name}))
+                                                                           .layout(LayoutStyle{}.margin_left(dp(12))));
+                                                              });
+                                                     });
                                              });
                                          });
                                  }
@@ -1242,26 +1268,42 @@ void GalleryPagesHost::Impl::token_values(const std::shared_ptr<Document>& doc) 
 void GalleryPagesHost::Impl::sources(const std::shared_ptr<Document>& doc) {
     heading(doc, GalleryPageSection::sources);
     const auto inner = bind([width = doc->width] { return dp(std::max(1.0F, width.get().value() - 32)); });
-    Collapse(CollapseProps{}.layout(LayoutStyle{}.width(doc->width)),
-             {CollapsePanel{String{u8"source"}, CollapseTitle{[] { Text(u8"锁定版本与参考来源"); }},
-                            CollapseBody{[this, doc, inner] {
-                                paragraph(text("Ant Design " + std::string{ant_design_reference_version()}), inner);
-                                paragraph(text(ant_design_reference_commit()), inner, TextTone::Secondary, 12, 20);
-                                if (doc->route.kind == GalleryPageKind::component) {
-                                    const auto* entry = pages.find(doc->route.component_identity)->entry;
-                                    paragraph(text(entry->identity), inner, TextTone::Secondary, 12, 20);
-                                    paragraph(text(entry->source_path), inner, TextTone::Secondary, 12, 20);
-                                    paragraph(text(entry->chinese_source_path), inner, TextTone::Secondary, 12, 20);
-                                    paragraph(text(entry->evidence_identifiers), inner, TextTone::Secondary, 12, 20);
-                                } else {
-                                    for (const auto& entry : ant_design_reference_sources()) {
-                                        paragraph(text(entry.title), inner, TextTone::Primary, 14, 22, 500);
-                                        paragraph(text(entry.official_url), inner, TextTone::Secondary, 12, 20);
-                                    }
-                                }
-                                paragraph(String{u8"目录声明与来源标识不代表当前平台的自动验收结果。"}, inner,
-                                          TextTone::Secondary, 12, 20);
-                            }}}});
+    ReferenceSurface(
+        ReferenceSurfaceProps{}
+            .identity("gallery.page.sources.content")
+            .role(ReferenceSurfaceRole::document_note)
+            .layout(LayoutStyle{}.width(doc->width)),
+        [this, doc, inner] {
+            Collapse(
+                CollapseProps{}.layout(LayoutStyle{}.width(doc->width)),
+                {CollapsePanel{
+                    String{u8"source"}, CollapseTitle{[] { Text(u8"锁定版本与参考来源"); }},
+                    CollapseBody{[this, doc, inner] {
+                        Flex(FlexProps{}
+                                 .vertical(true)
+                                 .align(FlexAlign::Start)
+                                 .gap(dp(8))
+                                 .layout(LayoutStyle{}.width(inner)),
+                             [this, doc, inner] {
+                                 paragraph(text("Ant Design " + std::string{ant_design_reference_version()}), inner);
+                                 paragraph(text(ant_design_reference_commit()), inner, TextTone::Secondary, 12, 20);
+                                 if (doc->route.kind == GalleryPageKind::component) {
+                                     const auto* entry = pages.find(doc->route.component_identity)->entry;
+                                     paragraph(text(entry->identity), inner, TextTone::Secondary, 12, 20);
+                                     paragraph(text(entry->source_path), inner, TextTone::Secondary, 12, 20);
+                                     paragraph(text(entry->chinese_source_path), inner, TextTone::Secondary, 12, 20);
+                                     paragraph(text(entry->evidence_identifiers), inner, TextTone::Secondary, 12, 20);
+                                 } else {
+                                     for (const auto& entry : ant_design_reference_sources()) {
+                                         paragraph(text(entry.title), inner, TextTone::Primary, 14, 22, 500);
+                                         paragraph(text(entry.official_url), inner, TextTone::Secondary, 12, 20);
+                                     }
+                                 }
+                                 paragraph(String{u8"目录声明与来源标识不代表当前平台的自动验收结果。"}, inner,
+                                           TextTone::Secondary, 12, 20);
+                             });
+                    }}}});
+        });
 }
 
 void GalleryPagesHost::Impl::install_viewport(runtime::NodeId node) {
@@ -1271,6 +1313,7 @@ void GalleryPagesHost::Impl::install_viewport(runtime::NodeId node) {
         ryn::layout::ComponentLayout{
             [this](ryn::layout::LayoutEngine& engine, runtime::NodeId owner, ryn::layout::Constraints constraints) {
                 auto unbounded = constraints;
+                unbounded.min_width = 0;
                 unbounded.min_height = 0;
                 unbounded.max_height = std::numeric_limits<float>::infinity();
                 for (const auto child : app.nodes().require(owner).children) {
@@ -1281,7 +1324,10 @@ void GalleryPagesHost::Impl::install_viewport(runtime::NodeId node) {
             [this](ryn::layout::LayoutEngine& engine, runtime::NodeId owner, runtime::Rect bounds) {
                 for (const auto child : app.nodes().require(owner).children) {
                     const auto size = app.nodes().require(child).layout_size;
-                    engine.place_child(child, {bounds.x, bounds.y, size.width, size.height});
+                    const bool document_viewport = owner == document_node;
+                    const auto x = bounds.x + (document_viewport ? metrics.content.x - metrics.document.x : 8);
+                    const auto y = bounds.y + (document_viewport ? metrics.content.y - metrics.document.y : 8);
+                    engine.place_child(child, {x, y, size.width, size.height});
                 }
             }});
     app.dirty().invalidate(node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::HitTest);
@@ -1435,8 +1481,8 @@ bool GalleryPagesHost::Impl::synchronize(runtime::Size size) {
     }
     if (!metrics.narrow && app.components().contains(navigation_content)) {
         const auto root = app.components().root(navigation_content);
-        static_cast<void>(
-            navigation_scroll.set_extents(metrics.navigation.height, app.nodes().require(root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(std::max(1.0F, metrics.navigation.height - 16),
+                                                        app.nodes().require(root).bounds.height));
         static_cast<void>(
             navigation_translation.apply(root, navigation_scroll.snapshot().offset, app.nodes(), app.dirty()));
     }
@@ -1465,7 +1511,7 @@ bool GalleryPagesHost::Impl::synchronize(runtime::Size size) {
                 document_scroll.set_page(controller->generation(), app.components().root(controller->root()), anchors));
             presented_generation = controller->generation();
         }
-        static_cast<void>(document_scroll.refresh(metrics.document.height, app.nodes()));
+        static_cast<void>(document_scroll.refresh(metrics.content.height, app.nodes()));
         if (new_page) {
             static_cast<void>(document_scroll.restore(controller->draft().anchor));
         }
@@ -1483,7 +1529,7 @@ bool GalleryPagesHost::Impl::synchronize(runtime::Size size) {
         static_cast<void>(
             document_scroll.set_page(controller->generation(), app.components().root(controller->root()), {}));
         presented_generation = controller->generation();
-        static_cast<void>(document_scroll.refresh(metrics.document.height, app.nodes()));
+        static_cast<void>(document_scroll.refresh(metrics.content.height, app.nodes()));
         static_cast<void>(document_scroll.apply(app.nodes(), app.dirty()));
         resize_anchor.reset();
         jump_after_layout = false;

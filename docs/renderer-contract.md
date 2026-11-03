@@ -32,6 +32,8 @@ RoundedEffect 的内部 path kind 3/4/5 分别表示有限圆弧、圆角虚线�
 
 `renderer/common/scene_metrics` 独立定义 SceneDeviceMetrics，三类 primitive 共用 physical pixel extent/display_scale，logical viewport = extent / scale；extent 必须正，scale 必须有限正，派生 viewport 也必须有限正。非法 metrics 在 begin upload 前拒绝；零尺寸/不可用 surface 留给宿主决定恢复时机。resources 复用 packed staging；首次、容量增长、metrics 改变全量重打包，普通更新只转换合并 dirty ranges，idle 不上传。resize 不改写 Quad/Glyph CPU store，不重建字体 atlas；Effect 继续按 logical viewport compact/cull。上传失败使资源 metrics 缓存失效，即使回到失败前的原 metrics 且无 CPU dirty，也完整重试。SceneResources 的提交失败还恢复所有参与数据。字体 DPI 变化所需的 shaping/raster 更新由文本服务现有机制负责，不能仅用重打包替代。
 
+RoundedEffect 的物理 draw bounds 向外覆盖整像素边界，防止硬件顶点子像素量化先于 PS 裁剪丢掉合法采样；shape、半径及 AA 宽度不取整。共享 clip 端点先在 logical 域求和，再统一缩放；PS 与 packed reference 使用左/上包含、右/下排除的硬边界，分区填充在每个采样点只合成一次，既不留缝也不叠加透明度。draw domain 的保守外延不扩大实际 ancestor clip。
+
 ## 构建边界
 
 `RYNUI_PLATFORM_BACKEND` 支持 SDL 与 HEADLESS；`RYNUI_RENDER_BACKENDS` 是非空的已知 renderer 列表 SDL_GPU、RECORDING。SDL 可与 SDL_GPU、RECORDING 或两者构建；HEADLESS 只支持 RECORDING。选择是编译期，P0 不提供运行时多后端选择器。当前原生 examples 需要 SDL_GPU，其他配置应关闭 examples。

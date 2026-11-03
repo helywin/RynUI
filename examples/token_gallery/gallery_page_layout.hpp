@@ -48,7 +48,8 @@ inline GalleryPageLayout gallery_page_layout(ryn::runtime::Size viewport) {
     result.document = {left, top, std::max(1.0F, right - left), height};
     result.document_padding = result.narrow ? 16.0F : result.wide ? 32.0F : viewport.width >= 960 ? 24.0F : 20.0F;
     result.document_width = std::min(920.0F, std::max(1.0F, result.document.width - result.document_padding * 2));
-    result.content = {left + (result.document.width - result.document_width) / 2, top, result.document_width, height};
+    result.content = {left + (result.document.width - result.document_width) / 2, top + 8, result.document_width,
+                      std::max(1.0F, height - 16)};
     result.navigation_track = {result.navigation.x + std::max(0.0F, result.navigation.width - 6), top, 6, height};
     result.document_track = {result.document.x + result.document.width - 6, top, 6, height};
     return result;
