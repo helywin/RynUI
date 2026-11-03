@@ -32,7 +32,7 @@ Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-2026110
 
 活动页的 `target(test_id)` 直接解析构造时登记的组件身份。登记只发生在 mount，并由所属组件的 resource cleanup 删除；测试通过 sample owner 验证归属。滚动和普通属性更新不扫描正文文案，不使用全局 mounted 数组偏移定位目标。这些运行时 ID 只属于当前页面状态，不进入 `GalleryPageDraft`。
 
-普通非受控 Input/Search/TextArea 用保存的已提交值设置新实例的 `defaultValue`，并组合原有 change/submit 回调；受控值仍使用原有 Signal/FormField。TreeSelect 保存选择、交付备注、表单值和展开键，open、focus 与 session 总是重新开始。代码片段的展开 UI 和公开 API 内容由后续页面 shell 任务接入，目前登记的函数/头文件映射不等同于已展示代码片段。
+普通非受控 Input/Search/TextArea 用保存的已提交值设置新实例的 `defaultValue`，并组合原有 change/submit 回调；受控值仍使用原有 Signal/FormField。TreeSelect 保存选择、交付备注、表单值和展开键，open、focus 与 session 总是重新开始。[源码生成器](../../tools/generate_gallery_source.py) 从实际编译的构造函数抽取 67 组 C++，保留文件/行号并展开 add_* 包装函数的真实依赖；公开 Props、slots、常用成员和组件 Token 路径从当前头文件核对。生成文件只放构建目录的 out 下，运行时无需读源码或联网。源码引用示例内部状态及辅助函数，不宣称是脱离该文件的独立教程。
 
 Typography/Divider 的真实实例已提取为各自页面工厂；总览不需要调用它们。Bidi 的 Text/Paragraph 归 Typography，编辑器归对应 Input 家族；方向控制有各页自己的目标 ID。Pagination 独立页使用 `gallery.pagination.controlled`，Table 的联动分页保留同一构造能力并使用 `gallery.table.pagination`，防止把同一历史 ID 重复归属两页。含 Space/Radio/Checkbox 的页面宿主仍须建立既有 `SelectionComponentHost`，和旧原生 Gallery 的宿主装配一致。
 
@@ -61,3 +61,16 @@ ctest --preset linux-gcc-release -R '^rynui\.gallery_page_(model|controller)$' -
 已有 frame binary 的 `--input-only` / `--tree-select-only` 现已直接挂载相应页面工厂，并用登记目标定位；对应 CTest 为 `rynui.gallery_page_input_frame` / `rynui.gallery_page_tree_select_frame`。Input 家族按组依次追加/退役，保持编辑、剪贴板、提交、场景身份与 idle 检查；TreeSelect 保留三种主题与 1200/560 宽度的 glyph/fill/hit/focus/popup 检查。其余组件渲染用例已改为从登记工厂构造所需页面，Card/Tabs/Modal 编辑器与 Select 直接使用 test ID，阴影、目录卡、章节与滚动条按具名身份定位；不再断言全页 307 live samples 或其前后固定数组偏移。涉及多组件的历史渲染断言使用显式路由列表的内部兼容夹具，单活动页与退役仍由页面夹具验证。兼容夹具保留旧目录外壳，只用于有限自动回归，不是第二种交互产品模式。新目录 shell 的交互/几何由后续 viewport 阶段验证。
 
 迁移后的组件 frame 定向入口为 `rynui.gallery_page_<group>_frame`，例如 `ctest --preset linux-gcc-release -R '^rynui.gallery_page_time-picker_frame$' --output-on-failure`；修改局部页面时只运行受影响组。TimePicker 的选中填充同时检查 Quad 与共同裁剪填充 RoundedEffect，颜色、实际覆盖和列/弹层边界仍受断言约束；window layer 按实际窗口边界检查，正文保留自己的 content clip。
+
+## 源码与 API 内容
+
+[GallerySampleSource](../../examples/token_gallery/gallery_sample_source.hpp) 与工厂 identity 一一对应。未知/未实现样例不生成代码；Message 的 forwarding header、共享的 NoticeThemeConfig、AutoComplete 的公开 Token alias 和 Input 的模板 PropsBase 均按真实声明处理。不为 Flex 等没有组件 Token 入口的条目制造覆盖字段。
+
+[原生源码面板](../../examples/token_gallery/gallery_source_panel.cpp) 使用 Collapse 和只读、不折行的 TextArea；支持键盘展开、独立横向滚动与实际代码复制。宽度更新保留编辑器身份，关闭状态不留可聚焦正文。面板与 API 内容已独立验证，正式窗口接入仍在 shell 阶段。
+
+CPU Gallery 支持库已移至 [RynUIGallerySupport.cmake](../../cmake/RynUIGallerySupport.cmake)，由原生示例与 HEADLESS 测试共用，不依赖构建原生示例的开关。配置 HEADLESS 通过不等于其目标已实际编译；该集成结果按后续构建记录区分。
+
+```sh
+cmake --build --preset linux-gcc-release --target rynui_gallery_sample_page_tests rynui_gallery_source_panel_tests
+ctest --preset linux-gcc-release -R '^rynui\.(gallery_source_panel|gallery_sample_source_(contract|generated))$' --output-on-failure
+```

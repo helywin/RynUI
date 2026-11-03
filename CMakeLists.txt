@@ -49,6 +49,10 @@ add_subdirectory(src)
 rynui_verify_public_api("${CMAKE_CURRENT_SOURCE_DIR}/include/ryn")
 rynui_verify_core_includes("${CMAKE_CURRENT_SOURCE_DIR}/src")
 
+if(RYNUI_BUILD_EXAMPLES OR BUILD_TESTING)
+    include(RynUIGallerySupport)
+endif()
+
 if(RYNUI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()

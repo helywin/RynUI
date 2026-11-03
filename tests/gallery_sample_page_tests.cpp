@@ -1,4 +1,5 @@
 #include "gallery_sample_registry.hpp"
+#include "gallery_sample_source.hpp"
 #include "gallery_test_inventory.hpp"
 #include "gallery_page_controller.hpp"
 #include "component/otp_component.hpp"
@@ -177,6 +178,20 @@ struct Fixture final : ryn_test::input_component::Fixture {
         require(services.tree_select().snapshot(tree).open, "TreeSelect keyboard open failed");
     }
 };
+
+void test_compiled_source_metadata() {
+    require(gallery_sample_sources().size() == gallery_samples().size(), "sample/source registries disagree");
+    for (const auto& descriptor : gallery_samples()) {
+        const auto* source = gallery_sample_source(descriptor.identity);
+        require(source && source->source_function == descriptor.source_function &&
+                    source->public_header == descriptor.public_header && source->source_line > 0 &&
+                    source->cpp.find(std::string{"void "} + std::string{source->source_function} + "(") !=
+                        std::string_view::npos &&
+                    String::from_utf8(source->cpp).has_value(),
+                "sample source/API is absent, invalid UTF-8 or detached from its compiled factory");
+    }
+    require(!gallery_sample_source("not-registered"), "unregistered example received fabricated C++");
+}
 
 void test_legacy_identity_ownership() {
     Fixture f;
@@ -696,6 +711,7 @@ void test_layout_and_navigation_pages() {
 
 int main() {
     try {
+        test_compiled_source_metadata();
         test_legacy_identity_ownership();
         test_registry_and_factory_isolation();
         test_complete_catalog_and_related_routes();

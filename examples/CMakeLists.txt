@@ -48,56 +48,6 @@ else()
     set(rynui_token_gallery_window_system "unsupported")
 endif()
 
-add_library(
-    rynui_token_gallery_definition STATIC
-    token_gallery/ant_design_reference_catalog.cpp
-    token_gallery/gallery_document_model.cpp
-    token_gallery/gallery_page_model.cpp
-    token_gallery/gallery_test_inventory.cpp
-    token_gallery/token_gallery_definition.cpp
-)
-rynui_configure_cpp_target(rynui_token_gallery_definition)
-target_compile_options(rynui_token_gallery_definition PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
-target_include_directories(
-    rynui_token_gallery_definition
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/token_gallery"
-)
-target_link_libraries(rynui_token_gallery_definition PUBLIC RynUI::RynUI)
-
-add_library(
-    rynui_token_gallery_reference_surface STATIC
-    token_gallery/reference_surface.cpp
-    token_gallery/gallery_page_controller.cpp
-)
-
-add_library(
-    rynui_token_gallery_document_viewport STATIC
-    token_gallery/gallery_document_viewport.cpp
-    token_gallery/gallery_scroll_region.cpp
-)
-rynui_configure_cpp_target(rynui_token_gallery_document_viewport)
-target_include_directories(
-    rynui_token_gallery_document_viewport
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/token_gallery"
-    PRIVATE "${PROJECT_SOURCE_DIR}/src"
-)
-target_link_libraries(
-    rynui_token_gallery_document_viewport
-    PUBLIC rynui_token_gallery_definition
-    PRIVATE rynui_runtime
-)
-rynui_configure_cpp_target(rynui_token_gallery_reference_surface)
-target_include_directories(
-    rynui_token_gallery_reference_surface
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/token_gallery"
-    PRIVATE "${PROJECT_SOURCE_DIR}/src"
-)
-target_link_libraries(
-    rynui_token_gallery_reference_surface
-    PUBLIC rynui_token_gallery_definition
-    PRIVATE rynui_components
-)
-
 add_executable(
     rynui_token_gallery
     token_gallery/main.cpp

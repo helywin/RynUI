@@ -2028,6 +2028,17 @@ target_compile_definitions(rynui_gallery_sample_page_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.gallery_sample_page COMMAND rynui_gallery_sample_page_tests)
+add_executable(rynui_gallery_source_panel_tests gallery_source_panel_tests.cpp)
+rynui_configure_cpp_target(rynui_gallery_source_panel_tests)
+target_include_directories(rynui_gallery_source_panel_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_gallery_source_panel_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_gallery_source_panel_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.gallery_source_panel COMMAND rynui_gallery_source_panel_tests)
+add_test(NAME rynui.gallery_sample_source_contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/gallery_source_tests.py")
+add_test(NAME rynui.gallery_sample_source_generated COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/generate_gallery_source.py" --root "${PROJECT_SOURCE_DIR}" --output "${rynui_gallery_source_output}" --check)
+
 foreach(gallery_frame_case IN ITEMS select-card-tabs common data panels states forms time-picker date-picker navigation details-loading overlays-timeline members-metrics tree-autocomplete modal)
     add_test(NAME rynui.gallery_page_${gallery_frame_case}_frame COMMAND rynui_token_gallery_frame_tests --${gallery_frame_case}-only)
 endforeach()
