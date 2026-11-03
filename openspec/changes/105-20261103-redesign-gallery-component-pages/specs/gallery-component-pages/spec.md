@@ -94,6 +94,14 @@ Gallery SHALL 在宽窗口展示导航、正文、TOC，在中窗口保留左侧
 - **WHEN** 用户在窄窗口打开目录并选择 TreeSelect
 - **THEN** 目录关闭，正文切换到 TreeSelect，焦点转移到可见的页面导航入口，背后的样例不能接收面板期间的输入
 
+#### Scenario: 目录与正文装饰排版
+- **WHEN** 显示目录入口、分类及组件条目，并聚焦正文的进入页面内容控件
+- **THEN** 目录内容按层级缩进左对齐，整行仍可命中；正文内侧为焦点框保留空间，内容宽度与真实视口裁剪分别约束，不裁去控件两侧的合法焦点装饰
+
+#### Scenario: 展开来源
+- **WHEN** 展开当前组件的版本、路径及证据标识符来源
+- **THEN** 各段按纵向顺序排列，长内容按当前可用宽度测量，不因共用原点互相覆盖
+
 ### Requirement: Theme 变化保留当前页状态与身份
 
 Default、Dark、Compact 及 Dark 与 Compact 的组合 SHALL 通过既有 Theme 算法应用于 shell 和样例；正文使用可读的文字层级，Compact 主要改变控件与局部密度。Theme 更新 MUST 不重挂当前样例、不丢失草稿/选择、不激活其他页。
@@ -113,6 +121,10 @@ Gallery SHALL 分别维护目录 offset 和当前页 offset，以当前页章节
 #### Scenario: 离页后返回
 - **WHEN** 用户滚至 Input 页的能力章节，访问 Button 后返回 Input
 - **THEN** 恢复 Input 的章节/距离及分组，导航列表保留自己的 offset；旧页锚点代际不能作用于新页
+
+#### Scenario: Space 样例滚动往返
+- **WHEN** Space.Compact 样例滚出当前视口，正文滚回顶部后再次回到该样例
+- **THEN** 原有 retained 身份与边界保持，填充分区在物理采样点恰好合成一次，按钮中部不出现裁剪裂缝或透明叠加条纹，真实视口外仍无内容泄漏
 
 ### Requirement: 页面草稿与组件运行状态分离
 

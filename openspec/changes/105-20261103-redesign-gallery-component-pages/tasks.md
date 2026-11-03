@@ -59,3 +59,10 @@
 
 - [x] 8.1 自动汇总本 change 已要求的通用、Windows、Linux 结果，缺失/失败项保持未完成；验证没有从任务勾选、历史人工管理关闭或 HTML 原型推导组件完成度/平台通过。
 - [x] 8.2 运行 `python scripts/format-code.py --check`、`openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`，自动核对变更未包含 out 原始产物与非本阶段文件，记录精简结论。
+
+## 9. 组件页反馈回归（依赖 4；本轮四项修复）
+
+- [ ] 9.1 修复目录入口/分类/组件条目的左对齐与层级缩进，分离正文视口与内容留白，令来源正文按纵向流式排列；定向宿主测试覆盖代表宽度、主题、真实文字/按钮/焦点 geometry、长来源与身份保留。
+- [ ] 9.2 复现 Space.Compact 滚出再滚回的中部横线，修复确认的共用裁剪/绘制边界；新增最终 raster domain 与 source-over 回归，覆盖横/纵分区、分数缩放/坐标与半透明填充，保留真实祖先硬裁剪和既有 AA/ABI。
+- [ ] 9.3 在 Windows/MSVC HEADLESS Debug/Release 构建并运行受影响宿主、RoundedEffect 与 Button/Compact 定向测试；正式 native Release 重建 Gallery，有限 Space 自动入口检查滚动往返、焦点留白和 GPU 图像，原始输出仅在 out。
+- [ ] 9.4 记录本轮四项精简结果与平台边界，运行 format、OpenSpec doctor/strict、diff 检查；相关阶段提交后 fetch/rebase/push 并核对远端 SHA，提供新版 Gallery。
