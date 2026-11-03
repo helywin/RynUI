@@ -10,9 +10,14 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
+
+namespace ryn::runtime {
+struct ComponentId;
+}
 
 namespace rynui::example {
 
@@ -58,9 +63,15 @@ struct TokenGalleryDefinition final {
     std::vector<std::string_view> stable_test_ids;
     std::size_t navigation_control_count{};
     std::function<ryn::Color()> background_color;
+    std::function<ryn::runtime::ComponentId(std::string_view)> target;
 };
 
+struct GalleryPageRoute;
+
 [[nodiscard]] TokenGalleryDefinition make_token_gallery_definition();
+// Internal compatibility harness for retained rendering contracts. Each supplied
+// route mounts its registered factory; this is not an interactive product mode.
+[[nodiscard]] TokenGalleryDefinition make_gallery_frame_definition(std::span<const GalleryPageRoute> routes);
 
 [[nodiscard]] TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height,
                                                                   float render_scale);

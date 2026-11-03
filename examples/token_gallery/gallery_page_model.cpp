@@ -205,4 +205,21 @@ std::string_view gallery_page_status_label(GallerySupportStatus status) noexcept
     return "未知状态";
 }
 
+std::string_view gallery_page_empty_message(GallerySupportStatus status) noexcept {
+    switch (status) {
+    case GallerySupportStatus::planned:
+        return "尚未提供稳定原生组件。此页保留参考信息与缺失范围。";
+    case GallerySupportStatus::deprecated:
+        return "此条目已弃用，仅保留参考说明。";
+    case GallerySupportStatus::web_only:
+        return "此能力属于 Web 范围，未提供原生演示。";
+    case GallerySupportStatus::out_of_scope:
+        return "此能力不在当前原生实现范围。";
+    case GallerySupportStatus::implemented:
+    case GallerySupportStatus::partial:
+        return "本页尚无已登记样例，可通过关联入口查看已有原生流程。";
+    }
+    return {};
+}
+
 } // namespace rynui::example

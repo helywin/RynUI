@@ -53,6 +53,7 @@ add_library(
     token_gallery/ant_design_reference_catalog.cpp
     token_gallery/gallery_document_model.cpp
     token_gallery/gallery_page_model.cpp
+    token_gallery/gallery_test_inventory.cpp
     token_gallery/token_gallery_definition.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery_definition)

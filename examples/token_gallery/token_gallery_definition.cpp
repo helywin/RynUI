@@ -4,6 +4,7 @@
 #include "gallery_document_model.hpp"
 #include "gallery_layout.hpp"
 #include "gallery_sample_registry.hpp"
+#include "gallery_test_inventory.hpp"
 #include "gallery_draft_codec.hpp"
 #include "reference_surface.hpp"
 #include "icon_samples.hpp"
@@ -344,6 +345,7 @@ struct GalleryState final {
         GalleryNavigationTarget::to_section(GalleryDocumentSectionKind::header_source)};
     std::optional<GalleryNavigationTarget> navigation_request;
     TokenGalleryTelemetry telemetry;
+    std::vector<GallerySamplePage> frame_pages;
 
     GalleryState() {
         destination_field.required(ryn::String{u8"请选择交付目标"});
@@ -669,8 +671,8 @@ template <typename Visitor> void visit_gallery_draft_fields(GalleryState& state,
     }
 }
 
-void remember_target(const std::shared_ptr<GalleryState>& state, std::string_view identity) {
-    if (!state->register_targets) {
+void remember_target(const std::shared_ptr<GalleryState>& state, std::string_view identity, bool force = false) {
+    if (!state->register_targets && !force) {
         return;
     }
     auto& build = ryn::runtime::require_component_build_context();
@@ -783,467 +785,6 @@ ryn::SelectProps gallery_select_default(std::string_view identity, ryn::SelectPr
 
 const std::size_t navigation_control_count = 20 + ant_design_reference_entries().size();
 
-constexpr auto stable_test_ids = std::to_array<std::string_view>({
-    "gallery.flex.baseline",
-    "gallery.flex.wrap-reverse",
-    "gallery.flex.vertical-rtl",
-    "gallery.flex.default-stretch",
-    "gallery.space.separator",
-    "gallery.space.baseline",
-    "gallery.space.compact.small",
-    "gallery.space.compact.middle",
-    "gallery.space.compact.large",
-    "gallery.space.compact.vertical-rtl",
-    "gallery.space.compact.mixed",
-    "gallery.space.addon.variants",
-    "gallery.theme.default",
-    "gallery.theme.dark",
-    "gallery.theme.compact",
-    "gallery.theme.nested-brand",
-    "gallery.state.default",
-    "gallery.state.primary",
-    "gallery.state.danger",
-    "gallery.state.hover",
-    "gallery.state.active",
-    "gallery.state.focus-visible",
-    "gallery.state.disabled",
-    "gallery.state.loading",
-    "gallery.button.blue",
-    "gallery.button.purple",
-    "gallery.button.cyan",
-    "gallery.button.green",
-    "gallery.button.magenta",
-    "gallery.button.pink",
-    "gallery.button.red",
-    "gallery.button.orange",
-    "gallery.button.yellow",
-    "gallery.button.volcano",
-    "gallery.button.geekblue",
-    "gallery.button.lime",
-    "gallery.button.gold",
-    "gallery.button.outlined",
-    "gallery.button.dashed",
-    "gallery.button.solid",
-    "gallery.button.filled",
-    "gallery.button.text",
-    "gallery.button.link",
-    "gallery.button.icon-end",
-    "gallery.button.circle",
-    "gallery.button.square",
-    "gallery.button.ghost",
-    "gallery.button.round-block",
-    "gallery.button.loading-focus",
-    "gallery.divider.small-dotted-rtl",
-    "gallery.divider.middle-length",
-    "gallery.divider.vertical-dotted",
-    "gallery.switch.content-ref",
-    "gallery.switch.small-icon-rtl",
-    "gallery.switch.component-theme",
-    "gallery.switch.focus",
-    "gallery.checkbox.group-controlled",
-    "gallery.checkbox.group-dynamic",
-    "gallery.checkbox.options-update",
-    "gallery.checkbox.rich-rtl-ref",
-    "gallery.checkbox.component-theme",
-    "gallery.checkbox.focus",
-    "gallery.radio.dynamic-outline",
-    "gallery.radio.options-update",
-    "gallery.radio.solid-large-block",
-    "gallery.radio.vertical-small-rtl",
-    "gallery.radio.component-theme",
-    "gallery.radio.ref",
-    "gallery.radio.focus",
-    "gallery.input.controlled",
-    "gallery.input.uncontrolled",
-    "gallery.input.outlined",
-    "gallery.input.filled",
-    "gallery.input.borderless",
-    "gallery.input.underlined",
-    "gallery.input.grapheme-count",
-    "gallery.input.exceed-formatter",
-    "gallery.input.focus-hints",
-    "gallery.input.clear-vector",
-    "gallery.password.hover-vector",
-    "gallery.password.controlled-toggle",
-    "gallery.search.filled-vector",
-    "gallery.search.underlined-small",
-    "gallery.input.focus-all",
-    "gallery.input.toggle-clear-disabled",
-    "gallery.password.toggle-action",
-    "ant.map.colorPrimary",
-    "ant.map.colorSuccess",
-    "ant.map.colorWarning",
-    "ant.map.colorError",
-    "ant.map.colorInfo",
-    "ant.map.blue6",
-    "ant.map.green6",
-    "ant.map.red5",
-    "ant.map.gold6",
-    "ant.map.purple6",
-    "ant.map.fontSizeSM",
-    "ant.map.fontSize",
-    "ant.map.fontSizeLG",
-    "ant.map.sizeXS",
-    "ant.map.size",
-    "ant.map.sizeLG",
-    "ant.map.controlHeightSM",
-    "ant.seed.controlHeight",
-    "ant.map.controlHeightLG",
-    "ant.map.borderRadiusSM",
-    "ant.seed.borderRadius",
-    "ant.map.borderRadiusLG",
-    "ant.alias.boxShadowTertiary",
-    "ant.alias.boxShadowSecondary",
-    "ant.alias.boxShadow",
-    "ant.component.Button.defaultShadow",
-    "ant.component.Button.primaryShadow",
-    "ant.component.Button.dangerShadow",
-    "ant.alias.boxShadowDrawerLeft",
-    "ant.alias.boxShadowDrawerRight",
-    "ant.alias.boxShadowDrawerUp",
-    "ant.alias.boxShadowDrawerDown",
-    "ant.alias.boxShadowPopoverArrow",
-    "ant.alias.dropShadowPopover",
-    "ant.alias.boxShadowCard",
-    "ant.alias.boxShadowTabsOverflowLeft",
-    "ant.alias.boxShadowTabsOverflowRight",
-    "ant.alias.boxShadowTabsOverflowTop",
-    "ant.alias.boxShadowTabsOverflowBottom",
-    "gallery.icon.outlined",
-    "gallery.icon.filled",
-    "gallery.icon.two-tone",
-    "gallery.icon.four-layers",
-    "gallery.icon.retained-source",
-    "gallery.icon.spin",
-    "gallery.icon.custom-vector",
-    "gallery.icon.wide-vector",
-    "gallery.text-area.outlined",
-    "gallery.text-area.filled",
-    "gallery.text-area.borderless",
-    "gallery.text-area.underlined",
-    "gallery.text-area.autosize",
-    "gallery.text-area.resize-nowrap",
-    "gallery.text-area.readonly",
-    "gallery.text-area.disabled",
-    "gallery.otp.outlined",
-    "gallery.otp.filled",
-    "gallery.otp.borderless",
-    "gallery.otp.underlined",
-    "gallery.otp.controlled",
-    "gallery.otp.formatter-mask",
-    "gallery.otp.separator-rtl",
-    "gallery.otp.dynamic-length",
-    "gallery.otp.readonly-mask",
-    "gallery.otp.disabled",
-    "gallery.otp.focus-all",
-    "gallery.otp.toggle-length",
-    "gallery.bidi.text",
-    "gallery.bidi.paragraph",
-    "gallery.bidi.input",
-    "gallery.bidi.text-area",
-    "gallery.bidi.password",
-    "gallery.bidi.toggle-direction",
-    "gallery.select.controlled-search",
-    "gallery.select.numeric",
-    "gallery.select.disabled",
-    "gallery.select.loading",
-    "gallery.select.empty",
-    "gallery.select.controlled-open",
-    "gallery.select.outlined",
-    "gallery.select.filled",
-    "gallery.select.borderless",
-    "gallery.select.underlined",
-    "gallery.select.small",
-    "gallery.select.middle",
-    "gallery.select.large",
-    "gallery.select.warning",
-    "gallery.select.error",
-    "gallery.select.component-theme",
-    "gallery.select.focus",
-    "gallery.select.toggle-open",
-    "gallery.select.dynamic-options",
-    "gallery.card.basic",
-    "gallery.card.account",
-    "gallery.card.cover-actions",
-    "gallery.card.small",
-    "gallery.card.borderless",
-    "gallery.card.loading",
-    "gallery.card.component-theme",
-    "gallery.card.toggle-loading",
-    "gallery.tabs.controlled-retained",
-    "gallery.tabs.disabled",
-    "gallery.tabs.dynamic-label",
-    "gallery.tabs.card",
-    "gallery.tabs.small",
-    "gallery.tabs.large",
-    "gallery.tabs.bottom",
-    "gallery.tabs.bottom-card",
-    "gallery.tabs.centered",
-    "gallery.tabs.overflow",
-    "gallery.tabs.empty",
-    "gallery.tabs.unknown-key",
-    "gallery.tabs.component-theme",
-    "gallery.tabs.toggle-label",
-    "gallery.modal.basic",
-    "gallery.modal.retained-edit",
-    "gallery.modal.controlled-refusal",
-    "gallery.modal.confirm-loading",
-    "gallery.modal.custom-footer",
-    "gallery.modal.no-footer",
-    "gallery.modal.maskless",
-    "gallery.modal.centered",
-    "gallery.modal.long-body",
-    "gallery.modal.nested",
-    "gallery.modal.nested-child",
-    "gallery.modal.component-theme",
-    "gallery.tag.closable",
-    "gallery.tag.checkable",
-    "gallery.tag.restore",
-    "gallery.badge.clear",
-    "gallery.badge.increment",
-    "gallery.drawer.right",
-    "gallery.drawer.left",
-    "gallery.drawer.top",
-    "gallery.drawer.bottom",
-    "gallery.drawer.draft",
-    "gallery.drawer.confirm",
-    "gallery.drawer.end",
-    "gallery.drawer.done",
-    "gallery.popconfirm.controlled",
-    "gallery.popconfirm.finish",
-    "gallery.popconfirm.single",
-    "gallery.alert.retry",
-    "gallery.alert.restore",
-    "gallery.spin.toggle",
-    "gallery.spin.draft",
-    "gallery.spin.action",
-    "gallery.progress.advance",
-    "gallery.progress.status",
-    "gallery.table.editable",
-    "gallery.table.update",
-    "gallery.table.reverse",
-    "gallery.table.remove",
-    "gallery.table.restore",
-    "gallery.table.loading",
-    "gallery.pagination.controlled",
-    "gallery.menu.inline",
-    "gallery.menu.label",
-    "gallery.menu.disabled",
-    "gallery.dropdown.actions",
-    "gallery.number.controlled",
-    "gallery.number.disabled",
-    "gallery.number.readonly",
-    "gallery.number.toggle-disabled",
-    "gallery.number.focus",
-    "gallery.collapse.retained",
-    "gallery.collapse.accordion",
-    "gallery.collapse.disabled",
-    "gallery.collapse.close",
-    "gallery.collapse.options",
-    "gallery.collapse.help",
-    "gallery.segmented.controlled",
-    "gallery.segmented.vertical",
-    "gallery.segmented.rich",
-    "gallery.segmented.label",
-    "gallery.segmented.disabled",
-    "gallery.empty.default",
-    "gallery.empty.compact",
-    "gallery.empty.custom",
-    "gallery.empty.create",
-    "gallery.empty.image",
-    "gallery.result.controlled",
-    "gallery.result.status",
-    "gallery.result.exception",
-    "gallery.result.custom",
-    "gallery.result.action",
-    "gallery.result.draft",
-    "gallery.form.workflow",
-    "gallery.form.name",
-    "gallery.form.role",
-    "gallery.form.count",
-    "gallery.form.consent",
-    "gallery.form.submit",
-    "gallery.form.validate",
-    "gallery.form.reset",
-    "gallery.form.disabled",
-    "gallery.form.readonly",
-    "gallery.form.help",
-    "gallery.form.status",
-    "gallery.date-picker.controlled",
-    "gallery.date-picker.value",
-    "gallery.date-picker.footer",
-    "gallery.date-picker.restore",
-    "gallery.date-picker.form",
-    "gallery.date-picker.field",
-    "gallery.date-picker.submit",
-    "gallery.date-picker.reset",
-    "gallery.date-picker.disabled",
-    "gallery.date-picker.readonly",
-    "gallery.date-picker.help",
-    "gallery.date-picker.status",
-    "gallery.breadcrumb.trail",
-    "gallery.breadcrumb.feedback",
-    "gallery.breadcrumb.draft",
-    "gallery.breadcrumb.display",
-    "gallery.breadcrumb.rename",
-    "gallery.breadcrumb.visible",
-    "gallery.breadcrumb.draft-visible",
-    "gallery.breadcrumb.disabled",
-    "gallery.breadcrumb.restore",
-    "gallery.breadcrumb.focus",
-    "gallery.steps.workflow",
-    "gallery.steps.feedback",
-    "gallery.steps.draft",
-    "gallery.steps.previous",
-    "gallery.steps.next",
-    "gallery.steps.reset",
-    "gallery.steps.vertical",
-    "gallery.steps.size",
-    "gallery.steps.status",
-    "gallery.steps.visible",
-    "gallery.steps.disabled",
-    "gallery.steps.focus",
-    "gallery.time-picker.controlled",
-    "gallery.time-picker.value",
-    "gallery.time-picker.footer",
-    "gallery.time-picker.restore",
-    "gallery.time-picker.mode",
-    "gallery.time-picker.authority",
-    "gallery.time-picker.input-readonly",
-    "gallery.time-picker.form",
-    "gallery.time-picker.field",
-    "gallery.time-picker.submit",
-    "gallery.time-picker.reset",
-    "gallery.time-picker.disabled",
-    "gallery.time-picker.readonly",
-    "gallery.time-picker.help",
-    "gallery.time-picker.status",
-    "gallery.descriptions.editor",
-    "gallery.descriptions.feedback",
-    "gallery.descriptions.name",
-    "gallery.descriptions.save",
-    "gallery.descriptions.columns",
-    "gallery.descriptions.span",
-    "gallery.descriptions.visible",
-    "gallery.descriptions.vertical",
-    "gallery.descriptions.bordered",
-    "gallery.descriptions.size",
-    "gallery.descriptions.focus",
-    "gallery.skeleton.preview",
-    "gallery.skeleton.feedback",
-    "gallery.skeleton.draft",
-    "gallery.skeleton.save",
-    "gallery.skeleton.loading",
-    "gallery.skeleton.title",
-    "gallery.skeleton.paragraph",
-    "gallery.skeleton.avatar",
-    "gallery.skeleton.round",
-    "gallery.skeleton.standalone",
-    "gallery.skeleton.shape",
-    "gallery.skeleton.block",
-    "gallery.skeleton.focus",
-    "gallery.popover.editor",
-    "gallery.popover.feedback",
-    "gallery.popover.trigger",
-    "gallery.popover.draft",
-    "gallery.popover.save",
-    "gallery.popover.cancel",
-    "gallery.popover.placement",
-    "gallery.popover.arrow",
-    "gallery.popover.disabled",
-    "gallery.popover.restore",
-    "gallery.notices.workflow",
-    "gallery.notices.feedback",
-    "gallery.message.open",
-    "gallery.message.update",
-    "gallery.message.close",
-    "gallery.notification.open",
-    "gallery.notification.update",
-    "gallery.notification.close",
-    "gallery.notification.placement",
-    "gallery.notification.status",
-    "gallery.notification.draft",
-    "gallery.notification.action",
-    "gallery.notices.clear",
-    "gallery.timeline.workflow",
-    "gallery.timeline.feedback",
-    "gallery.timeline.draft",
-    "gallery.timeline.save",
-    "gallery.timeline.mode",
-    "gallery.timeline.reverse",
-    "gallery.timeline.loading",
-    "gallery.timeline.visible",
-    "gallery.timeline.focus",
-    "gallery.avatar.members",
-    "gallery.avatar.feedback",
-    "gallery.avatar.name",
-    "gallery.avatar.save",
-    "gallery.avatar.icon",
-    "gallery.avatar.shape",
-    "gallery.avatar.size",
-    "gallery.avatar.limit",
-    "gallery.avatar.visible",
-    "gallery.avatar.restore",
-    "gallery.statistic.metrics",
-    "gallery.statistic.feedback",
-    "gallery.statistic.value",
-    "gallery.statistic.precision",
-    "gallery.statistic.separators",
-    "gallery.statistic.formatter",
-    "gallery.statistic.loading",
-    "gallery.statistic.draft",
-    "gallery.statistic.save",
-    "gallery.statistic.restore",
-    "gallery.rate.service",
-    "gallery.rate.feedback",
-    "gallery.rate.authority",
-    "gallery.rate.disabled",
-    "gallery.rate.readonly",
-    "gallery.rate.visible",
-    "gallery.rate.restore",
-    "gallery.rate.draft",
-    "gallery.rate.save",
-    "gallery.auto-complete.contacts",
-    "gallery.auto-complete.feedback",
-    "gallery.auto-complete.input",
-    "gallery.auto-complete.authority",
-    "gallery.auto-complete.options",
-    "gallery.auto-complete.disabled",
-    "gallery.auto-complete.readonly",
-    "gallery.auto-complete.restore",
-    "gallery.auto-complete.note",
-    "gallery.auto-complete.save-note",
-    "gallery.auto-complete.form",
-    "gallery.auto-complete.form-feedback",
-    "gallery.auto-complete.submit",
-    "gallery.auto-complete.reset",
-    "gallery.tree.project",
-    "gallery.tree.feedback",
-    "gallery.tree.note",
-    "gallery.tree.save-note",
-    "gallery.tree.disabled",
-    "gallery.tree.visible",
-    "gallery.tree.locked",
-    "gallery.tree.restore",
-    "gallery.tree-select.destination",
-    "gallery.tree-select.feedback",
-    "gallery.tree-select.selector",
-    "gallery.tree-select.value-authority",
-    "gallery.tree-select.close-authority",
-    "gallery.tree-select.rename",
-    "gallery.tree-select.node-disabled",
-    "gallery.tree-select.disabled",
-    "gallery.tree-select.readonly",
-    "gallery.tree-select.visible",
-    "gallery.tree-select.restore",
-    "gallery.tree-select.note",
-    "gallery.tree-select.save",
-    "gallery.tree-select.form",
-    "gallery.tree-select.form-feedback",
-    "gallery.tree-select.submit",
-    "gallery.tree-select.reset",
-});
-
 ryn::String utf8(std::string_view value) {
     auto parsed = ryn::String::from_utf8(value);
     if (!parsed) {
@@ -1309,6 +850,7 @@ void section_surface(const std::shared_ptr<GalleryState>& state, const GalleryDo
     const auto title = page_title ? utf8("RynUI Design System") : utf8(section.title);
     const auto summary = utf8(section.summary);
     ReferenceSurface(ReferenceSurfaceProps{}
+                         .identity(section.identity)
                          .role(ReferenceSurfaceRole::document_heading)
                          .layout(ryn::LayoutStyle{}
                                      .width(state->document_width)
@@ -1393,6 +935,12 @@ void navigation_button(const std::shared_ptr<GalleryState>& state, std::string_v
                         [nav_width, child] { return ryn::dp(nav_width.get().value() - (child ? 48.0F : 36.0F)); }))));
                 });
         }});
+    const auto key = target.kind == GalleryNavigationTargetKind::component
+                         ? "gallery.nav." + std::string{target.component_identity}
+                     : target.kind == GalleryNavigationTargetKind::category
+                         ? "gallery.nav.category." + std::to_string(static_cast<int>(target.category))
+                         : "gallery.nav.section." + std::to_string(static_cast<int>(target.section));
+    remember_target(state, key, true);
 }
 
 void filter_button(const std::shared_ptr<GalleryState>& state, std::string_view caption, GallerySupportFilter filter) {
@@ -1403,6 +951,7 @@ void filter_button(const std::shared_ptr<GalleryState>& state, std::string_view 
         }
     }),
                 [text] { ryn::Text(text); });
+    remember_target(state, "gallery.filter." + std::to_string(static_cast<int>(filter)), true);
 }
 
 void navigation_controls(const std::shared_ptr<GalleryState>& state) {
@@ -1444,9 +993,9 @@ void navigation_controls(const std::shared_ptr<GalleryState>& state) {
     filter_button(state, "Out of scope / 不在范围", GallerySupportFilter::out_of_scope);
 }
 
-void scrollbar_surface(ReferenceSurfaceRole role, const ryn::Signal<ryn::LogicalLength>& height,
-                       const ryn::Signal<bool>& visible) {
-    ReferenceSurface(ReferenceSurfaceProps{}.role(role).visible(visible).layout(
+void scrollbar_surface(std::string_view identity, ReferenceSurfaceRole role,
+                       const ryn::Signal<ryn::LogicalLength>& height, const ryn::Signal<bool>& visible) {
+    ReferenceSurface(ReferenceSurfaceProps{}.identity(identity).role(role).visible(visible).layout(
                          ryn::LayoutStyle{}.width(ryn::dp(8.0F)).height(height).order(2)),
                      [] {});
 }
@@ -1481,9 +1030,12 @@ void reference_cell(const std::shared_ptr<GalleryState>& state, std::string_view
     const auto title = label(test_id, caption);
     const auto identity = utf8(test_id);
     ryn::Theme(ryn::ThemeProps{}.config(std::move(config)),
-               ryn::ThemeContent{[state, title, identity, swatch, elevated] {
+               ryn::ThemeContent{[state, title, identity, test_id, swatch, elevated] {
                    ++state->telemetry.theme_content_runs;
                    ReferenceSurface(ReferenceSurfaceProps{}
+                                        .identity(test_id)
+                                        .role(state->register_targets ? ReferenceSurfaceRole::example
+                                                                      : ReferenceSurfaceRole::reference)
                                         .status(GallerySupportStatus::implemented)
                                         .swatch(swatch)
                                         .elevated(elevated)
@@ -1654,10 +1206,10 @@ void component_entry(const std::shared_ptr<GalleryState>& state, const AntDesign
                              document_text(missing, 12.0F, 20.0F, 400, ryn::TextTone::Secondary);
                          }
                          document_text(source_note, 11.0F, 18.0F, 400, ryn::TextTone::Secondary);
-                         if (identity == "ant.component.typography") {
+                         if (state->frame_pages.empty() && identity == "ant.component.typography") {
                              add_typography_catalog_samples(state);
                          }
-                         if (identity == "ant.component.divider") {
+                         if (state->frame_pages.empty() && identity == "ant.component.divider") {
                              add_divider_catalog_samples(state);
                          }
                      });
@@ -7016,12 +6568,14 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
         ryn::Content{[state, route, runs] {
             GalleryDraftBuild draft_build{state};
             ++state->telemetry.content_runs;
+            bool has_sample{};
             for (const auto& factory : sample_factories) {
                 const auto& descriptor = factory.descriptor;
                 if (route.kind != descriptor.kind || descriptor.component_identity != route.component_identity ||
                     descriptor.family != route.family) {
                     continue;
                 }
+                has_sample = true;
                 ++(*runs)[std::string{descriptor.identity}];
                 ReferenceSurface(
                     ReferenceSurfaceProps{}
@@ -7040,6 +6594,13 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
                                       factory.mount(state);
                                   });
                     });
+            }
+            if (!has_sample && route.kind == GalleryPageKind::component) {
+                const auto* entry = find_ant_design_reference_entry(route.component_identity);
+                ryn::Text(ryn::TextProps{}
+                              .content(utf8(gallery_page_empty_message(entry->support_status)))
+                              .tone(ryn::TextTone::Secondary)
+                              .layout(ryn::LayoutStyle{}.width(state->document_width)));
             }
         }},
         [state, sensitive](GalleryPageDraft& target) {
@@ -7079,13 +6640,28 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
             state->theme_request.reset();
             return result;
         },
+        [state] {
+            state->disabled.set(false);
+            state->loading.set(false);
+            state->telemetry.state_updates += 2;
+        },
     };
 }
 
 TokenGalleryDefinition make_token_gallery_definition() {
+    return make_gallery_frame_definition({});
+}
+
+TokenGalleryDefinition make_gallery_frame_definition(std::span<const GalleryPageRoute> routes) {
     auto state = std::make_shared<GalleryState>();
+    for (const auto& route : routes) {
+        state->frame_pages.push_back(make_gallery_sample_page(route, {}));
+    }
     auto set_theme = [state](const ryn::ThemeConfig& config, bool brand) {
         state->set_theme(config, brand);
+        for (auto& page : state->frame_pages) {
+            page.set_theme(state->theme.get());
+        }
     };
 
     TokenGalleryDefinition definition{
@@ -7133,53 +6709,62 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         design_values(state);
                                                         foundation_tokens(state);
                                                         component_overview(state);
-                                                        add_live_samples(state);
-                                                        add_switch_samples(state);
-                                                        add_checkbox_samples(state);
-                                                        add_radio_samples(state);
-                                                        add_flex_samples(state);
-                                                        add_space_samples(state);
-                                                        add_icon_samples(state);
-                                                        add_input_feature_samples(state);
-                                                        add_text_area_samples(state);
-                                                        add_otp_samples(state);
-                                                        add_bidi_samples(state);
-                                                        add_select_samples(state);
-                                                        add_card_samples(state);
-                                                        add_tabs_samples(state);
-                                                        add_modal_samples(state);
-                                                        add_common_component_samples(state);
-                                                        add_data_and_selection_samples(state);
-                                                        add_panel_and_selection_samples(state);
-                                                        add_empty_and_result_samples(state);
-                                                        add_form_samples(state);
-                                                        add_date_picker_samples(state);
-                                                        add_breadcrumb_samples(state);
-                                                        add_steps_samples(state);
-                                                        add_time_picker_samples(state);
-                                                        add_descriptions_samples(state);
-                                                        add_skeleton_samples(state);
-                                                        add_popover_samples(state);
-                                                        add_notice_samples(state);
-                                                        add_timeline_samples(state);
-                                                        add_member_avatar_samples(state);
-                                                        add_statistic_metric_samples(state);
-                                                        add_service_rate_samples(state);
-                                                        add_contact_autocomplete_samples(state);
-                                                        add_project_tree_samples(state);
-                                                        add_tree_select_destination_samples(state);
+                                                        if (!state->frame_pages.empty()) {
+                                                            section_surface(state, gallery_document_sections()[5]);
+                                                            for (auto& page : state->frame_pages) {
+                                                                ryn::detail::SlotContentAccess::function(
+                                                                    page.content)();
+                                                            }
+                                                        } else {
+                                                            add_live_samples(state);
+                                                            add_switch_samples(state);
+                                                            add_checkbox_samples(state);
+                                                            add_radio_samples(state);
+                                                            add_flex_samples(state);
+                                                            add_space_samples(state);
+                                                            add_icon_samples(state);
+                                                            add_input_feature_samples(state);
+                                                            add_text_area_samples(state);
+                                                            add_otp_samples(state);
+                                                            add_bidi_samples(state);
+                                                            add_select_samples(state);
+                                                            add_card_samples(state);
+                                                            add_tabs_samples(state);
+                                                            add_modal_samples(state);
+                                                            add_common_component_samples(state);
+                                                            add_data_and_selection_samples(state);
+                                                            add_panel_and_selection_samples(state);
+                                                            add_empty_and_result_samples(state);
+                                                            add_form_samples(state);
+                                                            add_date_picker_samples(state);
+                                                            add_breadcrumb_samples(state);
+                                                            add_steps_samples(state);
+                                                            add_time_picker_samples(state);
+                                                            add_descriptions_samples(state);
+                                                            add_skeleton_samples(state);
+                                                            add_popover_samples(state);
+                                                            add_notice_samples(state);
+                                                            add_timeline_samples(state);
+                                                            add_member_avatar_samples(state);
+                                                            add_statistic_metric_samples(state);
+                                                            add_service_rate_samples(state);
+                                                            add_contact_autocomplete_samples(state);
+                                                            add_project_tree_samples(state);
+                                                            add_tree_select_destination_samples(state);
+                                                        }
                                                     });
                                       });
-                            scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,
-                                              state->navigation_bar_visible);
-                            scrollbar_surface(ReferenceSurfaceRole::scrollbar_thumb, state->navigation_thumb_height,
-                                              state->navigation_bar_visible);
-                            scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->document_track_height,
-                                              state->document_bar_visible);
-                            scrollbar_surface(ReferenceSurfaceRole::scrollbar_thumb, state->document_thumb_height,
-                                              state->document_bar_visible);
+                            scrollbar_surface("gallery.shell.navigation.track", ReferenceSurfaceRole::scrollbar_track,
+                                              state->navigation_track_height, state->navigation_bar_visible);
+                            scrollbar_surface("gallery.shell.navigation.thumb", ReferenceSurfaceRole::scrollbar_thumb,
+                                              state->navigation_thumb_height, state->navigation_bar_visible);
+                            scrollbar_surface("gallery.shell.document.track", ReferenceSurfaceRole::scrollbar_track,
+                                              state->document_track_height, state->document_bar_visible);
+                            scrollbar_surface("gallery.shell.document.thumb", ReferenceSurfaceRole::scrollbar_thumb,
+                                              state->document_thumb_height, state->document_bar_visible);
                             ReferenceSurface(
                                 ReferenceSurfaceProps{}
+                                    .identity("gallery.shell.header")
                                     .role(ReferenceSurfaceRole::site_header)
                                     .layout(ryn::LayoutStyle{}
                                                 .width(state->gallery_width)
@@ -7248,6 +6833,9 @@ TokenGalleryDefinition make_token_gallery_definition() {
             case 3:
                 state->disabled.set(false);
                 state->loading.set(false);
+                for (auto& page : state->frame_pages) {
+                    page.finish_state_demo();
+                }
                 state->telemetry.state_updates += 2;
                 break;
             default:
@@ -7262,6 +6850,9 @@ TokenGalleryDefinition make_token_gallery_definition() {
             const auto navigation_width = metrics.navigation_width;
             const auto document_width = metrics.document_width;
             const auto next_cell_width = metrics.cell_width;
+            for (auto& page : state->frame_pages) {
+                page.set_width(document_width);
+            }
             if (state->gallery_width.get() != ryn::dp(content_width)) {
                 state->gallery_width.set(ryn::dp(content_width));
                 ++state->telemetry.viewport_updates;
@@ -7320,14 +6911,36 @@ TokenGalleryDefinition make_token_gallery_definition() {
         },
         [state] {
             auto result = state->telemetry;
+            for (const auto& page : state->frame_pages) {
+                const auto child = page.telemetry();
+                result.theme_content_runs += child.theme_content_runs;
+                result.activations += child.activations;
+                result.input_changes += child.input_changes;
+                result.input_submits += child.input_submits;
+                result.search_submits += child.search_submits;
+                result.live_samples += child.live_samples;
+            }
             const auto snapshot = ryn::resolve_theme(state->theme.get());
             result.snapshot_identity = snapshot.identity();
             result.snapshot_diagnostic = snapshot.diagnostic_json();
             return result;
         },
-        {stable_test_ids.begin(), stable_test_ids.end()},
+        {gallery_legacy_test_ids().begin(), gallery_legacy_test_ids().end()},
         navigation_control_count,
         [state] { return state->background_color; },
+        [state](std::string_view identity) {
+            const auto found = state->targets.find(std::string{identity});
+            if (found != state->targets.end()) {
+                return found->second;
+            }
+            for (const auto& page : state->frame_pages) {
+                const auto target = page.target(identity);
+                if (target.valid()) {
+                    return target;
+                }
+            }
+            return ryn::runtime::ComponentId{};
+        },
     };
     return definition;
 }

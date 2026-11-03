@@ -89,6 +89,7 @@ private:
 };
 
 [[nodiscard]] std::string_view gallery_input_family_name(GalleryInputFamily family) noexcept;
+[[nodiscard]] std::string_view gallery_page_empty_message(GallerySupportStatus status) noexcept;
 [[nodiscard]] std::string_view gallery_page_status_label(GallerySupportStatus status) noexcept;
 
 } // namespace rynui::example

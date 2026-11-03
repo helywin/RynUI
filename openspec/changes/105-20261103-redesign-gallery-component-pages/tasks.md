@@ -1,6 +1,6 @@
 # Tasks
 
-以下全部是后续 apply 工作；本轮规划完成不代表任何 checkbox 已实现。按依赖顺序推进，每阶段仅构建相关 target、运行受影响自动检查，结果记录实际平台/preset/configuration 与数量，原始产物只在 `out/`。C++ 修改阶段使用 clang-format 22.x，并运行 `python scripts/format-code.py --check` 与 `git diff --check`。
+以下为本 change 的 apply 跟踪；只有对应实现和自动验证完成才勾选，未完成阶段不代表已实现。按依赖顺序推进，每阶段仅构建相关 target、运行受影响自动检查，结果记录实际平台/preset/configuration 与数量，原始产物只在 `out/`。C++ 修改阶段使用 clang-format 22.x，并运行 `python scripts/format-code.py --check` 与 `git diff --check`。
 
 平台通用测试只选一个平台完成。默认采用 `windows-msvc-headless` Debug/Release（Ninja Multi-Config）；若通用逻辑已在 `linux-gcc` 完成，Windows 只补受影响 HEADLESS/MSVC 工具链集成，不重复整套通用 suite。Windows/Linux 原生结果独立完成，缺环境或失败不代打勾。
 
@@ -25,8 +25,8 @@
 - [x] 3.2 将上述组件的 Gallery frame 用例改为 page/sample/test ID 定位，自动验证 Button 状态、Input/Password/Search/TextArea/OTP 编辑与草稿、TreeSelect 目标/备注/Form/受控拒绝；运行对应页面定向用例及受影响组件测试。
 - [x] 3.3 迁移通用/布局/导航真实样例，包括 Typography/Divider 从目录卡移出、Flex/Space/Icon、Breadcrumb/Steps/Menu/Dropdown/Pagination/Tabs；完成标准为 3.4 的归属和原有交互断言通过。
 - [x] 3.4 更新这一批样例的页面自动用例，验证唯一主归属、关联入口、无关页面 factory 零调用和原有状态行为，构建相应 targets 并运行定向 CTest。
-- [ ] 3.5 迁移其余数据录入/展示/反馈样例与 Theme/Token 内容，拆分混合 add_* 函数，指定跨组件流程的主归属；对未实现/已弃用条目生成说明页；完成标准为 3.6 的全部旧 ID 映射与行为测试通过。
-- [ ] 3.6 自动核对旧 458 个 stable test ID 的 page/sample 或 shell/文档归属，校验 replacement 清单，移除全页固定 307 live samples 和全局 mounted 序号假设；执行迁移页面的定向 Gallery 测试，保留原功能断言而非仅更新数量。
+- [x] 3.5 迁移其余数据录入/展示/反馈样例与 Theme/Token 内容，拆分混合 add_* 函数，指定跨组件流程的主归属；对未实现/已弃用条目生成说明页；完成标准为 3.6 的全部旧 ID 映射与行为测试通过。
+- [x] 3.6 自动核对旧 458 个 stable test ID 的 page/sample 或 shell/文档归属，校验 replacement 清单，移除全页固定 307 live samples 和全局 mounted 序号假设；执行迁移页面的定向 Gallery 测试，保留原功能断言而非仅更新数量。
 - [ ] 3.7 为已登记样例提供可展开的原生 C++ 片段、真实 public header/API/token 入口，自动验证片段与样例出处、公开符号和有效路径；本阶段只检查登记片段，不生成未实现 API 或完整 Web API 表。
 
 ## 4. 文档 shell、滚动与交互（平台通用，依赖 3）

@@ -37,6 +37,7 @@ struct GallerySamplePage final {
     std::function<ryn::runtime::ComponentId(std::string_view)> target;
     std::function<void(const ryn::ThemeConfig&)> set_theme;
     std::function<std::optional<ryn::ThemeConfig>()> take_theme_request;
+    std::function<void()> finish_state_demo;
 };
 
 struct GalleryRelatedSample final {

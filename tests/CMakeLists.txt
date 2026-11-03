@@ -2028,6 +2028,10 @@ target_compile_definitions(rynui_gallery_sample_page_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.gallery_sample_page COMMAND rynui_gallery_sample_page_tests)
+foreach(gallery_frame_case IN ITEMS select-card-tabs common data panels states forms time-picker date-picker navigation details-loading overlays-timeline members-metrics tree-autocomplete modal)
+    add_test(NAME rynui.gallery_page_${gallery_frame_case}_frame COMMAND rynui_token_gallery_frame_tests --${gallery_frame_case}-only)
+endforeach()
+
 rynui_configure_cpp_target(rynui_gallery_document_model_tests)
 target_link_libraries(
     rynui_gallery_document_model_tests

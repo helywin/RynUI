@@ -1,6 +1,6 @@
 # Gallery 组件页面
 
-Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-20261103-redesign-gallery-component-pages/design.md) 分阶段实施。页面模型和内部页面宿主已经实现；真实样例与界面迁移仍按该 change 的未完成任务推进，内部夹具通过不代表原生界面已替换。
+Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-20261103-redesign-gallery-component-pages/design.md) 分阶段实施。页面模型、内部页面宿主和真实样例工厂已经实现；正式界面迁移仍按该 change 的未完成任务推进，内部夹具通过不代表原生界面已替换。
 
 ## 页面身份与目录状态
 
@@ -28,7 +28,7 @@ Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-2026110
 
 ## 样例登记与迁移
 
-[GallerySampleDescriptor](../../examples/token_gallery/gallery_sample_registry.hpp) 登记稳定 sample identity、canonical page/family、标题、实际 C++ 构造函数和公开头文件。当前登记 48 个组件页的 63 个真实样例组，以及 Design Token 页的 4 组主题、色板、尺度和阴影。其余有原生范围声明的 Notification、ConfigProvider 提供关联入口，分别指向 Message 联合流程与 Token 页；没有制造独立实现。每次只运行对应 page/family 的构造函数；其他条目的目录状态不因暂未迁移样例而改变。完整 458 个历史 ID 的归属核对与旧 frame 用例迁移仍按 change 的后续任务推进。
+[GallerySampleDescriptor](../../examples/token_gallery/gallery_sample_registry.hpp) 登记稳定 sample identity、canonical page/family、标题、实际 C++ 构造函数和公开头文件。当前登记 48 个组件页的 63 个真实样例组，以及 Design Token 页的 4 组主题、色板、尺度和阴影。其余有原生范围声明的 Notification、ConfigProvider 提供关联入口，分别指向 Message 联合流程与 Token 页；没有制造独立实现。每次只运行对应 page/family 的构造函数；其他条目的目录状态不因暂未迁移样例而改变。[旧身份清单](../../examples/token_gallery/gallery_test_inventory.cpp) 为全部 458 个历史 ID 指定唯一主 sample，并显式列出 4 项 replacement；caption/Token 同样有 sample 归属，不伪称都对应交互控件。四项 replacement 在实际活动页中解析并检查所属 sample。
 
 活动页的 `target(test_id)` 直接解析构造时登记的组件身份。登记只发生在 mount，并由所属组件的 resource cleanup 删除；测试通过 sample owner 验证归属。滚动和普通属性更新不扫描正文文案，不使用全局 mounted 数组偏移定位目标。这些运行时 ID 只属于当前页面状态，不进入 `GalleryPageDraft`。
 
@@ -58,4 +58,6 @@ ctest --preset linux-gcc-release -R '^rynui\.gallery_page_(model|controller)$' -
 
 [样例页面夹具](../../tests/gallery_sample_page_tests.cpp) 的定向入口为 `rynui.gallery_sample_page`（target `rynui_gallery_sample_page_tests`）。它遍历全部 73 个 canonical 路由和 Token 页，验证真实工厂隔离、关联路由、稳定 ID、编辑与跨页草稿、Button 变体与延迟加载/ref、Search 键盘提交、OTP 粘贴分发/敏感清空、TreeSelect 选择/Form/受控拒绝，以及同页 Theme/resize 的身份保留。
 
-已有 frame binary 的 `--input-only` / `--tree-select-only` 现已直接挂载相应页面工厂，并用登记目标定位；对应 CTest 为 `rynui.gallery_page_input_frame` / `rynui.gallery_page_tree_select_frame`。Input 家族按组依次追加/退役，保持编辑、剪贴板、提交、场景身份与 idle 检查；TreeSelect 保留三种主题与 1200/560 宽度的 glyph/fill/hit/focus/popup 检查。其他历史 frame 用例仍在迁移，不能以首批通过代表所有页面完成；新目录 shell 的交互/几何由后续 viewport 阶段验证。
+已有 frame binary 的 `--input-only` / `--tree-select-only` 现已直接挂载相应页面工厂，并用登记目标定位；对应 CTest 为 `rynui.gallery_page_input_frame` / `rynui.gallery_page_tree_select_frame`。Input 家族按组依次追加/退役，保持编辑、剪贴板、提交、场景身份与 idle 检查；TreeSelect 保留三种主题与 1200/560 宽度的 glyph/fill/hit/focus/popup 检查。其余组件渲染用例已改为从登记工厂构造所需页面，Card/Tabs/Modal 编辑器与 Select 直接使用 test ID，阴影、目录卡、章节与滚动条按具名身份定位；不再断言全页 307 live samples 或其前后固定数组偏移。涉及多组件的历史渲染断言使用显式路由列表的内部兼容夹具，单活动页与退役仍由页面夹具验证。兼容夹具保留旧目录外壳，只用于有限自动回归，不是第二种交互产品模式。新目录 shell 的交互/几何由后续 viewport 阶段验证。
+
+迁移后的组件 frame 定向入口为 `rynui.gallery_page_<group>_frame`，例如 `ctest --preset linux-gcc-release -R '^rynui.gallery_page_time-picker_frame$' --output-on-failure`；修改局部页面时只运行受影响组。TimePicker 的选中填充同时检查 Quad 与共同裁剪填充 RoundedEffect，颜色、实际覆盖和列/弹层边界仍受断言约束；window layer 按实际窗口边界检查，正文保留自己的 content clip。

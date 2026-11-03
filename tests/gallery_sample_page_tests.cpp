@@ -1,4 +1,5 @@
 #include "gallery_sample_registry.hpp"
+#include "gallery_test_inventory.hpp"
 #include "gallery_page_controller.hpp"
 #include "component/otp_component.hpp"
 #include "component/modal_component.hpp"
@@ -177,6 +178,34 @@ struct Fixture final : ryn_test::input_component::Fixture {
     }
 };
 
+void test_legacy_identity_ownership() {
+    Fixture f;
+    const auto targets = gallery_legacy_test_targets();
+    require(targets.size() == 458 && gallery_legacy_test_ids().size() == targets.size(),
+            "frozen legacy identity inventory was truncated");
+    std::set<std::string_view> identities;
+    for (const auto& target : targets) {
+        require(identities.insert(target.identity).second, "legacy identity has multiple primary owners");
+        const auto owner =
+            std::ranges::find(gallery_samples(), target.sample_identity, &GallerySampleDescriptor::identity);
+        require(owner != gallery_samples().end(), "legacy identity has no registered sample owner");
+        const GalleryPageRoute route{owner->kind, std::string{owner->component_identity}, owner->family};
+        require(f.model.valid(route), "legacy identity owner has an invalid route");
+        if (!target.replacement.empty()) {
+            f.pages->request(route);
+            f.pages->process();
+            require(!f.pages->failed() && f.model.current() == route, "replacement owner page mount failed");
+            f.sync();
+            require(f.active.target(target.replacement).valid() &&
+                        f.within(f.active.target(target.replacement), f.sample(target.sample_identity)),
+                    "legacy replacement is absent or belongs to another sample");
+        }
+        if (target.identity.starts_with("ant.")) {
+            require(ryn::find_ant_design_token(target.identity), "legacy Token has no catalog entry");
+        }
+    }
+}
+
 void test_registry_and_factory_isolation() {
     Fixture f;
     std::set<std::string_view> identities;
@@ -205,6 +234,21 @@ void test_registry_and_factory_isolation() {
         require(f.active.telemetry().content_runs == 1, "page content was reconstructed during layout");
     }
     require(f.inputs.mounted_inputs().empty() && f.buttons.mounted_buttons().empty(), "Upload mounted a fake demo");
+    require(
+        std::ranges::any_of(f.services.text().mounted_texts(),
+                            [&](const auto& text) {
+                                return f.scene.text_state(text.scene).content().bytes().find("尚未提供稳定原生组件") !=
+                                       std::string_view::npos;
+                            }),
+        "Upload omitted its honest explanation");
+    f.show("ant.component.list");
+    require(std::ranges::any_of(f.services.text().mounted_texts(),
+                                [&](const auto& text) {
+                                    return f.scene.text_state(text.scene).content().bytes().find("已弃用") !=
+                                           std::string_view::npos;
+                                }) &&
+                f.buttons.mounted_buttons().empty(),
+            "List lost its deprecated explanation or mounted a fake demo");
 }
 
 void test_complete_catalog_and_related_routes() {
@@ -652,6 +696,7 @@ void test_layout_and_navigation_pages() {
 
 int main() {
     try {
+        test_legacy_identity_ownership();
         test_registry_and_factory_isolation();
         test_complete_catalog_and_related_routes();
         test_input_semantics_and_draft_round_trip();
