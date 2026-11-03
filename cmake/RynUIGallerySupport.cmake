@@ -66,3 +66,12 @@ target_link_libraries(
     PUBLIC rynui_token_gallery_definition
     PRIVATE rynui_components
 )
+
+add_library(rynui_gallery_pages_host STATIC
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_pages_host.cpp")
+rynui_configure_cpp_target(rynui_gallery_pages_host)
+target_compile_options(rynui_gallery_pages_host PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
+target_include_directories(rynui_gallery_pages_host PUBLIC "${PROJECT_SOURCE_DIR}/examples/token_gallery"
+    PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_gallery_pages_host PUBLIC
+    rynui_token_gallery_reference_surface rynui_token_gallery_document_viewport PRIVATE rynui_components)

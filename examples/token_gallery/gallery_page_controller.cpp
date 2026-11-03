@@ -292,7 +292,7 @@ void GalleryPageController::set_anchor(GalleryPageAnchor anchor) {
     if (!std::isfinite(anchor.distance)) {
         throw std::invalid_argument("Gallery page anchor distance must be finite");
     }
-    drafts_[gallery_page_state_key(model_->current())].anchor = std::move(anchor);
+    drafts_[gallery_page_state_key(active_ ? active_route_ : model_->current())].anchor = std::move(anchor);
 }
 
 void GalleryPageController::shutdown() noexcept {

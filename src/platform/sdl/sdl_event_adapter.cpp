@@ -100,6 +100,8 @@ std::optional<Key> map_key(SDL_Keycode key) noexcept {
         return Key::v;
     case SDLK_Z:
         return Key::z;
+    case SDLK_K:
+        return Key::k;
     case SDLK_Y:
         return Key::y;
     default:

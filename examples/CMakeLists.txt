@@ -51,6 +51,7 @@ endif()
 add_executable(
     rynui_token_gallery
     token_gallery/main.cpp
+    token_gallery/gallery_pages_runtime.cpp
     token_gallery/token_gallery_runtime.cpp
     token_gallery/typography_acceptance.cpp
     token_gallery/select_acceptance.cpp
@@ -77,6 +78,7 @@ rynui_configure_cpp_target(rynui_token_gallery)
 target_link_libraries(
     rynui_token_gallery
     PRIVATE
+        rynui_gallery_pages_host
         rynui_token_gallery_definition
         rynui_token_gallery_reference_surface
         rynui_token_gallery_document_viewport

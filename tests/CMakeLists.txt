@@ -2825,3 +2825,12 @@ if(TARGET shadercross)
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_shadercross_override.cmake"
     )
 endif()
+
+add_executable(rynui_gallery_pages_host_tests gallery_pages_host_tests.cpp)
+rynui_configure_cpp_target(rynui_gallery_pages_host_tests)
+target_include_directories(rynui_gallery_pages_host_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_gallery_pages_host_tests PRIVATE rynui_gallery_pages_host rynui_components)
+target_compile_definitions(rynui_gallery_pages_host_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.gallery_pages_host COMMAND rynui_gallery_pages_host_tests)

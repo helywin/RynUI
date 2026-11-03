@@ -31,6 +31,7 @@ struct Fixture final : ryn_test::input_component::Fixture {
     std::size_t saves{};
     bool throw_mount{};
     bool reenter_retire{};
+    bool capture_anchor{};
     GalleryScrollbarController scrollbar;
     std::size_t activations{};
     Signal<ThemeConfig> theme{ThemeConfig{}};
@@ -80,6 +81,9 @@ struct Fixture final : ryn_test::input_component::Fixture {
                             },
                             [this] {
                                 static_cast<void>(scrollbar.reset());
+                                if (capture_anchor) {
+                                    pages->set_anchor({"retired", 17});
+                                }
                                 if (reenter_retire) {
                                     require(!pages->ticket().valid() && !pages->process(),
                                             "retirement allowed reentrant mounting");
@@ -141,6 +145,12 @@ void test_deferred_navigation_drafts_and_session_retirement() {
     require(f.value->get() == String{u8"saved draft"} && f.pages->draft().anchor.identity == "support" &&
                 f.pages->draft().anchor.distance == 12 && f.pages->root() != old_root,
             "committed draft or anchor was not restored with a new owner");
+    f.capture_anchor = true;
+    f.show("ant.component.button");
+    f.capture_anchor = false;
+    f.show("ant.component.input");
+    require(f.pages->draft().anchor.identity == "retired" && f.pages->draft().anchor.distance == 17,
+            "retirement stored the old anchor under the incoming route");
     const auto identity = f.pages->root();
     const auto builds = f.builds;
     auto route = f.model.current();

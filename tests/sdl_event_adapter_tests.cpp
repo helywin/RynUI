@@ -125,6 +125,7 @@ void test_editing_key_mapping() {
                           std::pair{SDLK_DOWN, Key::down},
                           std::pair{SDLK_PAGEUP, Key::page_up},
                           std::pair{SDLK_PAGEDOWN, Key::page_down},
+                          std::pair{SDLK_K, Key::k},
                           std::pair{SDLK_HOME, Key::home},
                           std::pair{SDLK_END, Key::end},
                           std::pair{SDLK_BACKSPACE, Key::backspace},

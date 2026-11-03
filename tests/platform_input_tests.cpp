@@ -67,6 +67,8 @@ void test_keyboard_repeat_and_modifiers() {
     require(ryn::input::has_modifier(repeated_tab.modifiers, KeyModifier::shift), "shift modifier was lost");
     require(ryn::input::has_modifier(repeated_tab.modifiers, KeyModifier::control), "control modifier was lost");
     require(!ryn::input::has_modifier(repeated_tab.modifiers, KeyModifier::alt), "unexpected alt modifier was added");
+    require(ryn::input::is_valid(KeyboardInputEvent{Key::k, KeyAction::down, KeyModifier::control}),
+            "Ctrl+K platform key was rejected");
     auto invalid_primary = repeated_tab;
     invalid_primary.primary_modifier = KeyModifier::alt;
     require(!ryn::input::is_valid(invalid_primary), "invalid shortcut primary modifier accepted");

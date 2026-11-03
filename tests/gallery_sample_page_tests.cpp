@@ -43,8 +43,10 @@ struct Fixture final : ryn_test::input_component::Fixture {
     GallerySamplePage active;
     std::unique_ptr<GalleryPageController> pages;
     Signal<ThemeConfig> theme{ThemeConfig{}};
+    bool readable{};
+    std::size_t footer_calls{};
 
-    Fixture() {
+    explicit Fixture(bool readable_labels = false) : readable(readable_labels) {
         surfaces.mount(Content{[this] {
                            Theme(ThemeProps{}.config(theme),
                                  ThemeContent{[] { Flex(FlexProps{}.vertical(true).align(FlexAlign::Start), [] {}); }});
@@ -53,7 +55,15 @@ struct Fixture final : ryn_test::input_component::Fixture {
         const auto holder = services.components().root_components().front();
         pages = std::make_unique<GalleryPageController>(
             surfaces, model, frames, holder, [this](const GalleryPageRoute& route, const GalleryPageDraft& draft) {
-                active = make_gallery_sample_page(route, draft);
+                GallerySamplePageOptions options;
+                options.readable_labels = readable;
+                if (readable) {
+                    options.footer = [this](const GallerySampleDescriptor&, Signal<LogicalLength> width) {
+                        ++footer_calls;
+                        Text(TextProps{}.content(u8"C++ 源码入口").layout(LayoutStyle{}.width(width)));
+                    };
+                }
+                active = make_gallery_sample_page(route, draft, std::move(options));
                 active.set_width(760);
                 active.set_theme(theme.get());
                 return GalleryPageContent{active.content, active.save, {}};
@@ -529,6 +539,35 @@ void test_button_search_and_otp_contracts() {
             "OTP secret survived a family round trip");
 }
 
+void test_readable_labels_and_sample_footers() {
+    Fixture f{true};
+    for (const auto id : {"input", "select", "form", "tree-select", "time-picker", "descriptions", "avatar"}) {
+        f.footer_calls = 0;
+        f.show(std::string{"ant.component."} + id);
+        f.verify_factories();
+        std::size_t expected{};
+        for (const auto& sample : gallery_samples()) {
+            expected += sample.component_identity == f.model.current().component_identity &&
+                        sample.family == f.model.current().family;
+        }
+        require(f.footer_calls == expected, "sample footer escaped current page ownership");
+        for (const auto& mounted : f.services.text().mounted_texts()) {
+            if (f.scene.text_state(mounted.scene).content().bytes().starts_with("gallery.")) {
+                throw std::runtime_error("production caption on " + std::string{id} + ": " +
+                                         std::string{f.scene.text_state(mounted.scene).content().bytes()});
+            }
+        }
+    }
+    f.show("ant.component.input");
+    f.replace(f.editor("gallery.sample.input.basics", "gallery.input.uncontrolled"), String{u8"gallery.user · 用户值"});
+    f.show("ant.component.upload");
+    f.show("ant.component.input");
+    require(f.inputs.editors()
+                    .require(f.editor("gallery.sample.input.basics", "gallery.input.uncontrolled").editor)
+                    .value() == "gallery.user · 用户值",
+            "readable captions altered a committed user draft");
+}
+
 void test_remaining_workflows_and_drafts() {
     Fixture f;
     f.show("ant.component.select");
@@ -720,6 +759,7 @@ int main() {
         test_button_search_and_otp_contracts();
         test_layout_and_navigation_pages();
         test_remaining_workflows_and_drafts();
+        test_readable_labels_and_sample_footers();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -31,12 +31,12 @@
 
 ## 4. 文档 shell、滚动与交互（平台通用，依赖 3）
 
-- [ ] 4.1 实现顶栏、目录搜索/筛选/分类、总览、组件标题/状态/能力区、示例卡与 TOC，参考 design 尺寸和主题映射；完成标准为 4.5 的内容/几何/导航断言通过。
-- [ ] 4.2 实现宽/中/窄布局、窄目录输入边界、代码区域横向滚动、Default/Dark/Compact 及主题设置；完成标准为 4.5 的 1440/960/728/480/360 布局、theme identity 和无不可达内容断言通过。
-- [ ] 4.3 将固定六 section/category 全文锚点改为当前 page generation 的具名锚点，替换 scrollbar 尾部索引与全局文案扫描；保留嵌套输入优先 wheel、目录/正文独立 scroll 和最小 translation；完成标准为 4.5 的 clamp/恢复/消费路由断言通过。
-- [ ] 4.4 实现 Tab/Shift+Tab、Enter/Space、Ctrl+K、Escape、进入示例/TOC 控件与可见焦点恢复；composition 和模态边界内不抢键，编辑器拥有其 Page/Home/End；完成标准为 4.5 的键盘/边界用例通过。
-- [ ] 4.5 扩展 gallery viewport/frame 自动回归与源合同，覆盖 resize 往返、导航与正文独立滚动、过滤不卸页、TOC 不切页、popup wheel、焦点显露和窄目录关闭；构建相关 targets，运行 `rynui.gallery_document_viewport`、相关 contract 及新页面/键盘用例。
-- [ ] 4.6 更新 Gallery 使用说明和测试入口文档，自动检查现行页面入口、snippet/TOC identity 与命令参数一致，运行格式、OpenSpec doctor/strict 和 diff 检查。
+- [x] 4.1 实现顶栏、目录搜索/筛选/分类、总览、组件标题/状态/能力区、示例卡与 TOC，参考 design 尺寸和主题映射；完成标准为 4.5 的内容/几何/导航断言通过。
+- [x] 4.2 实现宽/中/窄布局、窄目录输入边界、代码区域横向滚动、Default/Dark/Compact 及主题设置；完成标准为 4.5 的 1440/960/728/480/360 布局、theme identity 和无不可达内容断言通过。
+- [x] 4.3 将固定六 section/category 全文锚点改为当前 page generation 的具名锚点，替换 scrollbar 尾部索引与全局文案扫描；保留嵌套输入优先 wheel、目录/正文独立 scroll 和最小 translation；完成标准为 4.5 的 clamp/恢复/消费路由断言通过。
+- [x] 4.4 实现 Tab/Shift+Tab、Enter/Space、Ctrl+K、Escape、进入示例/TOC 控件与可见焦点恢复；composition 和模态边界内不抢键，编辑器拥有其 Page/Home/End；完成标准为 4.5 的键盘/边界用例通过。
+- [x] 4.5 扩展 gallery viewport/frame 自动回归与源合同，覆盖 resize 往返、导航与正文独立滚动、过滤不卸页、TOC 不切页、popup wheel、焦点显露和窄目录关闭；构建相关 targets，运行 `rynui.gallery_document_viewport`、相关 contract 及新页面/键盘用例。
+- [x] 4.6 更新 Gallery 使用说明和测试入口文档，自动检查现行页面入口、snippet/TOC identity 与命令参数一致，运行格式、OpenSpec doctor/strict 和 diff 检查。
 
 ## 5. 工作量边界与自动平台入口（平台通用，依赖 4）
 

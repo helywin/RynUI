@@ -94,6 +94,7 @@ enum class Key : std::uint8_t {
     down,
     page_up,
     page_down,
+    k,
 };
 
 enum class KeyAction : std::uint8_t {

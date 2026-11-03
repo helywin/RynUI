@@ -281,12 +281,20 @@ void apply_elevated(ReferenceSurfaceHost& host, ryn::runtime::ComponentId compon
 
 void apply_visible(ReferenceSurfaceHost& host, ryn::runtime::ComponentId component, bool visible) {
     auto* state = host.find_state(component);
-    if (state == nullptr || state->visible == visible) {
+    if (state == nullptr) {
+        return;
+    }
+    auto& components = host.application().components();
+    if (components.set_branch_active(component, visible)) {
+        host.application().services().mark_scene_structure_dirty();
+        host.application().dirty().invalidate(state->node,
+                                              ryn::runtime::DirtyFlags::Structure | ryn::runtime::DirtyFlags::HitTest);
+    }
+    if (state->visible == visible) {
         return;
     }
     state->visible = visible;
     refresh_material(host, *state);
-    auto& components = host.application().components();
     auto& text_host = host.application().text();
     auto& scenes = text_host.scene_service();
     for (const auto& mounted : text_host.mounted_texts()) {

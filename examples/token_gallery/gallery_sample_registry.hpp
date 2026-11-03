@@ -28,6 +28,11 @@ struct GallerySampleDescriptor final {
     GalleryPageKind kind{GalleryPageKind::component};
 };
 
+struct GallerySamplePageOptions final {
+    bool readable_labels{};
+    std::function<void(const GallerySampleDescriptor&, ryn::Signal<ryn::LogicalLength>)> footer;
+};
+
 struct GallerySamplePage final {
     ryn::Content content{[] {}};
     std::function<void(GalleryPageDraft&)> save;
@@ -52,6 +57,7 @@ struct GalleryRelatedSample final {
 
 [[nodiscard]] std::span<const GallerySampleDescriptor> gallery_samples() noexcept;
 [[nodiscard]] std::span<const GalleryRelatedSample> gallery_related_samples() noexcept;
-[[nodiscard]] GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const GalleryPageDraft& draft);
+[[nodiscard]] GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const GalleryPageDraft& draft,
+                                                         GallerySamplePageOptions options = {});
 
 } // namespace rynui::example
