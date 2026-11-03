@@ -21,7 +21,7 @@
 
 ## 3. 逐页迁移真实样例（平台通用，依赖 2）
 
-- [ ] 3.1 提取 Button、Input 五分组和 TreeSelect 样例及 C++/头文件映射，保留现有 typed Props、controlled/uncontrolled 与流程语义；完成标准为 3.2 的原有行为断言及 factory 隔离通过。
+- [x] 3.1 提取 Button、Input 五分组和 TreeSelect 样例及 C++/头文件映射，保留现有 typed Props、controlled/uncontrolled 与流程语义；完成标准为 3.2 的原有行为断言及 factory 隔离通过。
 - [ ] 3.2 将上述组件的 Gallery frame 用例改为 page/sample/test ID 定位，自动验证 Button 状态、Input/Password/Search/TextArea/OTP 编辑与草稿、TreeSelect 目标/备注/Form/受控拒绝；运行对应页面定向用例及受影响组件测试。
 - [ ] 3.3 迁移通用/布局/导航真实样例，包括 Typography/Divider 从目录卡移出、Flex/Space/Icon、Breadcrumb/Steps/Menu/Dropdown/Pagination/Tabs；完成标准为 3.4 的归属和原有交互断言通过。
 - [ ] 3.4 更新这一批样例的页面自动用例，验证唯一主归属、关联入口、无关页面 factory 零调用和原有状态行为，构建相应 targets 并运行定向 CTest。

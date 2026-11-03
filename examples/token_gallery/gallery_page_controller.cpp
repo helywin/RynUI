@@ -90,7 +90,10 @@ void GalleryPageController::retire(bool save) {
             failure = std::current_exception();
         }
     } else if (sensitive(active_route_)) {
-        drafts_.erase(gallery_page_state_key(active_route_));
+        const auto found = drafts_.find(gallery_page_state_key(active_route_));
+        if (found != drafts_.end()) {
+            found->second.values.clear();
+        }
     }
     try {
         auto& application = surfaces_->application();
@@ -281,9 +284,6 @@ std::size_t GalleryPageController::cached_pages() const noexcept {
 }
 
 const GalleryPageDraft& GalleryPageController::draft() const {
-    if (sensitive(model_->current())) {
-        return empty_draft;
-    }
     const auto found = drafts_.find(gallery_page_state_key(model_->current()));
     return found == drafts_.end() ? empty_draft : found->second;
 }
@@ -292,9 +292,7 @@ void GalleryPageController::set_anchor(GalleryPageAnchor anchor) {
     if (!std::isfinite(anchor.distance)) {
         throw std::invalid_argument("Gallery page anchor distance must be finite");
     }
-    if (!sensitive(model_->current())) {
-        drafts_[gallery_page_state_key(model_->current())].anchor = std::move(anchor);
-    }
+    drafts_[gallery_page_state_key(model_->current())].anchor = std::move(anchor);
 }
 
 void GalleryPageController::shutdown() noexcept {

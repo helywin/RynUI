@@ -3,6 +3,7 @@
 #include "ant_design_reference_catalog.hpp"
 #include "gallery_document_model.hpp"
 #include "gallery_layout.hpp"
+#include "gallery_sample_registry.hpp"
 #include "reference_surface.hpp"
 #include "icon_samples.hpp"
 
@@ -42,6 +43,19 @@ std::vector<GalleryRecord> gallery_records() {
 }
 
 struct GalleryState final {
+    GalleryPageDraft draft;
+    GalleryInputFamily page_family{};
+    bool register_targets{};
+    std::map<std::string, ryn::runtime::ComponentId> targets;
+
+    ryn::String initial(std::string_view key, ryn::String fallback) const {
+        return ryn::String::from_utf8(draft.get<std::string>(std::string{key}, std::string{fallback.bytes()})).value();
+    }
+
+    void remember(std::string_view key, const ryn::String& value) {
+        draft.values[std::string{key}] = std::string{value.bytes()};
+    }
+
     ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
     ryn::Color background_color{ryn::Color::rgba8(255, 255, 255)};
     ryn::Signal<ryn::LogicalLength> gallery_width{ryn::dp(1120.0F)};
@@ -363,6 +377,51 @@ struct GalleryState final {
         }
     }
 };
+
+void remember_target(const std::shared_ptr<GalleryState>& state, std::string_view identity) {
+    if (!state->register_targets) {
+        return;
+    }
+    auto& build = ryn::runtime::require_component_build_context();
+    auto& host = build.host();
+    std::optional<ryn::runtime::ComponentId> parent;
+    for (const auto root : host.root_components()) {
+        if (build.has_ancestor(root)) {
+            parent = root;
+            break;
+        }
+    }
+    if (!parent) {
+        throw std::logic_error("Gallery test target requires a sample owner");
+    }
+    while (true) {
+        std::optional<ryn::runtime::ComponentId> child;
+        for (const auto candidate : host.children(*parent)) {
+            if (build.has_ancestor(candidate)) {
+                child = candidate;
+                break;
+            }
+        }
+        if (!child) {
+            break;
+        }
+        parent = child;
+    }
+    const auto& children = host.children(*parent);
+    if (children.empty()) {
+        throw std::logic_error("Gallery test target has no mounted component");
+    }
+    const auto component = children.back();
+    const auto key = std::string{identity};
+    if (!state->targets.emplace(key, component).second) {
+        throw std::logic_error("Gallery test target identity is duplicated: " + key);
+    }
+    build.on_resource_cleanup(component, [weak = std::weak_ptr{state}, key] {
+        if (const auto state = weak.lock()) {
+            state->targets.erase(key);
+        }
+    });
+}
 
 const std::size_t navigation_control_count = 20 + ant_design_reference_entries().size();
 
@@ -1285,16 +1344,15 @@ void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view 
                    ryn::Button(std::move(props), [text] { ryn::Text(text); });
                    ++state->telemetry.live_samples;
                }});
+    remember_target(state, test_id);
 }
 
-void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
-    section_surface(state, gallery_document_sections()[5]);
+void add_theme_button_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Space(
         ryn::SpaceProps{}
-            .align(ryn::SpaceAlign::Start)
             .wrap(true)
             .align(ryn::SpaceAlign::Center)
-            .size(ryn::dp(8.0F), ryn::dp(8.0F))
+            .size(ryn::dp(8))
             .layout(ryn::LayoutStyle{}.width(state->document_width)),
         [state] {
             themed_button(state, "gallery.theme.default", "Default", algorithm_config(ryn::ThemeAlgorithm::Default),
@@ -1315,18 +1373,31 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
             auto nested = algorithm_config(ryn::ThemeAlgorithm::Dark);
             nested.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
             themed_button(state, "gallery.theme.nested-brand", "Dark + Purple Seed", nested, ryn::ButtonType::Primary);
-            const auto& defaults = ryn::detail::default_theme_config();
-            themed_button(state, "gallery.state.default", "Default", defaults);
-            themed_button(state, "gallery.state.primary", "Primary", defaults, ryn::ButtonType::Primary);
-            themed_button(state, "gallery.state.danger", "Danger", defaults, ryn::ButtonType::Danger);
-            themed_button(state, "gallery.state.hover", "Hover me / 悬停", defaults);
-            themed_button(state, "gallery.state.active", "Press me / 按下", defaults);
-            themed_button(state, "gallery.state.focus-visible", "Tab focus / 键盘焦点", defaults);
-            themed_button(state, "gallery.state.disabled", "Disabled / 禁用", defaults, ryn::ButtonType::Default,
-                          ryn::ControlSize::Middle, state->disabled);
-            themed_button(state, "gallery.state.loading", "Loading / 加载", defaults, ryn::ButtonType::Primary,
-                          ryn::ControlSize::Middle, false, state->loading);
         });
+}
+
+void add_button_base_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Space(ryn::SpaceProps{}
+                   .wrap(true)
+                   .align(ryn::SpaceAlign::Center)
+                   .size(ryn::dp(8))
+                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
+               [state] {
+                   const auto& defaults = ryn::detail::default_theme_config();
+                   themed_button(state, "gallery.state.default", "Default", defaults);
+                   themed_button(state, "gallery.state.primary", "Primary", defaults, ryn::ButtonType::Primary);
+                   themed_button(state, "gallery.state.danger", "Danger", defaults, ryn::ButtonType::Danger);
+                   themed_button(state, "gallery.state.hover", "Hover me / 悬停", defaults);
+                   themed_button(state, "gallery.state.active", "Press me / 按下", defaults);
+                   themed_button(state, "gallery.state.focus-visible", "Tab focus / 键盘焦点", defaults);
+                   themed_button(state, "gallery.state.disabled", "Disabled / 禁用", defaults, ryn::ButtonType::Default,
+                                 ryn::ControlSize::Middle, state->disabled);
+                   themed_button(state, "gallery.state.loading", "Loading / 加载", defaults, ryn::ButtonType::Primary,
+                                 ryn::ControlSize::Middle, false, state->loading);
+               });
+}
+
+void add_input_base_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Input / 输入家族 · 原生桌面功能");
     ryn::Text(u8"支持：四变体、统计/上限、ref/系统提示、清空、Unicode 编辑与 IME");
     ryn::Text(u8"Input / Password / Search / TextArea / OTP：双向排版、视觉导航与逻辑编辑");
@@ -1338,6 +1409,7 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                [state] {
                    ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
                                   ++state->telemetry.theme_content_runs;
+                                  ryn::Text(u8"gallery.input.controlled · 受控输入");
                                   ryn::Input(ryn::InputProps{}
                                                  .value(state->input_value)
                                                  .placeholder(u8"受控：输入中文 / Latin / emoji")
@@ -1357,16 +1429,20 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                                                  .layout(ryn::LayoutStyle{}.width(state->cell_width)),
                                              ryn::InputPrefix{[] { ryn::Text(u8"前"); }},
                                              ryn::InputSuffix{[] { ryn::Text(u8"32"); }});
+                                  remember_target(state, "gallery.input.controlled");
                                   ++state->telemetry.live_samples;
                               }});
                    ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
                                   ++state->telemetry.theme_content_runs;
+                                  ryn::Text(u8"gallery.input.uncontrolled · 非受控输入");
                                   ryn::Input(ryn::InputProps{}
-                                                 .defaultValue(u8"非受控 / Input")
+                                                 .defaultValue(state->initial("gallery.input.uncontrolled",
+                                                                              ryn::String{u8"非受控 / Input"}))
                                                  .placeholder(u8"清空后显示 placeholder")
                                                  .allowClear(true)
                                                  .disabled(state->clear_disabled)
                                                  .onChange([state](ryn::String next) {
+                                                     state->remember("gallery.input.uncontrolled", next);
                                                      ++state->telemetry.input_changes;
                                                      state->input_feedback.set(std::move(next));
                                                  })
@@ -1375,57 +1451,78 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                                                      state->input_feedback.set(std::move(next));
                                                  })
                                                  .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+                                  remember_target(state, "gallery.input.uncontrolled");
                                   ++state->telemetry.live_samples;
                               }});
                });
     ryn::Text(ryn::TextProps{}.content(state->input_feedback));
+}
+
+void add_search_base_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Search / 搜索 · 原生单行功能：复用 Input、Button 与 Compact");
     ryn::Text(u8"支持：四变体、全部共用属性、自定义图标、清空来源与连接外观");
-    ryn::Space(ryn::SpaceProps{}
-                   .align(ryn::SpaceAlign::Start)
-                   .wrap(true)
-                   .size(ryn::dp(8.0F))
-                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
-               [state] {
-                   ryn::Search(ryn::SearchProps{}
-                                   .value(state->search_value)
-                                   .placeholder(u8"输入搜索词 / Search")
-                                   .onChange([state](ryn::String next) { state->search_value.set(std::move(next)); })
-                                   .onSearch([state](ryn::String next, ryn::SearchSource) {
-                                       ++state->telemetry.search_submits;
-                                       state->search_feedback.set(std::move(next));
-                                   })
-                                   .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-                   ++state->telemetry.live_samples;
-                   ryn::Search(ryn::SearchProps{}
-                                   .defaultValue(u8"RynUI")
-                                   .size(ryn::ControlSize::Large)
-                                   .enterButton(true)
-                                   .onSearch([state](ryn::String next, ryn::SearchSource) {
-                                       ++state->telemetry.search_submits;
-                                       state->search_feedback.set(std::move(next));
-                                   })
-                                   .layout(ryn::LayoutStyle{}.width(state->cell_width)),
-                               ryn::SearchButtonContent{[] { ryn::Text(u8"查询"); }});
-                   ++state->telemetry.live_samples;
-                   ryn::Search(ryn::SearchProps{}
-                                   .defaultValue(u8"Small / 小号")
-                                   .size(ryn::ControlSize::Small)
-                                   .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-                   ++state->telemetry.live_samples;
-                   ryn::Search(ryn::SearchProps{}
-                                   .defaultValue(u8"loading")
-                                   .enterButton(true)
-                                   .loading(state->loading)
-                                   .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-                   ++state->telemetry.live_samples;
-                   ryn::Search(ryn::SearchProps{}
-                                   .defaultValue(u8"disabled")
-                                   .disabled(state->disabled)
-                                   .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-                   ++state->telemetry.live_samples;
-               });
+    ryn::Space(
+        ryn::SpaceProps{}
+            .align(ryn::SpaceAlign::Start)
+            .wrap(true)
+            .size(ryn::dp(8.0F))
+            .layout(ryn::LayoutStyle{}.width(state->document_width)),
+        [state] {
+            ryn::Search(ryn::SearchProps{}
+                            .value(state->search_value)
+                            .placeholder(u8"输入搜索词 / Search")
+                            .onChange([state](ryn::String next) { state->search_value.set(std::move(next)); })
+                            .onSearch([state](ryn::String next, ryn::SearchSource) {
+                                ++state->telemetry.search_submits;
+                                state->search_feedback.set(std::move(next));
+                            })
+                            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.search.controlled");
+            ++state->telemetry.live_samples;
+            ryn::Search(ryn::SearchProps{}
+                            .defaultValue(state->initial("gallery.search.large", ryn::String{u8"RynUI"}))
+                            .size(ryn::ControlSize::Large)
+                            .enterButton(true)
+                            .onSearch([state](ryn::String next, ryn::SearchSource) {
+                                ++state->telemetry.search_submits;
+                                state->search_feedback.set(std::move(next));
+                            })
+
+                            .onChange([state](ryn::String value) { state->remember("gallery.search.large", value); })
+                            .layout(ryn::LayoutStyle{}.width(state->cell_width)),
+                        ryn::SearchButtonContent{[] { ryn::Text(u8"查询"); }});
+            remember_target(state, "gallery.search.large");
+            ++state->telemetry.live_samples;
+            ryn::Search(ryn::SearchProps{}
+                            .defaultValue(state->initial("gallery.search.small", ryn::String{u8"Small / 小号"}))
+                            .size(ryn::ControlSize::Small)
+
+                            .onChange([state](ryn::String value) { state->remember("gallery.search.small", value); })
+                            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.search.small");
+            ++state->telemetry.live_samples;
+            ryn::Search(ryn::SearchProps{}
+                            .defaultValue(state->initial("gallery.search.loading", ryn::String{u8"loading"}))
+                            .enterButton(true)
+                            .loading(state->loading)
+
+                            .onChange([state](ryn::String value) { state->remember("gallery.search.loading", value); })
+                            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.search.loading");
+            ++state->telemetry.live_samples;
+            ryn::Search(ryn::SearchProps{}
+                            .defaultValue(state->initial("gallery.search.disabled", ryn::String{u8"disabled"}))
+                            .disabled(state->disabled)
+
+                            .onChange([state](ryn::String value) { state->remember("gallery.search.disabled", value); })
+                            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.search.disabled");
+            ++state->telemetry.live_samples;
+        });
     ryn::Text(ryn::TextProps{}.content(state->search_feedback));
+}
+
+void add_password_base_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Password / 密码 · 复用 Input 编辑与窗口输入会话");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
@@ -1437,13 +1534,18 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                                      .defaultValue(u8"RynUI 密码")
                                      .placeholder(u8"输入密码 / Password")
                                      .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+                   remember_target(state, "gallery.password.basic");
                    ++state->telemetry.live_samples;
                    ryn::Password(ryn::PasswordProps{}
                                      .defaultValue(u8"禁用密码")
                                      .disabled(true)
                                      .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+                   remember_target(state, "gallery.password.disabled");
                    ++state->telemetry.live_samples;
                });
+}
+
+void add_switch_base_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Switch / 开关 · Middle、Small、disabled、loading");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
@@ -1467,6 +1569,9 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                    ryn::Switch(ryn::SwitchProps{}.loading(state->loading));
                    ++state->telemetry.live_samples;
                });
+}
+
+void add_checkbox_base_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Checkbox / 多选框 · checked、indeterminate、disabled");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
@@ -1490,6 +1595,9 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                                  ryn::CheckboxLabel{[] { ryn::Text(u8"禁用 / Disabled"); }});
                    ++state->telemetry.live_samples;
                });
+}
+
+void add_radio_base_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Radio / 单选框 · 单独使用、互斥分组、disabled");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
@@ -1513,6 +1621,18 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                                        }));
                    state->telemetry.live_samples += 3;
                });
+}
+
+void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
+    section_surface(state, gallery_document_sections()[5]);
+    add_theme_button_samples(state);
+    add_button_base_samples(state);
+    add_input_base_samples(state);
+    add_search_base_samples(state);
+    add_password_base_samples(state);
+    add_switch_base_samples(state);
+    add_checkbox_base_samples(state);
+    add_radio_base_samples(state);
 }
 
 void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& state) {
@@ -1636,7 +1756,7 @@ void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& s
     state->telemetry.live_samples += 3;
 }
 
-void add_button_and_divider_variant_samples(const std::shared_ptr<GalleryState>& state) {
+void add_button_variant_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Button · 原生颜色 / 六变体 / ghost / 图标 / shape / block / ref / loading delay / wave");
     ryn::Space(
         ryn::SpaceProps{}
@@ -1656,6 +1776,7 @@ void add_button_and_divider_variant_samples(const std::shared_ptr<GalleryState>&
                 const auto caption = label(std::string{"gallery.button."} + std::string{names[index]}, names[index]);
                 ryn::Button(ryn::ButtonProps{}.color(colors[index]).variant(ryn::ButtonVariant::Solid),
                             [caption] { ryn::Text(caption); });
+                remember_target(state, std::string{"gallery.button."} + std::string{names[index]});
             }
             state->telemetry.live_samples += colors.size();
         });
@@ -1673,6 +1794,7 @@ void add_button_and_divider_variant_samples(const std::shared_ptr<GalleryState>&
                 const auto caption = label(std::string{"gallery.button."} + std::string{names[index]}, names[index]);
                 ryn::Button(ryn::ButtonProps{}.color(ryn::ButtonColor::Blue).variant(variants[index]),
                             [caption] { ryn::Text(caption); });
+                remember_target(state, std::string{"gallery.button."} + std::string{names[index]});
             }
             state->telemetry.live_samples += variants.size();
         });
@@ -1689,26 +1811,35 @@ void add_button_and_divider_variant_samples(const std::shared_ptr<GalleryState>&
                                ryn::ButtonContent{[] { ryn::Text(u8"gallery.button.icon-end · End / Loading"); }},
                                ryn::ButtonIcon{[] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
                                ryn::ButtonLoadingIcon{[] { ryn::Text(u8"…"); }});
+                   remember_target(state, "gallery.button.icon-end");
                    ryn::Button(ryn::ButtonProps{}.shape(ryn::ButtonShape::Circle),
                                ryn::ButtonSlots{.icon = ryn::ButtonIcon{[] {
                                                     ryn::Icon(ryn::IconProps{}.name(ryn::IconName::SearchOutlined));
                                                 }}});
+                   remember_target(state, "gallery.button.circle-icon");
                    ryn::Button(ryn::ButtonProps{}.shape(ryn::ButtonShape::Square),
                                [] { ryn::Text(u8"gallery.button.square · Square"); });
+                   remember_target(state, "gallery.button.square");
                    ryn::Button(
                        ryn::ButtonProps{}.color(ryn::ButtonColor::Blue).variant(ryn::ButtonVariant::Dashed).ghost(true),
                        [] { ryn::Text(u8"gallery.button.ghost · Ghost dashed"); });
+                   remember_target(state, "gallery.button.ghost");
                    ryn::Button(ryn::ButtonProps{}.onClick([state] {
                        state->button_loading.set(!state->button_loading.get());
                        static_cast<void>(state->button_ref.focus());
                        ++state->telemetry.activations;
                    }),
                                [] { ryn::Text(u8"gallery.button.loading-focus · 切换加载并聚焦"); });
+                   remember_target(state, "gallery.button.loading-focus");
                    state->telemetry.live_samples += 5;
                });
     ryn::Button(ryn::ButtonProps{}.block(true).shape(ryn::ButtonShape::Round),
                 [] { ryn::Text(u8"gallery.button.round-block · Round block / resize"); });
+    remember_target(state, "gallery.button.round-block");
     ++state->telemetry.live_samples;
+}
+
+void add_divider_variant_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Divider(ryn::DividerProps{}
                      .variant(ryn::DividerVariant::Dotted)
                      .size(ryn::ControlSize::Small)
@@ -1727,6 +1858,11 @@ void add_button_and_divider_variant_samples(const std::shared_ptr<GalleryState>&
         ryn::Text(u8"Dotted");
     });
     state->telemetry.live_samples += 3;
+}
+
+void add_button_and_divider_variant_samples(const std::shared_ptr<GalleryState>& state) {
+    add_button_variant_samples(state);
+    add_divider_variant_samples(state);
 }
 
 // Keep individual sample scopes bounded under the Windows Debug default stack.
@@ -3063,64 +3199,92 @@ void add_date_picker_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 2;
 }
 
-void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
+void add_input_only_features(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
-    Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
+    Space(
+        SpaceProps{}.wrap(true).align(SpaceAlign::Start).layout(LayoutStyle{}.width(state->document_width)),
+        SpaceContent{[state] {
+            for (const auto variant :
+                 {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
+                const String id = utf8(variant == InputVariant::Outlined     ? "gallery.input.outlined"
+                                       : variant == InputVariant::Filled     ? "gallery.input.filled"
+                                       : variant == InputVariant::Borderless ? "gallery.input.borderless"
+                                                                             : "gallery.input.underlined");
+                Flex(FlexProps{}.vertical(true).gap(dp(4)).layout(LayoutStyle{}.width(state->cell_width)),
+                     FlexContent{[variant, id, state] {
+                         Text(id);
+                         Input(InputProps{}
+                                   .variant(variant)
+                                   .defaultValue(state->initial(id.bytes(), ryn::String{u8"中文 / RynUI 🙂"}))
+                                   .allowClear(true)
+                                   .showCount()
+                                   .count(InputCountOptions{20, InputCountUnit::Grapheme})
+
+                                   .onChange([state, id](ryn::String value) { state->remember(id.bytes(), value); })
+                                   .layout(LayoutStyle{}.width(state->cell_width)));
+                         remember_target(state, id.bytes());
+                     }});
+            }
+            Text(u8"gallery.input.grapheme-count · 原文超限只提示");
+            Input(InputProps{}
+                      .defaultValue(state->initial("gallery.input.grapheme-count", ryn::String{u8"é🙂中文"}))
+                      .showCount()
+                      .count(InputCountOptions{3, InputCountUnit::Grapheme})
+                      .onChange([state](ryn::String value) { state->remember("gallery.input.grapheme-count", value); })
+                      .layout(LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.input.grapheme-count");
+            Text(u8"gallery.input.exceed-formatter · 字节统计 / 去除空格");
+            Input(
+                InputProps{}
+                    .defaultValue(state->initial("gallery.input.exceed-formatter", ryn::String{u8"RynUI"}))
+                    .showCount()
+                    .count(InputCountOptions{8, InputCountUnit::Scalar})
+                    .countStrategy([](StringView value) { return value.bytes().size(); })
+                    .exceedFormatter([](String value, std::size_t) {
+                        auto bytes = std::string{value.bytes()};
+                        std::erase(bytes, ' ');
+                        return utf8(bytes);
+                    })
+                    .onChange([state](ryn::String value) { state->remember("gallery.input.exceed-formatter", value); })
+                    .layout(LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.input.exceed-formatter");
+            Text(u8"gallery.input.focus-hints · Email / 原生提示");
+            Input(InputProps{}
+                      .ref(state->input_ref)
+                      .defaultValue(state->initial("gallery.input.focus-hints", ryn::String{u8"desktop@example.com"}))
+                      .purpose(InputPurpose::Email)
+                      .capitalization(InputCapitalization::None)
+                      .autocorrect(false)
+                      .onFocus([state] { state->input_feedback.set(String{u8"引用输入已聚焦"}); })
+                      .onChange([state](ryn::String value) { state->remember("gallery.input.focus-hints", value); })
+                      .layout(LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.input.focus-hints");
+            Text(u8"gallery.input.clear-vector · 禁用动作保留图标");
+            Input(InputProps{}
+                      .defaultValue(state->initial("gallery.input.clear-vector", ryn::String{u8"自定义清空图标"}))
+                      .allowClear(true)
+                      .clearDisabled(state->input_clear_disabled)
+                      .clearIcon(icon_vector_sample())
+                      .onClear([state] { state->input_feedback.set(String{u8"onClear 已通知"}); })
+                      .onChange([state](ryn::String value) { state->remember("gallery.input.clear-vector", value); })
+                      .layout(LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.input.clear-vector");
+            Button(
+                ButtonProps{}.onClick([state] { static_cast<void>(state->input_ref.focus({InputFocusCursor::All})); }),
+                ButtonContent{[] { Text(u8"gallery.input.focus-all"); }});
+            remember_target(state, "gallery.input.focus-all");
+            Button(
+                ButtonProps{}.onClick([state] { state->input_clear_disabled.set(!state->input_clear_disabled.get()); }),
+                ButtonContent{[] { Text(u8"gallery.input.toggle-clear-disabled"); }});
+            remember_target(state, "gallery.input.toggle-clear-disabled");
+        }});
+    state->telemetry.live_samples += 10;
+}
+
+void add_password_features(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
     Space(SpaceProps{}.wrap(true).align(SpaceAlign::Start).layout(LayoutStyle{}.width(state->document_width)),
           SpaceContent{[state] {
-              for (const auto variant :
-                   {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
-                  const String id = utf8(variant == InputVariant::Outlined     ? "gallery.input.outlined"
-                                         : variant == InputVariant::Filled     ? "gallery.input.filled"
-                                         : variant == InputVariant::Borderless ? "gallery.input.borderless"
-                                                                               : "gallery.input.underlined");
-                  Flex(FlexProps{}.vertical(true).gap(dp(4)).layout(LayoutStyle{}.width(state->cell_width)),
-                       FlexContent{[variant, id, state] {
-                           Text(id);
-                           Input(InputProps{}
-                                     .variant(variant)
-                                     .defaultValue(u8"中文 / RynUI 🙂")
-                                     .allowClear(true)
-                                     .showCount()
-                                     .count(InputCountOptions{20, InputCountUnit::Grapheme})
-                                     .layout(LayoutStyle{}.width(state->cell_width)));
-                       }});
-              }
-              Text(u8"gallery.input.grapheme-count · 原文超限只提示");
-              Input(InputProps{}
-                        .defaultValue(u8"é🙂中文")
-                        .showCount()
-                        .count(InputCountOptions{3, InputCountUnit::Grapheme})
-                        .layout(LayoutStyle{}.width(state->cell_width)));
-              Text(u8"gallery.input.exceed-formatter · 字节统计 / 去除空格");
-              Input(InputProps{}
-                        .defaultValue(u8"RynUI")
-                        .showCount()
-                        .count(InputCountOptions{8, InputCountUnit::Scalar})
-                        .countStrategy([](StringView value) { return value.bytes().size(); })
-                        .exceedFormatter([](String value, std::size_t) {
-                            auto bytes = std::string{value.bytes()};
-                            std::erase(bytes, ' ');
-                            return utf8(bytes);
-                        })
-                        .layout(LayoutStyle{}.width(state->cell_width)));
-              Text(u8"gallery.input.focus-hints · Email / 原生提示");
-              Input(InputProps{}
-                        .ref(state->input_ref)
-                        .defaultValue(u8"desktop@example.com")
-                        .purpose(InputPurpose::Email)
-                        .capitalization(InputCapitalization::None)
-                        .autocorrect(false)
-                        .onFocus([state] { state->input_feedback.set(String{u8"引用输入已聚焦"}); })
-                        .layout(LayoutStyle{}.width(state->cell_width)));
-              Text(u8"gallery.input.clear-vector · 禁用动作保留图标");
-              Input(InputProps{}
-                        .defaultValue(u8"自定义清空图标")
-                        .allowClear(true)
-                        .clearDisabled(state->input_clear_disabled)
-                        .clearIcon(icon_vector_sample())
-                        .onClear([state] { state->input_feedback.set(String{u8"onClear 已通知"}); })
-                        .layout(LayoutStyle{}.width(state->cell_width)));
               Text(u8"gallery.password.hover-vector · 悬停 / prefix / count");
               Password(PasswordProps{}
                            .defaultValue(u8"秘密🙂")
@@ -3132,6 +3296,7 @@ void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
                            })
                            .layout(LayoutStyle{}.width(state->cell_width)),
                        InputPrefix{[] { Icon(IconProps{}.name(IconName::LockOutlined)); }});
+              remember_target(state, "gallery.password.hover-vector");
               Text(u8"gallery.password.controlled-toggle · 受控 / 显隐动作开关");
               Password(PasswordProps{}
                            .defaultValue(u8"controlled")
@@ -3139,6 +3304,18 @@ void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
                            .visibilityToggle(state->password_toggle)
                            .onVisibleChange([state](bool value) { state->password_visible.set(value); })
                            .layout(LayoutStyle{}.width(state->cell_width)));
+              remember_target(state, "gallery.password.controlled-toggle");
+              Button(ButtonProps{}.onClick([state] { state->password_toggle.set(!state->password_toggle.get()); }),
+                     ButtonContent{[] { Text(u8"gallery.password.toggle-action"); }});
+              remember_target(state, "gallery.password.toggle-action");
+          }});
+    state->telemetry.live_samples += 3;
+}
+
+void add_search_features(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Space(SpaceProps{}.wrap(true).align(SpaceAlign::Start).layout(LayoutStyle{}.width(state->document_width)),
+          SpaceContent{[state] {
               ThemeConfig dark;
               dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
               Theme(ThemeProps{}.config(dark), ThemeContent{[state] {
@@ -3147,7 +3324,7 @@ void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
                         Search(SearchProps{}
                                    .variant(InputVariant::Filled)
                                    .size(ControlSize::Small)
-                                   .defaultValue(u8"RynUI")
+                                   .defaultValue(state->initial("gallery.search.filled-vector", ryn::String{u8"RynUI"}))
                                    .searchIcon(icon_vector_sample())
                                    .allowClear(true)
                                    .showCount()
@@ -3156,93 +3333,122 @@ void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
                                        state->search_feedback.set(source == SearchSource::Clear ? String{u8"Clear"}
                                                                                                 : std::move(value));
                                    })
+
+                                   .onChange([state](ryn::String value) {
+                                       state->remember("gallery.search.filled-vector", value);
+                                   })
                                    .layout(LayoutStyle{}.width(state->cell_width)));
+                        remember_target(state, "gallery.search.filled-vector");
                     }});
               Text(u8"gallery.search.underlined-small · 连接高度 / typed content");
               Search(SearchProps{}
                          .variant(InputVariant::Underlined)
                          .size(ControlSize::Small)
-                         .defaultValue(u8"Search")
+                         .defaultValue(state->initial("gallery.search.underlined-small", ryn::String{u8"Search"}))
+
+                         .onChange(
+                             [state](ryn::String value) { state->remember("gallery.search.underlined-small", value); })
                          .layout(LayoutStyle{}.width(state->cell_width)),
                      SearchButtonContent{[] { Text(u8"查询"); }});
-              Button(ButtonProps{}.onClick(
-                         [state] { static_cast<void>(state->input_ref.focus({InputFocusCursor::All})); }),
-                     ButtonContent{[] { Text(u8"gallery.input.focus-all"); }});
-              Button(ButtonProps{}.onClick(
-                         [state] { state->input_clear_disabled.set(!state->input_clear_disabled.get()); }),
-                     ButtonContent{[] { Text(u8"gallery.input.toggle-clear-disabled"); }});
-              Button(ButtonProps{}.onClick([state] { state->password_toggle.set(!state->password_toggle.get()); }),
-                     ButtonContent{[] { Text(u8"gallery.password.toggle-action"); }});
+              remember_target(state, "gallery.search.underlined-small");
           }});
-    state->telemetry.live_samples += 15;
+    state->telemetry.live_samples += 2;
+}
+
+void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
+    add_input_only_features(state);
+    add_password_features(state);
+    add_search_features(state);
 }
 
 void add_text_area_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"TextArea / 多行输入：换行、选择、统计、autoSize、滚动与 resize");
-    Space(SpaceProps{}.wrap(true).align(SpaceAlign::Start).layout(LayoutStyle{}.width(state->document_width)),
-          SpaceContent{[state] {
-              for (const auto variant :
-                   {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
-                  const auto id = utf8(variant == InputVariant::Outlined     ? "gallery.text-area.outlined"
-                                       : variant == InputVariant::Filled     ? "gallery.text-area.filled"
-                                       : variant == InputVariant::Borderless ? "gallery.text-area.borderless"
-                                                                             : "gallery.text-area.underlined");
-                  Flex(FlexProps{}.vertical(true).gap(dp(4)).layout(LayoutStyle{}.width(state->cell_width)),
-                       FlexContent{[state, id, variant] {
-                           Text(id);
-                           TextArea(TextAreaProps{}
-                                        .variant(variant)
-                                        .rows(3)
-                                        .defaultValue(u8"中文 / RynUI 🙂\n第二行\nEnter 换行")
-                                        .allowClear(true)
-                                        .showCount()
-                                        .count(InputCountOptions{40, InputCountUnit::Grapheme})
-                                        .onChange([state](String value) {
-                                            ++state->telemetry.input_changes;
-                                            state->input_feedback.set(std::move(value));
-                                        })
-                                        .layout(LayoutStyle{}.width(state->cell_width)));
-                       }});
-              }
-              Text(u8"gallery.text-area.autosize · minRows=2 / maxRows=5");
-              TextArea(TextAreaProps{}
-                           .defaultValue(u8"autoSize 随编辑与宽度换行扩展\n保留空行\n\n")
-                           .autoSize(TextAreaAutoSize{true, 2, 5})
-                           .allowClear(true)
-                           .showCount()
-                           .layout(LayoutStyle{}.width(state->cell_width)));
-              Text(u8"gallery.text-area.resize-nowrap · 双向拖动 / wheel");
-              TextArea(
-                  TextAreaProps{}
-                      .defaultValue(
-                          u8"No wrap: abcdefghijklmnopqrstuvwxyz 0123456789\n第二行\n第三行\n第四行\n第五行\n第六行")
-                      .rows(2)
-                      .wrap(false)
-                      .resize(TextAreaResize::Both)
-                      .layout(LayoutStyle{}.width(state->cell_width)));
-              ThemeConfig dark;
-              dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
-              Theme(ThemeProps{}.config(dark), ThemeContent{[state] {
-                        ++state->telemetry.theme_content_runs;
-                        Text(u8"gallery.text-area.readonly · Dark Compact / 可选择复制");
-                        TextArea(TextAreaProps{}
-                                     .defaultValue(u8"只读可以选择、复制和滚动\n中文 / Latin 🙂\n第三行\n第四行")
-                                     .rows(2)
-                                     .readOnly(true)
-                                     .variant(InputVariant::Filled)
-                                     .size(ControlSize::Small)
-                                     .showCount()
-                                     .layout(LayoutStyle{}.width(state->cell_width)));
-                    }});
-              Text(u8"gallery.text-area.disabled · Warning / 禁用");
-              TextArea(TextAreaProps{}
-                           .defaultValue(u8"禁用输入\n不响应编辑或拖动")
-                           .rows(2)
-                           .disabled(true)
-                           .status(InputStatus::Warning)
-                           .layout(LayoutStyle{}.width(state->cell_width)));
-          }});
+    Space(
+        SpaceProps{}.wrap(true).align(SpaceAlign::Start).layout(LayoutStyle{}.width(state->document_width)),
+        SpaceContent{[state] {
+            for (const auto variant :
+                 {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
+                const auto id = utf8(variant == InputVariant::Outlined     ? "gallery.text-area.outlined"
+                                     : variant == InputVariant::Filled     ? "gallery.text-area.filled"
+                                     : variant == InputVariant::Borderless ? "gallery.text-area.borderless"
+                                                                           : "gallery.text-area.underlined");
+                Flex(FlexProps{}.vertical(true).gap(dp(4)).layout(LayoutStyle{}.width(state->cell_width)),
+                     FlexContent{[state, id, variant] {
+                         Text(id);
+                         TextArea(TextAreaProps{}
+                                      .variant(variant)
+                                      .rows(3)
+                                      .defaultValue(state->initial(
+                                          id.bytes(), ryn::String{u8"中文 / RynUI 🙂\n第二行\nEnter 换行"}))
+                                      .allowClear(true)
+                                      .showCount()
+                                      .count(InputCountOptions{40, InputCountUnit::Grapheme})
+                                      .onChange([state, id](String value) {
+                                          state->remember(id.bytes(), value);
+                                          ++state->telemetry.input_changes;
+                                          state->input_feedback.set(std::move(value));
+                                      })
+                                      .layout(LayoutStyle{}.width(state->cell_width)));
+                         remember_target(state, id.bytes());
+                     }});
+            }
+            Text(u8"gallery.text-area.autosize · minRows=2 / maxRows=5");
+            TextArea(TextAreaProps{}
+                         .defaultValue(state->initial("gallery.text-area.autosize",
+                                                      ryn::String{u8"autoSize 随编辑与宽度换行扩展\n保留空行\n\n"}))
+                         .autoSize(TextAreaAutoSize{true, 2, 5})
+                         .allowClear(true)
+                         .showCount()
+
+                         .onChange([state](ryn::String value) { state->remember("gallery.text-area.autosize", value); })
+                         .layout(LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.text-area.autosize");
+            Text(u8"gallery.text-area.resize-nowrap · 双向拖动 / wheel");
+            TextArea(
+                TextAreaProps{}
+                    .defaultValue(state->initial("gallery.text-area.resize-nowrap",
+                                                 ryn::String{u8"No wrap: abcdefghijklmnopqrstuvwxyz "
+                                                             u8"0123456789\n第二行\n第三行\n第四行\n第五行\n第六行"}))
+                    .rows(2)
+                    .wrap(false)
+                    .resize(TextAreaResize::Both)
+                    .onChange([state](ryn::String value) { state->remember("gallery.text-area.resize-nowrap", value); })
+                    .layout(LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.text-area.resize-nowrap");
+            ThemeConfig dark;
+            dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
+            Theme(ThemeProps{}.config(dark), ThemeContent{[state] {
+                      ++state->telemetry.theme_content_runs;
+                      Text(u8"gallery.text-area.readonly · Dark Compact / 可选择复制");
+                      TextArea(TextAreaProps{}
+                                   .defaultValue(state->initial(
+                                       "gallery.text-area.readonly",
+                                       ryn::String{u8"只读可以选择、复制和滚动\n中文 / Latin 🙂\n第三行\n第四行"}))
+                                   .rows(2)
+                                   .readOnly(true)
+                                   .variant(InputVariant::Filled)
+                                   .size(ControlSize::Small)
+                                   .showCount()
+
+                                   .onChange([state](ryn::String value) {
+                                       state->remember("gallery.text-area.readonly", value);
+                                   })
+                                   .layout(LayoutStyle{}.width(state->cell_width)));
+                      remember_target(state, "gallery.text-area.readonly");
+                  }});
+            Text(u8"gallery.text-area.disabled · Warning / 禁用");
+            TextArea(TextAreaProps{}
+                         .defaultValue(
+                             state->initial("gallery.text-area.disabled", ryn::String{u8"禁用输入\n不响应编辑或拖动"}))
+                         .rows(2)
+                         .disabled(true)
+                         .status(InputStatus::Warning)
+
+                         .onChange([state](ryn::String value) { state->remember("gallery.text-area.disabled", value); })
+                         .layout(LayoutStyle{}.width(state->cell_width)));
+            remember_target(state, "gallery.text-area.disabled");
+        }});
     state->telemetry.live_samples += 8;
 }
 
@@ -3276,6 +3482,7 @@ void add_otp_samples(const std::shared_ptr<GalleryState>& state) {
                                                                       std::to_string(cells.size())));
                                    })
                                    .onChange([state](String value) { state->input_feedback.set(std::move(value)); }));
+                           remember_target(state, id.bytes());
                        }});
               }
               Text(u8"gallery.otp.controlled · 六格 / 填满通知");
@@ -3287,6 +3494,7 @@ void add_otp_samples(const std::shared_ptr<GalleryState>& state) {
                           state->otp_value.set(value);
                           state->input_feedback.set(std::move(value));
                       }));
+              remember_target(state, "gallery.otp.controlled");
               Text(u8"gallery.otp.formatter-mask · 大写 / bullet / Large");
               OTP(OTPProps{}.defaultValue(u8"rYnUI!").mask(true).size(ControlSize::Large).formatter([](String value) {
                   std::string bytes{value.bytes()};
@@ -3297,6 +3505,7 @@ void add_otp_samples(const std::shared_ptr<GalleryState>& state) {
                   }
                   return String::from_utf8(bytes).value();
               }));
+              remember_target(state, "gallery.otp.formatter-mask");
               Text(u8"gallery.otp.separator-rtl · typed separator / RightToLeft");
               OTP(OTPProps{}.length(4).defaultValue(u8"1234").direction(OTPDirection::RightToLeft),
                   OTPSeparator{[](std::size_t index) -> std::optional<OTPSeparatorContent> {
@@ -3305,8 +3514,10 @@ void add_otp_samples(const std::shared_ptr<GalleryState>& state) {
                       }
                       return OTPSeparatorContent{[] { Text(u8"-"); }};
                   }});
+              remember_target(state, "gallery.otp.separator-rtl");
               Text(u8"gallery.otp.dynamic-length · 四/六格 / 前缀身份保留");
               OTP(OTPProps{}.length(state->otp_length).defaultValue(u8"12345678"));
+              remember_target(state, "gallery.otp.dynamic-length");
               ThemeConfig dark;
               dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
               Theme(ThemeProps{}.config(dark), ThemeContent{[state] {
@@ -3319,18 +3530,22 @@ void add_otp_samples(const std::shared_ptr<GalleryState>& state) {
                                 .readOnly(true)
                                 .variant(InputVariant::Filled)
                                 .size(ControlSize::Small));
+                        remember_target(state, "gallery.otp.readonly-mask");
                     }});
               Text(u8"gallery.otp.disabled · Warning / 禁用");
               OTP(OTPProps{}.length(4).defaultValue(u8"1234").disabled(true).status(InputStatus::Warning));
+              remember_target(state, "gallery.otp.disabled");
               Button(ButtonProps{}.onClick([state] { static_cast<void>(state->otp_ref.focus()); }),
                      ButtonContent{[] { Text(u8"gallery.otp.focus-all"); }});
+              remember_target(state, "gallery.otp.focus-all");
               Button(ButtonProps{}.onClick([state] { state->otp_length.set(state->otp_length.get() == 6 ? 4 : 6); }),
                      ButtonContent{[] { Text(u8"gallery.otp.toggle-length"); }});
+              remember_target(state, "gallery.otp.toggle-length");
           }});
     state->telemetry.live_samples += 12;
 }
 
-void add_bidi_samples(const std::shared_ptr<GalleryState>& state) {
+void add_bidi_typography(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"双向文字：Arabic / Hebrew / 数字 / 括号 · Auto / LTR / RTL");
     Text(TextProps{}.content(u8"gallery.bidi.text · مرحبا (12) אבג RynUI").direction(state->text_direction));
@@ -3339,30 +3554,75 @@ void add_bidi_samples(const std::shared_ptr<GalleryState>& state) {
                   .direction(state->text_direction)
                   .underline(true)
                   .layout(LayoutStyle{}.width(state->cell_width)));
+    state->telemetry.live_samples += 2;
+}
+
+void add_bidi_input(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
     Text(u8"gallery.bidi.input");
     Input(InputProps{}
-              .defaultValue(u8"A אבג 12 مرحبا")
+              .defaultValue(state->initial("gallery.bidi.input", ryn::String{u8"A אבג 12 مرحبا"}))
               .direction(state->text_direction)
+
+              .onChange([state](ryn::String value) { state->remember("gallery.bidi.input", value); })
               .layout(LayoutStyle{}.width(state->cell_width)));
+    remember_target(state, "gallery.bidi.input");
+    state->telemetry.live_samples += 1;
+}
+
+void add_bidi_text_area(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
     Text(u8"gallery.bidi.text-area");
     TextArea(TextAreaProps{}
-                 .defaultValue(u8"אבג (12) مرحبا\nمرحبا 34 אבג 中文\n\n尾行")
+                 .defaultValue(state->initial("gallery.bidi.text-area",
+                                              ryn::String{u8"אבג (12) مرحبا\nمرحبا 34 אבג 中文\n\n尾行"}))
                  .direction(state->text_direction)
                  .rows(3)
+
+                 .onChange([state](ryn::String value) { state->remember("gallery.bidi.text-area", value); })
                  .layout(LayoutStyle{}.width(state->cell_width)));
+    remember_target(state, "gallery.bidi.text-area");
+    state->telemetry.live_samples += 1;
+}
+
+void add_bidi_password(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
     Text(u8"gallery.bidi.password");
     Password(PasswordProps{}
                  .defaultValue(u8"אבג مرحبا 👩‍💻")
                  .direction(state->text_direction)
                  .layout(LayoutStyle{}.width(state->cell_width)));
+    remember_target(state, "gallery.bidi.password");
+    state->telemetry.live_samples += 1;
+}
+
+void add_bidi_direction_control(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
     Button(ButtonProps{}.onClick([state] {
         const auto current = state->text_direction.get();
         state->text_direction.set(current == TextDirection::Auto          ? TextDirection::LeftToRight
                                   : current == TextDirection::LeftToRight ? TextDirection::RightToLeft
                                                                           : TextDirection::Auto);
     }),
-           ButtonContent{[] { Text(u8"gallery.bidi.toggle-direction · 切换段落方向"); }});
-    state->telemetry.live_samples += 6;
+           ButtonContent{[state] {
+               const auto identity =
+                   state->page_family == GalleryInputFamily::text_area  ? "gallery.text-area.bidi-direction"
+                   : state->page_family == GalleryInputFamily::password ? "gallery.password.bidi-direction"
+                                                                        : "gallery.bidi.toggle-direction";
+               Text(label(identity, "切换段落方向"));
+           }});
+    remember_target(state, state->page_family == GalleryInputFamily::text_area  ? "gallery.text-area.bidi-direction"
+                           : state->page_family == GalleryInputFamily::password ? "gallery.password.bidi-direction"
+                                                                                : "gallery.bidi.toggle-direction");
+    state->telemetry.live_samples += 1;
+}
+
+void add_bidi_samples(const std::shared_ptr<GalleryState>& state) {
+    add_bidi_typography(state);
+    add_bidi_input(state);
+    add_bidi_text_area(state);
+    add_bidi_password(state);
+    add_bidi_direction_control(state);
 }
 
 void add_select_samples(const std::shared_ptr<GalleryState>& state) {
@@ -5067,36 +5327,43 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                                 })
                                 .layout(member_control_margin()),
                             [] { Text(u8"gallery.tree-select.value-authority · 接受/拒绝选择"); });
+                     remember_target(state, "gallery.tree-select.value-authority");
                      Button(ButtonProps{}
                                 .onClick([state] {
                                     state->destination_accept_close.set(!state->destination_accept_close.get());
                                 })
                                 .layout(member_control_margin()),
                             [] { Text(u8"gallery.tree-select.close-authority · 接受/拒绝关闭"); });
+                     remember_target(state, "gallery.tree-select.close-authority");
                      Button(ButtonProps{}
                                 .onClick([state] { state->destination_renamed.set(!state->destination_renamed.get()); })
                                 .layout(member_control_margin()),
                             [] { Text(u8"gallery.tree-select.rename · 切换指南标题"); });
+                     remember_target(state, "gallery.tree-select.rename");
                      Button(ButtonProps{}
                                 .onClick([state] {
                                     state->destination_archive_disabled.set(!state->destination_archive_disabled.get());
                                 })
                                 .layout(member_control_margin()),
                             [] { Text(u8"gallery.tree-select.node-disabled · 禁用/启用归档"); });
+                     remember_target(state, "gallery.tree-select.node-disabled");
                      Button(
                          ButtonProps{}
                              .onClick([state] { state->destination_disabled.set(!state->destination_disabled.get()); })
                              .layout(member_control_margin()),
                          [] { Text(u8"gallery.tree-select.disabled · 禁用/启用选择器"); });
+                     remember_target(state, "gallery.tree-select.disabled");
                      Button(ButtonProps{}
                                 .onClick(
                                     [state] { state->destination_read_only.set(!state->destination_read_only.get()); })
                                 .layout(member_control_margin()),
                             [] { Text(u8"gallery.tree-select.readonly · 只读/恢复选择"); });
+                     remember_target(state, "gallery.tree-select.readonly");
                      Button(ButtonProps{}
                                 .onClick([state] { state->destination_visible.set(!state->destination_visible.get()); })
                                 .layout(member_control_margin()),
                             [] { Text(u8"gallery.tree-select.visible · 显隐选择器"); });
+                     remember_target(state, "gallery.tree-select.visible");
                      Button(ButtonProps{}
                                 .onClick([state] {
                                     state->destination_accept_value.set(true);
@@ -5109,6 +5376,7 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                                 })
                                 .layout(member_control_margin()),
                             [] { Text(u8"gallery.tree-select.restore · 恢复目标选择"); });
+                     remember_target(state, "gallery.tree-select.restore");
                  }});
              TreeSelect(TreeSelectProps{}
                             .value(state->destination_value)
@@ -5143,12 +5411,14 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                                 [state](TreeExpandInfo info) { state->destination_expanded.set(info.expanded_keys); })
                             .layout(member_control_margin().width(dp(300))),
                         items());
+             remember_target(state, "gallery.tree-select.selector");
              Input(InputProps{}
                        .value(state->destination_note)
                        .ref(state->destination_note_ref)
                        .onChange([state](String value) { state->destination_note.set(value); })
                        .placeholder(u8"gallery.tree-select.note · 交付备注")
                        .layout(member_control_margin().width(dp(300))));
+             remember_target(state, "gallery.tree-select.note");
              Button(ButtonProps{}
                         .onClick([state] {
                             state->destination_saved.set(
@@ -5157,6 +5427,7 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                         })
                         .layout(member_control_margin()),
                     [] { Text(u8"gallery.tree-select.save · 保存目标备注"); });
+             remember_target(state, "gallery.tree-select.save");
              Text(TextProps{}
                       .content(u8"gallery.tree-select.form · Form · 交付目标")
                       .layout(LayoutStyle{}.margin_left(dp(1))));
@@ -5194,12 +5465,14 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                                                   .placeholder(u8"请选择表单目标")
                                                   .layout(member_control_margin().width(dp(280))),
                                               items());
+                                   remember_target(state, "gallery.tree-select.form-selector");
                                }});
                       Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
                                 Button(ButtonProps{}
                                            .onClick([state] { static_cast<void>(state->destination_form.submit()); })
                                            .layout(member_control_margin()),
                                        [] { Text(u8"gallery.tree-select.submit · 提交交付目标"); });
+                                remember_target(state, "gallery.tree-select.submit");
                                 Button(ButtonProps{}
                                            .onClick([state] {
                                                static_cast<void>(state->destination_form_ref.focus());
@@ -5208,6 +5481,7 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                                            })
                                            .layout(member_control_margin()),
                                        [] { Text(u8"gallery.tree-select.reset · 聚焦后重置目标"); });
+                                remember_target(state, "gallery.tree-select.reset");
                             }});
                   }});
          }});
@@ -5232,6 +5506,193 @@ float token_gallery_pointer_to_render_logical(float host_logical_coordinate, flo
         throw std::invalid_argument("Token Gallery pointer coordinate and display scales must be finite and positive");
     }
     return host_logical_coordinate * host_display_scale / render_scale;
+}
+
+namespace {
+
+void add_page_bidi_input(const std::shared_ptr<GalleryState>& state) {
+    add_bidi_input(state);
+    add_bidi_direction_control(state);
+}
+
+void add_page_bidi_text_area(const std::shared_ptr<GalleryState>& state) {
+    add_bidi_text_area(state);
+    add_bidi_direction_control(state);
+}
+
+void add_page_bidi_password(const std::shared_ptr<GalleryState>& state) {
+    add_bidi_password(state);
+    add_bidi_direction_control(state);
+}
+
+struct GallerySampleFactory final {
+    GallerySampleDescriptor descriptor;
+    void (*mount)(const std::shared_ptr<GalleryState>&);
+};
+
+constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
+    {{"gallery.sample.button.basics",
+      "ant.component.button",
+      {},
+      "类型与交互状态",
+      "add_button_base_samples",
+      "include/ryn/button.hpp"},
+     add_button_base_samples},
+    {{"gallery.sample.button.variants",
+      "ant.component.button",
+      {},
+      "颜色、变体与图标",
+      "add_button_variant_samples",
+      "include/ryn/button.hpp"},
+     add_button_variant_samples},
+    {{"gallery.sample.input.basics", "ant.component.input", GalleryInputFamily::input, "受控与非受控输入",
+      "add_input_base_samples", "include/ryn/input.hpp"},
+     add_input_base_samples},
+    {{"gallery.sample.input.features", "ant.component.input", GalleryInputFamily::input, "变体、统计与焦点",
+      "add_input_only_features", "include/ryn/input.hpp"},
+     add_input_only_features},
+    {{"gallery.sample.input.bidi", "ant.component.input", GalleryInputFamily::input, "双向文字编辑",
+      "add_page_bidi_input", "include/ryn/input.hpp"},
+     add_page_bidi_input},
+    {{"gallery.sample.search.basics", "ant.component.input", GalleryInputFamily::search, "搜索与提交来源",
+      "add_search_base_samples", "include/ryn/search.hpp"},
+     add_search_base_samples},
+    {{"gallery.sample.search.features", "ant.component.input", GalleryInputFamily::search, "连接外观与图标",
+      "add_search_features", "include/ryn/search.hpp"},
+     add_search_features},
+    {{"gallery.sample.password.basics", "ant.component.input", GalleryInputFamily::password, "密码输入",
+      "add_password_base_samples", "include/ryn/password.hpp"},
+     add_password_base_samples},
+    {{"gallery.sample.password.features", "ant.component.input", GalleryInputFamily::password, "显隐动作与受控状态",
+      "add_password_features", "include/ryn/password.hpp"},
+     add_password_features},
+    {{"gallery.sample.password.bidi", "ant.component.input", GalleryInputFamily::password, "双向密码输入",
+      "add_page_bidi_password", "include/ryn/password.hpp"},
+     add_page_bidi_password},
+    {{"gallery.sample.text-area.features", "ant.component.input", GalleryInputFamily::text_area, "多行、自动尺寸与滚动",
+      "add_text_area_samples", "include/ryn/text_area.hpp"},
+     add_text_area_samples},
+    {{"gallery.sample.text-area.bidi", "ant.component.input", GalleryInputFamily::text_area, "双向多行编辑",
+      "add_page_bidi_text_area", "include/ryn/text_area.hpp"},
+     add_page_bidi_text_area},
+    {{"gallery.sample.otp.features", "ant.component.input", GalleryInputFamily::otp, "分格输入与粘贴",
+      "add_otp_samples", "include/ryn/otp.hpp"},
+     add_otp_samples},
+    {{"gallery.sample.tree-select.destination",
+      "ant.component.tree-select",
+      {},
+      "交付目标、备注与表单",
+      "add_tree_select_destination_samples",
+      "include/ryn/tree_select.hpp"},
+     add_tree_select_destination_samples},
+});
+
+constexpr auto sample_descriptors = [] {
+    std::array<GallerySampleDescriptor, sample_factories.size()> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        result[index] = sample_factories[index].descriptor;
+    }
+    return result;
+}();
+
+} // namespace
+
+std::span<const GallerySampleDescriptor> gallery_samples() noexcept {
+    return sample_descriptors;
+}
+
+GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const GalleryPageDraft& draft) {
+    const GalleryPageModel model;
+    if (!model.valid(route)) {
+        throw std::invalid_argument("Gallery sample page route is not registered");
+    }
+    auto state = std::make_shared<GalleryState>();
+    state->page_family = route.family;
+    state->register_targets = true;
+    const bool sensitive = route.component_identity == "ant.component.input" &&
+                           (route.family == GalleryInputFamily::password || route.family == GalleryInputFamily::otp);
+    if (!sensitive) {
+        state->draft = draft;
+    }
+    state->input_value.set(state->initial("gallery.input.controlled", state->input_value.get()));
+    state->search_value.set(state->initial("gallery.search.controlled", state->search_value.get()));
+    state->destination_value.set(state->initial("gallery.tree-select.value", state->destination_value.get()));
+    state->destination_note.set(state->initial("gallery.tree-select.note", state->destination_note.get()));
+    state->destination_field.set(state->initial("gallery.tree-select.field", state->destination_field.get()));
+    const auto expansion = draft.get<std::vector<std::string>>("gallery.tree-select.expansion", {});
+    if (draft.values.contains("gallery.tree-select.expansion")) {
+        ryn::TreeKeys keys;
+        for (const auto& key : expansion) {
+            keys.push_back(ryn::String::from_utf8(key).value());
+        }
+        state->destination_expanded.set(std::move(keys));
+    }
+    auto runs = std::make_shared<std::map<std::string, std::uint64_t>>();
+    return {
+        ryn::Content{[state, route, runs] {
+            ++state->telemetry.content_runs;
+            for (const auto& factory : sample_factories) {
+                const auto& descriptor = factory.descriptor;
+                if (route.kind != GalleryPageKind::component ||
+                    descriptor.component_identity != route.component_identity || descriptor.family != route.family) {
+                    continue;
+                }
+                ++(*runs)[std::string{descriptor.identity}];
+                ReferenceSurface(
+                    ReferenceSurfaceProps{}
+                        .identity(descriptor.identity)
+                        .layout(ryn::LayoutStyle{}.width(
+                            ryn::bind([width = state->document_width] { return ryn::dp(width.get().value() + 24); }))),
+                    [state, factory] {
+                        ryn::Flex(ryn::FlexProps{}.vertical(true).align(ryn::FlexAlign::Start).gap(ryn::dp(12)),
+                                  [state, factory] {
+                                      ryn::Text(ryn::TextProps{}.content(utf8(factory.descriptor.title)));
+                                      if (state->page_family == GalleryInputFamily::password ||
+                                          state->page_family == GalleryInputFamily::otp) {
+                                          ryn::Text(u8"离开此分组会清空输入；不保留密码或验证码草稿。");
+                                      }
+                                      factory.mount(state);
+                                  });
+                    });
+            }
+        }},
+        [state, sensitive](GalleryPageDraft& target) {
+            if (sensitive) {
+                return;
+            }
+            target.values = state->draft.values;
+            const auto text = [&](std::string_view key, const ryn::String& value) {
+                target.values[std::string{key}] = std::string{value.bytes()};
+            };
+            text("gallery.input.controlled", state->input_value.get());
+            text("gallery.search.controlled", state->search_value.get());
+            text("gallery.tree-select.value", state->destination_value.get());
+            text("gallery.tree-select.note", state->destination_note.get());
+            text("gallery.tree-select.field", state->destination_field.get());
+            std::vector<std::string> keys;
+            for (const auto& key : state->destination_expanded.get()) {
+                keys.emplace_back(key.bytes());
+            }
+            target.values["gallery.tree-select.expansion"] = std::move(keys);
+        },
+        [state](float width) {
+            if (!std::isfinite(width) || width <= 0) {
+                throw std::invalid_argument("Gallery sample width must be positive and finite");
+            }
+            const auto inner = std::max(1.0F, width - 24);
+            state->document_width.set(ryn::dp(inner));
+            state->cell_width.set(ryn::dp(std::min(260.0F, inner)));
+        },
+        [state] { return state->telemetry; },
+        [runs](std::string_view identity) {
+            const auto found = runs->find(std::string{identity});
+            return found == runs->end() ? 0 : found->second;
+        },
+        [state](std::string_view identity) {
+            const auto found = state->targets.find(std::string{identity});
+            return found == state->targets.end() ? ryn::runtime::ComponentId{} : found->second;
+        },
+    };
 }
 
 TokenGalleryDefinition make_token_gallery_definition() {

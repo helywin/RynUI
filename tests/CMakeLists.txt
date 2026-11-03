@@ -2011,6 +2011,15 @@ target_compile_definitions(rynui_gallery_page_controller_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.gallery_page_controller COMMAND rynui_gallery_page_controller_tests)
+
+add_executable(rynui_gallery_sample_page_tests gallery_sample_page_tests.cpp)
+rynui_configure_cpp_target(rynui_gallery_sample_page_tests)
+target_include_directories(rynui_gallery_sample_page_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_gallery_sample_page_tests PRIVATE rynui_token_gallery_reference_surface rynui_components)
+target_compile_definitions(rynui_gallery_sample_page_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.gallery_sample_page COMMAND rynui_gallery_sample_page_tests)
 rynui_configure_cpp_target(rynui_gallery_document_model_tests)
 target_link_libraries(
     rynui_gallery_document_model_tests

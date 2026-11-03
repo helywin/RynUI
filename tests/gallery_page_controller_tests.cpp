@@ -155,6 +155,7 @@ void test_deferred_navigation_drafts_and_session_retirement() {
 void test_sensitive_groups_and_owner_cleanup() {
     Fixture f;
     f.show("ant.component.input", GalleryInputFamily::password);
+    f.pages->set_anchor({"examples", 24});
     f.value->set(String{u8"do not cache"});
     const auto saves = f.saves;
     f.show("ant.component.tree-select");
@@ -166,7 +167,9 @@ void test_sensitive_groups_and_owner_cleanup() {
     require(f.services.tree_select().mounted().empty() && !f.services.components().contains(tree),
             "controlled open popup survived owner retirement");
     f.show("ant.component.input", GalleryInputFamily::password);
-    require(f.value->get() == String{u8"initial"}, "sensitive text survived a page round trip");
+    require(f.value->get() == String{u8"initial"} && f.pages->draft().values.empty() &&
+                f.pages->draft().anchor.identity == "examples",
+            "sensitive text or independent page anchor was lost");
     f.show("ant.component.input", GalleryInputFamily::otp);
     f.value->set(String{u8"123456"});
     f.show("ant.component.upload");

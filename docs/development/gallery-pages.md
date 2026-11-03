@@ -18,11 +18,19 @@ Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-2026110
 
 导航回调只调用 `request`；外围单个事件分发返回后再调用 `process`。不得在旧控件的回调栈内直接销毁页面。相同 page/family 的 section 或 sample 跳转保留 root，不压入页面历史。后退/前进保存 page/family；草稿以该身份分组，页内位置保存稳定 identity 和局部距离，实际重排后的夹紧由 viewport 完成。
 
-`GalleryPageDraft` 只允许字符串、布尔、整数、数值和字符串列表，不接受组件/ref/Signal、编辑器或场景句柄。factory 以这些值重建新状态；save hook 只读取已提交业务值。Password/OTP 不调用 save hook，离页清除缓存。不能把整个样例状态对象存入草稿，也不能恢复旧 preedit、选区、撤销栈或 popup open 状态。
+`GalleryPageDraft` 只允许字符串、布尔、整数、数值和字符串列表，不接受组件/ref/Signal、编辑器或场景句柄。factory 以这些值重建新状态；save hook 只读取已提交业务值。Password/OTP 不调用 save hook，离页清除敏感值，但可保留与输入值无关的页面滚动锚点。不能把整个样例状态对象存入草稿，也不能恢复旧 preedit、选区、撤销栈或 popup open 状态。
 
 退役先使旧 generation ticket 失效，再保存草稿、取消属于旧 root 的 pointer 状态与 focus，调用 `before_retire` 取消 Gallery 自有 scrollbar drag，然后通过宿主销毁页面。既有输入参与者负责取消 session/preedit、弹层、keyboard press、caret 和动画。异步/延迟操作捕获弱 `GalleryPageTicket`，检查 `valid()` 后才能访问页面。挂载或保存失败仍清理旧资源，并显示可手动重试的说明页；不会自动重建忙循环。
 
 页面代码只使用 `ryn::*Props`、typed slots 和现有公开组件；内部 host、controller、ticket 与稳定测试身份不进入 `include/ryn/`。稳定身份按 page → family → sample → test 的层次登记；与文案、挂载序号、Node/Interaction/Scene identity 无关。后续样例登记层负责旧 test ID 的唯一归属映射，切页后所有运行时句柄必须重新解析。
+
+## 样例登记与迁移
+
+[GallerySampleDescriptor](../../examples/token_gallery/gallery_sample_registry.hpp) 登记稳定 sample identity、canonical page/family、标题、实际 C++ 构造函数和公开头文件。首批登记 Button、Input 的五个分组和 TreeSelect，共 14 个真实样例组。每次只运行对应 page/family 的构造函数；其他条目的目录状态不因暂未迁移样例而改变。完整 458 个历史 ID 的映射和其余组件仍按 change 的后续任务迁移。
+
+活动页的 `target(test_id)` 直接解析构造时登记的组件身份。登记只发生在 mount，并由所属组件的 resource cleanup 删除；测试通过 sample owner 验证归属。滚动和普通属性更新不扫描正文文案，不使用全局 mounted 数组偏移定位目标。这些运行时 ID 只属于当前页面状态，不进入 `GalleryPageDraft`。
+
+普通非受控 Input/Search/TextArea 用保存的已提交值设置新实例的 `defaultValue`，并组合原有 change/submit 回调；受控值仍使用原有 Signal/FormField。TreeSelect 保存选择、交付备注、表单值和展开键，open、focus 与 session 总是重新开始。代码片段的展开 UI 和公开 API 内容由后续页面 shell 任务接入，目前登记的函数/头文件映射不等同于已展示代码片段。
 
 ## 定向自动检查
 
@@ -41,3 +49,5 @@ ctest --preset linux-gcc-release -R '^rynui\.gallery_page_(model|controller)$' -
 ```
 
 [生命周期夹具](../../tests/gallery_page_controller_tests.cpp) 使用真实组件宿主、模拟文本平台和记录上传的 GPU adapter，覆盖草稿、敏感清空、受控弹层退役、迟到文本/组合输入、capture/键盘按压、scrollbar drag、回调重入、失败回滚、主题/resize 身份以及稳定后无新增上传/帧请求。它不运行 SDL、真实 IME 或 GPU 驱动。
+
+[样例页面夹具](../../tests/gallery_sample_page_tests.cpp) 的定向入口为 `rynui.gallery_sample_page`（target `rynui_gallery_sample_page_tests`）。它验证首批真实工厂隔离、稳定 ID、编辑与跨页草稿、Button 变体与延迟加载/ref、Search 键盘提交、OTP 粘贴分发/敏感清空、TreeSelect 选择/Form/受控拒绝，以及同页 Theme/resize 的身份保留。
