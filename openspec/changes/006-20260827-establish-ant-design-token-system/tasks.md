@@ -77,8 +77,9 @@
 ## 10. Linux Vulkan 与 SPIR-V 验收
 
 - [x] 10.1 在原生 Linux 使用 `linux-gcc` 或 `linux-clang` preset clean configure 并完成 Debug/Release build，运行 Linux/Vulkan/SPIR-V 专属 shader reflection、artifact deployment、renderer startup/teardown 与 display-scale integration tests；核对 Ninja Multi-Config、标准 C++20 和锁定 shader source，不重复要求平台通用测试
-- [ ] 10.2 在 Linux/Wayland/Vulkan/SPIR-V 真实窗口于至少两个可用 display scale 运行 Token Gallery，实际切换 Default/Dark/Compact、brand Seed、hover/active/focus-visible/disabled/loading 并正常退出；保存 window system、截图、GPU/driver、SPIR-V hash、退出码和诊断计数
-- [ ] 10.3 人工核对三档 elevation、多层/方向/inset shadow 没有硬边、异常加深或裁切，并确认 Button 的透明 gap、hollow ring、系统默认字体、圆角与留白；运行 Linux evidence passed contract，不能以 Windows 结果替代
+- [x] 10.2 历史人工验收已关闭：在 Linux/Wayland/Vulkan/SPIR-V 真实窗口于至少两个可用 display scale 运行 Token Gallery，实际切换 Default/Dark/Compact、brand Seed、hover/active/focus-visible/disabled/loading 并正常退出；保存 window system、截图、GPU/driver、SPIR-V hash、退出码和诊断计数
+- [ ] 10.3 运行 Linux evidence passed contract，不以 Windows 结果替代 Linux 自动验证。
+- [x] 10.3a 历史人工验收已关闭：核对三档 elevation、多层/方向/inset shadow 没有硬边、异常加深或裁切，并确认 Button 的透明 gap、hollow ring、系统默认字体、圆角与留白。
 - [ ] 10.4 运行 Linux 专属 integration CTest、shader/lock/license、evidence、未跟踪依赖与 `git diff --check`；以英文 `test: validate Linux theme rendering` 提交并推送 Linux evidence/截图，核对 remote SHA，不修改 Windows 清单
 
 ## 11. Change 收口
@@ -87,3 +88,5 @@
 - [ ] 11.2 在准备 archive 时运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`，确认 catalog coverage 为 exact、平台通用验收已有且只有一份有效记录、Windows 与 Linux 专属 GPU 清单分别完成、所有 commit 已推送且 worktree clean；本项不替代任一平台专属验收
 
 2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。
+
+2026-11-03：依用户明确指示，本文件标注“历史人工验收已关闭”的勾选表示取消人工任务门槛，非新增实测通过；混合项中的实现、构建、CTest 和平台自动集成仍独立追踪。后续人工体验建议仅写验收说明，不再新增任务，规则见 [人工检查与任务清单](../../../docs/development/openspec.md#人工检查与任务清单)。

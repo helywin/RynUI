@@ -33,7 +33,7 @@
 ## 6. Linux 专属验收
 
 - [x] 6.1 使用 `linux-gcc` 和 `linux-clang` 正式 preset 完成 Linux 受影响构建与 CTest，核对 Ninja Multi-Config、原生 Wayland、Vulkan/SPIR-V 与 Fontconfig 系统字体，保存独立结果
-- [ ] 6.2 在原生 Linux Wayland 真实窗口以至少两档实际 display scale 操作 Switch/Checkbox 状态、pointer/Space/Tab 并与 Button/Input 混排；人工核对视觉、CJK/Latin、clip、focus 与正常退出，保存截图、window system、driver、font、scale、exit code 和 diagnostics，不以 XWayland 替代
+- [x] 6.2 历史人工验收已关闭：在原生 Linux Wayland 真实窗口以至少两档实际 display scale 操作 Switch/Checkbox 状态、pointer/Space/Tab 并与 Button/Input 混排；人工核对视觉、CJK/Latin、clip、focus 与正常退出，保存截图、window system、driver、font、scale、exit code 和 diagnostics，不以 XWayland 替代
 - [ ] 6.3 运行 Linux passed evidence contract、受影响平台测试、shader/lock/license/cache 检查、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Linux selection controls` 提交 Linux evidence，不修改 Windows 清单且不主动 push
 
 ## 7. Change 收口
@@ -41,3 +41,5 @@
 - [ ] 7.1 仅在准备 archive 时核对平台通用、Windows、Linux 各自 checkbox 与 evidence，运行最终 OpenSpec doctor/strict validate、受影响 CTest、`git diff --check` 和 clean worktree 检查；本项不得替代任何真实平台验收，也不得自动 archive 或 push
 
 2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。
+
+2026-11-03：依用户明确指示，本文件标注“历史人工验收已关闭”的勾选表示取消人工任务门槛，非新增实测通过；混合项中的实现、构建、CTest 和平台自动集成仍独立追踪。后续人工体验建议仅写验收说明，不再新增任务，规则见 [人工检查与任务清单](../../../docs/development/openspec.md#人工检查与任务清单)。

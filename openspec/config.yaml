@@ -14,6 +14,8 @@ context: |
   公开组件 API 必须采用 typed Props、typed slots 和 reactive Prop<T>；LayoutStyle 只控制外部布局，稳定组件的视觉样式只通过 Theme 与 Component Token 控制。
   Compose 仅作为 slot composition、Constraints 和 phased invalidation 的机制参考，不得把通用 Modifier 作为稳定组件的视觉样式入口。
   正式构建必须由 CMakePresets.json 管理并使用 Ninja Multi-Config；Windows 使用 MSVC，Linux 提供 GCC 与 Clang 配置。
+  tasks.md 只追踪实现、自动验证和文档校验，不列人工验收或用户确认，也不得将人工要求混入自动任务。
+  人工体验建议仅写验收说明，不设置任务 checkbox 或完成门槛；关闭人工要求不等于实测通过。
 
 rules:
   proposal:
@@ -29,7 +31,9 @@ rules:
     - 需求和场景正文使用简体中文，OpenSpec 结构关键字保持英文
   tasks:
     - 按可独立验证的增量拆分任务
-    - 每个阶段包含对应测试或真实运行验收
+    - 每个阶段包含对应自动测试或可自动执行的真实运行验收
+    - 不得创建人工操作、目视审核、用户确认、跨显示器手动检查或系统 IME 手动验收任务；可选建议写验收说明
+    - 实现和自动验证须独立可追踪；历史人工要求的管理关闭不得被记为功能或平台实测通过
     - 平台无关的实现、unit/headless test、contract test、benchmark 和文档校验只需在任一受支持平台验收一次，并记录实际平台与 preset
     - 只有依赖 OS、toolchain/ABI、window system、GPU/driver/shader、system font、input/DPI 或 packaging 的行为才拆分 Windows 与 Linux 独立验收项
     - 平台通用 CTest 不得在多个平台重复要求；含平台分支或平台集成的测试仍须在受影响的平台分别运行

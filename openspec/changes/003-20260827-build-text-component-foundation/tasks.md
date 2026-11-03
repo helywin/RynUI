@@ -46,7 +46,7 @@
 ## 7. Windows 验收清单
 
 - [ ] 7.1 使用 `windows-msvc` preset clean configure，完成 Debug/Release build 与完整 CTest，覆盖第 1–6 节新增的 Prop、component、Layout、多 Text、public API 与 headless contract；保存独立 Windows 结果，不得以 Linux 结果代替
-- [ ] 7.2 在 D3D12/DXIL 真实窗口运行示例并正常关闭，保存 display scale、截图、driver、shader format、退出码和全部计数证据，人工核对 14px Latin/CJK、三种 tone、换行、margin 与共享 glyph
+- [x] 7.2 历史人工验收已关闭：在 D3D12/DXIL 真实窗口运行示例并正常关闭，保存 display scale、截图、driver、shader format、退出码和全部计数证据，人工核对 14px Latin/CJK、三种 tone、换行、margin 与共享 glyph
 - [ ] 7.3 运行 Windows evidence contract、public dependency leak 和 `git diff --check`；以英文 `test: validate Windows text components` 提交本平台验收文件，不把 headless、Linux 或 Windows build 结果描述为 Windows 真实窗口通过
 
 ## 8. Linux 验收清单
@@ -60,3 +60,5 @@
 ## 9. Change 收口
 
 - [ ] 9.1 在准备 archive 时运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`，确认所有独立验收条目已完成、worktree 只包含本 change 相关文件且 README、AGENTS、architecture 与 OpenSpec 职责未混写；本项只校验 change 完整性，不替代任何平台验收
+
+2026-11-03：依用户明确指示，本文件标注“历史人工验收已关闭”的勾选表示取消人工任务门槛，非新增实测通过；混合项中的实现、构建、CTest 和平台自动集成仍独立追踪。后续人工体验建议仅写验收说明，不再新增任务，规则见 [人工检查与任务清单](../../../docs/development/openspec.md#人工检查与任务清单)。

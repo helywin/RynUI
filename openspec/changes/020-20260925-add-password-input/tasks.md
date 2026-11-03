@@ -19,10 +19,12 @@
 ## 4. Linux 专属验收
 
 - [x] 4.1 后续在真实 Linux `linux-gcc`/`linux-clang` 正式 preset 构建及运行受影响 CTest，记录 Wayland/Vulkan/SPIR-V/Fontconfig 结果
-- [ ] 4.2 后续在原生 Wayland 窗口检查实际 display scale、指针、键盘、系统输入、主题与退出，独立保存截图和诊断并英文提交
+- [x] 4.2 历史人工验收已关闭：后续在原生 Wayland 窗口检查实际 display scale、指针、键盘、系统输入、主题与退出，独立保存截图和诊断并英文提交
 
 ## 5. Change 收口
 
 - [ ] 5.1 仅在准备 archive 时核对平台通用、Windows、Linux 各任务和证据，完成最终校验；不自动 push 或 archive
 
 2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。
+
+2026-11-03：依用户明确指示，本文件标注“历史人工验收已关闭”的勾选表示取消人工任务门槛，非新增实测通过；混合项中的实现、构建、CTest 和平台自动集成仍独立追踪。后续人工体验建议仅写验收说明，不再新增任务，规则见 [人工检查与任务清单](../../../docs/development/openspec.md#人工检查与任务清单)。

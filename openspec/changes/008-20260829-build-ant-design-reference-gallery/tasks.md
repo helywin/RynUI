@@ -46,15 +46,17 @@
 ## 7. Windows 专属验收
 
 - [x] 7.1 使用 `windows-msvc` preset clean configure，完成受 Windows 分支影响的 Debug/Release build 与 CTest，核对 Ninja Multi-Config、MSVC x64、BUNDLED 依赖、Win32 wheel/input、DirectWrite system font discovery 和 D3D12/DXIL 来源，保存独立 Windows 结果
-- [ ] 7.2 在 Windows/MSVC/D3D12/DXIL 真实窗口以系统 display scale 和 1.0/1.25/1.5/2.0 acceptance render scale 浏览 Introduction、Foundation 与七类末尾，操作 category/filter/wheel/keyboard、Default/Primary/Danger hover/active/focus 并正常退出；保存截图、driver、font、scale、退出码与 diagnostics
-- [ ] 7.3 人工核对非交互目录无蓝色 hover/focus、Default 只有既有 1px hover border、solid Button 无透明边缘/蓝色外圈、keyboard focus 为 1px gap + 3px ring、CJK/Latin 可读、72 项全部可到达；运行 Windows evidence passed contract、dependency/shader/lock/license 与 cache 检查
+- [x] 7.2 历史人工验收已关闭：在 Windows/MSVC/D3D12/DXIL 真实窗口以系统 display scale 和 1.0/1.25/1.5/2.0 acceptance render scale 浏览 Introduction、Foundation 与七类末尾，操作 category/filter/wheel/keyboard、Default/Primary/Danger hover/active/focus 并正常退出；保存截图、driver、font、scale、退出码与 diagnostics
+- [ ] 7.3 运行 Windows evidence passed contract、dependency/shader/lock/license 与 cache 检查。
+- [x] 7.3a 历史人工验收已关闭：核对非交互目录无蓝色 hover/focus、Default 只有既有 1px hover border、solid Button 无透明边缘/蓝色外圈、keyboard focus 为 1px gap + 3px ring、CJK/Latin 可读、72 项全部可到达。
 - [ ] 7.4 运行 Windows 受影响平台测试、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows reference gallery` 提交并推送 Windows evidence，核对 remote SHA，不修改 Linux 清单
 
 ## 8. Linux 专属验收
 
 - [x] 8.1 使用 `linux-gcc` clean configure 和 `linux-clang` Debug build，完成受 Linux 分支影响的 CTest，核对 Ninja Multi-Config、标准 C++20、BUNDLED Wayland/libdecor、Fontconfig system font 与 Vulkan/SPIR-V 来源，保存独立 Linux 结果
-- [ ] 8.2 在原生 Linux Wayland/GCC/Vulkan/SPIR-V 真实窗口以至少两档实际 display scale 浏览完整文档，操作 category/filter/wheel/keyboard、Button hover/active/focus 与正常退出；保存截图、window system、driver、font、scale、退出码和 diagnostics，不以 X11 代替
-- [ ] 8.3 人工核对非交互目录、Button state、CJK/Latin、clip/scroll、宽窄 reflow 与 72 项 reachability；运行 Linux evidence passed contract、dependency/shader/lock/license、Fontconfig 与 cache 检查
+- [x] 8.2 历史人工验收已关闭：在原生 Linux Wayland/GCC/Vulkan/SPIR-V 真实窗口以至少两档实际 display scale 浏览完整文档，操作 category/filter/wheel/keyboard、Button hover/active/focus 与正常退出；保存截图、window system、driver、font、scale、退出码和 diagnostics，不以 X11 代替
+- [ ] 8.3 运行 Linux evidence passed contract、dependency/shader/lock/license、Fontconfig 与 cache 检查。
+- [x] 8.3a 历史人工验收已关闭：核对非交互目录、Button state、CJK/Latin、clip/scroll、宽窄 reflow 与 72 项 reachability。
 - [ ] 8.4 运行 Linux 受影响平台测试、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Linux reference gallery` 提交并推送 Linux evidence，核对 remote SHA，不修改 Windows 清单
 
 ## 9. Change 收口
@@ -62,3 +64,5 @@
 - [ ] 9.1 在准备 archive 时运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、最终受影响 CTest、`git diff --check`、remote SHA 与 clean worktree 检查；确认平台通用、Windows 与 Linux checkbox/evidence 各自真实完成，README、AGENTS、architecture、generated token docs 与 OpenSpec 职责未混写，本项不替代任何平台验收
 
 2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。
+
+2026-11-03：依用户明确指示，本文件标注“历史人工验收已关闭”的勾选表示取消人工任务门槛，非新增实测通过；混合项中的实现、构建、CTest 和平台自动集成仍独立追踪。后续人工体验建议仅写验收说明，不再新增任务，规则见 [人工检查与任务清单](../../../docs/development/openspec.md#人工检查与任务清单)。

@@ -72,10 +72,13 @@
 ## 10. Windows 验收清单
 
 - [ ] 10.1 使用 `windows-msvc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、MSVC x64、BUNDLED 依赖和 D3D12/DXIL shader 仍来自锁定来源，保存 Windows 构建结果
-- [ ] 10.2 在 Windows/MSVC/D3D12/DXIL 真实窗口运行公开 Button DSL 示例，以 mouse 和 keyboard 实际触发 hover、pressed、drag-out、Tab、Enter、Space、disabled/loading 与正常退出；保存 display scale、截图、driver、shader format、退出码和全套诊断计数
-- [ ] 10.3 人工核对 Default/Primary、Small/Middle/Large、CJK/Latin、focus-visible、disabled/loading 层级和 click counter；运行 Windows evidence contract、public dependency、shader/lock/license 与未跟踪依赖检查，不把其他平台结果写入 Windows 证据
+- [x] 10.2 历史人工验收已关闭：在 Windows/MSVC/D3D12/DXIL 真实窗口运行公开 Button DSL 示例，以 mouse 和 keyboard 实际触发 hover、pressed、drag-out、Tab、Enter、Space、disabled/loading 与正常退出；保存 display scale、截图、driver、shader format、退出码和全套诊断计数
+- [ ] 10.3 运行 Windows evidence contract、public dependency、shader/lock/license 与未跟踪依赖检查，不把其他平台结果写入 Windows 证据。
+- [x] 10.3a 历史人工验收已关闭：核对 Default/Primary、Small/Middle/Large、CJK/Latin、focus-visible、disabled/loading 层级和 click counter。
 - [ ] 10.4 运行 Windows 完整 CTest 与 `git diff --check`；以英文 `test: validate Windows button interactions` 提交并推送本平台验收文件，核对 remote SHA
 
 ## 11. Change 收口
 
 - [ ] 11.1 在准备 archive 时运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`，确认所有独立验收条目已完成、worktree 只包含本 change 相关文件且 README、AGENTS、architecture 与 OpenSpec 职责未混写；本项只校验 change 完整性，不替代任何平台验收
+
+2026-11-03：依用户明确指示，本文件标注“历史人工验收已关闭”的勾选表示取消人工任务门槛，非新增实测通过；混合项中的实现、构建、CTest 和平台自动集成仍独立追踪。后续人工体验建议仅写验收说明，不再新增任务，规则见 [人工检查与任务清单](../../../docs/development/openspec.md#人工检查与任务清单)。

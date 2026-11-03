@@ -57,4 +57,4 @@ Switch/Checkbox 各有 typed Props 和 controlled/uncontrolled 模式；mode 在
 
 ## Migration Plan
 
-沿用 013 的内部服务，不重复迁移 Button/Input；公共头只增加 Switch/Checkbox。若新控件阶段失败，保留 013 已验证的内部提取提交并回退未验证的新控件阶段，而不修改旧 Props 合同。013 的 Linux 项及 change 008 的人工截图待验收清单保持各自原状态。
+沿用 013 的内部服务，不重复迁移 Button/Input；公共头只增加 Switch/Checkbox。若新控件阶段失败，保留 013 已验证的内部提取提交并回退未验证的新控件阶段，而不修改旧 Props 合同。013 的 Linux 自动集成项保持独立追踪；change 008 的历史人工截图要求按 2026-11-03 用户指示管理关闭，不增加实测通过声明。

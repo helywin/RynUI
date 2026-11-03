@@ -26,13 +26,13 @@
 ## 5. Windows 专属验收
 
 - [x] 5.1 使用 `windows-msvc` Ninja Multi-Config/MSVC x64 完成受影响 Debug/Release build 与 CTest；记录 Win32、D3D12/DXIL、系统字体、实际 display scale 与运行结果
-- [ ] 5.2 在真实 Windows 窗口操作 Search 的 Enter、Button、loading/disabled、三档尺寸、CJK/Latin、Tab/focus 与 IME，至少覆盖 1.0/1.25/1.5/2.0 模拟 scale 并人工核对布局/clip；保存截图、driver/font/scale、diagnostics 与 exit code
+- [x] 5.2 历史人工验收已关闭：在真实 Windows 窗口操作 Search 的 Enter、Button、loading/disabled、三档尺寸、CJK/Latin、Tab/focus 与 IME，至少覆盖 1.0/1.25/1.5/2.0 模拟 scale 并人工核对布局/clip；保存截图、driver/font/scale、diagnostics 与 exit code
 - [ ] 5.3 运行 Windows passed evidence contract、shader/lock/license/cache、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows Search composition` 提交独立 evidence，不主动 push
 
 ## 6. Linux 专属验收
 
 - [x] 6.1 使用 `linux-gcc` 与 `linux-clang` 正式 preset 完成受影响构建/CTest，记录 Ninja Multi-Config、原生 Wayland、Vulkan/SPIR-V 与 Fontconfig 系统字体
-- [ ] 6.2 在原生 Linux Wayland 真实窗口与至少两档实际 display scale 操作 Search Enter/按钮、CJK/Latin/IME、loading/disabled、Tab/focus；人工核对布局/clip 并保存截图、driver/font/scale、diagnostics 和 exit code，不以 XWayland/WSLg 替代
+- [x] 6.2 历史人工验收已关闭：在原生 Linux Wayland 真实窗口与至少两档实际 display scale 操作 Search Enter/按钮、CJK/Latin/IME、loading/disabled、Tab/focus；人工核对布局/clip 并保存截图、driver/font/scale、diagnostics 和 exit code，不以 XWayland/WSLg 替代
 - [ ] 6.3 运行 Linux passed evidence contract、平台测试、shader/lock/license/cache、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Linux Search composition` 提交独立 evidence，不修改 Windows 清单且不主动 push
 
 ## 7. Change 收口
@@ -40,3 +40,5 @@
 - [ ] 7.1 仅在准备 archive 时核对平台通用、Windows、Linux 各自 checkbox/evidence，运行最终 doctor/strict validate、受影响 CTest 与 clean worktree 检查；不自动 archive 或 push
 
 2026-11-02：本次 Linux 已验项的实际 preset、命令、结果与未验边界见 [Linux 验收摘要](../../../docs/validation/linux-native-20261102.md)。实际多输出缩放、系统 IME 与人工验收未由 render scale override 或内部注入代替。
+
+2026-11-03：依用户明确指示，本文件标注“历史人工验收已关闭”的勾选表示取消人工任务门槛，非新增实测通过；混合项中的实现、构建、CTest 和平台自动集成仍独立追踪。后续人工体验建议仅写验收说明，不再新增任务，规则见 [人工检查与任务清单](../../../docs/development/openspec.md#人工检查与任务清单)。

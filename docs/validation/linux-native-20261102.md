@@ -43,6 +43,6 @@ python tools/run_background_wayland.py --log-dir out/background-smoke -- \
 
 工具仅在独立 headless Mutter、私有 Wayland socket / D-Bus / runtime 下创建窗口，使用内存 GSettings 与本地 GIO，不连接当前桌面；超时退出并清理，不回退前台。实际后台 minimal Vulkan/SPIR-V smoke exit 0。动画 readback 在本机 headless compositor 的 swapchain 等待超时，后台动画矩阵未通过，保留此限制，不修改 renderer 掩盖它；此前原生 GPU 结果不由后台 smoke 代替。
 
-系统 IME 候选窗、跨实际显示器/DPI 与其他人工视觉验收仍待用户安排。滚轮手感已由用户确认通过。Windows 清单保持原状态，不自动 archive。
+系统 IME 候选窗、跨实际显示器/DPI 与其他人工视觉检查仍无新增实测记录；自 2026-11-03 起只作为可选体验建议，不再列入任务门槛。滚轮手感已由用户确认通过。历史 Windows/Linux 人工项按用户指示管理关闭，自动平台验收仍以实际记录为准，不自动 archive。
 
-截至 2026-11-02，共更新 44 个 change 的 48 个已验任务；各任务链接到本摘要。change 100 的 3.2 已根据用户实际反馈勾选，change 100 为 6/6 完成。未通过或尚未进行的项目保持未勾选，不因同一 change 的其他测试通过而关闭。
+截至 2026-11-02，共更新 44 个 change 的 48 个已验任务；各任务链接到本摘要。change 100 的 3.2 已根据用户实际反馈勾选，change 100 为 6/6 完成。实现和自动验证未通过或尚未执行的项目仍保持未勾选。2026-11-03 依用户指示关闭的历史人工项不计入上述实测数量，规则见 [人工检查与任务清单](../development/openspec.md#人工检查与任务清单)。

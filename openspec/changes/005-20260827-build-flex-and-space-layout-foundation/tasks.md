@@ -46,10 +46,12 @@
 
 - [x] 6.1 使用 `linux-gcc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、`-std=c++20`、BUNDLED 依赖、显式 Fontconfig 2.13+ 平台服务和 Vulkan/SPIR-V 锁定来源，保存 Linux 构建结果
 - [x] 6.2 使用 `linux-clang` preset 完成 Debug configure/build/CTest，核对 Flex/Space/LayoutStyle target 使用标准 C++20 而非 GNU extensions；环境缺 Clang 时保持未完成并记录可复现阻塞
-- [ ] 6.3 在原生 Linux Wayland/GCC/Vulkan/SPIR-V 真实窗口运行公开 layout 示例，完成窗口宽窄调整、跨不同缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 window system、display scale、宽/窄截图、退出码和诊断计数，不以强制 X11 结果代替 Wayland 验收
-- [ ] 6.4 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、Fontconfig 默认 family/source 与 Button 命中位置；运行 Linux evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
+- [x] 6.3 历史人工验收已关闭：在原生 Linux Wayland/GCC/Vulkan/SPIR-V 真实窗口运行公开 layout 示例，完成窗口宽窄调整、跨不同缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 window system、display scale、宽/窄截图、退出码和诊断计数，不以强制 X11 结果代替 Wayland 验收
+- [ ] 6.4 运行 Linux evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查。
+- [x] 6.4a 历史人工验收已关闭：核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、Fontconfig 默认 family/source 与 Button 命中位置。
 - [ ] 6.5 运行 Linux 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Linux flex and space layouts` 提交并推送 Linux 清单/evidence/截图，核对 remote SHA，不修改 Windows 清单
-- [ ] 6.6 读取 Fontconfig matched pattern 的 antialias/hinting/hintstyle/rgba/lcdfilter/embedded bitmap 并映射到透明 grayscale atlas 兼容的 FreeType policy；在原生 Linux Wayland 分别保存修复前后相位对照与 Token Gallery 截图，人工核对 12/14/16px CJK/Latin 后以英文 `fix: honor Linux font rendering settings` 提交，不修改 Windows 清单
+- [ ] 6.6 读取 Fontconfig matched pattern 的 antialias/hinting/hintstyle/rgba/lcdfilter/embedded bitmap 并映射到透明 grayscale atlas 兼容的 FreeType policy；完成相应实现与自动验证后以英文 `fix: honor Linux font rendering settings` 提交，不修改 Windows 清单。
+- [x] 6.6a 历史人工验收已关闭：在原生 Linux Wayland 保存修复前后相位对照与 Token Gallery 截图，核对 12/14/16px CJK/Latin。
 
 ## 7. Windows 验收清单
 
@@ -57,8 +59,11 @@
 - [x] 7.2 在 Windows/MSVC/D3D12/DXIL 真实窗口运行公开 layout 示例，完成窗口宽窄调整、不同系统缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 display scale、宽/窄截图、退出码和诊断计数
 - [x] 7.3 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、DirectWrite 的 Segoe UI/Microsoft YaHei UI family/source 与 Button 命中位置；运行 Windows evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
 - [x] 7.4 运行 Windows 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows flex and space layouts` 提交并推送 Windows 清单/evidence/截图，核对 remote SHA，不修改 Linux 清单
-- [ ] 7.5 将 Windows system/custom face 的实际 glyph raster 接入 DirectWrite grayscale bitmap path，使用目标 monitor rendering parameters 与推荐 rendering/grid-fit mode并保持 HarfBuzz logical shaping；在 Windows/MSVC/D3D12 重新完成 100%/125%/150%/200% Token Gallery CJK/Latin 对照、CTest 与 evidence，以英文 `fix: rasterize Windows text with DirectWrite` 提交，不修改 Linux 清单
+- [ ] 7.5 将 Windows system/custom face 的实际 glyph raster 接入 DirectWrite grayscale bitmap path，使用目标 monitor rendering parameters 与推荐 rendering/grid-fit mode 并保持 HarfBuzz logical shaping；在 Windows/MSVC/D3D12 完成受影响构建、CTest 和自动集成证据，以英文 `fix: rasterize Windows text with DirectWrite` 提交，不修改 Linux 清单。
+- [x] 7.5a 历史人工验收已关闭：在 Windows 100%/125%/150%/200% 下对照 Token Gallery 的 CJK/Latin 外观。
 
 ## 8. Change 收口
 
 - [ ] 8.1 在准备 archive 时运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`，确认所有独立验收条目已完成、worktree 只包含本 change 相关文件且 README、AGENTS、architecture 与 OpenSpec 职责未混写；本项不替代任何平台验收
+
+2026-11-03：依用户明确指示，本文件标注“历史人工验收已关闭”的勾选表示取消人工任务门槛，非新增实测通过；混合项中的实现、构建、CTest 和平台自动集成仍独立追踪。后续人工体验建议仅写验收说明，不再新增任务，规则见 [人工检查与任务清单](../../../docs/development/openspec.md#人工检查与任务清单)。

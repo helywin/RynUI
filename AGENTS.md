@@ -49,6 +49,8 @@
 - `ADDED`、`MODIFIED`、`REMOVED`、`RENAMED`、`Requirement`、`Scenario`、`WHEN`、`THEN`、`SHALL`、`MUST` 等结构关键字保持英文。
 - proposal 阶段只创建规划产物；没有明确进入 apply workflow 时不得实现代码。
 - 不得把 planning complete、source reviewed 或 test designed 描述为功能已实现。
+- `tasks.md` 只列实现、自动化测试、自动平台集成和文档校验；不得新增人工操作、目视审核、用户确认、跨显示器手动检查或系统 IME 手动验收任务，也不得把人工要求混入实现或自动检查的 checkbox。
+- 人工体验检查只作为 change 验收说明中的可选建议，不列任务 checkbox，不作为实施或 archive 的前置门槛。用户实际反馈可据实记录，未测或取消要求不得写成实测通过。
 
 ## 实施与提交
 
@@ -56,7 +58,7 @@
 - 每完成一个可独立验证的小阶段就创建一次 Git commit。
 - Git commit message 必须使用英文 Conventional Commits，格式为 `type: description` 或 `type(scope): description`，例如 `refactor: isolate effect packing from Core`；不得只写无前缀的描述。
 - 一个提交只包含当前阶段相关文件，不混入用户的其他改动。
-- 提交前运行该阶段列出的测试和验收；未通过的任务不得勾选。
+- 提交前运行该阶段列出的自动测试和自动验收；未完成或未通过的实现、自动验证任务不得勾选。历史人工项依用户明确指示关闭时，须注明“人工要求已关闭，非实测通过”，不计入测试通过数量；混合项中的实现和自动检查仍单独追踪。
 - 每完成一次 Git commit，立即安全 fetch/rebase、push，并核对远端 SHA；发生冲突或 push 失败时先处理或报告，不积累未推送提交。
 - 不主动创建 PR 或 archive change，除非用户明确要求。
 
@@ -70,7 +72,7 @@
 ## 最低验证
 
 - 局部修改默认只构建相关 target、运行受影响测试；不在每次小修改后重复全量 CTest 或整套原生窗口矩阵。只有变更范围或失败证据需要时才扩大验证。
-- Linux 自动窗口测试默认通过 `tools/run_background_wayland.py` 使用独立 headless Wayland compositor，不得将测试窗口打开到用户当前桌面或跟随鼠标所在显示器。后台 GPU 结果不得替代人工桌面、跨实际显示器或系统 IME 验收；此类项目保留待验。
+- Linux 自动窗口测试默认通过 `tools/run_background_wayland.py` 使用独立 headless Wayland compositor，不得将测试窗口打开到用户当前桌面或跟随鼠标所在显示器。后台 GPU 结果不得替代人工桌面、跨实际显示器或系统 IME 的实测证据；未实测边界写入验收说明，不创建人工待办。
 
 规划或文档变更至少运行：
 
@@ -85,7 +87,7 @@ git diff --check
 ## 分平台验收清单
 
 - 平台无关的实现、unit/headless test、contract test、benchmark 和文档校验只需在任一受支持平台完成一次；`tasks.md` 必须把它们列为平台通用任务并记录实际使用的平台与 preset，不得要求 Windows 与 Linux 重复验收同一逻辑合同。
-- 只有依赖 OS、toolchain/ABI、window system、GPU/driver/shader、system font、input/DPI 或 packaging 的行为才建立分平台验收。此类 `tasks.md` 必须把 Windows 与 Linux 分成独立二级标题与独立 checkbox，不得在同一个 checkbox 中同时要求两个平台完成。
+- 只有依赖 OS、toolchain/ABI、window system、GPU/driver/shader、system font、input/DPI 或 packaging 的自动验证才建立分平台任务。此类 `tasks.md` 必须把 Windows 与 Linux 分成独立二级标题与独立 checkbox，不得在同一个 checkbox 中同时要求两个平台完成。
 - 完整 CTest 若只验证平台通用逻辑，只需在一个平台运行；包含平台分支或平台集成的测试必须在受影响的平台分别运行，且不得用平台通用测试结果代替真实窗口、GPU 或系统服务证据。
-- 每个平台的 checkbox 只有在对应操作系统的实际机器上完成后才能勾选。切换开发电脑时，已经完成的平台项保持完成，另一平台缺少证据不得使其回退，也不得由其代替。
+- 每个平台的自动验收 checkbox 只有在对应操作系统的实际机器上完成后才能勾选。切换开发电脑时，已经完成的平台项保持完成，另一平台缺少证据不得使其回退，也不得由其代替。历史人工要求的管理关闭不增加该平台的实测覆盖。
 - 存在分平台验收时，Windows 与 Linux 的证据和验收提交必须可以各自独立完成；最终收口只汇总本 change 明确要求的平台结果，不重复执行已经通过的平台通用验收。
