@@ -12,6 +12,8 @@
 
 必要入口：`cmake --build --preset linux-gcc-headless-release --target rynui_gallery_pages_benchmark rynui_gallery_pages_host_tests rynui_gallery_page_acceptance_tests`；`ctest --preset linux-gcc-headless-release -R '^rynui.gallery_pages_benchmark$' --output-on-failure`。Debug 使用对应 headless-debug preset。其余相关 target/CTest 由本 change 各精简结果分组列明；原始输出只在 `out/105-implementation/20261103/`。
 
-最终格式检查：clang-format 22.1.3，845 个自有源文件，0 failures。原生 binary 的混用参数、未知页和 out 外输出，均在创建窗口前以 exit 1 拒绝，3/3 通过。
+最终格式检查：clang-format 22.1.3，845 个自有源文件，0 failures。原生 binary 的混用参数、未知页和 out 外输出，均在创建窗口前以 exit 1 拒绝，6/6 通过。
 
 以上为 CPU/模拟文本平台、Recording 和 Linux 原生编译证据；Windows/MSVC、实际 GPU 呈现、系统 IME/真实显示器未由这些结果证明。
+
+参数收尾补充：非 Input 页不接受家族后缀，`--sample` 必须形成页面模型可寻址的路由；新页面参数与旧 finite flag 混用在创建窗口前拒绝。新增反例先复现失败，修正后仅复核参数/runner：Release 2/2、Debug 2/2；仍计入前述去重总数，没有重复 GPU 流程。

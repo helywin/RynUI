@@ -101,7 +101,7 @@ ctest --preset linux-gcc-headless-release -R '^rynui.(gallery_pages_benchmark|ga
 python tools/run_gallery_page_acceptance.py out/build/linux-gcc/examples/Release/rynui_token_gallery --preset linux-gcc --timeout 20 --log-dir out/gallery-pages/linux
 ```
 
-[有限入口](../../examples/token_gallery/gallery_page_acceptance.hpp) 默认依次测试 11 个页面/家族，轮换 1440/960/728/480/360 和 Default/Dark/Compact，检查页面替换、几何、native draw、系统字体、host input area/cursor 同步以及输入/弹层退役。`--page=input/password` 指定家族；`--page=button --sample=gallery.sample.button.basics` 指定真实样例锚点；可重复 `--page=`。`--page-width=480` 固定宽度，`--page-timeout=20` 限制有限流程，`--page-output=out/.../result.json` 指定 JSON；这些参数都要求 `--page-acceptance`，未知参数/页面/样例、错误范围和仓库 out 外输出在创建窗口之前拒绝。
+[有限入口](../../examples/token_gallery/gallery_page_acceptance.hpp) 默认依次测试 11 个页面/家族，轮换 1440/960/728/480/360 和 Default/Dark/Compact，检查页面替换、几何、native draw、系统字体、host input area/cursor 同步以及输入/弹层退役。`--page=input/password` 指定家族；`--page=button --sample=gallery.sample.button.basics` 指定组件页的真实样例锚点（内建 Token 页通过章节访问）；可重复 `--page=`。`--page-width=480` 固定宽度，`--page-timeout=20` 限制有限流程，`--page-output=out/.../result.json` 指定 JSON；这些参数都要求 `--page-acceptance`，未知参数/页面/样例、错误范围和仓库 out 外输出在创建窗口之前拒绝。
 
 [runner](../../tools/run_gallery_page_acceptance.py) 在 Linux 固定使用私有 Mutter headless Wayland 与独立 D-Bus，不回退当前桌面。默认矩阵校验实际编译的 preset/configuration/toolchain、renderer backend/shader、系统字体、提交数和 host 同步；参数、退出码、超时、过期结果拒绝和 [schema](../../tests/fixtures/gallery-page-acceptance.schema.json) 有无窗口自动检查。指定不含编辑器的单页会报告较窄的输入覆盖；不能据此代替默认矩阵或系统 IME 验收。Windows runner 只接受实际 MSVC/D3D12 结果。
 

@@ -67,6 +67,9 @@ GalleryPageRoute route(std::string_view value) {
     result.component_identity =
         identity.starts_with("ant.component.") ? std::string{identity} : "ant.component." + std::string{identity};
     if (separator != std::string_view::npos) {
+        if (result.component_identity != "ant.component.input") {
+            throw std::invalid_argument("Only the Input page accepts a family suffix");
+        }
         const auto family = value.substr(separator + 1);
         constexpr std::array<std::string_view, 5> names{"input", "search", "password", "text-area", "otp"};
         const auto found = std::ranges::find(names, family);
@@ -114,7 +117,7 @@ GalleryPageOptions gallery_page_options(std::span<const std::string_view> argume
                 return sample.identity == page.sample_identity && sample.kind == page.kind &&
                        sample.component_identity == page.component_identity && sample.family == page.family;
             });
-            if (found == gallery_samples().end()) {
+            if (found == gallery_samples().end() || !GalleryPageModel{}.valid(page)) {
                 throw std::invalid_argument("--sample does not belong to this page/family");
             }
             acceptance_argument = true;

@@ -6,7 +6,7 @@
 
 int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
-        if (std::string_view{argv[i]} == "--page-acceptance") {
+        if (std::string_view{argv[i]}.starts_with("--page") || std::string_view{argv[i]}.starts_with("--sample")) {
             return rynui::example::run_gallery_pages(argc, argv);
         }
     }

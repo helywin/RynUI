@@ -21,9 +21,9 @@ int main(int argc, char** argv) {
             throw std::runtime_error("default finite matrix is incomplete");
         }
         for (const auto argument :
-             {"--unknown", "--page=missing", "--page=button/otp", "--page-width=0", "--page-timeout=999",
-              "--page-output=README.json", "--page-output=out/../escape.json", "--page-output=out/folder",
-              "--sample=missing"}) {
+             {"--unknown", "--page=missing", "--page=button/otp", "--page=button/input", "--page-width=0",
+              "--page-timeout=999", "--page-output=README.json", "--page-output=out/../escape.json",
+              "--page-output=out/folder", "--sample=missing"}) {
             bool rejected{};
             try {
                 static_cast<void>(
@@ -43,6 +43,18 @@ int main(int argc, char** argv) {
         }
         if (!rejected) {
             throw std::runtime_error("automation parameters started an interactive product");
+        }
+        rejected = false;
+        try {
+            static_cast<void>(
+                gallery_page_options(std::array<std::string_view, 3>{"--page-acceptance", "--page=tokens",
+                                                                     "--sample=gallery.sample.tokens.theme"},
+                                     root));
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        if (!rejected) {
+            throw std::runtime_error("an unaddressable built-in sample route was accepted");
         }
         const auto specific =
             gallery_page_options(std::array<std::string_view, 3>{"--page-acceptance", "--page=button",
