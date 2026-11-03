@@ -1997,6 +1997,11 @@ add_executable(
     rynui_gallery_document_model_tests
     gallery_document_model_tests.cpp
 )
+
+add_executable(rynui_gallery_page_model_tests gallery_page_model_tests.cpp)
+rynui_configure_cpp_target(rynui_gallery_page_model_tests)
+target_link_libraries(rynui_gallery_page_model_tests PRIVATE rynui_token_gallery_definition)
+add_test(NAME rynui.gallery_page_model COMMAND rynui_gallery_page_model_tests)
 rynui_configure_cpp_target(rynui_gallery_document_model_tests)
 target_link_libraries(
     rynui_gallery_document_model_tests

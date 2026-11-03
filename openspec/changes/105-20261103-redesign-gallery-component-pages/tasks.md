@@ -6,10 +6,10 @@
 
 ## 1. 页面模型与真实状态（平台通用）
 
-- [ ] 1.1 实现 Gallery 内部 page/route/section/family 模型及 catalog 到 descriptor 的完整生成，保持 6.6.5 锁与 73 个 canonical identity；完成标准为 1.3 的唯一性、全目录可达与缺省说明页断言通过。
-- [ ] 1.2 实现中文/英文/家族别名搜索、六状态筛选、目录统计与当前页不匹配提示；显示原始支持/缺失清单，不产生能力完成率；完成标准为 1.3 的筛选、别名、零结果和无百分比断言通过。
-- [ ] 1.3 新增/更新 model/catalog 定向自动测试，覆盖 7 类计数、73 页、Input 五别名、未知 identity、全部六状态（包括零数量夹具）、筛选不改当前页；构建 model/catalog targets，运行 `rynui.ant_design_reference_catalog`、catalog generator/contract 和 `rynui.gallery_document_model` 及新增页面 model 测试，记录结果。
-- [ ] 1.4 增加页面/状态语义与历史长文档迁移的简短开发说明，自动校验来源路径、版本和文档链接，并运行 OpenSpec doctor/strict 与 diff 检查。
+- [x] 1.1 实现 Gallery 内部 page/route/section/family 模型及 catalog 到 descriptor 的完整生成，保持 6.6.5 锁与 73 个 canonical identity；完成标准为 1.3 的唯一性、全目录可达与缺省说明页断言通过。
+- [x] 1.2 实现中文/英文/家族别名搜索、六状态筛选、目录统计与当前页不匹配提示；显示原始支持/缺失清单，不产生能力完成率；完成标准为 1.3 的筛选、别名、零结果和无百分比断言通过。
+- [x] 1.3 新增/更新 model/catalog 定向自动测试，覆盖 7 类计数、73 页、Input 五别名、未知 identity、全部六状态（包括零数量夹具）、筛选不改当前页；构建 model/catalog targets，运行 `rynui.ant_design_reference_catalog`、catalog generator/contract 和 `rynui.gallery_document_model` 及新增页面 model 测试，记录结果。
+- [x] 1.4 增加页面/状态语义与历史长文档迁移的简短开发说明，自动校验来源路径、版本和文档链接，并运行 OpenSpec doctor/strict 与 diff 检查。
 
 ## 2. 页面宿主、草稿与退役（平台通用，依赖 1）
 
