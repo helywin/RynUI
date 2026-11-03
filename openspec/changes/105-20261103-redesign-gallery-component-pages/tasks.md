@@ -53,9 +53,9 @@
 ## 7. Linux 自动平台集成（依赖 5，与 6 独立）
 
 - [ ] 7.1 在实际 Linux 机器以 `linux-gcc` Release 构建相关最终 Gallery，通过 `tools/run_background_wayland.py --log-dir out/... --timeout <有限秒数> -- <binary> --page-acceptance` 自动检查 Wayland/Vulkan、系统字体、host input area/cursor、popup 和 resize；环境失败/超时记录原始原因，禁止回退用户桌面。
-- [ ] 7.2 生成 Linux 精简结果摘要，自动验证实际 backend/preset/数量和环境边界；注明 Mutter headless、dbus-run-session、Wayland/Vulkan 依赖和未覆盖的真实显示器/系统 IME 范围，原始产物只写 out。
+- [x] 7.2 生成 Linux 精简结果摘要，自动验证实际 backend/preset/数量和环境边界；注明 Mutter headless、dbus-run-session、Wayland/Vulkan 依赖和未覆盖的真实显示器/系统 IME 范围，原始产物只写 out。
 
 ## 8. 文档与结果收口（平台通用，依赖已完成的要求项）
 
-- [ ] 8.1 自动汇总本 change 已要求的通用、Windows、Linux 结果，缺失/失败项保持未完成；验证没有从任务勾选、历史人工管理关闭或 HTML 原型推导组件完成度/平台通过。
-- [ ] 8.2 运行 `python scripts/format-code.py --check`、`openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`，自动核对变更未包含 out 原始产物与非本阶段文件，记录精简结论。
+- [x] 8.1 自动汇总本 change 已要求的通用、Windows、Linux 结果，缺失/失败项保持未完成；验证没有从任务勾选、历史人工管理关闭或 HTML 原型推导组件完成度/平台通过。
+- [x] 8.2 运行 `python scripts/format-code.py --check`、`openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`，自动核对变更未包含 out 原始产物与非本阶段文件，记录精简结论。
