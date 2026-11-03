@@ -20,3 +20,5 @@
 保留 logical scene v3、packed GPU ABI v2 和 Quad/Glyph/Effect 48/96/112-byte 合同；形状、圆角和既有 AA 宽度不变，真实 ancestor hard clip 保留。
 
 本轮原生结果限于上述 Space 用例与当前 Windows/D3D12 环境；未运行完整 Gallery 矩阵，不声明 Linux/Vulkan、其他实际 DPI/显示器、系统 IME、AT 或 240Hz 性能验收。原生用例没有输入编辑，`host_input_area=false`，不计为任务 6.1 的完整平台通过。原始日志、JSON、BMP 均只留在已忽略的 `out/`。
+
+实现提交 `355bd97aa3e4103289e021b667997a594a2e75bc` 已 fetch/rebase、push 并核对远端 SHA。最终 Release Gallery 已重新打开并确认窗口存在、响应正常。本轮 9.1–9.4 完成，原有未验平台项保持未勾选。
