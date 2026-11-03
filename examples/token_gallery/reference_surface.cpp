@@ -347,6 +347,17 @@ bool ReferenceSurfaceHost::destroy(ryn::runtime::ComponentId component) {
     return true;
 }
 
+void ReferenceSurfaceHost::append_slot(ryn::runtime::ComponentId parent, const ryn::Content& content) {
+    ActiveReferenceSurfaceHost guard(*this);
+    try {
+        application_->services().append_slot(parent, content);
+    } catch (...) {
+        std::erase_if(mounted_,
+                      [this](const auto& mounted) { return !application_->components().contains(mounted.component); });
+        throw;
+    }
+}
+
 bool ReferenceSurfaceHost::layout_and_synchronize(ryn::runtime::Size viewport, ryn::runtime::Rect clip,
                                                   ryn::runtime::Point origin, float gap) {
     return application_->layout_and_synchronize(viewport, clip, origin, gap);

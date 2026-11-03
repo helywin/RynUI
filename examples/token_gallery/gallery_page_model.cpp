@@ -92,7 +92,8 @@ GallerySupportFilter GalleryPageModel::filter() const noexcept {
 }
 
 bool GalleryPageModel::valid(const GalleryPageRoute& route) const noexcept {
-    if (!valid_family(route.family)) {
+    if (!valid_family(route.family) || (route.section && (*route.section < GalleryPageSection::usage ||
+                                                          *route.section > GalleryPageSection::sources))) {
         return false;
     }
     if (route.kind == GalleryPageKind::overview || route.kind == GalleryPageKind::introduction ||

@@ -66,6 +66,7 @@ target_link_libraries(rynui_token_gallery_definition PUBLIC RynUI::RynUI)
 add_library(
     rynui_token_gallery_reference_surface STATIC
     token_gallery/reference_surface.cpp
+    token_gallery/gallery_page_controller.cpp
 )
 
 add_library(

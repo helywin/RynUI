@@ -132,6 +132,7 @@ public:
     ~ReferenceSurfaceHost() override;
 
     void mount(const ryn::Content& content, ryn::detail::InputComponentHost* inputs = nullptr);
+    void append_slot(ryn::runtime::ComponentId parent, const ryn::Content& content);
     bool destroy(ryn::runtime::ComponentId component);
     [[nodiscard]] bool layout_and_synchronize(ryn::runtime::Size viewport, ryn::runtime::Rect clip,
                                               ryn::runtime::Point origin = {}, float gap = 0.0F);

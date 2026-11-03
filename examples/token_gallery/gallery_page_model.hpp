@@ -3,6 +3,7 @@
 #include "gallery_document_model.hpp"
 
 #include <array>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -25,11 +26,21 @@ enum class GalleryInputFamily {
     otp,
 };
 
+enum class GalleryPageSection {
+    usage,
+    examples,
+    api,
+    support,
+    tokens,
+    sources,
+};
+
 struct GalleryPageRoute final {
     GalleryPageKind kind{GalleryPageKind::overview};
     std::string component_identity;
     GalleryInputFamily family{GalleryInputFamily::input};
     std::string sample_identity;
+    std::optional<GalleryPageSection> section{};
 
     friend bool operator==(const GalleryPageRoute&, const GalleryPageRoute&) = default;
 };

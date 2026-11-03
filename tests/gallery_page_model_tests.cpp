@@ -39,6 +39,11 @@ void test_complete_catalog_and_page_identity() {
         rejected = true;
     }
     require(rejected && model.current() == original, "invalid navigation mutated current page");
+    auto section = model.current();
+    section.section = GalleryPageSection::support;
+    require(model.valid(section), "registered page section rejected");
+    section.section = static_cast<GalleryPageSection>(255);
+    require(!model.valid(section), "unknown page section accepted");
 }
 
 void test_search_filters_preserve_page() {

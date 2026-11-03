@@ -13,11 +13,11 @@
 
 ## 2. 页面宿主、草稿与退役（平台通用，依赖 1）
 
-- [ ] 2.1 实现独立 shell/page root、ReferenceSurface 的内部 append/prune adapter 与安全事件点的导航控制器，复用 services append_slot/destroy；完成标准为 2.4 的仅当前页挂载、shell 身份稳定及异常清理断言通过。
-- [ ] 2.2 实现按 page/family 保存的 typed 草稿、页面历史与锚点恢复，普通编辑保留已提交值、Password/OTP 离页清空、不保存旧 ref/IME/撤销栈；完成标准为 2.4 的往返与敏感状态用例通过。
-- [ ] 2.3 接入切页时 popup/boundary、pointer capture/scrollbar drag、focus/keyboard press、IME/preedit、caret/动画/deferred ticket 的 owner/generation 退役；完成标准为 2.4 的迟到事件、同批事件、拒绝关闭、重入和挂载失败用例通过。
-- [ ] 2.4 新增页面 lifecycle/Recording 自动夹具，覆盖 Button→Input→TreeSelect→Upload 往返、旧页活资源归零、草稿恢复、主题/resize 不重挂、failure fallback 与 idle；构建相关 frame/lifecycle targets 并运行定向 CTest，保留真实失败信息。
-- [ ] 2.5 编写内部页面状态/销毁顺序说明及稳定 ID 合同，自动校验示例中的内部/公开接口边界和链接，运行格式与 diff 检查。
+- [x] 2.1 实现独立 shell/page root、ReferenceSurface 的内部 append/prune adapter 与安全事件点的导航控制器，复用 services append_slot/destroy；完成标准为 2.4 的仅当前页挂载、shell 身份稳定及异常清理断言通过。
+- [x] 2.2 实现按 page/family 保存的 typed 草稿、页面历史与锚点恢复，普通编辑保留已提交值、Password/OTP 离页清空、不保存旧 ref/IME/撤销栈；完成标准为 2.4 的往返与敏感状态用例通过。
+- [x] 2.3 接入切页时 popup/boundary、pointer capture/scrollbar drag、focus/keyboard press、IME/preedit、caret/动画/deferred ticket 的 owner/generation 退役；完成标准为 2.4 的迟到事件、同批事件、拒绝关闭、重入和挂载失败用例通过。
+- [x] 2.4 新增页面 lifecycle/Recording 自动夹具，覆盖 Button→Input→TreeSelect→Upload 往返、旧页活资源归零、草稿恢复、主题/resize 不重挂、failure fallback 与 idle；构建相关 frame/lifecycle targets 并运行定向 CTest，保留真实失败信息。
+- [x] 2.5 编写内部页面状态/销毁顺序说明及稳定 ID 合同，自动校验示例中的内部/公开接口边界和链接，运行格式与 diff 检查。
 
 ## 3. 逐页迁移真实样例（平台通用，依赖 2）
 
