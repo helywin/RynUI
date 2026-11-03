@@ -5309,6 +5309,7 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
              Text(TextProps{}
                       .content(u8"gallery.tree-select.destination · TreeSelect · 层级目标")
                       .layout(LayoutStyle{}.margin_left(dp(1))));
+             remember_target(state, "gallery.tree-select.destination");
              Text(TextProps{}
                       .content(bind([state] {
                           return utf8("gallery.tree-select.feedback · 接受值=" +
@@ -5318,6 +5319,7 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                                       std::string{state->destination_saved.get().bytes()});
                       }))
                       .layout(LayoutStyle{}.margin_left(dp(1))));
+             remember_target(state, "gallery.tree-select.feedback");
              Space(
                  SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
                  SpaceContent{[state] {
@@ -5431,12 +5433,14 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
              Text(TextProps{}
                       .content(u8"gallery.tree-select.form · Form · 交付目标")
                       .layout(LayoutStyle{}.margin_left(dp(1))));
+             remember_target(state, "gallery.tree-select.form");
              Text(TextProps{}
                       .content(bind([state] {
                           return utf8("gallery.tree-select.form-feedback · " +
                                       std::string{state->destination_form_feedback.get().bytes()});
                       }))
                       .layout(LayoutStyle{}.margin_left(dp(1))));
+             remember_target(state, "gallery.tree-select.form-feedback");
              Form(FormProps{}
                       .ref(state->destination_form)
                       .onFinish([state](FormResult) {

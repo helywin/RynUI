@@ -44,6 +44,7 @@
 #include "gallery_layout.hpp"
 #include "reference_surface.hpp"
 #include "token_gallery_definition.hpp"
+#include "gallery_sample_registry.hpp"
 #include "support/input_fixture.hpp"
 
 #include <ryn/rynui.hpp>
@@ -1048,11 +1049,18 @@ void test_token_gallery_frame_contract() {
 }
 
 void test_live_input_samples() {
-    auto definition = rynui::example::make_token_gallery_definition();
-    definition.set_viewport_width(1200.0F);
+    using namespace rynui::example;
+    GalleryPageModel pages;
+    auto definition = make_gallery_sample_page(pages.find("ant.component.input")->route(), {});
+    definition.set_width(840.0F);
     Fixture fixture;
     fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
-    fixture.surfaces->mount(definition.content, fixture.inputs.get());
+    fixture.surfaces->mount(ryn::Content{[&] {
+                                ryn::Flex(ryn::FlexProps{}.vertical(true).align(ryn::FlexAlign::Start).gap(ryn::dp(12)),
+                                          [&] { ryn::detail::SlotContentAccess::function(definition.content)(); });
+                            }},
+                            fixture.inputs.get());
+    const auto holder = fixture.host->components().root_components().front();
     RecordingGpuApi gpu;
     RecordingDrawApi draw;
     IdleEvents events;
@@ -1066,48 +1074,39 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    // Later gallery entries append editors and controls. Keep the minimum
-    // inventory here; the assertions below verify the original samples.
-    require(fixture.inputs->mounted_inputs().size() >= 156 &&
-                fixture.host->services().select().mounted().size() >= 24 &&
-                fixture.host->services().card().mounted().size() >= 7 &&
-                fixture.host->services().tabs().mounted().size() >= 14 &&
-                fixture.host->services().modal().mounted().size() >= 13,
-            "Gallery Input/Search/Password/Typography/TextArea/OTP/Select samples absent");
-    const auto samples = fixture.inputs->mounted_inputs();
+    const auto editor = [&](std::string_view identity) {
+        const auto target = definition.target(identity);
+        require(target.valid(), "Gallery editor test identity is not registered");
+        for (const auto& input : fixture.inputs->mounted_inputs()) {
+            for (auto owner = std::optional{input.component}; owner;
+                 owner = fixture.host->components().parent(*owner)) {
+                if (*owner == target) {
+                    return input;
+                }
+            }
+        }
+        throw std::runtime_error("Gallery registered sample has no editor");
+    };
+    require(fixture.inputs->mounted_inputs().size() == 11 && fixture.host->services().select().mounted().empty() &&
+                fixture.host->services().card().mounted().empty() &&
+                fixture.host->services().tabs().mounted().empty() && fixture.host->services().modal().mounted().empty(),
+            "Input page mounted unrelated component samples");
     const auto variants = std::array{ryn::InputVariant::Outlined, ryn::InputVariant::Filled,
                                      ryn::InputVariant::Borderless, ryn::InputVariant::Underlined};
+    constexpr std::array variant_ids{"outlined", "filled", "borderless", "underlined"};
     for (std::size_t index = 0; index < variants.size(); ++index) {
-        require(fixture.inputs->variant(samples[15 + index].component) == variants[index],
+        require(fixture.inputs->variant(editor(std::string{"gallery.input."} + variant_ids[index]).component) ==
+                    variants[index],
                 "Gallery four Input variants did not mount");
     }
-    require(fixture.inputs->count_value(samples[19].component) == 4 &&
-                fixture.inputs->status(samples[19].component) == ryn::InputStatus::Error &&
-                fixture.inputs->count_value(samples[20].component) == 5 &&
-                fixture.inputs->variant(samples[25].component) == ryn::InputVariant::Filled &&
-                fixture.inputs->variant(samples[26].component) == ryn::InputVariant::Underlined,
-            "Gallery statistics or connected Search feature sample differs");
-    for (std::size_t index = 27; index < 35; ++index) {
-        require(fixture.inputs->editors().require(samples[index].editor).mode() ==
-                        ryn::input::TextEditMode::MultiLine &&
-                    fixture.inputs->caret_map(samples[index].component).line_count() >= 2,
-                "Gallery TextArea samples did not mount multiline editor/carets");
-    }
-    for (std::size_t index = 0; index < variants.size(); ++index) {
-        require(fixture.inputs->variant(samples[27 + index].component) == variants[index],
-                "Gallery TextArea variant sample differs");
-    }
-    const auto controlled = fixture.inputs->mounted_inputs()[0];
-    require(fixture.host->services().otp().mounted().size() == 10, "Gallery OTP group inventory differs");
-    for (std::size_t index = 35; index < 81; ++index) {
-        require(fixture.inputs->editors().require(samples[index].editor).mode() == ryn::input::TextEditMode::SingleLine,
-                "Gallery OTP cell was not a retained single-line editor");
-    }
-    require(fixture.inputs->editors().require(samples[82].editor).mode() == ryn::input::TextEditMode::MultiLine &&
-                fixture.inputs->editors().require(samples[81].editor).value() == "A אבג 12 مرحبا" &&
-                fixture.inputs->editors().require(samples[83].editor).value() == "אבג مرحبا 👩‍💻",
-            "Gallery bidi Input/TextArea/Password samples missing");
-    const auto uncontrolled = fixture.inputs->mounted_inputs()[1];
+    require(fixture.inputs->count_value(editor("gallery.input.grapheme-count").component) == 4 &&
+                fixture.inputs->status(editor("gallery.input.grapheme-count").component) == ryn::InputStatus::Error &&
+                fixture.inputs->count_value(editor("gallery.input.exceed-formatter").component) == 5,
+            "Gallery statistics feature sample differs");
+    require(fixture.inputs->editors().require(editor("gallery.bidi.input").editor).value() == "A אבג 12 مرحبا",
+            "Gallery bidi Input sample missing");
+    const auto controlled = editor("gallery.input.controlled");
+    const auto uncontrolled = editor("gallery.input.uncontrolled");
     const auto controlled_layers = fixture.inputs->text_layers(controlled.component);
     const auto uncontrolled_layers = fixture.inputs->text_layers(uncontrolled.component);
     const auto initial = definition.telemetry();
@@ -1140,9 +1139,50 @@ void test_live_input_samples() {
                 definition.telemetry().input_changes == 2,
             "Gallery uncontrolled paste failed");
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery uncontrolled frame failed");
-    const auto search_input = fixture.inputs->mounted_inputs()[2];
-    const auto button_for_input = [&](std::size_t index) {
-        const auto parent = fixture.host->components().parent(fixture.inputs->mounted_inputs()[index].component);
+    fixture.inputs->set_window_active(false);
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery blur frame failed");
+    static_cast<void>(drain_animation_frames(*fixture.host, loop, "Gallery Input blur did not settle"));
+    const auto final = definition.telemetry();
+    require(final.content_runs == initial.content_runs, "Gallery Input reran root content");
+    require(final.theme_content_runs == initial.theme_content_runs, "Gallery Input reran Theme content");
+    require(fixture.host->components().component_count() == components, "Gallery Input changed component topology");
+    require(editor("gallery.input.controlled").component == controlled.component &&
+                editor("gallery.input.controlled").editor == controlled.editor &&
+                editor("gallery.input.uncontrolled").component == uncontrolled.component &&
+                editor("gallery.input.uncontrolled").editor == uncontrolled.editor,
+            "Gallery Input changed owner identity");
+    require(fixture.inputs->text_layers(controlled.component).base == controlled_layers.base &&
+                fixture.inputs->text_layers(controlled.component).selected == controlled_layers.selected &&
+                fixture.inputs->text_layers(controlled.component).placeholder == controlled_layers.placeholder &&
+                fixture.inputs->text_layers(uncontrolled.component).base == uncontrolled_layers.base &&
+                fixture.inputs->text_layers(uncontrolled.component).selected == uncontrolled_layers.selected &&
+                fixture.inputs->text_layers(uncontrolled.component).placeholder == uncontrolled_layers.placeholder,
+            "Gallery Input changed retained text identity");
+    require(fixture.text_scene.size() == text_scenes && fixture.host->button_scene().instances().size() == quads &&
+                fixture.host->rounded_effects().live_count() == effects,
+            "Gallery Input changed retained scene capacity");
+    const auto submissions = loop.counters().submissions;
+    for (int i = 0; i < 4; ++i) {
+        require(loop.step() == ryn::runtime::FrameLoopStep::idle, "Gallery Input did not idle");
+    }
+    require(loop.counters().submissions == submissions && fixture.platform.starts == fixture.platform.stops,
+            "Gallery Input retained submits/session");
+    const auto show_family = [&](GalleryInputFamily family) {
+        const auto roots = fixture.host->components().children(holder);
+        const std::vector<ryn::runtime::ComponentId> previous(roots.begin(), roots.end());
+        for (const auto root : previous) {
+            require(fixture.surfaces->destroy(root), "Gallery family retirement failed");
+        }
+        fixture.inputs->set_window_active(true);
+        definition = make_gallery_sample_page(pages.find("ant.component.input")->route(family), {});
+        definition.set_width(840);
+        fixture.surfaces->append_slot(holder, definition.content);
+        require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery family initial frame failed");
+    };
+    show_family(GalleryInputFamily::search);
+    const auto search_input = editor("gallery.search.controlled");
+    const auto button_for_input = [&](const ryn::detail::MountedInputComponent& input) {
+        const auto parent = fixture.host->components().parent(input.component);
         const auto buttons = fixture.host->mounted_buttons();
         const auto found = std::find_if(buttons.begin(), buttons.end(), [&](const auto& button) {
             return fixture.host->components().parent(button.component) == parent;
@@ -1150,8 +1190,8 @@ void test_live_input_samples() {
         require(found != buttons.end(), "Gallery Search sibling button is absent");
         return *found;
     };
-    const auto search_button = button_for_input(2);
-    const auto second_search_button = button_for_input(3);
+    const auto search_button = button_for_input(search_input);
+    const auto second_search_button = button_for_input(editor("gallery.search.large"));
     require(fixture.host->components().parent(search_input.component) ==
                     fixture.host->components().parent(search_button.component) &&
                 &fixture.inputs->editors() == &fixture.host->services().text_edit()->editors(),
@@ -1174,34 +1214,32 @@ void test_live_input_samples() {
     fixture.host->focus().dispatch({ryn::input::Key::enter, ryn::input::KeyAction::down});
     require(definition.telemetry().search_submits == 3, "Gallery second Search Button did not submit");
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery Search frame did not submit");
-    fixture.inputs->set_window_active(false);
-    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery blur frame failed");
-    static_cast<void>(drain_animation_frames(*fixture.host, loop, "Gallery Input blur did not settle"));
-    const auto final = definition.telemetry();
-    require(final.content_runs == initial.content_runs, "Gallery Input reran root content");
-    require(final.theme_content_runs == initial.theme_content_runs, "Gallery Input reran Theme content");
-    require(fixture.host->components().component_count() == components, "Gallery Input changed component topology");
-    require(fixture.inputs->mounted_inputs()[0].component == controlled.component &&
-                fixture.inputs->mounted_inputs()[0].editor == controlled.editor &&
-                fixture.inputs->mounted_inputs()[1].component == uncontrolled.component &&
-                fixture.inputs->mounted_inputs()[1].editor == uncontrolled.editor,
-            "Gallery Input changed owner identity");
-    require(fixture.inputs->text_layers(controlled.component).base == controlled_layers.base &&
-                fixture.inputs->text_layers(controlled.component).selected == controlled_layers.selected &&
-                fixture.inputs->text_layers(controlled.component).placeholder == controlled_layers.placeholder &&
-                fixture.inputs->text_layers(uncontrolled.component).base == uncontrolled_layers.base &&
-                fixture.inputs->text_layers(uncontrolled.component).selected == uncontrolled_layers.selected &&
-                fixture.inputs->text_layers(uncontrolled.component).placeholder == uncontrolled_layers.placeholder,
-            "Gallery Input changed retained text identity");
-    require(fixture.text_scene.size() == text_scenes && fixture.host->button_scene().instances().size() == quads &&
-                fixture.host->rounded_effects().live_count() == effects,
-            "Gallery Input changed retained scene capacity");
-    const auto submissions = loop.counters().submissions;
-    for (int i = 0; i < 4; ++i) {
-        require(loop.step() == ryn::runtime::FrameLoopStep::idle, "Gallery Input did not idle");
+    require(fixture.inputs->variant(editor("gallery.search.filled-vector").component) == ryn::InputVariant::Filled &&
+                fixture.inputs->variant(editor("gallery.search.underlined-small").component) ==
+                    ryn::InputVariant::Underlined,
+            "Gallery connected Search feature sample differs");
+    show_family(GalleryInputFamily::text_area);
+    for (std::size_t index = 0; index < variants.size(); ++index) {
+        const auto input = editor(std::string{"gallery.text-area."} + variant_ids[index]);
+        require(fixture.inputs->editors().require(input.editor).mode() == ryn::input::TextEditMode::MultiLine &&
+                    fixture.inputs->caret_map(input.component).line_count() >= 2 &&
+                    fixture.inputs->variant(input.component) == variants[index],
+                "Gallery TextArea variants/multiline carets changed");
     }
-    require(loop.counters().submissions == submissions && fixture.platform.starts == fixture.platform.stops,
-            "Gallery Input retained submits/session");
+    require(fixture.inputs->mounted_inputs().size() == 9 &&
+                fixture.inputs->editors().require(editor("gallery.bidi.text-area").editor).mode() ==
+                    ryn::input::TextEditMode::MultiLine,
+            "Gallery TextArea inventory or bidi sample differs");
+    show_family(GalleryInputFamily::otp);
+    require(fixture.host->services().otp().mounted().size() == 10, "Gallery OTP group inventory differs");
+    for (const auto& input : fixture.inputs->mounted_inputs()) {
+        require(fixture.inputs->editors().require(input.editor).mode() == ryn::input::TextEditMode::SingleLine,
+                "Gallery OTP cell was not a retained single-line editor");
+    }
+    show_family(GalleryInputFamily::password);
+    require(fixture.inputs->editors().require(editor("gallery.bidi.password").editor).value() ==
+                "אבג مرحبا 👩‍💻",
+            "Gallery bidi Password sample missing");
 }
 
 void test_select_popup_after_document_scroll() {
@@ -7790,8 +7828,30 @@ void test_tree_select_gallery_after_document_scroll() {
     using namespace ryn;
     using namespace rynui::example;
     std::cout << std::unitbuf;
-    auto definition = make_token_gallery_definition();
-    definition.set_motion_enabled(false);
+    GalleryPageModel page_model;
+    auto page = make_gallery_sample_page(page_model.find("ant.component.tree-select")->route(), {});
+    Signal<ThemeConfig> theme{ThemeConfig{}};
+    TokenGalleryDefinition definition{Content{[&] {
+        Theme(ThemeProps{}.config(theme),
+              ThemeContent{[&] { ryn::detail::SlotContentAccess::function(page.content)(); }});
+    }}};
+    definition.set_viewport_width = [&](float width) {
+        page.set_width(width - 48);
+    };
+    definition.smoke_step = [&](std::size_t step) {
+        ThemeConfig config;
+        if (step == 0) {
+            config.algorithms = {ThemeAlgorithm::Dark};
+        }
+        if (step == 1) {
+            config.algorithms = {ThemeAlgorithm::Compact};
+        }
+        config.seed.motion = false;
+        theme.set(config);
+    };
+    definition.set_motion_enabled = [](bool) {
+    };
+    definition.telemetry = page.telemetry;
     Fixture f;
     configure_member_metric_fonts(f);
     f.host->set_motion_preference(animation::MotionPreference::reduced);
@@ -7805,9 +7865,7 @@ void test_tree_select_gallery_after_document_scroll() {
     definition.set_viewport_width(width);
     sync();
     const auto root = s.components().root(s.components().root_components().front());
-    const auto body = f.nodes.require(root).children.front();
-    const auto navigation_root = f.nodes.require(body).children.front();
-    const auto document = f.nodes.require(body).children[1];
+    const auto document = root;
     const auto bounds = [&](runtime::ComponentId id) {
         const auto& n = f.nodes.require(s.components().root(id));
         return runtime::Rect{n.bounds.x + n.translation.x, n.bounds.y + n.translation.y, n.bounds.width,
@@ -7821,37 +7879,25 @@ void test_tree_select_gallery_after_document_scroll() {
         }
         return false;
     };
-    const auto text = [&](std::string_view prefix) {
-        std::optional<ryn::detail::MountedTextComponent> found;
-        for (const auto& t : s.text().mounted_texts()) {
-            if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
-                require(!found, "TreeSelect ambiguous text locator");
-                found = t;
+    const auto text = [&](std::string_view identity) {
+        const auto target = page.target(identity);
+        for (const auto& text : s.text().mounted_texts()) {
+            if (text.component == target) {
+                return text;
             }
         }
-        require(found.has_value(), "TreeSelect required text absent");
-        return *found;
+        throw std::runtime_error("TreeSelect registered text target is absent");
     };
     const auto workflow = *s.components().parent(text("gallery.tree-select.destination").component);
-    const auto button = [&](std::string_view prefix, runtime::ComponentId owner, bool exact = false) {
-        std::optional<ryn::detail::MountedButtonComponent> found;
-        for (const auto& t : s.text().mounted_texts()) {
-            const auto content = f.text_scene.text_state(t.scene).content().bytes();
-            if (!descendant(t.component, owner) || (exact ? content != prefix : !content.starts_with(prefix))) {
-                continue;
-            }
-            for (auto parent = s.components().parent(t.component); parent && *parent != owner;
-                 parent = s.components().parent(*parent)) {
-                for (const auto& b : f.host->mounted_buttons()) {
-                    if (b.component == *parent) {
-                        require(!found, "TreeSelect ambiguous button locator");
-                        found = b;
-                    }
-                }
+    const auto button = [&](std::string_view identity, runtime::ComponentId owner) {
+        const auto target = page.target(identity);
+        require(target.valid() && descendant(target, owner), "TreeSelect command is outside its sample");
+        for (const auto& button : f.host->mounted_buttons()) {
+            if (button.component == target) {
+                return button;
             }
         }
-        require(found.has_value(), "TreeSelect required button absent");
-        return *found;
+        throw std::runtime_error("TreeSelect registered button target is absent");
     };
     const auto editor = [&](runtime::ComponentId id) {
         for (const auto& e : f.inputs->mounted_inputs()) {
@@ -7861,71 +7907,30 @@ void test_tree_select_gallery_after_document_scroll() {
         }
         throw std::runtime_error("TreeSelect editor absent");
     };
-    std::vector<runtime::ComponentId> selectors;
-    for (auto id : s.tree_select().mounted()) {
-        if (descendant(id, workflow)) {
-            selectors.push_back(id);
-        }
-    }
-    require(selectors.size() == 2, "Expected destination and Form TreeSelect");
-    const auto target = selectors[0];
-    const auto field = selectors[1];
+    const auto target = page.target("gallery.tree-select.selector");
+    const auto field = page.target("gallery.tree-select.form-selector");
+    const std::array selectors{target, field};
+    require(s.tree_select().mounted().size() == selectors.size(), "Expected only destination and Form TreeSelect");
     const auto original_target = s.tree_select().snapshot(target);
     const auto original_field = s.tree_select().snapshot(field);
     const auto target_editor = editor(original_target.selector);
     const auto field_editor = editor(original_field.selector);
-    std::optional<ryn::detail::MountedInputComponent> note;
-    for (const auto& e : f.inputs->mounted_inputs()) {
-        if (descendant(e.component, workflow) && e.component != target_editor.component &&
-            e.component != field_editor.component) {
-            require(!note, "TreeSelect note locator is ambiguous");
-            note = e;
-        }
-    }
-    require(note.has_value(), "TreeSelect actual note editor absent");
+    const auto note = std::optional{editor(page.target("gallery.tree-select.note"))};
     const auto original_target_rows = s.tree().snapshot(original_target.tree).rows;
     const auto original_field_rows = s.tree().snapshot(original_field.tree).rows;
     const auto telemetry = definition.telemetry();
     GalleryDocumentViewport scroll;
-    GalleryScrollRange navigation_scroll;
-    GalleryScrollTranslation navigation_translation;
-    std::optional<bool> previous_narrow;
     const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
-        const auto layout = gallery_layout_metrics({width, 900});
-        if (previous_narrow && *previous_narrow != layout.narrow) {
-            navigation_translation.invalidate();
-        }
-        previous_narrow = layout.narrow;
-        if (layout.narrow) {
-            static_cast<void>(navigation_scroll.scroll_to(0));
-        }
-        const auto scroll_root = layout.narrow ? body : document;
         const auto translate = [&] {
-            require(scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
-                    "TreeSelect document translation failed");
-            if (!layout.narrow) {
-                require(
-                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
-                        .valid,
-                    "TreeSelect sidebar translation failed");
-            }
+            require(scroll.apply_subtree_translation(document, f.nodes, f.dirty), "TreeSelect page translation failed");
         };
         translate();
         sync();
-        std::vector<GalleryComponentAnchor> anchors;
-        for (const auto& entry : ant_design_reference_entries()) {
-            const auto surfaces = f.surfaces->mounted_surfaces();
-            const auto ref = std::ranges::find_if(surfaces, [&](const auto& item) {
-                return f.surfaces->snapshot(item.component).identity == entry.identity;
-            });
-            require(ref != surfaces.end(), "TreeSelect lost old reference surface");
-            anchors.push_back(
-                gallery_component_navigation_anchor(entry.identity, ref->node, s.text(), f.nodes, scroll_root));
-        }
+        const auto heading = s.components().root(page.target("gallery.tree-select.destination"));
+        const auto offset = f.nodes.require(heading).bounds.y - f.nodes.require(document).bounds.y;
+        const std::array anchors{GalleryComponentAnchor{"ant.component.tree-select", offset}};
         static_cast<void>(scroll.replace_component_anchors(anchors));
-        static_cast<void>(scroll.set_extents(layout.document_track.height, f.nodes.require(scroll_root).bounds.height));
-        static_cast<void>(navigation_scroll.set_extents(layout.navigation_track.height,
-                                                        f.nodes.require(navigation_root).bounds.height));
+        static_cast<void>(scroll.set_extents(876, f.nodes.require(document).bounds.height));
         if (request) {
             static_cast<void>(scroll.jump_to_component(request->component_identity));
         }
@@ -7934,7 +7939,7 @@ void test_tree_select_gallery_after_document_scroll() {
     };
     const auto reveal = [&](runtime::ComponentId id) {
         if (!s.components().in_window_layer(id)) {
-            const auto scroll_root = gallery_layout_metrics({width, 900}).narrow ? body : document;
+            const auto scroll_root = document;
             static_cast<void>(scroll.scroll_to(f.nodes.require(s.components().root(id)).bounds.y -
                                                f.nodes.require(scroll_root).bounds.y - 160));
         }
@@ -8092,53 +8097,15 @@ void test_tree_select_gallery_after_document_scroll() {
         }
         require(painted, "TreeSelect actual native fill absent");
     };
-    const auto navigate = [&](std::string_view caption, std::string_view identity, std::string_view heading,
-                              runtime::ComponentId owner) {
-        std::optional<runtime::ComponentId> navigation;
-        const auto find = [&](auto&& self, runtime::ComponentId id) -> void {
-            if (s.components().root(id) == navigation_root) {
-                navigation = id;
-            }
-            for (auto child : s.components().children(id)) {
-                self(self, child);
-            }
-        };
-        for (auto id : s.components().root_components()) {
-            find(find, id);
-        }
-        require(navigation.has_value(), "Navigation owner missing");
-        const auto b = button(caption, *navigation, true);
-        const auto layout = gallery_layout_metrics({width, 900});
-        const auto scroll_root = layout.narrow ? body : navigation_root;
-        const auto offset = f.nodes.require(b.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
-        if (layout.narrow) {
-            static_cast<void>(scroll.scroll_to(offset));
-        } else {
-            static_cast<void>(navigation_scroll.scroll_to(offset));
-        }
-        reconcile();
-        std::cout << "TreeSelect catalog button=" << bounds(b.component).x << ',' << bounds(b.component).y << ','
-                  << bounds(b.component).width << ',' << bounds(b.component).height
-                  << " lane=" << layout.navigation_lane.x << ',' << layout.navigation_lane.y << ','
-                  << layout.navigation_lane.width << ',' << layout.navigation_lane.height
-                  << " glyphs=" << glyphs(b.component, bounds(b.component)) << '\n';
-        require(within(bounds(b.component), layout.navigation_lane) && glyphs(b.component, bounds(b.component)) > 0,
-                "Real catalog glyph absent");
-        require(!definition.take_navigation_request(), "Unexpected stale catalog request");
-        click(b.component);
-        const auto request = definition.take_navigation_request();
-        require(request && request->component_identity == identity &&
-                    request->kind == GalleryNavigationTargetKind::component,
-                "Real catalog requested foreign sample");
-        reconcile(request);
-        const auto actual_root = layout.narrow ? body : document;
-        const auto anchor = gallery_component_navigation_anchor(identity, b.node, s.text(), f.nodes, actual_root);
-        require(near(anchor.offset,
-                     f.nodes.require(s.components().root(text(heading).component)).bounds.y -
-                         f.nodes.require(actual_root).bounds.y,
-                     .02F) &&
-                    glyphs(text(heading).component, bounds(owner)) > 0,
-                "Production anchor missed actual interactive heading");
+    const auto navigate = [&](std::string_view identity, std::string_view heading, runtime::ComponentId owner) {
+        require(page_model.find(identity) && page_model.find(identity)->entry->english_name == "TreeSelect",
+                "TreeSelect canonical page metadata changed");
+        reconcile(GalleryNavigationTarget::to_component(identity));
+        const auto heading_node = s.components().root(page.target(heading));
+        const auto offset = f.nodes.require(heading_node).bounds.y - f.nodes.require(document).bounds.y;
+        require(scroll.component_anchor(identity).has_value() && glyphs(page.target(heading), bounds(owner)) > 0 &&
+                    near(scroll.snapshot().offset, std::clamp(offset, 0.0F, scroll.snapshot().maximum_offset), .02F),
+                "Registered TreeSelect page anchor missed the interactive heading");
     };
     const auto row_content = [&](const auto& row, runtime::ComponentId tree) {
         const auto r = bounds(row.component);
@@ -8201,7 +8168,7 @@ void test_tree_select_gallery_after_document_scroll() {
             definition.set_viewport_width(width);
             reconcile();
             std::cout << "TreeSelect begin theme=" << theme_step << " width=" << width << '\n';
-            navigate("TreeSelect", "ant.component.tree-select", "gallery.tree-select.destination", workflow);
+            navigate("ant.component.tree-select", "gallery.tree-select.destination", workflow);
             action("gallery.tree-select.restore", workflow);
             open_selector(target);
             key(input::Key::home);
@@ -8369,7 +8336,7 @@ void test_tree_select_gallery_after_document_scroll() {
                     "TreeSelect selector glyph absent");
             retained();
             std::cout << "TreeSelect theme=" << theme_step << " width=" << width
-                      << " real navigation/business/reset/wake/glyph/fill/hit/focus/retention passed\n";
+                      << " page anchor/business/reset/wake/glyph/fill/hit/focus/retention passed\n";
         }
     }
 }

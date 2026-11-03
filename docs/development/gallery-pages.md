@@ -51,3 +51,5 @@ ctest --preset linux-gcc-release -R '^rynui\.gallery_page_(model|controller)$' -
 [生命周期夹具](../../tests/gallery_page_controller_tests.cpp) 使用真实组件宿主、模拟文本平台和记录上传的 GPU adapter，覆盖草稿、敏感清空、受控弹层退役、迟到文本/组合输入、capture/键盘按压、scrollbar drag、回调重入、失败回滚、主题/resize 身份以及稳定后无新增上传/帧请求。它不运行 SDL、真实 IME 或 GPU 驱动。
 
 [样例页面夹具](../../tests/gallery_sample_page_tests.cpp) 的定向入口为 `rynui.gallery_sample_page`（target `rynui_gallery_sample_page_tests`）。它验证首批真实工厂隔离、稳定 ID、编辑与跨页草稿、Button 变体与延迟加载/ref、Search 键盘提交、OTP 粘贴分发/敏感清空、TreeSelect 选择/Form/受控拒绝，以及同页 Theme/resize 的身份保留。
+
+已有 frame binary 的 `--input-only` / `--tree-select-only` 现已直接挂载相应页面工厂，并用登记目标定位；对应 CTest 为 `rynui.gallery_page_input_frame` / `rynui.gallery_page_tree_select_frame`。Input 家族按组依次追加/退役，保持编辑、剪贴板、提交、场景身份与 idle 检查；TreeSelect 保留三种主题与 1200/560 宽度的 glyph/fill/hit/focus/popup 检查。其他历史 frame 用例仍在迁移，不能以首批通过代表所有页面完成；新目录 shell 的交互/几何由后续 viewport 阶段验证。

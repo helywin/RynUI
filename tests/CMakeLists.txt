@@ -1974,6 +1974,8 @@ target_compile_definitions(
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
 )
 add_test(NAME rynui.token_gallery_frame COMMAND rynui_token_gallery_frame_tests)
+add_test(NAME rynui.gallery_page_input_frame COMMAND rynui_token_gallery_frame_tests --input-only)
+add_test(NAME rynui.gallery_page_tree_select_frame COMMAND rynui_token_gallery_frame_tests --tree-select-only)
 add_test(
     NAME rynui.gallery_platform_generic_journey
     COMMAND rynui_token_gallery_frame_tests
