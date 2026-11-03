@@ -1,6 +1,9 @@
 #include "gallery_sample_registry.hpp"
 #include "gallery_page_controller.hpp"
 #include "component/otp_component.hpp"
+#include "component/modal_component.hpp"
+#include "component/select_component.hpp"
+#include "component/table_component.hpp"
 #include "component/tree_select_component.hpp"
 #include "component/form_component.hpp"
 #include "component/breadcrumb_component.hpp"
@@ -50,6 +53,7 @@ struct Fixture final : ryn_test::input_component::Fixture {
             surfaces, model, frames, holder, [this](const GalleryPageRoute& route, const GalleryPageDraft& draft) {
                 active = make_gallery_sample_page(route, draft);
                 active.set_width(760);
+                active.set_theme(theme.get());
                 return GalleryPageContent{active.content, active.save, {}};
             });
     }
@@ -97,7 +101,8 @@ struct Fixture final : ryn_test::input_component::Fixture {
     }
 
     void replace(const ryn::detail::MountedInputComponent& input, String text) {
-        require(services.focus().request_focus(input.interaction, input::FocusModality::keyboard),
+        require(services.focus().state().focused == input.interaction ||
+                    services.focus().request_focus(input.interaction, input::FocusModality::keyboard),
                 "editor focus failed");
         services.focus().dispatch({input::Key::a, input::KeyAction::down, input::KeyModifier::control});
         require(bool(inputs.dispatch(input::TextCommitted{std::move(text), inputs.sessions().active()})),
@@ -146,12 +151,17 @@ struct Fixture final : ryn_test::input_component::Fixture {
         std::size_t expected{};
         for (const auto& descriptor : gallery_samples()) {
             const auto& route = model.current();
-            const bool selected =
-                descriptor.component_identity == route.component_identity && descriptor.family == route.family;
+            const bool selected = descriptor.kind == route.kind &&
+                                  descriptor.component_identity == route.component_identity &&
+                                  descriptor.family == route.family;
             require(active.sample_runs(descriptor.identity) == (selected ? 1 : 0), "unrelated page factory ran");
             expected += selected;
         }
-        require(surfaces.mounted_surfaces().size() == expected, "inactive page surfaces remained alive");
+        const auto mounted = surfaces.mounted_surfaces();
+        const auto sample_count = std::ranges::count_if(mounted, [this](const auto& surface) {
+            return surfaces.snapshot(surface.component).identity.starts_with("gallery.sample.");
+        });
+        require(static_cast<std::size_t>(sample_count) == expected, "inactive page surfaces remained alive");
     }
 
     void open(runtime::ComponentId tree) {
@@ -173,7 +183,8 @@ void test_registry_and_factory_isolation() {
     for (const auto& descriptor : gallery_samples()) {
         require(identities.insert(descriptor.identity).second && !descriptor.source_function.empty() &&
                     descriptor.public_header.starts_with("include/ryn/") &&
-                    f.model.valid(f.model.find(descriptor.component_identity)->route(descriptor.family)),
+                    f.model.valid(GalleryPageRoute{descriptor.kind, std::string{descriptor.component_identity},
+                                                   descriptor.family}),
                 "sample identity/source/header/owner is invalid");
     }
     for (const auto& route :
@@ -184,8 +195,9 @@ void test_registry_and_factory_isolation() {
         f.sync();
         std::size_t expected{};
         for (const auto& descriptor : gallery_samples()) {
-            const bool active =
-                descriptor.component_identity == route.component_identity && descriptor.family == route.family;
+            const bool active = descriptor.kind == route.kind &&
+                                descriptor.component_identity == route.component_identity &&
+                                descriptor.family == route.family;
             require(f.active.sample_runs(descriptor.identity) == (active ? 1 : 0), "unrelated factory ran");
             expected += active;
         }
@@ -193,6 +205,38 @@ void test_registry_and_factory_isolation() {
         require(f.active.telemetry().content_runs == 1, "page content was reconstructed during layout");
     }
     require(f.inputs.mounted_inputs().empty() && f.buttons.mounted_buttons().empty(), "Upload mounted a fake demo");
+}
+
+void test_complete_catalog_and_related_routes() {
+    Fixture f;
+    for (const auto& page : f.model.pages()) {
+        f.show(page.entry->identity);
+        f.verify_factories();
+        require(f.active.telemetry().content_runs == 1, "catalog page reconstructed its content");
+        if (!page.native_scope()) {
+            require(f.surfaces.mounted_surfaces().empty(), "non-native entry mounted a fabricated example");
+        }
+    }
+    for (const auto& related : gallery_related_samples()) {
+        require(f.model.find(related.component_identity) && f.model.valid(related.route()),
+                "related workflow has an invalid owner or route");
+        require(related.target_kind == GalleryPageKind::tokens ||
+                    std::ranges::any_of(gallery_samples(),
+                                        [&related](const auto& sample) {
+                                            return sample.identity == related.target_sample &&
+                                                   sample.component_identity == related.target_component;
+                                        }),
+                "related workflow target does not exist");
+    }
+    require(f.pages->request({GalleryPageKind::tokens}) && f.pages->process() && !f.pages->failed(),
+            "Token page navigation failed");
+    f.sync();
+    f.verify_factories();
+    require(f.surfaces.mounted_surfaces().size() > 4 && f.active.telemetry().content_runs == 1,
+            "Token palette/scales/shadows were not mounted");
+    f.show("ant.component.upload");
+    require(f.inputs.mounted_inputs().empty() && f.buttons.mounted_buttons().empty(),
+            "Token controls survived page destruction");
 }
 
 void test_input_semantics_and_draft_round_trip() {
@@ -426,6 +470,72 @@ void test_button_search_and_otp_contracts() {
             "OTP secret survived a family round trip");
 }
 
+void test_remaining_workflows_and_drafts() {
+    Fixture f;
+    f.show("ant.component.select");
+    auto select = f.active.target("gallery.select.outlined");
+    auto selector = f.services.select().snapshot(select).selector;
+    require(f.services.select().snapshot(select).value == SelectSelection{u8"desktop"}, "Select default changed");
+    // Clear the real native clear action; a null draft must stay uncontrolled and empty.
+    bool cleared{};
+    for (const auto id : f.services.interactions().declaration_order()) {
+        const auto record = f.services.interactions().require(id);
+        if (!record.focusable && record.eligible && record.component != selector &&
+            f.within(record.component, selector)) {
+            const auto b = f.nodes.require(f.services.components().root(record.component)).bounds;
+            const auto x = b.x + b.width / 2;
+            const auto y = b.y + b.height / 2;
+            f.services.pointer().dispatch(
+                {input::PointerIdentity::mouse(), input::PointerAction::down, input::PointerButton::primary, x, y});
+            f.services.pointer().dispatch(
+                {input::PointerIdentity::mouse(), input::PointerAction::up, input::PointerButton::primary, x, y});
+            f.sync();
+            cleared = true;
+            break;
+        }
+    }
+    require(cleared && !f.services.select().snapshot(select).value, "Select clear did not execute");
+    f.show("ant.component.modal");
+    f.action("gallery.sample.modal.dialogs", "gallery.modal.retained-edit");
+    const auto dialog = f.active.target("gallery.modal.retained-edit.dialog");
+    require(f.services.modal().snapshot(dialog).visible, "Modal trigger lost its controlled open state");
+    f.replace(f.editor("gallery.sample.modal.dialogs", "gallery.modal.account"), String{u8"账户草稿"});
+    f.show("ant.component.table");
+    require(f.services.modal().mounted().empty() && !f.services.modal().visible(), "old Modal boundary survived");
+    auto table = f.active.target("gallery.table.editable");
+    const auto before = f.services.table().snapshot(table);
+    require(before.visible_keys.size() == 4 && f.active.target("gallery.table.menu.inline").valid() &&
+                f.active.target("gallery.table.pagination").valid(),
+            "Table linked workflow was split or duplicated");
+    f.action("gallery.sample.table.workflow", "gallery.table.update");
+    const auto row_key = before.visible_keys.front();
+    const auto row_name = [&] {
+        const auto snapshot = f.services.table().snapshot(table);
+        const auto row = std::ranges::find(snapshot.rows, row_key, &ryn::detail::TableRowSnapshot::key);
+        require(row != snapshot.rows.end(), "Table business row disappeared");
+        for (const auto& text : f.services.text().mounted_texts()) {
+            if (f.within(text.component, row->cells.at(1))) {
+                return std::string{f.scene.text_state(text.scene).content().bytes()};
+            }
+        }
+        throw std::runtime_error("Table row lost its task name");
+    };
+    require(row_name() == "已更新任务", "Table update no longer propagates to its retained cell");
+    f.show("ant.component.select");
+    select = f.active.target("gallery.select.outlined");
+    require(!f.services.select().snapshot(select).value, "cleared Select default reappeared after navigation");
+    f.show("ant.component.modal");
+    require(!f.services.modal().visible(), "transient Modal open state was restored as a draft");
+    f.action("gallery.sample.modal.dialogs", "gallery.modal.retained-edit");
+    require(
+        f.inputs.editors().require(f.editor("gallery.sample.modal.dialogs", "gallery.modal.account").editor).value() ==
+            "账户草稿",
+        "Modal account draft was lost");
+    f.show("ant.component.table");
+    table = f.active.target("gallery.table.editable");
+    require(row_name() == "已更新任务", "Table business records did not survive a round trip");
+}
+
 void test_layout_and_navigation_pages() {
     Fixture f;
     for (const auto identity : {"typography", "divider", "flex", "space", "icon", "breadcrumb", "steps", "menu",
@@ -543,10 +653,12 @@ void test_layout_and_navigation_pages() {
 int main() {
     try {
         test_registry_and_factory_isolation();
+        test_complete_catalog_and_related_routes();
         test_input_semantics_and_draft_round_trip();
         test_sensitive_and_tree_select_workflow();
         test_button_search_and_otp_contracts();
         test_layout_and_navigation_pages();
+        test_remaining_workflows_and_drafts();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

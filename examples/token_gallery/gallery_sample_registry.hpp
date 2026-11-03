@@ -5,8 +5,10 @@
 #include "token_gallery_definition.hpp"
 
 #include <ryn/component.hpp>
+#include <ryn/theme.hpp>
 
 #include <functional>
+#include <optional>
 #include <span>
 #include <string_view>
 
@@ -23,6 +25,7 @@ struct GallerySampleDescriptor final {
     std::string_view title;
     std::string_view source_function;
     std::string_view public_header;
+    GalleryPageKind kind{GalleryPageKind::component};
 };
 
 struct GallerySamplePage final {
@@ -32,9 +35,22 @@ struct GallerySamplePage final {
     std::function<TokenGalleryTelemetry()> telemetry;
     std::function<std::uint64_t(std::string_view)> sample_runs;
     std::function<ryn::runtime::ComponentId(std::string_view)> target;
+    std::function<void(const ryn::ThemeConfig&)> set_theme;
+    std::function<std::optional<ryn::ThemeConfig>()> take_theme_request;
+};
+
+struct GalleryRelatedSample final {
+    std::string_view component_identity;
+    std::string_view title;
+    GalleryPageKind target_kind{GalleryPageKind::component};
+    std::string_view target_component;
+    std::string_view target_sample;
+
+    [[nodiscard]] GalleryPageRoute route() const;
 };
 
 [[nodiscard]] std::span<const GallerySampleDescriptor> gallery_samples() noexcept;
+[[nodiscard]] std::span<const GalleryRelatedSample> gallery_related_samples() noexcept;
 [[nodiscard]] GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const GalleryPageDraft& draft);
 
 } // namespace rynui::example

@@ -4,6 +4,7 @@
 #include "gallery_document_model.hpp"
 #include "gallery_layout.hpp"
 #include "gallery_sample_registry.hpp"
+#include "gallery_draft_codec.hpp"
 #include "reference_surface.hpp"
 #include "icon_samples.hpp"
 
@@ -30,6 +31,14 @@ struct GalleryRecord final {
     std::optional<double> quantity;
     bool locked{};
     friend bool operator==(const GalleryRecord&, const GalleryRecord&) = default;
+
+    friend auto gallery_draft_fields(GalleryRecord& value) {
+        return std::tie(value.key, value.name, value.quantity, value.locked);
+    }
+
+    friend auto gallery_draft_fields(const GalleryRecord& value) {
+        return std::tie(value.key, value.name, value.quantity, value.locked);
+    }
 };
 
 std::vector<GalleryRecord> gallery_records() {
@@ -48,6 +57,7 @@ struct GalleryState final {
     std::string page_component;
     bool register_targets{};
     std::map<std::string, ryn::runtime::ComponentId> targets;
+    std::optional<ryn::ThemeConfig> theme_request;
 
     ryn::String initial(std::string_view key, ryn::String fallback) const {
         return ryn::String::from_utf8(draft.get<std::string>(std::string{key}, std::string{fallback.bytes()})).value();
@@ -370,14 +380,294 @@ struct GalleryState final {
     }
 
     void set_theme(const ryn::ThemeConfig& config, bool brand = false) {
-        background_color = ryn::resolve_theme(config).alias().color_background_container;
-        theme.set(config);
+        auto next = config;
+        if (register_targets) {
+            const auto current = theme.get();
+            const bool compact =
+                std::ranges::find(current.algorithms, ryn::ThemeAlgorithm::Compact) != current.algorithms.end();
+            const bool dark =
+                std::ranges::find(current.algorithms, ryn::ThemeAlgorithm::Dark) != current.algorithms.end();
+            const bool density_only =
+                next.algorithms.size() == 1 && next.algorithms.front() == ryn::ThemeAlgorithm::Compact;
+            if (density_only) {
+                next.algorithms = {dark ? ryn::ThemeAlgorithm::Dark : ryn::ThemeAlgorithm::Default,
+                                   ryn::ThemeAlgorithm::Compact};
+            } else if (compact &&
+                       std::ranges::find(next.algorithms, ryn::ThemeAlgorithm::Compact) == next.algorithms.end()) {
+                next.algorithms.push_back(ryn::ThemeAlgorithm::Compact);
+            }
+            if (!next.seed.color_primary) {
+                next.seed.color_primary = current.seed.color_primary;
+            }
+            if (!next.seed.motion) {
+                next.seed.motion = current.seed.motion;
+            }
+            theme_request = next;
+        }
+        background_color = ryn::resolve_theme(next).alias().color_background_container;
+        theme.set(next);
         ++telemetry.theme_updates;
         if (brand) {
             ++telemetry.brand_updates;
         }
     }
 };
+
+template <typename Visitor> void visit_gallery_draft_fields(GalleryState& state, Visitor&& visit) {
+    if (state.page_component == "ant.component.button") {
+        visit("state/button_loading", state.button_loading);
+    }
+    if (state.page_component == "ant.component.input" && state.page_family == GalleryInputFamily::input) {
+        visit("state/clear_disabled", state.clear_disabled);
+        visit("state/input_value", state.input_value);
+        visit("state/input_clear_disabled", state.input_clear_disabled);
+    }
+    if (state.page_component == "ant.component.switch") {
+        visit("state/switch_checked", state.switch_checked);
+    }
+    if (state.page_component == "ant.component.checkbox") {
+        visit("state/checkbox_checked", state.checkbox_checked);
+        visit("state/checkbox_values", state.checkbox_values);
+        visit("state/checkbox_options", state.checkbox_options);
+        visit("state/checkbox_options_expanded", state.checkbox_options_expanded);
+    }
+    if (state.page_component == "ant.component.radio") {
+        visit("state/radio_selected", state.radio_selected);
+        visit("state/radio_options", state.radio_options);
+        visit("state/radio_options_expanded", state.radio_options_expanded);
+    }
+    if (state.page_component == "ant.component.input" && state.page_family == GalleryInputFamily::search) {
+        visit("state/search_value", state.search_value);
+    }
+    if ((state.page_component == "ant.component.input" || state.page_component == "ant.component.typography")) {
+        visit("state/text_direction", state.text_direction);
+    }
+    if (state.page_component == "ant.component.typography") {
+        visit("state/typography_value", state.typography_value);
+        visit("state/typography_title", state.typography_title);
+    }
+    if (state.page_component == "ant.component.slider") {
+        visit("state/slider_value", state.slider_value);
+        visit("state/slider_range", state.slider_range);
+    }
+    if (state.page_component == "ant.component.select") {
+        visit("state/select_value", state.select_value);
+        visit("state/select_options", state.select_options);
+        visit("state/select_options_expanded", state.select_options_expanded);
+    }
+    if (state.page_component == "ant.component.card") {
+        visit("state/card_loading", state.card_loading);
+    }
+    if (state.page_component == "ant.component.tabs") {
+        visit("state/tabs_active", state.tabs_active);
+        visit("state/tabs_label", state.tabs_label);
+        visit("state/tabs_disabled", state.tabs_disabled);
+    }
+    if (state.page_component == "ant.component.modal") {
+        visit("state/modal_loading", state.modal_loading);
+    }
+    if (state.page_component == "ant.component.drawer") {
+        visit("state/drawer_placement", state.drawer_placement);
+    }
+    if (state.page_component == "ant.component.tag") {
+        visit("state/tag_visible", state.tag_visible);
+        visit("state/tag_checked", state.tag_checked);
+    }
+    if (state.page_component == "ant.component.badge") {
+        visit("state/badge_count", state.badge_count);
+    }
+    if (state.page_component == "ant.component.alert") {
+        visit("state/alert_visible", state.alert_visible);
+    }
+    if (state.page_component == "ant.component.spin") {
+        visit("state/feedback_loading", state.feedback_loading);
+    }
+    if (state.page_component == "ant.component.progress") {
+        visit("state/feedback_percent", state.feedback_percent);
+        visit("state/feedback_status", state.feedback_status);
+    }
+    if (state.page_component == "ant.component.table") {
+        visit("state/records", state.records);
+        visit("state/table_sort", state.table_sort);
+        visit("state/table_selected", state.table_selected);
+        visit("state/table_loading", state.table_loading);
+    }
+    if ((state.page_component == "ant.component.table" || state.page_component == "ant.component.pagination")) {
+        visit("state/table_page", state.table_page);
+    }
+    if ((state.page_component == "ant.component.menu" || state.page_component == "ant.component.table")) {
+        visit("state/menu_selected", state.menu_selected);
+        visit("state/menu_open", state.menu_open);
+        visit("state/menu_label", state.menu_label);
+        visit("state/menu_disabled", state.menu_disabled);
+    }
+    if ((state.page_component == "ant.component.input-number" || state.page_component == "ant.component.table")) {
+        visit("state/number_value", state.number_value);
+        visit("state/number_disabled", state.number_disabled);
+    }
+    if (state.page_component == "ant.component.collapse") {
+        visit("state/collapse_keys", state.collapse_keys);
+        visit("state/collapse_accordion", state.collapse_accordion);
+        visit("state/collapse_disabled", state.collapse_disabled);
+    }
+    if (state.page_component == "ant.component.segmented") {
+        visit("state/segment_value", state.segment_value);
+        visit("state/segment_label", state.segment_label);
+        visit("state/segment_disabled", state.segment_disabled);
+    }
+    if (state.page_component == "ant.component.empty") {
+        visit("state/empty_description", state.empty_description);
+        visit("state/empty_image", state.empty_image);
+    }
+    if (state.page_component == "ant.component.result") {
+        visit("state/result_status", state.result_status);
+        visit("state/result_title", state.result_title);
+        visit("state/result_status_step", state.result_status_step);
+    }
+    if (state.page_component == "ant.component.form") {
+        visit("state/form_name", state.form_name);
+        visit("state/form_role", state.form_role);
+        visit("state/form_count", state.form_count);
+        visit("state/form_consent", state.form_consent);
+        visit("state/form_disabled", state.form_disabled);
+        visit("state/form_read_only", state.form_read_only);
+        visit("state/form_help", state.form_help);
+    }
+    if (state.page_component == "ant.component.date-picker") {
+        visit("state/date_value", state.date_value);
+        visit("state/date_field", state.date_field);
+        visit("state/date_form_disabled", state.date_form_disabled);
+        visit("state/date_form_read_only", state.date_form_read_only);
+        visit("state/date_help", state.date_help);
+    }
+    if (state.page_component == "ant.component.breadcrumb") {
+        visit("state/breadcrumb_title", state.breadcrumb_title);
+        visit("state/breadcrumb_visible", state.breadcrumb_visible);
+        visit("state/breadcrumb_draft_visible", state.breadcrumb_draft_visible);
+        visit("state/breadcrumb_disabled", state.breadcrumb_disabled);
+        visit("state/breadcrumb_draft", state.breadcrumb_draft);
+    }
+    if (state.page_component == "ant.component.steps") {
+        visit("state/steps_current", state.steps_current);
+        visit("state/steps_vertical", state.steps_vertical);
+        visit("state/steps_size", state.steps_size);
+        visit("state/steps_status", state.steps_status);
+        visit("state/steps_visible", state.steps_visible);
+        visit("state/steps_disabled", state.steps_disabled);
+        visit("state/steps_draft", state.steps_draft);
+    }
+    if (state.page_component == "ant.component.time-picker") {
+        visit("state/time_value", state.time_value);
+        visit("state/time_confirm", state.time_confirm);
+        visit("state/time_accept", state.time_accept);
+        visit("state/time_input_read_only", state.time_input_read_only);
+        visit("state/time_field", state.time_field);
+        visit("state/time_form_disabled", state.time_form_disabled);
+        visit("state/time_form_read_only", state.time_form_read_only);
+        visit("state/time_help", state.time_help);
+    }
+    if (state.page_component == "ant.component.descriptions") {
+        visit("state/details_columns", state.details_columns);
+        visit("state/details_span", state.details_span);
+        visit("state/details_visible", state.details_visible);
+        visit("state/details_vertical", state.details_vertical);
+        visit("state/details_bordered", state.details_bordered);
+        visit("state/details_size", state.details_size);
+        visit("state/details_name", state.details_name);
+        visit("state/details_role", state.details_role);
+        visit("state/details_enabled", state.details_enabled);
+    }
+    if (state.page_component == "ant.component.skeleton") {
+        visit("state/skeleton_loading", state.skeleton_loading);
+        visit("state/skeleton_title", state.skeleton_title);
+        visit("state/skeleton_paragraph", state.skeleton_paragraph);
+        visit("state/skeleton_avatar", state.skeleton_avatar);
+        visit("state/skeleton_round", state.skeleton_round);
+        visit("state/skeleton_block", state.skeleton_block);
+        visit("state/skeleton_shape", state.skeleton_shape);
+        visit("state/skeleton_draft", state.skeleton_draft);
+        visit("state/skeleton_audience", state.skeleton_audience);
+    }
+    if (state.page_component == "ant.component.popover") {
+        visit("state/popover_disabled", state.popover_disabled);
+        visit("state/popover_placement", state.popover_placement);
+        visit("state/popover_arrow", state.popover_arrow);
+        visit("state/popover_draft", state.popover_draft);
+    }
+    if (state.page_component == "ant.component.message") {
+        visit("state/notification_placement", state.notification_placement);
+        visit("state/notification_status", state.notification_status);
+        visit("state/notification_draft", state.notification_draft);
+    }
+    if (state.page_component == "ant.component.timeline") {
+        visit("state/timeline_mode", state.timeline_mode);
+        visit("state/timeline_reverse", state.timeline_reverse);
+        visit("state/timeline_loading", state.timeline_loading);
+        visit("state/timeline_visible", state.timeline_visible);
+        visit("state/timeline_draft", state.timeline_draft);
+    }
+    if (state.page_component == "ant.component.avatar") {
+        visit("state/member_name", state.member_name);
+        visit("state/member_icon", state.member_icon);
+        visit("state/members_visible", state.members_visible);
+        visit("state/member_shape", state.member_shape);
+        visit("state/member_size", state.member_size);
+        visit("state/member_limit", state.member_limit);
+    }
+    if (state.page_component == "ant.component.statistic") {
+        visit("state/metric_value", state.metric_value);
+        visit("state/metric_precision", state.metric_precision);
+        visit("state/metric_separators", state.metric_separators);
+        visit("state/metric_formatter", state.metric_formatter);
+        visit("state/metric_loading", state.metric_loading);
+        visit("state/metric_note", state.metric_note);
+        visit("state/metric_step", state.metric_step);
+    }
+    if (state.page_component == "ant.component.rate") {
+        visit("state/rating", state.rating);
+        visit("state/rating_accept", state.rating_accept);
+        visit("state/rating_disabled", state.rating_disabled);
+        visit("state/rating_read_only", state.rating_read_only);
+        visit("state/rating_visible", state.rating_visible);
+        visit("state/rating_note", state.rating_note);
+    }
+    if (state.page_component == "ant.component.auto-complete") {
+        visit("state/contact_value", state.contact_value);
+        visit("state/contact_accept", state.contact_accept);
+        visit("state/contact_extra", state.contact_extra);
+        visit("state/contact_disabled", state.contact_disabled);
+        visit("state/contact_read_only", state.contact_read_only);
+        visit("state/contact_note", state.contact_note);
+        visit("state/contact_field", state.contact_field);
+    }
+    if (state.page_component == "ant.component.tree") {
+        visit("state/project_expanded", state.project_expanded);
+        visit("state/project_selected", state.project_selected);
+        visit("state/project_checked", state.project_checked);
+        visit("state/project_disabled", state.project_disabled);
+        visit("state/project_visible", state.project_visible);
+        visit("state/project_locked", state.project_locked);
+        visit("state/project_note", state.project_note);
+    }
+    if (state.page_component == "ant.component.tree-select") {
+        visit("state/destination_value", state.destination_value);
+        visit("state/destination_expanded", state.destination_expanded);
+        visit("state/destination_accept_value", state.destination_accept_value);
+        visit("state/destination_accept_close", state.destination_accept_close);
+        visit("state/destination_renamed", state.destination_renamed);
+        visit("state/destination_archive_disabled", state.destination_archive_disabled);
+        visit("state/destination_disabled", state.destination_disabled);
+        visit("state/destination_read_only", state.destination_read_only);
+        visit("state/destination_visible", state.destination_visible);
+        visit("state/destination_note", state.destination_note);
+        visit("state/destination_field", state.destination_field);
+    }
+    if (state.page_component == "ant.component.icon") {
+        visit("state/icon_angle", state.icon_angle);
+        visit("state/icon_spin", state.icon_spin);
+        visit("state/icon_source_step", state.icon_source_step);
+    }
+}
 
 void remember_target(const std::shared_ptr<GalleryState>& state, std::string_view identity) {
     if (!state->register_targets) {
@@ -413,8 +703,17 @@ void remember_target(const std::shared_ptr<GalleryState>& state, std::string_vie
         throw std::logic_error("Gallery test target has no mounted component");
     }
     const auto component = children.back();
-    const auto key = std::string{identity};
-    if (!state->targets.emplace(key, component).second) {
+    auto key = std::string{identity};
+    if (state->page_component == "ant.component.table" &&
+        (identity.starts_with("gallery.menu.") || identity.starts_with("gallery.dropdown.") ||
+         identity.starts_with("gallery.number."))) {
+        key = "gallery.table." + std::string{identity.substr(std::string_view{"gallery."}.size())};
+    }
+    const auto [target, inserted] = state->targets.emplace(key, component);
+    if (!inserted) {
+        if (target->second == component) {
+            return;
+        }
         throw std::logic_error("Gallery test target identity is duplicated: " + key);
     }
     build.on_resource_cleanup(component, [weak = std::weak_ptr{state}, key] {
@@ -422,6 +721,64 @@ void remember_target(const std::shared_ptr<GalleryState>& state, std::string_vie
             state->targets.erase(key);
         }
     });
+}
+
+thread_local std::weak_ptr<GalleryState> active_gallery_draft;
+
+class GalleryDraftBuild final {
+public:
+    explicit GalleryDraftBuild(const std::shared_ptr<GalleryState>& state)
+        : previous_(std::exchange(active_gallery_draft, state)) {}
+
+    ~GalleryDraftBuild() {
+        active_gallery_draft = std::move(previous_);
+    }
+
+private:
+    std::weak_ptr<GalleryState> previous_;
+};
+
+template <typename T> T gallery_initial_value(std::string_view identity, const T& fallback) {
+    const auto state = active_gallery_draft.lock();
+    if (!state || !state->register_targets) {
+        return fallback;
+    }
+    return gallery_draft_read(state->draft, "editor/" + std::string{identity}, fallback);
+}
+
+ryn::String gallery_initial_text(std::string_view identity, ryn::String fallback) {
+    return gallery_initial_value(identity, fallback);
+}
+
+template <typename T>
+std::function<void(T)> gallery_value_changed(std::string_view identity, std::function<void(T)> original = {}) {
+    const auto state = active_gallery_draft.lock();
+    if (!state || !state->register_targets) {
+        return original;
+    }
+    return [weak = std::weak_ptr{state}, key = "editor/" + std::string{identity},
+            original = std::move(original)](T value) {
+        if (const auto state = weak.lock()) {
+            gallery_draft_write(state->draft, key, value);
+        }
+        if (original) {
+            original(std::move(value));
+        }
+    };
+}
+
+void gallery_target(std::string_view identity) {
+    if (const auto state = active_gallery_draft.lock()) {
+        remember_target(state, identity);
+    }
+}
+
+ryn::SelectProps gallery_select_default(std::string_view identity, ryn::SelectProps props, ryn::SelectValue fallback) {
+    const auto value = gallery_initial_value(identity, ryn::SelectSelection{std::move(fallback)});
+    if (value) {
+        props.defaultValue(*value);
+    }
+    return props;
 }
 
 const std::size_t navigation_control_count = 20 + ant_design_reference_entries().size();
@@ -1569,41 +1926,65 @@ void add_switch_base_samples(const std::shared_ptr<GalleryState>& state) {
                    }));
                    ++state->telemetry.live_samples;
                    ryn::Text(u8"Small / 已选");
-                   ryn::Switch(ryn::SwitchProps{}.size(ryn::SwitchSize::Small).defaultChecked(true));
+                   ryn::Switch(ryn::SwitchProps{}
+                                   .size(ryn::SwitchSize::Small)
+                                   .defaultChecked(gallery_initial_value<bool>("gallery.switch.basic-small", true))
+                                   .onChange(gallery_value_changed<bool>("gallery.switch.basic-small")));
+                   gallery_target("gallery.switch.basic-small");
                    ++state->telemetry.live_samples;
                    ryn::Text(u8"禁用");
-                   ryn::Switch(ryn::SwitchProps{}.disabled(true));
+                   ryn::Switch(ryn::SwitchProps{}
+                                   .disabled(true)
+                                   .defaultChecked(gallery_initial_value<bool>("gallery.switch.basic-disabled", false))
+                                   .onChange(gallery_value_changed<bool>("gallery.switch.basic-disabled")));
+                   gallery_target("gallery.switch.basic-disabled");
                    ++state->telemetry.live_samples;
                    ryn::Text(u8"加载");
-                   ryn::Switch(ryn::SwitchProps{}.loading(state->loading));
+                   ryn::Switch(ryn::SwitchProps{}
+                                   .loading(state->loading)
+                                   .defaultChecked(gallery_initial_value<bool>("gallery.switch.basic-loading", false))
+                                   .onChange(gallery_value_changed<bool>("gallery.switch.basic-loading")));
+                   gallery_target("gallery.switch.basic-loading");
                    ++state->telemetry.live_samples;
                });
 }
 
 void add_checkbox_base_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Checkbox / 多选框 · checked、indeterminate、disabled");
-    ryn::Space(ryn::SpaceProps{}
-                   .align(ryn::SpaceAlign::Start)
-                   .wrap(true)
-                   .align(ryn::SpaceAlign::Center)
-                   .size(ryn::dp(12.0F))
-                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
-               [state] {
-                   ryn::Checkbox(ryn::CheckboxProps{}.checked(state->checkbox_checked).onChange([state](bool value) {
-                       state->checkbox_checked.set(value);
-                   }),
-                                 ryn::CheckboxLabel{[] { ryn::Text(u8"受控 / Control"); }});
-                   ++state->telemetry.live_samples;
-                   ryn::Checkbox(ryn::CheckboxProps{}.defaultChecked(true),
-                                 ryn::CheckboxLabel{[] { ryn::Text(u8"已选 / Checked"); }});
-                   ++state->telemetry.live_samples;
-                   ryn::Checkbox(ryn::CheckboxProps{}.indeterminate(true),
-                                 ryn::CheckboxLabel{[] { ryn::Text(u8"半选 / Mixed"); }});
-                   ++state->telemetry.live_samples;
-                   ryn::Checkbox(ryn::CheckboxProps{}.disabled(true),
-                                 ryn::CheckboxLabel{[] { ryn::Text(u8"禁用 / Disabled"); }});
-                   ++state->telemetry.live_samples;
-               });
+    ryn::Space(
+        ryn::SpaceProps{}
+            .align(ryn::SpaceAlign::Start)
+            .wrap(true)
+            .align(ryn::SpaceAlign::Center)
+            .size(ryn::dp(12.0F))
+            .layout(ryn::LayoutStyle{}.width(state->document_width)),
+        [state] {
+            ryn::Checkbox(ryn::CheckboxProps{}.checked(state->checkbox_checked).onChange([state](bool value) {
+                state->checkbox_checked.set(value);
+            }),
+                          ryn::CheckboxLabel{[] { ryn::Text(u8"受控 / Control"); }});
+            ++state->telemetry.live_samples;
+            ryn::Checkbox(ryn::CheckboxProps{}
+                              .defaultChecked(gallery_initial_value<bool>("gallery.checkbox.basic-checked", true))
+                              .onChange(gallery_value_changed<bool>("gallery.checkbox.basic-checked")),
+                          ryn::CheckboxLabel{[] { ryn::Text(u8"已选 / Checked"); }});
+            gallery_target("gallery.checkbox.basic-checked");
+            ++state->telemetry.live_samples;
+            ryn::Checkbox(ryn::CheckboxProps{}
+                              .indeterminate(true)
+                              .defaultChecked(gallery_initial_value<bool>("gallery.checkbox.basic-mixed", false))
+                              .onChange(gallery_value_changed<bool>("gallery.checkbox.basic-mixed")),
+                          ryn::CheckboxLabel{[] { ryn::Text(u8"半选 / Mixed"); }});
+            gallery_target("gallery.checkbox.basic-mixed");
+            ++state->telemetry.live_samples;
+            ryn::Checkbox(ryn::CheckboxProps{}
+                              .disabled(true)
+                              .defaultChecked(gallery_initial_value<bool>("gallery.checkbox.basic-disabled", false))
+                              .onChange(gallery_value_changed<bool>("gallery.checkbox.basic-disabled")),
+                          ryn::CheckboxLabel{[] { ryn::Text(u8"禁用 / Disabled"); }});
+            gallery_target("gallery.checkbox.basic-disabled");
+            ++state->telemetry.live_samples;
+        });
 }
 
 void add_radio_base_samples(const std::shared_ptr<GalleryState>& state) {
@@ -1615,8 +1996,11 @@ void add_radio_base_samples(const std::shared_ptr<GalleryState>& state) {
                    .size(ryn::dp(12.0F))
                    .layout(ryn::LayoutStyle{}.width(state->document_width)),
                [state] {
-                   ryn::Radio(ryn::RadioProps{}.defaultChecked(true),
+                   ryn::Radio(ryn::RadioProps{}
+                                  .defaultChecked(gallery_initial_value<bool>("gallery.radio.basic-standalone", true))
+                                  .onChange(gallery_value_changed<bool>("gallery.radio.basic-standalone")),
                               ryn::RadioLabel{[] { ryn::Text(u8"单独已选 / Standalone"); }});
+                   gallery_target("gallery.radio.basic-standalone");
                    ++state->telemetry.live_samples;
                    ryn::RadioGroup(ryn::RadioGroupProps{}
                                        .options({
@@ -1761,28 +2145,48 @@ void add_slider_samples(const std::shared_ptr<GalleryState>& state) {
             .onChange([state](ryn::SliderRange value) { state->slider_range.set(value); })
             .layout(ryn::LayoutStyle{}.width(state->cell_width)));
     ryn::Slider(ryn::SliderProps{}
-                    .defaultValue(35)
+                    .defaultValue(gallery_initial_value<double>("gallery.slider.reverse-step", double{35}))
+                    .onChange(gallery_value_changed<double>("gallery.slider.reverse-step"))
                     .limits(ryn::SliderLimits{0, 100, 10})
                     .dots(true)
                     .included(false)
                     .reverse(true)
                     .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-    ryn::Slider(ryn::SliderProps{}.defaultValue(60).disabled(true).layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    gallery_target("gallery.slider.reverse-step");
     ryn::Slider(ryn::SliderProps{}
-                    .defaultValue(40)
+                    .defaultValue(gallery_initial_value<double>("gallery.slider.disabled", double{60}))
+                    .onChange(gallery_value_changed<double>("gallery.slider.disabled"))
+                    .disabled(true)
+                    .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    gallery_target("gallery.slider.disabled");
+    ryn::Slider(ryn::SliderProps{}
+                    .defaultValue(gallery_initial_value<double>("gallery.slider.vertical", double{40}))
+                    .onChange(gallery_value_changed<double>("gallery.slider.vertical"))
                     .orientation(ryn::SliderOrientation::Vertical)
                     .layout(ryn::LayoutStyle{}.height(ryn::dp(120))));
+    gallery_target("gallery.slider.vertical");
     state->telemetry.live_samples += 5;
-    ryn::RangeSlider(ryn::RangeSliderProps{}.defaultValue({20, 80}).draggableTrack(true).layout(
-        ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::RangeSlider(ryn::RangeSliderProps{}
+                         .defaultValue(gallery_initial_value<ryn::SliderRange>("gallery.slider.range-track",
+                                                                               ryn::SliderRange{20, 80}))
+                         .onChange(gallery_value_changed<ryn::SliderRange>("gallery.slider.range-track"))
+                         .draggableTrack(true)
+                         .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    gallery_target("gallery.slider.range-track");
     ryn::MultiSlider(ryn::MultiSliderProps{}
-                         .defaultValue({20, 50, 80})
+                         .defaultValue(gallery_initial_value<ryn::SliderValues>("gallery.slider.multi-edit",
+                                                                                ryn::SliderValues{20, 50, 80}))
+                         .onChange(gallery_value_changed<ryn::SliderValues>("gallery.slider.multi-edit"))
                          .rangeOptions(ryn::SliderRangeOptions{false, true, 0, 6})
                          .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    gallery_target("gallery.slider.multi-edit");
     ryn::MultiSlider(ryn::MultiSliderProps{}
-                         .defaultValue({20, 50, 80})
+                         .defaultValue(gallery_initial_value<ryn::SliderValues>("gallery.slider.multi-disabled",
+                                                                                ryn::SliderValues{20, 50, 80}))
+                         .onChange(gallery_value_changed<ryn::SliderValues>("gallery.slider.multi-disabled"))
                          .handleDisabled(ryn::SliderDisabledHandles{false, true, false})
                          .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    gallery_target("gallery.slider.multi-disabled");
     state->telemetry.live_samples += 3;
 }
 
@@ -1925,26 +2329,36 @@ void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
                 ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"开启"); }},
                                  ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关闭"); }}});
             ryn::Text(u8"gallery.switch.small-icon-rtl");
-            ryn::Switch(ryn::SwitchProps{}.size(ryn::SwitchSize::Small).direction(ryn::SwitchDirection::RightToLeft),
+            ryn::Switch(ryn::SwitchProps{}
+                            .size(ryn::SwitchSize::Small)
+                            .direction(ryn::SwitchDirection::RightToLeft)
+                            .defaultChecked(gallery_initial_value<bool>("gallery.switch.small-icon-rtl", false))
+                            .onChange(gallery_value_changed<bool>("gallery.switch.small-icon-rtl")),
                         ryn::SwitchSlots{ryn::SwitchCheckedContent{
                                              [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
                                          ryn::SwitchUncheckedContent{
                                              [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CloseOutlined)); }}});
+            gallery_target("gallery.switch.small-icon-rtl");
             ryn::ThemeConfig custom;
             custom.switch_.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
             custom.switch_.algorithm = true;
             ryn::Theme(ryn::ThemeProps{}.config(custom), ryn::ThemeContent{[state] {
                            ++state->telemetry.theme_content_runs;
                            ryn::Text(u8"gallery.switch.component-theme");
-                           ryn::Switch(ryn::SwitchProps{}.defaultChecked(true),
-                                       ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"紫色"); }},
-                                                        ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关"); }}});
+                           ryn::Switch(
+                               ryn::SwitchProps{}
+                                   .defaultChecked(gallery_initial_value<bool>("gallery.switch.component-theme", true))
+                                   .onChange(gallery_value_changed<bool>("gallery.switch.component-theme")),
+                               ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"紫色"); }},
+                                                ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关"); }}});
+                           gallery_target("gallery.switch.component-theme");
                        }});
             ryn::Button(ryn::ButtonProps{}.onClick([state] {
                 static_cast<void>(state->switch_ref.focus());
                 ++state->telemetry.activations;
             }),
                         [] { ryn::Text(u8"gallery.switch.focus · 聚焦开关"); });
+            gallery_target("gallery.switch.focus");
             state->telemetry.live_samples += 4;
         });
     ryn::Flex(ryn::FlexProps{}.align(ryn::FlexAlign::Start).layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))),
@@ -1962,7 +2376,11 @@ void add_checkbox_samples(const std::shared_ptr<GalleryState>& state) {
             .value(state->checkbox_values)
             .onChange([state](const ryn::CheckboxValues& values) { state->checkbox_values.set(values); }));
     ryn::Text(u8"gallery.checkbox.group-dynamic · 按 value 保留 identity");
-    ryn::CheckboxGroup(ryn::CheckboxGroupProps{}.options(state->checkbox_options).defaultValue({ryn::String{u8"a"}}));
+    ryn::CheckboxGroup(ryn::CheckboxGroupProps{}
+                           .options(state->checkbox_options)
+                           .defaultValue(gallery_initial_value<ryn::CheckboxValues>(
+                               "gallery.checkbox.group-dynamic", ryn::CheckboxValues{ryn::String{u8"a"}}))
+                           .onChange(gallery_value_changed<ryn::CheckboxValues>("gallery.checkbox.group-dynamic")));
     ryn::Button(ryn::ButtonProps{}.onClick([state] {
         state->checkbox_options_expanded = !state->checkbox_options_expanded;
         if (state->checkbox_options_expanded) {
@@ -1976,29 +2394,37 @@ void add_checkbox_samples(const std::shared_ptr<GalleryState>& state) {
         ++state->telemetry.activations;
     }),
                 [] { ryn::Text(u8"gallery.checkbox.options-update · 重排 / 增删"); });
+    gallery_target("gallery.checkbox.options-update");
     ryn::Checkbox(ryn::CheckboxProps{}
                       .ref(state->checkbox_ref)
                       .indeterminate(true)
-                      .direction(ryn::CheckboxDirection::RightToLeft),
+                      .direction(ryn::CheckboxDirection::RightToLeft)
+                      .defaultChecked(gallery_initial_value<bool>("gallery.checkbox.rich-rtl-ref", false))
+                      .onChange(gallery_value_changed<bool>("gallery.checkbox.rich-rtl-ref")),
                   ryn::CheckboxLabel{[] {
                       ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined));
                       ryn::Text(u8"gallery.checkbox.rich-rtl-ref · 半选与富标签");
                   }});
+    gallery_target("gallery.checkbox.rich-rtl-ref");
     ryn::ThemeConfig custom;
     custom.checkbox.algorithm = true;
     custom.checkbox.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
     custom.checkbox.tokens.size = ryn::dp(20);
     ryn::Theme(ryn::ThemeProps{}.config(custom), ryn::ThemeContent{[state] {
                    ++state->telemetry.theme_content_runs;
-                   ryn::Checkbox(ryn::CheckboxProps{}.defaultChecked(true), ryn::CheckboxLabel{[] {
-                                     ryn::Text(u8"gallery.checkbox.component-theme · 紫色 / 20 dp");
-                                 }});
+                   ryn::Checkbox(
+                       ryn::CheckboxProps{}
+                           .defaultChecked(gallery_initial_value<bool>("gallery.checkbox.component-theme", true))
+                           .onChange(gallery_value_changed<bool>("gallery.checkbox.component-theme")),
+                       ryn::CheckboxLabel{[] { ryn::Text(u8"gallery.checkbox.component-theme · 紫色 / 20 dp"); }});
+                   gallery_target("gallery.checkbox.component-theme");
                }});
     ryn::Button(ryn::ButtonProps{}.onClick([state] {
         static_cast<void>(state->checkbox_ref.focus());
         ++state->telemetry.activations;
     }),
                 [] { ryn::Text(u8"gallery.checkbox.focus · 聚焦多选框"); });
+    gallery_target("gallery.checkbox.focus");
     state->telemetry.live_samples += 6;
 }
 
@@ -2009,8 +2435,12 @@ void add_radio_themed_sample(const std::shared_ptr<GalleryState>& state) {
     ryn::Theme(ryn::ThemeProps{}.config(custom), ryn::ThemeContent{[state] {
                    ++state->telemetry.theme_content_runs;
                    ryn::Text(u8"gallery.radio.component-theme / gallery.radio.ref");
-                   ryn::RadioButton(ryn::RadioProps{}.defaultChecked(true).ref(state->radio_ref),
+                   ryn::RadioButton(ryn::RadioProps{}
+                                        .defaultChecked(gallery_initial_value<bool>("gallery.radio.ref", true))
+                                        .onChange(gallery_value_changed<bool>("gallery.radio.ref"))
+                                        .ref(state->radio_ref),
                                     ryn::RadioLabel{[] { ryn::Text(u8"独立紫色 / 富标签 / ref"); }});
+                   gallery_target("gallery.radio.ref");
                }});
 }
 
@@ -2019,8 +2449,11 @@ void add_radio_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"gallery.radio.dynamic-outline · 按 value 保留 identity");
     ryn::RadioGroup(ryn::RadioGroupProps{}
                         .options(state->radio_options)
-                        .defaultValue(ryn::String{u8"a"})
+                        .defaultValue(gallery_initial_value<ryn::RadioValue>("gallery.radio.dynamic-outline",
+                                                                             ryn::RadioValue{ryn::String{u8"a"}}))
+                        .onChange(gallery_value_changed<ryn::RadioValue>("gallery.radio.dynamic-outline"))
                         .optionType(ryn::RadioOptionType::Button));
+    gallery_target("gallery.radio.dynamic-outline");
     ryn::Button(ryn::ButtonProps{}.onClick([state] {
         state->radio_options_expanded = !state->radio_options_expanded;
         if (state->radio_options_expanded) {
@@ -2034,32 +2467,40 @@ void add_radio_samples(const std::shared_ptr<GalleryState>& state) {
         ++state->telemetry.activations;
     }),
                 [] { ryn::Text(u8"gallery.radio.options-update · 重排 / 增删"); });
+    gallery_target("gallery.radio.options-update");
     ryn::Text(u8"gallery.radio.solid-large-block · 三类值 / 禁用");
     ryn::RadioGroup(ryn::RadioGroupProps{}
                         .options({{ryn::String{u8"desktop"}, ryn::String{u8"桌面"}},
                                   {1.0, ryn::String{u8"数字"}},
                                   {true, ryn::String{u8"禁用布尔"}, true}})
-                        .defaultValue(1.0)
+                        .defaultValue(gallery_initial_value<ryn::RadioValue>("gallery.radio.solid-large-block",
+                                                                             ryn::RadioValue{1.0}))
+                        .onChange(gallery_value_changed<ryn::RadioValue>("gallery.radio.solid-large-block"))
                         .optionType(ryn::RadioOptionType::Button)
                         .buttonStyle(ryn::RadioButtonStyle::Solid)
                         .size(ryn::RadioSize::Large)
                         .block(true)
                         .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    gallery_target("gallery.radio.solid-large-block");
     ryn::Text(u8"gallery.radio.vertical-small-rtl");
     ryn::RadioGroup(
         ryn::RadioGroupProps{}
             .options({{false, ryn::String{u8"false"}}, {true, ryn::String{u8"true"}}, {3.0, ryn::String{u8"数字"}}})
-            .defaultValue(true)
+            .defaultValue(
+                gallery_initial_value<ryn::RadioValue>("gallery.radio.vertical-small-rtl", ryn::RadioValue{true}))
+            .onChange(gallery_value_changed<ryn::RadioValue>("gallery.radio.vertical-small-rtl"))
             .optionType(ryn::RadioOptionType::Button)
             .size(ryn::RadioSize::Small)
             .orientation(ryn::RadioGroupOrientation::Vertical)
             .direction(ryn::RadioDirection::RightToLeft));
+    gallery_target("gallery.radio.vertical-small-rtl");
     add_radio_themed_sample(state);
     ryn::Button(ryn::ButtonProps{}.onClick([state] {
         static_cast<void>(state->radio_ref.focus());
         ++state->telemetry.activations;
     }),
                 [] { ryn::Text(u8"gallery.radio.focus · 聚焦单选按钮"); });
+    gallery_target("gallery.radio.focus");
     state->telemetry.live_samples += 6;
 }
 
@@ -2139,8 +2580,12 @@ void add_space_samples(const std::shared_ptr<GalleryState>& state) {
     Space(SpaceProps{}.align(SpaceAlign::Baseline), SpaceContent{[] {
               Text(u8"Ag 基线");
               Button(ButtonProps{}.size(ControlSize::Large), [] { Text(u8"Ag 大按钮"); });
-              Input(
-                  InputProps{}.size(ControlSize::Large).defaultValue(u8"Ag 输入").layout(LayoutStyle{}.width(dp(150))));
+              Input(InputProps{}
+                        .size(ControlSize::Large)
+                        .defaultValue(gallery_initial_text("gallery.space.baseline.input", u8"Ag 输入"))
+                        .onChange(gallery_value_changed<ryn::String>("gallery.space.baseline.input"))
+                        .layout(LayoutStyle{}.width(dp(150))));
+              gallery_target("gallery.space.baseline.input");
           }});
     remember_target(state, "gallery.space.baseline");
     for (const auto size : {ControlSize::Small, ControlSize::Middle, ControlSize::Large}) {
@@ -2176,9 +2621,17 @@ void add_space_samples(const std::shared_ptr<GalleryState>& state) {
                      .layout(LayoutStyle{}.width(state->document_width)),
                  SpaceCompactContent{[] {
                      SpaceAddon(SpaceAddonProps{}, SpaceAddonContent{[] { Text(u8"https://"); }});
-                     Input(InputProps{}.defaultValue(u8"输入").layout(LayoutStyle{}.width(dp(120))));
+                     Input(InputProps{}
+                               .defaultValue(gallery_initial_text("gallery.space.compact.mixed.input", u8"输入"))
+                               .onChange(gallery_value_changed<ryn::String>("gallery.space.compact.mixed.input"))
+                               .layout(LayoutStyle{}.width(dp(120))));
+                     gallery_target("gallery.space.compact.mixed.input");
                      Password(PasswordProps{}.defaultValue(u8"秘密").layout(LayoutStyle{}.width(dp(100))));
-                     Search(SearchProps{}.defaultValue(u8"搜索").layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))));
+                     Search(SearchProps{}
+                                .defaultValue(gallery_initial_text("gallery.space.compact.mixed.search", u8"搜索"))
+                                .onChange(gallery_value_changed<ryn::String>("gallery.space.compact.mixed.search"))
+                                .layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))));
+                     gallery_target("gallery.space.compact.mixed.search");
                      RadioButton(RadioProps{}, RadioLabel{[] { Text(u8"选择"); }});
                      SpaceCompact(SpaceCompactProps{}, SpaceCompactContent{[] {
                                       Button(ButtonProps{}, [] { Text(u8"嵌套 A"); });
@@ -2260,7 +2713,17 @@ void add_tabs_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Tabs · 键盘导航 / 保留草稿 / 溢出滚动");
     const auto sample = [&](const char8_t* caption, TabsProps props, std::vector<TabItem> items) {
-        Text(String::from_utf8(std::u8string_view{caption}).value());
+        const auto label = String::from_utf8(std::u8string_view{caption}).value();
+        const auto key = label.bytes().substr(0, label.bytes().find(" ·"));
+        if (state->register_targets && key != "gallery.tabs.controlled-retained" && key != "gallery.tabs.unknown-key") {
+            const auto initial = key == "gallery.tabs.overflow" ? String{u8"1"}
+                                 : items.empty()                ? String{}
+                                                                : String{u8"draft"};
+            const auto draft_key = std::string{key} + "/active-key";
+            props.defaultActiveKey(gallery_initial_value(draft_key, initial))
+                .onChange(gallery_value_changed<String>(draft_key));
+        }
+        Text(label);
         Tabs(props.layout(LayoutStyle{}.width(state->cell_width)), std::move(items));
         const auto identity = String::from_utf8(std::u8string_view{caption}).value();
         remember_target(state, identity.bytes().substr(0, identity.bytes().find(" ·")));
@@ -2270,26 +2733,38 @@ void add_tabs_samples(const std::shared_ptr<GalleryState>& state) {
         return std::vector<TabItem>{TabItem{u8"draft", u8"草稿", TabContent{[] { Text(u8"内容 / Content"); }}},
                                     TabItem{u8"settings", u8"设置", TabContent{[] { Text(u8"Settings content"); }}}};
     };
-    sample(
-        u8"gallery.tabs.controlled-retained · 受控 / 切换保留编辑",
-        TabsProps{}.activeKey(state->tabs_active).onChange([state](String key) {
-            state->tabs_active.set(std::move(key));
-            ++state->telemetry.activations;
-        }),
-        {TabItem{
-             u8"draft", u8"草稿", TabContent{[] {
-                 Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[] {
-                          Input(InputProps{}.defaultValue(u8"切换后保留 / Draft").layout(LayoutStyle{}.width(dp(140))));
-                          Select(SelectProps{}
-                                     .options({{1, u8"桌面"}, {2, u8"服务"}})
-                                     .defaultValue(1)
-                                     .layout(LayoutStyle{}.width(dp(140))));
-                      }});
-             }}},
-         TabItem{u8"settings", u8"设置", TabContent{[] {
-                     Input(InputProps{}.defaultValue(u8"另一份草稿").layout(LayoutStyle{}.width(dp(140))));
-                 }}},
-         TabItem{u8"locked", u8"禁用", TabContent{[] { Text(u8"Locked"); }}}.disabled()});
+    sample(u8"gallery.tabs.controlled-retained · 受控 / 切换保留编辑",
+           TabsProps{}.activeKey(state->tabs_active).onChange([state](String key) {
+               state->tabs_active.set(std::move(key));
+               ++state->telemetry.activations;
+           }),
+           {TabItem{
+                u8"draft", u8"草稿", TabContent{[] {
+                    Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[] {
+                             Input(InputProps{}
+                                       .defaultValue(gallery_initial_text("gallery.tabs.draft", u8"切换后保留 / Draft"))
+                                       .onChange(gallery_value_changed<ryn::String>("gallery.tabs.draft"))
+                                       .layout(LayoutStyle{}.width(dp(140))));
+                             gallery_target("gallery.tabs.draft");
+                             Select(
+                                 gallery_select_default("gallery.tabs.draft-role",
+                                                        SelectProps{}
+                                                            .options({{1, u8"桌面"}, {2, u8"服务"}})
+
+                                                            .layout(LayoutStyle{}.width(dp(140))),
+                                                        ryn::SelectValue{1})
+                                     .onChange(gallery_value_changed<ryn::SelectSelection>("gallery.tabs.draft-role")));
+                             gallery_target("gallery.tabs.draft-role");
+                         }});
+                }}},
+            TabItem{u8"settings", u8"设置", TabContent{[] {
+                        Input(InputProps{}
+                                  .defaultValue(gallery_initial_text("gallery.tabs.settings-draft", u8"另一份草稿"))
+                                  .onChange(gallery_value_changed<ryn::String>("gallery.tabs.settings-draft"))
+                                  .layout(LayoutStyle{}.width(dp(140))));
+                        gallery_target("gallery.tabs.settings-draft");
+                    }}},
+            TabItem{u8"locked", u8"禁用", TabContent{[] { Text(u8"Locked"); }}}.disabled()});
     auto disabled = basic();
     disabled.push_back(TabItem{u8"locked", u8"禁用", TabContent{[] { Text(u8"Locked"); }}}.disabled());
     sample(u8"gallery.tabs.disabled", TabsProps{}, std::move(disabled));
@@ -2346,6 +2821,7 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
         }),
                ButtonContent{
                    [identity, title] { Text(utf8(std::string{identity} + " · " + std::string{title.bytes()})); }});
+        remember_target(state, identity);
         props.open(Binding<bool>{[state, index] { return state->modal_active.get() == index; }})
             .title(title)
             .onOk([state, index] {
@@ -2373,6 +2849,7 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
             })
             .afterClose([state] { state->modal_lifecycle.set(String{u8"对话框已关闭，输入和浮层已清理"}); });
         Modal(std::move(props), std::move(content), std::move(slots));
+        remember_target(state, std::string{identity} + ".dialog");
         state->telemetry.live_samples += 2; // Dialog and its page trigger.
     };
     sample(0, "gallery.modal.basic", String{u8"基础确认"}, ModalProps{}, ModalContent{[] {
@@ -2381,13 +2858,25 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
            }});
     sample(1, "gallery.modal.retained-edit", String{u8"保留编辑草稿"}, ModalProps{}, ModalContent{[] {
                Text(u8"修改内容后关闭再打开，草稿和选项继续保留。");
-               Input(InputProps{}.defaultValue(u8"RynUI account"));
-               TextArea(TextAreaProps{}.rows(3).defaultValue(u8"保留的多行备注\n中文 / English 🙂"));
-               Select(SelectProps{}
-                          .options({{u8"desktop", u8"桌面"}, {u8"service", u8"服务"}})
-                          .defaultValue(u8"desktop")
-                          .showSearch()
-                          .allowClear());
+               Input(InputProps{}
+                         .defaultValue(gallery_initial_text("gallery.modal.account", u8"RynUI account"))
+                         .onChange(gallery_value_changed<ryn::String>("gallery.modal.account")));
+               gallery_target("gallery.modal.account");
+               TextArea(
+                   TextAreaProps{}
+                       .rows(3)
+                       .defaultValue(gallery_initial_text("gallery.modal.notes", u8"保留的多行备注\n中文 / English 🙂"))
+                       .onChange(gallery_value_changed<ryn::String>("gallery.modal.notes")));
+               gallery_target("gallery.modal.notes");
+               Select(gallery_select_default("gallery.modal.account-role",
+                                             SelectProps{}
+                                                 .options({{u8"desktop", u8"桌面"}, {u8"service", u8"服务"}})
+
+                                                 .showSearch()
+                                                 .allowClear(),
+                                             ryn::SelectValue{u8"desktop"})
+                          .onChange(gallery_value_changed<ryn::SelectSelection>("gallery.modal.account-role")));
+               gallery_target("gallery.modal.account-role");
                Tooltip(TooltipProps{}
                            .title(String{u8"先按Escape关闭提示或菜单，再按一次取消对话框"})
                            .trigger(TooltipTriggerMode::Click),
@@ -2443,13 +2932,19 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
                for (int row = 1; row <= 28; ++row) {
                    Text(utf8("第 " + std::to_string(row) + " 段 · 标题与页脚固定，正文保留并独立滚动。"));
                }
-               Input(InputProps{}.defaultValue(u8"末尾保留的输入"));
+               Input(InputProps{}
+                         .defaultValue(gallery_initial_text("gallery.modal.end-draft", u8"末尾保留的输入"))
+                         .onChange(gallery_value_changed<ryn::String>("gallery.modal.end-draft")));
+               gallery_target("gallery.modal.end-draft");
                Select(SelectProps{}.options({{1, u8"末尾选项一"}, {2, u8"末尾选项二"}}));
                Tabs(TabsProps{}, {TabItem{u8"first", u8"保留面板一", TabContent{[] { Text(u8"面板一"); }}},
                                   TabItem{u8"second", u8"保留面板二", TabContent{[] { Text(u8"面板二"); }}}});
            }});
     sample(9, "gallery.modal.nested", String{u8"嵌套对话框"}, ModalProps{}, ModalContent{[state] {
-               Input(InputProps{}.defaultValue(u8"父层保留的草稿"));
+               Input(InputProps{}
+                         .defaultValue(gallery_initial_text("gallery.modal.parent-draft", u8"父层保留的草稿"))
+                         .onChange(gallery_value_changed<ryn::String>("gallery.modal.parent-draft")));
+               gallery_target("gallery.modal.parent-draft");
                Button(ButtonProps{}.onClick([state] { state->modal_nested.set(true); }), [] { Text(u8"打开下一层"); });
                Modal(ModalProps{}
                          .open(state->modal_nested)
@@ -2458,7 +2953,10 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
                          .onCancel([state](ModalCancelReason) { state->modal_nested.set(false); }),
                      ModalContent{[] {
                          Text(u8"gallery.modal.nested-child · 关闭后返回父层有效入口");
-                         Input(InputProps{}.defaultValue(u8"子层保留的草稿"));
+                         Input(InputProps{}
+                                   .defaultValue(gallery_initial_text("gallery.modal.child-draft", u8"子层保留的草稿"))
+                                   .onChange(gallery_value_changed<ryn::String>("gallery.modal.child-draft")));
+                         gallery_target("gallery.modal.child-draft");
                      }});
                ++state->telemetry.live_samples;
            }});
@@ -2475,7 +2973,7 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
           }});
 }
 
-void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
+void add_tag_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Tag / Badge · 状态、选择与计数");
     Text(TextProps{}.content(state->common_feedback));
@@ -2492,11 +2990,21 @@ void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
                            TagContent{[] { Text(u8"gallery.tag.checkable · 选择标签"); }});
               Button(ButtonProps{}.onClick([state] { state->tag_visible.set(true); }),
                      [] { Text(u8"gallery.tag.restore · 恢复标签"); });
+              gallery_target("gallery.tag.restore");
           }});
+    state->telemetry.live_samples += 4;
+}
+
+void add_badge_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    if (state->register_targets) {
+        Text(TextProps{}.content(state->common_feedback));
+    }
     Space(SpaceProps{}.wrap(true).size(dp(20)), SpaceContent{[state] {
               Badge(BadgeProps{}.count(state->badge_count), BadgeContent{[state] {
                         Button(ButtonProps{}.onClick([state] { state->badge_count.set(0); }),
                                [] { Text(u8"gallery.badge.clear · 已读"); });
+                        gallery_target("gallery.badge.clear");
                     }});
               Badge(BadgeProps{}.count(120));
               Badge(BadgeProps{}.count(0).showZero());
@@ -2504,8 +3012,16 @@ void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
               Badge(BadgeProps{}.status(Status::Success).text(u8"服务正常"));
               Button(ButtonProps{}.onClick([state] { state->badge_count.set(state->badge_count.get() + 1); }),
                      [] { Text(u8"gallery.badge.increment · 添加通知"); });
+              gallery_target("gallery.badge.increment");
           }});
+    state->telemetry.live_samples += 5;
+}
 
+void add_drawer_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    if (state->register_targets) {
+        Text(TextProps{}.content(state->common_feedback));
+    }
     Text(u8"Drawer · 四边停靠 / 保留草稿 / 正文滚动");
     Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
               for (auto placement :
@@ -2529,56 +3045,92 @@ void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
                .title(u8"编辑账户 / Edit account")
                .onCancel([state](DrawerCancelReason) { state->drawer_open.set(false); }),
            DrawerContent{[state] {
-               Input(InputProps{}.defaultValue(u8"gallery.drawer.draft · 保留的抽屉草稿"));
-               TextArea(TextAreaProps{}.defaultValue(u8"抽屉中的多行备注\n关闭后重新打开仍然保留"));
-               Select(SelectProps{}.options({{1, u8"桌面"}, {2, u8"服务"}}).defaultValue(1));
+               Input(InputProps{}
+                         .defaultValue(
+                             gallery_initial_text("gallery.drawer.draft", u8"gallery.drawer.draft · 保留的抽屉草稿"))
+                         .onChange(gallery_value_changed<ryn::String>("gallery.drawer.draft")));
+               gallery_target("gallery.drawer.draft");
+               TextArea(TextAreaProps{}
+                            .defaultValue(gallery_initial_text("gallery.drawer.notes",
+                                                               u8"抽屉中的多行备注\n关闭后重新打开仍然保留"))
+                            .onChange(gallery_value_changed<ryn::String>("gallery.drawer.notes")));
+               gallery_target("gallery.drawer.notes");
+               Select(gallery_select_default("gallery.drawer.role",
+                                             SelectProps{}.options({{1, u8"桌面"}, {2, u8"服务"}}), ryn::SelectValue{1})
+                          .onChange(gallery_value_changed<ryn::SelectSelection>("gallery.drawer.role")));
+               gallery_target("gallery.drawer.role");
                Popconfirm(PopconfirmProps{}.title(u8"保存当前草稿？").onConfirm([state] {
                    state->common_feedback.set(String{u8"抽屉草稿已确认保存"});
                }),
-                          PopconfirmTrigger{
-                              [] { Button(ButtonProps{}, [] { Text(u8"gallery.drawer.confirm · 确认保存"); }); }});
+                          PopconfirmTrigger{[] {
+                              Button(ButtonProps{}, [] { Text(u8"gallery.drawer.confirm · 确认保存"); });
+                              gallery_target("gallery.drawer.confirm");
+                          }});
                for (int row = 1; row <= 20; ++row) {
                    Text(utf8("抽屉正文 " + std::to_string(row) + " · 标题和页脚固定，正文独立滚动。"));
                }
-               Input(InputProps{}.defaultValue(u8"gallery.drawer.end · 末尾编辑"));
+               Input(InputProps{}
+                         .defaultValue(gallery_initial_text("gallery.drawer.end", u8"gallery.drawer.end · 末尾编辑"))
+                         .onChange(gallery_value_changed<ryn::String>("gallery.drawer.end")));
+               gallery_target("gallery.drawer.end");
            }},
            {.footer = DrawerFooter{[state] {
                 Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] { state->drawer_open.set(false); }),
                        [] { Text(u8"gallery.drawer.done · 完成并关闭"); });
+                gallery_target("gallery.drawer.done");
             }}});
+    state->telemetry.live_samples += 1;
+}
 
+void add_popconfirm_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    if (state->register_targets) {
+        Text(TextProps{}.content(state->common_feedback));
+    }
     Text(u8"Popconfirm · 确认 / 加载 / 取消");
-    Popconfirm(
-        PopconfirmProps{}
-            .open(state->popconfirm_open)
-            .confirmLoading(state->popconfirm_loading)
-            .title(u8"执行这项操作？")
-            .onOpenChange([state](bool open) {
-                state->popconfirm_open.set(open);
-                if (!open) {
-                    state->popconfirm_loading.set(false);
-                }
-            })
-            .onConfirm([state] { state->popconfirm_loading.set(true); })
-            .onCancel([state] { state->common_feedback.set(String{u8"已取消操作"}); }),
-        PopconfirmTrigger{[] { Button(ButtonProps{}, [] { Text(u8"gallery.popconfirm.controlled · 执行操作"); }); }},
-        {.description = PopconfirmDescription{[state] {
-             Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
-                      Text(u8"点击确定进入加载状态，再点击下方按钮完成。");
-                      Button(ButtonProps{}.onClick([state] {
-                          state->popconfirm_loading.set(false);
-                          state->popconfirm_open.set(false);
-                          state->common_feedback.set(String{u8"操作已完成"});
-                      }),
-                             [] { Text(u8"gallery.popconfirm.finish · 完成操作"); });
-                  }});
-         }}});
-    Popconfirm(
-        PopconfirmProps{}.title(u8"只显示确认按钮").showCancel(false).onConfirm([state] {
-            state->badge_count.set(state->badge_count.get() + 1);
-        }),
-        PopconfirmTrigger{[] { Button(ButtonProps{}, [] { Text(u8"gallery.popconfirm.single · 快速确认"); }); }});
+    Popconfirm(PopconfirmProps{}
+                   .open(state->popconfirm_open)
+                   .confirmLoading(state->popconfirm_loading)
+                   .title(u8"执行这项操作？")
+                   .onOpenChange([state](bool open) {
+                       state->popconfirm_open.set(open);
+                       if (!open) {
+                           state->popconfirm_loading.set(false);
+                       }
+                   })
+                   .onConfirm([state] { state->popconfirm_loading.set(true); })
+                   .onCancel([state] { state->common_feedback.set(String{u8"已取消操作"}); }),
+               PopconfirmTrigger{[] {
+                   Button(ButtonProps{}, [] { Text(u8"gallery.popconfirm.controlled · 执行操作"); });
+                   gallery_target("gallery.popconfirm.controlled");
+               }},
+               {.description = PopconfirmDescription{[state] {
+                    Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+                             Text(u8"点击确定进入加载状态，再点击下方按钮完成。");
+                             Button(ButtonProps{}.onClick([state] {
+                                 state->popconfirm_loading.set(false);
+                                 state->popconfirm_open.set(false);
+                                 state->common_feedback.set(String{u8"操作已完成"});
+                             }),
+                                    [] { Text(u8"gallery.popconfirm.finish · 完成操作"); });
+                             gallery_target("gallery.popconfirm.finish");
+                         }});
+                }}});
+    Popconfirm(PopconfirmProps{}.title(u8"只显示确认按钮").showCancel(false).onConfirm([state] {
+        state->badge_count.set(state->badge_count.get() + 1);
+    }),
+               PopconfirmTrigger{[] {
+                   Button(ButtonProps{}, [] { Text(u8"gallery.popconfirm.single · 快速确认"); });
+                   gallery_target("gallery.popconfirm.single");
+               }});
+    state->telemetry.live_samples += 2;
+}
 
+void add_alert_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    if (state->register_targets) {
+        Text(TextProps{}.content(state->common_feedback));
+    }
     Text(u8"Alert / Spin / Progress · 反馈与进度");
     Alert(AlertProps{}
               .status(Status::Warning)
@@ -2591,31 +3143,57 @@ void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
           {.action = AlertAction{[state] {
                Button(ButtonProps{}.onClick([state] { state->common_feedback.set(String{u8"已请求重新连接"}); }),
                       [] { Text(u8"gallery.alert.retry · 重试"); });
+               gallery_target("gallery.alert.retry");
            }}});
     Alert(AlertProps{}.status(Status::Success).message(u8"数据已保存").showIcon());
     Alert(AlertProps{}.status(Status::Error).message(u8"操作失败，请稍后重试").showIcon());
     Button(ButtonProps{}.onClick([state] { state->alert_visible.set(true); }),
            [] { Text(u8"gallery.alert.restore · 恢复提示"); });
+    gallery_target("gallery.alert.restore");
+    state->telemetry.live_samples += 3;
+}
+
+void add_spin_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    if (state->register_targets) {
+        Text(TextProps{}.content(state->common_feedback));
+    }
     Button(ButtonProps{}.onClick([state] { state->feedback_loading.set(!state->feedback_loading.get()); }),
            [] { Text(u8"gallery.spin.toggle · 切换加载"); });
+    gallery_target("gallery.spin.toggle");
     Spin(SpinProps{}.spinning(state->feedback_loading).description(u8"正在读取"), SpinContent{[state] {
              Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
-                      Input(InputProps{}.defaultValue(u8"gallery.spin.draft · 加载前后保留内容"));
+                      Input(InputProps{}
+                                .defaultValue(gallery_initial_text("gallery.spin.draft",
+                                                                   u8"gallery.spin.draft · 加载前后保留内容"))
+                                .onChange(gallery_value_changed<ryn::String>("gallery.spin.draft")));
+                      gallery_target("gallery.spin.draft");
                       Button(ButtonProps{}.onClick(
                                  [state] { state->common_feedback.set(String{u8"加载区域中的操作已执行"}); }),
                              [] { Text(u8"gallery.spin.action · 内容操作"); });
+                      gallery_target("gallery.spin.action");
                   }});
          }});
+    state->telemetry.live_samples += 1;
+}
+
+void add_progress_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    if (state->register_targets) {
+        Text(TextProps{}.content(state->common_feedback));
+    }
     Button(ButtonProps{}.onClick([state] {
         state->feedback_percent.set(state->feedback_percent.get() >= 100 ? 0 : state->feedback_percent.get() + 25);
     }),
            [] { Text(u8"gallery.progress.advance · 推进进度"); });
+    gallery_target("gallery.progress.advance");
     Button(ButtonProps{}.onClick([state] {
         state->feedback_status.set(state->feedback_status.get() == ProgressStatus::Exception
                                        ? ProgressStatus::Normal
                                        : ProgressStatus::Exception);
     }),
            [] { Text(u8"gallery.progress.status · 切换异常状态"); });
+    gallery_target("gallery.progress.status");
     Progress(ProgressProps{}.percent(state->feedback_percent).status(state->feedback_status));
     Space(SpaceProps{}.size(dp(24)), SpaceContent{[state] {
               Progress(ProgressProps{}
@@ -2627,7 +3205,19 @@ void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
                            .percent(state->feedback_percent)
                            .status(state->feedback_status));
           }});
-    state->telemetry.live_samples += 20;
+    state->telemetry.live_samples += 3;
+}
+
+void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
+    const auto before = state->telemetry.live_samples;
+    add_tag_samples(state);
+    add_badge_samples(state);
+    add_drawer_samples(state);
+    add_popconfirm_samples(state);
+    add_alert_samples(state);
+    add_spin_samples(state);
+    add_progress_samples(state);
+    state->telemetry.live_samples = before + 20; // Historical combined fixture counter.
 }
 
 void add_table_samples(const std::shared_ptr<GalleryState>& state) {
@@ -2647,12 +3237,14 @@ void add_table_samples(const std::shared_ptr<GalleryState>& state) {
                   }
               }),
                      [] { Text(u8"gallery.table.update · 更新首行"); });
+              gallery_target("gallery.table.update");
               Button(ButtonProps{}.onClick([state] {
                   auto rows = state->records.get();
                   std::ranges::reverse(rows);
                   state->records.set(std::move(rows));
               }),
                      [] { Text(u8"gallery.table.reverse · 反转数据顺序"); });
+              gallery_target("gallery.table.reverse");
               Button(ButtonProps{}.onClick([state] {
                   auto rows = state->records.get();
                   if (!rows.empty()) {
@@ -2666,6 +3258,7 @@ void add_table_samples(const std::shared_ptr<GalleryState>& state) {
                   }
               }),
                      [] { Text(u8"gallery.table.remove · 删除末行"); });
+              gallery_target("gallery.table.remove");
               Button(ButtonProps{}.onClick([state] {
                   state->records.set(gallery_records());
                   state->table_page.set(1);
@@ -2673,8 +3266,10 @@ void add_table_samples(const std::shared_ptr<GalleryState>& state) {
                   state->table_selected.set({});
               }),
                      [] { Text(u8"gallery.table.restore · 恢复数据"); });
+              gallery_target("gallery.table.restore");
               Button(ButtonProps{}.onClick([state] { state->table_loading.set(!state->table_loading.get()); }),
                      [] { Text(u8"gallery.table.loading · 切换加载"); });
+              gallery_target("gallery.table.loading");
           }});
     Table(TableProps<GalleryRecord>{}
               .dataSource(state->records)
@@ -2734,6 +3329,7 @@ void add_table_samples(const std::shared_ptr<GalleryState>& state) {
               .loading(state->table_loading)
               .bordered(),
           TableEmpty{[] { Text(u8"暂无记录，点击恢复数据继续体验。"); }});
+    remember_target(state, "gallery.table.editable");
     ++state->telemetry.live_samples;
 }
 
@@ -2843,20 +3439,31 @@ void add_input_number_samples(const std::shared_ptr<GalleryState>& state) {
                  }});
             Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[state] {
                      Text(u8"gallery.number.disabled · 禁用切换");
-                     InputNumber(
-                         InputNumberProps{}.defaultValue(5).disabled(state->number_disabled).size(ControlSize::Small));
+                     InputNumber(InputNumberProps{}
+                                     .defaultValue(gallery_initial_value<ryn::InputNumberValue>(
+                                         "gallery.number.disabled", ryn::InputNumberValue{5}))
+                                     .onChange(gallery_value_changed<ryn::InputNumberValue>("gallery.number.disabled"))
+                                     .disabled(state->number_disabled)
+                                     .size(ControlSize::Small));
                  }});
             Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[] {
                      Text(u8"gallery.number.readonly · 只读");
-                     InputNumber(
-                         InputNumberProps{}.defaultValue(10).readOnly(true).controls(false).size(ControlSize::Large));
+                     InputNumber(InputNumberProps{}
+                                     .defaultValue(gallery_initial_value<ryn::InputNumberValue>(
+                                         "gallery.number.readonly", ryn::InputNumberValue{10}))
+                                     .onChange(gallery_value_changed<ryn::InputNumberValue>("gallery.number.readonly"))
+                                     .readOnly(true)
+                                     .controls(false)
+                                     .size(ControlSize::Large));
                  }});
         }});
     Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
               Button(ButtonProps{}.onClick([state] { state->number_disabled.set(!state->number_disabled.get()); }),
                      [] { Text(u8"gallery.number.toggle-disabled · 切换数值禁用"); });
+              gallery_target("gallery.number.toggle-disabled");
               Button(ButtonProps{}.onClick([state] { static_cast<void>(state->number_ref.focus()); }),
                      [] { Text(u8"gallery.number.focus · 聚焦小数编辑"); });
+              gallery_target("gallery.number.focus");
           }});
     state->telemetry.live_samples += 3;
 }
@@ -2869,7 +3476,7 @@ void add_data_and_selection_samples(const std::shared_ptr<GalleryState>& state) 
     add_input_number_samples(state);
 }
 
-void add_panel_and_selection_samples(const std::shared_ptr<GalleryState>& state) {
+void add_collapse_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"gallery.collapse.retained · Collapse · 保留编辑与独立操作");
     Text(TextProps{}.content(state->panel_feedback));
@@ -2877,40 +3484,63 @@ void add_panel_and_selection_samples(const std::shared_ptr<GalleryState>& state)
               Button(
                   ButtonProps{}.onClick([state] { state->collapse_accordion.set(!state->collapse_accordion.get()); }),
                   [] { Text(u8"gallery.collapse.accordion · 切换手风琴模式"); });
+              gallery_target("gallery.collapse.accordion");
               Button(ButtonProps{}.onClick([state] { state->collapse_disabled.set(!state->collapse_disabled.get()); }),
                      [] { Text(u8"gallery.collapse.disabled · 切换高级面板禁用"); });
+              gallery_target("gallery.collapse.disabled");
               Button(ButtonProps{}.onClick([state] { state->collapse_keys.set({}); }),
                      [] { Text(u8"gallery.collapse.close · 收起全部"); });
+              gallery_target("gallery.collapse.close");
               Button(ButtonProps{}.onClick([state] {
                   state->collapse_keys.set(CollapseKeys{String{u8"general"}});
                   state->collapse_select_open.set(true);
               }),
                      [] { Text(u8"gallery.collapse.options · 展示面板内选项"); });
+              gallery_target("gallery.collapse.options");
           }});
     Collapse(
         CollapseProps{}
             .activeKeys(state->collapse_keys)
             .accordion(state->collapse_accordion)
             .onChange([state](CollapseKeys keys) { state->collapse_keys.set(std::move(keys)); }),
-        {CollapsePanel{u8"general", CollapseTitle{[] { Text(u8"基本设置"); }}, CollapseBody{[state] {
-                           Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
-                                    Input(InputProps{}.defaultValue(u8"gallery.collapse.draft · 保留的设置草稿"));
-                                    Select(SelectProps{}
-                                               .options({{u8"draft", u8"草稿"}, {u8"service", u8"服务"}})
-                                               .defaultValue(u8"draft")
-                                               .open(state->collapse_select_open)
-                                               .onOpenChange(
-                                                   [state](bool open) { state->collapse_select_open.set(open); }));
-                                }});
-                       }}}
+        {CollapsePanel{
+             u8"general", CollapseTitle{[] { Text(u8"基本设置"); }}, CollapseBody{[state] {
+                 Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+                          Input(InputProps{}
+                                    .defaultValue(gallery_initial_text("gallery.collapse.draft",
+                                                                       u8"gallery.collapse.draft · 保留的设置草稿"))
+                                    .onChange(gallery_value_changed<ryn::String>("gallery.collapse.draft")));
+                          gallery_target("gallery.collapse.draft");
+                          Select(
+                              gallery_select_default(
+                                  "gallery.collapse.selection",
+                                  SelectProps{}
+                                      .options({{u8"draft", u8"草稿"}, {u8"service", u8"服务"}})
+
+                                      .open(state->collapse_select_open)
+                                      .onOpenChange([state](bool open) { state->collapse_select_open.set(open); }),
+                                  ryn::SelectValue{u8"draft"})
+                                  .onChange(gallery_value_changed<ryn::SelectSelection>("gallery.collapse.selection")));
+                      }});
+             }}}
              .extra(CollapseExtra{[state] {
                  Button(ButtonProps{}.onClick([state] { state->panel_feedback.set(String{u8"已执行独立帮助操作"}); }),
                         [] { Text(u8"gallery.collapse.help · 帮助"); });
+                 gallery_target("gallery.collapse.help");
              }}),
-         CollapsePanel{u8"advanced", CollapseTitle{[] { Text(u8"高级设置"); }},
-                       CollapseBody{[] { Input(InputProps{}.defaultValue(u8"gallery.collapse.advanced · 高级草稿")); }}}
+         CollapsePanel{u8"advanced", CollapseTitle{[] { Text(u8"高级设置"); }}, CollapseBody{[] {
+                           Input(InputProps{}
+                                     .defaultValue(gallery_initial_text("gallery.collapse.advanced",
+                                                                        u8"gallery.collapse.advanced · 高级草稿"))
+                                     .onChange(gallery_value_changed<ryn::String>("gallery.collapse.advanced")));
+                           gallery_target("gallery.collapse.advanced");
+                       }}}
              .disabled(state->collapse_disabled)});
+    state->telemetry.live_samples += 1;
+}
 
+void add_segmented_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
     Text(u8"gallery.segmented.controlled · Segmented · 横向等宽视图");
     Text(TextProps{}.content(
         bind([state] { return utf8("当前视图：" + std::string{state->segment_value.get().bytes()}); })));
@@ -2950,13 +3580,23 @@ void add_panel_and_selection_samples(const std::shared_ptr<GalleryState>& state)
                                                : String{u8"日视图"});
               }),
                      [] { Text(u8"gallery.segmented.label · 更新分段标签"); });
+              gallery_target("gallery.segmented.label");
               Button(ButtonProps{}.onClick([state] { state->segment_disabled.set(!state->segment_disabled.get()); }),
                      [] { Text(u8"gallery.segmented.disabled · 切换周视图禁用"); });
+              gallery_target("gallery.segmented.disabled");
           }});
     state->telemetry.live_samples += 4;
+    state->telemetry.live_samples += 3;
 }
 
-void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
+void add_panel_and_selection_samples(const std::shared_ptr<GalleryState>& state) {
+    const auto before = state->telemetry.live_samples;
+    add_collapse_samples(state);
+    add_segmented_samples(state);
+    state->telemetry.live_samples = before + 5; // Historical combined fixture counter.
+}
+
+void add_empty_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"gallery.empty.default · Empty · 空状态与创建操作");
     Empty(EmptyProps{}.description(state->empty_description).image(state->empty_image),
@@ -2965,11 +3605,13 @@ void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
                    state->empty_description.set(String{u8"已创建示例任务，可继续编辑详情"});
                }),
                       [] { Text(u8"gallery.empty.create · 创建示例任务"); });
+               gallery_target("gallery.empty.create");
            }}});
     Button(ButtonProps{}.onClick([state] {
         state->empty_image.set(state->empty_image.get() == EmptyImage::None ? EmptyImage::Default : EmptyImage::None);
     }),
            [] { Text(u8"gallery.empty.image · 切换空状态图示"); });
+    gallery_target("gallery.empty.image");
     Text(u8"gallery.empty.compact · 紧凑空状态");
     Empty(EmptyProps{}.image(EmptyImage::Compact).description(u8"暂无筛选结果，请调整查询条件"));
     Text(u8"gallery.empty.custom · 自定义图示与外边距");
@@ -2979,7 +3621,11 @@ void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
                         .name(IconName::SearchOutlined)
                         .layout(LayoutStyle{}.width(dp(100)).margin_left(dp(50)).margin_right(dp(50))));
            }}});
+    state->telemetry.live_samples += 3;
+}
 
+void add_result_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
     Text(u8"gallery.result.controlled · Result · 状态、详情与保留草稿");
     Text(TextProps{}.content(state->result_feedback));
     Result(ResultProps{}
@@ -2989,8 +3635,11 @@ void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
            {.content = ResultContent{[] {
                 Text(u8"任务详情：编辑草稿后可切换上方结果状态。");
                 Input(InputProps{}
-                          .defaultValue(u8"gallery.result.draft · 保留的结果详情草稿")
+                          .defaultValue(gallery_initial_text("gallery.result.draft",
+                                                             u8"gallery.result.draft · 保留的结果详情草稿"))
+                          .onChange(gallery_value_changed<ryn::String>("gallery.result.draft"))
                           .layout(LayoutStyle{}.width(dp(280))));
+                gallery_target("gallery.result.draft");
             }},
             .extra = ResultExtra{[state] {
                 Button(ButtonProps{}.onClick([state] {
@@ -3009,10 +3658,12 @@ void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
                     state->result_title.set(String::from_utf8(titles[state->result_status_step]).value());
                 }),
                        [] { Text(u8"gallery.result.status · 切换结果状态"); });
+                gallery_target("gallery.result.status");
                 Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] {
                     state->result_feedback.set(String{u8"已执行结果页继续操作"});
                 }),
                        [] { Text(u8"gallery.result.action · 继续操作"); });
+                gallery_target("gallery.result.action");
             }}});
     Text(u8"gallery.result.exception · 404 异常结果");
     Result(ResultProps{}
@@ -3027,7 +3678,14 @@ void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
                          Text(u8"READY");
                      }});
             }}});
-    state->telemetry.live_samples += 6;
+    state->telemetry.live_samples += 3;
+}
+
+void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
+    const auto before = state->telemetry.live_samples;
+    add_empty_samples(state);
+    add_result_samples(state);
+    state->telemetry.live_samples = before + 6; // Historical combined fixture counter.
 }
 
 void add_form_samples(const std::shared_ptr<GalleryState>& state) {
@@ -3148,6 +3806,7 @@ void add_form_samples(const std::shared_ptr<GalleryState>& state) {
                   }
               }),
                      [] { Text(u8"gallery.form.submit · 保存"); });
+              gallery_target("gallery.form.submit");
               Button(ButtonProps{}.onClick([state] {
                   if (const auto result = state->form_ref.validate()) {
                       state->form_feedback.set(result->valid() ? String{u8"校验通过，尚未保存"}
@@ -3155,22 +3814,27 @@ void add_form_samples(const std::shared_ptr<GalleryState>& state) {
                   }
               }),
                      [] { Text(u8"gallery.form.validate · 校验"); });
+              gallery_target("gallery.form.validate");
               Button(ButtonProps{}.onClick([state] {
                   if (state->form_ref.reset()) {
                       state->form_feedback.set(String{u8"已重置"});
                   }
               }),
                      [] { Text(u8"gallery.form.reset · 重置"); });
+              gallery_target("gallery.form.reset");
               Button(ButtonProps{}.onClick([state] { state->form_disabled.set(!state->form_disabled.get()); }),
                      [] { Text(u8"gallery.form.disabled · 切换禁用"); });
+              gallery_target("gallery.form.disabled");
               Button(ButtonProps{}.onClick([state] { state->form_read_only.set(!state->form_read_only.get()); }),
                      [] { Text(u8"gallery.form.readonly · 切换只读"); });
+              gallery_target("gallery.form.readonly");
               Button(ButtonProps{}.onClick([state] {
                   state->form_help.set(state->form_help.get() == String{u8"填写用于保存的名称"}
                                            ? String{u8"名称与其他字段一起保存"}
                                            : String{u8"填写用于保存的名称"});
               }),
                      [] { Text(u8"gallery.form.help · 更新帮助"); });
+              gallery_target("gallery.form.help");
           }});
     state->telemetry.live_samples += 1;
 }
@@ -3193,33 +3857,38 @@ void add_date_picker_samples(const std::shared_ptr<GalleryState>& state) {
                                       (value ? std::string{format_iso_date(*value).bytes()} : "未选择日期"));
                       }))
                       .layout(LayoutStyle{}.margin_left(dp(1))));
-             DatePicker(
-                 DatePickerProps{}
-                     .value(state->date_value)
-                     .open(state->date_open)
-                     .onChange([state](DatePickerValue value) { state->date_value.set(value); })
-                     .onOpenChange([state](bool value) { state->date_open.set(value); })
-                     .defaultPanelDate(CivilDate{2026, 10, 1})
-                     .minDate(CivilDate{2026, 10, 5})
-                     .maxDate(CivilDate{2026, 11, 25})
-                     .disabledDate([](CivilDate date) { return date.day() == 13; })
-                     .allowClear(true)
-                     .status(InputStatus::Default)
-                     .disabled(false)
-                     .inputReadOnly(false)
-                     .ref(state->date_ref)
-                     .layout(LayoutStyle{}.width(dp(280))),
-                 DatePickerFooter{[] {
-                     Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[] {
-                              Text(u8"gallery.date-picker.footer · 选择备注");
-                              Input(InputProps{}.defaultValue(u8"保留的日期备注").layout(LayoutStyle{}.width(dp(220))));
-                          }});
-                 }});
+             DatePicker(DatePickerProps{}
+                            .value(state->date_value)
+                            .open(state->date_open)
+                            .onChange([state](DatePickerValue value) { state->date_value.set(value); })
+                            .onOpenChange([state](bool value) { state->date_open.set(value); })
+                            .defaultPanelDate(CivilDate{2026, 10, 1})
+                            .minDate(CivilDate{2026, 10, 5})
+                            .maxDate(CivilDate{2026, 11, 25})
+                            .disabledDate([](CivilDate date) { return date.day() == 13; })
+                            .allowClear(true)
+                            .status(InputStatus::Default)
+                            .disabled(false)
+                            .inputReadOnly(false)
+                            .ref(state->date_ref)
+                            .layout(LayoutStyle{}.width(dp(280))),
+                        DatePickerFooter{[] {
+                            Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[] {
+                                     Text(u8"gallery.date-picker.footer · 选择备注");
+                                     Input(InputProps{}
+                                               .defaultValue(
+                                                   gallery_initial_text("gallery.date-picker.note", u8"保留的日期备注"))
+                                               .onChange(gallery_value_changed<ryn::String>("gallery.date-picker.note"))
+                                               .layout(LayoutStyle{}.width(dp(220))));
+                                     gallery_target("gallery.date-picker.note");
+                                 }});
+                        }});
              Button(ButtonProps{}.onClick([state] {
                  state->date_value.set(CivilDate{2026, 10, 12});
                  state->date_open.set(false);
              }),
                     [] { Text(u8"gallery.date-picker.restore · 恢复示例日期"); });
+             gallery_target("gallery.date-picker.restore");
          }});
     Text(TextProps{}
              .content(String{u8"gallery.date-picker.form · Form String 日期适配"})
@@ -3279,18 +3948,22 @@ void add_date_picker_samples(const std::shared_ptr<GalleryState>& state) {
                   }
               }),
                      [] { Text(u8"gallery.date-picker.submit · 保存日期"); });
+              gallery_target("gallery.date-picker.submit");
               Button(ButtonProps{}.onClick([state] {
                   if (state->date_form_ref.reset()) {
                       state->date_feedback.set(String{u8"日期已重置"});
                   }
               }),
                      [] { Text(u8"gallery.date-picker.reset · 重置日期"); });
+              gallery_target("gallery.date-picker.reset");
               Button(
                   ButtonProps{}.onClick([state] { state->date_form_disabled.set(!state->date_form_disabled.get()); }),
                   [] { Text(u8"gallery.date-picker.disabled · 切换禁用"); });
+              gallery_target("gallery.date-picker.disabled");
               Button(
                   ButtonProps{}.onClick([state] { state->date_form_read_only.set(!state->date_form_read_only.get()); }),
                   [] { Text(u8"gallery.date-picker.readonly · 切换只读"); });
+              gallery_target("gallery.date-picker.readonly");
               Button(ButtonProps{}.onClick([state] {
                   state->date_help.set(state->date_help.get() ==
                                                String{u8"允许 2026-10-05 至 2026-11-25，每月 13 日不可选"}
@@ -3298,6 +3971,7 @@ void add_date_picker_samples(const std::shared_ptr<GalleryState>& state) {
                                            : String{u8"允许 2026-10-05 至 2026-11-25，每月 13 日不可选"});
               }),
                      [] { Text(u8"gallery.date-picker.help · 更新日期帮助"); });
+              gallery_target("gallery.date-picker.help");
           }});
     state->telemetry.live_samples += 2;
 }
@@ -3738,9 +4412,19 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
     Text(u8"Select · 单选 / Unicode 搜索 / 清空 / 动态选项 / 键盘");
     const std::vector<SelectOption> choices{
         {u8"desktop", u8"桌面 / Desktop"}, {u8"service", u8"服务 / Service"}, {u8"unavailable", u8"禁用选项", true}};
-    const auto field = [&](SelectProps props, const char8_t* caption) {
+    const auto field = [&](SelectProps props, const char8_t* caption, SelectSelection initial = {}) {
+        const auto label = String::from_utf8(std::u8string_view{caption}).value();
+        const auto identity = label.bytes().substr(0, label.bytes().find(" ·"));
+        if (identity != "gallery.select.controlled-search") {
+            const auto value = gallery_initial_value(identity, initial);
+            if (value) {
+                props.defaultValue(*value);
+            }
+            props.onChange(gallery_value_changed<SelectSelection>(identity));
+        }
         Text(String::from_utf8(std::u8string_view{caption}).value());
         Select(props.layout(LayoutStyle{}.width(state->cell_width)));
+        remember_target(state, identity);
         ++state->telemetry.live_samples;
     };
     field(SelectProps{}
@@ -3756,9 +4440,10 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
                   ++state->telemetry.activations;
               }),
           u8"gallery.select.controlled-search · 受控 / 清空 / 动态 options");
-    field(SelectProps{}.options({{1, u8"优先级 1"}, {42, u8"优先级 42"}, {99, u8"禁用", true}}).defaultValue(42),
-          u8"gallery.select.numeric · int64 value");
-    field(SelectProps{}.options(choices).defaultValue(u8"desktop").disabled(true), u8"gallery.select.disabled");
+    field(SelectProps{}.options({{1, u8"优先级 1"}, {42, u8"优先级 42"}, {99, u8"禁用", true}}),
+          u8"gallery.select.numeric · int64 value", SelectSelection{SelectValue{42}});
+    field(SelectProps{}.options(choices).disabled(true), u8"gallery.select.disabled",
+          SelectSelection{SelectValue{u8"desktop"}});
     field(SelectProps{}.options(choices).loading(state->loading).showSearch(),
           u8"gallery.select.loading · 保留搜索，阻止提交");
     field(SelectProps{}.options({}).showSearch().notFoundContent(u8"暂无选项"), u8"gallery.select.empty");
@@ -3771,17 +4456,18 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
                     std::pair{InputVariant::Filled, u8"gallery.select.filled"},
                     std::pair{InputVariant::Borderless, u8"gallery.select.borderless"},
                     std::pair{InputVariant::Underlined, u8"gallery.select.underlined"}}) {
-        field(SelectProps{}.options(choices).defaultValue(u8"desktop").variant(variant).allowClear(), caption);
+        field(SelectProps{}.options(choices).variant(variant).allowClear(), caption,
+              SelectSelection{SelectValue{u8"desktop"}});
     }
     for (const auto [size, caption] : std::array{std::pair{ControlSize::Small, u8"gallery.select.small"},
                                                  std::pair{ControlSize::Middle, u8"gallery.select.middle"},
                                                  std::pair{ControlSize::Large, u8"gallery.select.large"}}) {
-        field(SelectProps{}.options(choices).defaultValue(u8"desktop").size(size), caption);
+        field(SelectProps{}.options(choices).size(size), caption, SelectSelection{SelectValue{u8"desktop"}});
     }
-    field(SelectProps{}.options(choices).status(InputStatus::Warning).defaultValue(u8"desktop"),
-          u8"gallery.select.warning");
-    field(SelectProps{}.options(choices).status(InputStatus::Error).defaultValue(u8"desktop"),
-          u8"gallery.select.error");
+    field(SelectProps{}.options(choices).status(InputStatus::Warning), u8"gallery.select.warning",
+          SelectSelection{SelectValue{u8"desktop"}});
+    field(SelectProps{}.options(choices).status(InputStatus::Error), u8"gallery.select.error",
+          SelectSelection{SelectValue{u8"desktop"}});
     ThemeConfig custom;
     custom.select.algorithm = true;
     custom.select.seed.color_primary = Color::rgba8(114, 46, 209);
@@ -3789,18 +4475,24 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
     Theme(ThemeProps{}.config(custom), ThemeContent{[state, choices] {
               ++state->telemetry.theme_content_runs;
               Text(u8"gallery.select.component-theme · 独立颜色 / 36 dp 行高");
-              Select(SelectProps{}
-                         .options(choices)
-                         .defaultValue(u8"service")
-                         .showSearch()
-                         .layout(LayoutStyle{}.width(state->cell_width)),
+              Select(gallery_select_default("gallery.select.component-theme",
+                                            SelectProps{}
+                                                .options(choices)
+
+                                                .showSearch()
+                                                .layout(LayoutStyle{}.width(state->cell_width)),
+                                            ryn::SelectValue{u8"service"})
+                         .onChange(gallery_value_changed<ryn::SelectSelection>("gallery.select.component-theme")),
                      SelectPrefix{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }});
+              gallery_target("gallery.select.component-theme");
               ++state->telemetry.live_samples;
           }});
     Button(ButtonProps{}.onClick([state] { static_cast<void>(state->select_ref.focus()); }),
            ButtonContent{[] { Text(u8"gallery.select.focus"); }});
+    gallery_target("gallery.select.focus");
     Button(ButtonProps{}.onClick([state] { state->select_open.set(!state->select_open.get()); }),
            ButtonContent{[] { Text(u8"gallery.select.toggle-open"); }});
+    gallery_target("gallery.select.toggle-open");
     Button(ButtonProps{}.onClick([state] {
         state->select_options_expanded = !state->select_options_expanded;
         auto options = std::vector<SelectOption>{{u8"desktop", u8"桌面 / Desktop"}, {u8"service", u8"服务 / Service"}};
@@ -3810,6 +4502,7 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
         state->select_options.set(std::move(options));
     }),
            ButtonContent{[] { Text(u8"gallery.select.dynamic-options"); }});
+    gallery_target("gallery.select.dynamic-options");
     state->telemetry.live_samples += 3;
 }
 
@@ -3823,7 +4516,11 @@ void add_card_samples(const std::shared_ptr<GalleryState>& state) {
     Card(props(), CardContent{[] { Text(u8"Business content / 业务内容"); }});
     Text(u8"gallery.card.account · 标题 / extra / 编辑状态");
     Card(props().title(u8"Account / 账户").loading(state->card_loading), CardContent{[] {
-             Input(InputProps{}.defaultValue(u8"保留草稿 / Draft").layout(LayoutStyle{}.width(dp(140))));
+             Input(InputProps{}
+                       .defaultValue(gallery_initial_text("gallery.card.draft", u8"保留草稿 / Draft"))
+                       .onChange(gallery_value_changed<ryn::String>("gallery.card.draft"))
+                       .layout(LayoutStyle{}.width(dp(140))));
+             gallery_target("gallery.card.draft");
          }},
          CardSlots{.extra = CardExtra{[state] {
                        Button(ButtonProps{}.onClick([state] { ++state->telemetry.activations; }),
@@ -3866,6 +4563,7 @@ void add_card_samples(const std::shared_ptr<GalleryState>& state) {
         ++state->telemetry.activations;
     }),
            [] { Text(u8"gallery.card.toggle-loading · 切换账户卡片加载"); });
+    gallery_target("gallery.card.toggle-loading");
     state->telemetry.live_samples += 8;
 }
 
@@ -3908,10 +4606,13 @@ void add_breadcrumb_samples(const std::shared_ptr<GalleryState>& state) {
                       .richTitle(BreadcrumbTitle{[state] {
                           Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(4)), FlexContent{[state] {
                                    Input(InputProps{}
-                                             .defaultValue(u8"Breadcrumb draft")
+                                             .defaultValue(
+                                                 gallery_initial_text("gallery.breadcrumb.draft", u8"Breadcrumb draft"))
                                              .placeholder(u8"gallery.breadcrumb.draft")
                                              .ref(state->breadcrumb_ref)
-                                             .onChange([state](String value) { state->breadcrumb_draft.set(value); })
+                                             .onChange(gallery_value_changed<ryn::String>(
+                                                 "gallery.breadcrumb.draft",
+                                                 [state](String value) { state->breadcrumb_draft.set(value); }))
                                              .layout(LayoutStyle{}.width(dp(150))));
                                    remember_target(state, "gallery.breadcrumb.draft");
                                    Button(ButtonProps{}.onClick([state] {
@@ -3926,7 +4627,11 @@ void add_breadcrumb_samples(const std::shared_ptr<GalleryState>& state) {
              Text(u8"gallery.breadcrumb.display · 展示层级中的独立编辑");
              Breadcrumb(BreadcrumbProps{}.layout(LayoutStyle{}.margin_left(dp(8))),
                         {BreadcrumbItem{u8"preview", u8"预览"}.richTitle(BreadcrumbTitle{[state] {
-                             Input(InputProps{}.defaultValue(u8"Display draft").layout(LayoutStyle{}.width(dp(150))));
+                             Input(InputProps{}
+                                       .defaultValue(
+                                           gallery_initial_text("gallery.breadcrumb.display-draft", u8"Display draft"))
+                                       .onChange(gallery_value_changed<ryn::String>("gallery.breadcrumb.display-draft"))
+                                       .layout(LayoutStyle{}.width(dp(150))));
                              remember_target(state, "gallery.breadcrumb.display-draft");
                          }}),
                          BreadcrumbItem{u8"read", u8"只展示层级"}});
@@ -4002,12 +4707,15 @@ void add_steps_samples(const std::shared_ptr<GalleryState>& state) {
                         .disabled(state->steps_disabled)
                         .richDescription(StepsDescription{[state] {
                             Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(4)), FlexContent{[state] {
-                                     Input(InputProps{}
-                                               .defaultValue(u8"Steps draft")
-                                               .placeholder(u8"gallery.steps.draft")
-                                               .ref(state->steps_ref)
-                                               .onChange([state](String value) { state->steps_draft.set(value); })
-                                               .layout(LayoutStyle{}.width(dp(120))));
+                                     Input(
+                                         InputProps{}
+                                             .defaultValue(gallery_initial_text("gallery.steps.draft", u8"Steps draft"))
+                                             .placeholder(u8"gallery.steps.draft")
+                                             .ref(state->steps_ref)
+                                             .onChange(gallery_value_changed<ryn::String>(
+                                                 "gallery.steps.draft",
+                                                 [state](String value) { state->steps_draft.set(value); }))
+                                             .layout(LayoutStyle{}.width(dp(120))));
                                      remember_target(state, "gallery.steps.draft");
                                      Button(ButtonProps{}.onClick([state] {
                                          state->steps_feedback.set(
@@ -4138,7 +4846,12 @@ void add_time_picker_samples(const std::shared_ptr<GalleryState>& state) {
                  TimePickerFooter{[] {
                      Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[] {
                               Text(u8"gallery.time-picker.footer · 选择备注");
-                              Input(InputProps{}.defaultValue(u8"保留的时间备注").layout(LayoutStyle{}.width(dp(220))));
+                              Input(InputProps{}
+                                        .defaultValue(
+                                            gallery_initial_text("gallery.time-picker.note", u8"保留的时间备注"))
+                                        .onChange(gallery_value_changed<ryn::String>("gallery.time-picker.note"))
+                                        .layout(LayoutStyle{}.width(dp(220))));
+                              gallery_target("gallery.time-picker.note");
                           }});
                  }});
              Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
@@ -4152,13 +4865,17 @@ void add_time_picker_samples(const std::shared_ptr<GalleryState>& state) {
                            state->time_request.set(String{u8"已恢复示例"});
                        }),
                               [] { Text(u8"gallery.time-picker.restore · 恢复时间示例"); });
+                       gallery_target("gallery.time-picker.restore");
                        Button(ButtonProps{}.onClick([state] { state->time_confirm.set(!state->time_confirm.get()); }),
                               [] { Text(u8"gallery.time-picker.mode · 确认/即时模式"); });
+                       gallery_target("gallery.time-picker.mode");
                        Button(ButtonProps{}.onClick([state] { state->time_accept.set(!state->time_accept.get()); }),
                               [] { Text(u8"gallery.time-picker.authority · 切换锁定已保存值"); });
+                       gallery_target("gallery.time-picker.authority");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->time_input_read_only.set(!state->time_input_read_only.get()); }),
                               [] { Text(u8"gallery.time-picker.input-readonly · 切换文本只读"); });
+                       gallery_target("gallery.time-picker.input-readonly");
                    }});
          }});
     Text(TextProps{}
@@ -4224,24 +4941,29 @@ void add_time_picker_samples(const std::shared_ptr<GalleryState>& state) {
                   }
               }),
                      [] { Text(u8"gallery.time-picker.submit · 保存时间"); });
+              gallery_target("gallery.time-picker.submit");
               Button(ButtonProps{}.onClick([state] {
                   if (state->time_form_ref.reset()) {
                       state->time_feedback.set(String{u8"时间已重置"});
                   }
               }),
                      [] { Text(u8"gallery.time-picker.reset · 重置时间"); });
+              gallery_target("gallery.time-picker.reset");
               Button(
                   ButtonProps{}.onClick([state] { state->time_form_disabled.set(!state->time_form_disabled.get()); }),
                   [] { Text(u8"gallery.time-picker.disabled · 切换禁用"); });
+              gallery_target("gallery.time-picker.disabled");
               Button(
                   ButtonProps{}.onClick([state] { state->time_form_read_only.set(!state->time_form_read_only.get()); }),
                   [] { Text(u8"gallery.time-picker.readonly · 切换只读"); });
+              gallery_target("gallery.time-picker.readonly");
               Button(ButtonProps{}.onClick([state] {
                   state->time_help.set(state->time_help.get() == String{u8"HH:mm:ss，08:00:00 至 18:00:00，12 时不可选"}
                                            ? String{u8"仅确认后的 HH:mm:ss 字符串进入保存结果"}
                                            : String{u8"HH:mm:ss，08:00:00 至 18:00:00，12 时不可选"});
               }),
                      [] { Text(u8"gallery.time-picker.help · 更新时间帮助"); });
+              gallery_target("gallery.time-picker.help");
           }});
     state->telemetry.live_samples += 2;
 }
@@ -4278,16 +5000,20 @@ void add_descriptions_samples(const std::shared_ptr<GalleryState>& state) {
                                  .margin_bottom(dp(4))),
                  {DescriptionsItem{u8"name", DescriptionsLabel{[] { Text(u8"名称"); }}, DescriptionsContent{[state] {
                                        Input(InputProps{}
-                                                 .defaultValue(u8"晨间项目")
+                                                 .defaultValue(
+                                                     gallery_initial_text("gallery.descriptions.name", u8"晨间项目"))
                                                  .placeholder(u8"gallery.descriptions.name")
                                                  .ref(state->details_ref)
-                                                 .onChange([state](String value) { state->details_name.set(value); })
+                                                 .onChange(gallery_value_changed<ryn::String>(
+                                                     "gallery.descriptions.name",
+                                                     [state](String value) { state->details_name.set(value); }))
                                                  .layout(LayoutStyle{}
                                                              .width(dp(156))
                                                              .margin_left(dp(6))
                                                              .margin_right(dp(6))
                                                              .margin_top(dp(6))
                                                              .margin_bottom(dp(6))));
+                                       gallery_target("gallery.descriptions.name");
                                    }}}
                       .span(state->details_span)
                       .visible(state->details_visible),
@@ -4340,18 +5066,23 @@ void add_descriptions_samples(const std::shared_ptr<GalleryState>& state) {
                        Button(ButtonProps{}.onClick(
                                   [state] { state->details_columns.set(!state->details_columns.get()); }),
                               [] { Text(u8"gallery.descriptions.columns · 单列/多列"); });
+                       gallery_target("gallery.descriptions.columns");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->details_span.set(state->details_span.get() == 1 ? 2 : 1); }),
                               [] { Text(u8"gallery.descriptions.span · 名称跨列"); });
+                       gallery_target("gallery.descriptions.span");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->details_visible.set(!state->details_visible.get()); }),
                               [] { Text(u8"gallery.descriptions.visible · 显隐资料"); });
+                       gallery_target("gallery.descriptions.visible");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->details_vertical.set(!state->details_vertical.get()); }),
                               [] { Text(u8"gallery.descriptions.vertical · 横纵标签"); });
+                       gallery_target("gallery.descriptions.vertical");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->details_bordered.set(!state->details_bordered.get()); }),
                               [] { Text(u8"gallery.descriptions.bordered · 切换边框"); });
+                       gallery_target("gallery.descriptions.bordered");
                        Button(ButtonProps{}.onClick([state] {
                            state->details_size.set(
                                state->details_size.get() == DescriptionsSize::Default  ? DescriptionsSize::Middle
@@ -4359,11 +5090,13 @@ void add_descriptions_samples(const std::shared_ptr<GalleryState>& state) {
                                                                                        : DescriptionsSize::Default);
                        }),
                               [] { Text(u8"gallery.descriptions.size · 切换尺寸"); });
+                       gallery_target("gallery.descriptions.size");
                        Button(ButtonProps{}.onClick([state] {
                            state->details_visible.set(true);
                            static_cast<void>(state->details_ref.focus());
                        }),
                               [] { Text(u8"gallery.descriptions.focus · 编辑名称"); });
+                       gallery_target("gallery.descriptions.focus");
                    }});
          }});
     ++state->telemetry.live_samples;
@@ -4389,21 +5122,27 @@ void add_skeleton_samples(const std::shared_ptr<GalleryState>& state) {
                      Button(ButtonProps{}.onClick(
                                 [state] { state->skeleton_loading.set(!state->skeleton_loading.get()); }),
                             [] { Text(u8"gallery.skeleton.loading · 加载/显示正文"); });
+                     gallery_target("gallery.skeleton.loading");
                      Button(ButtonProps{}.onClick([state] { state->skeleton_title.set(!state->skeleton_title.get()); }),
                             [] { Text(u8"gallery.skeleton.title · 标题"); });
+                     gallery_target("gallery.skeleton.title");
                      Button(ButtonProps{}.onClick(
                                 [state] { state->skeleton_paragraph.set((state->skeleton_paragraph.get() + 1) % 3); }),
                             [] { Text(u8"gallery.skeleton.paragraph · 正文行数"); });
+                     gallery_target("gallery.skeleton.paragraph");
                      Button(
                          ButtonProps{}.onClick([state] { state->skeleton_avatar.set(!state->skeleton_avatar.get()); }),
                          [] { Text(u8"gallery.skeleton.avatar · 头像"); });
+                     gallery_target("gallery.skeleton.avatar");
                      Button(ButtonProps{}.onClick([state] { state->skeleton_round.set(!state->skeleton_round.get()); }),
                             [] { Text(u8"gallery.skeleton.round · 圆角"); });
+                     gallery_target("gallery.skeleton.round");
                      Button(ButtonProps{}.onClick([state] {
                          state->skeleton_loading.set(false);
                          static_cast<void>(state->skeleton_ref.focus());
                      }),
                             [] { Text(u8"gallery.skeleton.focus · 编辑正文"); });
+                     gallery_target("gallery.skeleton.focus");
                  }});
              Skeleton(SkeletonProps{}
                           .loading(state->skeleton_loading)
@@ -4425,16 +5164,20 @@ void add_skeleton_samples(const std::shared_ptr<GalleryState>& state) {
                           Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(12)), FlexContent{[state] {
                                    Text(u8"项目动态");
                                    Input(InputProps{}
-                                             .defaultValue(u8"今天整理项目资料")
+                                             .defaultValue(
+                                                 gallery_initial_text("gallery.skeleton.draft", u8"今天整理项目资料"))
                                              .placeholder(u8"gallery.skeleton.draft")
                                              .ref(state->skeleton_ref)
-                                             .onChange([state](String value) { state->skeleton_draft.set(value); })
+                                             .onChange(gallery_value_changed<ryn::String>(
+                                                 "gallery.skeleton.draft",
+                                                 [state](String value) { state->skeleton_draft.set(value); }))
                                              .layout(LayoutStyle{}
                                                          .width(dp(260))
                                                          .margin_left(dp(6))
                                                          .margin_right(dp(6))
                                                          .margin_top(dp(6))
                                                          .margin_bottom(dp(6))));
+                                   gallery_target("gallery.skeleton.draft");
                                    Select(SelectProps{}
                                               .value(state->skeleton_audience)
                                               .options(std::vector<SelectOption>{{u8"team", u8"团队可见"},
@@ -4471,9 +5214,11 @@ void add_skeleton_samples(const std::shared_ptr<GalleryState>& state) {
                        Button(ButtonProps{}.onClick(
                                   [state] { state->skeleton_shape.set((state->skeleton_shape.get() + 1) % 4); }),
                               [] { Text(u8"gallery.skeleton.shape · 切换形态与尺寸"); });
+                       gallery_target("gallery.skeleton.shape");
                        Button(
                            ButtonProps{}.onClick([state] { state->skeleton_block.set(!state->skeleton_block.get()); }),
                            [] { Text(u8"gallery.skeleton.block · 填满宽度"); });
+                       gallery_target("gallery.skeleton.block");
                    }});
              Flex(FlexProps{}
                       .vertical(true)
@@ -4531,22 +5276,27 @@ void add_popover_samples(const std::shared_ptr<GalleryState>& state) {
                            PopoverTrigger{[state] {
                                Button(ButtonProps{}.disabled(state->popover_disabled),
                                       [] { Text(u8"gallery.popover.trigger · 编辑备注"); });
+                               gallery_target("gallery.popover.trigger");
                            }},
                            {.title = PopoverTitle{[] { Text(u8"项目备注"); }},
                             .content = PopoverContent{[state] {
                                 Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)),
                                      FlexContent{[state] {
                                          Input(InputProps{}
-                                                   .defaultValue(u8"下次会议前补齐项目备注")
+                                                   .defaultValue(gallery_initial_text("gallery.popover.draft",
+                                                                                      u8"下次会议前补齐项目备注"))
                                                    .placeholder(u8"gallery.popover.draft")
                                                    .ref(state->popover_ref)
-                                                   .onChange([state](String value) { state->popover_draft.set(value); })
+                                                   .onChange(gallery_value_changed<ryn::String>(
+                                                       "gallery.popover.draft",
+                                                       [state](String value) { state->popover_draft.set(value); }))
                                                    .layout(LayoutStyle{}
                                                                .width(dp(180))
                                                                .margin_left(dp(6))
                                                                .margin_right(dp(6))
                                                                .margin_top(dp(6))
                                                                .margin_bottom(dp(6))));
+                                         gallery_target("gallery.popover.draft");
                                          Space(SpaceProps{}.size(dp(8)), SpaceContent{[state] {
                                                    Button(ButtonProps{}
                                                               .type(ButtonType::Primary)
@@ -4576,16 +5326,20 @@ void add_popover_samples(const std::shared_ptr<GalleryState>& state) {
                        Button(ButtonProps{}.onClick(
                                   [state] { state->popover_placement.set((state->popover_placement.get() + 1) % 4); }),
                               [] { Text(u8"gallery.popover.placement · 切换方位"); });
+                       gallery_target("gallery.popover.placement");
                        Button(ButtonProps{}.onClick([state] { state->popover_arrow.set(!state->popover_arrow.get()); }),
                               [] { Text(u8"gallery.popover.arrow · 切换箭头"); });
+                       gallery_target("gallery.popover.arrow");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->popover_disabled.set(!state->popover_disabled.get()); }),
                               [] { Text(u8"gallery.popover.disabled · 禁用/恢复"); });
+                       gallery_target("gallery.popover.disabled");
                        Button(ButtonProps{}.onClick([state] {
                            state->popover_disabled.set(false);
                            state->popover_open.set(true);
                        }),
                               [] { Text(u8"gallery.popover.restore · 重新打开"); });
+                       gallery_target("gallery.popover.restore");
                    }});
          }});
     ++state->telemetry.live_samples;
@@ -4623,6 +5377,7 @@ void add_notice_samples(const std::shared_ptr<GalleryState>& state) {
                          state->notice_feedback.set(u8"处理提示已打开");
                      }),
                             [] { Text(u8"gallery.message.open · 处理提示"); });
+                     gallery_target("gallery.message.open");
                      Button(ButtonProps{}.onClick([state] {
                          static_cast<void>(state->messages.open(
                              u8"project-save",
@@ -4630,9 +5385,11 @@ void add_notice_samples(const std::shared_ptr<GalleryState>& state) {
                          state->notice_feedback.set(u8"同一提示已更新为处理成功");
                      }),
                             [] { Text(u8"gallery.message.update · 更新成功"); });
+                     gallery_target("gallery.message.update");
                      Button(
                          ButtonProps{}.onClick([state] { static_cast<void>(state->messages.close(u8"project-save")); }),
                          [] { Text(u8"gallery.message.close · 关闭提示"); });
+                     gallery_target("gallery.message.close");
                      Button(ButtonProps{}.disabled(state->notification_open).onClick([state] {
                          const bool opened = state->notifications.open(
                              u8"project-review",
@@ -4647,16 +5404,20 @@ void add_notice_samples(const std::shared_ptr<GalleryState>& state) {
                                  }),
                              {.description = NotificationDescription{[state] {
                                   Input(InputProps{}
-                                            .defaultValue(state->notification_draft.get())
+                                            .defaultValue(gallery_initial_text("gallery.notification.draft",
+                                                                               state->notification_draft.get()))
                                             .placeholder(u8"gallery.notification.draft")
                                             .ref(state->notification_ref)
-                                            .onChange([state](String value) { state->notification_draft.set(value); })
+                                            .onChange(gallery_value_changed<ryn::String>(
+                                                "gallery.notification.draft",
+                                                [state](String value) { state->notification_draft.set(value); }))
                                             .layout(LayoutStyle{}
                                                         .width(dp(180))
                                                         .margin_left(dp(6))
                                                         .margin_right(dp(6))
                                                         .margin_top(dp(6))
                                                         .margin_bottom(dp(6))));
+                                  remember_target(state, "gallery.notification.draft");
                               }},
                               .actions = NotificationActions{[state] {
                                   Button(ButtonProps{}
@@ -4678,6 +5439,7 @@ void add_notice_samples(const std::shared_ptr<GalleryState>& state) {
                          }
                      }),
                             [] { Text(u8"gallery.notification.open · 打开通知"); });
+                     gallery_target("gallery.notification.open");
                      Button(ButtonProps{}
                                 .disabled(bind([state] { return !state->notification_open.get(); }))
                                 .onClick([state] {
@@ -4686,25 +5448,30 @@ void add_notice_samples(const std::shared_ptr<GalleryState>& state) {
                                     state->notice_feedback.set(u8"已更新通知标题，编辑内容保持");
                                 }),
                             [] { Text(u8"gallery.notification.update · 更新标题"); });
+                     gallery_target("gallery.notification.update");
                      Button(ButtonProps{}.onClick(
                                 [state] { static_cast<void>(state->notifications.close(u8"project-review")); }),
                             [] { Text(u8"gallery.notification.close · 关闭通知"); });
+                     gallery_target("gallery.notification.close");
                      Button(ButtonProps{}.onClick([state] {
                          state->notification_placement.set(static_cast<NotificationPlacement>(
                              (static_cast<int>(state->notification_placement.get()) + 1) % 4));
                      }),
                             [] { Text(u8"gallery.notification.placement · 四角位置"); });
+                     gallery_target("gallery.notification.placement");
                      Button(ButtonProps{}.onClick([state] {
                          state->notification_status.set(
                              static_cast<NoticeStatus>((static_cast<int>(state->notification_status.get()) + 1) % 5));
                      }),
                             [] { Text(u8"gallery.notification.status · 切换状态"); });
+                     gallery_target("gallery.notification.status");
                      Button(ButtonProps{}.onClick([state] {
                          static_cast<void>(state->messages.clear());
                          static_cast<void>(state->notifications.clear());
                          state->notice_feedback.set(u8"已清空消息与通知");
                      }),
                             [] { Text(u8"gallery.notices.clear · 清空提示"); });
+                     gallery_target("gallery.notices.clear");
                  }});
          }});
     state->telemetry.live_samples += 2;
@@ -4742,16 +5509,20 @@ void add_timeline_samples(const std::shared_ptr<GalleryState>& state) {
                            .richContent(TimelineContent{[state] {
                                Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), FlexContent{[state] {
                                         Input(InputProps{}
-                                                  .defaultValue(u8"记录发布后的跟进事项")
+                                                  .defaultValue(gallery_initial_text("gallery.timeline.draft",
+                                                                                     u8"记录发布后的跟进事项"))
                                                   .placeholder(u8"gallery.timeline.draft")
                                                   .ref(state->timeline_ref)
-                                                  .onChange([state](String value) { state->timeline_draft.set(value); })
+                                                  .onChange(gallery_value_changed<ryn::String>(
+                                                      "gallery.timeline.draft",
+                                                      [state](String value) { state->timeline_draft.set(value); }))
                                                   .layout(LayoutStyle{}
                                                               .width(dp(160))
                                                               .margin_left(dp(6))
                                                               .margin_right(dp(6))
                                                               .margin_top(dp(6))
                                                               .margin_bottom(dp(6))));
+                                        gallery_target("gallery.timeline.draft");
                                         Button(ButtonProps{}
                                                    .onClick([state] {
                                                        state->timeline_feedback.set(
@@ -4771,20 +5542,25 @@ void add_timeline_samples(const std::shared_ptr<GalleryState>& state) {
                        Button(ButtonProps{}.onClick(
                                   [state] { state->timeline_mode.set((state->timeline_mode.get() + 1) % 3); }),
                               [] { Text(u8"gallery.timeline.mode · 切换位置"); });
+                       gallery_target("gallery.timeline.mode");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->timeline_reverse.set(!state->timeline_reverse.get()); }),
                               [] { Text(u8"gallery.timeline.reverse · 正序/反序"); });
+                       gallery_target("gallery.timeline.reverse");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->timeline_loading.set(!state->timeline_loading.get()); }),
                               [] { Text(u8"gallery.timeline.loading · 切换处理中"); });
+                       gallery_target("gallery.timeline.loading");
                        Button(ButtonProps{}.onClick(
                                   [state] { state->timeline_visible.set(!state->timeline_visible.get()); }),
                               [] { Text(u8"gallery.timeline.visible · 显隐备注"); });
+                       gallery_target("gallery.timeline.visible");
                        Button(ButtonProps{}.onClick([state] {
                            state->timeline_visible.set(true);
                            static_cast<void>(state->timeline_ref.focus());
                        }),
                               [] { Text(u8"gallery.timeline.focus · 编辑备注"); });
+                       gallery_target("gallery.timeline.focus");
                    }});
          }});
     ++state->telemetry.live_samples;
@@ -4868,11 +5644,14 @@ void add_member_avatar_samples(const std::shared_ptr<GalleryState>& state) {
                     {.content = AvatarContent{[state] {
                          Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), FlexContent{[state] {
                                   Input(InputProps{}
-                                            .defaultValue(u8"江")
+                                            .defaultValue(gallery_initial_text("gallery.avatar.name", u8"江"))
                                             .placeholder(u8"gallery.avatar.name")
                                             .ref(state->member_ref)
-                                            .onChange([state](String value) { state->member_name.set(value); })
+                                            .onChange(gallery_value_changed<ryn::String>(
+                                                "gallery.avatar.name",
+                                                [state](String value) { state->member_name.set(value); }))
                                             .layout(member_control_margin().width(dp(160))));
+                                  gallery_target("gallery.avatar.name");
                                   Button(ButtonProps{}
                                              .onClick([state] {
                                                  state->member_feedback.set(utf8(
@@ -4888,6 +5667,7 @@ void add_member_avatar_samples(const std::shared_ptr<GalleryState>& state) {
                                   .onClick([state] { state->member_icon.set(!state->member_icon.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.avatar.icon · 文字/图标"); });
+                       gallery_target("gallery.avatar.icon");
                        Button(ButtonProps{}
                                   .onClick([state] {
                                       state->member_shape.set(state->member_shape.get() == AvatarShape::Circle
@@ -4896,6 +5676,7 @@ void add_member_avatar_samples(const std::shared_ptr<GalleryState>& state) {
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.avatar.shape · 圆形/方形"); });
+                       gallery_target("gallery.avatar.shape");
                        Button(ButtonProps{}
                                   .onClick([state] {
                                       state->member_size.set(state->member_size.get() ==
@@ -4905,14 +5686,17 @@ void add_member_avatar_samples(const std::shared_ptr<GalleryState>& state) {
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.avatar.size · 大/小头像"); });
+                       gallery_target("gallery.avatar.size");
                        Button(ButtonProps{}
                                   .onClick([state] { state->member_limit.set(state->member_limit.get() == 2 ? 0 : 2); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.avatar.limit · 显示2/0人"); });
+                       gallery_target("gallery.avatar.limit");
                        Button(ButtonProps{}
                                   .onClick([state] { state->members_visible.set(!state->members_visible.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.avatar.visible · 显隐成员"); });
+                       gallery_target("gallery.avatar.visible");
                        Button(ButtonProps{}
                                   .onClick([state] {
                                       state->members_visible.set(true);
@@ -4920,6 +5704,7 @@ void add_member_avatar_samples(const std::shared_ptr<GalleryState>& state) {
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.avatar.restore · 恢复编辑"); });
+                       gallery_target("gallery.avatar.restore");
                    }});
          }});
     state->telemetry.live_samples += 4;
@@ -4968,11 +5753,15 @@ void add_statistic_metric_samples(const std::shared_ptr<GalleryState>& state) {
                            .richValue(StatisticValueContent{[state] {
                                Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), FlexContent{[state] {
                                         Input(InputProps{}
-                                                  .defaultValue(u8"核对本期指标")
+                                                  .defaultValue(
+                                                      gallery_initial_text("gallery.statistic.note", u8"核对本期指标"))
                                                   .placeholder(u8"gallery.statistic.draft")
                                                   .ref(state->metric_ref)
-                                                  .onChange([state](String value) { state->metric_note.set(value); })
+                                                  .onChange(gallery_value_changed<ryn::String>(
+                                                      "gallery.statistic.note",
+                                                      [state](String value) { state->metric_note.set(value); }))
                                                   .layout(member_control_margin().width(dp(180))));
+                                        gallery_target("gallery.statistic.note");
                                         Button(ButtonProps{}
                                                    .onClick([state] {
                                                        state->metric_feedback.set(utf8(
@@ -4997,6 +5786,7 @@ void add_statistic_metric_samples(const std::shared_ptr<GalleryState>& state) {
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.statistic.value · 切换业务值"); });
+                       gallery_target("gallery.statistic.value");
                        Button(ButtonProps{}
                                   .onClick([state] {
                                       const auto p = state->metric_precision.get();
@@ -5006,18 +5796,22 @@ void add_statistic_metric_samples(const std::shared_ptr<GalleryState>& state) {
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.statistic.precision · 2/8/原精度"); });
+                       gallery_target("gallery.statistic.precision");
                        Button(ButtonProps{}
                                   .onClick([state] { state->metric_separators.set(!state->metric_separators.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.statistic.separators · 切换分隔符"); });
+                       gallery_target("gallery.statistic.separators");
                        Button(ButtonProps{}
                                   .onClick([state] { state->metric_formatter.set(!state->metric_formatter.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.statistic.formatter · 切换formatter"); });
+                       gallery_target("gallery.statistic.formatter");
                        Button(ButtonProps{}
                                   .onClick([state] { state->metric_loading.set(!state->metric_loading.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.statistic.loading · 加载/完成"); });
+                       gallery_target("gallery.statistic.loading");
                        Button(ButtonProps{}
                                   .onClick([state] {
                                       state->metric_loading.set(false);
@@ -5025,6 +5819,7 @@ void add_statistic_metric_samples(const std::shared_ptr<GalleryState>& state) {
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.statistic.restore · 恢复指标编辑"); });
+                       gallery_target("gallery.statistic.restore");
                    }});
          }});
     state->telemetry.live_samples += 2;
@@ -5073,11 +5868,15 @@ void add_service_rate_samples(const std::shared_ptr<GalleryState>& state) {
                           {u8"需要改进", u8"一般", u8"满意", u8"很好", RateTooltip{TooltipTitle{[state] {
                                Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), FlexContent{[state] {
                                         Input(InputProps{}
-                                                  .defaultValue(u8"补充服务评价")
+                                                  .defaultValue(
+                                                      gallery_initial_text("gallery.rate.note", u8"补充服务评价"))
                                                   .placeholder(u8"gallery.rate.draft")
                                                   .ref(state->rating_ref)
-                                                  .onChange([state](String value) { state->rating_note.set(value); })
+                                                  .onChange(gallery_value_changed<ryn::String>(
+                                                      "gallery.rate.note",
+                                                      [state](String value) { state->rating_note.set(value); }))
                                                   .layout(member_control_margin().width(dp(180))));
+                                        gallery_target("gallery.rate.note");
                                         Button(ButtonProps{}
                                                    .onClick([state] {
                                                        state->rating_feedback.set(utf8(
@@ -5094,18 +5893,22 @@ void add_service_rate_samples(const std::shared_ptr<GalleryState>& state) {
                                   .onClick([state] { state->rating_accept.set(!state->rating_accept.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.rate.authority · 接受/拒绝修改"); });
+                       gallery_target("gallery.rate.authority");
                        Button(ButtonProps{}
                                   .onClick([state] { state->rating_disabled.set(!state->rating_disabled.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.rate.disabled · 禁用/启用评分"); });
+                       gallery_target("gallery.rate.disabled");
                        Button(ButtonProps{}
                                   .onClick([state] { state->rating_read_only.set(!state->rating_read_only.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.rate.readonly · 只读/编辑评分"); });
+                       gallery_target("gallery.rate.readonly");
                        Button(ButtonProps{}
                                   .onClick([state] { state->rating_visible.set(!state->rating_visible.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.rate.visible · 显隐评分"); });
+                       gallery_target("gallery.rate.visible");
                        Button(ButtonProps{}
                                   .onClick([state] {
                                       state->rating_visible.set(true);
@@ -5115,6 +5918,7 @@ void add_service_rate_samples(const std::shared_ptr<GalleryState>& state) {
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.rate.restore · 恢复评分"); });
+                       gallery_target("gallery.rate.restore");
                    }});
          }});
     ++state->telemetry.live_samples;
@@ -5198,18 +6002,22 @@ void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state
                                   .onClick([state] { state->contact_accept.set(!state->contact_accept.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.auto-complete.authority · 接受/拒绝修改"); });
+                       gallery_target("gallery.auto-complete.authority");
                        Button(ButtonProps{}
                                   .onClick([state] { state->contact_extra.set(!state->contact_extra.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.auto-complete.options · 更新建议"); });
+                       gallery_target("gallery.auto-complete.options");
                        Button(ButtonProps{}
                                   .onClick([state] { state->contact_disabled.set(!state->contact_disabled.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.auto-complete.disabled · 禁用/启用"); });
+                       gallery_target("gallery.auto-complete.disabled");
                        Button(ButtonProps{}
                                   .onClick([state] { state->contact_read_only.set(!state->contact_read_only.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.auto-complete.readonly · 只读/编辑"); });
+                       gallery_target("gallery.auto-complete.readonly");
                        Button(ButtonProps{}
                                   .onClick([state] {
                                       state->contact_accept.set(true);
@@ -5219,6 +6027,7 @@ void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.auto-complete.restore · 恢复联系人输入"); });
+                       gallery_target("gallery.auto-complete.restore");
                    }});
              Text(TextProps{}
                       .content(bind([state] {
@@ -5261,6 +6070,7 @@ void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state
                                            .onClick([state] { static_cast<void>(state->contact_form.submit()); })
                                            .layout(member_control_margin()),
                                        [] { Text(u8"gallery.auto-complete.submit · 保存表单联系人"); });
+                                gallery_target("gallery.auto-complete.submit");
                                 Button(ButtonProps{}
                                            .onClick([state] {
                                                static_cast<void>(state->contact_form.reset());
@@ -5268,6 +6078,7 @@ void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state
                                            })
                                            .layout(member_control_margin()),
                                        [] { Text(u8"gallery.auto-complete.reset · 重置联系人"); });
+                                gallery_target("gallery.auto-complete.reset");
                             }});
                   }});
          }});
@@ -5389,14 +6200,17 @@ void add_project_tree_samples(const std::shared_ptr<GalleryState>& state) {
                                   .onClick([state] { state->project_disabled.set(!state->project_disabled.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.tree.disabled · 禁用/启用项目树"); });
+                       gallery_target("gallery.tree.disabled");
                        Button(ButtonProps{}
                                   .onClick([state] { state->project_visible.set(!state->project_visible.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.tree.visible · 显隐项目树"); });
+                       gallery_target("gallery.tree.visible");
                        Button(ButtonProps{}
                                   .onClick([state] { state->project_locked.set(!state->project_locked.get()); })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.tree.locked · 归档分支禁用/恢复"); });
+                       gallery_target("gallery.tree.locked");
                        Button(ButtonProps{}
                                   .onClick([state] {
                                       state->project_visible.set(true);
@@ -5406,6 +6220,7 @@ void add_project_tree_samples(const std::shared_ptr<GalleryState>& state) {
                                   })
                                   .layout(member_control_margin()),
                               [] { Text(u8"gallery.tree.restore · 恢复项目备注"); });
+                       gallery_target("gallery.tree.restore");
                    }});
          }});
     ++state->telemetry.live_samples;
@@ -5665,6 +6480,25 @@ void add_page_bidi_typography(const std::shared_ptr<GalleryState>& state) {
     add_bidi_direction_control(state);
 }
 
+void add_table_workflow_samples(const std::shared_ptr<GalleryState>& state) {
+    add_data_and_selection_samples(state);
+}
+
+void add_switch_page_samples(const std::shared_ptr<GalleryState>& state) {
+    add_switch_base_samples(state);
+    add_switch_samples(state);
+}
+
+void add_checkbox_page_samples(const std::shared_ptr<GalleryState>& state) {
+    add_checkbox_base_samples(state);
+    add_checkbox_samples(state);
+}
+
+void add_radio_page_samples(const std::shared_ptr<GalleryState>& state) {
+    add_radio_base_samples(state);
+    add_radio_samples(state);
+}
+
 struct GallerySampleFactory final {
     GallerySampleDescriptor descriptor;
     void (*mount)(const std::shared_ptr<GalleryState>&);
@@ -5830,6 +6664,276 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_tabs_samples",
       "include/ryn/tabs.hpp"},
      add_tabs_samples},
+    {{"gallery.sample.switch.states",
+      "ant.component.switch",
+      {},
+      "尺寸、状态与引用",
+      "add_switch_page_samples",
+      "include/ryn/switch.hpp"},
+     add_switch_page_samples},
+    {{"gallery.sample.checkbox.selection",
+      "ant.component.checkbox",
+      {},
+      "单项与多项选择",
+      "add_checkbox_page_samples",
+      "include/ryn/checkbox.hpp"},
+     add_checkbox_page_samples},
+    {{"gallery.sample.radio.selection",
+      "ant.component.radio",
+      {},
+      "互斥选择与动态选项",
+      "add_radio_page_samples",
+      "include/ryn/radio.hpp"},
+     add_radio_page_samples},
+    {{"gallery.sample.slider.values",
+      "ant.component.slider",
+      {},
+      "刻度、范围与拖动",
+      "add_slider_samples",
+      "include/ryn/slider.hpp"},
+     add_slider_samples},
+    {{"gallery.sample.tooltip.triggers",
+      "ant.component.tooltip",
+      {},
+      "悬停、焦点与组合触发",
+      "add_tooltip_samples",
+      "include/ryn/tooltip.hpp"},
+     add_tooltip_samples},
+    {{"gallery.sample.modal.dialogs",
+      "ant.component.modal",
+      {},
+      "确认、取消与保留编辑",
+      "add_modal_samples",
+      "include/ryn/modal.hpp"},
+     add_modal_samples},
+    {{"gallery.sample.tag.states",
+      "ant.component.tag",
+      {},
+      "标签、关闭与选择",
+      "add_tag_samples",
+      "include/ryn/tag.hpp"},
+     add_tag_samples},
+    {{"gallery.sample.badge.counts",
+      "ant.component.badge",
+      {},
+      "计数、圆点与状态",
+      "add_badge_samples",
+      "include/ryn/badge.hpp"},
+     add_badge_samples},
+    {{"gallery.sample.drawer.account",
+      "ant.component.drawer",
+      {},
+      "四边抽屉与账户草稿",
+      "add_drawer_samples",
+      "include/ryn/drawer.hpp"},
+     add_drawer_samples},
+    {{"gallery.sample.popconfirm.confirm",
+      "ant.component.popconfirm",
+      {},
+      "确认、取消与加载",
+      "add_popconfirm_samples",
+      "include/ryn/popconfirm.hpp"},
+     add_popconfirm_samples},
+    {{"gallery.sample.alert.feedback",
+      "ant.component.alert",
+      {},
+      "状态提示与恢复",
+      "add_alert_samples",
+      "include/ryn/alert.hpp"},
+     add_alert_samples},
+    {{"gallery.sample.spin.loading",
+      "ant.component.spin",
+      {},
+      "加载与保留内容",
+      "add_spin_samples",
+      "include/ryn/spin.hpp"},
+     add_spin_samples},
+    {{"gallery.sample.progress.values",
+      "ant.component.progress",
+      {},
+      "线形、环形与状态",
+      "add_progress_samples",
+      "include/ryn/progress.hpp"},
+     add_progress_samples},
+    {{"gallery.sample.table.workflow",
+      "ant.component.table",
+      {},
+      "编辑、选择、分页与命令",
+      "add_table_workflow_samples",
+      "include/ryn/table.hpp"},
+     add_table_workflow_samples},
+    {{"gallery.sample.input-number.values",
+      "ant.component.input-number",
+      {},
+      "小数、范围与状态",
+      "add_input_number_samples",
+      "include/ryn/input_number.hpp"},
+     add_input_number_samples},
+    {{"gallery.sample.collapse.panels",
+      "ant.component.collapse",
+      {},
+      "展开、操作与保留内容",
+      "add_collapse_samples",
+      "include/ryn/collapse.hpp"},
+     add_collapse_samples},
+    {{"gallery.sample.segmented.views",
+      "ant.component.segmented",
+      {},
+      "视图选择与富标签",
+      "add_segmented_samples",
+      "include/ryn/segmented.hpp"},
+     add_segmented_samples},
+    {{"gallery.sample.empty.states",
+      "ant.component.empty",
+      {},
+      "空状态与创建操作",
+      "add_empty_samples",
+      "include/ryn/empty.hpp"},
+     add_empty_samples},
+    {{"gallery.sample.result.states",
+      "ant.component.result",
+      {},
+      "处理结果与详情",
+      "add_result_samples",
+      "include/ryn/result.hpp"},
+     add_result_samples},
+    {{"gallery.sample.form.fields",
+      "ant.component.form",
+      {},
+      "字段、校验与提交",
+      "add_form_samples",
+      "include/ryn/form.hpp"},
+     add_form_samples},
+    {{"gallery.sample.date-picker.dates",
+      "ant.component.date-picker",
+      {},
+      "日期、规则与表单",
+      "add_date_picker_samples",
+      "include/ryn/date_picker.hpp"},
+     add_date_picker_samples},
+    {{"gallery.sample.select.options",
+      "ant.component.select",
+      {},
+      "选择、搜索与动态选项",
+      "add_select_samples",
+      "include/ryn/select.hpp"},
+     add_select_samples},
+    {{"gallery.sample.card.content",
+      "ant.component.card",
+      {},
+      "内容、操作与加载",
+      "add_card_samples",
+      "include/ryn/card.hpp"},
+     add_card_samples},
+    {{"gallery.sample.time-picker.times",
+      "ant.component.time-picker",
+      {},
+      "时间、规则与表单",
+      "add_time_picker_samples",
+      "include/ryn/time_picker.hpp"},
+     add_time_picker_samples},
+    {{"gallery.sample.descriptions.fields",
+      "ant.component.descriptions",
+      {},
+      "资料、列数与编辑",
+      "add_descriptions_samples",
+      "include/ryn/descriptions.hpp"},
+     add_descriptions_samples},
+    {{"gallery.sample.skeleton.loading",
+      "ant.component.skeleton",
+      {},
+      "骨架与保留编辑",
+      "add_skeleton_samples",
+      "include/ryn/skeleton.hpp"},
+     add_skeleton_samples},
+    {{"gallery.sample.popover.notes",
+      "ant.component.popover",
+      {},
+      "气泡内容与受控交互",
+      "add_popover_samples",
+      "include/ryn/popover.hpp"},
+     add_popover_samples},
+    {{"gallery.sample.message.workflow",
+      "ant.component.message",
+      {},
+      "Message 与 Notification 处理流程",
+      "add_notice_samples",
+      "include/ryn/message.hpp"},
+     add_notice_samples},
+    {{"gallery.sample.timeline.events",
+      "ant.component.timeline",
+      {},
+      "事件流与处理备注",
+      "add_timeline_samples",
+      "include/ryn/timeline.hpp"},
+     add_timeline_samples},
+    {{"gallery.sample.avatar.members",
+      "ant.component.avatar",
+      {},
+      "成员、分组与编辑",
+      "add_member_avatar_samples",
+      "include/ryn/avatar.hpp"},
+     add_member_avatar_samples},
+    {{"gallery.sample.statistic.metrics",
+      "ant.component.statistic",
+      {},
+      "精度、格式与指标备注",
+      "add_statistic_metric_samples",
+      "include/ryn/statistic.hpp"},
+     add_statistic_metric_samples},
+    {{"gallery.sample.rate.service",
+      "ant.component.rate",
+      {},
+      "服务评价与备注",
+      "add_service_rate_samples",
+      "include/ryn/rate.hpp"},
+     add_service_rate_samples},
+    {{"gallery.sample.auto-complete.contacts",
+      "ant.component.auto-complete",
+      {},
+      "联系人、备注与表单",
+      "add_contact_autocomplete_samples",
+      "include/ryn/auto_complete.hpp"},
+     add_contact_autocomplete_samples},
+    {{"gallery.sample.tree.projects",
+      "ant.component.tree",
+      {},
+      "项目树与处理备注",
+      "add_project_tree_samples",
+      "include/ryn/tree.hpp"},
+     add_project_tree_samples},
+    {{"gallery.sample.tokens.theme",
+      "",
+      {},
+      "主题算法与品牌",
+      "add_theme_button_samples",
+      "include/ryn/design_token.hpp",
+      GalleryPageKind::tokens},
+     add_theme_button_samples},
+    {{"gallery.sample.tokens.palette",
+      "",
+      {},
+      "语义色与色板",
+      "add_palette_cells",
+      "include/ryn/design_token.hpp",
+      GalleryPageKind::tokens},
+     add_palette_cells},
+    {{"gallery.sample.tokens.scales",
+      "",
+      {},
+      "字号、尺寸与圆角",
+      "add_scale_cells",
+      "include/ryn/design_token.hpp",
+      GalleryPageKind::tokens},
+     add_scale_cells},
+    {{"gallery.sample.tokens.shadows",
+      "",
+      {},
+      "阴影与效果",
+      "add_shadow_cells",
+      "include/ryn/design_token.hpp",
+      GalleryPageKind::tokens},
+     add_shadow_cells},
 });
 
 constexpr auto sample_descriptors = [] {
@@ -5846,6 +6950,40 @@ std::span<const GallerySampleDescriptor> gallery_samples() noexcept {
     return sample_descriptors;
 }
 
+namespace {
+constexpr auto related_samples = std::to_array<GalleryRelatedSample>({
+    {"ant.component.notification", "Message / Notification 处理流程", GalleryPageKind::component,
+     "ant.component.message", "gallery.sample.message.workflow"},
+    {"ant.component.form", "TreeSelect 交付目标表单", GalleryPageKind::component, "ant.component.tree-select",
+     "gallery.sample.tree-select.destination"},
+    {"ant.component.form", "AutoComplete 联系人表单", GalleryPageKind::component, "ant.component.auto-complete",
+     "gallery.sample.auto-complete.contacts"},
+    {"ant.component.form", "日期表单", GalleryPageKind::component, "ant.component.date-picker",
+     "gallery.sample.date-picker.dates"},
+    {"ant.component.form", "时间表单", GalleryPageKind::component, "ant.component.time-picker",
+     "gallery.sample.time-picker.times"},
+    {"ant.component.pagination", "Table 分页与命令流程", GalleryPageKind::component, "ant.component.table",
+     "gallery.sample.table.workflow"},
+    {"ant.component.menu", "表格导航与命令流程", GalleryPageKind::component, "ant.component.table",
+     "gallery.sample.table.workflow"},
+    {"ant.component.dropdown", "表格命令流程", GalleryPageKind::component, "ant.component.table",
+     "gallery.sample.table.workflow"},
+    {"ant.component.input-number", "表格数量编辑流程", GalleryPageKind::component, "ant.component.table",
+     "gallery.sample.table.workflow"},
+    {"ant.component.config-provider", "原生 Theme 与 Design Token", GalleryPageKind::tokens, "", ""},
+});
+} // namespace
+
+GalleryPageRoute GalleryRelatedSample::route() const {
+    GalleryPageRoute result{target_kind, std::string{target_component}, {}, std::string{target_sample}};
+    result.section = target_kind == GalleryPageKind::tokens ? GalleryPageSection::tokens : GalleryPageSection::examples;
+    return result;
+}
+
+std::span<const GalleryRelatedSample> gallery_related_samples() noexcept {
+    return related_samples;
+}
+
 GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const GalleryPageDraft& draft) {
     const GalleryPageModel model;
     if (!model.valid(route)) {
@@ -5860,33 +6998,35 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
     if (!sensitive) {
         state->draft = draft;
     }
-    state->input_value.set(state->initial("gallery.input.controlled", state->input_value.get()));
-    state->search_value.set(state->initial("gallery.search.controlled", state->search_value.get()));
-    state->destination_value.set(state->initial("gallery.tree-select.value", state->destination_value.get()));
-    state->destination_note.set(state->initial("gallery.tree-select.note", state->destination_note.get()));
-    state->destination_field.set(state->initial("gallery.tree-select.field", state->destination_field.get()));
-    const auto expansion = draft.get<std::vector<std::string>>("gallery.tree-select.expansion", {});
-    if (draft.values.contains("gallery.tree-select.expansion")) {
-        ryn::TreeKeys keys;
-        for (const auto& key : expansion) {
-            keys.push_back(ryn::String::from_utf8(key).value());
+    visit_gallery_draft_fields(*state, [&](const std::string& key, auto& field) {
+        if constexpr (requires { field.get(); }) {
+            field.set(gallery_draft_read(state->draft, key, field.get()));
+        } else {
+            field = gallery_draft_read(state->draft, key, field);
         }
-        state->destination_expanded.set(std::move(keys));
+    });
+    if (state->page_component == "ant.component.icon") {
+        const auto step = state->icon_source_step % 3;
+        state->icon_source.set(step == 0   ? ryn::IconSource{ryn::IconName::HeartTwoTone}
+                               : step == 1 ? ryn::IconSource{ryn::IconName::WalletTwoTone}
+                                           : icon_vector_sample());
     }
     auto runs = std::make_shared<std::map<std::string, std::uint64_t>>();
     return {
         ryn::Content{[state, route, runs] {
+            GalleryDraftBuild draft_build{state};
             ++state->telemetry.content_runs;
             for (const auto& factory : sample_factories) {
                 const auto& descriptor = factory.descriptor;
-                if (route.kind != GalleryPageKind::component ||
-                    descriptor.component_identity != route.component_identity || descriptor.family != route.family) {
+                if (route.kind != descriptor.kind || descriptor.component_identity != route.component_identity ||
+                    descriptor.family != route.family) {
                     continue;
                 }
                 ++(*runs)[std::string{descriptor.identity}];
                 ReferenceSurface(
                     ReferenceSurfaceProps{}
                         .identity(descriptor.identity)
+                        .role(ReferenceSurfaceRole::example)
                         .layout(ryn::LayoutStyle{}.width(
                             ryn::bind([width = state->document_width] { return ryn::dp(width.get().value() + 24); }))),
                     [state, factory] {
@@ -5907,19 +7047,13 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
                 return;
             }
             target.values = state->draft.values;
-            const auto text = [&](std::string_view key, const ryn::String& value) {
-                target.values[std::string{key}] = std::string{value.bytes()};
-            };
-            text("gallery.input.controlled", state->input_value.get());
-            text("gallery.search.controlled", state->search_value.get());
-            text("gallery.tree-select.value", state->destination_value.get());
-            text("gallery.tree-select.note", state->destination_note.get());
-            text("gallery.tree-select.field", state->destination_field.get());
-            std::vector<std::string> keys;
-            for (const auto& key : state->destination_expanded.get()) {
-                keys.emplace_back(key.bytes());
-            }
-            target.values["gallery.tree-select.expansion"] = std::move(keys);
+            visit_gallery_draft_fields(*state, [&](const std::string& key, const auto& field) {
+                if constexpr (requires { field.get(); }) {
+                    gallery_draft_write(target, key, field.get());
+                } else {
+                    gallery_draft_write(target, key, field);
+                }
+            });
         },
         [state](float width) {
             if (!std::isfinite(width) || width <= 0) {
@@ -5938,6 +7072,12 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
         [state](std::string_view identity) {
             const auto found = state->targets.find(std::string{identity});
             return found == state->targets.end() ? ryn::runtime::ComponentId{} : found->second;
+        },
+        [state](const ryn::ThemeConfig& config) { state->theme.set(config); },
+        [state]() -> std::optional<ryn::ThemeConfig> {
+            auto result = std::move(state->theme_request);
+            state->theme_request.reset();
+            return result;
         },
     };
 }

@@ -44,6 +44,7 @@ enum class ReferenceSurfaceRole : std::uint8_t {
     scrollbar_thumb,
     document_heading,
     document_note,
+    example,
 };
 
 class ReferenceSurfaceProps final {

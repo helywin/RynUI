@@ -101,6 +101,7 @@ void validate_status(GallerySupportStatus status) {
 void validate_role(ReferenceSurfaceRole role) {
     switch (role) {
     case ReferenceSurfaceRole::reference:
+    case ReferenceSurfaceRole::example:
     case ReferenceSurfaceRole::document_heading:
     case ReferenceSurfaceRole::document_note:
     case ReferenceSurfaceRole::site_header:
@@ -198,7 +199,7 @@ ryn::Color chrome_background(const detail::ReferenceSurfaceComponentState& state
 
 void refresh_material(ReferenceSurfaceHost& host, detail::ReferenceSurfaceComponentState& state) {
     const auto& theme = host.application().components().theme_scope(state.component)->snapshot();
-    if (state.role != ReferenceSurfaceRole::reference) {
+    if (state.role != ReferenceSurfaceRole::reference && state.role != ReferenceSurfaceRole::example) {
         const auto background = chrome_background(state, theme);
         for (auto& visual : state.visuals) {
             visual.opacity = 0.0F;
@@ -236,7 +237,7 @@ void refresh_material(ReferenceSurfaceHost& host, detail::ReferenceSurfaceCompon
     state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::status_badge)].color =
         channels(status_color(state.status, theme));
     state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::status_badge)].opacity =
-        state.visible ? 1.0F : 0.0F;
+        state.visible && state.role == ReferenceSurfaceRole::reference ? 1.0F : 0.0F;
 
     state.effects.shadows = state.elevated && state.visible ? theme.alias().box_shadow_tertiary : ryn::ShadowList{};
     state.effects.shadow_opacity = state.elevated && state.visible ? 1.0F : 0.0F;
@@ -412,7 +413,7 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(ryn::runtime::Size vie
         }
         const auto& theme = application_->components().theme_scope(state->component)->snapshot();
         const auto& node = application_->nodes().require(state->node);
-        if (state->role != ReferenceSurfaceRole::reference) {
+        if (state->role != ReferenceSurfaceRole::reference && state->role != ReferenceSurfaceRole::example) {
             const auto color = chrome_background(*state, theme);
             for (auto& visual : state->visuals) {
                 visual.opacity = 0.0F;
@@ -470,7 +471,8 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(ryn::runtime::Size vie
             make_quad(swatch, viewport, state->swatch.value_or(theme.alias().color_background_container),
                       state->swatch.has_value() ? 1.0F : 0.0F, 4.0F, node.translation);
         state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::status_badge)] =
-            make_quad(badge, viewport, status_color(state->status, theme), 1.0F, 4.0F, node.translation);
+            make_quad(badge, viewport, status_color(state->status, theme),
+                      state->role == ReferenceSurfaceRole::reference ? 1.0F : 0.0F, 4.0F, node.translation);
         state->effects.shape = {
             node.bounds,
             logical_radius(node.bounds, radius),

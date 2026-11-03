@@ -20,7 +20,7 @@ Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-2026110
 
 `GalleryPageDraft` 只允许字符串、布尔、整数、数值和字符串列表，不接受组件/ref/Signal、编辑器或场景句柄。factory 以这些值重建新状态；save hook 只读取已提交业务值。Password/OTP 不调用 save hook，离页清除敏感值，但可保留与输入值无关的页面滚动锚点。不能把整个样例状态对象存入草稿，也不能恢复旧 preedit、选区、撤销栈或 popup open 状态。
 
-后续组件的业务值使用内部 [typed codec](../../examples/token_gallery/gallery_draft_codec.hpp) 转成上述基础值：保留 optional 的空值、variant 的类型、选择顺序和完整无符号整数；日期/时间重新经过公开值类型的合法性检查。它不支持 Prop/ref/callback 等运行状态。页面字段的接入仍需按 owner 显式登记，codec 测试通过不代表其余组件迁移完成。
+后续组件的业务值使用内部 [typed codec](../../examples/token_gallery/gallery_draft_codec.hpp) 转成上述基础值：保留 optional 的空值、variant 的类型、选择顺序和完整无符号整数；日期/时间重新经过公开值类型的合法性检查。它不支持 Prop/ref/callback 等运行状态。页面字段按 canonical page/family 显式登记；普通非受控控件通过内部构造上下文恢复 default 值并组合原回调，空 Select 值不会被初始默认值覆盖。受控 Signal/FormField 保持原有接受与拒绝规则。
 
 退役先使旧 generation ticket 失效，再保存草稿、取消属于旧 root 的 pointer 状态与 focus，调用 `before_retire` 取消 Gallery 自有 scrollbar drag，然后通过宿主销毁页面。既有输入参与者负责取消 session/preedit、弹层、keyboard press、caret 和动画。异步/延迟操作捕获弱 `GalleryPageTicket`，检查 `valid()` 后才能访问页面。挂载或保存失败仍清理旧资源，并显示可手动重试的说明页；不会自动重建忙循环。
 
@@ -28,13 +28,15 @@ Gallery 的独立页面改造按 [change 105](../../openspec/changes/105-2026110
 
 ## 样例登记与迁移
 
-[GallerySampleDescriptor](../../examples/token_gallery/gallery_sample_registry.hpp) 登记稳定 sample identity、canonical page/family、标题、实际 C++ 构造函数和公开头文件。当前登记 14 个组件页、29 个真实样例组：首批 Button/Input 五组/TreeSelect，以及 Typography、Divider、Flex、Space、Icon、Breadcrumb、Steps、Menu、Dropdown、Pagination、Tabs。每次只运行对应 page/family 的构造函数；其他条目的目录状态不因暂未迁移样例而改变。完整 458 个历史 ID 的映射和其余组件仍按 change 的后续任务迁移。
+[GallerySampleDescriptor](../../examples/token_gallery/gallery_sample_registry.hpp) 登记稳定 sample identity、canonical page/family、标题、实际 C++ 构造函数和公开头文件。当前登记 48 个组件页的 63 个真实样例组，以及 Design Token 页的 4 组主题、色板、尺度和阴影。其余有原生范围声明的 Notification、ConfigProvider 提供关联入口，分别指向 Message 联合流程与 Token 页；没有制造独立实现。每次只运行对应 page/family 的构造函数；其他条目的目录状态不因暂未迁移样例而改变。完整 458 个历史 ID 的归属核对与旧 frame 用例迁移仍按 change 的后续任务推进。
 
 活动页的 `target(test_id)` 直接解析构造时登记的组件身份。登记只发生在 mount，并由所属组件的 resource cleanup 删除；测试通过 sample owner 验证归属。滚动和普通属性更新不扫描正文文案，不使用全局 mounted 数组偏移定位目标。这些运行时 ID 只属于当前页面状态，不进入 `GalleryPageDraft`。
 
 普通非受控 Input/Search/TextArea 用保存的已提交值设置新实例的 `defaultValue`，并组合原有 change/submit 回调；受控值仍使用原有 Signal/FormField。TreeSelect 保存选择、交付备注、表单值和展开键，open、focus 与 session 总是重新开始。代码片段的展开 UI 和公开 API 内容由后续页面 shell 任务接入，目前登记的函数/头文件映射不等同于已展示代码片段。
 
 Typography/Divider 的真实实例已提取为各自页面工厂；总览不需要调用它们。Bidi 的 Text/Paragraph 归 Typography，编辑器归对应 Input 家族；方向控制有各页自己的目标 ID。Pagination 独立页使用 `gallery.pagination.controlled`，Table 的联动分页保留同一构造能力并使用 `gallery.table.pagination`，防止把同一历史 ID 重复归属两页。含 Space/Radio/Checkbox 的页面宿主仍须建立既有 `SelectionComponentHost`，和旧原生 Gallery 的宿主装配一致。
+
+Table 页是原有编辑、排序、选择、分页、Menu、Dropdown、InputNumber 流程的主归属；其依赖控件使用 Table 前缀的目标身份，独立组件页保留自己的基础示例并提供关联入口。Modal/Drawer、Card、Tabs、Collapse 等内容中的普通已提交编辑值可恢复；弹层 open、loading 请求、focus、IME 和挂载身份不存入草稿。Token 页面通过主题请求接口交给后续 shell 应用全局设置。样例容器使用 example role，不把默认 planned 状态徽标误标到真实演示上。
 
 ## 定向自动检查
 
@@ -54,6 +56,6 @@ ctest --preset linux-gcc-release -R '^rynui\.gallery_page_(model|controller)$' -
 
 [生命周期夹具](../../tests/gallery_page_controller_tests.cpp) 使用真实组件宿主、模拟文本平台和记录上传的 GPU adapter，覆盖草稿、敏感清空、受控弹层退役、迟到文本/组合输入、capture/键盘按压、scrollbar drag、回调重入、失败回滚、主题/resize 身份以及稳定后无新增上传/帧请求。它不运行 SDL、真实 IME 或 GPU 驱动。
 
-[样例页面夹具](../../tests/gallery_sample_page_tests.cpp) 的定向入口为 `rynui.gallery_sample_page`（target `rynui_gallery_sample_page_tests`）。它验证首批真实工厂隔离、稳定 ID、编辑与跨页草稿、Button 变体与延迟加载/ref、Search 键盘提交、OTP 粘贴分发/敏感清空、TreeSelect 选择/Form/受控拒绝，以及同页 Theme/resize 的身份保留。
+[样例页面夹具](../../tests/gallery_sample_page_tests.cpp) 的定向入口为 `rynui.gallery_sample_page`（target `rynui_gallery_sample_page_tests`）。它遍历全部 73 个 canonical 路由和 Token 页，验证真实工厂隔离、关联路由、稳定 ID、编辑与跨页草稿、Button 变体与延迟加载/ref、Search 键盘提交、OTP 粘贴分发/敏感清空、TreeSelect 选择/Form/受控拒绝，以及同页 Theme/resize 的身份保留。
 
 已有 frame binary 的 `--input-only` / `--tree-select-only` 现已直接挂载相应页面工厂，并用登记目标定位；对应 CTest 为 `rynui.gallery_page_input_frame` / `rynui.gallery_page_tree_select_frame`。Input 家族按组依次追加/退役，保持编辑、剪贴板、提交、场景身份与 idle 检查；TreeSelect 保留三种主题与 1200/560 宽度的 glyph/fill/hit/focus/popup 检查。其他历史 frame 用例仍在迁移，不能以首批通过代表所有页面完成；新目录 shell 的交互/几何由后续 viewport 阶段验证。
