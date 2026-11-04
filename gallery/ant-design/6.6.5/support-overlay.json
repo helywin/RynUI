@@ -519,22 +519,34 @@
     },
     {
       "identity": "ant.component.auto-complete",
-      "status": "partial",
-      "summary": "原生自由输入、键控建议、受控选择及 Form reset；联系人 Gallery 展示实际输入、富备注与编辑恢复。",
+      "status": "implemented",
+      "summary": "原生自由输入与完整建议合同：稳定分组/富内容、窗口列表、可取消应用异步源、自定义 Input/TextArea 和 popup、RTL/有限动画及显式 Form reset；新增平台验收独立记录。",
       "supported_scope": [
-        "typed/reactive String、动态 keyed/rich 建议、过滤、backfill、清空与原生键盘",
-        "受控 value/open、有限列表、富建议焦点与窗口层归属、Form 同值 reset",
-        "联系人建议/备注/表单、接受或拒绝候选、禁用只读恢复与真实目录入口"
+        "typed/reactive String、动态 keyed/grouped/rich 建议、过滤、backfill、清空与原生键盘",
+        "受控 value/open、窗口化普通行、保留富子控件、focus/capture/IME 与子 popup 边界",
+        "应用 provider/owner-thread dispatcher、last-query/lifetime/generation 取消、错误处理和 reset",
+        "retained Input/TextArea editor 与 popup renderer、RTL、Theme 有限动画和宽度",
+        "保留联系人/备注/表单示例，新增分组长列表、自定义编辑器和明确标注的合成异步 Gallery",
+        "Linux 私有 Wayland/Vulkan/SPIR-V/system fonts 有限自动输入、宿主 input area/cursor 与离页清理；异步 Gallery 使用合成 provider"
       ],
       "missing_scope": [
-        "网络异步、分组、虚拟化、动画、RTL、自定义编辑器与 popupRender",
-        "完整 Gallery/native/GPU、Linux、系统 IME 与辅助技术验收"
+        "系统 IME 候选 UI、跨实际显示器/DPI、辅助技术和 Windows MSVC 原生窗口仍未验证；数据录入分类尚未整体收口",
+        "Web DOM/CSS/React/portal 与浏览器事件兼容别名不属于 typed Core"
       ],
       "evidence_identifiers": [
         "source:components/auto-complete/index.en-US.md",
         "openspec:092-20261026-add-native-auto-complete",
         "openspec:096-20261028-add-tree-and-autocomplete-gallery",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "openspec:107-20261104-complete-navigation-and-remaining-components#8.1",
+        "api:include/ryn/async_options.hpp",
+        "test:rynui.auto_complete_complete_window",
+        "test:rynui.auto_complete_complete_async",
+        "test:rynui.auto_complete_complete_renderers",
+        "test:rynui.auto_complete_complete_form_editor",
+        "test:rynui.auto_complete_public_api",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/auto-complete-linux.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/select-autocomplete-integration.md"
       ]
     },
     {
@@ -796,27 +808,37 @@
     },
     {
       "identity": "ant.component.select",
-      "status": "partial",
-      "summary": "RynUI 已提供原生单选 Select：typed 字符串/int64 值、Unicode 搜索、清空、动态选项、窗口层与键盘导航；multiple/tags 等扩展尚未覆盖，平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Select 保留单选兼容 API，补齐 Multiple/Tags 实际输入、分组/富渲染、标签溢出、窗口列表、可取消应用异步源、交互 affix、RTL 和有限动画；新增平台验收独立记录。",
       "supported_scope": [
-        "typed Props/options/selection/ref and decorative prefix/suffix slots",
-        "controlled/uncontrolled single selection and dynamic options with duplicate rejection",
-        "Unicode casefold/NFC search, native Input/IME and clear",
-        "window popup, keyboard navigation, scrolling, viewport flip/clamp and single Tab stop",
-        "three sizes, four variants, status, loading/disabled/empty and controlled open",
-        "Select Component Token, retained identity, lifecycle cleanup and idle"
+        "typed/reactive single/multiple/labeled values，受控请求和显式 Form reset",
+        "Multiple/Tags 选择、输入/粘贴 tokenization、Enter/Backspace、标签移除、maxCount/标签截断和 overflow",
+        "稳定 key 的 grouped/rich options、保留 option/label/tag/popup renderers 和交互式前后缀",
+        "Unicode 过滤、稳定组内排序、受控 search、active/select/deselect/clear/key/scroll events",
+        "窗口化普通行、保留富草稿、keyboard reveal、最近 popup wheel、失败/生命周期清理",
+        "应用异步 provider/owner-thread dispatcher、取消/错误/旧 generation 防护",
+        "Theme、三尺寸/四变体/status、typed icons、RTL/placement/宽度、有限 motion 与新增真实 Gallery",
+        "Linux 私有 Wayland/Vulkan/SPIR-V/system fonts 有限自动输入、宿主 input area/cursor 与离页清理；异步 Gallery 使用合成 provider"
       ],
       "missing_scope": [
-        "multiple/tags, grouped options and custom option rendering",
-        "virtual list, built-in asynchronous data source and interactive affix slots",
-        "complete Web Select API and DOM semantics"
+        "系统 IME 候选 UI、跨实际显示器/DPI、辅助技术和 Windows MSVC 原生窗口仍未验证；数据录入分类尚未整体收口",
+        "Web DOM/CSS/React/portal、动态对象 fieldNames 和废弃兼容别名不属于 typed Core"
       ],
       "evidence_identifiers": [
         "source:components/select/index.en-US.md",
         "openspec:058-20261023-add-native-select",
         "test:rynui.select_model",
         "test:rynui.select_theme",
-        "test:rynui.select_component"
+        "test:rynui.select_component",
+        "openspec:107-20261104-complete-navigation-and-remaining-components#19.1",
+        "api:include/ryn/select.hpp",
+        "test:rynui.select_complete_multiple",
+        "test:rynui.select_complete_window",
+        "test:rynui.select_complete_retained",
+        "test:rynui.select_complete_async",
+        "test:rynui.select_complete_lifetime",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/select-linux.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/select-autocomplete-integration.md"
       ]
     },
     {

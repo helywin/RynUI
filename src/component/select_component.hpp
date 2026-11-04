@@ -14,6 +14,12 @@ struct SelectSnapshot final {
     std::optional<std::size_t> active;
     std::vector<runtime::ComponentId> rows;
     float scroll{};
+    SelectValues values;
+    std::vector<std::size_t> row_indices;
+    std::size_t total_rows{};
+    bool pending{};
+    std::vector<runtime::ComponentId> tags;
+    String overflow;
 };
 
 class SelectComponentHost final : public WindowComponentParticipant {
@@ -53,10 +59,22 @@ private:
     void choose(runtime::ComponentId id, std::optional<std::size_t> index);
     void rebuild_rows(runtime::ComponentId id);
     void mount_rows(runtime::ComponentId id);
+    void mount_row(runtime::ComponentId, std::optional<std::size_t>);
+    void mount_label(runtime::ComponentId, runtime::ComponentId);
+    void reconcile_tags(runtime::ComponentId);
+    void publish_values(runtime::ComponentId, SelectValues, bool clear = false);
+    void edit(runtime::ComponentId, String);
+    void load(runtime::ComponentId, String);
+    void configure(runtime::ComponentId);
+    void mount_popup(runtime::ComponentId);
+    void rebuild_popup(runtime::ComponentId);
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
     void update_theme(runtime::ComponentId id, bool geometry = true);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     std::vector<runtime::ComponentId> positioning_;
     bool window_active_{true};
+    std::size_t mount_depth_{};
 };
 } // namespace ryn::detail

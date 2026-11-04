@@ -313,6 +313,12 @@ struct GalleryState final {
     ryn::Signal<ryn::String> rating_note{ryn::String{u8"补充服务评价"}};
     ryn::Signal<ryn::String> rating_feedback{ryn::String{u8"尚未保存评价"}};
     ryn::InputRef rating_ref;
+    bool select_multi_accept{true};
+    ryn::Signal<ryn::SelectValues> select_multi{ryn::SelectValues{ryn::SelectValue{u8"desktop"}}};
+    ryn::Signal<ryn::String> select_multi_feedback{ryn::String{u8"尚未修改多选"}};
+    std::vector<std::function<void()>> completion_jobs;
+    std::vector<std::function<void()>> owner_posts;
+    ryn::Signal<ryn::String> async_feedback{ryn::String{u8"合成数据；输入后点击交付以模拟异步完成"}};
     ryn::Signal<ryn::String> contact_value{ryn::String{}};
     ryn::Signal<ryn::String> contact_request{ryn::String{u8"尚未选择联系人"}};
     ryn::Signal<bool> contact_accept{true};
@@ -4575,6 +4581,124 @@ void add_bidi_samples(const std::shared_ptr<GalleryState>& state) {
     add_bidi_direction_control(state);
 }
 
+void add_complete_select_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Multiple / Tags / 分组 / typed 多值 / Token 分隔 / 标签溢出");
+    const std::vector<SelectOptionGroup> groups{
+        {u8"platform", u8"平台", {{u8"desktop", u8"桌面"}, {u8"service", u8"服务"}}},
+        {u8"priority", u8"优先级", {{1, u8"高"}, {2, u8"低"}, {3, u8"停用", true}}}};
+    Select(SelectProps{}
+               .mode(SelectMode::Multiple)
+               .groups(groups)
+               .values(state->select_multi)
+               .onValuesChange([state](SelectValues values) {
+                   state->select_multi_feedback.set(state->select_multi_accept ? u8"已接受多选" : u8"已拒绝多选");
+                   if (state->select_multi_accept) {
+                       state->select_multi.set(std::move(values));
+                   }
+               })
+               .maxTagCount(std::size_t{2})
+               .allowClear()
+               .motion()
+               .placeholder(u8"多选；标签关闭和空搜索 Backspace 可移除")
+               .layout(LayoutStyle{}.margin_top(dp(4)).margin_bottom(dp(4)).width(dp(340))));
+    remember_target(state, "gallery.select.multiple");
+    Button(ButtonProps{}.onClick([state] { state->select_multi_accept = !state->select_multi_accept; }),
+           ButtonContent{[] { Text(u8"接受/拒绝多选请求"); }});
+    gallery_target("gallery.select.authority");
+    Select(SelectProps{}
+               .mode(SelectMode::Tags)
+               .groups(groups)
+               .tokenSeparators({u8",", u8"；"})
+               .responsiveMaxTagCount()
+               .maxTagTextLength(std::size_t{8})
+               .maxCount(std::size_t{12})
+               .placeholder(u8"Tags：输入中文；英文, 或 Enter 创建标签")
+               .tagRender(SelectTagRenderer{[](SelectRenderInfo info) {
+                   Button(ButtonProps{}.size(ControlSize::Small).disabled(info.disabled).onClick(info.remove),
+                          ButtonContent{[label = info.label] { Text(TextProps{}.content(label)); }});
+               }})
+               .onValuesChange([state](SelectValues values) {
+                   state->select_multi_feedback.set(utf8("标签数量=" + std::to_string(values.size())));
+               })
+               .layout(LayoutStyle{}.margin_top(dp(4)).margin_bottom(dp(4)).width(dp(340))));
+    remember_target(state, "gallery.select.tags");
+    Text(TextProps{}.content(state->select_multi_feedback));
+    Text(u8"10,000 项窗口列表 / RTL / 自定义 option 与 popup / 可操作前缀");
+    std::vector<SelectOption> many;
+    for (int i = 0; i < 10000; ++i) {
+        many.push_back({i, utf8("合成选项 " + std::to_string(i))});
+    }
+    Select(SelectProps{}
+               .options(std::move(many))
+               .showSearch()
+               .listHeight(160)
+               .direction(TextDirection::RightToLeft)
+               .optionRender(SelectOptionRenderer{[](SelectRenderInfo info) { Text(TextProps{}.content(info.label)); }})
+               .popupRender(SelectPopupRenderer{[](std::function<void()> origin) {
+                   Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[origin] {
+                            origin();
+                            Input(InputProps{}.placeholder(u8"popup 内独立草稿"));
+                            gallery_target("gallery.select.popup-note");
+                        }});
+               }})
+               .placeholder(u8"合成长列表；Home/End/上下键/滚轮")
+               .layout(LayoutStyle{}.margin_top(dp(4)).margin_bottom(dp(4)).width(dp(340))),
+           SelectPrefix{[state] {
+               Button(ButtonProps{}.size(ControlSize::Small).onClick([state] {
+                   state->select_multi_feedback.set(u8"已执行前缀操作");
+               }),
+                      ButtonContent{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }});
+               gallery_target("gallery.select.prefix");
+           }});
+    remember_target(state, "gallery.select.virtual");
+    Text(u8"可取消异步选项（确定性合成数据，无外部网络请求）");
+    const auto weak = std::weak_ptr{state};
+    SelectSource source{[weak](AsyncOptionsRequest request, SelectSource::Complete complete) {
+                            if (auto state = weak.lock()) {
+                                state->completion_jobs.push_back([request, complete = std::move(complete)] {
+                                    const auto label = utf8(std::string{request.query.bytes()} + " · synthetic");
+                                    complete({{{label, label}}, {}});
+                                });
+                            }
+                            return AsyncOptionsCancel{};
+                        },
+                        [weak](std::function<void()> post) {
+                            if (auto state = weak.lock()) {
+                                state->owner_posts.push_back(std::move(post));
+                            }
+                        }};
+    Select(SelectProps{}
+               .source(source)
+               .notFoundContent(u8"合成选项待交付")
+               .popupRender(SelectPopupRenderer{[state](std::function<void()> origin) {
+                   Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[state, origin] {
+                            origin();
+                            Button(ButtonProps{}.onClick([state] {
+                                auto jobs = std::move(state->completion_jobs);
+                                state->completion_jobs.clear();
+                                for (auto& job : jobs) {
+                                    job();
+                                }
+                                auto posts = std::move(state->owner_posts);
+                                state->owner_posts.clear();
+                                for (auto& post : posts) {
+                                    post();
+                                }
+                                state->select_multi_feedback.set(u8"已处理合成选项；已取消的请求不会更新选择器");
+                            }),
+                                   ButtonContent{[] { Text(u8"交付合成异步选项"); }});
+                            gallery_target("gallery.select.deliver");
+                        }});
+               }})
+               .showSearch()
+               .placeholder(u8"输入查询后，在 popup 内点击交付")
+               .layout(LayoutStyle{}.margin_top(dp(4)).margin_bottom(dp(4)).width(dp(340))));
+
+    remember_target(state, "gallery.select.async");
+    state->telemetry.live_samples += 4;
+}
+
 void add_select_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Select · 单选 / Unicode 搜索 / 清空 / 动态选项 / 键盘");
@@ -4672,6 +4796,7 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
            ButtonContent{[] { Text(sample_text(u8"gallery.select.dynamic-options")); }});
     gallery_target("gallery.select.dynamic-options");
     state->telemetry.live_samples += 3;
+    add_complete_select_samples(state);
 }
 
 void add_float_button_samples(const std::shared_ptr<GalleryState>& state) {
@@ -6371,6 +6496,92 @@ void add_service_rate_samples(const std::shared_ptr<GalleryState>& state) {
     ++state->telemetry.live_samples;
 }
 
+void add_complete_autocomplete_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"分组 / 1,000 项窗口列表 / RTL / 有限开启动画");
+    std::vector<AutoCompleteOption> cities;
+    for (int i = 0; i < 1000; ++i) {
+        const auto key = utf8("city-" + std::to_string(i));
+        cities.push_back({key, key, utf8("合成城市 " + std::to_string(i))});
+    }
+    AutoComplete(
+        AutoCompleteProps{}
+            .groups(std::vector<AutoCompleteOptionGroup>{{u8"cities", u8"合成城市", std::move(cities)},
+                                                         {u8"people", u8"联系人", {{u8"group-ada", u8"Ada", u8"Ada"}}}})
+            .filterOption(AutoCompleteFilter{true})
+            .listHeight(160)
+            .direction(TextDirection::RightToLeft)
+            .motion()
+            .placeholder(u8"分组建议；用上下键和滚轮浏览")
+            .layout(member_control_margin().width(dp(320))));
+    remember_target(state, "gallery.auto-complete.virtual");
+    Text(u8"自定义多行编辑器 / 保留 popup 备注；Form 仍须显式 value/onChange/ref 绑定");
+    AutoComplete(AutoCompleteProps{}
+                     .options({{u8"custom-a", u8"第一段", u8"第一段"}, {u8"custom-b", u8"第二段", u8"第二段"}})
+                     .editor(AutoCompleteEditor{[](AutoCompleteEditorContext context) {
+                         TextArea(context.text_area.rows(std::size_t{2}).resize(TextAreaResize::None));
+                     }})
+                     .popupRender(AutoCompletePopupRenderer{[](std::function<void()> origin) {
+                         Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[origin] {
+                                  origin();
+                                  Input(InputProps{}.placeholder(u8"popup 内的独立备注"));
+                                  gallery_target("gallery.auto-complete.popup-note");
+                              }});
+                     }})
+                     .backfill()
+                     .allowClear()
+                     .placeholder(u8"自定义 TextArea，IME/剪贴板继续由原生编辑器处理")
+                     .layout(member_control_margin().width(dp(320))));
+    remember_target(state, "gallery.auto-complete.custom");
+    Text(u8"可取消异步建议（确定性合成数据，无外部网络请求）");
+    const auto weak = std::weak_ptr{state};
+    AutoCompleteSource source{[weak](AsyncOptionsRequest request, AutoCompleteSource::Complete complete) {
+                                  if (auto state = weak.lock()) {
+                                      state->completion_jobs.push_back([request, complete = std::move(complete)] {
+                                          const auto suggestion =
+                                              utf8(std::string{request.query.bytes()} + " · synthetic");
+                                          complete({{{u8"synthetic", suggestion, suggestion}}, {}});
+                                      });
+                                  }
+                                  return AsyncOptionsCancel{};
+                              },
+                              [weak](std::function<void()> task) {
+                                  if (auto state = weak.lock()) {
+                                      state->owner_posts.push_back(std::move(task));
+                                  }
+                              }};
+    AutoComplete(AutoCompleteProps{}
+                     .source(source)
+                     .options({{u8"synthetic-wait", u8"", u8"合成建议待交付", true}})
+                     .popupRender(AutoCompletePopupRenderer{[state](std::function<void()> origin) {
+                         Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[state, origin] {
+                                  origin();
+                                  Button(ButtonProps{}.onClick([state] {
+                                      auto jobs = std::move(state->completion_jobs);
+                                      state->completion_jobs.clear();
+                                      for (auto& job : jobs) {
+                                          job();
+                                      }
+                                      auto posts = std::move(state->owner_posts);
+                                      state->owner_posts.clear();
+                                      for (auto& post : posts) {
+                                          post();
+                                      }
+                                      state->async_feedback.set(u8"已处理合成请求；仅当前存活查询可更新建议");
+                                  }),
+                                         ButtonContent{[] { Text(u8"交付合成异步建议"); }});
+                                  gallery_target("gallery.auto-complete.deliver");
+                              }});
+                     }})
+                     .placeholder(u8"输入查询后，在 popup 内点击交付")
+                     .onLoadError([state](String error) { state->async_feedback.set(std::move(error)); })
+                     .layout(member_control_margin().width(dp(320))));
+
+    remember_target(state, "gallery.auto-complete.async");
+    Text(TextProps{}.content(state->async_feedback));
+    state->telemetry.live_samples += 3;
+}
+
 void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Flex(FlexProps{}
@@ -6443,6 +6654,7 @@ void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state
                                   state->contact_request.set(utf8("选择候选=" + std::string{value.bytes()}));
                               })
                               .layout(member_control_margin().width(dp(320))));
+             remember_target(state, "gallery.auto-complete.input");
              Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
                    SpaceContent{[state] {
                        Button(ButtonProps{}
@@ -6511,6 +6723,7 @@ void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state
                                            .readOnly(state->contact_field.readOnly())
                                            .status(state->contact_field.status())
                                            .layout(member_control_margin().width(dp(260))));
+                                   remember_target(state, "gallery.auto-complete.form");
                                }});
                       Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
                                 Button(ButtonProps{}
@@ -6530,6 +6743,7 @@ void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state
                   }});
          }});
     state->telemetry.live_samples += 2;
+    add_complete_autocomplete_samples(state);
 }
 
 ryn::String gallery_project_keys(const ryn::TreeKeys& keys) {

@@ -1,6 +1,7 @@
 #include "gallery_pages_runtime.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
+#include "component/auto_complete_component.hpp"
 #include "component/anchor_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/dropdown_component.hpp"
@@ -443,6 +444,56 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
     const auto captured = [&] {
         const auto state = app.pointer().state(input::PointerIdentity::mouse());
         return state && state->capture.has_value();
+    };
+    const auto press = [&](input::Key value) {
+        pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::down});
+        pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::up});
+        render();
+    };
+    const auto focus_editor = [&](runtime::ComponentId owner) {
+        for (const auto& editor : inputs.mounted_inputs()) {
+            if (owns(app, editor.component, owner) && app.interactions().branch_active(editor.interaction)) {
+                check(app.focus().state().focused == editor.interaction ||
+                          app.focus().request_focus(editor.interaction, input::FocusModality::keyboard),
+                      "native completion editor focus failed");
+                check(inputs.sessions().active().valid(), "native completion editor session missing");
+                return editor;
+            }
+        }
+        throw std::runtime_error("native completion editor missing");
+    };
+    const auto replace_text = [&](runtime::ComponentId owner, String text) {
+        const auto editor = focus_editor(owner);
+        pages.dispatch(input::KeyboardInputEvent{input::Key::a, input::KeyAction::down, input::KeyModifier::control});
+        pages.dispatch(input::KeyboardInputEvent{input::Key::a, input::KeyAction::up, input::KeyModifier::control});
+        if (text.empty()) {
+            pages.dispatch(input::KeyboardInputEvent{input::Key::backspace, input::KeyAction::down});
+            pages.dispatch(input::KeyboardInputEvent{input::Key::backspace, input::KeyAction::up});
+        } else {
+            pages.dispatch(input::TextCommitted{std::move(text), inputs.sessions().active()});
+        }
+        render();
+        return editor;
+    };
+    const auto click = [&](runtime::ComponentId owner) {
+        const auto rect = bounds(owner);
+        const runtime::Point center{rect.x + rect.width / 2, rect.y + rect.height / 2};
+        pointer(input::PointerAction::down, center);
+        pointer(input::PointerAction::up, center);
+        render();
+    };
+    const auto capture_editor = [&](runtime::ComponentId owner) {
+        const auto editor = focus_editor(owner);
+        const auto area = inputs.layout_snapshot(editor.component).viewport;
+        pointer(input::PointerAction::down, {area.x + 4, area.y + area.height / 2});
+        render();
+        check(captured(), "native completion editor did not capture pointer before retirement");
+    };
+    const auto has_text = [&](String text) {
+        return std::ranges::any_of(app.services().text().mounted_texts(), [&](const auto& item) {
+            return app.services().text().scene_service().text_state(item.scene).content().bytes().find(text.bytes()) !=
+                   std::string_view::npos;
+        });
     };
     constexpr std::array widths{1440, 960, 728, 480, 360};
     input::TextInputSessionStamp previous_session;
@@ -907,6 +958,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         if (route.component_identity == "ant.component.tabs") {
             auto& tabs = app.services().tabs();
             const auto owner = pages.target("gallery.tabs.editable");
+            resize(1000);
+            render();
             const auto run = [&](runtime::ComponentId target) {
                 reveal(target);
                 activate(target);
@@ -1274,31 +1327,226 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                  dragged.bounds.y + dragged.bounds.height / 2);
             std::cout << "float_button_native=passed anchor=true drag=true capture=true keyboard=true gpu_pixel=true\n";
         }
+        if (route.component_identity == "ant.component.auto-complete") {
+            auto& complete = app.services().auto_complete();
+            const auto grouped = pages.target("gallery.auto-complete.virtual");
+            reveal(grouped);
+            replace_text(grouped, u8"Ada");
+            check(complete.snapshot(grouped).total_rows == 2, "native AutoComplete grouped filter failed");
+            press(input::Key::enter);
+            check(complete.snapshot(grouped).value == String{u8"Ada"}, "native AutoComplete grouped selection failed");
+            replace_text(grouped, u8"");
+            for (int step = 0; step < 8; ++step) {
+                press(input::Key::down);
+            }
+            auto window = complete.snapshot(grouped);
+            std::cout << "auto_complete_window query=" << window.query.bytes()
+                      << " active=" << window.active.value_or(999999) << " rows=" << window.rows.size()
+                      << " total=" << window.total_rows << " scroll=" << window.scroll << " visible=" << window.visible
+                      << '\n';
+            check(window.visible && window.active && window.scroll > 0 && window.rows.size() <= 10 &&
+                      std::ranges::find(window.row_indices, *window.active) != window.row_indices.end(),
+                  "native AutoComplete keyboard reveal is unbounded");
+            const auto offset = pages.snapshot().document.offset;
+            events.inject_scroll_at(window.clip.x + 4, window.clip.y + 4, -2);
+            render();
+            check(complete.snapshot(grouped).scroll > window.scroll && complete.snapshot(grouped).rows.size() <= 10 &&
+                      pages.snapshot().document.offset == offset,
+                  "native AutoComplete wheel escaped its bounded list");
+            press(input::Key::escape);
+
+            const auto custom = pages.target("gallery.auto-complete.custom");
+            reveal(custom);
+            const auto editor = replace_text(custom, u8"多行\n草稿");
+            const auto stamp = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"组合"}, {}, stamp});
+            render();
+            check(inputs.editors().require(editor.editor).composition().active,
+                  "native custom TextArea composition missing");
+            const auto composing_value = complete.snapshot(custom).value;
+            press(input::Key::down);
+            check(complete.snapshot(custom).value == composing_value &&
+                      inputs.editors().require(editor.editor).composition().active,
+                  "native composition navigation changed AutoComplete value");
+            pages.dispatch(input::CompositionChanged{String{}, {}, stamp});
+            render();
+            replace_text(custom, u8"");
+            press(input::Key::down);
+            check(complete.snapshot(custom).visible && complete.snapshot(custom).backfilled,
+                  "native TextArea backfill missing");
+            const auto popup_note = pages.target("gallery.auto-complete.popup-note");
+            const auto note = replace_text(popup_note, u8"retained native note");
+            check(complete.snapshot(custom).visible, "native custom popup focus closed suggestions");
+            const auto choice = complete.snapshot(custom).rows.front();
+            click(choice);
+            check(complete.snapshot(custom).value == String{u8"第一段"} &&
+                      app.focus().state().focused == editor.interaction,
+                  "native custom TextArea selection/focus return failed");
+            press(input::Key::down);
+            check(inputs.display_snapshot(note.component).text == "retained native note",
+                  "native AutoComplete popup draft was replaced");
+            press(input::Key::escape);
+
+            const auto form = pages.target("gallery.auto-complete.form");
+            reveal(form);
+            replace_text(form, u8"changed");
+            const auto reset = pages.target("gallery.auto-complete.reset");
+            reveal(reset);
+            activate(reset);
+            render();
+            check(complete.snapshot(form).value.empty() && !complete.snapshot(form).visible,
+                  "native AutoComplete Form reset failed");
+            const auto controlled = pages.target("gallery.auto-complete.input");
+            const auto authority = pages.target("gallery.auto-complete.authority");
+            reveal(authority);
+            activate(authority);
+            render();
+            const auto accepted = complete.snapshot(controlled).value;
+            reveal(controlled);
+            replace_text(controlled, u8"refused");
+            check(complete.snapshot(controlled).value == accepted && has_text(u8"拒绝候选="),
+                  "native AutoComplete controlled refusal failed");
+
+            const auto async = pages.target("gallery.auto-complete.async");
+            reveal(async);
+            replace_text(async, u8"old");
+            replace_text(async, u8"latest");
+            check(complete.snapshot(async).pending, "native AutoComplete async query did not start");
+            click(pages.target("gallery.auto-complete.deliver"));
+            auto delivered = complete.snapshot(async);
+            check(!delivered.pending && delivered.total_rows == 1 && delivered.query == String{u8"latest"} &&
+                      has_text(u8"latest · synthetic") && !has_text(u8"old · synthetic"),
+                  "native AutoComplete stale/latest owner-thread delivery failed");
+            click(delivered.rows.front());
+            check(complete.snapshot(async).value == String{u8"latest · synthetic"},
+                  "native AutoComplete async selection failed");
+            replace_text(async, u8"retired pending");
+            capture_editor(async);
+            previous_session = inputs.sessions().active();
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "AutoComplete retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(complete.mounted().empty() && !app.components().contains(note.component) &&
+                      !inputs.sessions().active().valid() && !captured() &&
+                      !inputs.editors().find(previous_session.owner),
+                  "native AutoComplete retirement retained popup/editor/session/capture");
+            std::cout << "auto_complete_native=passed grouped_filter=true virtual_keyboard_wheel=true textarea=true "
+                         "composition=true backfill=true popup_draft=true form_reset=true controlled_refusal=true "
+                         "synthetic_latest_callback=true retired=true\n";
+        }
         if (route.component_identity == "ant.component.select") {
-            const auto mounted = app.services().select().mounted();
-            const auto selected = std::ranges::find_if(mounted, [&](const auto id) { return owns(app, id, root); });
-            check(selected != mounted.end(), "native Select sample is missing");
-            const auto selector = app.services().select().snapshot(*selected).selector;
-            for (const auto id : app.interactions().declaration_order()) {
-                const auto* record = app.interactions().find(id);
-                if (record && record->focusable && record->eligible && app.interactions().branch_active(id) &&
-                    owns(app, record->component, selector)) {
-                    static_cast<void>(app.focus().request_focus(id, input::FocusModality::keyboard));
-                    if (app.focus().state().focused != id) {
-                        continue;
-                    }
-                    pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::down});
-                    pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::up});
+            auto& select = app.services().select();
+            const auto multiple = pages.target("gallery.select.multiple");
+            reveal(multiple);
+            replace_text(multiple, u8"服务");
+            press(input::Key::down);
+            press(input::Key::enter);
+            check(select.snapshot(multiple).values ==
+                          SelectValues{SelectValue{u8"desktop"}, SelectValue{u8"service"}} &&
+                      has_text(u8"已接受多选"),
+                  "native grouped Multiple callback failed");
+            const auto first_tag = select.snapshot(multiple).tags.front();
+            bool removed_tag{};
+            for (const auto interaction : app.interactions().declaration_order()) {
+                const auto* record = app.interactions().find(interaction);
+                if (record && record->eligible && app.interactions().branch_active(interaction) &&
+                    owns(app, record->component, first_tag)) {
+                    click(record->component);
+                    removed_tag = true;
                     break;
                 }
             }
+            check(removed_tag, "native Multiple tag has no pointer action");
+            check(select.snapshot(multiple).values == SelectValues{SelectValue{u8"service"}},
+                  "native Multiple tag removal failed");
+            const auto authority = pages.target("gallery.select.authority");
+            reveal(authority);
+            activate(authority);
             render();
-            const auto popup = app.services().select().snapshot(*selected);
-            check(popup.visible, "native Select popup did not open");
+            reveal(multiple);
+            replace_text(multiple, u8"桌面");
+            press(input::Key::down);
+            press(input::Key::enter);
+            check(select.snapshot(multiple).values == SelectValues{SelectValue{u8"service"}} &&
+                      has_text(u8"已拒绝多选"),
+                  "native Multiple controlled refusal failed");
+            press(input::Key::escape);
+            const auto tags = pages.target("gallery.select.tags");
+            std::cout << "select_native_step=tags\n" << std::flush;
+            reveal(tags);
+            replace_text(tags, u8"中文；英文,尾部");
+            check(select.snapshot(tags).values == SelectValues{SelectValue{u8"中文"}, SelectValue{u8"英文"}} &&
+                      select.snapshot(tags).query == String{u8"尾部"},
+                  "native Tags UTF8 tokenization failed");
+            press(input::Key::enter);
+            check(select.snapshot(tags).values.size() == 3 && has_text(u8"标签数量=3"),
+                  "native Tags Enter callback failed");
+            activate(select.snapshot(tags).tags.front());
+            render();
+            check(select.snapshot(tags).values.size() == 2, "native custom tag removal failed");
+            press(input::Key::escape);
+
+            const auto virtual_list = pages.target("gallery.select.virtual");
+            std::cout << "select_native_step=virtual\n" << std::flush;
+            reveal(virtual_list);
+            activate(pages.target("gallery.select.prefix"));
+            render();
+            check(has_text(u8"已执行前缀操作"), "native Select interactive affix callback failed");
+            focus_editor(select.snapshot(virtual_list).selector);
+            press(input::Key::down);
+            press(input::Key::end);
+            const auto window = select.snapshot(virtual_list);
+            check(window.visible && window.active == 9999 && window.rows.size() <= 10 && window.scroll > 0 &&
+                      std::ranges::find(window.row_indices, 9999) != window.row_indices.end(),
+                  "native Select End reveal failed");
             const auto offset = pages.snapshot().document.offset;
-            events.inject_scroll_at(popup.popup.x + popup.popup.width - 4, popup.popup.y + 4, -0.25F);
-            check(pages.snapshot().document.offset == offset, "native popup wheel leaked to document");
+            const auto wheel_row = bounds(window.rows.back());
+            events.inject_scroll_at(wheel_row.x + wheel_row.width / 2, wheel_row.y + wheel_row.height / 2, -2);
             render();
+            check(select.snapshot(virtual_list).scroll == window.scroll,
+                  "native Select custom footer made bottom wheel jump backwards");
+            events.inject_scroll_at(wheel_row.x + wheel_row.width / 2, wheel_row.y + wheel_row.height / 2, 2);
+            render();
+            check(select.snapshot(virtual_list).scroll < window.scroll &&
+                      select.snapshot(virtual_list).rows.size() <= 10 && pages.snapshot().document.offset == offset,
+                  "native Select virtual wheel leaked/unbounded");
+            const auto note = replace_text(pages.target("gallery.select.popup-note"), u8"saved Select draft");
+            check(select.snapshot(virtual_list).visible, "native Select custom popup lost focus ownership");
+            press(input::Key::escape);
+            focus_editor(select.snapshot(virtual_list).selector);
+            press(input::Key::down);
+            check(inputs.display_snapshot(note.component).text == "saved Select draft",
+                  "native Select lost popup draft");
+            press(input::Key::escape);
+
+            const auto async = pages.target("gallery.select.async");
+            std::cout << "select_native_step=async\n" << std::flush;
+            reveal(async);
+            replace_text(async, u8"old");
+            replace_text(async, u8"latest");
+            check(select.snapshot(async).pending, "native Select source query missing");
+            click(pages.target("gallery.select.deliver"));
+            const auto delivered = select.snapshot(async);
+            check(!delivered.pending && delivered.total_rows == 1 && has_text(u8"latest · synthetic") &&
+                      !has_text(u8"old · synthetic"),
+                  "native Select stale/latest delivery failed");
+            click(delivered.rows.front());
+            check(select.snapshot(async).value == SelectSelection{SelectValue{u8"latest · synthetic"}},
+                  "native Select async single compatibility callback failed");
+            replace_text(async, u8"retired pending");
+            capture_editor(select.snapshot(async).selector);
+            previous_session = inputs.sessions().active();
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "native Select retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(std::ranges::none_of(select.mounted(), [&](auto id) { return owns(app, id, root); }) &&
+                      !app.components().contains(root) && !app.components().contains(note.component) &&
+                      !inputs.sessions().active().valid() && !captured() &&
+                      !inputs.editors().find(previous_session.owner),
+                  "native Select retirement retained resources");
+            std::cout << "select_native=passed grouped_multiple_callback=true tag_removal=true utf8_tokens=true "
+                         "controlled_refusal=true interactive_affix=true popup_draft=true virtual_end_wheel=true "
+                         "synthetic_latest_callback=true retired=true\n";
         }
         if (route.component_identity == "ant.component.space") {
             auto header_route = route;

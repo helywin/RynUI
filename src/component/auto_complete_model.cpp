@@ -88,17 +88,28 @@ void AutoCompleteModel::configure(AutoCompleteFilter filter, bool active_first) 
 void AutoCompleteModel::refilter(std::optional<String> active_key) {
     filtered_.clear();
     active_.reset();
+    std::optional<std::size_t> group;
+    bool group_added = false;
     for (std::size_t i = 0; i < options_.size(); ++i) {
+        if (options_[i].group) {
+            group = i;
+            group_added = false;
+            continue;
+        }
         if (filter_.accepts(query_.view(), options_[i])) {
+            if (group && !group_added) {
+                filtered_.push_back(*group);
+                group_added = true;
+            }
             filtered_.push_back(i);
-            if (!options_[i].disabled && active_key == std::optional{options_[i].key}) {
+            if (!options_[i].disabled && !options_[i].group && active_key == std::optional{options_[i].key}) {
                 active_ = i;
             }
         }
     }
     if (!active_ && active_first_) {
         for (auto i : filtered_) {
-            if (!options_[i].disabled) {
+            if (!options_[i].disabled && !options_[i].group) {
                 active_ = i;
                 break;
             }
@@ -107,7 +118,7 @@ void AutoCompleteModel::refilter(std::optional<String> active_key) {
 }
 
 bool AutoCompleteModel::activate(std::size_t index) {
-    if (index >= options_.size() || options_[index].disabled ||
+    if (index >= options_.size() || (options_[index].disabled || options_[index].group) ||
         std::ranges::find(filtered_, index) == filtered_.end() || active_ == index) {
         return false;
     }
@@ -124,7 +135,7 @@ bool AutoCompleteModel::move(int direction) {
                                        : static_cast<int>(it - filtered_.begin());
     for (std::size_t n = 0; n < filtered_.size(); ++n) {
         index = (index + direction + static_cast<int>(filtered_.size())) % static_cast<int>(filtered_.size());
-        if (!options_[filtered_[index]].disabled) {
+        if (!options_[filtered_[index]].disabled && !options_[filtered_[index]].group) {
             return activate(filtered_[index]);
         }
     }

@@ -42,6 +42,43 @@ int main() {
     auto literal_value = ryn::SelectProps{}.value(u8"one").notFoundContent(u8"No results");
     auto number_value = ryn::SelectProps{}.value(42);
     auto empty_value = ryn::SelectProps{}.value(std::nullopt);
+    ryn::Signal<ryn::SelectValues> multi{ryn::SelectValues{ryn::SelectValue{42}}};
+    auto complete = ryn::SelectProps{}
+                        .mode(ryn::SelectMode::Tags)
+                        .values(multi)
+                        .onValuesChange([](ryn::SelectValues) {})
+                        .groups(std::vector<ryn::SelectOptionGroup>{{u8"group", u8"Group", {{42, u8"Answer"}}}})
+                        .tokenSeparators({u8",", u8"；"})
+                        .maxTagCount(std::size_t{2})
+                        .responsiveMaxTagCount()
+                        .maxTagTextLength(std::size_t{8})
+                        .maxTagPlaceholder([](const ryn::SelectValues&) { return ryn::String{u8"More"}; })
+                        .maxCount(std::size_t{4})
+                        .filterOption(ryn::SelectFilter{false})
+                        .optionFilterProp(ryn::SelectOptionField::Value)
+                        .optionLabelProp(ryn::SelectOptionField::Label)
+                        .filterSort(ryn::SelectSort{[](const auto&, const auto&, ryn::StringView) { return false; }})
+                        .optionRender(ryn::SelectOptionRenderer{[](ryn::SelectRenderInfo) {}})
+                        .tagRender(ryn::SelectTagRenderer{[](ryn::SelectRenderInfo) {}})
+                        .labelRender(ryn::SelectLabelRenderer{[](ryn::SelectRenderInfo) {}})
+                        .popupRender(ryn::SelectPopupRenderer{[](std::function<void()> origin) { origin(); }})
+                        .source(ryn::SelectSource{})
+                        .searchValue(ryn::String{})
+                        .autoClearSearchValue(false)
+                        .hideSelected()
+                        .virtualList()
+                        .direction(ryn::TextDirection::RightToLeft)
+                        .motion()
+                        .placement(ryn::SelectPlacement::TopRight)
+                        .popupMatchSelectWidth(false)
+                        .popupWidth(320.0F)
+                        .onInputKeyDown([](ryn::SelectKeyEvent) { return false; });
+    auto labeled = ryn::SelectProps{}
+                       .labeledValue(ryn::SelectLabeledSelection{{42, u8"Custom"}})
+                       .onLabeledChange([](ryn::SelectLabeledValues) {});
+    static_assert(!std::is_convertible_v<ryn::SelectTagRenderer, ryn::SelectOptionRenderer>);
+    static_cast<void>(complete);
+    static_cast<void>(labeled);
     static_cast<void>(props);
     static_cast<void>(defaults);
     static_cast<void>(string_value);

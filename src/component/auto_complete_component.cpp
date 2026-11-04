@@ -1,5 +1,6 @@
 #include "component/auto_complete_component.hpp"
 #include "component/auto_complete_model.hpp"
+#include "component/option_list_support.hpp"
 #include "component/input_component.hpp"
 #include "component/input_affix_action.hpp"
 #include "component/popover_component.hpp"
@@ -52,6 +53,28 @@ struct State final {
     AutoCompleteModel model;
     runtime::NodeId node;
     runtime::ComponentId input;
+    runtime::ComponentId editor_root;
+    runtime::ComponentId popup_body;
+    runtime::ComponentId empty_root;
+    Signal<String> not_found{String{}};
+    Signal<IconSource> clear_icon{IconSource{IconName::CloseCircleFilled}};
+    std::optional<AutoCompletePrefix> prefix;
+    std::optional<AutoCompleteSuffix> suffix;
+    AutoCompleteEditor editor_render;
+    AutoCompletePopupRenderer popup_render;
+    AutoCompleteSource source;
+    std::shared_ptr<AsyncOptionsSession<AutoCompleteOption>> async{
+        std::make_shared<AsyncOptionsSession<AutoCompleteOption>>()};
+    OptionPopupMotion motion;
+    Signal<TextDirection> direction{TextDirection::Auto};
+    bool animate{};
+    bool virtual_list{true};
+    bool match_width{true};
+    float popup_width{};
+    bool pending{};
+    bool auto_focus{};
+    std::function<void(String)> on_load_error;
+    std::function<void(float)> on_scroll;
     runtime::ComponentId popup;
     runtime::ComponentId list;
     runtime::ComponentId clear_wrapper;
@@ -82,6 +105,7 @@ struct State final {
     Signal<InputVariant> variant{InputVariant::Outlined};
     Signal<InputStatus> status{InputStatus::Default};
     std::vector<runtime::ComponentId> rows;
+    std::vector<runtime::ComponentId> parked;
     AutoCompleteRef reference;
     std::optional<Prop<String>> authority;
     Signal<String> display{String{}};
@@ -101,6 +125,7 @@ struct State final {
     bool closed_on_blur{};
     bool reveal_active{true};
     bool needs_layout{true};
+    std::uint64_t layout_generation{};
     float list_height{256};
     float scroll{};
     runtime::Rect anchor;
@@ -164,6 +189,19 @@ bool descendant(WindowComponentServices& services, runtime::ComponentId child, r
         }
     }
     return false;
+}
+
+// A virtual row may own the active native editor. Move focus within the
+// compound control before hiding it, so scrolling ends preedit without closing the list.
+void restore_row_focus(WindowComponentServices& services, runtime::ComponentId owner, runtime::ComponentId row,
+                       input::InteractionId editor) {
+    const auto focused = services.focus().state().focused;
+    const auto* record = focused ? services.interactions().find(*focused) : nullptr;
+    if (record && descendant(services, record->component, row)) {
+        RetireOnFailure rollback{services, owner};
+        services.focus().defer_focus(editor, input::FocusModality::keyboard);
+        rollback.complete = true;
+    }
 }
 
 // All callbacks return through this exact owner and private-region generation check.
@@ -302,7 +340,10 @@ runtime::ComponentId group(WindowComponentServices& services, bool leaf = false)
     } else {
         services.layout().set_layout(node, layout::BoxLayout{});
     }
-    build.on_resource_cleanup(id, [&services, node] { services.layout().remove_layout(node); });
+    build.on_resource_cleanup(id, [&services, node, id] {
+        services.interactions().set_input_blocked(id, false);
+        services.layout().remove_layout(node);
+    });
     return id;
 }
 
@@ -342,9 +383,15 @@ AutoCompleteSnapshot AutoCompleteComponentHost::snapshot(runtime::ComponentId id
     if (!s) {
         throw std::out_of_range("stale AutoComplete");
     }
-    return {s->input,          s->popup,     s->rows, s->model.value(), s->model.query(), s->display.get(),
-            s->model.active(), s->bounds,    s->clip, s->scroll,        s->visible,       s->model.backfilled(),
-            s->open,           s->suppressed};
+    AutoCompleteSnapshot result{
+        s->input,  s->popup, s->rows,   s->model.value(), s->model.query(),      s->display.get(), s->model.active(),
+        s->bounds, s->clip,  s->scroll, s->visible,       s->model.backfilled(), s->open,          s->suppressed};
+    for (auto child : s->rows) {
+        result.row_indices.push_back(services_->components().state<Row>(child)->index);
+    }
+    result.total_rows = s->model.filtered().size();
+    result.pending = s->pending;
+    return result;
 }
 
 bool AutoCompleteComponentHost::editable(runtime::ComponentId id, bool composition) const {
@@ -369,10 +416,29 @@ void AutoCompleteComponentHost::refresh(runtime::ComponentId id, bool geometry) 
         auto* live = checked(*services_, id);
         return live && live->refresh_generation == generation ? live : nullptr;
     };
-    const bool visible = s->open && !s->suppressed && !s->model.filtered().empty() && editable(id, false);
+    const bool visible =
+        s->open && !s->suppressed &&
+        (!s->model.filtered().empty() || (!s->model.options().empty() && !s->not_found.get().empty())) &&
+        editable(id, false);
     const bool changed = visible != s->visible;
     s->visible = visible;
+    if (changed) {
+        if (visible) {
+            s->motion.begin(services_->components().theme_scope(id)->snapshot(), services_->motion_preference(),
+                            services_->animation_time(), s->animate);
+            if (s->motion.start) {
+                services_->request_frame();
+            }
+        } else {
+            s->motion.stop();
+        }
+    }
+    services_->nodes().require(services_->components().root(s->popup)).content_opacity = s->motion.opacity;
     if (services_->components().set_branch_active(s->popup, visible)) {
+        services_->mark_scene_structure_dirty();
+    }
+    if (s->empty_root.valid() &&
+        services_->components().set_branch_active(s->empty_root, s->model.filtered().empty())) {
         services_->mark_scene_structure_dirty();
     }
     auto clear_visible = s->clear_visible;
@@ -411,11 +477,14 @@ void AutoCompleteComponentHost::refresh(runtime::ComponentId id, bool geometry) 
         row->index = static_cast<std::size_t>(found - s->model.options().begin());
         const auto option = *found;
         const bool shown = std::ranges::find(s->model.filtered(), row->index) != s->model.filtered().end();
-        boundaries.emplace_back(child, !visible || !shown || option.disabled);
+        const auto& node = services_->nodes().require(row->node);
+        const bool on_screen =
+            node.place_count == 0 || s->clip.height <= 0 || intersect(node.bounds, s->clip).height > 0;
+        boundaries.emplace_back(child, !visible || !shown || !on_screen || option.disabled || option.group);
         if (services_->components().set_branch_active(child, shown)) {
             services_->mark_scene_structure_dirty();
         }
-        services_->interactions().set_eligible(row->interaction, visible && shown && !option.disabled);
+        services_->interactions().set_eligible(row->interaction, visible && shown && !option.disabled && !option.group);
         const bool selected = option.value == s->model.value();
         auto label = row->label;
         auto color = row->color;
@@ -474,6 +543,12 @@ void AutoCompleteComponentHost::request_open(runtime::ComponentId id, bool open,
     if (open) {
         s->suppressed = false;
     } else {
+        const auto async = s->async;
+        s->pending = false;
+        async->cancel();
+        if (!checked(*services_, id)) {
+            return;
+        }
         if (!change_model(*services_, id,
                           [](auto& model) {
                               model.restore();
@@ -499,6 +574,13 @@ void AutoCompleteComponentHost::suppress(runtime::ComponentId id) {
         return;
     }
     s->suppressed = true;
+    const auto async = s->async;
+    s->pending = false;
+    async->cancel();
+    s = checked(*services_, id);
+    if (!s) {
+        return;
+    }
     s->scroll = 0;
     if (!change_model(*services_, id,
                       [](auto& model) {
@@ -579,17 +661,44 @@ void AutoCompleteComponentHost::publish(runtime::ComponentId id, String value, s
     }
     if (checked(*services_, id)) {
         request_open(id, !option && !clear);
+        if (!option && !clear && checked(*services_, id)) {
+            load(id, value);
+        } else if (auto* live = checked(*services_, id)) {
+            live->pending = false;
+            auto async = live->async;
+            async->cancel();
+        }
     }
 }
 
 void AutoCompleteComponentHost::choose(runtime::ComponentId id, std::size_t index) {
     const auto* s = checked(*services_, id);
-    if (!s || !s->visible || index >= s->model.options().size() || s->model.options()[index].disabled ||
+    if (!s || !s->visible || index >= s->model.options().size() ||
+        (s->model.options()[index].disabled || s->model.options()[index].group) ||
         std::ranges::find(s->model.filtered(), index) == s->model.filtered().end()) {
         return;
     }
-    auto option = s->model.options()[index];
-    publish(id, option.value, option);
+    RetireOnFailure rollback{*services_, id};
+    const auto key = s->model.options()[index].key;
+    const auto focus = services_->focus().state().focused;
+    const auto* focused = focus ? services_->interactions().find(*focus) : nullptr;
+    if (focused && descendant(*services_, focused->component, s->popup)) {
+        services_->focus().defer_focus(s->input_hit, input::FocusModality::keyboard);
+    }
+    s = checked(*services_, id);
+    if (!s) {
+        return;
+    }
+    const auto found = std::ranges::find(s->model.options(), key, &AutoCompleteOption::key);
+    if (found != s->model.options().end()) {
+        const auto current = static_cast<std::size_t>(found - s->model.options().begin());
+        if (!found->disabled && !found->group &&
+            std::ranges::find(s->model.filtered(), current) != s->model.filtered().end()) {
+            const auto option = *found;
+            publish(id, option.value, option);
+        }
+    }
+    rollback.complete = true;
 }
 
 void AutoCompleteComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
@@ -644,11 +753,12 @@ void AutoCompleteComponentHost::mount_label(runtime::ComponentId id, runtime::Co
     const auto label_signal = row->label;
     const auto color = row->color;
     const auto font = row->font;
-    build.mount_slot_with_semantic_text_style(label_root, Content{[rich, label_signal] {
+    const auto direction = checked(*services_, id)->direction;
+    build.mount_slot_with_semantic_text_style(label_root, Content{[rich, label_signal, direction] {
                                                   if (const auto* label = rich.content()) {
                                                       SlotContentAccess::function (*label)();
                                                   } else {
-                                                      Text(TextProps{}.content(label_signal));
+                                                      Text(TextProps{}.content(label_signal).direction(direction));
                                                   }
                                               }},
                                               color, font);
@@ -760,17 +870,33 @@ void AutoCompleteComponentHost::reconcile_rows(runtime::ComponentId id) {
         const auto revision = s->model_revision;
         const auto options = s->model.options();
         auto previous = s->rows;
+        previous.insert(previous.end(), s->parked.begin(), s->parked.end());
+        s->parked.clear();
+        std::vector<std::size_t> desired;
+        if (!s->virtual_list || !s->match_width || options.size() <= 32) {
+            for (std::size_t i = 0; i < options.size(); ++i) {
+                desired.push_back(i);
+            }
+        } else {
+            const auto& metrics = services_->components().theme_scope(id)->snapshot().auto_complete().metrics;
+            const auto filtered = s->model.filtered();
+            const auto range =
+                windowed_range(filtered.size(), s->scroll, s->clip.height > 0 ? s->clip.height : s->list_height,
+                               metrics.option_height, true);
+            for (auto p = range.first; p < range.end; ++p) {
+                desired.push_back(filtered[p]);
+            }
+        }
         std::vector<runtime::ComponentId> next;
         bool restart = false;
-        for (std::size_t i = 0; i < options.size(); ++i) {
+        for (auto i : desired) {
             const auto option = options[i];
             const auto found = std::ranges::find_if(previous, [&](auto child) {
                 const auto* row = services_->components().state<Row>(child);
                 return row && row->key == option.key;
             });
             if (found == previous.end()) {
-                const auto list = s->list;
-                mount_content(*services_, list, Content{[this, id, i] { mount_row(id, i); }}, mount_depth_ != 0);
+                mount_content(*services_, s->list, Content{[this, id, i] { mount_row(id, i); }}, mount_depth_ != 0);
                 s = checked(*services_, id);
                 if (!s) {
                     return;
@@ -818,6 +944,27 @@ void AutoCompleteComponentHost::reconcile_rows(runtime::ComponentId id) {
         }
         s->rows = std::move(next);
         for (auto child : previous) {
+            auto* row = services_->components().state<Row>(child);
+            if (row && row->rich.content() &&
+                std::ranges::find(options, row->key, &AutoCompleteOption::key) != options.end()) {
+                s->parked.push_back(child);
+                restore_row_focus(*services_, id, child, s->input_hit);
+                s = checked(*services_, id);
+                if (!s) {
+                    return;
+                }
+                row = services_->components().state<Row>(child);
+                if (!row) {
+                    return;
+                }
+                services_->components().set_branch_active(child, false);
+                services_->interactions().set_eligible(row->interaction, false);
+                services_->set_input_blocked(child, true);
+                if (!checked(*services_, id)) {
+                    return;
+                }
+                continue;
+            }
             forget_region(*services_, id, child);
             services_->set_input_blocked(child, true);
             if (!checked(*services_, id)) {
@@ -835,6 +982,347 @@ void AutoCompleteComponentHost::reconcile_rows(runtime::ComponentId id) {
         }
     } while (s->rows_dirty);
     s->reconciling = false;
+    rollback.complete = true;
+}
+
+void AutoCompleteComponentHost::mount_popup(runtime::ComponentId id) {
+    auto* s = checked(*services_, id);
+    if (!s) {
+        return;
+    }
+    auto& build = runtime::require_component_build_context();
+    s->popup_body = group(*services_);
+    remember_region(*services_, id, s->popup_body);
+    build.mount_slot(
+        s->popup_body, Content{[this, id] {
+            auto* s = checked(*services_, id);
+            if (!s) {
+                return;
+            }
+            const auto render = s->popup_render;
+            render([this, id] {
+                auto* s = checked(*services_, id);
+                if (!s) {
+                    return;
+                }
+                if (s->list.valid()) {
+                    throw std::invalid_argument("AutoComplete popupRender must mount origin exactly once");
+                }
+                s->list = group(*services_, true);
+                remember_region(*services_, id, s->list);
+                services_->nodes().require(services_->components().root(s->list)).clip_content = true;
+                runtime::require_component_build_context().mount_slot(
+                    s->list, Content{[this, id] {
+                        auto* s = checked(*services_, id);
+                        if (!s) {
+                            return;
+                        }
+                        s->empty_root = group(*services_);
+                        remember_region(*services_, id, s->empty_root);
+                        runtime::require_component_build_context().mount_slot(
+                            s->empty_root, Content{[label = s->not_found, direction = s->direction] {
+                                Text(TextProps{}.content(label).direction(direction).tone(TextTone::Secondary));
+                            }});
+                    }});
+            });
+            if (const auto* live = checked(*services_, id); live && !live->list.valid()) {
+                throw std::invalid_argument("AutoComplete popupRender must mount origin exactly once");
+            }
+        }});
+}
+
+void AutoCompleteComponentHost::rebuild_popup(runtime::ComponentId id) {
+    auto* s = checked(*services_, id);
+    if (!s || s->mounting) {
+        return;
+    }
+    RetireOnFailure rollback{*services_, id};
+    const auto body = s->popup_body;
+    const auto popup = s->popup;
+    // A changed popup renderer retires exactly its owned popup body, including the origin.
+    // The editor and its IME/draft ownership remain untouched.
+    s->private_ready = false;
+    forget_region(*services_, id, body);
+    s->rows.clear();
+    s->parked.clear();
+    s->empty_root = {};
+    s->list = {};
+    s->popup_body = {};
+    services_->set_input_blocked(body, true);
+    services_->destroy(body);
+    if (!checked(*services_, id)) {
+        return;
+    }
+    services_->append_slot(popup, Content{[this, id] { mount_popup(id); }});
+    s = checked(*services_, id);
+    if (!s) {
+        return;
+    }
+    s->private_ready = true;
+    reconcile_rows(id);
+    refresh(id);
+    rollback.complete = true;
+}
+
+void AutoCompleteComponentHost::mount_editor(runtime::ComponentId id) {
+    auto& services = *services_;
+    auto* inputs = services.input_runtime();
+    auto* state = checked(services, id);
+    if (!state) {
+        return;
+    }
+    auto& s = *state;
+    auto& build = runtime::require_component_build_context();
+    const auto prefix = s.prefix;
+    const auto suffix = s.suffix;
+    Theme(ThemeProps{}.config(s.input_theme), ThemeContent{[&] {
+              std::optional<InputPrefix> input_prefix;
+              if (prefix) {
+                  input_prefix = InputPrefix{[&] {
+                      s.affix_color = runtime::require_component_build_context().semantic_foreground();
+                      s.affix_font = runtime::require_component_build_context().semantic_typography();
+                      s.prefix_region = group(services);
+                      remember_region(services, id, s.prefix_region);
+                  }};
+              }
+              // Capture the main Input before rich options can mount further editors.
+              const auto count = inputs->mounted_inputs().size();
+              auto input_props = InputProps{}
+                                     .value(s.display)
+                                     .placeholder(s.placeholder)
+                                     .disabled(s.disabled)
+                                     .readOnly(s.read_only)
+                                     .size(s.size)
+                                     .variant(s.variant)
+                                     .status(s.status)
+                                     .direction(s.direction)
+                                     .ref(s.reference)
+                                     .autoFocus(s.auto_focus)
+                                     .onChange([this, id](String text) { publish(id, std::move(text), {}); })
+                                     .onFocus([this, id] {
+                                         const auto* s = checked(*services_, id);
+                                         if (!s) {
+                                             return;
+                                         }
+                                         const auto callback = s->on_focus;
+                                         if (callback) {
+                                             callback();
+                                         }
+                                         (void)checked(*services_, id);
+                                     })
+                                     .onBlur([this, id] {
+                                         auto* s = checked(*services_, id);
+                                         if (!s || !services_->components().scope(id).active()) {
+                                             return;
+                                         }
+                                         const auto callback = s->on_blur;
+                                         const auto focus = services_->focus().state().focused;
+                                         const auto* record = focus ? services_->interactions().find(*focus) : nullptr;
+                                         const bool internal =
+                                             record && descendant(*services_, record->component, s->popup);
+                                         if (!internal) {
+                                             s->closed_on_blur = true;
+                                             request_open(id, false);
+                                         }
+                                         if (checked(*services_, id) && callback) {
+                                             callback();
+                                         }
+                                         (void)checked(*services_, id);
+                                     });
+              const auto input_suffix = InputSuffix{[&] {
+                  s.affix_color = runtime::require_component_build_context().semantic_foreground();
+                  s.affix_font = runtime::require_component_build_context().semantic_typography();
+                  s.clear_wrapper = group(services);
+                  remember_region(services, id, s.clear_wrapper);
+                  const auto node = build.root(s.clear_wrapper);
+                  const auto fragment =
+                      build.register_scene_fragment(s.clear_wrapper, runtime::SceneFragmentPlacement::before_children);
+                  graphics::QuadInstance initial;
+                  initial.opacity = 0;
+                  component::RetainedSurfaceEffects effects;
+                  effects.focus_enabled = false;
+                  s.clear_background = services.surfaces().create_surface(s.clear_wrapper, node, fragment,
+                                                                          std::span{&initial, 1}, effects);
+                  build.on_resource_cleanup(s.clear_wrapper, [&services, surface = s.clear_background] {
+                      services.surfaces().destroy(surface);
+                  });
+                  build.mount_slot(s.clear_wrapper, Content{[&] {
+                                       mount_input_affix_action(
+                                           services, s.clear_icon, s.action_disabled,
+                                           [this, id] { publish(id, {}, {}, true); }, s.clear_visible, false, false);
+                                   }});
+                  if (suffix) {
+                      s.suffix_region = group(services);
+                      remember_region(services, id, s.suffix_region);
+                  }
+              }};
+              TextAreaProps text_area;
+              text_area.common_ = input_props.common_;
+              text_area.clearIcon(s.clear_icon).allowClear(s.clear_visible).onClear([this, id] {
+                  publish(id, {}, {}, true);
+              });
+              const auto render = s.editor_render;
+              render({std::move(input_props), std::move(text_area), input_prefix, input_suffix});
+              if (!checked(services, id)) {
+                  return;
+              }
+              if (!s.clear_wrapper.valid()) {
+                  s.clear_wrapper = group(services);
+                  remember_region(services, id, s.clear_wrapper);
+              }
+              if (inputs->mounted_inputs().size() != count + 1) {
+                  throw std::invalid_argument("AutoComplete custom editor must mount exactly one bound Input");
+              }
+              const auto input = inputs->mounted_inputs()[count];
+              if (!s.reference.bound()) {
+                  throw std::invalid_argument("AutoComplete custom editor must preserve supplied ref");
+              }
+              s.input = input.component;
+              s.input_node = input.node;
+              s.input_hit = input.interaction;
+              s.editor = input.editor;
+              remember_region(services, id, s.input);
+              for (auto hit : services.interactions().declaration_order()) {
+                  const auto* record = services.interactions().find(hit);
+                  if (record && hit != s.input_hit && record->focusable &&
+                      ((s.prefix_region.valid() && descendant(services, record->component, s.prefix_region)) ||
+                       (s.suffix_region.valid() && descendant(services, record->component, s.suffix_region)))) {
+                      throw std::invalid_argument("AutoComplete prefix/suffix must be non-interactive");
+                  }
+              }
+              inputs->configure_form_reset(s.input, [this, id, editor = s.editor] {
+                  auto* s = checked(*services_, id);
+                  if (!s || s->editor != editor || !services_->components().scope(id).active()) {
+                      return;
+                  }
+                  const auto async = s->async;
+                  s->pending = false;
+                  async->cancel();
+                  s = checked(*services_, id);
+                  if (!s) {
+                      return;
+                  }
+                  const auto authority = s->authority;
+                  if (authority) {
+                      auto accepted = read_prop(*authority);
+                      if (!change_model(*services_, id,
+                                        [&](auto& model) { return model.reconcile(std::move(accepted)); })) {
+                          return;
+                      }
+                  }
+                  if (!change_model(*services_, id,
+                                    [](auto& model) {
+                                        model.restore();
+                                        return true;
+                                    }) ||
+                      !display_model(*services_, id)) {
+                      return;
+                  }
+                  s = checked(*services_, id);
+                  if (!s || s->editor != editor) {
+                      return;
+                  }
+                  s->scroll = 0;
+                  refresh(id);
+              });
+          }});
+}
+
+void AutoCompleteComponentHost::load(runtime::ComponentId id, String query) {
+    auto* s = checked(*services_, id);
+    if (!s || !s->source || !editable(id, false)) {
+        return;
+    }
+    const auto source = s->source;
+    const auto async = s->async;
+    s->pending = true;
+    RetireOnFailure rollback{*services_, id};
+    async->start(source, std::move(query), [this, id](AsyncOptionsResult<AutoCompleteOption> result) {
+        auto* s = checked(*services_, id);
+        if (!s || !editable(id, false) || s->suppressed) {
+            return;
+        }
+        RetireOnFailure rollback{*services_, id};
+        s->pending = false;
+        if (!result.error.empty()) {
+            const auto callback = s->on_load_error;
+            if (callback) {
+                callback(std::move(result.error));
+            }
+        } else {
+            if (change_model(*services_, id,
+                             [&](auto& model) { return model.set_options(std::move(result.options)); })) {
+                reconcile_rows(id);
+                refresh(id);
+            }
+        }
+        if (checked(*services_, id)) {
+            services_->request_frame();
+        }
+        rollback.complete = true;
+    });
+    rollback.complete = true;
+}
+
+void AutoCompleteComponentHost::rebuild_editor(runtime::ComponentId id) {
+    auto* s = checked(*services_, id);
+    if (!s || s->mounting) {
+        return;
+    }
+    RetireOnFailure rollback{*services_, id};
+    const auto async = s->async;
+    s->pending = false;
+    async->cancel();
+    if (!change_model(*services_, id,
+                      [](auto& model) {
+                          model.restore();
+                          return true;
+                      }) ||
+        !display_model(*services_, id)) {
+        return;
+    }
+    s = checked(*services_, id);
+    if (!s) {
+        return;
+    }
+    const auto root = s->editor_root;
+    const bool focused = services_->focus().state().focused == s->input_hit;
+    const auto children_span = services_->components().children(root);
+    const std::vector<runtime::ComponentId> children{children_span.begin(), children_span.end()};
+    for (auto child : std::vector<runtime::ComponentId>{children.begin(), children.end()}) {
+        forget_region(*services_, id, child);
+        services_->components().scope(child).on_cleanup(
+            [services = services_, child] { services->interactions().set_input_blocked(child, false); });
+        services_->set_input_blocked(child, true);
+        if (!checked(*services_, id)) {
+            return;
+        }
+    }
+    s = checked(*services_, id);
+    if (!s) {
+        return;
+    }
+    s->private_ready = false;
+    s->input = {};
+    s->input_node = {};
+    s->input_hit = {};
+    s->editor = {};
+    s->prefix_region = {};
+    s->suffix_region = {};
+    s->clear_wrapper = {};
+    for (auto child : std::vector<runtime::ComponentId>{children.begin(), children.end()}) {
+        services_->destroy(child);
+    }
+    services_->append_slot(root, Content{[this, id] { mount_editor(id); }});
+    s = checked(*services_, id);
+    if (!s) {
+        return;
+    }
+    s->private_ready = true;
+    if (focused) {
+        services_->focus().defer_focus(s->input_hit, input::FocusModality::keyboard);
+    }
+    update_theme(id, true);
     rollback.complete = true;
 }
 
@@ -864,6 +1352,15 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
     });
     build.on_resource_cleanup(id, [&services, id] { services.interactions().set_input_blocked(id, false); });
     s.reference = props.ref_.value_or(AutoCompleteRef{});
+    s.prefix = prefix;
+    s.suffix = suffix;
+    s.auto_focus = props.auto_focus_;
+    s.editor_render = read_prop(props.editor_);
+    s.popup_render = read_prop(props.popup_render_);
+    s.on_load_error = props.on_load_error_;
+    s.on_scroll = props.on_scroll_;
+    const auto async = s.async;
+    build.on_resource_cleanup(id, [async] { async->cancel(); });
     s.authority = props.value_;
     s.open = props.default_open_.value_or(false);
     s.controlled_open = props.open_.has_value();
@@ -882,128 +1379,9 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
     }
     build.mount_slot(
         id, Content{[&] {
-            Theme(ThemeProps{}.config(s.input_theme), ThemeContent{[&] {
-                      std::optional<InputPrefix> input_prefix;
-                      if (prefix) {
-                          input_prefix = InputPrefix{[&] {
-                              s.affix_color = runtime::require_component_build_context().semantic_foreground();
-                              s.affix_font = runtime::require_component_build_context().semantic_typography();
-                              s.prefix_region = group(services);
-                              remember_region(services, id, s.prefix_region);
-                          }};
-                      }
-                      // Capture the main Input before rich options can mount further editors.
-                      const auto count = inputs->mounted_inputs().size();
-                      Input(InputProps{}
-                                .value(s.display)
-                                .placeholder(s.placeholder)
-                                .disabled(s.disabled)
-                                .readOnly(s.read_only)
-                                .size(s.size)
-                                .variant(s.variant)
-                                .status(s.status)
-                                .ref(s.reference)
-                                .autoFocus(props.auto_focus_)
-                                .onChange([this, id](String text) { publish(id, std::move(text), {}); })
-                                .onFocus([this, id] {
-                                    const auto* s = checked(*services_, id);
-                                    if (!s) {
-                                        return;
-                                    }
-                                    const auto callback = s->on_focus;
-                                    if (callback) {
-                                        callback();
-                                    }
-                                    (void)checked(*services_, id);
-                                })
-                                .onBlur([this, id] {
-                                    auto* s = checked(*services_, id);
-                                    if (!s || !services_->components().scope(id).active()) {
-                                        return;
-                                    }
-                                    const auto callback = s->on_blur;
-                                    const auto focus = services_->focus().state().focused;
-                                    const auto* record = focus ? services_->interactions().find(*focus) : nullptr;
-                                    const bool internal = record && descendant(*services_, record->component, s->popup);
-                                    if (!internal) {
-                                        s->closed_on_blur = true;
-                                        request_open(id, false);
-                                    }
-                                    if (checked(*services_, id) && callback) {
-                                        callback();
-                                    }
-                                    (void)checked(*services_, id);
-                                }),
-                            input_prefix, InputSuffix{[&] {
-                                s.affix_color = runtime::require_component_build_context().semantic_foreground();
-                                s.affix_font = runtime::require_component_build_context().semantic_typography();
-                                s.clear_wrapper = group(services);
-                                remember_region(services, id, s.clear_wrapper);
-                                const auto node = build.root(s.clear_wrapper);
-                                const auto fragment = build.register_scene_fragment(
-                                    s.clear_wrapper, runtime::SceneFragmentPlacement::before_children);
-                                graphics::QuadInstance initial;
-                                initial.opacity = 0;
-                                component::RetainedSurfaceEffects effects;
-                                effects.focus_enabled = false;
-                                s.clear_background = services.surfaces().create_surface(
-                                    s.clear_wrapper, node, fragment, std::span{&initial, 1}, effects);
-                                build.on_resource_cleanup(s.clear_wrapper, [&services, surface = s.clear_background] {
-                                    services.surfaces().destroy(surface);
-                                });
-                                build.mount_slot(s.clear_wrapper, Content{[&] {
-                                                     mount_input_affix_action(
-                                                         services, IconSource{IconName::CloseCircleFilled},
-                                                         s.action_disabled, [this, id] { publish(id, {}, {}, true); },
-                                                         s.clear_visible, false, false);
-                                                 }});
-                                if (suffix) {
-                                    s.suffix_region = group(services);
-                                    remember_region(services, id, s.suffix_region);
-                                }
-                            }});
-                      const auto input = inputs->mounted_inputs()[count];
-                      s.input = input.component;
-                      s.input_node = input.node;
-                      s.input_hit = input.interaction;
-                      s.editor = input.editor;
-                      remember_region(services, id, s.input);
-                      for (auto hit : services.interactions().declaration_order()) {
-                          const auto* record = services.interactions().find(hit);
-                          if (record && hit != s.input_hit && record->focusable &&
-                              descendant(services, record->component, s.input)) {
-                              throw std::invalid_argument("AutoComplete prefix/suffix must be non-interactive");
-                          }
-                      }
-                      inputs->configure_form_reset(s.input, [this, id, editor = s.editor] {
-                          auto* s = checked(*services_, id);
-                          if (!s || s->editor != editor || !services_->components().scope(id).active()) {
-                              return;
-                          }
-                          const auto authority = s->authority;
-                          if (authority) {
-                              auto accepted = read_prop(*authority);
-                              if (!change_model(*services_, id,
-                                                [&](auto& model) { return model.reconcile(std::move(accepted)); })) {
-                                  return;
-                              }
-                          }
-                          if (!change_model(*services_, id,
-                                            [](auto& model) {
-                                                model.restore();
-                                                return true;
-                                            }) ||
-                              !display_model(*services_, id)) {
-                              return;
-                          }
-                          s = checked(*services_, id);
-                          if (!s || s->editor != editor) {
-                              return;
-                          }
-                          s->scroll = 0;
-                          refresh(id);
-                      });
-                  }});
+            s.editor_root = group(services);
+            remember_region(services, id, s.editor_root);
+            build.mount_slot(s.editor_root, Content{[this, id] { mount_editor(id); }});
             s.popup = group(services, true);
             remember_region(services, id, s.popup);
             const auto popup_node = build.root(s.popup);
@@ -1024,24 +1402,21 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
                 services.interactions().remove(hit);
                 services.surfaces().destroy(surface);
             });
-            build.mount_slot(s.popup, Content{[&] {
-                                 s.list = group(services, true);
-                                 remember_region(services, id, s.list);
-                                 services.nodes().require(build.root(s.list)).clip_content = true;
-                             }});
+            build.mount_slot(s.popup, Content{[this, id] { mount_popup(id); }});
         }});
     s.private_ready = true;
     services.layout().set_layout(
-        node,
-        layout::ComponentLayout{[this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                                    const auto* live = checked(*services_, id);
-                                    return live ? engine.measure_child(live->input_node, limits) : runtime::Size{};
-                                },
-                                [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect rect) {
-                                    if (const auto* live = checked(*services_, id)) {
-                                        engine.place_child(live->input_node, rect);
-                                    }
-                                }});
+        node, layout::ComponentLayout{
+                  [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                      const auto* live = checked(*services_, id);
+                      return live ? engine.measure_child(services_->components().root(live->editor_root), limits)
+                                  : runtime::Size{};
+                  },
+                  [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect rect) {
+                      if (const auto* live = checked(*services_, id)) {
+                          engine.place_child(services_->components().root(live->editor_root), rect);
+                      }
+                  }});
     mounted_.push_back(id);
     auto& scope = *bindings;
     const auto connect = [&](const auto& prop, auto apply) {
@@ -1056,7 +1431,97 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
         });
         return checked(services, id) != nullptr;
     };
-    if (!connect(props.options_, [this, id](std::vector<AutoCompleteOption> value) {
+    if (!connect(props.clear_icon_,
+                 [this, id](IconSource icon) {
+                     if (const auto* s = checked(*services_, id)) {
+                         auto signal = s->clear_icon;
+                         signal.set(std::move(icon));
+                     }
+                 }) ||
+        !connect(props.not_found_, [this, id](String text) {
+            if (const auto* s = checked(*services_, id)) {
+                auto signal = s->not_found;
+                signal.set(std::move(text));
+                refresh(id);
+            }
+        })) {
+        return;
+    }
+    const auto simple = [&](const auto& prop, auto member) {
+        return connect(prop, [this, id, member](auto value) {
+            if (auto* s = checked(*services_, id)) {
+                s->*member = std::move(value);
+                refresh(id);
+            }
+        });
+    };
+    if (!simple(props.virtual_, &State::virtual_list) || !simple(props.motion_, &State::animate) ||
+        !simple(props.match_width_, &State::match_width)) {
+        return;
+    }
+    if (!connect(props.popup_width_, [this, id](float width) {
+            if (!std::isfinite(width) || width < 0) {
+                throw std::invalid_argument("AutoComplete popupWidth must be finite and nonnegative");
+            }
+            if (auto* s = checked(*services_, id)) {
+                s->popup_width = width;
+                refresh(id);
+            }
+        })) {
+        return;
+    }
+    if (!connect(props.direction_, [this, id](TextDirection direction) {
+            if (direction != TextDirection::Auto && direction != TextDirection::LeftToRight &&
+                direction != TextDirection::RightToLeft) {
+                throw std::invalid_argument("Invalid AutoComplete direction");
+            }
+            if (auto* s = checked(*services_, id)) {
+                auto signal = s->direction;
+                signal.set(direction);
+                refresh(id);
+            }
+        })) {
+        return;
+    }
+    if (!connect(props.editor_, [this, id](AutoCompleteEditor render) {
+            if (auto* s = checked(*services_, id); s && s->editor_render != render) {
+                s->editor_render = std::move(render);
+                rebuild_editor(id);
+            }
+        })) {
+        return;
+    }
+    if (!connect(props.popup_render_, [this, id](AutoCompletePopupRenderer render) {
+            if (auto* s = checked(*services_, id); s && s->popup_render != render) {
+                s->popup_render = std::move(render);
+                rebuild_popup(id);
+            }
+        })) {
+        return;
+    }
+    if (!connect(props.source_, [this, id](AutoCompleteSource source) {
+            if (auto* s = checked(*services_, id); s && s->source != source) {
+                auto async = s->async;
+                s->source = std::move(source);
+                s->pending = false;
+                async->cancel();
+            }
+        })) {
+        return;
+    }
+    if (props.groups_ && !connect(*props.groups_, [this, id](std::vector<AutoCompleteOptionGroup> groups) {
+            std::vector<AutoCompleteOption> options;
+            for (auto& group : groups) {
+                options.push_back({group.key, {}, group.label, true, group.rich_label, true});
+                options.insert(options.end(), group.options.begin(), group.options.end());
+            }
+            if (change_model(*services_, id, [&](auto& model) { return model.set_options(std::move(options)); })) {
+                reconcile_rows(id);
+            }
+        })) {
+        return;
+    }
+    if (!props.groups_ && !connect(props.options_, [this, id](std::vector<AutoCompleteOption> value) {
             const auto changed =
                 change_model(*services_, id, [&](auto& model) { return model.set_options(std::move(value)); });
             if (changed && *changed && display_model(*services_, id)) {
@@ -1275,7 +1740,8 @@ void AutoCompleteComponentHost::mount(const AutoCompleteProps& props, const std:
     for (auto hit : services.interactions().declaration_order()) {
         const auto* record = services.interactions().find(hit);
         if (record && hit != live->input_hit && record->focusable &&
-            descendant(services, record->component, live->input)) {
+            ((live->prefix_region.valid() && descendant(services, record->component, live->prefix_region)) ||
+             (live->suffix_region.valid() && descendant(services, record->component, live->suffix_region)))) {
             throw std::invalid_argument("AutoComplete prefix/suffix must be non-interactive");
         }
     }
@@ -1328,7 +1794,10 @@ void AutoCompleteComponentHost::prepare_auxiliary_layout() {
             if (!s) {
                 continue;
             }
-            const bool visible = s->open && !s->suppressed && !s->model.filtered().empty() && editable(id, false);
+            const bool visible =
+                s->open && !s->suppressed &&
+                (!s->model.filtered().empty() || (!s->model.options().empty() && !s->not_found.get().empty())) &&
+                editable(id, false);
             if (visible != s->visible) {
                 refresh(id);
             }
@@ -1496,7 +1965,7 @@ bool AutoCompleteComponentHost::on_scroll_input(const input::ScrollInputEvent& e
     const auto owner = layer(*services_, record->component);
     for (auto id : mounted_) {
         auto* s = checked(*services_, id);
-        if (!s || !s->visible || owner != std::optional{s->popup} || !inside(s->bounds, event.x, event.y)) {
+        if (!s || !s->visible || owner != std::optional{s->popup} || !inside(s->clip, event.x, event.y)) {
             continue;
         }
         const auto& t = services_->components().theme_scope(id)->snapshot().auto_complete();
@@ -1508,6 +1977,10 @@ bool AutoCompleteComponentHost::on_scroll_input(const input::ScrollInputEvent& e
             s->reveal_active = false;
             s->needs_layout = true;
             services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+            const auto callback = s->on_scroll;
+            if (callback) {
+                callback(next);
+            }
         }
         return true;
     }
@@ -1572,25 +2045,48 @@ void AutoCompleteComponentHost::position_window_layer(runtime::ComponentId id, r
     const auto popup_node = services_->components().root(s->popup);
     auto& engine = services_->layout();
     if (!s->needs_layout && s->anchor == anchor && s->available == available &&
-        services_->nodes().require(popup_node).measure_generation == engine.generation()) {
+        s->layout_generation == engine.generation()) {
         return;
     }
-    const auto filtered = s->model.filtered();
-    const float content = static_cast<float>(filtered.size()) * m.option_height;
-    const float wanted = std::min(s->list_height, content) + 2 * m.popup_padding;
+    const auto revision = s->model_revision;
+    const std::vector<std::size_t> filtered{s->model.filtered().begin(), s->model.filtered().end()};
+    const float content = static_cast<float>(std::max<std::size_t>(1, filtered.size())) * m.option_height;
     const float below =
         std::clamp(available.y + available.height - anchor.y - anchor.height - m.gap, 0.0F, available.height);
     const float above = std::clamp(anchor.y - m.gap - available.y, 0.0F, available.height);
+    const float width = std::min(std::max(anchor.width, s->popup_width), available.width);
+    const float inset = std::min(m.popup_padding, width / 2);
+    const auto list_node = services_->components().root(s->list);
+    const auto body_node = services_->components().root(s->popup_body);
+    engine.set_layout(list_node,
+                      layout::LeafLayout{{std::max(0.0F, width - inset * 2), std::min(s->list_height, content)}});
+    const auto body_size =
+        engine.measure_child(body_node, {std::max(0.0F, width - inset * 2), std::max(0.0F, width - inset * 2), 0,
+                                         std::max(0.0F, std::max(below, above) - inset * 2)});
+    s = checked(*services_, id);
+    if (!s || s->model_revision != revision) {
+        return;
+    }
+    const float wanted = body_size.height + 2 * inset;
     const bool use_above = below < wanted && above > below;
     const float height = std::min(wanted, use_above ? above : below);
-    const float width = std::min(anchor.width, available.width);
-    s->bounds = {std::clamp(anchor.x, available.x, available.x + available.width - width),
-                 std::clamp(use_above ? anchor.y - m.gap - height : anchor.y + anchor.height + m.gap, available.y,
-                            available.y + available.height - height),
-                 width, height};
-    const float inset = std::min(m.popup_padding, std::min(width, height) / 2);
-    s->clip = {s->bounds.x + inset, s->bounds.y + inset, std::max(0.0F, width - 2 * inset),
-               std::max(0.0F, height - 2 * inset)};
+    s->bounds = {
+        std::clamp(s->direction.get() == TextDirection::RightToLeft ? anchor.x + anchor.width - width : anchor.x,
+                   available.x, available.x + available.width - width),
+        std::clamp(use_above ? anchor.y - m.gap - height : anchor.y + anchor.height + m.gap, available.y,
+                   available.y + available.height - height),
+        width, height};
+    (void)engine.measure_child(popup_node, layout::Constraints::fixed(width, height));
+    engine.place_child(popup_node, s->bounds);
+    const runtime::Rect body_bounds{s->bounds.x + inset, s->bounds.y + inset, std::max(0.0F, width - inset * 2),
+                                    std::max(0.0F, height - inset * 2)};
+    (void)engine.measure_child(body_node, layout::Constraints::fixed(body_bounds.width, body_bounds.height));
+    engine.place_child(body_node, body_bounds);
+    s = checked(*services_, id);
+    if (!s || s->model_revision != revision) {
+        return;
+    }
+    s->clip = intersect(services_->nodes().require(list_node).bounds, body_bounds);
     s->scroll = std::clamp(s->scroll, 0.0F, std::max(0.0F, content - s->clip.height));
     if (s->reveal_active && s->model.active()) {
         const auto it = std::ranges::find(filtered, *s->model.active());
@@ -1602,23 +2098,74 @@ void AutoCompleteComponentHost::position_window_layer(runtime::ComponentId id, r
         }
     }
     s->reveal_active = false;
-    (void)engine.measure_child(popup_node, layout::Constraints::fixed(width, height));
-    engine.place_child(popup_node, s->bounds);
-    const auto list_node = services_->components().root(s->list);
-    (void)engine.measure_child(list_node, layout::Constraints::fixed(s->clip.width, s->clip.height));
-    engine.place_child(list_node, s->clip);
-    float y = s->clip.y - s->scroll;
-    for (auto index : filtered) {
-        const auto* row = services_->components().state<Row>(s->rows[index]);
-        const float px = std::min(m.option_padding_inline, s->clip.width / 2);
-        engine.set_layout(row->node, layout::BoxLayout{{px, m.option_padding_block, px, m.option_padding_block}});
-        (void)engine.measure_child(row->node, layout::Constraints::fixed(s->clip.width, m.option_height));
-        engine.place_child(row->node, {s->clip.x, y, s->clip.width, m.option_height});
-        y += m.option_height;
+    if (s->model.options().size() > 32 && s->virtual_list && s->match_width) {
+        reconcile_rows(id);
+        s = checked(*services_, id);
+        if (!s || s->model_revision != revision) {
+            return;
+        }
+        s->reveal_active = false;
+    }
+    const auto empty_node = services_->components().root(s->empty_root);
+    if (filtered.empty()) {
+        (void)engine.measure_child(empty_node, layout::Constraints::fixed(s->clip.width, m.option_height));
+        engine.place_child(empty_node, {s->clip.x, s->clip.y, s->clip.width, m.option_height});
+        s = checked(*services_, id);
+        if (!s) {
+            return;
+        }
+    }
+    const auto rows = s->rows;
+    const auto menu_clip = s->clip;
+    const auto scroll = s->scroll;
+    for (auto child : rows) {
+        const auto* row = services_->components().state<Row>(child);
+        if (!row) {
+            continue;
+        }
+        const auto it = std::ranges::find(filtered, row->index);
+        if (it == filtered.end()) {
+            continue;
+        }
+        const float y = menu_clip.y - scroll + static_cast<float>(it - filtered.begin()) * m.option_height;
+        const float px = std::min(m.option_padding_inline, menu_clip.width / 2);
+        const auto node = row->node;
+        engine.set_layout(node, layout::BoxLayout{{px, m.option_padding_block, px, m.option_padding_block}});
+        (void)engine.measure_child(node, layout::Constraints::fixed(menu_clip.width, m.option_height));
+        if (!checked(*services_, id)) {
+            return;
+        }
+        engine.place_child(node, {menu_clip.x, y, menu_clip.width, m.option_height});
+        s = checked(*services_, id);
+        if (!s) {
+            return;
+        }
+        const auto* live_row = services_->components().state<Row>(child);
+        if (!live_row) {
+            return;
+        }
+        const auto shown = intersect(services_->nodes().require(node).bounds, menu_clip);
+        const bool disabled = s->model.options()[live_row->index].disabled || s->model.options()[live_row->index].group;
+        const bool blocked = shown.width <= 0 || shown.height <= 0 || disabled;
+        if (blocked) {
+            restore_row_focus(*services_, id, child, s->input_hit);
+            if (!checked(*services_, id)) {
+                return;
+            }
+        }
+        services_->set_input_blocked(child, blocked);
+        if (!checked(*services_, id)) {
+            return;
+        }
+    }
+    s = checked(*services_, id);
+    if (!s) {
+        return;
     }
     s->needs_layout = false;
     s->anchor = anchor;
     s->available = available;
+    s->layout_generation = engine.generation();
 }
 
 void AutoCompleteComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) {
@@ -1627,21 +2174,26 @@ void AutoCompleteComponentHost::synchronize_auxiliary_geometry(runtime::Size, ru
         if (!s) {
             continue;
         }
+        services_->nodes().require(services_->components().root(s->popup)).content_opacity = s->motion.opacity;
         const auto& t = services_->components().theme_scope(id)->snapshot().auto_complete();
         const auto clear_bounds = services_->nodes().require(services_->components().root(s->clear_wrapper)).bounds;
         auto clear = quad(clear_bounds, t.colors.clear_background);
         clear.opacity = s->clear_visible.get() ? 1.0F : 0.0F;
-        (void)services_->surfaces().update_surface(s->clear_background, std::span{&clear, 1});
+        if (s->clear_background.valid()) {
+            (void)services_->surfaces().update_surface(s->clear_background, std::span{&clear, 1});
+        }
         if (!s->visible) {
             continue;
         }
         const float radius = std::min({t.metrics.border_radius, s->bounds.width / 2, s->bounds.height / 2});
         auto background = quad(s->bounds, t.colors.popup_background, radius);
+        background.opacity = s->motion.opacity;
         (void)services_->surfaces().update_surface(s->background, std::span{&background, 1});
         component::RetainedSurfaceEffects effects;
         effects.focus_enabled = false;
         effects.shape = {{s->bounds.x, s->bounds.y, s->bounds.width, s->bounds.height}, radius};
         effects.shadows = t.shadow;
+        effects.shadow_opacity = s->motion.opacity;
         effects.ancestor_clip = graphics::EffectClip{1, s->available};
         (void)services_->surfaces().update_effects(s->background, effects);
         for (auto child : s->rows) {
@@ -1652,11 +2204,45 @@ void AutoCompleteComponentHost::synchronize_auxiliary_geometry(runtime::Size, ru
             auto fill =
                 quad(intersect(services_->nodes().require(row->node).bounds, s->clip),
                      selected ? t.colors.option_selected_background : t.colors.option_active_background, radius);
-            fill.opacity = shown && (selected || active) ? 1.0F : 0.0F;
+            fill.opacity = shown && (selected || active) ? s->motion.opacity : 0.0F;
             (void)services_->surfaces().update_surface(row->surface, std::span{&fill, 1});
             services_->scene_composer().set_fragment(row->hit, {}, row->interaction, s->clip);
         }
     }
+}
+
+std::size_t AutoCompleteComponentHost::tick_auxiliary(animation::AnimationTime time) {
+    std::size_t changed = 0;
+    for (auto id : std::vector{mounted_}) {
+        auto* s = checked(*services_, id);
+        if (!s) {
+            continue;
+        }
+        const auto previous = s->motion.opacity;
+        if (!s->visible || !s->animate || services_->motion_preference() == animation::MotionPreference::reduced ||
+            !animation::resolve_motion_policy(services_->components().theme_scope(id)->snapshot()).enabled()) {
+            s->motion.stop();
+        }
+        if (s->motion.tick(time) || previous != s->motion.opacity) {
+            services_->nodes().require(services_->components().root(s->popup)).content_opacity = s->motion.opacity;
+            ++changed;
+            services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
+        }
+    }
+    return changed;
+}
+
+std::optional<animation::AnimationTime> AutoCompleteComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> next;
+    for (auto id : mounted_) {
+        if (const auto* s = checked(*services_, id)) {
+            const auto deadline = s->motion.deadline();
+            if (deadline && (!next || *deadline < *next)) {
+                next = deadline;
+            }
+        }
+    }
+    return next;
 }
 } // namespace ryn::detail
 

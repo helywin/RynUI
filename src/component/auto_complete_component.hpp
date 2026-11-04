@@ -18,6 +18,9 @@ struct AutoCompleteSnapshot final {
     bool backfilled{};
     bool open{};
     bool suppressed{};
+    std::vector<std::size_t> row_indices;
+    std::size_t total_rows{};
+    bool pending{};
 };
 
 class AutoCompleteComponentHost final : public WindowComponentParticipant {
@@ -62,6 +65,13 @@ private:
     void publish(runtime::ComponentId, String, std::optional<AutoCompleteOption>, bool clear = false);
     void choose(runtime::ComponentId, std::size_t);
     void reconcile_rows(runtime::ComponentId);
+    void load(runtime::ComponentId, String);
+    void rebuild_popup(runtime::ComponentId);
+    void mount_popup(runtime::ComponentId);
+    void mount_editor(runtime::ComponentId);
+    void rebuild_editor(runtime::ComponentId);
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
     void mount_row(runtime::ComponentId, std::size_t);
     void mount_label(runtime::ComponentId, runtime::ComponentId);
     WindowComponentServices* services_;

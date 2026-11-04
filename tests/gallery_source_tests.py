@@ -47,6 +47,14 @@ void add_next() {}'''
         if row.theme_path.startswith('ThemeConfig.') and row.theme_path.endswith('.tokens'):
             check(bool(row.token_names), f'component token mapping is empty: {row.identity}')
     by_id = {r.identity: r for r in records}
+    check('SelectSource' in by_id['gallery.sample.select.options'].code and
+          'SelectMode::Multiple' in by_id['gallery.sample.select.options'].code and
+          'SelectMode::Tags' in by_id['gallery.sample.select.options'].code,
+          'Select source omitted complete typed modes or synthetic async example')
+    check('AutoCompleteSource' in by_id['gallery.sample.auto-complete.contacts'].code and
+          'AutoCompleteEditor' in by_id['gallery.sample.auto-complete.contacts'].code and
+          'AutoCompleteOptionGroup' in by_id['gallery.sample.auto-complete.contacts'].code,
+          'AutoComplete source omitted grouped/custom editor or synthetic async example')
     check('BreadcrumbProps' in by_id['gallery.sample.breadcrumb.dynamic'].props and
           'MenuProps' in by_id['gallery.sample.breadcrumb.dynamic'].code and
           'direction' in by_id['gallery.sample.breadcrumb.dynamic'].methods,

@@ -32,6 +32,7 @@ struct OTPInputCellConfig;
 struct InputNumberPropsAccess;
 struct InputNumberConfig;
 class OTPComponentHost;
+class AutoCompleteComponentHost;
 
 struct InputPropsData final {
     std::optional<Prop<String>> value_;
@@ -245,6 +246,7 @@ public:
     }
 
 protected:
+    friend class detail::AutoCompleteComponentHost;
     friend struct detail::InputPropsAccess;
     friend struct detail::PasswordPropsAccess;
     friend struct detail::SearchPropsAccess;

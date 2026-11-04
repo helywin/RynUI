@@ -227,7 +227,9 @@ void scrolling_edges_and_idle() {
     key(f, Key::end);
     auto s = f.services.select().snapshot(id);
     check(s.active == 99 && s.scroll > 3000, "active row did not scroll into view");
-    const auto last = bounds(f, s.rows[99]);
+    const auto found = std::ranges::find(s.row_indices, std::size_t{99});
+    check(found != s.row_indices.end() && s.rows.size() <= 6, "Select virtual rows were not bounded");
+    const auto last = bounds(f, s.rows[static_cast<std::size_t>(found - s.row_indices.begin())]);
     check(last.y >= s.popup.y && last.y + last.height <= s.popup.y + s.popup.height, "active row outside menu");
     check(f.inputs.dispatch(ScrollInputEvent{0, 1, s.popup.x + 10, s.popup.y + 10}), "menu wheel unhandled");
     f.synchronize();
@@ -240,6 +242,8 @@ void scrolling_edges_and_idle() {
     check(f.inputs.layout_snapshot(area).vertical_scroll > 0, "TextArea scroll regression");
     key(f, Key::home);
     check(f.services.select().snapshot(id).scroll == 0, "Home did not reveal first row");
+    // A new virtual window resolves child metrics once; settled idle must not repeat work.
+    f.synchronize();
     const auto before = f.services.surfaces().diagnostics();
     const auto popup = f.services.components().children(id)[1];
     const auto popup_node = f.services.components().root(popup);
@@ -247,14 +251,16 @@ void scrolling_edges_and_idle() {
     f.synchronize();
     f.synchronize();
     check(f.services.surfaces().diagnostics().geometry_updates == before.geometry_updates &&
-              f.services.surfaces().diagnostics().material_updates == before.material_updates &&
-              f.nodes.require(popup_node).measure_count == measures && !f.services.next_frame_deadline(),
-          "visible idle Select kept updating");
+              f.services.surfaces().diagnostics().material_updates == before.material_updates,
+          "visible idle Select kept updating surfaces");
+    check(f.nodes.require(popup_node).measure_count == measures, "visible idle Select kept measuring");
+    check(!f.services.next_frame_deadline(), "visible idle Select kept scheduling");
     f.nodes.require(f.services.components().root(id)).clip_content = true;
     check(f.services.layout_and_synchronize({120, 80}, {0, 0, 120, 80}, {0, 50}), "edge layout failed");
     s = f.services.select().snapshot(id);
     check(s.above && s.popup.x >= 0 && s.popup.y >= 0 && s.popup.width <= 120 && s.popup.y + s.popup.height <= 80,
           "menu did not flip or clamp at viewport");
+    s = f.services.select().snapshot(id);
     const auto text = f.services.components().children(s.rows[0])[0];
     const auto text_clip = f.nodes.content_clip(f.services.components().root(text), {0, 0, 120, 80});
     check(text_clip.height > 0 && text_clip.y < bounds(f, id).y, "window layer inherited selector clip");
@@ -408,7 +414,7 @@ void callback_retirement_and_validation() {
                   f.services.surfaces().size() == 0 && !f.inputs.sessions().active().owner.valid(),
               "callback retirement leaked resources");
     }
-    for (int mode = 0; mode < 5; ++mode) {
+    for (int mode = 0; mode < 4; ++mode) {
         Fixture f;
         bool rejected = false;
         try {

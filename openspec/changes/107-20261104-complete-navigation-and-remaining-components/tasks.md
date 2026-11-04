@@ -39,8 +39,8 @@
 
 ## 8. 数据录入：AutoComplete
 
-- [ ] 8.1 按对应 spec 与 design 矩阵实现 AutoComplete 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 8.2 为 AutoComplete 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 8.1 按对应 spec 与 design 矩阵实现 AutoComplete 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 8.2 为 AutoComplete 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 9. 数据录入：Cascader
 
@@ -94,8 +94,8 @@
 
 ## 19. 数据录入：Select
 
-- [ ] 19.1 按对应 spec 与 design 矩阵实现 Select 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 19.2 为 Select 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 19.1 按对应 spec 与 design 矩阵实现 Select 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 19.2 为 Select 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 20. 数据录入：Slider
 

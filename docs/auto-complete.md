@@ -16,7 +16,7 @@
 
 上下键在建议中移动并跳过 disabled 项；Enter 选择，Escape 取消临时 backfill 并请求关闭。Tab/ShiftTab 请求关闭，并以主 Input 为锚点按正常相邻顺序离开；这也适用于 pointer 聚焦的 rich Input 和嵌套子 popup。焦点离开整个逻辑后代时请求关闭建议。backfill 不产生值事件。组合输入活动时这些建议快捷键交还编辑器。prefix/suffix 是 typed 装饰 slots，不增加 Tab 入口。rich label 中的子 popup 按最近窗口层拥有 wheel/Escape。
 
-`open` 是外部权威，`onOpenChange` 只是意图；空过滤结果不显示 popup。输入边界隐藏、Modal/Spin 阻断、实际布局零宽/高和窗口失活会 suppress popup 并清理临时状态，恢复后需要显式打开。实际零尺寸同时清理 focus/session/preedit；首次尚未布局的临时零值不影响 defaultOpen 或初始打开的 Modal。首版有限高度滚动，无虚拟化。
+`open` 是外部权威，`onOpenChange` 只是意图；空过滤结果不显示 popup。输入边界隐藏、Modal/Spin 阻断、实际布局零宽/高和窗口失活会 suppress popup 并清理临时状态，恢复后需要显式打开。实际零尺寸同时清理 focus/session/preedit；首次尚未布局的临时零值不影响 defaultOpen 或初始打开的 Modal。建议列表以 `listHeight` 限定窗口高度。
 
 Theme 通过 `ThemeConfig::auto_complete` 独立设置。`AutoCompleteThemeToken` 与 `AutoCompleteTokenOverride` 复用 Select 的视觉字段：popup/option/selector/clear 颜色、option_height/padding/radius/gap、typography、shadow 和 z_index_popup。支持继承、独立 component algorithm 和全局 dark/compact；Input 自有尺寸/状态/variant 继续使用其 Theme。视觉只来自 Theme，LayoutStyle 仅控制外部布局。最终 popup font 按实际 round 后检查 FontRuntime 1..INT_MAX/64 范围，非法后代 preflight 不发布部分 Theme。
 
@@ -35,7 +35,38 @@ void Page() {
 
 字段通过 `.value(name.value()).onChange(name.onChange())` 显式采值；FormItem 使用 `.control(input)`，并显式连接字段的 disabled/readOnly/status。reset 取消 preedit、候选和 backfill，即使接受值没有改变；普通同值 value 或建议更新保留 preedit。Form 不自动修改任意子控件 props。
 
-首版排除网络异步管理、选项分组、虚拟化、动画、RTL、Web、自定义编辑器替换与任意 popupRender。headless 合成事件不能替代 native GPU、Linux、系统 IME 或 AT 验收。
+107 补齐以下原生能力，保留上述 String 输入、事件顺序、受控拒绝与显式 Form 绑定合同：
+
+- `groups(Prop<vector<AutoCompleteOptionGroup>>)` 使用稳定的非空 group/option key。组头不接受选择；只保留有匹配子项的组头。也可在平铺 options 中使用 `group=true` 的组头。
+- `virtualList` 默认开启；超过 32 项时，仅创建可视窗口与少量 overscan 的普通行，键盘活动项会先滚入窗口。普通行离窗释放；已挂载的富内容按 key 暂存为非活动子树，保留子编辑器草稿，离窗/过滤立即阻断输入、取消捕获和 preedit，删除 key 时释放。富内容缓存随访问的 key 增长，普通行数量有界。
+- `direction(TextDirection::RightToLeft)` 同步编辑器、普通标签和 popup 对齐；`popupWidth(float)` 可扩大 popup；`popupMatchSelectWidth(false)` 保留非虚拟列表行为。`clearIcon` 接受 typed IconSource；`notFoundContent` 可在已有选项过滤为空时提供文本提示，原始 options 为空时仍不展示 popup。宽度须为有限非负数。
+- `motion(true)` 启用来自 Theme fast duration 的有限 popup 淡入。默认关闭以保留原有即时开合；hidden、禁用、窗口失活、Theme motion=false 和 reduced motion 停止计时，idle 不请求下一帧。
+- `popupRender(AutoCompletePopupRenderer)` 接收可直接调用的 `std::function<void()> origin`，必须在本次同步构建中调用一次。可通过 Flex 包装列表并添加原生编辑器或按钮。重复或遗漏 origin 整体拒绝；替换 renderer 仅重建其 popup body，保留主编辑器；普通属性更新不重建 renderer。
+- `editor(AutoCompleteEditor)` 接收 `AutoCompleteEditorContext`，可挂载 `Input(context.input, context.prefix, context.suffix)` 或 `TextArea(context.text_area)`。必须挂载一个编辑器并保留给定 value/ref/disabled/readOnly/events。TextArea 自带原生清空。更换 editor renderer 取消旧 IME/会话并替换该编辑器，保留接受值和 popup，按需恢复焦点。普通更新保留同一个编辑器。FormItem 继续绑定外部 ref，reset 对同值也取消请求、preedit 和 backfill。
+
+```cpp
+ryn::AutoComplete(ryn::AutoCompleteProps{}
+    .groups(std::vector<ryn::AutoCompleteOptionGroup>{
+        {u8"people", u8"联系人", {{u8"ada", u8"Ada", u8"Ada"}}}})
+    .editor(ryn::AutoCompleteEditor{[](ryn::AutoCompleteEditorContext context) {
+        ryn::TextArea(context.text_area.rows(std::size_t{2}));
+    }}));
+```
+
+`source(Prop<AutoCompleteSource>)` 是应用注入的异步建议服务。`AsyncOptionsRequest` 包含 query、generation 和线程安全取消标志；provider 返回可选取消函数，以 `Complete(AsyncOptionsResult<AutoCompleteOption>)` 返回 options 或 error。第二个构造参数 `OwnerThreadPost` 必须线程安全地将闭包投递到组件创建线程，并唤醒应用事件循环；Core 不直接创建网络连接或轮询线程。无效 source 表示禁用服务。
+
+```cpp
+ryn::AutoCompleteSource source{
+    [](ryn::AsyncOptionsRequest request, ryn::AutoCompleteSource::Complete complete) {
+        // 应用 transport 可在工作线程完成；取消时应停止 transport。
+        return transport.search(request.query, std::move(complete), request.cancelled);
+    },
+    [](std::function<void()> apply) { application.postToUi(std::move(apply)); }};
+```
+
+上例中的 transport/application 由应用提供，并非 RynUI 内置对象。每次提交文本取代旧请求；关闭、reset、禁用、只读、窗口失活、隐藏、source 更换和销毁都会取消旧票据。完成先经 dispatcher，再检查创建线程、票据、owner generation 与存活状态；只接受当前请求的首次完成。错误交给 `onLoadError`，不替换已有建议；`onPopupScroll(float)` 返回逻辑滚动偏移。取消回调可以重入启动新请求或销毁组件，外层请求不得覆盖较新的票据。provider/应用回调抛出时退役失败 owner 并清理票据和资源。
+
+Linux 私有后台 Wayland/Vulkan 的有限宿主输入、系统字体与离页清理已通过 [107 组合验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/select-autocomplete-integration.md)。系统 IME 候选 UI、跨实际显示器、辅助技术与 Windows 仍未验证。Web DOM/CSS/React/portal 与浏览器事件别名不进入 Core。
 
 Core 已通过独立 Astra R4，并与 Tree 在 main 新构建 Debug/Release 各 98/98，见 [组合验收](../openspec/changes/094-20261026-add-native-tree/evidence/main-integration.md)；原 [092 实施记录](../openspec/changes/092-20261026-add-native-auto-complete/evidence.md) 仍保留 worker 本树边界。
 
