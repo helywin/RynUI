@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 69 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 70 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -47,6 +47,8 @@ void add_next() {}'''
         if row.theme_path.startswith('ThemeConfig.') and row.theme_path.endswith('.tokens'):
             check(bool(row.token_names), f'component token mapping is empty: {row.identity}')
     by_id = {r.identity: r for r in records}
+    check('FloatButtonProps' in by_id['gallery.sample.float-button.actions'].props,
+          'FloatButton source was lost while integrating layout samples')
     check('InputProps' in by_id['gallery.sample.input.basics'].props and
           'InputPrefix' in by_id['gallery.sample.input.basics'].slots and
           'defaultValue' in by_id['gallery.sample.input.basics'].methods, 'Input API is fabricated or incomplete')

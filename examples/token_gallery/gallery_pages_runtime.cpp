@@ -3,6 +3,9 @@
 #include "component/select_component.hpp"
 #include "component/float_button_component.hpp"
 #include "component/collapse_component.hpp"
+#include "component/grid_component.hpp"
+#include "component/masonry_component.hpp"
+#include "component/typography_component.hpp"
 #include "gallery_pages_host.hpp"
 #include "token_gallery_definition.hpp"
 
@@ -259,15 +262,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         }
         ++result.checks;
     };
-    constexpr std::array widths{1440, 960, 728, 480, 360};
-    input::TextInputSessionStamp previous_session;
-    runtime::ComponentId previous_root;
-    GalleryPageRoute previous_route;
-    for (std::size_t i = 0; i < options.pages.size(); ++i) {
-        const auto& route = options.pages[i];
-        const int width = options.width ? options.width : widths[i % widths.size()];
-        std::cout << "page_acceptance_stage=" << i << " page=" << route.component_identity << " width=" << width << '\n'
-                  << std::flush;
+    const auto resize = [&](int width) {
         const auto metrics = events.platform.window_metrics();
         const float coordinate_scale = metrics.coordinate_width / events.viewport.width;
         check(renderer.resize_window(static_cast<int>(std::round(width * coordinate_scale)),
@@ -280,6 +275,45 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             events.consume(events.platform.wait_events(10));
             check(events.error.empty() && !events.quit, "native window closed or input adapter failed during resize");
         }
+    };
+    const auto activate = [&](runtime::ComponentId owner) {
+        for (const auto id : app.interactions().declaration_order()) {
+            const auto* record = app.interactions().find(id);
+            if (record && record->focusable && record->eligible && app.interactions().branch_active(id) &&
+                owns(app, record->component, owner)) {
+                check(app.focus().request_focus(id, input::FocusModality::keyboard),
+                      "native sample action could not receive keyboard focus");
+                pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::down});
+                pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::up});
+                return;
+            }
+        }
+        throw std::runtime_error("native sample action has no active keyboard target");
+    };
+    const auto edit_input = [&](runtime::ComponentId owner) {
+        for (const auto& input : inputs.mounted_inputs()) {
+            if (owns(app, input.component, owner) && app.interactions().branch_active(input.interaction)) {
+                check(app.focus().request_focus(input.interaction, input::FocusModality::keyboard),
+                      "native retained input could not receive focus");
+                const auto session = inputs.sessions().active();
+                check(session.valid(), "native retained input has no text session");
+                pages.dispatch(input::TextCommitted{String{u8" native draft"}, session});
+                render();
+                return std::pair{input.component, std::string{inputs.display_snapshot(input.component).text}};
+            }
+        }
+        throw std::runtime_error("native layout sample has no retained input");
+    };
+    constexpr std::array widths{1440, 960, 728, 480, 360};
+    input::TextInputSessionStamp previous_session;
+    runtime::ComponentId previous_root;
+    GalleryPageRoute previous_route;
+    for (std::size_t i = 0; i < options.pages.size(); ++i) {
+        const auto& route = options.pages[i];
+        const int width = options.width ? options.width : widths[i % widths.size()];
+        std::cout << "page_acceptance_stage=" << i << " page=" << route.component_identity << " width=" << width << '\n'
+                  << std::flush;
+        resize(width);
         auto config = pages.theme();
         config.algorithms = i % 3 == 0   ? std::vector{ThemeAlgorithm::Default}
                             : i % 3 == 1 ? std::vector{ThemeAlgorithm::Dark}
@@ -292,6 +326,9 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                                         route.family != previous_route.family);
         if (replaced) {
             check(!app.components().contains(previous_root), "native page owner survived navigation");
+            if (previous_route.component_identity == "ant.component.typography") {
+                check(app.services().typography().mounted().empty(), "native Typography survived page retirement");
+            }
             if (previous_route.component_identity == "ant.component.float-button") {
                 check(app.services().float_button().mounted().empty(), "native FloatButton survived page retirement");
                 const auto pointer = app.pointer().state(input::PointerIdentity::mouse());
@@ -332,6 +369,106 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 check(inputs.sessions().active() == previous_session, "native composition lost its owner");
                 break;
             }
+        }
+        if (route.component_identity == "ant.component.typography") {
+            const auto rich = pages.target("gallery.typography.rich-content");
+            check(rich.valid(), "native Typography rich sample is missing");
+            const auto original = app.services().typography().snapshot(rich).original;
+            runtime::ComponentId copy;
+            for (const auto id : app.interactions().declaration_order()) {
+                const auto* record = app.interactions().find(id);
+                if (record && record->focusable && record->eligible && app.interactions().branch_active(id) &&
+                    owns(app, record->component, rich)) {
+                    copy = record->component;
+                }
+            }
+            check(copy.valid(), "native rich Typography has no copy action");
+            activate(copy);
+            render();
+            check(app.services().typography().snapshot(rich).copied,
+                  "native rich Typography clipboard publication failed");
+            std::unique_ptr<char, decltype(&SDL_free)> plain{SDL_GetClipboardText(), SDL_free};
+            std::size_t html_size{};
+            std::unique_ptr<void, decltype(&SDL_free)> html{SDL_GetClipboardData("text/html", &html_size), SDL_free};
+            check(plain && std::string_view{plain.get()} == original.bytes(),
+                  "native rich clipboard plain fallback differs from full source");
+            check(html && html_size > 0, "native rich clipboard has no HTML MIME payload");
+            const std::string_view markup{static_cast<const char*>(html.get()), html_size};
+            check(markup.find("<strong>") != std::string_view::npos &&
+                      markup.find("&lt;&gt;&amp;") != std::string_view::npos &&
+                      markup.find("<kbd>") != std::string_view::npos,
+                  "native rich clipboard lost semantic tags or escaped source");
+            resize(500);
+            render();
+            const auto narrow = app.services().typography().snapshot(rich);
+            check(narrow.original == original && narrow.truncated,
+                  "native rich Typography resize changed source or lost ellipsis");
+            std::cout << "typography_native=passed rich=true own_mime_roundtrip=true resize=true\n";
+        }
+        if (route.component_identity == "ant.component.grid") {
+            const auto row = pages.target("gallery.grid.responsive");
+            check(row.valid(), "native Grid responsive sample is missing");
+            const auto draft = edit_input(row);
+            resize(1000);
+            render();
+            const auto wide = ryn::detail::grid_columns(app.components(), row);
+            check(wide.size() == 4 && wide.front().options.span == 6,
+                  "native Grid did not resolve the window lg breakpoint");
+            resize(500);
+            render();
+            const auto narrow = ryn::detail::grid_columns(app.components(), row);
+            check(narrow.size() == 4 && narrow.front().options.span == 24 &&
+                      narrow.front().component == wide.front().component &&
+                      inputs.display_snapshot(draft.first).text == draft.second,
+                  "native Grid narrow reflow lost its responsive span or retained draft");
+            check(pages.sample_runs("gallery.sample.grid.layouts") == 1, "native Grid reflow reran its sample factory");
+            previous_session = inputs.sessions().active();
+            std::cout << "grid_native=passed window_breakpoints=true retained_draft=true\n";
+        }
+        if (route.component_identity == "ant.component.masonry") {
+            const auto owner = pages.target("gallery.masonry.measured");
+            const auto dynamic = pages.target("gallery.masonry.dynamic");
+            check(owner.valid() && dynamic.valid(), "native Masonry samples are missing");
+            const auto draft = edit_input(owner);
+            resize(1000);
+            render();
+            const auto wide = app.services().masonry().snapshot(owner);
+            check(wide.size() == 6 && wide[2].column == 2, "native Masonry missed its three-column layout");
+            const auto initial = app.services().masonry().snapshot(dynamic);
+            check(initial.size() == 2, "native Masonry dynamic keys are missing");
+            std::cout << "masonry_native_action=height\n" << std::flush;
+            activate(pages.target("gallery.masonry.resize"));
+            render();
+            const auto taller = app.services().masonry().snapshot(dynamic);
+            check(taller[0].bounds.height > initial[0].bounds.height && taller[0].component == initial[0].component,
+                  "native Masonry height action did not remeasure retained content");
+            std::cout << "masonry_native_action=insert\n" << std::flush;
+            activate(pages.target("gallery.masonry.toggle"));
+            render();
+            std::cout << "masonry_native_action=reorder\n" << std::flush;
+            activate(pages.target("gallery.masonry.reverse"));
+            render();
+            const auto reordered = app.services().masonry().snapshot(dynamic);
+            check(reordered.size() == 3 && std::ranges::any_of(reordered,
+                                                               [&](const auto& item) {
+                                                                   return item.key == initial[0].key &&
+                                                                          item.component == initial[0].component;
+                                                               }),
+                  "native Masonry insertion/reorder lost keyed identity");
+            std::cout << "masonry_native_action=remove\n" << std::flush;
+            activate(pages.target("gallery.masonry.toggle"));
+            render();
+            check(app.services().masonry().snapshot(dynamic).size() == 2, "native Masonry removal failed");
+            resize(500);
+            render();
+            const auto narrow = app.services().masonry().snapshot(owner);
+            check(narrow.size() == 6 && narrow[2].column == 0 && narrow[0].component == wide[0].component &&
+                      inputs.display_snapshot(draft.first).text == draft.second,
+                  "native Masonry narrow reflow lost a key or input draft");
+            check(pages.sample_runs("gallery.sample.masonry.layouts") == 1,
+                  "native Masonry reflow reran its sample factory");
+            previous_session = inputs.sessions().active();
+            std::cout << "masonry_native=passed actions=true window_breakpoints=true retained_draft=true\n";
         }
         if (route.component_identity == "ant.component.float-button") {
             runtime::ComponentId floating;

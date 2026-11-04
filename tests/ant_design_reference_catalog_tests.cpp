@@ -84,6 +84,13 @@ void test_categories_and_entries() {
                 "Gallery component lookup does not preserve generated identity");
     }
     require(actual_counts == expected_counts, "Gallery per-category component counts drifted");
+    for (const auto identity :
+         {"ant.component.float-button", "ant.component.typography", "ant.component.grid", "ant.component.masonry"}) {
+        const auto* entry = find_ant_design_reference_entry(identity);
+        require(entry && entry->support_status == GallerySupportStatus::implemented &&
+                    entry->evidence_identifiers.find("openspec:106-") != std::string_view::npos,
+                "integrated General/Layout component lost its support status or evidence");
+    }
     require(find_ant_design_reference_entry("ant.component.not-real") == nullptr,
             "unknown Gallery component lookup did not fail closed");
     const auto* list = find_ant_design_reference_entry("ant.component.list");
