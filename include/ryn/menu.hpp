@@ -4,6 +4,7 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
+#include <ryn/text_direction.hpp>
 #include <functional>
 #include <optional>
 #include <vector>
@@ -16,7 +17,11 @@ class DropdownComponentHost;
 
 using MenuKeys = std::vector<String>;
 
-enum class MenuMode { Vertical, Inline };
+enum class MenuMode { Vertical, Inline, Horizontal };
+
+enum class MenuTheme { Inherit, Light, Dark };
+
+enum class MenuSubMenuTrigger { Hover, Click };
 
 enum class MenuItemKind { Item, Group, Divider, SubMenu };
 
@@ -24,7 +29,15 @@ struct MenuIconSlot final {};
 
 using MenuIcon = SlotContent<MenuIconSlot>;
 
-// Topology and keys are fixed at mount. Each item's presentation remains reactive.
+struct MenuLabelSlot final {};
+
+using MenuLabel = SlotContent<MenuLabelSlot>;
+
+struct MenuExtraSlot final {};
+
+using MenuExtra = SlotContent<MenuExtraSlot>;
+
+// Keys retain row/slot identity across reactive topology updates. Slot factories run once per key.
 struct MenuItem final {
     MenuItem() = default;
 
@@ -47,6 +60,8 @@ struct MenuItem final {
     MenuItemKind kind{MenuItemKind::Item};
     std::vector<MenuItem> children;
     std::optional<MenuIcon> icon;
+    std::optional<MenuLabel> content;
+    std::optional<MenuExtra> extra;
 };
 
 struct MenuClickInfo final {
@@ -63,12 +78,52 @@ struct MenuSelectInfo final {
 class MenuProps final {
 public:
     MenuProps& items(std::vector<MenuItem> value) {
+        dynamic_items_.reset();
         items_ = std::move(value);
         return *this;
     }
 
-    MenuProps& mode(MenuMode value) {
+    MenuProps& items(std::initializer_list<MenuItem> value) {
+        return items(std::vector<MenuItem>{value});
+    }
+
+    MenuProps& items(Prop<std::vector<MenuItem>> value) {
+        dynamic_items_ = std::move(value);
+        return *this;
+    }
+
+    MenuProps& mode(Prop<MenuMode> value) {
         mode_ = value;
+        return *this;
+    }
+
+    MenuProps& theme(Prop<MenuTheme> value) {
+        theme_ = std::move(value);
+        return *this;
+    }
+
+    MenuProps& direction(Prop<TextDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
+    MenuProps& inlineCollapsed(Prop<bool> value = true) {
+        collapsed_ = std::move(value);
+        return *this;
+    }
+
+    MenuProps& triggerSubMenuAction(Prop<MenuSubMenuTrigger> value) {
+        submenu_trigger_ = std::move(value);
+        return *this;
+    }
+
+    MenuProps& subMenuOpenDelay(Prop<float> seconds) {
+        open_delay_ = std::move(seconds);
+        return *this;
+    }
+
+    MenuProps& subMenuCloseDelay(Prop<float> seconds) {
+        close_delay_ = std::move(seconds);
         return *this;
     }
 
@@ -132,7 +187,14 @@ private:
     friend class detail::MenuComponentHost;
     friend class detail::DropdownComponentHost;
     std::vector<MenuItem> items_;
-    MenuMode mode_{MenuMode::Vertical};
+    std::optional<Prop<std::vector<MenuItem>>> dynamic_items_;
+    Prop<MenuMode> mode_{MenuMode::Vertical};
+    Prop<MenuTheme> theme_{MenuTheme::Inherit};
+    Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    Prop<bool> collapsed_{false};
+    Prop<MenuSubMenuTrigger> submenu_trigger_{MenuSubMenuTrigger::Hover};
+    Prop<float> open_delay_{0.0F};
+    Prop<float> close_delay_{0.1F};
     std::optional<Prop<MenuKeys>> selected_;
     std::optional<MenuKeys> default_selected_;
     std::optional<Prop<MenuKeys>> open_;

@@ -179,7 +179,7 @@ void uncontrolled_theme_validation() {
                     props.selectedKeys(MenuKeys{}).defaultSelectedKeys({});
                 }
                 if (invalid == 3) {
-                    props.items({{u8"sub", u8"Sub", false, false, MenuItemKind::SubMenu, {{u8"c", u8"Child"}}}});
+                    props.mode(static_cast<MenuMode>(99));
                 }
                 Menu(props);
             }});
@@ -202,6 +202,26 @@ void callback_retirement() {
     check(!f.services.components().contains(id) && f.services.surfaces().size() == 0 &&
               f.services.interactions().size() == 0,
           "callback destroy leaked");
+    Fixture throwing;
+    throwing.services.mount(Content{[&] {
+        Menu(MenuProps{}
+                 .items({{u8"sub", u8"Sub", false, false, MenuItemKind::SubMenu, {{u8"child", u8"Child"}}}})
+                 .onOpenChange([](MenuKeys) { throw std::runtime_error("open callback"); }));
+    }});
+    throwing.synchronize();
+    const auto owner = throwing.services.menu().mounted()[0];
+    throwing.services.menu().focus_menu(owner);
+    bool caught = false;
+    try {
+        key(throwing, Key::right);
+    } catch (const std::runtime_error&) {
+        caught = true;
+    }
+    throwing.synchronize();
+    check(caught && !throwing.services.next_frame_deadline(), "throwing open callback left delayed work");
+    throwing.services.destroy(owner);
+    check(throwing.services.interactions().size() == 0 && throwing.services.surfaces().size() == 0,
+          "throwing open callback leaked resources");
 }
 
 void reactive_active_reveal() {
@@ -238,6 +258,205 @@ void reactive_active_reveal() {
               f.services.menu().snapshot(id).selected_keys == MenuKeys{String{u8"a"}},
           "Enter did not activate revealed reconciled row");
 }
+
+void dynamic_topology() {
+    Fixture f;
+    Signal<int> version{0};
+    Signal<String> first{String{u8"First"}};
+    int slots = 0;
+    f.services.mount(Content{[&] {
+        Menu(MenuProps{}
+                 .mode(MenuMode::Inline)
+                 .defaultOpenKeys({u8"sub"})
+                 .items(bind([&] {
+                     const auto v = version.get();
+                     MenuItem a{u8"a", first};
+                     a.content = MenuLabel{[&] {
+                         ++slots;
+                         Input(InputProps{}.defaultValue(u8"draft"));
+                     }};
+                     MenuItem sub{u8"sub",
+                                  u8"Sub",
+                                  false,
+                                  false,
+                                  MenuItemKind::SubMenu,
+                                  v == 2 ? std::vector<MenuItem>{} : std::vector<MenuItem>{{u8"leaf", u8"Leaf"}}};
+                     return v == 0 ? std::vector<MenuItem>{a, sub} : std::vector<MenuItem>{sub, a, {u8"new", u8"New"}};
+                 }))
+                 .layout(LayoutStyle{}.width(dp(240)).height(dp(180))));
+    }});
+    f.synchronize();
+    const auto id = f.services.menu().mounted()[0];
+    const auto before = f.services.menu().snapshot(id).rows;
+    const auto input = f.inputs.mounted_inputs().front().component;
+    version.set(1);
+    f.synchronize();
+    const auto after = f.services.menu().snapshot(id).rows;
+    check(after[0] == before[1] && after[1] == before[2] && after[2] == before[0] && slots == 1 &&
+              f.services.components().contains(input),
+          "keyed reorder remounted retained rich content");
+    f.services.menu().focus_menu(id);
+    key(f, Key::down);
+    check(f.services.menu().snapshot(id).active_key == String{u8"leaf"}, "dynamic keyboard index stale");
+    const auto leaf_bounds = f.nodes.require(f.services.components().root(before[2])).bounds;
+    f.services.pointer().dispatch(
+        {PointerIdentity::mouse(), PointerAction::down, PointerButton::primary, leaf_bounds.x + 5, leaf_bounds.y + 5});
+    check(f.services.pointer().state(PointerIdentity::mouse())->capture.has_value(),
+          "dynamic removal fixture did not capture");
+    version.set(2);
+    f.synchronize();
+    check(!f.services.pointer().state(PointerIdentity::mouse())->capture, "removed row retained pointer capture");
+    check(!f.services.components().contains(before[2]) && f.services.menu().snapshot(id).active_key == String{u8"a"},
+          "removed active key retained input or failed adjacent fallback");
+    first.set(String{u8"Updated"});
+    f.synchronize();
+    check(slots == 1, "reactive label remounted rich slot");
+    f.services.destroy(id);
+    check(f.services.surfaces().size() == 0 && f.services.interactions().size() == 0, "dynamic cleanup leaked");
+}
+
+void flyout_and_overflow() {
+    for (auto mode : {MenuMode::Vertical, MenuMode::Horizontal, MenuMode::Inline}) {
+        Fixture f;
+        Signal<bool> collapsed{mode == MenuMode::Inline};
+        int clicked = 0;
+        f.services.mount(Content{[&] {
+            Menu(MenuProps{}
+                     .mode(mode)
+                     .inlineCollapsed(collapsed)
+                     .direction(TextDirection::RightToLeft)
+                     .theme(MenuTheme::Dark)
+                     .triggerSubMenuAction(MenuSubMenuTrigger::Click)
+                     .items({{u8"sub",
+                              u8"Actions",
+                              false,
+                              false,
+                              MenuItemKind::SubMenu,
+                              {{u8"a", u8"Command"},
+                               {u8"b", u8"Disabled", true},
+                               {u8"nested", u8"More", false, false, MenuItemKind::SubMenu, {{u8"last", u8"Last"}}}}},
+                             {u8"wide", u8"A very long navigation title"},
+                             {u8"end", u8"End"}})
+                     .onClick([&](MenuClickInfo) { ++clicked; })
+                     .layout(LayoutStyle{}.width(dp(mode == MenuMode::Horizontal ? 190 : 150)).height(dp(64))));
+        }});
+        f.synchronize();
+        const auto id = f.services.menu().mounted()[0];
+        f.services.menu().focus_menu(id);
+        key(f, mode == MenuMode::Horizontal ? Key::down : Key::left);
+        auto snap = f.services.menu().snapshot(id);
+        check(!snap.popups.empty() && snap.active_key == String{u8"a"},
+              "flyout did not open and enter with RTL keyboard");
+        const auto rect = snap.popups.front();
+        check(rect.x >= 0 && rect.y >= 0 && rect.x + rect.width <= 800 && rect.y + rect.height <= 600,
+              "flyout escaped window bounds");
+        key(f, Key::enter);
+        check(clicked == 1, "flyout command failed");
+        key(f, Key::down);
+        check(f.services.menu().snapshot(id).active_key == String{u8"nested"},
+              "flyout navigation did not skip disabled");
+        key(f, Key::left);
+        check(f.services.menu().snapshot(id).popups.size() == 2, "nested flyout missing");
+        key(f, Key::escape);
+        check(f.services.menu().snapshot(id).popups.size() == 1, "Escape did not close deepest flyout first");
+        key(f, Key::escape);
+        check(f.services.menu().snapshot(id).popups.empty(), "Escape did not close root flyout");
+        if (mode == MenuMode::Horizontal) {
+            check(f.services.menu().snapshot(id).overflow, "horizontal overflow missing");
+            key(f, Key::end);
+            key(f, Key::down);
+            check(!f.services.menu().snapshot(id).popups.empty(),
+                  "overflow indicator did not open retained overflow rows");
+            key(f, Key::enter);
+            check(clicked == 2, "overflow command inaccessible");
+        }
+        f.services.set_window_active(false);
+        f.services.set_window_active(true);
+        f.synchronize();
+        check(f.services.menu().snapshot(id).popups.empty(), "deactivated flyout revived");
+        f.services.destroy(id);
+        f.synchronize();
+        check(f.services.surfaces().size() == 0 && f.services.interactions().size() == 0 &&
+                  !f.services.next_frame_deadline(),
+              "flyout resources leaked");
+    }
+}
+
+void hover_lifecycle() {
+    Fixture f;
+    int opens = 0;
+    runtime::ComponentId id;
+    f.services.mount(Content{[&] {
+        Menu(MenuProps{}
+                 .items({{u8"sub", u8"Sub", false, false, MenuItemKind::SubMenu, {{u8"a", u8"A"}}}})
+                 .subMenuOpenDelay(0.05F)
+                 .subMenuCloseDelay(0.1F)
+                 .onOpenChange([&](MenuKeys) { ++opens; })
+                 .layout(LayoutStyle{}.width(dp(150))));
+    }});
+    f.synchronize();
+    id = f.services.menu().mounted()[0];
+    const auto rows = f.services.menu().snapshot(id).rows;
+    const auto bounds = f.nodes.require(f.services.components().root(rows[0])).bounds;
+    const auto move = [&](float x, float y) {
+        f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::move, PointerButton::none, x, y});
+    };
+    move(bounds.x + 10, bounds.y + 10);
+    check(f.services.next_frame_deadline().has_value(), "hover did not schedule bounded wake");
+    static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(40000)));
+    f.synchronize();
+    check(f.services.menu().snapshot(id).popups.empty(), "hover opened before delay");
+    static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(50001)));
+    f.synchronize();
+    check(f.services.menu().snapshot(id).popups.size() == 1 && opens == 1, "hover deadline did not open flyout");
+    const auto popup = f.services.menu().snapshot(id).popups[0];
+    move(319, 239);
+    move(popup.x + 10, popup.y + 10);
+    static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(200000)));
+    f.synchronize();
+    check(f.services.menu().snapshot(id).popups.size() == 1, "crossing trigger-to-popup did not cancel close");
+    move(319, 239);
+    f.services.set_window_active(false);
+    static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(400000)));
+    f.services.set_window_active(true);
+    f.synchronize();
+    check(f.services.menu().snapshot(id).popups.empty() && !f.services.next_frame_deadline(),
+          "hidden Menu kept delayed work");
+    f.services.destroy(id);
+    check(f.services.interactions().size() == 0 && f.services.surfaces().size() == 0, "hover cleanup leaked");
+}
+
+void dynamic_failure_and_retirement() {
+    Fixture f;
+    Signal<int> version{0};
+    runtime::ComponentId id;
+    int clicks = 0;
+    f.services.mount(Content{[&] {
+        Menu(MenuProps{}
+                 .items(bind([&] {
+                     if (version.get() == 1) {
+                         return std::vector<MenuItem>{{u8"bad", u8"Bad"}, {u8"bad", u8"Duplicate"}};
+                     }
+                     return std::vector<MenuItem>{{u8"a", u8"A"}, {u8"b", u8"B"}};
+                 }))
+                 .onSelect([&](MenuSelectInfo) { f.services.destroy(id); })
+                 .onClick([&](MenuClickInfo) { ++clicks; }));
+    }});
+    f.synchronize();
+    id = f.services.menu().mounted()[0];
+    const auto rows = f.services.menu().snapshot(id).rows;
+    bool rejected = false;
+    try {
+        version.set(1);
+        f.synchronize();
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && f.services.menu().snapshot(id).rows == rows, "invalid dynamic topology mutated rows");
+    f.services.menu().focus_menu(id);
+    key(f, Key::enter);
+    check(!f.services.components().contains(id) && clicks == 0, "self-destruction delivered stale click");
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -253,6 +472,10 @@ int main(int argc, char** argv) {
                 ++ran;
             }
         };
+        run("hover", hover_lifecycle);
+        run("dynamic", dynamic_topology);
+        run("flyout-overflow", flyout_and_overflow);
+        run("dynamic-failure", dynamic_failure_and_retirement);
         run("navigation", navigation);
         run("theme", uncontrolled_theme_validation);
         run("retirement", callback_retirement);
