@@ -14,6 +14,7 @@
 #include <ryn/form_tokens.hpp>
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/anchor_tokens.hpp>
+#include <ryn/color_picker_tokens.hpp>
 #include <ryn/steps_tokens.hpp>
 #include <ryn/time_picker_tokens.hpp>
 #include <ryn/skeleton_tokens.hpp>
@@ -1587,6 +1588,13 @@ struct BreadcrumbThemeConfig final {
     friend bool operator==(const BreadcrumbThemeConfig&, const BreadcrumbThemeConfig&) = default;
 };
 
+struct ColorPickerThemeConfig final {
+    ColorPickerTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const ColorPickerThemeConfig&, const ColorPickerThemeConfig&) = default;
+};
+
 struct AnchorThemeConfig final {
     AnchorTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1726,6 +1734,7 @@ struct ThemeConfig final {
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
     AnchorThemeConfig anchor;
+    ColorPickerThemeConfig color_picker;
     DatePickerThemeConfig date_picker;
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -2341,6 +2350,10 @@ public:
         return breadcrumb_;
     }
 
+    [[nodiscard]] const ColorPickerThemeToken& color_picker() const noexcept {
+        return color_picker_;
+    }
+
     [[nodiscard]] const AnchorThemeToken& anchor() const noexcept {
         return anchor_;
     }
@@ -2464,26 +2477,29 @@ private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
 
-    ThemeSnapshot(
-        FloatButtonThemeToken float_button, AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
-        ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
-        RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
-        TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs,
-        ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
-        DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
-        std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert,
-        SpinThemeToken spin, ProgressThemeToken progress, InputNumberThemeToken input_number,
-        PaginationThemeToken pagination, TableThemeToken table, CollapseThemeToken collapse,
-        SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result, DatePickerThemeToken date_picker,
-        FormThemeToken form, BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor, StepsThemeToken steps,
-        std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
-        DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
-        std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
-        std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
-        std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
-        std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
-        std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
-        std::shared_ptr<const SplitterThemeToken> splitter);
+    ThemeSnapshot(FloatButtonThemeToken float_button, AntDesignDefaultSeed seed, ThemeMapToken map,
+                  ThemeAliasToken alias, ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
+                  CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
+                  DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
+                  SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
+                  DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
+                  DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
+                  std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
+                  AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
+                  InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
+                  CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
+                  ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
+                  BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor, ColorPickerThemeToken color_picker,
+                  StepsThemeToken steps, std::shared_ptr<const TimePickerThemeToken> time_picker,
+                  std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
+                  std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
+                  std::shared_ptr<const NoticeThemeToken> notification,
+                  std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
+                  std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
+                  std::shared_ptr<const TreeThemeToken> tree,
+                  std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
+                  std::shared_ptr<const TreeSelectThemeToken> tree_select,
+                  std::shared_ptr<const LayoutThemeToken> layout, std::shared_ptr<const SplitterThemeToken> splitter);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2506,6 +2522,7 @@ private:
     FormThemeToken form_;
     BreadcrumbThemeToken breadcrumb_;
     AnchorThemeToken anchor_;
+    ColorPickerThemeToken color_picker_;
     StepsThemeToken steps_;
     std::shared_ptr<const TimePickerThemeToken> time_picker_;
     std::shared_ptr<const SkeletonThemeToken> skeleton_;

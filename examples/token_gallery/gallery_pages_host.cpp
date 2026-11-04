@@ -87,6 +87,17 @@ template <typename Token> std::string resolved_component_values(const Token& tok
         out << name << " · rgba(" << std::round(value.red() * 255) << ", " << std::round(value.green() * 255) << ", "
             << std::round(value.blue() * 255) << ", " << value.alpha() << ")\n";
     };
+    if constexpr (requires { token.saturation_height; }) {
+        number("panel_width", token.panel_width);
+        number("saturation_height", token.saturation_height);
+        number("rail_height", token.rail_height);
+        number("gap", token.gap);
+        number("thumb_size", token.thumb_size);
+        color("checker_light", token.checker_light);
+        color("checker_dark", token.checker_dark);
+        color("thumb", token.thumb);
+        color("focus", token.focus);
+    }
     if constexpr (requires { token.control_height; }) {
         number("control_height", token.control_height);
     }
@@ -198,6 +209,9 @@ std::string component_values(const ThemeSnapshot& snapshot, std::string_view ide
     }
     if (identity == "ant.component.select") {
         return resolved_component_values(snapshot.select());
+    }
+    if (identity == "ant.component.color-picker") {
+        return resolved_component_values(snapshot.color_picker());
     }
     if (identity == "ant.component.time-picker") {
         return resolved_component_values(snapshot.time_picker());

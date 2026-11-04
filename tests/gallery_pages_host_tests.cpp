@@ -1,6 +1,8 @@
 #include "gallery_pages_host.hpp"
 #include "gallery_sample_registry.hpp"
+#include "gallery_test_inventory.hpp"
 #include "component/selection_component.hpp"
+#include "component/color_picker_component.hpp"
 #include "component/select_component.hpp"
 #include "component/popover_component.hpp"
 #include "component/collapse_component.hpp"
@@ -55,6 +57,49 @@ struct Fixture final : ryn_test::input_component::Fixture {
         sync();
     }
 };
+
+bool within(Fixture&, runtime::ComponentId, runtime::ComponentId);
+
+void test_color_number_pages() {
+    require(gallery_samples().size() == 80 && gallery_legacy_test_ids().size() == 458,
+            "Gallery sample/legacy inventories drifted");
+    for (const auto& target : gallery_legacy_test_targets()) {
+        require(std::ranges::find(gallery_samples(), target.sample_identity, &GallerySampleDescriptor::identity) !=
+                    gallery_samples().end(),
+                "legacy sample owner was removed");
+    }
+    Fixture f;
+    f.show("ant.component.color-picker");
+    require(f.services.color_picker().mounted().size() == 4, "ColorPicker page has no live examples");
+    const auto first = f.services.color_picker().mounted().front();
+    const auto picker = f.services.color_picker().snapshot(first);
+    require(picker.fields.size() == 4, "ColorPicker page has no actual picker fields");
+    require(std::ranges::any_of(f.services.text().mounted_texts(),
+                                [&](const auto& text) {
+                                    const auto content =
+                                        f.services.text().scene_service().text_state(text.scene).content().bytes();
+                                    return content.find("panel_width · 234") != std::string_view::npos &&
+                                           content.find("checker_light · rgba(") != std::string_view::npos;
+                                }),
+            "ColorPicker Gallery omitted actual resolved component tokens");
+    const auto color_page = f.host.snapshot().page;
+    f.show("ant.component.input-number");
+    require(!f.services.components().contains(color_page) && f.services.color_picker().mounted().empty(),
+            "ColorPicker page leaked components");
+    require(f.inputs.mounted_inputs().size() >= 5, "InputNumber page omitted exact/formatter examples");
+    require(!f.inputs.sessions().active().valid(), "offpage editor session leaked");
+    std::vector<runtime::ComponentId> old_inputs;
+    for (const auto& input : f.inputs.mounted_inputs()) {
+        if (within(f, input.component, f.host.snapshot().page)) {
+            old_inputs.push_back(input.component);
+        }
+    }
+    f.show("ant.component.button");
+    for (const auto& input : old_inputs) {
+        require(!f.services.components().contains(input), "InputNumber page leaked an editor");
+    }
+    require(!f.inputs.sessions().active().valid(), "InputNumber page leaked its session");
+}
 
 void test_pages_and_geometry() {
     Fixture f;
@@ -451,8 +496,13 @@ void test_source_paragraph_flow() {
 }
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
     try {
+        if (argc > 1 && std::string_view(argv[1]) == "color-number") {
+            test_color_number_pages();
+            std::cout << "ColorPicker/InputNumber Gallery page contracts passed\n";
+            return 0;
+        }
         test_pages_and_geometry();
         test_wheel_and_routes();
         test_failed_page_viewport_and_focus();

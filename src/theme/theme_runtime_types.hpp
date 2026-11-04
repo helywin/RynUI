@@ -232,6 +232,8 @@ enum class TokenIdentity : std::uint8_t {
     layout_metrics,
     splitter_colors,
     splitter_metrics,
+    color_picker_colors,
+    color_picker_metrics,
     count,
 };
 

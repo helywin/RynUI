@@ -364,6 +364,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       changed, count);
     append_if_changed(before.breadcrumb().effects, after.breadcrumb().effects, TokenIdentity::breadcrumb_effects,
                       changed, count);
+    append_if_changed(before.color_picker().colors(), after.color_picker().colors(), TokenIdentity::color_picker_colors,
+                      changed, count);
+    append_if_changed(before.color_picker().metrics(), after.color_picker().metrics(),
+                      TokenIdentity::color_picker_metrics, changed, count);
     append_if_changed(before.anchor().colors, after.anchor().colors, TokenIdentity::anchor_colors, changed, count);
     append_if_changed(before.anchor().metrics, after.anchor().metrics, TokenIdentity::anchor_metrics, changed, count);
     append_if_changed(before.anchor().effects, after.anchor().effects, TokenIdentity::anchor_effects, changed, count);
@@ -1536,6 +1540,18 @@ const BreadcrumbThemeToken& ThemeScope::breadcrumb_effects() const {
     return snapshot_->breadcrumb();
 }
 
+const ColorPickerThemeToken& ThemeScope::color_picker_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::color_picker_colors);
+    return snapshot_->color_picker();
+}
+
+const ColorPickerThemeToken& ThemeScope::color_picker_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::color_picker_metrics);
+    return snapshot_->color_picker();
+}
+
 const AnchorThemeToken& ThemeScope::anchor_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::anchor_colors);
@@ -2180,6 +2196,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Layout.metrics",
         "Splitter.colors",
         "Splitter.metrics",
+        "ColorPicker.colors",
+        "ColorPicker.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2286,6 +2304,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::auto_complete_colors:
     case TokenIdentity::tree_select_colors:
     case TokenIdentity::tree_select_tree_colors:
+    case TokenIdentity::color_picker_colors:
     case TokenIdentity::anchor_colors:
     case TokenIdentity::breadcrumb_colors:
     case TokenIdentity::steps_colors:
@@ -2377,6 +2396,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tree_metrics:
     case TokenIdentity::auto_complete_typography:
     case TokenIdentity::tree_select_tree_metrics:
+    case TokenIdentity::color_picker_metrics:
     case TokenIdentity::anchor_metrics:
     case TokenIdentity::breadcrumb_metrics:
     case TokenIdentity::steps_metrics:

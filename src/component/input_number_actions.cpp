@@ -17,6 +17,10 @@ struct NumberActionState final {
     bool enabled{};
     bool visible{};
     bool down{};
+    bool single{};
+    bool placeholder{};
+    std::optional<animation::AnimationTime> repeat;
+    std::function<void()> activate;
     float border_width{};
     float border_radius{};
     InputVariant variant{InputVariant::Outlined};
@@ -34,7 +38,8 @@ void foreground(NumberActionState& state) {
 } // namespace
 
 InputNumberActions mount_input_number_actions(WindowComponentServices& host, input::InteractionId parent,
-                                              std::function<void(InputNumberStepDirection)> activate) {
+                                              std::function<void(InputNumberStepDirection)> activate,
+                                              const InputNumberControls& icons, int single) {
     auto& build = runtime::require_component_build_context();
     InputNumberActions result;
     result.group = build.mount_component<int>(0);
@@ -48,11 +53,16 @@ InputNumberActions mount_input_number_actions(WindowComponentServices& host, inp
         result.group, Content{[&] {
             auto& inner = runtime::require_component_build_context();
             for (std::size_t i = 0; i < 2; ++i) {
+                if (single >= 0 && static_cast<int>(i) != single) {
+                    continue;
+                }
                 const auto id = inner.mount_component<NumberActionState>();
                 result.buttons[i] = id;
                 auto& state = inner.state<NumberActionState>(id);
                 state.node = inner.root(id);
                 state.down = i == 1;
+                state.single = single >= 0;
+                state.placeholder = !icons.enabled;
                 inner.on_resource_cleanup(id, [&host, id] {
                     if (auto* s = host.components().state<NumberActionState>(id)) {
                         host.pointer().cancel_interaction(s->interaction);
@@ -73,6 +83,10 @@ InputNumberActions mount_input_number_actions(WindowComponentServices& host, inp
                 quad.opacity = 0;
                 const std::array initial{quad, quad, quad};
                 state.surface = host.surfaces().create(id, state.node, fragment, state.interaction, initial);
+                state.activate = [activate,
+                                  direction = i == 0 ? InputNumberStepDirection::Up : InputNumberStepDirection::Down] {
+                    activate(direction);
+                };
                 input::InteractionHandlers pointer;
                 pointer.target = [&host, id, activate,
                                   direction = i == 0 ? InputNumberStepDirection::Up : InputNumberStepDirection::Down](
@@ -90,8 +104,25 @@ InputNumberActions mount_input_number_actions(WindowComponentServices& host, inp
                     const auto pressed = s->press.dispatch(context, s->interaction, s->enabled && s->visible);
                     foreground(*s);
                     host.dirty().invalidate(s->node, runtime::DirtyFlags::Material);
-                    if (pressed.activate) {
-                        activate(direction);
+                    if (context.kind() == input::PointerEventKind::up ||
+                        context.kind() == input::PointerEventKind::cancel ||
+                        context.kind() == input::PointerEventKind::leave) {
+                        s->repeat.reset();
+                    }
+                    if (context.kind() == input::PointerEventKind::down && pressed.pressed_changed &&
+                        s->press.pressed()) {
+                        s->repeat = host.animation_time() + animation::AnimationDuration::milliseconds(600);
+                        auto callback = s->activate;
+                        host.request_frame();
+                        try {
+                            callback();
+                        } catch (...) {
+                            if (auto* current = host.components().state<NumberActionState>(id)) {
+                                current->repeat.reset();
+                                host.pointer().cancel_interaction(current->interaction);
+                            }
+                            throw;
+                        }
                     }
                 };
                 host.interactions().set_handlers(state.interaction, std::move(pointer));
@@ -100,7 +131,23 @@ InputNumberActions mount_input_number_actions(WindowComponentServices& host, inp
                 box.justify = layout::FlexJustify::center;
                 host.layout().set_layout(state.node, box);
                 inner.mount_slot_with_semantic_text_style(
-                    id, Content{[i] {
+                    id, Content{[i, icons, single] {
+                        if (!icons.enabled) {
+                            return;
+                        }
+                        if (i == 0 && icons.up_icon) {
+                            SlotContentAccess::function (*icons.up_icon)();
+                            return;
+                        }
+                        if (i == 1 && icons.down_icon) {
+                            SlotContentAccess::function (*icons.down_icon)();
+                            return;
+                        }
+                        if (single >= 0) {
+                            Icon(IconProps{}.source(
+                                IconSource{i == 0 ? IconName::PlusOutlined : IconName::MinusOutlined}));
+                            return;
+                        }
                         Icon(IconProps{}.source(IconSource{i == 0 ? IconName::UpOutlined : IconName::DownOutlined}));
                     }},
                     Prop<runtime::SemanticForeground>{state.foreground},
@@ -110,10 +157,64 @@ InputNumberActions mount_input_number_actions(WindowComponentServices& host, inp
     return result;
 }
 
+void cancel_input_number_actions(WindowComponentServices& host, const InputNumberActions& actions) {
+    for (auto id : actions.buttons) {
+        if (auto* s = host.components().state<NumberActionState>(id)) {
+            s->repeat.reset();
+            static_cast<void>(s->press.reset());
+            host.pointer().cancel_interaction(s->interaction);
+        }
+    }
+}
+
+std::optional<animation::AnimationTime> input_number_actions_deadline(WindowComponentServices& host,
+                                                                      const InputNumberActions& actions) {
+    std::optional<animation::AnimationTime> deadline;
+    for (auto id : actions.buttons) {
+        if (auto* s = host.components().state<NumberActionState>(id);
+            s && s->repeat && s->enabled && s->visible && host.interactions().component_active(id) &&
+            host.focus().state().window_active && s->press.pressed()) {
+            if (!deadline || *s->repeat < *deadline) {
+                deadline = s->repeat;
+            }
+        }
+    }
+    return deadline;
+}
+
+std::size_t tick_input_number_actions(WindowComponentServices& host, const InputNumberActions& actions,
+                                      animation::AnimationTime now) {
+    std::size_t changed{};
+    for (auto id : actions.buttons) {
+        auto* s = host.components().state<NumberActionState>(id);
+        if (!s || !s->repeat) {
+            continue;
+        }
+        if (!s->enabled || !s->visible || !s->press.pressed() || !host.interactions().component_active(id) ||
+            !host.focus().state().window_active) {
+            cancel_input_number_actions(host, actions);
+            continue;
+        }
+        if (now < *s->repeat) {
+            continue;
+        }
+        s->repeat = now + animation::AnimationDuration::milliseconds(100);
+        auto callback = s->activate;
+        try {
+            callback();
+        } catch (...) {
+            cancel_input_number_actions(host, actions);
+            throw;
+        }
+        ++changed;
+    }
+    return changed;
+}
+
 void configure_input_number_actions(WindowComponentServices& host, const InputNumberActions& actions,
                                     const InputNumberThemeToken& token, float height, float border_width,
                                     float border_radius, bool visible, std::array<bool, 2> enabled,
-                                    InputVariant variant) {
+                                    InputVariant variant, bool spinner) {
     if (!host.components().contains(actions.group)) {
         return;
     }
@@ -130,18 +231,20 @@ void configure_input_number_actions(WindowComponentServices& host, const InputNu
         s->visible = visible;
         s->token = token;
         s->variant = variant;
+        (void)spinner;
         s->border_width = border_width;
         s->border_radius = border_radius;
-        s->enabled = visible && enabled[i];
+        s->enabled = visible && enabled[i] && !s->placeholder;
         if (!s->enabled) {
             s->hovered = false;
+            s->repeat.reset();
             static_cast<void>(s->press.reset());
             host.pointer().cancel_interaction(s->interaction);
         }
         host.interactions().set_eligible(s->interaction, s->enabled);
         auto& node = host.nodes().require(s->node);
         const auto width = visible ? token.handle_width : 0;
-        const auto row_height = visible ? height * .5F : 0;
+        const auto row_height = visible ? height * (s->single || spinner ? 1.0F : .5F) : 0;
         if (visibility_changed || old.metrics() != token.metrics() || node.external_layout.width != width ||
             node.external_layout.height != row_height) {
             node.external_layout.width = width;
@@ -158,7 +261,7 @@ void configure_input_number_actions(WindowComponentServices& host, const InputNu
 void paint_input_number_actions(WindowComponentServices& host, const InputNumberActions& actions, runtime::Rect clip) {
     for (const auto id : actions.buttons) {
         const auto* s = host.components().state<NumberActionState>(id);
-        if (!s) {
+        if (!s || s->placeholder) {
             continue;
         }
         const auto& node = host.nodes().require(s->node);

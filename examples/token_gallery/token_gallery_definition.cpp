@@ -3585,8 +3585,122 @@ void add_dropdown_samples(const std::shared_ptr<GalleryState>& state) {
     ++state->telemetry.live_samples;
 }
 
+void add_color_picker_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"ColorPicker · 颜色、透明度和渐变色标");
+    Text(TextProps{}.content(state->data_feedback));
+    auto color = std::make_shared<Signal<ColorPickerValue>>(ColorPickerValue{PickerColor{ColorHsb{215, .8, .9, .75}}});
+    auto gradient = std::make_shared<Signal<ColorPickerValue>>(
+        ColorPickerValue{std::vector<ColorStop>{{String{u8"red"}, PickerColor{ColorRgb{255, 0, 0, .25}}, 0},
+                                                {String{u8"blue"}, PickerColor{ColorRgb{0, 0, 255, 1}}, 100}}});
+    Space(SpaceProps{}.wrap(true).size(dp(24)), SpaceContent{[state, color, gradient] {
+              Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state, color] {
+                       Text(u8"拖动 SV、色相、透明度；HEX / RGB / HSB 和四通道输入");
+                       ColorPicker(
+                           ColorPickerProps{}
+                               .value(*color)
+                               .showText(true)
+                               .allowClear(true)
+                               .onChange([state, color](ColorPickerValue next, String css) {
+                                   color->set(next);
+                                   state->data_feedback.set(css);
+                               })
+                               .onChangeComplete([state](ColorPickerValue next) {
+                                   state->data_feedback.set(utf8("Complete: " + std::string{next.format().bytes()}));
+                               })
+                               .onFormatChange([state](ColorFormat) { state->data_feedback.set(u8"Format callback"); })
+                               .onClear([state] { state->data_feedback.set(u8"Clear callback"); })
+                               .presets(
+                                   std::vector<ColorPreset>{{String{u8"primary"},
+                                                             String{u8"常用颜色"},
+                                                             {ColorPickerValue{PickerColor{ColorRgb{22, 119, 255, 1}}},
+                                                              ColorPickerValue{PickerColor{ColorRgb{82, 196, 26, 1}}},
+                                                              ColorPickerValue{PickerColor{ColorRgb{245, 34, 45, .5}}}},
+                                                             true}}),
+                           ColorPickerSlots{
+                               .panel_render =
+                                   [](ColorPickerPanelParts parts) {
+                                       Flex(FlexProps{}.vertical(true).gap(dp(8)), [parts] {
+                                           parts.renderPicker();
+                                           parts.renderPresets();
+                                           Input(InputProps{}.placeholder(u8"自定义 panel 中保留的备注"));
+                                           gallery_target("gallery.color-picker.note");
+                                       });
+                                   },
+                               .text_render =
+                                   [](ColorPickerTextContext context) { Text(TextProps{}.content(context.text)); },
+                               .extra = ColorPickerExtra{[] { Text(u8"原生自定义扩展区域"); }}});
+                       remember_target(state, "gallery.color-picker.solid");
+                   }});
+              Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state, gradient] {
+                       Text(u8"渐变色标：选择、拖动、添加、移除和百分比编辑");
+                       ColorPicker(
+                           ColorPickerProps{}
+                               .value(*gradient)
+                               .modes(std::vector<ColorPickerMode>{ColorPickerMode::Single, ColorPickerMode::Gradient})
+                               .showText(false)
+                               .onChange([state, gradient](ColorPickerValue next, String css) {
+                                   gradient->set(next);
+                                   state->data_feedback.set(css);
+                               }));
+                       remember_target(state, "gallery.color-picker.gradient");
+                   }});
+              ColorPicker(ColorPickerProps{}
+                              .defaultValue(PickerColor{ColorRgb{255, 165, 0, 1}})
+                              .disabledAlpha(true)
+                              .defaultFormat(ColorFormat::Hsb)
+                              .showText(true)
+                              .size(ControlSize::Large));
+              ColorPicker(ColorPickerProps{}.defaultValue(PickerColor{}).disabled(true).showText(true));
+          }});
+}
+
 void add_input_number_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
+    auto exact = std::make_shared<Signal<InputNumberStringValue>>(
+        InputNumberStringValue{Decimal{"9007199254740993.00000000000000001"}});
+    Text(u8"stringMode · 超过 2^53 的精确十进制和 1e-17 步长");
+    InputNumber(InputNumberProps{}
+                    .value(*exact)
+                    .step(Decimal{"1e-17"})
+                    .changeOnWheel(true)
+                    .onStringChange([state, exact](InputNumberStringValue v) {
+                        exact->set(v);
+                        state->data_feedback.set(v ? v->text() : String{u8"empty"});
+                    })
+                    .layout(LayoutStyle{}.width(dp(420))));
+    remember_target(state, "gallery.number.exact");
+    Text(u8"formatter/parser · 自定义千分位；长按和 wheel 可取消");
+    InputNumber(InputNumberProps{}
+                    .defaultValue(1234.5)
+                    .step(.1)
+                    .changeOnWheel(true)
+                    .mode(InputNumberMode::Spinner)
+                    .formatter([](String n, InputNumberFormatInfo info) {
+                        if (info.user_typing) {
+                            return info.input;
+                        }
+                        auto text = std::string{n.bytes()};
+                        const auto dot = text.find('.');
+                        const auto end = dot == text.npos ? text.size() : dot;
+                        const auto begin = !text.empty() && text.front() == '-' ? 1U : 0U;
+                        for (auto i = end; i > begin + 3;) {
+                            i -= 3;
+                            text.insert(i, 1, ',');
+                        }
+                        return utf8(text);
+                    })
+                    .parser([](String n) {
+                        auto text = std::string{n.bytes()};
+                        std::erase(text, ',');
+                        return utf8(text);
+                    })
+                    .onChange([state](InputNumberValue v) {
+                        state->data_feedback.set(v ? utf8("Formatted value: " + std::to_string(*v))
+                                                   : String{u8"empty"});
+                    })
+                    .layout(LayoutStyle{}.width(dp(260))));
+    remember_target(state, "gallery.number.formatted");
     Text(u8"InputNumber · 小数、范围、禁用与只读");
     Text(TextProps{}.content(state->data_feedback));
     Space(
@@ -7509,6 +7623,13 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_table_workflow_samples",
       "include/ryn/table.hpp"},
      add_table_workflow_samples},
+    {{"gallery.sample.color-picker.controls",
+      "ant.component.color-picker",
+      {},
+      "颜色、透明度、通道与渐变色标",
+      "add_color_picker_samples",
+      "include/ryn/color_picker.hpp"},
+     add_color_picker_samples},
     {{"gallery.sample.input-number.values",
       "ant.component.input-number",
       {},

@@ -22,6 +22,7 @@ class TypographyComponentHost;
 class FloatButtonComponentHost;
 class DividerComponentHost;
 class SpaceAddonHost;
+class ColorPickerComponentHost;
 class SliderComponentHost;
 class TooltipComponentHost;
 class OTPComponentHost;
@@ -240,6 +241,10 @@ public:
 
     [[nodiscard]] SpaceAddonHost& space_addon() noexcept {
         return *space_addon_;
+    }
+
+    [[nodiscard]] ColorPickerComponentHost& color_picker() noexcept {
+        return *color_picker_;
     }
 
     [[nodiscard]] SliderComponentHost& slider() noexcept {
@@ -489,6 +494,7 @@ private:
     std::unique_ptr<DividerComponentHost> divider_;
     std::unique_ptr<SpaceAddonHost> space_addon_;
     std::unique_ptr<SliderComponentHost> slider_;
+    std::unique_ptr<ColorPickerComponentHost> color_picker_;
     std::unique_ptr<ModalComponentHost> modal_;
     std::unique_ptr<PopconfirmComponentHost> popconfirm_;
     std::unique_ptr<PopoverComponentHost> popover_;

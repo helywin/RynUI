@@ -13,6 +13,17 @@ static_assert(requires(ryn::InputNumberProps props, ryn::Signal<ryn::InputNumber
     props.onSubmit([](ryn::InputNumberValue) {}).onFocus([] {}).onBlur([] {});
 });
 
+static_assert(requires(ryn::InputNumberProps props, ryn::Signal<ryn::InputNumberStringValue> value,
+                       ryn::Signal<ryn::Decimal> step, ryn::Signal<ryn::InputNumberMode> mode) {
+    props.value(value).min(step).max(step).step(step).mode(mode).changeOnWheel(true).changeOnBlur(false);
+    props.formatter([](ryn::String n, ryn::InputNumberFormatInfo info) { return info.user_typing ? info.input : n; });
+    props.parser([](ryn::String input) { return input; }).decimalSeparator(ryn::String{u8","});
+    props.onStringChange([](ryn::InputNumberStringValue) {}).onStringSubmit([](ryn::InputNumberStringValue) {});
+    props.onStringStep([](ryn::Decimal, ryn::InputNumberStringStepInfo) {});
+    props.controls(ryn::InputNumberControls{.up_icon = ryn::InputNumberUpIcon{[] {}},
+                                            .down_icon = ryn::InputNumberDownIcon{[] {}}});
+});
+
 int main() {
     ryn::InputNumberProps props;
     props.value(1.25).defaultValue(std::nullopt);

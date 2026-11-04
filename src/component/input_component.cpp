@@ -89,14 +89,88 @@ struct InputNumberState final {
           model(read_prop(this->config->options), this->config->initial, this->config->value.has_value()) {}
 
     std::shared_ptr<InputNumberConfig> config;
-    InputNumberModel model;
+    NumberModel model;
     InputNumberActions actions;
-    std::optional<InputNumberValue> emitted;
+    InputNumberActions spinner_up;
+    InputNumberActions spinner_down;
+    bool custom_prefix{};
+    InputNumberMode mode{InputNumberMode::Input};
+    std::optional<NumberValue> emitted;
+    std::function<void()> failure_cleanup;
+    std::function<String()> input_context;
     bool controls{true};
     bool keyboard{true};
     bool composition_active{};
     bool edited{};
 };
+
+template <class F> void number_callback(const std::function<void()>& cleanup, F&& callback) {
+    try {
+        callback();
+    } catch (...) {
+        if (cleanup) {
+            cleanup();
+        }
+        throw;
+    }
+}
+
+String format_number(const InputNumberState& state, bool typing, String draft) {
+    auto plain = NumberModel::format(state.model.value());
+    const auto separator = read_prop(state.config->separator);
+    if (separator != String{u8"."}) {
+        auto text = std::string{plain.bytes()};
+        const auto dot = text.find('.');
+        if (dot != text.npos) {
+            text.replace(dot, 1, separator.bytes());
+            plain = String::from_utf8(text).value();
+        }
+    }
+    const auto formatter = state.config->formatter;
+    if (!formatter) {
+        return plain;
+    }
+    const auto cleanup = state.failure_cleanup;
+    if (!typing) {
+        const auto context = state.input_context;
+        draft = context ? context() : plain;
+    }
+    try {
+        return formatter(plain, {typing, std::move(draft)});
+    } catch (...) {
+        if (cleanup) {
+            cleanup();
+        }
+        throw;
+    }
+}
+
+std::optional<NumberValue> parse_number(const InputNumberState& state, String draft, bool finish = false) {
+    const auto parser = state.config->parser;
+    const auto model = state.model;
+    if (parser) {
+        const auto cleanup = state.failure_cleanup;
+        try {
+            draft = parser(std::move(draft));
+        } catch (...) {
+            if (cleanup) {
+                cleanup();
+            }
+            throw;
+        }
+    } else {
+        const auto separator = read_prop(state.config->separator);
+        if (separator != String{u8"."}) {
+            auto text = std::string{draft.bytes()};
+            const auto dot = text.find(separator.bytes());
+            if (dot != text.npos) {
+                text.replace(dot, separator.bytes().size(), ".");
+                draft = String::from_utf8(text).value();
+            }
+        }
+    }
+    return model.parse(draft.bytes(), finish);
+}
 
 struct InputState {
     MountedInputComponent mounted;
@@ -382,14 +456,14 @@ std::size_t count_value(StringView value, InputCountUnit unit, const std::functi
 } // namespace
 
 struct InputPropsAccess {
-    static void mount(InputComponentHost& owner, const InputProps& props, const std::optional<InputPrefix>& prefix,
+    static void mount(InputComponentHost& owner, const InputProps& props, std::optional<InputPrefix> prefix,
                       const std::optional<InputSuffix>& suffix) {
         // Resolve and validate before allocating component, editor or interaction identities.
         if (props.common_.value_ && props.common_.default_value_) {
             throw std::invalid_argument("Input value and defaultValue are mutually exclusive");
         }
         auto number = props.number_ ? std::make_unique<InputNumberState>(props.number_) : nullptr;
-        const auto initial = number                 ? InputNumberModel::format(number->model.value())
+        const auto initial = number                 ? format_number(*number, false, {})
                              : props.common_.value_ ? read_prop(*props.common_.value_)
                                                     : props.common_.default_value_.value_or(String{});
         const auto direction = read_prop(props.common_.direction_);
@@ -441,8 +515,26 @@ struct InputPropsAccess {
         state.otp = props.otp_;
         state.number = std::move(number);
         if (state.number) {
+            state.number->input_context = [&owner, component] {
+                const auto* live = owner.host_->components().state<InputState>(component);
+                if (!live) {
+                    return String{};
+                }
+                return String::from_utf8(owner.editors_.require(live->mounted.editor).value()).value();
+            };
+            state.number->failure_cleanup = [&owner, component] {
+                if (const auto* live = owner.host_->components().state<InputState>(component); live && live->number) {
+                    const auto actions = live->number->actions;
+                    const auto up = live->number->spinner_up;
+                    const auto down = live->number->spinner_down;
+                    cancel_input_number_actions(*owner.host_, actions);
+                    cancel_input_number_actions(*owner.host_, up);
+                    cancel_input_number_actions(*owner.host_, down);
+                }
+            };
             state.number->controls = read_prop(state.number->config->controls);
             state.number->keyboard = read_prop(state.number->config->keyboard);
+            state.number->mode = read_prop(state.number->config->mode);
         }
         if (props.textarea_) {
             state.textarea = std::make_unique<TextAreaState>();
@@ -578,6 +670,14 @@ struct InputPropsAccess {
                 current->focus_visible = focus.focus_visible;
                 if (!focus.focused) {
                     current->caret_blink.stop();
+                    if (current->number) {
+                        const auto actions = current->number->actions;
+                        const auto up = current->number->spinner_up;
+                        const auto down = current->number->spinner_down;
+                        cancel_input_number_actions(*owner.host_, actions);
+                        cancel_input_number_actions(*owner.host_, up);
+                        cancel_input_number_actions(*owner.host_, down);
+                    }
                     current->selecting_pointer.reset();
                     owner.host_->pointer().cancel_pointer_interaction(current->mounted.interaction);
                     current->hovering_pointers = 0;
@@ -591,7 +691,8 @@ struct InputPropsAccess {
                 owner.invalidate(component, runtime::DirtyFlags::Material);
                 auto focus_callback = !was_focused && focus.focused ? current->on_focus : std::function<void()>{};
                 auto blur_callback = was_focused && !focus.focused ? current->on_blur : std::function<void()>{};
-                if (was_focused && !focus.focused && current->number) {
+                if (was_focused && !focus.focused && current->number &&
+                    read_prop(current->number->config->change_on_blur)) {
                     owner.finish_number(component);
                     current = owner.host_->components().state<InputState>(component);
                     if (!current) {
@@ -633,6 +734,22 @@ struct InputPropsAccess {
         const auto count_text = state.count_text;
         std::optional<InputSuffix> composed_suffix = suffix;
         if (state.number) {
+            state.number->custom_prefix = prefix.has_value();
+            prefix = InputPrefix{[&owner, component, original = prefix] {
+                if (original) {
+                    SlotContentAccess::function (*original)();
+                }
+                auto* current = owner.host_->components().state<InputState>(component);
+                if (!current || !current->number) {
+                    return;
+                }
+                current->number->spinner_down = mount_input_number_actions(
+                    *owner.host_, current->mounted.interaction,
+                    [&owner, component](auto direction) {
+                        owner.step_number(component, direction, InputNumberStepSource::Button);
+                    },
+                    InputNumberControls{.enabled = false}, 1);
+            }};
             composed_suffix = InputSuffix{[&owner, component, suffix] {
                 auto* current = owner.host_->components().state<InputState>(component);
                 if (suffix) {
@@ -642,7 +759,18 @@ struct InputPropsAccess {
                     *owner.host_, current->mounted.interaction,
                     [&owner, component](InputNumberStepDirection direction) {
                         owner.step_number(component, direction, InputNumberStepSource::Button);
-                    });
+                    },
+                    current->number->config->icons);
+                current = owner.host_->components().state<InputState>(component);
+                if (!current || !current->number) {
+                    return;
+                }
+                current->number->spinner_up = mount_input_number_actions(
+                    *owner.host_, current->mounted.interaction,
+                    [&owner, component](auto direction) {
+                        owner.step_number(component, direction, InputNumberStepSource::Button);
+                    },
+                    InputNumberControls{.enabled = false}, 0);
             }};
         }
         if (props.common_.allow_clear_ || props.common_.show_count_) {
@@ -975,7 +1103,7 @@ struct InputPropsAccess {
         const auto theme = build.theme_scope();
         if (state.number) {
             const auto config = state.number->config;
-            connect(config->options, [](auto& owner, auto& current, InputNumberOptions value) {
+            connect(config->options, [](auto& owner, auto& current, NumberOptions value) {
                 current.number->model.configure(value);
                 owner.refresh_number(current.mounted.component);
             });
@@ -983,20 +1111,38 @@ struct InputPropsAccess {
                 current.number->controls = value;
                 owner.refresh_number(current.mounted.component);
             });
+            connect(config->mode, [](auto& owner, auto& current, InputNumberMode value) {
+                if (value != InputNumberMode::Input && value != InputNumberMode::Spinner) {
+                    throw std::invalid_argument("Invalid InputNumber mode");
+                }
+                current.number->mode = value;
+                owner.refresh_number(current.mounted.component);
+            });
+            connect(config->separator, [](auto&, auto&, String value) {
+                if (value.empty() || value.bytes().size() > 8 ||
+                    value.bytes().find_first_of("0123456789+-eE") != std::string_view::npos) {
+                    throw std::invalid_argument("Invalid decimal separator");
+                }
+            });
             connect(config->keyboard, [](auto&, auto& current, bool value) { current.number->keyboard = value; });
             if (config->value) {
-                connect(*config->value, [](auto& owner, auto& current, InputNumberValue value) {
+                connect(*config->value, [](auto& owner, auto& current, NumberValue value) {
+                    const auto component = current.mounted.component;
                     auto& number = *current.number;
                     number.model.reconcile(value);
                     const bool echo = current.focused && number.edited && number.emitted && *number.emitted == value;
                     if (!echo) {
-                        const auto formatted = InputNumberModel::format(value);
-                        check(owner.editors_.require(current.mounted.editor).reconcile(formatted.bytes()).edit);
-                        number.edited = false;
-                        number.emitted.reset();
-                        owner.update_text(current.mounted.component);
+                        const auto formatted = format_number(number, false, {});
+                        auto* live = owner.host_->components().template state<InputState>(component);
+                        if (!live || !live->number) {
+                            return;
+                        }
+                        check(owner.editors_.require(live->mounted.editor).reconcile(formatted.bytes()).edit);
+                        live->number->edited = false;
+                        live->number->emitted.reset();
+                        owner.update_text(component);
                     }
-                    owner.refresh_number(current.mounted.component);
+                    owner.refresh_number(component);
                 });
             }
         }
@@ -1095,15 +1241,62 @@ struct InputPropsAccess {
 
 struct InputNumberPropsAccess final {
     static void mount(InputNumberProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {
-        if (props.value_ && props.default_value_) {
+        if ((props.value_ || props.string_value_) && (props.default_value_ || props.string_default_)) {
             throw std::invalid_argument("InputNumber value and defaultValue are mutually exclusive");
         }
+        if ((props.string_mode_ && (props.on_change_ || props.on_step_ || props.on_submit_)) ||
+            (!props.string_mode_ && (props.string_change_ || props.string_submit_ || props.string_step_callback_))) {
+            throw std::invalid_argument("InputNumber callback value type must match stringMode");
+        }
+        if ((props.string_mode_ && (props.value_ || props.default_value_)) ||
+            (!props.string_mode_ && (props.string_value_ || props.string_default_ || props.string_min_ ||
+                                     props.string_max_ || props.string_step_))) {
+            throw std::invalid_argument("InputNumber exact and double props cannot be mixed");
+        }
         auto config = std::make_shared<InputNumberConfig>();
-        config->value = std::move(props.value_);
-        config->initial = config->value ? read_prop(*config->value) : props.default_value_.value_or(InputNumberValue{});
-        config->options = bind([min = props.min_, max = props.max_, step = props.step_, precision = props.precision_] {
-            return InputNumberOptions{read_prop(min), read_prop(max), read_prop(step), read_prop(precision)};
+        if (props.string_value_) {
+            config->value = bind([p = *props.string_value_] { return NumberValue{read_prop(p)}; });
+        } else if (props.value_) {
+            config->value = bind([p = *props.value_] { return NumberValue{read_prop(p)}; });
+        }
+        config->initial = config->value        ? read_prop(*config->value)
+                          : props.string_mode_ ? NumberValue{props.string_default_.value_or(InputNumberStringValue{})}
+                                               : NumberValue{props.default_value_.value_or(InputNumberValue{})};
+        config->options = bind([min = props.min_, max = props.max_, step = props.step_, precision = props.precision_,
+                                lo = props.string_min_, hi = props.string_max_, increment = props.string_step_,
+                                exact = props.string_mode_, emin = props.explicit_min_, emax = props.explicit_max_,
+                                estep = props.explicit_step_] {
+            NumberOptions o;
+            o.numeric = {read_prop(min), read_prop(max), read_prop(step), read_prop(precision)};
+            o.exact = exact;
+            if (lo) {
+                o.min = read_prop(*lo);
+            } else if (exact && emin) {
+                o.min = Decimal{InputNumberModel::format(o.numeric.min)};
+            }
+            if (hi) {
+                o.max = read_prop(*hi);
+            } else if (exact && emax) {
+                o.max = Decimal{InputNumberModel::format(o.numeric.max)};
+            }
+            if (increment) {
+                o.step = read_prop(*increment);
+            } else if (exact && estep) {
+                o.step = Decimal{InputNumberModel::format(o.numeric.step)};
+            }
+            return o;
         });
+        config->mode = props.mode_;
+        config->separator = props.separator_;
+        config->icons = std::move(props.icons_);
+        config->formatter = std::move(props.formatter_);
+        config->parser = std::move(props.parser_);
+        config->on_input = std::move(props.on_input_);
+        config->wheel = props.wheel_;
+        config->change_on_blur = props.change_on_blur_;
+        config->string_change = std::move(props.string_change_);
+        config->string_submit = std::move(props.string_submit_);
+        config->string_step = std::move(props.string_step_callback_);
         config->controls = props.controls_;
         config->keyboard = props.keyboard_;
         config->on_change = std::move(props.on_change_);
@@ -1436,7 +1629,18 @@ void InputComponentHost::update_caret(runtime::ComponentId component, bool reset
 
 std::size_t InputComponentHost::tick_auxiliary(animation::AnimationTime now) {
     std::size_t changed{};
-    for (const auto& mounted : mounted_) {
+    const auto mounted_copy = mounted_;
+    for (const auto& mounted : mounted_copy) {
+        if (auto* state = host_->components().state<InputState>(mounted.component); state && state->number) {
+            const auto actions = state->number->actions;
+            changed += tick_input_number_actions(*host_, actions, now);
+            if (auto* live = host_->components().state<InputState>(mounted.component); live && live->number) {
+                const auto up = live->number->spinner_up;
+                const auto down = live->number->spinner_down;
+                changed += tick_input_number_actions(*host_, up, now);
+                changed += tick_input_number_actions(*host_, down, now);
+            }
+        }
         if (auto* state = host_->components().state<InputState>(mounted.component);
             state && state->caret_blink.tick(now)) {
             host_->dirty().invalidate_in_frame(mounted.node, runtime::DirtyFlags::Material);
@@ -1596,6 +1800,16 @@ bool InputComponentHost::dispatch(const input::ScrollInputEvent& event) {
     while (target) {
         const auto& record = host_->interactions().require(*target);
         auto* state = host_->components().state<InputState>(record.component);
+        if (state && state->number && read_prop(state->number->config->wheel) && state->number->keyboard &&
+            state->focused && !state->disabled && !state->read_only && state->active &&
+            host_->interactions().component_active(state->mounted.component) &&
+            !editors_.require(state->mounted.editor).composition().active && event.delta_y != 0) {
+            const auto direction = event.delta_y > 0 ? InputNumberStepDirection::Up : InputNumberStepDirection::Down;
+            if (state->number->model.stepped(direction) != state->number->model.value()) {
+                step_number(state->mounted.component, direction, InputNumberStepSource::Wheel);
+                return true;
+            }
+        }
         if (state && state->textarea && !state->disabled && state->active &&
             host_->interactions().component_active(state->mounted.component)) {
             auto& area = *state->textarea;
@@ -2355,7 +2569,19 @@ std::optional<animation::AnimationTime> InputComponentHost::next_caret_deadline(
     std::optional<animation::AnimationTime> next;
     for (const auto& mounted : mounted_) {
         const auto* state = host_->components().state<InputState>(mounted.component);
-        const auto candidate = state ? state->caret_blink.deadline() : std::nullopt;
+        auto candidate = state ? state->caret_blink.deadline() : std::nullopt;
+        if (state && state->number) {
+            auto repeat = input_number_actions_deadline(*host_, state->number->actions);
+            for (const auto& action : {state->number->spinner_up, state->number->spinner_down}) {
+                const auto d = input_number_actions_deadline(*host_, action);
+                if (d && (!repeat || *d < *repeat)) {
+                    repeat = d;
+                }
+            }
+            if (repeat && (!candidate || *repeat < *candidate)) {
+                candidate = repeat;
+            }
+        }
         if (candidate && (!next || *candidate < *next)) {
             next = candidate;
         }
@@ -2515,7 +2741,23 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                                      std::min(thickness, caret_clip.height)};
         const auto& theme = host_->components().theme_scope(mounted.component)->snapshot();
         if (state->number) {
+            if (state->number->mode == InputNumberMode::Spinner) {
+                const auto buttons = state->number->actions.buttons;
+                const auto placeholders =
+                    std::array{state->number->spinner_up.buttons[0], state->number->spinner_down.buttons[1]};
+                for (std::size_t i = 0; i < 2; ++i) {
+                    if (host_->components().contains(buttons[i]) && host_->components().contains(placeholders[i])) {
+                        const auto bounds = host_->nodes().require(host_->components().root(placeholders[i])).bounds;
+                        static_cast<void>(
+                            host_->layout().measure_child(host_->components().root(buttons[i]),
+                                                          layout::Constraints::fixed(bounds.width, bounds.height)));
+                        host_->layout().place_child(host_->components().root(buttons[i]), bounds, true, true);
+                    }
+                }
+            }
             paint_input_number_actions(*host_, state->number->actions, clip);
+            paint_input_number_actions(*host_, state->number->spinner_up, clip);
+            paint_input_number_actions(*host_, state->number->spinner_down, clip);
         }
         auto root_bounds = translated_bounds(host_->nodes(), mounted.node);
         if (state->textarea) {
@@ -2856,7 +3098,7 @@ InputNumberValue InputComponentHost::number_value(runtime::ComponentId component
     if (!state || !state->number) {
         throw std::out_of_range("InputNumber component is stale");
     }
-    return state->number->model.value();
+    return std::get<InputNumberValue>(state->number->model.value());
 }
 
 std::array<runtime::ComponentId, 2> InputComponentHost::number_actions(runtime::ComponentId component) const {
@@ -2880,16 +3122,34 @@ void InputComponentHost::refresh_number(runtime::ComponentId component) {
     const auto& theme = host_->components().theme_scope(component)->snapshot();
     const auto& tokens = theme.input_number();
     const auto height = std::max(0.0F, state->layout.control_height - 2 * state->layout.border_width);
-    configure_input_number_actions(
-        *host_, number.actions, tokens, height, theme.seed().line_width,
-        state->variant == InputVariant::Underlined ? 0 : derive_input_tokens(theme).size(state->size).border_radius,
-        number.controls && !state->disabled && !state->read_only,
-        {editable && number.model.stepped(InputNumberStepDirection::Up) != number.model.value(),
-         editable && number.model.stepped(InputNumberStepDirection::Down) != number.model.value()},
-        state->variant);
+    const bool spinner = number.mode == InputNumberMode::Spinner;
+    const auto enabled =
+        std::array{editable && number.model.stepped(InputNumberStepDirection::Up) != number.model.value(),
+                   editable && number.model.stepped(InputNumberStepDirection::Down) != number.model.value()};
+    const bool visible = number.controls && !state->disabled && !state->read_only;
+    const auto radius =
+        state->variant == InputVariant::Underlined ? 0 : derive_input_tokens(theme).size(state->size).border_radius;
+    configure_input_number_actions(*host_, number.actions, tokens, height, theme.seed().line_width, radius, visible,
+                                   enabled, state->variant, spinner);
+    configure_input_number_actions(*host_, number.spinner_up, tokens, height, theme.seed().line_width, radius,
+                                   visible && spinner, enabled, state->variant, true);
+    configure_input_number_actions(*host_, number.spinner_down, tokens, height, theme.seed().line_width, radius,
+                                   visible && spinner, enabled, state->variant, true);
+    if (host_->components().contains(number.actions.group)) {
+        auto& node = host_->nodes().require(host_->components().root(number.actions.group));
+        if (node.out_of_flow != spinner) {
+            node.out_of_flow = spinner;
+            invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
+        }
+    }
+    const bool prefix = number.custom_prefix || (visible && spinner);
+    if (state->layout.prefix != prefix) {
+        state->layout.prefix = prefix;
+        invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
+    }
 }
 
-void InputComponentHost::publish_number(runtime::ComponentId component, InputNumberValue candidate) {
+void InputComponentHost::publish_number(runtime::ComponentId component, NumberValue candidate) {
     auto* state = host_->components().state<InputState>(component);
     if (!state || !state->number) {
         return;
@@ -2901,10 +3161,16 @@ void InputComponentHost::publish_number(runtime::ComponentId component, InputNum
     }
     number.model.accept(candidate);
     number.emitted = candidate;
+    const auto cleanup = number.failure_cleanup;
     auto callback = number.config->on_change;
+    auto exact_callback = number.config->string_change;
     refresh_number(component);
-    if (callback) {
-        callback(candidate);
+    if (const auto* v = std::get_if<InputNumberValue>(&candidate)) {
+        if (callback) {
+            number_callback(cleanup, [&] { callback(*v); });
+        }
+    } else if (exact_callback) {
+        number_callback(cleanup, [&] { exact_callback(std::get<InputNumberStringValue>(candidate)); });
     }
 }
 
@@ -2944,9 +3210,12 @@ bool InputComponentHost::reset_form_draft(runtime::ComponentId component) {
         if (number.config->value) {
             number.model.reconcile(read_prop(*number.config->value));
         }
-        check(editors_.require(state->mounted.editor)
-                  .reconcile(InputNumberModel::format(number.model.value()).bytes())
-                  .edit);
+        const auto formatted = format_number(number, false, {});
+        state = host_->components().state<InputState>(component);
+        if (!state || !state->number) {
+            return false;
+        }
+        check(editors_.require(state->mounted.editor).reconcile(formatted.bytes()).edit);
         refresh_number(component);
     }
     if (!state->number && state->authoritative_value) {
@@ -3006,10 +3275,14 @@ void InputComponentHost::finish_number(runtime::ComponentId component) {
         return;
     }
     if (number.edited && !state->disabled && !state->read_only && state->active) {
-        const auto candidate = number.model.parse(editor.value(), true);
+        const auto candidate = parse_number(number, String::from_utf8(editor.value()).value(), true);
         // A complete value already proposed while typing must not emit twice
         // merely because a controlled owner refused it.
-        if (candidate && (!number.emitted || *number.emitted != *candidate)) {
+        state = host_->components().state<InputState>(component);
+        if (!state || !state->number) {
+            return;
+        }
+        if (candidate && (!state->number->emitted || *state->number->emitted != *candidate)) {
             publish_number(component, *candidate);
         }
     }
@@ -3020,7 +3293,11 @@ void InputComponentHost::finish_number(runtime::ComponentId component) {
     auto& current = *state->number;
     current.edited = false;
     current.emitted.reset();
-    const auto formatted = InputNumberModel::format(current.model.value());
+    const auto formatted = format_number(current, false, {});
+    state = host_->components().state<InputState>(component);
+    if (!state || !state->number) {
+        return;
+    }
     check(editors_.require(state->mounted.editor).reconcile(formatted.bytes()).edit);
     update_text(component);
     refresh_number(component);
@@ -3046,7 +3323,10 @@ void InputComponentHost::step_number(runtime::ComponentId component, InputNumber
     if (candidate == state->number->model.value()) {
         return;
     }
-    const auto offset = state->number->model.options().step;
+    const auto options = state->number->model.options();
+    const auto offset = options.numeric.step;
+    auto exact_callback = state->number->config->string_step;
+    const auto cleanup = state->number->failure_cleanup;
     auto callback = state->number->config->on_step;
     publish_number(component, candidate);
     state = host_->components().state<InputState>(component);
@@ -3055,12 +3335,21 @@ void InputComponentHost::step_number(runtime::ComponentId component, InputNumber
     }
     state->number->edited = false;
     state->number->emitted.reset();
-    const auto formatted = InputNumberModel::format(state->number->model.value());
+    const auto formatted = format_number(*state->number, false, {});
+    state = host_->components().state<InputState>(component);
+    if (!state || !state->number) {
+        return;
+    }
     check(editors_.require(state->mounted.editor).reconcile(formatted.bytes()).edit);
     update_text(component);
     refresh_number(component);
-    if (callback) {
-        callback(*candidate, {offset, direction, source});
+    if (const auto* v = std::get_if<InputNumberStringValue>(&candidate); v && *v) {
+        if (exact_callback) {
+            number_callback(cleanup, [&] { exact_callback(**v, {options.step, direction, source}); });
+        }
+    } else if (callback) {
+        number_callback(cleanup,
+                        [&] { callback(*std::get<InputNumberValue>(candidate), {offset, direction, source}); });
     }
 }
 
@@ -3083,11 +3372,29 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
     update_text(component);
     if (state->number) {
         state->number->edited = true;
-        const auto candidate = state->number->model.parse(value.bytes());
+        const auto on_input = state->number->config->on_input;
+        const auto candidate = parse_number(*state->number, value);
+        state = host_->components().state<InputState>(component);
+        if (!state || !state->number) {
+            return;
+        }
         if (candidate) {
             publish_number(component, *candidate);
         } else {
             refresh_number(component);
+        }
+        state = host_->components().state<InputState>(component);
+        if (state && state->number && state->number->config->formatter) {
+            const auto formatted = format_number(*state->number, true, value);
+            state = host_->components().state<InputState>(component);
+            if (state && state->number) {
+                check(editors_.require(state->mounted.editor).reconcile(formatted.bytes()).edit);
+                update_text(component);
+            }
+        }
+        if (on_input && host_->components().contains(component)) {
+            const auto cleanup = host_->components().state<InputState>(component)->number->failure_cleanup;
+            number_callback(cleanup, [&] { on_input(value); });
         }
         return;
     }
@@ -3162,6 +3469,11 @@ void InputComponentHost::set_active(runtime::ComponentId component, bool active)
     editors_.require(state->mounted.editor).set_eligibility(state->disabled || !active, state->read_only);
     static_cast<void>(host_->interactions().set_eligible(state->mounted.interaction, active && !state->disabled));
     if (!active) {
+        if (state->number) {
+            cancel_input_number_actions(*host_, state->number->actions);
+            cancel_input_number_actions(*host_, state->number->spinner_up);
+            cancel_input_number_actions(*host_, state->number->spinner_down);
+        }
         host_->pointer().cancel_interaction(state->mounted.interaction);
         host_->focus().cancel_interaction(state->mounted.interaction);
         state = host_->components().state<InputState>(component);
@@ -3220,10 +3532,17 @@ void InputComponentHost::submit(runtime::ComponentId component) {
         finish_number(component);
         state = host_->components().state<InputState>(component);
         if (state && state->number) {
+            const auto cleanup = state->number->failure_cleanup;
             auto callback = state->number->config->on_submit;
+            auto exact_callback = state->number->config->string_submit;
             const auto value = state->number->model.value();
             if (callback) {
-                callback(value);
+                if (const auto* v = std::get_if<InputNumberValue>(&value)) {
+                    number_callback(cleanup, [&] { callback(*v); });
+                }
+            }
+            if (const auto* v = std::get_if<InputNumberStringValue>(&value); v && exact_callback) {
+                number_callback(cleanup, [&] { exact_callback(*v); });
             }
         }
         return;

@@ -2,6 +2,7 @@
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
 #include "component/auto_complete_component.hpp"
+#include "component/color_picker_component.hpp"
 #include "component/anchor_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/dropdown_component.hpp"
@@ -1326,6 +1327,169 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             send(input::PointerAction::down, dragged.bounds.x + dragged.bounds.width / 2,
                  dragged.bounds.y + dragged.bounds.height / 2);
             std::cout << "float_button_native=passed anchor=true drag=true capture=true keyboard=true gpu_pixel=true\n";
+        }
+        if (route.component_identity == "ant.component.color-picker") {
+            auto& colors = app.services().color_picker();
+            const auto solid = pages.target("gallery.color-picker.solid");
+            const auto gradient = pages.target("gallery.color-picker.gradient");
+            const auto open_color = [&](runtime::ComponentId owner) {
+                reveal(owner);
+                const auto lane = pages.snapshot().layout.document;
+                const auto rect = bounds(owner);
+                events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2, -(rect.y - lane.y - 8) / 48);
+                render();
+                activate(owner);
+                render();
+            };
+            const auto labelled_button = [&](runtime::ComponentId owner, String label) {
+                for (const auto& button : app.mounted_buttons()) {
+                    if (!owns(app, button.component, owner) || !app.interactions().branch_active(button.interaction)) {
+                        continue;
+                    }
+                    for (const auto& text : app.services().text().mounted_texts()) {
+                        if (owns(app, text.component, button.component) &&
+                            app.services().text().scene_service().text_state(text.scene).content().bytes() ==
+                                label.bytes()) {
+                            return button.component;
+                        }
+                    }
+                }
+                throw std::runtime_error("native ColorPicker labelled action is missing");
+            };
+            open_color(solid);
+            check(colors.snapshot(solid).open, "native ColorPicker did not open");
+            const auto note = replace_text(pages.target("gallery.color-picker.note"), u8"retained color draft");
+            const auto drag = [&](runtime::ComponentId owner, std::size_t field, float x, float y) {
+                const auto rect = bounds(colors.snapshot(owner).fields[field]);
+                pointer(input::PointerAction::down, {rect.x + rect.width / 4, rect.y + rect.height / 2});
+                render();
+                check(captured() && colors.snapshot(owner).dragging, "native color field did not capture");
+                pointer(input::PointerAction::move, {rect.x + rect.width * x, rect.y + rect.height * y});
+                render();
+                pointer(input::PointerAction::up, {rect.x + rect.width * x, rect.y + rect.height * y});
+                render();
+                check(!captured() && !colors.snapshot(owner).dragging, "native color field retained capture");
+            };
+            const auto original = colors.snapshot(solid).value;
+            drag(solid, 0, .8F, .2F);
+            check(colors.snapshot(solid).value != original && has_text(u8"Complete:"), "native SV callback failed");
+            drag(solid, 1, .7F, .5F);
+            const auto opaque = colors.snapshot(solid).value;
+            drag(solid, 2, .25F, .5F);
+            check(colors.snapshot(solid).value != opaque, "native hue/alpha callbacks failed");
+            click(labelled_button(solid, PickerColor{ColorRgb{22, 119, 255, 1}}.format(ColorFormat::Hex)));
+            check(colors.snapshot(solid).value == ColorPickerValue{PickerColor{ColorRgb{22, 119, 255, 1}}},
+                  "native ColorPicker preset callback failed");
+            for (const auto format : {ColorFormat::Rgb, ColorFormat::Hsb, ColorFormat::Hex}) {
+                click(labelled_button(solid, u8"HEX / RGB / HSB"));
+                check(colors.snapshot(solid).format == format && has_text(u8"Format callback"),
+                      "native ColorPicker format callback failed");
+            }
+            check(inputs.display_snapshot(note.component).text == "retained color draft",
+                  "native custom ColorPicker panel remounted its editor");
+            click(labelled_button(solid, u8"Clear"));
+            check(colors.snapshot(solid).value.empty() && has_text(u8"Clear callback"),
+                  "native ColorPicker clear callback failed");
+            press(input::Key::escape);
+            open_color(gradient);
+            const auto old_gradient = colors.snapshot(gradient).value;
+            drag(gradient, 3, .35F, .5F);
+            check(colors.snapshot(gradient).value.gradient() && colors.snapshot(gradient).value != old_gradient,
+                  "native gradient stop drag failed");
+            click(labelled_button(gradient, u8"Add stop"));
+            check(colors.snapshot(gradient).value.stops().size() == 3, "native gradient add callback failed");
+            click(labelled_button(gradient, u8"Remove"));
+            check(colors.snapshot(gradient).value.stops().size() == 2, "native gradient remove callback failed");
+            press(input::Key::escape);
+            open_color(solid);
+            capture_editor(pages.target("gallery.color-picker.note"));
+            previous_session = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"未提交"}, {}, previous_session});
+            render();
+            check(inputs.editors().require(previous_session.owner).composition().active,
+                  "native ColorPicker custom editor preedit missing");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native ColorPicker retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(colors.mounted().empty() && !app.components().contains(note.component) &&
+                      !inputs.sessions().active().valid() && !captured() &&
+                      !inputs.editors().find(previous_session.owner),
+                  "native ColorPicker retirement retained editor/preedit/capture");
+            std::cout << "color_picker_native=passed sv_hue_alpha_callbacks=true gradient_drag_add_remove=true "
+                         "preset_clear=true custom_panel_draft=true preedit_capture_retired=true\n";
+        }
+        if (route.component_identity == "ant.component.input-number") {
+            const auto exact = pages.target("gallery.number.exact");
+            const auto formatted = pages.target("gallery.number.formatted");
+            reveal(exact);
+            replace_text(exact, u8"9007199254740993.00000000000000001");
+            press(input::Key::up);
+            check(inputs.display_snapshot(exact).text == "9007199254740993.00000000000000002" &&
+                      has_text(u8"9007199254740993.00000000000000002"),
+                  "native exact decimal step callback failed");
+            auto area = inputs.layout_snapshot(exact).viewport;
+            auto offset = pages.snapshot().document.offset;
+            events.inject_scroll_at(area.x + area.width / 2, area.y + area.height / 2, 1);
+            render();
+            check(inputs.display_snapshot(exact).text == "9007199254740993.00000000000000003" &&
+                      pages.snapshot().document.offset == offset,
+                  "native exact decimal wheel lost precision or leaked");
+            reveal(formatted);
+            const auto editor = replace_text(formatted, u8"12,345.6");
+            press(input::Key::enter);
+            check(inputs.number_value(formatted) && std::abs(*inputs.number_value(formatted) - 12345.6) < .000001 &&
+                      inputs.display_snapshot(formatted).text == "12,345.6" && has_text(u8"Formatted value:"),
+                  "native InputNumber formatter/parser callback failed");
+            const auto actions = inputs.number_actions(formatted);
+            const auto up = bounds(actions[0]);
+            const runtime::Point center{up.x + up.width / 2, up.y + up.height / 2};
+            const auto before = *inputs.number_value(formatted);
+            pointer(input::PointerAction::down, center);
+            render();
+            check(captured(), "native number hold did not capture");
+            const auto hold_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+            while (*inputs.number_value(formatted) < before + .15 && std::chrono::steady_clock::now() < hold_deadline) {
+                render();
+            }
+            check(*inputs.number_value(formatted) > before + .15, "native number hold repeat did not run");
+            pointer(input::PointerAction::up, center);
+            render();
+            const auto released = inputs.number_value(formatted);
+            const auto release_deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
+            while (std::chrono::steady_clock::now() < release_deadline) {
+                render();
+            }
+            check(!captured() && inputs.number_value(formatted) == released, "native number release retained repeat");
+            area = inputs.layout_snapshot(formatted).viewport;
+            offset = pages.snapshot().document.offset;
+            events.inject_scroll_at(area.x + area.width / 2, area.y + area.height / 2, -1);
+            render();
+            check(*inputs.number_value(formatted) < *released && pages.snapshot().document.offset == offset,
+                  "native formatted number wheel callback failed");
+            focus_editor(formatted);
+            const auto stamp = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"77"}, {}, stamp});
+            render();
+            check(inputs.editors().require(editor.editor).composition().active, "native number preedit missing");
+            focus_editor(exact);
+            render();
+            check(!inputs.editors().require(editor.editor).composition().active, "native number blur retained preedit");
+            focus_editor(formatted);
+            pointer(input::PointerAction::down, center);
+            render();
+            check(captured(), "native number retirement has no active hold capture");
+            previous_session = inputs.sessions().active();
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "native number retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(!app.components().contains(exact) && !app.components().contains(formatted) &&
+                      !app.components().contains(actions[0]) && !inputs.sessions().active().valid() && !captured() &&
+                      !inputs.editors().find(previous_session.owner),
+                  "native number retirement retained repeat/editor/capture");
+            std::cout << "input_number_native=passed exact_beyond_2pow53=true exact_wheel=true "
+                         "formatter_parser_callback=true "
+                         "hold_repeat_release=true wheel_input_first=true preedit_blur=true hold_retired=true\n";
         }
         if (route.component_identity == "ant.component.auto-complete") {
             auto& complete = app.services().auto_complete();

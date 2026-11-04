@@ -187,6 +187,7 @@ add_library(rynui_graphics STATIC
     graphics/glyph_atlas.cpp
     graphics/glyph_scene.cpp
     graphics/graphics.cpp
+    graphics/color_field.cpp
     graphics/quad_primitive.cpp
     graphics/quad_scene.cpp
     graphics/rounded_effect.cpp
@@ -228,6 +229,8 @@ add_library(rynui_components STATIC
     component/button_component.cpp
     component/window_component_services.cpp
     component/input_component.cpp
+    component/input_number_value.cpp
+    component/exact_decimal.cpp
     component/input_number_model.cpp
     component/input_number_actions.cpp
     component/input_affix_action.cpp
@@ -263,6 +266,8 @@ add_library(rynui_components STATIC
     component/otp_component.cpp
     component/icon_vector.cpp
     component/selection_component.cpp
+    component/color_picker_component.cpp
+    component/color_picker_value.cpp
     component/slider_component.cpp
     component/tooltip_component.cpp
     component/popconfirm_model.cpp

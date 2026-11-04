@@ -54,8 +54,8 @@
 
 ## 11. 数据录入：ColorPicker
 
-- [ ] 11.1 按对应 spec 与 design 矩阵实现 ColorPicker 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 11.2 为 ColorPicker 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 11.1 按对应 spec 与 design 矩阵实现 ColorPicker 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 11.2 为 ColorPicker 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 12. 数据录入：DatePicker
 
@@ -74,8 +74,8 @@
 
 ## 15. 数据录入：InputNumber
 
-- [ ] 15.1 按对应 spec 与 design 矩阵实现 InputNumber 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 15.2 为 InputNumber 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 15.1 按对应 spec 与 design 矩阵实现 InputNumber 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 15.2 为 InputNumber 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 16. 数据录入：Mentions
 

@@ -4,6 +4,7 @@
 #include "component/input_display.hpp"
 #include <ryn/input.hpp>
 #include <ryn/input_number.hpp>
+#include "component/input_number_value.hpp"
 
 namespace ryn::detail {
 
@@ -130,7 +131,7 @@ private:
     void notify_change(input::TextInputOwnerId);
     void refresh_number(runtime::ComponentId);
     void finish_number(runtime::ComponentId);
-    void publish_number(runtime::ComponentId, std::optional<double>);
+    void publish_number(runtime::ComponentId, NumberValue);
     void step_number(runtime::ComponentId, InputNumberStepDirection, InputNumberStepSource);
     void notify_otp_edit(input::TextInputOwnerId, bool succeeded);
     void clear(runtime::ComponentId);

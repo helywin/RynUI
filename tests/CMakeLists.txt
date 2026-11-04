@@ -1,3 +1,11 @@
+add_executable(rynui_color_picker_component_tests color_picker_component_tests.cpp)
+rynui_configure_cpp_target(rynui_color_picker_component_tests)
+target_link_libraries(rynui_color_picker_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_color_picker_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.color_picker_component COMMAND rynui_color_picker_component_tests)
+
 add_executable(rynui_theme_runtime_tests theme_runtime_tests.cpp)
 rynui_configure_cpp_target(rynui_theme_runtime_tests)
 target_include_directories(

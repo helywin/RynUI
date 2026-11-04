@@ -6,6 +6,7 @@
 #include "component/divider_component.hpp"
 #include "component/space_addon.hpp"
 #include "component/slider_component.hpp"
+#include "component/color_picker_component.hpp"
 #include "component/tooltip_component.hpp"
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
@@ -127,6 +128,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     divider_ = std::make_unique<DividerComponentHost>(*this);
     space_addon_ = std::make_unique<SpaceAddonHost>(*this);
     slider_ = std::make_unique<SliderComponentHost>(*this);
+    color_picker_ = std::make_unique<ColorPickerComponentHost>(*this);
     notices_ = std::make_unique<NoticeComponentHost>(*this);
     modal_ = std::make_unique<ModalComponentHost>(*this);
     table_ = std::make_unique<TableComponentHost>(*this);

@@ -15,6 +15,8 @@ static_assert(!ThemeConfigValue<const char*>);
 static_assert(!ThemeConfigValue<int>);
 static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.padding_inline)&, float>);
 static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.input_font_size)&, const char*>);
+static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.color_picker.tokens.panel_width)&, float>);
+static_assert(std::same_as<decltype(ryn::resolve_theme().color_picker()), const ryn::ColorPickerThemeToken&>);
 static_assert(!std::constructible_from<ryn::ThemeContent, ryn::Content>);
 static_assert(!std::constructible_from<ryn::Content, ryn::ThemeContent>);
 static_assert(std::is_same_v<decltype(&ryn::Theme), void (*)(ryn::ThemeProps, ryn::ThemeContent)>);
@@ -29,5 +31,16 @@ int main() {
     ryn::ThemeContent content{[] {}};
     static_cast<void>(props);
     static_cast<void>(content);
+    const auto baseline = ryn::resolve_theme();
+    ryn::ThemeConfig picker;
+    picker.color_picker.tokens.panel_width = ryn::dp(300);
+    const auto metrics = ryn::resolve_theme(picker);
+    picker.color_picker.tokens.focus = ryn::Color::rgba8(17, 34, 51);
+    const auto colors = ryn::resolve_theme(picker);
+    if (baseline.identity() == metrics.identity() || metrics.identity() == colors.identity() ||
+        metrics.color_picker().panel_width != 300 || colors.color_picker().focus != ryn::Color::rgba8(17, 34, 51) ||
+        baseline.select() != colors.select() || baseline.input_number() != colors.input_number()) {
+        return 1;
+    }
     return 0;
 }

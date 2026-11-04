@@ -4131,7 +4131,7 @@ ThemeSnapshot::ThemeSnapshot(
     InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
     CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result,
     DatePickerThemeToken date_picker, FormThemeToken form, BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor,
-    StepsThemeToken steps, std::shared_ptr<const TimePickerThemeToken> time_picker,
+    ColorPickerThemeToken color_picker, StepsThemeToken steps, std::shared_ptr<const TimePickerThemeToken> time_picker,
     std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
     std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
     std::shared_ptr<const NoticeThemeToken> notification, std::shared_ptr<const TimelineThemeToken> timeline,
@@ -4146,9 +4146,9 @@ ThemeSnapshot::ThemeSnapshot(
       divider_(std::move(divider)), slider_(std::move(slider)), tooltip_(std::move(tooltip)),
       select_(std::move(select)), card_(std::move(card)), tabs_(std::move(tabs)), segmented_(std::move(segmented)),
       date_picker_(std::move(date_picker)), form_(std::move(form)), breadcrumb_(std::move(breadcrumb)),
-      anchor_(std::move(anchor)), steps_(std::move(steps)), time_picker_(std::move(time_picker)),
-      skeleton_(std::move(skeleton)), timeline_(std::move(timeline)), avatar_(std::move(avatar)),
-      rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
+      anchor_(std::move(anchor)), color_picker_(std::move(color_picker)), steps_(std::move(steps)),
+      time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), timeline_(std::move(timeline)),
+      avatar_(std::move(avatar)), rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
       auto_complete_(std::move(auto_complete)), tree_select_(std::move(tree_select)), layout_(std::move(layout)),
       splitter_(std::move(splitter)), descriptions_(std::move(descriptions)), popover_(std::move(popover)),
       message_(std::move(message)), notification_(std::move(notification)), modal_(std::move(modal)),
@@ -4423,6 +4423,17 @@ ThemeSnapshot::ThemeSnapshot(
     first = true;
     metric(breadcrumb_.effects.focus_width);
     metric(breadcrumb_.effects.focus_offset);
+    status_json << "]}";
+    status_json << ",\"colorPicker\":{\"colors\":[";
+    first = true;
+    for (auto v : color_picker_.colors()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : color_picker_.metrics()) {
+        metric(v);
+    }
     status_json << "]}";
     status_json << ",\"anchor\":{\"colors\":[";
     first = true;
@@ -4874,14 +4885,15 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.table_ == right.table_ && left.empty_ == right.empty_ && left.result_ == right.result_ &&
            left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
            left.date_picker_ == right.date_picker_ && left.form_ == right.form_ && left.anchor_ == right.anchor_ &&
-           left.breadcrumb_ == right.breadcrumb_ && left.steps_ == right.steps_ &&
-           *left.time_picker_ == *right.time_picker_ && *left.skeleton_ == *right.skeleton_ &&
-           left.descriptions_ == right.descriptions_ && *left.popover_ == *right.popover_ &&
-           *left.message_ == *right.message_ && *left.notification_ == *right.notification_ &&
-           *left.timeline_ == *right.timeline_ && *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ &&
-           *left.statistic_ == *right.statistic_ && *left.tree_ == *right.tree_ &&
-           *left.auto_complete_ == *right.auto_complete_ && *left.tree_select_ == *right.tree_select_ &&
-           *left.layout_ == *right.layout_ && *left.splitter_ == *right.splitter_;
+           left.color_picker_ == right.color_picker_ && left.breadcrumb_ == right.breadcrumb_ &&
+           left.steps_ == right.steps_ && *left.time_picker_ == *right.time_picker_ &&
+           *left.skeleton_ == *right.skeleton_ && left.descriptions_ == right.descriptions_ &&
+           *left.popover_ == *right.popover_ && *left.message_ == *right.message_ &&
+           *left.notification_ == *right.notification_ && *left.timeline_ == *right.timeline_ &&
+           *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ && *left.statistic_ == *right.statistic_ &&
+           *left.tree_ == *right.tree_ && *left.auto_complete_ == *right.auto_complete_ &&
+           *left.tree_select_ == *right.tree_select_ && *left.layout_ == *right.layout_ &&
+           *left.splitter_ == *right.splitter_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -5639,6 +5651,58 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_anchor_override(token, config.anchor.tokens);
         return token;
     }();
+    auto color_picker = [&] {
+        auto component_seed = seed;
+        if (config.color_picker.algorithm) {
+            apply_seed_override(component_seed, config.color_picker.seed);
+        }
+        const auto component_map = config.color_picker.algorithm ? derive_map(component_seed, algorithms) : map;
+        const auto component_alias =
+            config.color_picker.algorithm ? derive_alias(component_seed, component_map, algorithms) : alias;
+        ColorPickerThemeToken token;
+        if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
+            config.algorithms.empty() && !config.color_picker.algorithm) {
+            token = parent->color_picker();
+        } else {
+            token.panel_width = 234;
+            token.saturation_height = component_map.control_height * 5;
+            token.rail_height = component_map.size_xs * 2;
+            token.gap = component_map.size_small;
+            token.thumb_size = component_map.size_xs * 2;
+            token.focus = component_map.color_primary;
+            token.checker_light = component_alias.color_background_container;
+            token.checker_dark = component_alias.color_border_secondary;
+        }
+        const auto& o = config.color_picker.tokens;
+        const auto length = [](float& target, const std::optional<LogicalLength>& v, bool positive) {
+            if (!v) {
+                return;
+            }
+            if (v->is_auto() || !std::isfinite(v->value()) || v->value() < (positive ? 1.0F : 0.0F) ||
+                v->value() > 16384) {
+                throw std::invalid_argument("ColorPicker token extent is invalid");
+            }
+            target = v->value();
+        };
+        length(token.panel_width, o.panel_width, true);
+        length(token.saturation_height, o.saturation_height, true);
+        length(token.rail_height, o.rail_height, true);
+        length(token.gap, o.gap, false);
+        length(token.thumb_size, o.thumb_size, true);
+        if (o.checker_light) {
+            token.checker_light = *o.checker_light;
+        }
+        if (o.checker_dark) {
+            token.checker_dark = *o.checker_dark;
+        }
+        if (o.thumb) {
+            token.thumb = *o.thumb;
+        }
+        if (o.focus) {
+            token.focus = *o.focus;
+        }
+        return token;
+    }();
     auto steps = [&] {
         StepsThemeToken token;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
@@ -6224,10 +6288,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         std::move(badge), std::move(alert), std::move(spin), std::move(progress), std::move(input_number),
         std::move(pagination), std::move(table), std::move(collapse), std::move(segmented), std::move(empty),
         std::move(result), std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(anchor),
-        std::move(steps), std::move(time_picker), std::move(skeleton), std::move(descriptions), std::move(popover),
-        std::move(message), std::move(notification), std::move(timeline), std::move(avatar), std::move(rate),
-        std::move(statistic), std::move(tree), std::move(auto_complete), std::move(tree_select), std::move(layout),
-        std::move(splitter));
+        std::move(color_picker), std::move(steps), std::move(time_picker), std::move(skeleton), std::move(descriptions),
+        std::move(popover), std::move(message), std::move(notification), std::move(timeline), std::move(avatar),
+        std::move(rate), std::move(statistic), std::move(tree), std::move(auto_complete), std::move(tree_select),
+        std::move(layout), std::move(splitter));
 }
 
 } // namespace ryn

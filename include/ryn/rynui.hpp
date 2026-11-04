@@ -76,3 +76,5 @@
 #include <ryn/splitter.hpp>
 
 #include <ryn/breakpoints.hpp>
+
+#include <ryn/color_picker.hpp>

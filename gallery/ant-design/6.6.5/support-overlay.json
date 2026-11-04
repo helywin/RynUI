@@ -593,16 +593,26 @@
     },
     {
       "identity": "ant.component.color-picker",
-      "status": "planned",
-      "summary": "颜色选择器（ColorPicker）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 ColorPicker 提供 typed RGB/HSB/HEX 与 alpha、真实 SV/色带/通道编辑、渐变色标、预设和保留浮层；平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed finite color conversion and validated keyed gradient stops",
+        "real logical-scene SV, hue, alpha and gradient controls with pointer capture and keyboard input",
+        "controlled/default value, format and open authority; change/changeComplete/clear callbacks",
+        "retained panel/trigger/text/extra slots, reactive presets, disabled state, direction and component Theme",
+        "independent interactive Gallery examples",
+        "Linux 私有 Wayland/Vulkan/SPIR-V/system fonts 有限自动输入、实际回调及 editor/preedit/capture 离页清理；input-area/cursor 服务实际调用"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Windows/MSVC、系统 IME 候选 UI、跨实际显示器/DPI 与辅助技术仍未验证；数据录入分类尚未整体收口",
+        "Web DOM/CSS/React/portal APIs are outside native scope"
       ],
       "evidence_identifiers": [
-        "source:components/color-picker/index.en-US.md"
+        "openspec:107-20261104-complete-navigation-and-remaining-components#11.1",
+        "test:rynui.color_picker_component",
+        "test:rynui.gallery_color_number",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/color-picker-linux.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/color-number-integration.md"
       ]
     },
     {
@@ -738,21 +748,29 @@
     },
     {
       "identity": "ant.component.input-number",
-      "status": "partial",
-      "summary": "原生 InputNumber 已提供数值草稿、受控回写、精度/范围/步长、按钮/键盘和 IME 门禁；Gallery 包含表格编辑、小数、禁用和只读，平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 InputNumber 保留 double API，并提供精确 stringMode、formatter/parser、可取消长按、可选 wheel、spinner 与 typed 控制图标；平台验收独立记录。",
       "supported_scope": [
         "nullable double values, retained drafts, controlled/default values and submit",
-        "bounds/precision/step, step buttons/keyboard, InputRef, disabled/readOnly and IME gates"
+        "bounds/precision/step, step buttons/keyboard, InputRef, disabled/readOnly and IME gates",
+        "exact typed Decimal values/range/step without double conversion",
+        "formatter/parser with typing context, decimal separator and changeOnBlur",
+        "pointer-captured monotonic hold repeat, opt-in fractional wheel stepping and cancellation",
+        "retained spinner/up/down controls and typed custom icons",
+        "Linux 私有 Wayland/Vulkan/SPIR-V/system fonts 有限自动输入、实际回调及 editor/preedit/capture 离页清理；input-area/cursor 服务实际调用"
       ],
       "missing_scope": [
-        "stringMode, custom formatter/parser, hold repeat and wheel stepping",
-        "native Windows/Linux GPU/system IME acceptance remains independent"
+        "Windows/MSVC、系统 IME 候选 UI、跨实际显示器/DPI 与辅助技术仍未验证；数据录入分类尚未整体收口",
+        "Web DOM/CSS/React aliases are outside native scope"
       ],
       "evidence_identifiers": [
         "openspec:068-20261023-add-native-input-number",
         "openspec:072-20261023-add-data-and-selection-gallery",
         "test:rynui.input_number_component",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "test:rynui.gallery_color_number",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/input-number-linux.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/color-number-integration.md"
       ]
     },
     {

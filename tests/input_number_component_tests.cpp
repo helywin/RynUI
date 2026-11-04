@@ -51,6 +51,232 @@ void click(Fixture& f, InteractionId id) {
     pointer(f, id, PointerAction::up);
 }
 
+void exact_arithmetic_contract() {
+    using namespace ryn::detail;
+    NumberOptions options;
+    options.exact = true;
+    options.step = Decimal{"0.0000000000000000000000001"};
+    options.min = Decimal{"-9007199254740995"};
+    options.max = Decimal{"9007199254740995"};
+    NumberModel model{options, InputNumberStringValue{Decimal{"9007199254740993"}}, false};
+    const auto up = model.stepped(InputNumberStepDirection::Up);
+    check(NumberModel::format(up) == String{u8"9007199254740993.0000000000000000000000001"},
+          "exact arithmetic truncated fractional digits");
+    model.reconcile(InputNumberStringValue{Decimal{"-0.0000000000000000000000001"}});
+    check(NumberModel::format(model.stepped(InputNumberStepDirection::Up)) == String{u8"0"},
+          "exact negative zero crossing failed");
+    NumberOptions large_options;
+    large_options.exact = true;
+    NumberModel largest{large_options, InputNumberStringValue{Decimal{std::string(16384, '9')}}, false};
+    check(largest.stepped(InputNumberStepDirection::Up) == largest.value(),
+          "exact digit limit overflow did not stop at authority");
+    options.numeric.precision = 2;
+    options.step = Decimal{".01"};
+    model.configure(options);
+    check(NumberModel::format(*model.parse("-1.005", true)) == String{u8"-1.01"},
+          "exact negative half rounding failed");
+    check(NumberModel::format(*model.parse("1e3", true)) == String{u8"1000"}, "exact exponent failed");
+    for (auto text : {"nan", "inf", "1e", "1e999999", "1.2.3", " 1", "1e-999999"}) {
+        check(!model.parse(text), "exact malformed input accepted");
+    }
+    model.reconcile(InputNumberStringValue{Decimal{"-9007199254740996"}});
+    check(NumberModel::format(model.stepped(InputNumberStepDirection::Down)) == String{u8"-9007199254740996"},
+          "external range update reversed exact step");
+}
+
+void exact_callback_and_throw_cleanup() {
+    for (bool parser_failure : {false, true}) {
+        Fixture f;
+        InputRef ref;
+        bool fail{};
+        f.inputs.mount(Content{[&] {
+            InputNumber(InputNumberProps{}
+                            .defaultValue(Decimal{"9007199254740993"})
+                            .step(Decimal{".01"})
+                            .ref(ref)
+                            .formatter([&](String text, InputNumberFormatInfo) {
+                                if (fail && !parser_failure) {
+                                    throw std::runtime_error("formatter");
+                                }
+                                return text;
+                            })
+                            .parser([&](String text) {
+                                if (fail && parser_failure) {
+                                    throw std::runtime_error("parser");
+                                }
+                                return text;
+                            }));
+        }});
+        f.synchronize();
+        const auto input = f.inputs.mounted_inputs().front();
+        const auto up = action(f, input.component, 0);
+        pointer(f, up, PointerAction::down);
+        fail = true;
+        bool threw{};
+        try {
+            if (parser_failure) {
+                type(f, ref, String{u8"2"});
+            } else {
+                key(f, Key::up);
+            }
+        } catch (const std::runtime_error&) {
+            threw = true;
+        }
+        fail = false;
+        check(threw && !f.services.pointer().state(PointerIdentity::mouse())->capture,
+              "formatter/parser failure retained capture");
+        const auto before = f.services.next_frame_deadline();
+        check(!before, "formatter/parser failure retained repeat timer");
+        fail = false;
+    }
+    Fixture f;
+    runtime::ComponentId self;
+    InputRef ref;
+    f.inputs.mount(Content{[&] {
+        InputNumber(InputNumberProps{}
+                        .defaultValue(Decimal{"9007199254740993"})
+                        .ref(ref)
+                        .onStringChange([&](InputNumberStringValue) { f.services.destroy(self); }));
+    }});
+    self = f.inputs.mounted_inputs().front().component;
+    f.synchronize();
+    check(ref.focus(), "exact disposal focus failed");
+    key(f, Key::up);
+    check(!ref.bound() && f.inputs.editors().size() == 0 && !f.inputs.sessions().active().valid(),
+          "exact callback disposal leaked editor/session");
+}
+
+void spinner_and_format_context() {
+    Fixture f;
+    InputRef ref;
+    Signal<InputNumberMode> mode{InputNumberMode::Spinner};
+    int icon_mounts{};
+    int typing{};
+    int idle{};
+    String idle_input;
+    f.inputs.mount(Content{[&] {
+        InputNumber(InputNumberProps{}
+                        .defaultValue(1234.5)
+                        .mode(mode)
+                        .ref(ref)
+                        .controls(InputNumberControls{.up_icon = InputNumberUpIcon{[&] {
+                                                          ++icon_mounts;
+                                                          Text(u8"up");
+                                                      }},
+                                                      .down_icon = InputNumberDownIcon{[&] {
+                                                          ++icon_mounts;
+                                                          Text(u8"down");
+                                                      }}})
+                        .formatter([&](String n, InputNumberFormatInfo info) {
+                            if (info.user_typing) {
+                                ++typing;
+                                return info.input;
+                            }
+                            ++idle;
+                            idle_input = info.input;
+                            return n;
+                        })
+                        .parser([](String v) {
+                            auto text = std::string{v.bytes()};
+                            std::erase(text, ',');
+                            return String::from_utf8(text).value();
+                        }));
+    }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    check(icon_mounts == 2 && idle > 0, "custom step icons mounted repeatedly");
+    auto buttons = f.inputs.number_actions(mounted.component);
+    auto down_node = f.nodes.require(f.services.components().root(buttons[1]));
+    auto up_node = f.nodes.require(f.services.components().root(buttons[0]));
+    check(down_node.bounds.x < up_node.bounds.x, "spinner did not place controls on opposite sides");
+    type(f, ref, String{u8"2,345.50"});
+    check(f.inputs.number_value(mounted.component) == 2345.5 && typing > 0, "parser/typing formatter context failed");
+    key(f, Key::enter);
+    check(idle_input == String{u8"2,345.50"}, "formatter lost the actual input draft when userTyping=false");
+    mode.set(InputNumberMode::Input);
+    f.synchronize();
+    check(icon_mounts == 2 && f.inputs.number_actions(mounted.component) == buttons,
+          "mode switch remounted icon slots");
+}
+
+void exact_values_and_parser() {
+    Fixture f;
+    InputRef ref;
+    Signal<InputNumberStringValue> value{Decimal{"9007199254740993.00000000000000001"}};
+    Signal<Decimal> step{Decimal{"0.00000000000000001"}};
+    int changes{};
+    f.inputs.mount(Content{[&] {
+        InputNumber(
+            InputNumberProps{}
+                .value(value)
+                .step(step)
+                .ref(ref)
+                .onStringChange([&](auto next) {
+                    ++changes;
+                    value.set(next);
+                })
+                .formatter([](String n, InputNumberFormatInfo info) { return info.user_typing ? info.input : n; }));
+    }});
+    f.synchronize();
+    check(ref.focus(), "exact focus failed");
+    key(f, Key::up);
+    check(value.get()->text() == String{u8"9007199254740993.00000000000000002"}, "exact step lost precision");
+    type(f, ref, String{u8"-1.234567890123456789e-20"});
+    check(value.get()->text() == String{u8"-0.00000000000000000001234567890123456789"}, "exact exponent lost digits");
+    key(f, Key::enter);
+    check(changes == 2, "exact finish duplicated callback");
+    type(f, ref, String{u8"1.2300000"});
+    key(f, Key::enter);
+    check(value.get()->text() == String{u8"1.23"}, "exact trailing-zero canonicalization failed");
+}
+
+void wheel_and_repeat() {
+    Fixture f;
+    InputRef ref;
+    Signal<bool> wheel{false};
+    Signal<bool> keyboard{true};
+    Signal<bool> disabled{false};
+    int changes{};
+    f.inputs.mount(Content{[&] {
+        InputNumber(InputNumberProps{}
+                        .defaultValue(2)
+                        .min(0)
+                        .max(5)
+                        .ref(ref)
+                        .changeOnWheel(wheel)
+                        .keyboard(keyboard)
+                        .disabled(disabled)
+                        .onChange([&](InputNumberValue) { ++changes; }));
+    }});
+    f.synchronize();
+    const auto number = f.inputs.mounted_inputs().front();
+    check(ref.focus(), "wheel focus failed");
+    const auto rect = f.inputs.layout_snapshot(number.component).viewport;
+    const ScrollInputEvent event{0, .25F, rect.x + 2, rect.y + 2};
+    check(!f.inputs.dispatch(event) && changes == 0, "default wheel consumed");
+    wheel.set(true);
+    check(f.inputs.dispatch(event) && f.inputs.number_value(number.component) == 3, "fractional wheel failed");
+    check(f.inputs.dispatch({0, -.25F, event.x, event.y}) && f.inputs.number_value(number.component) == 2,
+          "flipped wheel failed");
+    keyboard.set(false);
+    check(!f.inputs.dispatch(event), "keyboard disabled wheel consumed");
+    keyboard.set(true);
+    const auto up = action(f, number.component, 0);
+    pointer(f, up, PointerAction::down);
+    const auto deadline = f.services.next_frame_deadline();
+    check(deadline.has_value(), "hold repeat has no deadline");
+    f.services.tick_animations(*deadline);
+    check(f.inputs.number_value(number.component) == 4, "hold repeat did not step");
+    pointer(f, up, PointerAction::up);
+    const auto count = changes;
+    f.services.tick_animations(*deadline + animation::AnimationDuration::milliseconds(1000));
+    check(changes == count, "released hold retained timer");
+    pointer(f, up, PointerAction::down);
+    disabled.set(true);
+    f.services.tick_animations(*deadline + animation::AnimationDuration::milliseconds(2000));
+    check(!f.services.pointer().state(PointerIdentity::mouse())->capture, "disabled hold retained capture");
+}
+
 void composition_selection_cancellation() {
     enum class Path { ReferenceSelection, FocusCursor, Pointer };
     for (const auto path : {Path::ReferenceSelection, Path::FocusCursor, Path::Pointer}) {
@@ -479,20 +705,20 @@ void native_steps_preedit_and_lifecycle() {
     pointer(f, up, PointerAction::down);
     disabled.set(true);
     pointer(f, up, PointerAction::up);
-    check(!f.inputs.sessions().active().valid() && !ref.focus() && f.inputs.number_value(mounted.component) == .1,
+    check(!f.inputs.sessions().active().valid() && !ref.focus() && f.inputs.number_value(mounted.component) == .2,
           "disabled did not cancel press/session");
     disabled.set(false);
     read_only.set(true);
     check(ref.focus(), "readonly focus rejected");
     key(f, Key::up);
-    check(f.inputs.number_value(mounted.component) == .1 && !f.services.interactions().require(up).eligible,
+    check(f.inputs.number_value(mounted.component) == .2 && !f.services.interactions().require(up).eligible,
           "readonly stepped");
     read_only.set(false);
     controls.set(false);
     f.synchronize();
     check(!f.services.interactions().require(up).eligible, "hidden controls stayed eligible");
     key(f, Key::up);
-    check(f.inputs.number_value(mounted.component) == .2, "hidden controls disabled keyboard");
+    check(f.inputs.number_value(mounted.component) == .3, "hidden controls disabled keyboard");
     controls.set(true);
     f.synchronize();
     check(f.inputs.text_scene(mounted.component) == text && f.inputs.number_actions(mounted.component) == actions &&
@@ -588,6 +814,11 @@ void range_atomicity_and_sizes() {
     bool rejected{};
     try {
         composition_selection_cancellation();
+        exact_callback_and_throw_cleanup();
+        spinner_and_format_context();
+        exact_arithmetic_contract();
+        exact_values_and_parser();
+        wheel_and_repeat();
         precision_step_direction();
         composition_cancellation_gates();
         conflict.inputs.mount(Content{[] { InputNumber(InputNumberProps{}.value(1).defaultValue(2)); }});
@@ -758,6 +989,11 @@ void focus_redirect_and_blur_disposal() {
 
 int main() {
     try {
+        exact_callback_and_throw_cleanup();
+        spinner_and_format_context();
+        exact_arithmetic_contract();
+        exact_values_and_parser();
+        wheel_and_repeat();
         controlled_draft_and_writeback();
         native_steps_preedit_and_lifecycle();
         spin_preserves_numeric_input_gates();

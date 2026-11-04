@@ -218,6 +218,7 @@ target_compile_definitions(rynui_gallery_pages_host_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.gallery_pages_host COMMAND rynui_gallery_pages_host_tests)
+add_test(NAME rynui.gallery_color_number COMMAND rynui_gallery_pages_host_tests color-number)
 
 if(TARGET rynui_renderer_recording)
     add_executable(rynui_gallery_pages_benchmark gallery_pages_benchmark.cpp)
@@ -260,12 +261,15 @@ add_test(NAME rynui.gallery_page_acceptance_options COMMAND rynui_gallery_page_a
 add_test(NAME rynui.gallery_page_acceptance_runner COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/gallery_page_acceptance_runner_tests.py" "$<TARGET_FILE:rynui_gallery_page_acceptance_tests>")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET rynui_token_gallery)
-    foreach(native_sequence IN ITEMS general_layout masonry_compact shell_splitter select_autocomplete)
+    foreach(native_sequence IN ITEMS general_layout masonry_compact shell_splitter select_autocomplete color_number)
         set(native_timeout 60)
         if(native_sequence STREQUAL "select_autocomplete")
             set(native_timeout 120)
             set(native_pages --page ant.component.auto-complete --page ant.component.select
                 --page ant.component.pagination --page ant.component.tabs --page ant.component.button)
+        elseif(native_sequence STREQUAL "color_number")
+            set(native_timeout 120)
+            set(native_pages --page ant.component.color-picker --page ant.component.input-number --page ant.component.button)
         elseif(native_sequence STREQUAL "general_layout")
             set(native_pages --page ant.component.typography --page ant.component.grid)
         elseif(native_sequence STREQUAL "shell_splitter")
@@ -275,7 +279,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET rynui_token_gallery)
             # on Typography/Grid state or on a Default-only isolated run.
             set(native_pages --page ant.component.button --page ant.component.button)
         endif()
-        if(NOT native_sequence STREQUAL "shell_splitter" AND NOT native_sequence STREQUAL "select_autocomplete")
+        if(native_sequence STREQUAL "general_layout" OR native_sequence STREQUAL "masonry_compact")
             list(APPEND native_pages --page ant.component.masonry --page ant.component.button)
         endif()
         add_test(NAME rynui.gallery_native_${native_sequence}
