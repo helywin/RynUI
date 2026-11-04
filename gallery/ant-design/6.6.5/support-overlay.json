@@ -209,16 +209,30 @@
     },
     {
       "identity": "ant.component.masonry",
-      "status": "planned",
-      "summary": "瀑布流（Masonry）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Masonry 支持 typed keyed 数据、真实高度最短列、响应式 columns/gutter、指定列/高度及安全的增量生命周期。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "MasonryProps<Data>/MasonryItem<Data>、typed itemRender 与优先 children slot",
+        "稳定 String/integer key、增删/排序与 retained 数据/index/column bindings",
+        "共享窗口断点响应式 columns/双轴 gutter、RTL、指定列与逻辑高度",
+        "实际尺寸最短列重排、fresh/显式刷新、仅分配变化 onLayoutChange",
+        "无效键/列数/尺寸显式拒绝、销毁及新增分支失败回滚"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "DOM、CSS semantic styles/classNames、React nodes 等 Web 专用接口不迁入；平台窗口/GPU 验收独立追踪"
       ],
       "evidence_identifiers": [
-        "source:components/masonry/index.en-US.md"
+        "source:components/masonry/index.en-US.md",
+        "openspec:106-20261104-complete-general-and-layout-components",
+        "test:rynui.masonry_shortest",
+        "test:rynui.masonry_responsive",
+        "test:rynui.masonry_retained",
+        "test:rynui.masonry_dynamic",
+        "test:rynui.masonry_callbacks",
+        "test:rynui.masonry_validation",
+        "test:rynui.masonry_rollback",
+        "test:rynui.masonry_lifecycle",
+        "test:rynui.masonry_gallery"
       ]
     },
     {

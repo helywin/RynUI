@@ -8,6 +8,15 @@ target_compile_definitions(rynui_grid_gallery_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.grid_gallery COMMAND rynui_grid_gallery_tests)
 
+add_executable(rynui_masonry_gallery_tests masonry_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_masonry_gallery_tests)
+target_include_directories(rynui_masonry_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_masonry_gallery_tests PRIVATE rynui_token_gallery_reference_surface rynui_components)
+target_compile_definitions(rynui_masonry_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.masonry_gallery COMMAND rynui_masonry_gallery_tests)
+
 add_executable(
     rynui_token_gallery_frame_tests
     token_gallery_frame_tests.cpp

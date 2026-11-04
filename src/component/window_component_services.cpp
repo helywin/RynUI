@@ -38,6 +38,7 @@
 #include "component/empty_result_component.hpp"
 #include "component/input_component.hpp"
 #include "component/responsive_layout.hpp"
+#include "component/masonry_component.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -115,6 +116,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     animations_.reserve(256, 64, 256);
     animations_.set_schedule_observer(&frame_requests);
     responsive_layout_ = std::make_unique<ResponsiveLayoutHost>(*this);
+    masonry_ = std::make_unique<MasonryComponentHost>(*this);
     typography_ = std::make_unique<TypographyComponentHost>(*this);
     float_button_ = std::make_unique<FloatButtonComponentHost>(*this);
     divider_ = std::make_unique<DividerComponentHost>(*this);
@@ -285,6 +287,10 @@ bool WindowComponentServices::set_input_blocked(runtime::ComponentId root, bool 
 
 void WindowComponentServices::request_frame() noexcept {
     frame_requests_->request_frame();
+}
+
+std::uint64_t WindowComponentServices::frame_request_revision() const noexcept {
+    return frame_requests_->revision();
 }
 
 runtime::Rect WindowComponentServices::component_clip(runtime::ComponentId id, runtime::Size viewport,

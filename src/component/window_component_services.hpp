@@ -56,6 +56,7 @@ class StepsComponentHost;
 class SkeletonComponentHost;
 class NoticeComponentHost;
 class ResponsiveLayoutHost;
+class MasonryComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -154,6 +155,7 @@ public:
     bool set_input_boundary(std::optional<runtime::ComponentId> root);
     bool set_input_blocked(runtime::ComponentId root, bool blocked);
     void request_frame() noexcept;
+    [[nodiscard]] std::uint64_t frame_request_revision() const noexcept;
     [[nodiscard]] bool text_pointer_at(runtime::Point point);
     [[nodiscard]] runtime::Rect component_clip(runtime::ComponentId id, runtime::Size viewport,
                                                runtime::Rect document_clip,
@@ -369,6 +371,10 @@ public:
         return *responsive_layout_;
     }
 
+    [[nodiscard]] MasonryComponentHost& masonry() noexcept {
+        return *masonry_;
+    }
+
     [[nodiscard]] const TextComponentHost& text() const noexcept {
         return text_;
     }
@@ -493,6 +499,7 @@ private:
     std::unique_ptr<SkeletonComponentHost> skeleton_;
     std::unique_ptr<NoticeComponentHost> notices_;
     std::unique_ptr<ResponsiveLayoutHost> responsive_layout_;
+    std::unique_ptr<MasonryComponentHost> masonry_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;

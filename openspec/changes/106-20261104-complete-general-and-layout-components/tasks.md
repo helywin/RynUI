@@ -22,8 +22,8 @@
 
 ## 5. 布局：Masonry
 
-- [ ] 5.1 实现响应式 columns/gutter、稳定 keyed items、指定列/高度、真实尺寸重排与变化回调；自动测试覆盖动态内容、无效值和销毁。
-- [ ] 5.2 接入 Masonry 页面与文档；运行相关 HEADLESS Debug/Release 测试和目录校验后提交。
+- [x] 5.1 实现响应式 columns/gutter、稳定 keyed items、指定列/高度、真实尺寸重排与变化回调；自动测试覆盖动态内容、无效值和销毁。
+- [x] 5.2 接入 Masonry 页面与文档；运行相关 HEADLESS Debug/Release 测试和目录校验后提交。
 
 ## 6. 布局：Splitter
 

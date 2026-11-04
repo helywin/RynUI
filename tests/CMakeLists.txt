@@ -11,6 +11,16 @@ foreach(grid_case IN ITEMS breakpoints spans responsive flex alignment lifecycle
     add_test(NAME rynui.grid_${grid_case} COMMAND rynui_grid_component_tests ${grid_case})
 endforeach()
 
+add_executable(rynui_masonry_component_tests masonry_component_tests.cpp)
+rynui_configure_cpp_target(rynui_masonry_component_tests)
+target_link_libraries(rynui_masonry_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_masonry_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(masonry_case IN ITEMS shortest responsive retained dynamic callbacks validation rollback lifecycle)
+    add_test(NAME rynui.masonry_${masonry_case} COMMAND rynui_masonry_component_tests ${masonry_case})
+endforeach()
+
 foreach(projection_target IN ITEMS tests benchmark)
     add_executable(rynui_state_projection_${projection_target} state_projection_${projection_target}.cpp)
     rynui_configure_cpp_target(rynui_state_projection_${projection_target})

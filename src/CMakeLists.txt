@@ -275,6 +275,7 @@ add_library(rynui_components STATIC
     component/flex_component.cpp
     component/responsive_layout.cpp
     component/grid_component.cpp
+    component/masonry_component.cpp
     component/layout_component_context.cpp
     component/space_component.cpp
     component/space_compact.cpp

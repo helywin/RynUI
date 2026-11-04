@@ -2233,6 +2233,96 @@ void add_grid_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 4;
 }
 
+void add_masonry_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Masonry · 真实测量、窗口断点与稳定 keyed 内容");
+    Text(sample_text(u8"gallery.masonry.measured · 按实际卡片高度进入最短列"));
+    std::vector<MasonryItem<>> cards;
+    for (int index = 0; index < 6; ++index) {
+        cards.push_back(MasonryItem<>{index}.children(MasonryContent{[index] {
+            Card(CardProps{}.title(String::from_utf8("Card " + std::to_string(index + 1)).value()),
+                 CardContent{[index] {
+                     Text(index % 2 == 0 ? String{u8"短卡片"} : String{u8"较高卡片\n真实内容高度\n保持每项的编辑状态"});
+                     Input(InputProps{}.defaultValue(u8"缩放后保留草稿"));
+                 }});
+        }}));
+    }
+    Masonry(MasonryProps<>{}
+                .items(cards)
+                .columns(Responsive<int>{1}.at(Breakpoint::Sm, 2).at(Breakpoint::Lg, 3))
+                .gutter(MasonryGutter{Responsive<LogicalLength>{dp(8)}.at(Breakpoint::Md, dp(16)),
+                                      Responsive<LogicalLength>{dp(12)}})
+                .layout(LayoutStyle{}.width(state->document_width)));
+    remember_target(state, "gallery.masonry.measured");
+    Text(sample_text(u8"gallery.masonry.dynamic · 内容尺寸变化、增删与重排只更新相关 key"));
+    Signal<LogicalLength> height{dp(72)};
+    auto dynamic = MasonryItem<>{u8"dynamic"}.children(MasonryContent{[height] {
+        Card(CardProps{}.title(u8"动态高度").layout(LayoutStyle{}.height(height)),
+             CardContent{[] { Text(u8"点击控制按钮改变实际测量高度"); }});
+    }});
+    auto pinned = MasonryItem<>{u8"pinned"}.column(1).height(dp(108)).children(MasonryContent{[] {
+        Card(CardProps{}.title(u8"指定 column=1 / height=108"),
+             CardContent{[] { Input(InputProps{}.defaultValue(u8"稳定 key")); }});
+    }});
+    Signal<std::vector<MasonryItem<>>> items{std::vector{dynamic, pinned}};
+    Signal<String> allocation{String{u8"等待实际分列"}};
+    Space(SpaceProps{}.wrap(true), SpaceContent{[state, height, items] {
+              Button(ButtonProps{}.onClick([height] { height.set(dp(height.get().value() < 100 ? 156 : 72)); }),
+                     [] { Text(u8"改变高度"); });
+              remember_target(state, "gallery.masonry.resize");
+              Button(ButtonProps{}.onClick([items] {
+                  auto next = items.get();
+                  const auto added =
+                      std::ranges::find_if(next, [](const auto& item) { return item.key() == MasonryKey{u8"added"}; });
+                  if (added == next.end()) {
+                      next.push_back(MasonryItem<>{u8"added"}.children(MasonryContent{[] {
+                          Card(CardProps{}.title(u8"新增 key"),
+                               CardContent{[] { Input(InputProps{}.defaultValue(u8"独立挂载")); }});
+                      }}));
+                  } else {
+                      next.erase(added);
+                  }
+                  items.set(std::move(next));
+              }),
+                     [] { Text(u8"添加 / 移除"); });
+              remember_target(state, "gallery.masonry.toggle");
+              Button(ButtonProps{}.onClick([items] {
+                  auto next = items.get();
+                  std::reverse(next.begin(), next.end());
+                  items.set(std::move(next));
+              }),
+                     [] { Text(u8"反转顺序"); });
+              remember_target(state, "gallery.masonry.reverse");
+          }});
+    Text(TextProps{}.content(allocation));
+    Masonry(MasonryProps<>{}
+                .items(items)
+                .columns(Responsive<int>{1}.at(Breakpoint::Md, 2))
+                .gutter(dp(12))
+                .fresh()
+                .direction(FlexDirection::RightToLeft)
+                .onLayoutChange([allocation](const auto& assignments) {
+                    std::string text{"实际零基列: "};
+                    for (const auto& entry : assignments) {
+                        std::visit(
+                            [&](const auto& key) {
+                                using Key = std::decay_t<decltype(key)>;
+                                if constexpr (std::is_same_v<Key, String>) {
+                                    text += key.bytes();
+                                } else {
+                                    text += std::to_string(key);
+                                }
+                            },
+                            entry.key.value());
+                        text += "=" + std::to_string(entry.column) + " ";
+                    }
+                    allocation.set(String::from_utf8(text).value());
+                })
+                .layout(LayoutStyle{}.width(state->document_width)));
+    remember_target(state, "gallery.masonry.dynamic");
+    state->telemetry.live_samples += 2;
+}
+
 void add_space_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Space · separator / baseline / Compact / mixed / Addon");
@@ -6410,6 +6500,13 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_grid_samples",
       "include/ryn/grid.hpp"},
      add_grid_samples},
+    {{"gallery.sample.masonry.layouts",
+      "ant.component.masonry",
+      {},
+      "真实高度、响应列数与 keyed 内容",
+      "add_masonry_samples",
+      "include/ryn/masonry.hpp"},
+     add_masonry_samples},
     {{"gallery.sample.space.composition",
       "ant.component.space",
       {},
