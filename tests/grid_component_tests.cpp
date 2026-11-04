@@ -164,7 +164,8 @@ void alignment_rtl_and_order() {
             Row(RowProps{}.justify(justify).align(align).direction(direction).layout(
                     LayoutStyle{}.width(dp(240)).height(dp(80))),
                 RowContent{[&] {
-                    Col(ColProps{}.span(6).order(1), ColContent{[&] { leaf(f, 10, 20); }});
+                    Col(ColProps{}.span(6).order(1).layout(LayoutStyle{}.max_height(dp(50))),
+                        ColContent{[&] { leaf(f, 10, 20); }});
                     Col(ColProps{}.span(6).order(-1), ColContent{[&] { leaf(f, 10, 40); }});
                 }});
         }});
@@ -181,7 +182,8 @@ void alignment_rtl_and_order() {
         align.set(Responsive<RowAlign>{RowAlign::Stretch});
         f.synchronize(1000);
         values = detail::grid_columns(f.services.components(), root(f));
-        check(near(values[0].bounds.height, 80) && near(values[1].bounds.height, 80), "stretch failed");
+        check(near(values[0].bounds.height, 50) && near(values[1].bounds.height, 80),
+              "stretch ignored the external max-height constraint");
     }
 }
 

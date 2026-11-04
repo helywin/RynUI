@@ -294,9 +294,12 @@ runtime::Size measure_row(WindowComponentServices& services, runtime::ComponentI
                 auto& item = row.items[index];
                 const auto& external = services.nodes().require(services.components().root(item.id)).external_layout;
                 if (!external.height) {
-                    const auto size =
-                        engine.measure_child(services.components().root(item.id), {0, available, 0, current.height},
-                                             item.width, current.height);
+                    const float margin = external.margin.top + external.margin.bottom;
+                    const float maximum = external.max_height.value_or(std::numeric_limits<float>::infinity()) + margin;
+                    const float minimum = std::min(maximum, external.min_height.value_or(0) + margin);
+                    const float stretched = std::clamp(current.height, minimum, maximum);
+                    const auto size = engine.measure_child(services.components().root(item.id),
+                                                           {0, available, 0, current.height}, item.width, stretched);
                     item.height = size.height;
                 }
             }

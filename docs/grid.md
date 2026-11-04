@@ -15,7 +15,7 @@ ryn::Row(ryn::RowProps{}.gutter(ryn::dp(16), ryn::dp(12)), ryn::RowContent{[] {
 
 `span`、`offset`、`push`、`pull` 接受 0..24；`order` 为整数，只改变视觉布局次序，声明、绘制和键盘顺序保持。跨度加偏移超过一行时整列换行，`wrap(false)` 保留单行。push/pull 是相对逻辑位置，不占用额外排版空间，RTL 同时映射偏移和位移。span=0 保留内容身份并立即阻断输入、焦点和捕获，恢复后继续使用原状态。
 
-`RowAlign` 提供 Top/Middle/Bottom/Stretch；`RowJustify` 提供 Start/End/Center/SpaceAround/SpaceBetween/SpaceEvenly。align/justify 可用 `Responsive<T>` 逐断点配置。`GridGutter` 的 horizontal/vertical 分别是响应式逻辑长度；水平使用每列半间距 padding 和 Row 的半间距外延，垂直只在行之间留空。LayoutStyle 仅控制外部尺寸、约束和 margin，不控制视觉。
+`RowAlign` 提供 Top/Middle/Bottom/Stretch；Stretch 保留 Col 的外部 min/max height，显式高度不拉伸。`RowJustify` 提供 Start/End/Center/SpaceAround/SpaceBetween/SpaceEvenly。align/justify 可用 `Responsive<T>` 逐断点配置。`GridGutter` 的 horizontal/vertical 分别是响应式逻辑长度；水平使用每列半间距 padding 和 Row 的半间距外延，垂直只在行之间留空。LayoutStyle 仅控制外部尺寸、约束和 margin，不控制视觉。
 
 `GridFlex` 用 typed grow/shrink/logical basis 替代 CSS 字符串：`GridFlex(n)` 对应 n/n/auto，`fill(n)` 对应 n/1/0，`fixed(dp(...))`、`automatic()`、`none()` 以及三参数构造覆盖固定、弹性和自动基准。flex 优先于非零 span 的宽度；min/max 约束冻结后继续分配剩余空间。无 span/flex 的列使用内容自动尺寸。
 
