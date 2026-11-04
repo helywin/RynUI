@@ -32,7 +32,6 @@ EXPECTED_DOCUMENT_SOURCES = {
     "ant.document.components-overview": "components/overview/index.en-US.md",
 }
 EXPECTED_INITIAL_PARTIALS = {
-    "ant.component.typography",
     "ant.component.config-provider",
 }
 ALLOWED_SUPPORT_STATUSES = {

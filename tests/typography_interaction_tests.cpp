@@ -508,10 +508,112 @@ void ime_before_other_hints() {
     key(f.services, Key::escape);
     require(!f.services.tooltip().snapshot(copy_tip).visible, "unhandled Escape no longer dismisses Tooltip");
 }
+
+void rich_clipboard_and_editing() {
+    struct PlainOnlyClipboard final : TextClipboard {
+        String copied;
+
+        ClipboardReadResult read_text() override {
+            return {};
+        }
+
+        ClipboardAvailability has_text() const noexcept override {
+            return {};
+        }
+
+        ClipboardError write_text(StringView value) override {
+            copied = String::from_utf8(value.bytes()).value();
+            return ClipboardError::none;
+        }
+    } plain_only;
+
+    require(plain_only.write_html(String{u8"full source"}.view(), String{u8"<b>full source</b>"}.view()) ==
+                    ClipboardError::none &&
+                plain_only.copied == String{u8"full source"},
+            "Core rich clipboard fallback did not preserve plain text");
+    Fixture f;
+    const TypographyContent full{{
+        {.content = u8"<script> & \"quoted\" 'single'\n", .type = TypographyType::Danger, .strong = true},
+        {.content = u8"e\u0301 中文 אבג\n second line",
+         .italic = true,
+         .code = true,
+         .mark = true,
+         .underline = true,
+         .strikethrough = true},
+    }};
+    Signal<TypographyContent> content{full};
+    Signal<TypographyCopyable> config{TypographyCopyable{.format = TypographyCopyFormat::Html}};
+    bool copied{};
+    bool accept{};
+    f.services.mount(Content{[&] {
+        Paragraph(TypographyProps{}
+                      .content(content)
+                      .copyable(config)
+                      .ellipsis(TypographyEllipsis{})
+                      .editable(TypographyEditable{})
+                      .onCopy([&](bool success) { copied = success; })
+                      .onEdit([&](String value) {
+                          if (accept) {
+                              content.set(TypographyContent{{TypographyRun{.content = value, .strong = true}}});
+                          }
+                      }));
+    }});
+    f.synchronize(160);
+    const auto id = f.services.typography().mounted().front();
+    const auto actions = focusable(f.services);
+    const auto copy = actions[1];
+    const auto edit = actions[2];
+    const auto components = f.services.components().component_count();
+    const auto runs = f.services.components().mount_runs();
+    require(f.services.typography().snapshot(id).truncated, "rich clipboard fixture did not truncate");
+    activate(f.services, copy);
+    require(copied && f.platform.clipboard == full.plain_text() && f.platform.clipboard_html,
+            "rich copy did not publish original plain text alongside HTML");
+    const auto html = f.platform.clipboard_html->bytes();
+    require(html.find("<script>") == std::string_view::npos &&
+                html.find("&lt;script&gt; &amp; &quot;quoted&quot; &#39;single&#39;<br>") != std::string_view::npos &&
+                html.find("<strong>") != std::string_view::npos &&
+                html.find("<em><code><mark><u><s>") != std::string_view::npos,
+            "rich HTML lost escaping, newlines or combined semantic styles");
+    f.platform.clipboard_failure = true;
+    activate(f.services, copy);
+    require(!copied && f.services.typography().snapshot(id).copy_failed && !f.services.typography().snapshot(id).copied,
+            "rich clipboard rejection showed success");
+    f.platform.clipboard_failure = false;
+    config.set(TypographyCopyable{});
+    activate(f.services, copy);
+    require(f.platform.clipboard == full.plain_text() && !f.platform.clipboard_html,
+            "plain format retained HTML offer");
+    activate(f.services, edit);
+    const auto input = f.inputs.mounted_inputs().front();
+    auto& editor = f.inputs.editors().require(input.editor);
+    require(editor.value() == full.plain_text().bytes(), "rich editor did not receive original full text");
+    (void)editor.select_all();
+    require(bool(f.inputs.dispatch(TextCommitted{String{u8"edited 中文"}, f.inputs.sessions().active()})),
+            "rich editor insertion failed");
+    key(f.services, Key::enter);
+    require(f.services.typography().snapshot(id).editing && f.services.typography().snapshot(id).edit_pending,
+            "controlled rich edit discarded an unaccepted draft");
+    accept = true;
+    key(f.services, Key::enter);
+    f.synchronize(160);
+    require(!f.services.typography().snapshot(id).editing && content.get().plain_text() == String{u8"edited 中文"},
+            "controlled rich content did not accept editor output");
+    require(f.services.components().component_count() == components && f.services.components().mount_runs() == runs,
+            "rich edit/copy updates remounted descendants");
+    config.set(TypographyCopyable{.format = TypographyCopyFormat::Html});
+    f.platform.on_clipboard = [&] {
+        f.services.destroy(id);
+    };
+    activate(f.services, copy);
+    require(f.services.typography().mounted().empty(), "destroy during rich copy retained owner");
+}
+
 } // namespace
 
 int main() {
     try {
+        rich_clipboard_and_editing();
         copy_without_input();
         expand_and_edit();
         controlled_and_link();

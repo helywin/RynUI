@@ -113,6 +113,16 @@ struct TextShapeResult {
     }
 };
 
+// Source byte ranges share paragraph Unicode analysis. Boundaries inside a
+// grapheme inherit the face of its first scalar.
+struct TextFontRange final {
+    std::size_t byte_start{};
+    std::size_t byte_end{};
+    std::vector<font::FontIdentity> fonts;
+    float inline_padding{};
+    friend bool operator==(const TextFontRange&, const TextFontRange&) = default;
+};
+
 struct TextLayoutConfig {
     float line_height{20.0F};
     float max_width{std::numeric_limits<float>::infinity()};
@@ -203,7 +213,10 @@ public:
                                   TextCaretMap& output) const;
 
     [[nodiscard]] TextShapeResult shape(StringView text, std::span<const font::FontIdentity> fallback_chain,
-                                        TextDirection direction = TextDirection::Auto) const;
+                                        TextDirection direction = TextDirection::Auto,
+                                        std::span<const TextFontRange> ranges = {},
+                                        const BidiAnalysis* source_analysis = nullptr,
+                                        std::size_t source_prefix = std::numeric_limits<std::size_t>::max()) const;
 
     [[nodiscard]] TextShapeResult shape_utf8_lossy(std::string_view bytes,
                                                    std::span<const font::FontIdentity> fallback_chain,
@@ -239,6 +252,7 @@ public:
 
     bool set_content(String content);
     bool set_font_chain(std::vector<font::FontIdentity> fallback_chain);
+    bool set_font_ranges(std::vector<TextFontRange> ranges);
     bool set_pixel_size(std::uint32_t pixel_size);
     bool set_line_height(float line_height);
     bool set_direction(TextDirection direction);
@@ -275,6 +289,10 @@ public:
         return truncated_;
     }
 
+    [[nodiscard]] std::size_t displayed_source_bytes() const noexcept {
+        return truncated_ ? displayed_source_bytes_ : content_.size_bytes();
+    }
+
     [[nodiscard]] bool suffix_available() const noexcept {
         return suffix_available_;
     }
@@ -298,6 +316,7 @@ private:
     TextEngine* engine_;
     String content_;
     std::vector<font::FontIdentity> fallback_chain_;
+    std::vector<TextFontRange> font_ranges_;
     std::uint32_t pixel_size_{};
     TextLayoutConfig layout_;
     TextDirection direction_{TextDirection::Auto};
@@ -308,6 +327,7 @@ private:
     TextEllipsisConfig ellipsis_;
     String displayed_;
     bool truncated_{};
+    std::size_t displayed_source_bytes_{};
     bool suffix_available_{true};
     TextMeasurement measurement_;
     TextStateCounters counters_;

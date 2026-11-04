@@ -4,10 +4,90 @@
 #include <SDL3/SDL.h>
 
 #include <stdexcept>
+#include <cstring>
 #include <utility>
 
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 namespace ryn::detail {
+
+std::string windows_html_clipboard_data(StringView fragment) {
+    std::string header = "Version:1.0\r\nStartHTML:0000000000\r\nEndHTML:0000000000\r\n"
+                         "StartFragment:0000000000\r\nEndFragment:0000000000\r\n";
+    constexpr std::string_view prefix{"<html><body><!--StartFragment-->"};
+    constexpr std::string_view suffix{"<!--EndFragment--></body></html>"};
+    const auto start_html = header.size();
+    const auto start_fragment = start_html + prefix.size();
+    const auto end_fragment = start_fragment + fragment.size_bytes();
+    const auto end_html = end_fragment + suffix.size();
+    const auto set_offset = [&](std::string_view field, std::size_t value) {
+        const auto number = std::to_string(value);
+        if (number.size() > 10) {
+            throw std::length_error("HTML clipboard offset exceeds ten digits");
+        }
+        header.replace(header.find(field) + field.size(), 10, std::string(10 - number.size(), '0') + number);
+    };
+    set_offset("StartHTML:", start_html);
+    set_offset("EndHTML:", end_html);
+    set_offset("StartFragment:", start_fragment);
+    set_offset("EndFragment:", end_fragment);
+    return header + std::string(prefix) + std::string(fragment.bytes()) + std::string(suffix);
+}
+
 namespace {
+
+#if defined(_WIN32)
+bool publish_windows_html(PlatformWindowHandle window, StringView fragment) noexcept {
+    try {
+        const auto bytes = windows_html_clipboard_data(fragment);
+        const auto format = RegisterClipboardFormatW(L"HTML Format");
+        if (!format || !window) {
+            return false;
+        }
+        const auto properties = SDL_GetWindowProperties(static_cast<SDL_Window*>(window));
+        const auto owner =
+            static_cast<HWND>(SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+        if (!owner) {
+            return false;
+        }
+        const auto memory = GlobalAlloc(GMEM_MOVEABLE, bytes.size() + 1);
+        if (!memory) {
+            return false;
+        }
+        const auto destination = GlobalLock(memory);
+        if (!destination) {
+            GlobalFree(memory);
+            return false;
+        }
+        std::memcpy(destination, bytes.c_str(), bytes.size() + 1);
+        GlobalUnlock(memory);
+        if (!OpenClipboard(owner)) {
+            GlobalFree(memory);
+            return false;
+        }
+        // SDL has already set CF_UNICODETEXT and owns the clipboard. Append the
+        // standard HTML format without emptying the simultaneous plain format.
+        const bool success = SetClipboardData(format, memory) != nullptr;
+        CloseClipboard();
+        if (!success) {
+            GlobalFree(memory);
+        }
+        return success;
+    } catch (const std::bad_alloc&) {
+        return false;
+    } catch (const std::length_error&) {
+        return false;
+    }
+}
+#endif
 
 class SdlPlatformApi final : public PlatformApi {
 public:
@@ -25,6 +105,68 @@ public:
 
     bool set_clipboard_text(const char* value) noexcept override {
         return SDL_SetClipboardText(value);
+    }
+
+    bool set_clipboard_content(PlatformWindowHandle window,
+                               std::shared_ptr<const PlatformClipboardContent> content) noexcept override {
+#if defined(_WIN32)
+        const auto native_content = content;
+#else
+        (void)window;
+#endif
+        struct Offer final {
+            std::shared_ptr<const PlatformClipboardContent> content;
+            bool* released_during_set{};
+        };
+
+        bool released = false;
+        auto* offer = new (std::nothrow) Offer{std::move(content), &released};
+        if (!offer) {
+            return false;
+        }
+        const auto data = [](void* userdata, const char* mime, std::size_t* size) -> const void* {
+            if (!mime || !size) {
+                if (size) {
+                    *size = 0;
+                }
+                return nullptr;
+            }
+            const auto& content = *static_cast<Offer*>(userdata)->content;
+            const String* value =
+                std::strcmp(mime, "text/html") == 0 ? &content.html
+                : std::strcmp(mime, "text/plain;charset=utf-8") == 0 || std::strcmp(mime, "text/plain") == 0
+                    ? &content.plain_text
+                    : nullptr;
+            *size = value ? value->size_bytes() : 0;
+            return value ? value->data() : nullptr;
+        };
+        const auto cleanup = [](void* userdata) {
+            auto* offer = static_cast<Offer*>(userdata);
+            if (offer->released_during_set) {
+                *offer->released_during_set = true;
+            }
+            delete offer;
+        };
+        const char* types[]{"text/plain;charset=utf-8", "text/plain", "text/html"};
+        bool success = SDL_SetClipboardData(data, cleanup, offer, types, std::size(types));
+#if defined(_WIN32)
+        success = success && !released && publish_windows_html(window, native_content->html.view());
+#endif
+        if (!success) {
+            // SDL may retain the callbacks after a backend rejects an offer,
+            // or run cleanup synchronously after an allocation failure.
+            if (!released) {
+                static_cast<void>(SDL_ClearClipboardData());
+            }
+            if (!released) {
+                cleanup(offer);
+            }
+            return false;
+        }
+        if (!released) {
+            offer->released_during_set = nullptr;
+        }
+        return !released;
     }
 
     std::uint64_t ticks_ns() const noexcept override {
@@ -481,6 +623,29 @@ input::ClipboardError PlatformState::write_text(StringView text) {
     try {
         const std::string terminated(text.bytes());
         return api_->set_clipboard_text(terminated.c_str()) ? ClipboardError::none : ClipboardError::platform_failure;
+    } catch (const std::bad_alloc&) {
+        return ClipboardError::allocation_failure;
+    } catch (const std::length_error&) {
+        return ClipboardError::capacity_exceeded;
+    }
+}
+
+input::ClipboardError PlatformState::write_html(StringView plain_text, StringView html) {
+    using input::ClipboardError;
+    if (!is_owner_thread()) {
+        return ClipboardError::wrong_thread;
+    }
+    if (plain_text.size_bytes() > input::clipboard_max_bytes || html.size_bytes() > input::clipboard_max_bytes) {
+        return ClipboardError::capacity_exceeded;
+    }
+    if (plain_text.bytes().find('\0') != std::string_view::npos || html.bytes().find('\0') != std::string_view::npos) {
+        return ClipboardError::embedded_null;
+    }
+    try {
+        auto content = std::make_shared<PlatformClipboardContent>(PlatformClipboardContent{
+            String::from_utf8(plain_text.bytes()).value(), String::from_utf8(html.bytes()).value()});
+        return api_->set_clipboard_content(window_, std::move(content)) ? ClipboardError::none
+                                                                        : ClipboardError::platform_failure;
     } catch (const std::bad_alloc&) {
         return ClipboardError::allocation_failure;
     } catch (const std::length_error&) {

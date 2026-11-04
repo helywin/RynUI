@@ -7,8 +7,8 @@
 
 ## 2. 通用：Typography 与分类收口
 
-- [ ] 2.1 实现 typed rich runs、真实混合样式排版与 HTML 复制；测试 Unicode、换行、省略、主题、反应更新和剪贴板失败。
-- [ ] 2.2 更新 Typography 页面和通用支持清单；运行受影响 Typography/Text/clipboard 自动测试，构建 Gallery 并记录本机结果后提交。
+- [x] 2.1 实现 typed rich runs、真实混合样式排版与 HTML 复制；测试 Unicode、换行、省略、主题、反应更新和剪贴板失败。
+- [x] 2.2 更新 Typography 页面和通用支持清单；运行受影响 Typography/Text/clipboard 自动测试，构建 Gallery 并记录本机结果后提交。
 
 ## 3. 布局：Grid
 

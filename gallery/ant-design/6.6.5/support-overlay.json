@@ -86,8 +86,8 @@
     },
     {
       "identity": "ant.component.typography",
-      "status": "partial",
-      "summary": "RynUI 已提供五级 Title、Text、Paragraph、Link、行内语义、省略展开、全文复制、操作与截断提示，以及真实 TextArea 多行原地编辑；富文本及完整 Web API 尚未覆盖，平台验收独立记录。",
+      "status": "implemented",
+      "summary": "RynUI 提供五级 Title、Text、Paragraph、Link、不可变 typed rich runs、整段 Unicode 混合字体排版、省略展开、HTML/全文双格式复制及 TextArea 多行编辑；DOM/CSS/React 等 Web 专属接口不移植，平台验收独立记录。",
       "supported_scope": [
         "typed Text props",
         "CJK/Latin shaping and rendering",
@@ -99,11 +99,13 @@
         "full-content copy with independent late-bound clipboard",
         "copy/edit and actual-ellipsis Tooltip hints with reactive text",
         "persistent TextArea editing with autoSize, controlled draft and IME lifecycle",
-        "Link pointer/keyboard/focus-visible interaction"
+        "Link pointer/keyboard/focus-visible interaction",
+        "immutable typed rich runs with combined semantic colors and decorations",
+        "whole-source bidi, grapheme-safe mixed-font wrapping and ellipsis",
+        "escaped semantic HTML plus original plain-text clipboard with platform-owned MIME lifetime"
       ],
       "missing_scope": [
-        "rich text and HTML clipboard format",
-        "complete Ant Design Web API"
+        "DOM/CSS/React props, arbitrary HTML input and URL navigation (Web-only)"
       ],
       "evidence_identifiers": [
         "openspec:003-20260827-build-text-component-foundation",
@@ -112,7 +114,9 @@
         "openspec:034-20261001-complete-typography-and-divider",
         "openspec:057-20261023-complete-typography-hints-and-editor",
         "test:rynui.typography_component",
-        "test:rynui.typography_interaction"
+        "test:rynui.typography_interaction",
+        "openspec:106-20261104-complete-general-and-layout-components",
+        "test:rynui.text_clipboard"
       ]
     },
     {

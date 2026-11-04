@@ -117,6 +117,7 @@ public:
     [[nodiscard]] std::span<const MountedTextComponent> mounted_texts() const noexcept;
     [[nodiscard]] std::vector<font::FontIdentity> resolve_fonts(const runtime::SemanticTypography& typography) const;
     [[nodiscard]] runtime::SemanticTypography resolved_typography(runtime::ComponentId component) const;
+    [[nodiscard]] String html_content(runtime::ComponentId component) const;
     void reserve_ellipsis_inline(runtime::ComponentId component, float width);
 
     void attach_window_services(WindowComponentServices& services) noexcept {
@@ -140,6 +141,7 @@ private:
     bool apply_typography(runtime::ComponentId component, runtime::SemanticTypography typography);
     void apply_theme(runtime::ComponentId component);
     void subscribe_theme(runtime::ComponentId component);
+    bool apply_rich_content(runtime::ComponentId component);
     void synchronize_decorations(runtime::ComponentId component, runtime::Size viewport, runtime::Rect clip);
     void set_icon_source(runtime::ComponentId component, IconSource source);
     void update_icon_colors(runtime::ComponentId component);

@@ -40,6 +40,7 @@ struct TextSceneService::Record final {
     graphics::GlyphPrimitive primitive;
     std::vector<runtime::Rect> line_clips;
     std::vector<TextCoverageClip> coverage_clips;
+    std::vector<TextColorRange> color_ranges;
     bool coverage_enabled{};
     std::optional<graphics::GlyphPlacement> placement;
     runtime::Point scroll_translation{};
@@ -292,6 +293,53 @@ bool TextSceneService::set_font_chain(TextSceneId id, std::vector<font::FontIden
     ++record.revisions.content;
     record.content_dirty = true;
     return true;
+}
+
+bool TextSceneService::set_font_ranges(TextSceneId id, std::vector<text::TextFontRange> ranges) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace shared font ranges");
+    }
+    if (!record.state->set_font_ranges(std::move(ranges))) {
+        return false;
+    }
+    ++record.revisions.content;
+    record.content_dirty = true;
+    return true;
+}
+
+bool TextSceneService::set_color_ranges(TextSceneId id, std::vector<TextColorRange> ranges) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (record.color_ranges == ranges) {
+        return false;
+    }
+    record.color_ranges = std::move(ranges);
+    ++record.revisions.tone;
+    record.material_dirty = true;
+    frame_requests_->request_frame();
+    return true;
+}
+
+std::size_t TextSceneService::patch_material(Record& record, const text::TextMaterial& material, float opacity) {
+    if (record.color_ranges.empty()) {
+        return glyph_scene_.instances().update_material(record.primitive.instances, material.color, opacity);
+    }
+    std::size_t updated{};
+    for (std::size_t index = 0; index < record.primitive.coverage.size(); ++index) {
+        const auto byte = record.primitive.coverage[index].byte_begin;
+        auto color = material.color;
+        for (const auto& range : record.color_ranges) {
+            if (byte < record.state->displayed_source_bytes() && byte >= range.byte_start && byte < range.byte_end) {
+                color = range.color;
+                break;
+            }
+        }
+        updated += glyph_scene_.instances().update_material(
+            {record.primitive.instances.first + static_cast<std::uint32_t>(index), 1}, color, opacity);
+    }
+    return updated;
 }
 
 bool TextSceneService::set_direction(TextSceneId id, TextDirection direction) {
@@ -678,6 +726,9 @@ bool TextSceneService::synchronize(TextSceneId id) {
         const std::int64_t offset = static_cast<std::int64_t>(result.primitive.instances.count) - old_range.count;
         record.primitive = std::move(result.primitive);
         remap_following(id, offset);
+        if (!record.color_ranges.empty()) {
+            static_cast<void>(patch_material(record, material, placement.opacity));
+        }
         if (record.scroll_translation != runtime::Point{} || record.transform != graphics::GlyphTransform{} ||
             !record.line_clips.empty() || record.coverage_enabled) {
             static_cast<void>(patch_geometry(record, placement));
@@ -701,8 +752,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
     }
 
     if (record.material_dirty) {
-        const auto updated =
-            glyph_scene_.instances().update_material(record.primitive.instances, material.color, placement.opacity);
+        const auto updated = patch_material(record, material, placement.opacity);
         if (updated != 0) {
             ++record.counters.material_updates;
         }

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <new>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
@@ -39,6 +40,9 @@ struct BidiAnalysis::Data final {
     std::vector<BidiParagraph> paragraphs;
     std::vector<ScriptRun> scripts;
     std::vector<std::uint8_t> levels;
+    std::shared_ptr<const Data> origin;
+    std::shared_ptr<const Data> suffix;
+    std::size_t prefix_bytes{};
 
     Data(String value, TextDirection requested) : source(std::move(value)), direction(requested) {
         if (source.empty()) {
@@ -167,6 +171,37 @@ std::optional<std::vector<BidiRun>> BidiAnalysis::line_runs(std::size_t begin, s
     const auto scalar_end =
         static_cast<std::size_t>(std::lower_bound(data_->scalar_offsets.begin(), data_->scalar_offsets.end(), end) -
                                  data_->scalar_offsets.begin());
+    if (data_->origin) {
+        BidiAnalysis original;
+        original.data_ = data_->origin;
+        if (begin < data_->prefix_bytes) {
+            const auto retained = original.line_runs(begin, std::min(end, data_->prefix_bytes));
+            if (!retained) {
+                return {};
+            }
+            result = *retained;
+        }
+        if (end > data_->prefix_bytes) {
+            const auto base = data_->paragraphs[paragraph_index].base_level;
+            BidiAnalysis suffix;
+            suffix.data_ = data_->suffix;
+            auto runs =
+                suffix.line_runs(std::max(begin, data_->prefix_bytes) - data_->prefix_bytes, end - data_->prefix_bytes);
+            if (!runs) {
+                return {};
+            }
+            for (auto& run : *runs) {
+                run.byte_begin += data_->prefix_bytes;
+                run.byte_end += data_->prefix_bytes;
+            }
+            if (base & 1) {
+                result.insert(result.begin(), runs->begin(), runs->end());
+            } else {
+                result.insert(result.end(), runs->begin(), runs->end());
+            }
+        }
+        return result;
+    }
     Line line{SBParagraphCreateLine(data_->handles[paragraph_index].get(), scalar_begin, scalar_end - scalar_begin)};
     if (!line) {
         throw std::bad_alloc{};
@@ -181,8 +216,55 @@ std::optional<std::vector<BidiRun>> BidiAnalysis::line_runs(std::size_t begin, s
     return result;
 }
 
+BidiAnalysis BidiAnalysis::prefix(std::size_t bytes, String suffix) const {
+    if (!scalar_boundary(bytes)) {
+        throw std::invalid_argument("Bidi prefix must end on a scalar boundary");
+    }
+    auto text = std::string(source().bytes().substr(0, bytes));
+    text += suffix.bytes();
+    auto next = std::make_shared<Data>(String::from_utf8(text).value(), direction());
+    next->origin = data_;
+    next->prefix_bytes = bytes;
+    std::copy_n(data_->levels.begin(), bytes, next->levels.begin());
+    std::uint8_t base{};
+    for (const auto& paragraph : data_->paragraphs) {
+        if (paragraph.byte_begin <= bytes) {
+            base = paragraph.base_level;
+        }
+    }
+    next->suffix =
+        std::make_shared<Data>(std::move(suffix), base & 1 ? TextDirection::RightToLeft : TextDirection::LeftToRight);
+    std::copy(next->suffix->levels.begin(), next->suffix->levels.end(), next->levels.begin() + bytes);
+    for (auto& paragraph : next->paragraphs) {
+        for (const auto& original : data_->paragraphs) {
+            if (original.byte_begin <= paragraph.byte_begin) {
+                paragraph.base_level = original.base_level;
+            }
+        }
+    }
+    std::vector<ScriptRun> scripts;
+    for (auto run : data_->scripts) {
+        run.byte_end = std::min(run.byte_end, bytes);
+        if (run.byte_begin < run.byte_end) {
+            scripts.push_back(run);
+        }
+    }
+    for (auto run : next->suffix->scripts) {
+        run.byte_begin += bytes;
+        run.byte_end += bytes;
+        scripts.push_back(run);
+    }
+    next->scripts = std::move(scripts);
+    BidiAnalysis result;
+    result.data_ = std::move(next);
+    return result;
+}
+
 bool operator==(const BidiAnalysis& left, const BidiAnalysis& right) noexcept {
-    return left.data_ == right.data_ || (left.assigned() == right.assigned() && left.source() == right.source() &&
-                                         left.direction() == right.direction());
+    return left.data_ == right.data_ ||
+           (left.assigned() == right.assigned() && left.source() == right.source() &&
+            left.direction() == right.direction() && std::ranges::equal(left.levels(), right.levels()) &&
+            std::ranges::equal(left.paragraphs(), right.paragraphs()) &&
+            std::ranges::equal(left.scripts(), right.scripts()));
 }
 } // namespace ryn::text

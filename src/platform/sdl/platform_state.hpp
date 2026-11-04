@@ -104,6 +104,14 @@ struct PlatformEventDiagnostics {
     friend bool operator==(const PlatformEventDiagnostics&, const PlatformEventDiagnostics&) = default;
 };
 
+struct PlatformClipboardContent final {
+    String plain_text;
+    String html;
+};
+
+// CF_HTML uses UTF-8 byte offsets, including the ASCII header and fragment markers.
+[[nodiscard]] std::string windows_html_clipboard_data(StringView fragment);
+
 class PlatformApi {
 public:
     virtual ~PlatformApi() = default;
@@ -127,6 +135,12 @@ public:
     virtual void free_clipboard_text(char*) noexcept {}
 
     virtual bool set_clipboard_text(const char*) noexcept {
+        return false;
+    }
+
+    // Success retains the shared immutable payload until platform cleanup;
+    // failure must release the offered payload before returning.
+    virtual bool set_clipboard_content(PlatformWindowHandle, std::shared_ptr<const PlatformClipboardContent>) noexcept {
         return false;
     }
 
@@ -186,6 +200,7 @@ class PlatformState final : public input::TextInputPlatform, public input::TextC
 public:
     input::ClipboardReadResult read_text() override;
     input::ClipboardError write_text(StringView) override;
+    input::ClipboardError write_html(StringView plain_text, StringView html) override;
     input::ClipboardAvailability has_text() const noexcept override;
     bool start(input::TextInputSessionStamp, const input::TextInputProperties&) noexcept override;
     bool stop() noexcept override;

@@ -27,6 +27,9 @@ struct Api final : PlatformApi {
     bool fail_write{};
     std::string source{"clipboard"};
     std::string written;
+    std::shared_ptr<const PlatformClipboardContent> offer;
+    std::weak_ptr<const PlatformClipboardContent> observed;
+    int rich_writes{};
 
     bool init_video() override {
         return true;
@@ -69,6 +72,20 @@ struct Api final : PlatformApi {
     void free_clipboard_text(char* text) noexcept override {
         ++releases;
         std::free(text);
+    }
+
+    bool set_clipboard_content(PlatformWindowHandle window,
+                               std::shared_ptr<const PlatformClipboardContent> value) noexcept override {
+        if (window != &token) {
+            return false;
+        }
+        ++rich_writes;
+        observed = value;
+        if (fail_write) {
+            return false;
+        }
+        offer = std::move(value);
+        return true;
     }
 
     bool set_clipboard_text(const char* text) noexcept override {
@@ -154,6 +171,71 @@ void failures() {
     std::cout << "clipboard_read_atomic_points=" << failure_points << '\n';
 }
 
+void rich_bridge_ownership_and_failures() {
+    Api api;
+    auto platform = PlatformState::create(api, {});
+    const ryn::String plain{u8"原始全文 <tag>\nאבג"};
+    const ryn::String html{u8"<div>原始全文 &lt;tag&gt;<br>אבג</div>"};
+    const auto native_html = windows_html_clipboard_data(html.view());
+    const auto offset = [&](std::string_view field) {
+        return std::stoull(native_html.substr(native_html.find(field) + field.size(), 10));
+    };
+    const auto start_html = offset("StartHTML:");
+    const auto end_html = offset("EndHTML:");
+    const auto start_fragment = offset("StartFragment:");
+    const auto end_fragment = offset("EndFragment:");
+    check(native_html.substr(start_html, 12) == "<html><body>" && end_html == native_html.size() &&
+              native_html.substr(start_fragment, end_fragment - start_fragment) == html.bytes() &&
+              native_html.substr(start_fragment - 20, 20) == "<!--StartFragment-->",
+          "CF_HTML offsets did not use UTF-8 byte lengths or preserve the original fragment");
+    check(platform.state->write_html(plain.view(), html.view()) == ClipboardError::none && api.offer &&
+              api.offer->plain_text == plain && api.offer->html == html,
+          "dual MIME offer lost its immutable sources");
+    auto prior = api.observed;
+    check(platform.state->write_html(ryn::String{u8"next"}.view(), ryn::String{u8"<b>next</b>"}.view()) ==
+                  ClipboardError::none &&
+              prior.expired(),
+          "replacement retained the previous clipboard payload");
+    api.fail_write = true;
+    check(platform.state->write_html(plain.view(), html.view()) == ClipboardError::platform_failure &&
+              api.observed.expired(),
+          "rejected rich clipboard offer leaked ownership or hid failure");
+    api.fail_write = false;
+    const auto calls = api.rich_writes;
+    const auto embedded = ryn::String::from_utf8(std::string_view("a\0b", 3)).value();
+    check(platform.state->write_html(plain.view(), embedded.view()) == ClipboardError::embedded_null &&
+              api.rich_writes == calls,
+          "rich clipboard silently truncated embedded NUL");
+    const auto huge = ryn::String::from_utf8(std::string(clipboard_max_bytes + 1, 'x')).value();
+    check(platform.state->write_html(plain.view(), huge.view()) == ClipboardError::capacity_exceeded &&
+              api.rich_writes == calls,
+          "oversized rich data reached platform");
+    bool rejected{};
+    std::thread worker(
+        [&] { rejected = platform.state->write_html(plain.view(), html.view()) == ClipboardError::wrong_thread; });
+    worker.join();
+    check(rejected && api.rich_writes == calls, "rich write ran off owner thread");
+    bool allocated{};
+    for (std::size_t point = 0; point < 40; ++point) {
+        ryn_test::allocation::begin(point);
+        const auto error = platform.state->write_html(plain.view(), html.view());
+        ryn_test::allocation::end();
+        if (error == ClipboardError::none) {
+            allocated = true;
+            break;
+        }
+        check(error == ClipboardError::allocation_failure && api.rich_writes == calls,
+              "rich allocation failure published partial data");
+    }
+    check(allocated, "rich allocation sweep never completed");
+    auto active = api.observed;
+    platform.state.reset();
+    check(!active.expired() && api.offer->plain_text == plain && api.offer->html == html,
+          "SDL payload depended on destroyed PlatformState");
+    api.offer.reset();
+    check(active.expired(), "clipboard platform cleanup did not release payload");
+}
+
 void metadata() {
     PlatformEvents events;
     SdlWindowMetrics metrics;
@@ -184,6 +266,7 @@ void metadata() {
 
 int main() {
     try {
+        rich_bridge_ownership_and_failures();
         bridge();
         failures();
         metadata();

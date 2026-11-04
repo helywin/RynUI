@@ -19,6 +19,7 @@ struct Platform final : TextInputPlatform, TextClipboard {
     bool area_failure{};
     WindowTextInputArea area;
     std::optional<String> clipboard;
+    std::optional<String> clipboard_html;
     bool clipboard_failure{};
     int reads{};
     int writes{};
@@ -83,10 +84,19 @@ struct Platform final : TextInputPlatform, TextClipboard {
             return ClipboardError::platform_failure;
         }
         clipboard = String::from_utf8(text.bytes()).value();
+        clipboard_html.reset();
         if (on_clipboard) {
             on_clipboard();
         }
         return ClipboardError::none;
+    }
+
+    ClipboardError write_html(StringView plain_text, StringView html) override {
+        const auto error = write_text(plain_text);
+        if (error == ClipboardError::none) {
+            clipboard_html = String::from_utf8(html.bytes()).value();
+        }
+        return error;
     }
 
     ClipboardAvailability has_text() const noexcept override {

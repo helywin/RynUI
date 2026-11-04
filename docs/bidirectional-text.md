@@ -36,7 +36,7 @@ CaretMap 的 `stops()` 按逻辑 byte/affinity 排序，`line_stops()` 按视觉
 
 TextMeasurement 的每行 glyph range 索引 `visual_glyphs`，再映射至 ShapedText 的原始 glyph。`visual_clusters` 保存逻辑 byte range、visual x/width 和该行 L1 后的 level。折行先遍历逻辑 cluster，行范围确定后调用该段落的 L1/L2 runs；每个 glyph 仅覆盖一次。GlyphScene 和文字 underline/strikeout 按同一视觉索引累计 pen，CPU metadata 不进入 renderer GPU ABI。旧人工 LTR measurement 缺少 visual metadata 时保留连续 glyph fallback。
 
-TextState 方向变化触发 shaping/layout；width-only 更新复用 source 分析及 shaped 数据，只重新 measure/reorder。ellipsis 每个合法前缀独立执行对应方向的分析、shaping 和 measurement，并保留最长合法前缀及非单调宽度校验。
+TextState 方向变化触发 shaping/layout；width-only 更新复用 source 分析及 shaped 数据，只重新 measure/reorder。106 的 rich runs 通过同一来源 byte ranges 选择实际字体，保持整段 UBA 和 HarfBuzz 邻接上下文。ellipsis 候选保留完整来源的段落 base、levels 与 scripts，逐行继续使用原分析的 L1/L2；suffix 按段落基础方向置于视觉末端。即使第一个强方向位于截断位置之后，Auto 也不会随可见前缀改变。候选独立 shape/measure，保留最长合法字簇前缀及非单调宽度校验；完整来源与复制内容不改变。
 
 Input/TextArea 共用 run/line affinity；左右箭头沿视觉 stops，Home/End 使用当前行物理边缘，primary Home/End 使用逻辑文档端点。指针保留命中 stop 的精确 affinity。Shift 保留逻辑 anchor，删除、clipboard 与 history 使用原始逻辑 UTF-8；Password mask 在显示 grapheme 与 committed byte 之间转换。
 

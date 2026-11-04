@@ -41,6 +41,8 @@ struct TypographyState {
     runtime::ComponentId edit_action;
     TextSceneId scene;
     Signal<String> content{String{}};
+    Signal<TypographyContent> rich_content{TypographyContent{}};
+    bool rich{};
     Signal<String> draft{String{}};
     Signal<String> expand_label{String{}};
     Signal<IconName> copy_icon{IconName::CopyOutlined};
@@ -325,10 +327,15 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
     const auto id = build.mount_component<TypographyState>();
     auto& state = build.state<TypographyState>(id);
     state.component = id;
-    state.original = read_prop(props.content_);
+    state.rich = props.rich_content_.has_value();
+    if (state.rich) {
+        state.rich_content.set(read_prop(*props.rich_content_));
+    }
+    state.original = state.rich ? state.rich_content.get().plain_text() : read_prop(props.content_);
     state.content.set(state.original);
     state.draft.set(state.original);
-    state.controlled = PropAccess::binding(props.content_) != nullptr;
+    state.controlled = state.rich ? PropAccess::binding(*props.rich_content_) != nullptr
+                                  : PropAccess::binding(props.content_) != nullptr;
     state.has_ellipsis = props.ellipsis_.has_value();
     state.has_copy = props.copyable_.has_value();
     state.has_edit = props.editable_.has_value();
@@ -343,6 +350,9 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
     display.on_edit_ = {};
     display.on_copy_ = {};
     display.content_ = Prop<String>{state.content};
+    if (state.rich) {
+        display.rich_content_ = Prop<TypographyContent>{state.rich_content};
+    }
     if (state.has_ellipsis) {
         display.ellipsis_ = Prop<TypographyEllipsis>{state.ellipsis};
     }
@@ -536,7 +546,7 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
             }});
     mounted_.push_back(id);
     auto& scope = build.scope(id);
-    connect_prop(scope, props.content_, [this, id](String value) {
+    const auto update_content = [this, id](String value) {
         if (auto* s = services_->components().state<TypographyState>(id)) {
             s->original = std::move(value);
             s->content.set(s->original);
@@ -549,7 +559,17 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
             }
             refresh(id);
         }
-    });
+    };
+    if (props.rich_content_) {
+        connect_prop(scope, *props.rich_content_, [this, id, update_content](TypographyContent value) {
+            if (auto* s = services_->components().state<TypographyState>(id)) {
+                s->rich_content.set(value);
+                update_content(value.plain_text());
+            }
+        });
+    } else {
+        connect_prop(scope, props.content_, update_content);
+    }
     if (props.disabled_) {
         connect_prop(scope, *props.disabled_, [this, id](bool value) {
             if (auto* s = services_->components().state<TypographyState>(id)) {
@@ -582,6 +602,9 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
         connect_prop(scope, *props.copyable_, [this, id](TypographyCopyable value) {
             if (!std::isfinite(value.feedback_milliseconds) || value.feedback_milliseconds < 0) {
                 throw std::invalid_argument("copy feedback duration is invalid");
+            }
+            if (value.format != TypographyCopyFormat::PlainText && value.format != TypographyCopyFormat::Html) {
+                throw std::invalid_argument("copy format must be PlainText or Html");
             }
             if (auto* s = services_->components().state<TypographyState>(id)) {
                 s->copy_config = std::move(value);
@@ -675,8 +698,19 @@ void TypographyComponentHost::copy(runtime::ComponentId id) {
     if (!s || s->disabled || !s->copy_config.enabled || !services_->clipboard()) {
         return;
     }
-    const auto original = s->original;
-    const bool success = services_->clipboard()->write_text(original.view()) == input::ClipboardError::none;
+    input::ClipboardError error;
+    try {
+        const auto original = s->original;
+        error =
+            s->copy_config.format == TypographyCopyFormat::Html
+                ? services_->clipboard()->write_html(original.view(), services_->text().html_content(s->display).view())
+                : services_->clipboard()->write_text(original.view());
+    } catch (const std::bad_alloc&) {
+        error = input::ClipboardError::allocation_failure;
+    } catch (const std::length_error&) {
+        error = input::ClipboardError::capacity_exceeded;
+    }
+    const bool success = error == input::ClipboardError::none;
     s = services_->components().state<TypographyState>(id);
     if (!s) {
         return;
@@ -715,6 +749,9 @@ void TypographyComponentHost::commit(runtime::ComponentId id, String value, bool
     if (!s->controlled) {
         s->original = value;
         s->content.set(value);
+        if (s->rich) {
+            s->rich_content.set(TypographyContent{{TypographyRun{.content = value}}});
+        }
         s->editing.set(false);
     }
     auto callback = s->on_edit;

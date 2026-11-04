@@ -117,7 +117,12 @@ void test_typed_support_status() {
                 divider->supported_scope.find("Dotted") != std::string_view::npos &&
                 divider->missing_scope.find("DOM") != std::string_view::npos,
             "native Divider completion lost implementation evidence or Web boundary");
-    require_partial("ant.component.typography");
+    const auto* typography = find_ant_design_reference_entry("ant.component.typography");
+    require(typography && typography->support_status == GallerySupportStatus::implemented &&
+                typography->supported_scope.find("typed rich runs") != std::string_view::npos &&
+                typography->supported_scope.find("HTML") != std::string_view::npos &&
+                typography->missing_scope.find("DOM/CSS/React") != std::string_view::npos,
+            "Typography native rich support or Web exclusions drifted");
     const auto* input = find_ant_design_reference_entry("ant.component.input");
     require(input && input->support_status == GallerySupportStatus::implemented &&
                 input->evidence_identifiers.find("openspec:055-") != std::string_view::npos &&

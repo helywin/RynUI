@@ -12,6 +12,8 @@
 #include <limits>
 #include <optional>
 #include <utility>
+#include <vector>
+#include <span>
 
 namespace ryn {
 namespace detail {
@@ -44,6 +46,50 @@ enum class TypographyInline : std::uint8_t {
     Strikethrough,
 };
 
+// Value runs combine semantic flags. The immutable content owns both runs and
+// their concatenated source; no markup is accepted or interpreted.
+struct TypographyRun final {
+    String content;
+    std::optional<TypographyType> type;
+    bool strong{};
+    bool italic{};
+    bool code{};
+    bool keyboard{};
+    bool mark{};
+    bool underline{};
+    bool strikethrough{};
+    friend bool operator==(const TypographyRun&, const TypographyRun&) = default;
+};
+
+class TypographyContent final {
+public:
+    TypographyContent() = default;
+
+    explicit TypographyContent(std::vector<TypographyRun> runs) : runs_(std::move(runs)) {
+        std::string bytes;
+        for (const auto& run : runs_) {
+            bytes += run.content.bytes();
+        }
+        plain_text_ = String::from_utf8(bytes).value();
+    }
+
+    [[nodiscard]] std::span<const TypographyRun> runs() const noexcept {
+        return runs_;
+    }
+
+    [[nodiscard]] const String& plain_text() const noexcept {
+        return plain_text_;
+    }
+
+    friend bool operator==(const TypographyContent&, const TypographyContent&) = default;
+
+private:
+    std::vector<TypographyRun> runs_;
+    String plain_text_;
+};
+
+enum class TypographyCopyFormat : std::uint8_t { PlainText, Html };
+
 struct TypographyEllipsis final {
     std::optional<std::size_t> rows{1};
     String suffix{u8"…"};
@@ -60,6 +106,7 @@ struct TypographyCopyable final {
     String tooltip{u8"复制"};
     String copied_tooltip{u8"已复制"};
     float feedback_milliseconds{3000};
+    TypographyCopyFormat format{TypographyCopyFormat::PlainText};
     friend bool operator==(const TypographyCopyable&, const TypographyCopyable&) = default;
 };
 
@@ -78,6 +125,12 @@ class TypographyProps final {
 public:
     TypographyProps& content(Prop<String> value) {
         content_ = std::move(value);
+        rich_content_.reset();
+        return *this;
+    }
+
+    TypographyProps& content(Prop<TypographyContent> value) {
+        rich_content_ = std::move(value);
         return *this;
     }
 
@@ -170,6 +223,7 @@ private:
     friend class detail::TypographyComponentHost;
 
     Prop<String> content_{String{}};
+    std::optional<Prop<TypographyContent>> rich_content_;
     Prop<TextDirection> direction_{TextDirection::Auto};
     std::optional<Prop<TypographyType>> type_;
     std::optional<Prop<bool>> code_;
@@ -193,6 +247,11 @@ private:
 class TitleProps final {
 public:
     TitleProps& content(Prop<String> value) {
+        typography_.content(std::move(value));
+        return *this;
+    }
+
+    TitleProps& content(Prop<TypographyContent> value) {
         typography_.content(std::move(value));
         return *this;
     }

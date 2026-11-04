@@ -244,7 +244,8 @@ std::vector<Utf8Scalar> decode_utf8(StringView text) {
 TextEngine::TextEngine(font::FontRuntime& fonts) noexcept : fonts_(&fonts) {}
 
 TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIdentity> fallback_chain,
-                                  TextDirection direction) const {
+                                  TextDirection direction, std::span<const TextFontRange> ranges,
+                                  const BidiAnalysis* source_analysis, std::size_t source_prefix) const {
     if (fallback_chain.empty()) {
         return {{}, {TextErrorKind::empty_font_chain, 0, {}}};
     }
@@ -262,12 +263,36 @@ TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIde
     output.default_metrics = default_metrics.metrics;
     output.normalized_size_bytes = text.size_bytes();
     static_cast<void>(output.bidi.assign(String::from_utf8(text.utf8()).value(), direction));
+    if (source_analysis) {
+        output.bidi =
+            source_analysis->prefix(source_prefix, String::from_utf8(text.bytes().substr(source_prefix)).value());
+    }
+    input::TextBoundaryMap boundaries;
+    if (!ranges.empty()) {
+        static_cast<void>(boundaries.assign(text.bytes()));
+    }
+    const auto graphemes = boundaries.grapheme_bytes();
+    const auto range_at = [&](std::size_t byte) -> const TextFontRange* {
+        if (byte >= source_prefix) {
+            return nullptr;
+        }
+        if (!graphemes.empty()) {
+            byte = *std::prev(std::upper_bound(graphemes.begin(), graphemes.end(), byte));
+        }
+        for (const auto& range : ranges) {
+            if (byte >= range.byte_start && byte < range.byte_end) {
+                return &range;
+            }
+        }
+        return nullptr;
+    };
 
     std::optional<font::FontIdentity> run_font;
     std::size_t run_start = 0;
     std::size_t run_end = 0;
     std::uint8_t run_level{};
     std::uint32_t run_script{};
+    const TextFontRange* run_range{};
 
     const auto append_shaped = [&](font::FontIdentity selected_font, std::string_view shaping_text,
                                    std::size_t shaping_offset, std::size_t shaping_length,
@@ -340,13 +365,18 @@ TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIde
             }
             const auto level = output.bidi.level_at(scalar.byte_start).value();
             const auto script = scripts[script_index].unicode_tag;
+            const auto* range = range_at(scalar.byte_start);
+            const auto chain = range ? std::span<const font::FontIdentity>{range->fonts} : fallback_chain;
+            if (chain.empty()) {
+                return {{}, {TextErrorKind::empty_font_chain, scalar.byte_start, {}}};
+            }
             font::GlyphSelection selected;
             if (is_shaping_control(scalar.value)) {
                 // Default ignorables influence shaping/UBA without a coverage
                 // requirement or replacement glyph. Retain the adjacent font.
-                selected.font = run_font.value_or(fallback_chain.front());
+                selected.font = run_font && run_range == range ? *run_font : chain.front();
             } else {
-                const auto selection = fonts_->find_glyph(fallback_chain, scalar.value);
+                const auto selection = fonts_->find_glyph(chain, scalar.value);
                 if (!selection) {
                     TextError error = font_error(selection.error);
                     error.byte_offset = scalar.byte_start;
@@ -365,7 +395,8 @@ TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIde
                 }
                 continue;
             }
-            if (!run_font || *run_font != selected.font || run_level != level || run_script != script) {
+            if (!run_font || *run_font != selected.font || run_level != level || run_script != script ||
+                run_range != range) {
                 if (TextError error = flush_run(output)) {
                     return {{}, std::move(error)};
                 }
@@ -373,6 +404,7 @@ TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIde
                 run_start = scalar.byte_start;
                 run_level = level;
                 run_script = script;
+                run_range = range;
             }
             run_end = scalar.byte_end;
         }
@@ -383,6 +415,43 @@ TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIde
             {paragraph.byte_begin, paragraph.content_end, glyph_begin, output.glyphs.size() - glyph_begin});
         while (scalar_index < output.scalars.size() && output.scalars[scalar_index].byte_start < paragraph.byte_end) {
             ++scalar_index;
+        }
+    }
+    if (!ranges.empty()) {
+        // Reserve token padding at the visual edges of each styled source
+        // range, across font fallback and directional subruns. Wrapping slices
+        // the inline box; it never inserts spaces into the source text.
+        for (const auto& paragraph : output.paragraphs) {
+            std::vector<ClusterUnit> units;
+            make_cluster_units(output, paragraph, units, graphemes);
+            TextMeasurement visual;
+            if (!append_line_geometry(output, paragraph, units, visual)) {
+                return {{}, {TextErrorKind::shaping_failure, paragraph.byte_start, {}}};
+            }
+            for (const auto& range : ranges) {
+                if (range.inline_padding <= 0) {
+                    continue;
+                }
+                std::optional<std::size_t> first;
+                std::size_t last{};
+                for (auto index : visual.visual_glyphs) {
+                    const auto byte = output.glyphs[index].cluster;
+                    if (byte < source_prefix && byte >= range.byte_start && byte < range.byte_end) {
+                        if (!first) {
+                            first = index;
+                        }
+                        last = index;
+                    }
+                }
+                const auto add_advance = [&](ShapedGlyph& glyph) {
+                    glyph.advance_x += std::copysign(range.inline_padding, glyph.advance_x == 0 ? 1 : glyph.advance_x);
+                };
+                if (first) {
+                    output.glyphs[*first].offset_x += range.inline_padding;
+                    add_advance(output.glyphs[*first]);
+                    add_advance(output.glyphs[last]);
+                }
+            }
         }
     }
     return {std::move(output), {}};
@@ -576,6 +645,15 @@ bool TextState::set_font_chain(std::vector<font::FontIdentity> fallback_chain) {
     return true;
 }
 
+bool TextState::set_font_ranges(std::vector<TextFontRange> ranges) {
+    if (font_ranges_ == ranges) {
+        return false;
+    }
+    font_ranges_ = std::move(ranges);
+    invalidate_shape();
+    return true;
+}
+
 bool TextState::set_pixel_size(std::uint32_t pixel_size) {
     if (pixel_size_ == pixel_size) {
         return false;
@@ -683,6 +761,7 @@ bool TextState::synchronize_ellipsis() {
         shaped_ = {};
         measurement_ = {};
         displayed_ = String{};
+        displayed_source_bytes_ = 0;
         truncated_ = !content_.empty();
         return true;
     }
@@ -737,7 +816,8 @@ bool TextState::synchronize_ellipsis() {
         value.content = std::move(String::from_utf8(bytes)).value();
         ++counters_.shape_count;
         ++counters_.ellipsis_shapes;
-        auto shape = engine_->shape(value.content.view(), fallback_chain_, direction_);
+        auto shape = engine_->shape(value.content.view(), fallback_chain_, direction_, font_ranges_,
+                                    &natural_shaped_.bidi, graphemes[index]);
         if (!shape) {
             last_error_ = std::move(shape.error);
             return cache.emplace(index, std::move(value)).first->second;
@@ -778,6 +858,7 @@ bool TextState::synchronize_ellipsis() {
         return false;
     }
     displayed_ = std::move(selected.content);
+    displayed_source_bytes_ = graphemes[low];
     shaped_ = std::move(selected.shaped);
     measurement_ = std::move(selected.measurement);
     return true;
@@ -791,7 +872,7 @@ bool TextState::synchronize() {
     }
     if (shape_dirty_) {
         ++counters_.shape_count;
-        TextShapeResult result = engine_->shape(content_.view(), fallback_chain_, direction_);
+        TextShapeResult result = engine_->shape(content_.view(), fallback_chain_, direction_, font_ranges_);
         if (!result) {
             last_error_ = std::move(result.error);
             return false;

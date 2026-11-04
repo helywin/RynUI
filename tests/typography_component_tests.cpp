@@ -616,10 +616,183 @@ void test_ellipsis_degenerate_rows_suffix_and_explicit_newlines() {
             "unlimited rows did not restore original content");
 }
 
+void test_rich_runs_share_layout_and_reactive_identity() {
+    using namespace ryn;
+    Fixture fixture;
+    fixture.enable_surfaces();
+    const TypographyContent initial{{
+        {.content = u8"Plain ", .type = TypographyType::Secondary},
+        {.content = u8"Bold", .strong = true, .underline = true},
+        {.content = u8" italic", .italic = true},
+        {.content = u8" code", .code = true},
+        {.content = u8" key", .keyboard = true},
+        {.content = u8" 标记", .mark = true},
+        {.content = u8" 删除", .strikethrough = true},
+        {.content = u8"\nאבג 中文", .type = TypographyType::Danger},
+    }};
+    Signal<TypographyContent> content{initial};
+    Signal<ThemeConfig> config{ThemeConfig{}};
+    fixture.host->mount(Content{[&] {
+        Theme(ThemeProps{}.config(config), ThemeContent{[&] { Paragraph(TypographyProps{}.content(content)); }});
+        Text(TypographyProps{}.content(u8"Unrelated"));
+    }});
+    require(fixture.layout_texts(130, 700), "rich paragraph did not lay out");
+    const auto id = fixture.host->mounted_texts()[0].component;
+    const auto count = fixture.host->components().component_count();
+    const auto sibling_shapes = fixture.text_state(1).counters().shape_count;
+    const auto& shaped = fixture.text_state(0).shaped();
+    require(fixture.text_state(0).content() == initial.plain_text().view() &&
+                shaped.bidi.source() == initial.plain_text().view(),
+            "rich content was split into independent source paragraphs");
+    require(fixture.text_state(0).measurement().lines.size() > 2 && fixture.scene.size() == 2,
+            "rich runs did not share wrapping or allocated separate text scenes");
+    require(fixture.requested(SystemFontFamily::ui_sans, resolve_theme().typography().font_weight_strong, false) &&
+                fixture.requested(SystemFontFamily::ui_sans, 400, true) &&
+                fixture.requested(SystemFontFamily::ui_monospace, 400, false),
+            "rich faces did not reach the real font resolver");
+    std::vector<float> sizes;
+    for (const auto& glyph : shaped.glyphs) {
+        const auto metrics = fixture.fonts->metrics(glyph.font);
+        require(bool(metrics), "rich glyph font was stale");
+        if (std::ranges::find(sizes, metrics.metrics.logical_pixel_size) == sizes.end()) {
+            sizes.push_back(metrics.metrics.logical_pixel_size);
+        }
+    }
+    require(sizes.size() >= 2, "rich glyphs were all shaped with the paragraph base font size");
+    const auto scene_id = fixture.host->mounted_texts()[0].scene;
+    const auto primitive = fixture.scene.primitive(scene_id);
+    const auto& instances = fixture.scene.glyph_scene().instances();
+    const auto danger = channels(resolve_theme().typography().colors.error);
+    bool saw_danger = false;
+    for (std::size_t index = 0; index < primitive.coverage.size(); ++index) {
+        const auto& glyph = instances.at(primitive.instances.first + static_cast<std::uint32_t>(index));
+        saw_danger |= glyph.color == danger;
+    }
+    require(saw_danger, "semantic run colors were not published to logical glyph instances");
+    fixture.host->synchronize_scene_fragments([](auto) { return std::optional<input::InteractionId>{}; });
+    static_cast<void>(fixture.surfaces->compact_effects({0, 0, 130, 700}));
+    fixture.composer->rebuild({0, 0, 130, 700});
+    const auto& node = fixture.nodes.require(fixture.scene.node(scene_id));
+    std::size_t mark_begin{};
+    for (std::size_t index = 0; index < 5; ++index) {
+        mark_begin += initial.runs()[index].content.size_bytes();
+    }
+    const auto mark_end = mark_begin + initial.runs()[5].content.size_bytes();
+    bool aligned_mark{};
+    const auto& measurement = fixture.text_state(0).measurement();
+    for (std::size_t line_index = 0; line_index < measurement.lines.size(); ++line_index) {
+        const auto& line = measurement.lines[line_index];
+        for (std::size_t cluster_index = line.cluster_begin; cluster_index < line.cluster_begin + line.cluster_count;
+             ++cluster_index) {
+            const auto& cluster = measurement.visual_clusters[cluster_index];
+            if (cluster.byte_start < mark_begin || cluster.byte_start >= mark_end) {
+                continue;
+            }
+            for (const auto& command : fixture.composer->ordered_scene().commands()) {
+                if (command.kind != graphics::SceneDrawKind::quad) {
+                    continue;
+                }
+                for (auto index = command.first_instance; index < command.first_instance + command.instance_count;
+                     ++index) {
+                    const auto& quad = fixture.surfaces->instances().at(index);
+                    aligned_mark |= quad.color == channels(resolve_theme().typography().colors.mark_background) &&
+                                    near(quad.bounds[0], node.bounds.x + cluster.x) &&
+                                    near(quad.bounds[1],
+                                         node.bounds.y + line_index * resolve_theme().typography().base_line_height);
+                }
+            }
+        }
+    }
+    require(aligned_mark, "rich mark decoration did not follow the shared visual line/cluster geometry");
+    const auto shapes_before = fixture.text_state(0).counters().shape_count;
+    auto colored = ThemeConfig{};
+    colored.typography.tokens.error = Color::rgba8(12, 34, 56);
+    require(config.set(colored) && fixture.layout_texts(130, 700) &&
+                fixture.text_state(0).counters().shape_count == shapes_before,
+            "rich color-only update reshaped text");
+    const auto changed_primitive = fixture.scene.primitive(scene_id);
+    require(
+        std::ranges::any_of(fixture.scene.glyph_scene().instances().instances().subspan(
+                                changed_primitive.instances.first, changed_primitive.instances.count),
+                            [](const auto& instance) { return instance.color == channels(Color::rgba8(12, 34, 56)); }),
+        "rich semantic color update was not published");
+    auto dark = ThemeConfig{};
+    dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
+    require(config.set(dark) && fixture.layout_texts(130, 700), "rich theme update failed");
+    const TypographyContent changed{
+        {{.content = u8"updated 中文 ", .strong = true}, {.content = u8"code", .code = true, .mark = true}}};
+    require(content.set(changed) && fixture.layout_texts(90, 700), "reactive rich content update failed");
+    require(fixture.text_state(0).content() == changed.plain_text().view() &&
+                fixture.host->mounted_texts()[0].component == id &&
+                fixture.host->components().component_count() == count &&
+                fixture.text_state(1).counters().shape_count == sibling_shapes,
+            "rich updates remounted a component or reshaped a sibling");
+    const auto html = fixture.host->html_content(id);
+    require(html.bytes().find("<strong>") != std::string_view::npos &&
+                html.bytes().find("<code><mark>") != std::string_view::npos,
+            "rich semantic HTML lost combined run tags");
+    require(content.set(TypographyContent{}) && fixture.layout_texts(90, 700) &&
+                fixture.text_state(0).content().empty() && fixture.host->mounted_texts()[0].component == id,
+            "empty rich update retained source text or replaced component identity");
+    const auto empty_primitive = fixture.scene.primitive(scene_id);
+    require(std::ranges::all_of(fixture.scene.glyph_scene().instances().instances().subspan(
+                                    empty_primitive.instances.first, empty_primitive.instances.count),
+                                [](const auto& glyph) {
+                                    return glyph.clip_bounds[0] == glyph.clip_bounds[2] ||
+                                           glyph.clip_bounds[1] == glyph.clip_bounds[3];
+                                }),
+            "empty rich update retained visible stale glyphs");
+}
+
+void test_rich_grapheme_boundary_and_source_bidi_ellipsis() {
+    using namespace ryn;
+    Fixture fixture;
+    const TypographyContent content{{{.content = u8"e", .strong = true},
+                                     {.content = u8"\u0301", .italic = true},
+                                     {.content = u8" -- אבג 中文 more words", .code = true}}};
+    fixture.host->mount(Content{[&] { Paragraph(TypographyProps{}.content(content).ellipsis(TypographyEllipsis{})); }});
+    require(fixture.layout_texts(75, 500), "rich grapheme ellipsis failed");
+    auto& state = fixture.text_state(0);
+    require(state.truncated() && state.content() == content.plain_text().view() && state.measurement().width <= 75,
+            "rich ellipsis changed source or exceeded the constrained width");
+    input::TextBoundaryMap boundaries;
+    require(boundaries.assign(content.plain_text().bytes()), "rich source boundary map failed");
+    require(std::ranges::find(boundaries.grapheme_bytes(), state.displayed_source_bytes()) !=
+                boundaries.grapheme_bytes().end(),
+            "rich ellipsis split a grapheme");
+    require(!state.shaped().runs.empty() && state.shaped().runs.front().byte_end >= 3,
+            "style boundary split the base and combining mark");
+    const String source{u8"... אבג"};
+    text::BidiAnalysis full;
+    require(full.assign(source), "source bidi setup failed");
+    auto prefix = full.prefix(2, String{u8"…"});
+    require(prefix.paragraphs()[0].base_level == 1 && prefix.level_at(0) == full.level_at(0),
+            "ellipsis recomputed Auto direction from the visible prefix");
+    const auto lines = prefix.line_runs(0, prefix.source().size_bytes());
+    require(lines && !lines->empty() && lines->front().byte_begin == 2,
+            "RTL ellipsis suffix was not placed at the paragraph visual end");
+    const auto latin_suffix = full.prefix(2, String{u8"More"});
+    const auto suffix_runs = latin_suffix.line_runs(0, latin_suffix.source().size_bytes());
+    require(suffix_runs && suffix_runs->front().byte_begin == 2 && !suffix_runs->front().right_to_left(),
+            "RTL paragraph reversed the internal order of a Latin ellipsis suffix");
+    Fixture emoji;
+    const TypographyContent emoji_content{
+        {{.content = u8"\U0001f469", .strong = true}, {.content = u8"\u200d\U0001f4bb", .italic = true}}};
+    emoji.host->mount(Content{[&] { Text(TypographyProps{}.content(emoji_content)); }});
+    require(emoji.layout_texts(), "cross-run emoji grapheme failed to lay out");
+    const auto emoji_html = emoji.host->html_content(emoji.host->mounted_texts()[0].component);
+    require(emoji_html.bytes().find(emoji_content.plain_text().bytes()) != std::string_view::npos &&
+                emoji_html.bytes().find("<strong>") != std::string_view::npos &&
+                emoji_html.bytes().find("<em>") == std::string_view::npos,
+            "style boundary split an emoji ZWJ grapheme or lost its original source");
+}
+
 } // namespace
 
 int main() {
     try {
+        test_rich_runs_share_layout_and_reactive_identity();
+        test_rich_grapheme_boundary_and_source_bidi_ellipsis();
         test_public_api_and_heading_levels();
         test_semantic_colours_and_disabled();
         test_emphasis_reaches_the_shape_request();

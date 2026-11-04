@@ -332,6 +332,10 @@ add_library(rynui_platform_sdl STATIC
 rynui_configure_cpp_target(rynui_platform_sdl)
 target_include_directories(rynui_platform_sdl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_platform_sdl PRIVATE SDL3::SDL3 PUBLIC rynui_input)
+if(WIN32)
+    # The locked SDL Windows clipboard backend does not publish HTML formats.
+    target_link_libraries(rynui_platform_sdl PRIVATE user32)
+endif()
 endif()
 
 if(RYNUI_HAS_SDL_GPU)
@@ -417,7 +421,11 @@ rynui_assert_direct_dependencies(
 )
 rynui_assert_direct_dependencies(rynui_renderer_common rynui_graphics rynui_text_scene)
 if(RYNUI_HAS_SDL_HOST)
-    rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3 rynui_input)
+    if(WIN32)
+        rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3 rynui_input user32)
+    else()
+        rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3 rynui_input)
+    endif()
 endif()
 if(RYNUI_HAS_SDL_GPU)
 set(sdl_renderer_dependencies

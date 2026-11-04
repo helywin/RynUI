@@ -75,6 +75,27 @@ void shaping_contract() {
     for (std::size_t index = 0; index < whole.glyphs.size(); ++index) {
         check(joined.text.glyphs[index].glyph_id == whole.glyphs[index].glyph_id, "engine Arabic joining changed");
     }
+    const std::vector<TextFontRange> styled_joining{
+        {0, 2, {arabic.font}}, {2, 4, {arabic.font}}, {4, 6, {arabic.font}}};
+    const auto split_joining = engine.shape(joining.view(), chain, TextDirection::Auto, styled_joining);
+    check(split_joining && split_joining.text.runs.size() == 3 && split_joining.text.bidi == joined.text.bidi,
+          "styled Arabic source lost shared paragraph analysis");
+    for (const auto& glyph : split_joining.text.glyphs) {
+        const auto reference = std::ranges::find(joined.text.glyphs, glyph.cluster, &ShapedGlyph::cluster);
+        check(reference != joined.text.glyphs.end() && glyph.glyph_id == reference->glyph_id,
+              "run boundary broke contextual Arabic joining");
+    }
+    const auto small_latin = fonts.load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, 16);
+    check(bool(small_latin), "mixed style font fixture");
+    const std::vector<TextFontRange> styled_mixed{
+        {0, 6, {small_latin.font}}, {6, mixed.size_bytes(), {latin.font, cjk.font, arabic.font, hebrew.font}}};
+    const auto rich = engine.shape(mixed.view(), chain, TextDirection::Auto, styled_mixed);
+    check(rich && rich.text.bidi == shaped.text.bidi && rich.text.glyphs.front().font == small_latin.font &&
+              std::ranges::any_of(rich.text.runs,
+                                  [&](const auto& run) { return run.font == arabic.font && run.right_to_left; }) &&
+              std::ranges::any_of(rich.text.runs,
+                                  [&](const auto& run) { return run.font == hebrew.font && run.right_to_left; }),
+          "mixed font ranges changed source UBA or lost actual RTL font faces");
     const auto ligature = engine.shape(String{u8"لا"}.view(), chain);
     check(ligature && ligature.text.glyphs.size() < 2, "Arabic lam-alef ligature missing");
 

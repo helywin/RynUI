@@ -651,6 +651,10 @@ void test_layout_and_navigation_pages() {
     require(text.truncated && text.copy_available && !text.expanded &&
                 text.original.bytes().size() > text.displayed.bytes().size(),
             "Typography ellipsis/copy original was lost");
+    const auto rich = f.services.typography().snapshot(f.active.target("gallery.typography.rich-content"));
+    require(rich.copy_available && rich.original.bytes().find("code <>&\"") != std::string_view::npos &&
+                rich.original.bytes().find('\n') != std::string_view::npos,
+            "Typography rich content sample did not mount the production component");
     f.activate(f.active.target("gallery.typography.link"));
     require(f.active.telemetry().activations == 1, "Typography Link callback was lost");
     f.show("ant.component.divider");

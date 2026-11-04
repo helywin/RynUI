@@ -58,6 +58,10 @@ public:
     [[nodiscard]] bool scalar_boundary(std::size_t byte) const noexcept;
     // End is exclusive. A nonempty range must stay in one paragraph.
     [[nodiscard]] std::optional<std::vector<BidiRun>> line_runs(std::size_t begin, std::size_t end) const;
+    // Ellipsis keeps the resolved source levels, even when the first strong
+    // character lies beyond the visible prefix. The atomic suffix uses that
+    // paragraph's base direction while retaining its own internal bidi order.
+    [[nodiscard]] BidiAnalysis prefix(std::size_t bytes, String suffix) const;
     friend bool operator==(const BidiAnalysis&, const BidiAnalysis&) noexcept;
 
 private:

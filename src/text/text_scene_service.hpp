@@ -64,6 +64,13 @@ struct TextCoverageClip final {
     friend bool operator==(const TextCoverageClip&, const TextCoverageClip&) = default;
 };
 
+struct TextColorRange final {
+    std::size_t byte_start{};
+    std::size_t byte_end{};
+    std::array<float, 4> color{};
+    friend bool operator==(const TextColorRange&, const TextColorRange&) = default;
+};
+
 class TextSceneService final {
 public:
     TextSceneService(font::FontRuntime& fonts, text::TextEngine& engine,
@@ -90,6 +97,8 @@ public:
     bool set_content(TextSceneId id, String content);
     bool set_direction(TextSceneId id, TextDirection direction);
     bool set_font_chain(TextSceneId id, std::vector<font::FontIdentity> fallback_chain);
+    bool set_font_ranges(TextSceneId id, std::vector<text::TextFontRange> ranges);
+    bool set_color_ranges(TextSceneId id, std::vector<TextColorRange> ranges);
     bool set_pixel_size(TextSceneId id, std::uint32_t pixel_size);
     bool set_line_height(TextSceneId id, float line_height);
     bool set_ellipsis(TextSceneId id, text::TextEllipsisConfig config, bool request_frame = true);
@@ -169,6 +178,7 @@ private:
     bool update_placement(TextSceneId id, graphics::GlyphPlacement placement, bool request_frame);
     void remap_following(TextSceneId id, std::int64_t offset);
     std::size_t patch_geometry(Record& record, const graphics::GlyphPlacement& placement);
+    std::size_t patch_material(Record& record, const text::TextMaterial& material, float opacity);
     void invalidate_ordered_scene();
     void rebuild_ordered_scene();
     static void shift_primitive(graphics::GlyphPrimitive& primitive, std::int64_t offset);

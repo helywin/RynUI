@@ -38,6 +38,13 @@ public:
     virtual ~TextClipboard() = default;
     [[nodiscard]] virtual ClipboardReadResult read_text() = 0;
     [[nodiscard]] virtual ClipboardError write_text(StringView) = 0;
+
+    // Hosts without a rich clipboard retain a lossless plain-text fallback.
+    [[nodiscard]] virtual ClipboardError write_html(StringView plain_text, StringView html) {
+        (void)html;
+        return write_text(plain_text);
+    }
+
     [[nodiscard]] virtual ClipboardAvailability has_text() const noexcept = 0;
 };
 

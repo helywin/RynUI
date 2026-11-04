@@ -9,6 +9,7 @@
 #include "animation/motion_policy.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
+#include "input/text_boundary.hpp"
 
 #include <ryn/icon.hpp>
 #include <ryn/typography.hpp>
@@ -79,6 +80,10 @@ struct IconPropsAccess final {
 // host. Keeping them separate from `TextTone` lets the theme subscription
 // resolve the semantic colour without a second colour path.
 struct TypographyPropsAccess final {
+    static const auto& rich_content(const TypographyProps& props) {
+        return props.rich_content_;
+    }
+
     [[nodiscard]] static const Prop<TextDirection>& direction(const TypographyProps& props) noexcept {
         return props.direction_;
     }
@@ -187,7 +192,16 @@ struct IconState final {
     animation::AnimationDuration period;
 };
 
+struct ResolvedTypographyRun final {
+    std::size_t begin{};
+    std::size_t end{};
+    TypographySemantics semantics;
+    runtime::SemanticTypography typography;
+};
+
 struct TextComponentState final {
+    std::optional<TypographyContent> rich_content;
+    std::vector<ResolvedTypographyRun> rich_runs;
     TextSceneId scene;
     TextTone tone{TextTone::Primary};
     bool explicit_tone{};
@@ -372,6 +386,78 @@ std::array<float, 3> typography_insets(const ThemeSnapshot& theme, const Typogra
         result[2] += theme.typography().title_margin_bottom_em * typography.font_size;
     }
     return result;
+}
+
+TypographySemantics run_semantics(TypographySemantics base, const TypographyRun& run) {
+    if (run.type) {
+        base.type = *run.type;
+    }
+    base.strong |= run.strong;
+    base.italic |= run.italic;
+    base.code |= run.code;
+    base.keyboard |= run.keyboard;
+    base.mark |= run.mark;
+    base.underline |= run.underline;
+    base.strikethrough |= run.strikethrough;
+    return base;
+}
+
+std::string escaped_html(StringView source) {
+    std::string result;
+    for (char byte : source.bytes()) {
+        switch (byte) {
+        case '&':
+            result += "&amp;";
+            break;
+        case '<':
+            result += "&lt;";
+            break;
+        case '>':
+            result += "&gt;";
+            break;
+        case '\"':
+            result += "&quot;";
+            break;
+        case '\'':
+            result += "&#39;";
+            break;
+        case '\n':
+            result += "<br>";
+            break;
+        case '\r':
+            result += "&#13;";
+            break;
+        default:
+            result += byte;
+            break;
+        }
+    }
+    return result;
+}
+
+std::string semantic_html(StringView source, TypographySemantics semantics, const ThemeSnapshot& theme) {
+    const auto color =
+        semantics.disabled ? theme.typography().colors.disabled : typography_color(theme, semantics.type);
+    const auto channel = [](float value) {
+        return std::to_string(static_cast<int>(std::lround(value * 255)));
+    };
+    std::string result = "<span style=\"color:rgba(" + channel(color.red()) + "," + channel(color.green()) + "," +
+                         channel(color.blue()) + "," + std::to_string(color.alpha()) + ")\">";
+    std::string closing;
+    const auto tag = [&](bool enabled, const char* name) {
+        if (enabled) {
+            result += "<" + std::string(name) + ">";
+            closing = "</" + std::string(name) + ">" + closing;
+        }
+    };
+    tag(semantics.strong || semantics.role == TypographySemantics::Role::heading, "strong");
+    tag(semantics.italic, "em");
+    tag(semantics.code, "code");
+    tag(semantics.keyboard, "kbd");
+    tag(semantics.mark, "mark");
+    tag(semantics.underline, "u");
+    tag(semantics.strikethrough, "s");
+    return result + escaped_html(source) + closing + "</span>";
 }
 
 [[nodiscard]] std::uint64_t intrinsic_revision(TextSceneRevisions revisions) noexcept {
@@ -885,7 +971,6 @@ void TextComponentHost::synchronize_decorations(runtime::ComponentId component, 
     if (!surfaces_ || !state || !state->typography || !state->background_range || !state->line_range) {
         return;
     }
-    const auto& semantics = *state->typography;
     const auto& token = components_.theme_scope(component)->snapshot().typography();
     const auto& node = nodes_->require(components_.root(component));
     const auto& text = text_scene_->text_state(state->scene);
@@ -910,78 +995,112 @@ void TextComponentHost::synchronize_decorations(runtime::ComponentId component, 
         destination.push_back(
             graphics::QuadInstance{{rect.x, rect.y, rect.width, rect.height}, channels(color), opacity, radius, {}});
     };
-    const float size = state->resolved_typography.font_size;
-    const auto foreground = text.material().color;
-    const auto color = Color(foreground[0], foreground[1], foreground[2], foreground[3]);
+
+    struct Segment final {
+        float x{};
+        float width{};
+        const ResolvedTypographyRun* run{};
+        std::size_t glyph_begin{};
+        std::size_t glyph_end{};
+    };
+
     for (std::size_t index = 0; index < measurement.lines.size(); ++index) {
         const auto& line = measurement.lines[index];
-        const float top = y + static_cast<float>(index) * state->resolved_typography.line_height;
-        if (semantics.mark) {
-            append(backgrounds, {x, top, line.width, state->resolved_typography.line_height},
-                   token.colors.mark_background);
-        }
-        const auto inline_box = [&](const InlineCodeThemeToken& t) {
-            const float inline_padding = t.padding_inline_em * size;
-            const float start = t.padding_block_start_em * size;
-            const float end = t.padding_block_end_em * size;
-            const runtime::Rect outer{x - inline_padding - t.border_width, top - start - t.border_width,
-                                      line.width + 2 * (inline_padding + t.border_width),
-                                      state->resolved_typography.line_height + start + end + t.border_width +
-                                          t.border_bottom_width};
-            append(backgrounds,
-                   {outer.x + t.border_width, outer.y + t.border_width,
-                    std::max(0.0F, outer.width - 2 * t.border_width),
-                    std::max(0.0F, outer.height - t.border_width - t.border_bottom_width)},
-                   t.background, std::max(0.0F, t.border_radius - t.border_width));
-            if (t.border_width > 0 && outer.width > 2 * t.border_width && outer.height > 2 * t.border_width) {
-                const runtime::Rect inner{outer.x + t.border_width, outer.y + t.border_width,
-                                          outer.width - 2 * t.border_width, outer.height - 2 * t.border_width};
-                borders.push_back(graphics::make_outline_effect(
-                    {inner,
-                     std::clamp(t.border_radius - t.border_width, 0.0F, std::min(inner.width, inner.height) / 2)},
-                    t.border_width, 0, t.border_color, opacity, {}, graphics::EffectClip{1, clip}));
-            }
-            if (t.border_bottom_width > t.border_width) {
-                append(backgrounds,
-                       {outer.x + t.border_width, outer.y + outer.height - t.border_bottom_width,
-                        std::max(0.0F, outer.width - 2 * t.border_width), t.border_bottom_width - t.border_width},
-                       t.border_color);
-            }
-        };
-        if (semantics.code) {
-            inline_box(token.code);
-        }
-        if (semantics.keyboard) {
-            inline_box(token.keyboard);
-        }
-        if (!semantics.underline && !semantics.strikethrough) {
-            continue;
-        }
-        float pen = 0;
-        const auto end = line.glyph_begin + line.glyph_count;
-        for (std::size_t begin = line.glyph_begin; begin < end;) {
-            const auto font = shaped.glyphs[measurement.glyph_index(begin)].font;
-            float width = 0;
-            auto next = begin;
-            while (next < end && shaped.glyphs[measurement.glyph_index(next)].font == font) {
-                width += std::abs(shaped.glyphs[measurement.glyph_index(next++)].advance_x);
-            }
-            const auto metrics = text_scene_->font_metrics(font);
-            if (metrics) {
-                const auto draw_line = [&](float position, float thickness) {
-                    if (thickness > 0) {
-                        append(lines, {x + pen, y + line.baseline - position * size, width, thickness * size}, color);
+        std::vector<Segment> segments;
+        for (std::size_t cluster_index = line.cluster_begin; cluster_index < line.cluster_begin + line.cluster_count;
+             ++cluster_index) {
+            const auto& cluster = measurement.visual_clusters[cluster_index];
+            const ResolvedTypographyRun* run{};
+            if (cluster.byte_start < text.displayed_source_bytes()) {
+                for (const auto& candidate : state->rich_runs) {
+                    if (cluster.byte_start >= candidate.begin && cluster.byte_start < candidate.end) {
+                        run = &candidate;
+                        break;
                     }
-                };
-                if (semantics.underline) {
-                    draw_line(metrics.metrics.underline_position, metrics.metrics.underline_thickness);
-                }
-                if (semantics.strikethrough) {
-                    draw_line(metrics.metrics.strikeout_position, metrics.metrics.strikeout_thickness);
                 }
             }
-            pen += width;
-            begin = next;
+            if (!segments.empty() && segments.back().run == run) {
+                segments.back().width += cluster.width;
+                segments.back().glyph_end = cluster.glyph_begin + cluster.glyph_count;
+            } else {
+                segments.push_back(
+                    {cluster.x, cluster.width, run, cluster.glyph_begin, cluster.glyph_begin + cluster.glyph_count});
+            }
+        }
+        for (const auto& segment : segments) {
+            const auto& semantics = segment.run ? segment.run->semantics : *state->typography;
+            const auto& typography = segment.run ? segment.run->typography : state->resolved_typography;
+            const float size = typography.font_size;
+            const float segment_x = x + segment.x;
+            const float top = y + static_cast<float>(index) * state->resolved_typography.line_height;
+            const auto& theme = components_.theme_scope(component)->snapshot();
+            const auto color = semantics.disabled ? token.colors.disabled : typography_color(theme, semantics.type);
+            if (semantics.mark) {
+                append(backgrounds, {segment_x, top, segment.width, typography.line_height},
+                       token.colors.mark_background);
+            }
+            const auto inline_box = [&](const InlineCodeThemeToken& t) {
+                const float padding = state->rich_content ? 0 : t.padding_inline_em * size + t.border_width;
+                const float start = t.padding_block_start_em * size;
+                const float end = t.padding_block_end_em * size;
+                const runtime::Rect outer{
+                    segment_x - padding, top - start - t.border_width, segment.width + 2 * padding,
+                    state->resolved_typography.line_height + start + end + t.border_width + t.border_bottom_width};
+                append(backgrounds,
+                       {outer.x + t.border_width, outer.y + t.border_width,
+                        std::max(0.0F, outer.width - 2 * t.border_width),
+                        std::max(0.0F, outer.height - t.border_width - t.border_bottom_width)},
+                       t.background, std::max(0.0F, t.border_radius - t.border_width));
+                if (t.border_width > 0 && outer.width > 2 * t.border_width && outer.height > 2 * t.border_width) {
+                    const runtime::Rect inner{outer.x + t.border_width, outer.y + t.border_width,
+                                              outer.width - 2 * t.border_width, outer.height - 2 * t.border_width};
+                    borders.push_back(graphics::make_outline_effect(
+                        {inner,
+                         std::clamp(t.border_radius - t.border_width, 0.0F, std::min(inner.width, inner.height) / 2)},
+                        t.border_width, 0, t.border_color, opacity, {}, graphics::EffectClip{1, clip}));
+                }
+                if (t.border_bottom_width > t.border_width) {
+                    append(backgrounds,
+                           {outer.x + t.border_width, outer.y + outer.height - t.border_bottom_width,
+                            std::max(0.0F, outer.width - 2 * t.border_width), t.border_bottom_width - t.border_width},
+                           t.border_color);
+                }
+            };
+            if (semantics.code) {
+                inline_box(token.code);
+            }
+            if (semantics.keyboard) {
+                inline_box(token.keyboard);
+            }
+            float pen{};
+            for (auto begin = segment.glyph_begin; begin < segment.glyph_end;) {
+                const auto font = shaped.glyphs[measurement.glyph_index(begin)].font;
+                float width{};
+                auto next = begin;
+                while (next < segment.glyph_end && shaped.glyphs[measurement.glyph_index(next)].font == font) {
+                    width += std::abs(shaped.glyphs[measurement.glyph_index(next++)].advance_x);
+                }
+                const auto metrics = text_scene_->font_metrics(font);
+                if (metrics) {
+                    const float decoration_size = segment.run ? metrics.metrics.logical_pixel_size : size;
+                    const auto draw_line = [&](float position, float thickness) {
+                        if (thickness > 0) {
+                            append(lines,
+                                   {segment_x + pen, y + line.baseline - position * decoration_size, width,
+                                    thickness * decoration_size},
+                                   color);
+                        }
+                    };
+                    if (semantics.underline) {
+                        draw_line(metrics.metrics.underline_position, metrics.metrics.underline_thickness);
+                    }
+                    if (semantics.strikethrough) {
+                        draw_line(metrics.metrics.strikeout_position, metrics.metrics.strikeout_thickness);
+                    }
+                }
+                pen += width;
+                begin = next;
+            }
         }
     }
     static_cast<void>(surfaces_->update_content_range(*state->background_range, backgrounds));
@@ -1102,7 +1221,8 @@ bool TextComponentHost::set_font_resolver(ThemeFontResolver font_resolver) {
                 }
             }
         }
-        if (!text_scene_->set_font_chain(state->scene, std::move(chain))) {
+        const bool rich_changed = state->rich_content && apply_rich_content(mounted.component);
+        if (!text_scene_->set_font_chain(state->scene, std::move(chain)) && !rich_changed) {
             continue;
         }
         const auto node = components_.root(mounted.component);
@@ -1169,6 +1289,77 @@ bool TextComponentHost::apply_typography(runtime::ComponentId component, runtime
     return changed;
 }
 
+bool TextComponentHost::apply_rich_content(runtime::ComponentId component) {
+    auto& state = *components_.state<TextComponentState>(component);
+    const auto& theme = components_.theme_scope(component)->snapshot();
+    const auto& content = *state.rich_content;
+    input::TextBoundaryMap boundaries;
+    if (!boundaries.assign(content.plain_text().bytes())) {
+        throw std::logic_error("Invalid rich source");
+    }
+    const auto graphemes = boundaries.grapheme_bytes();
+    std::vector<text::TextFontRange> fonts;
+    std::vector<TextColorRange> colors;
+    state.rich_runs.clear();
+    std::size_t offset{};
+    for (const auto& run : content.runs()) {
+        const auto end = offset + run.content.size_bytes();
+        // The first scalar owns the entire grapheme; never insert a style
+        // boundary into a combining sequence or emoji ZWJ cluster.
+        const auto begin_boundary = *std::lower_bound(graphemes.begin(), graphemes.end(), offset);
+        const auto end_boundary = *std::lower_bound(graphemes.begin(), graphemes.end(), end);
+        offset = end;
+        if (begin_boundary == end_boundary) {
+            continue;
+        }
+        auto semantics = run_semantics(*state.typography, run);
+        const auto typography = resolve_semantic_typography(theme, semantics);
+        const auto& inline_token = semantics.code ? theme.typography().code : theme.typography().keyboard;
+        const float padding = semantics.code || semantics.keyboard
+                                  ? inline_token.padding_inline_em * typography.font_size + inline_token.border_width
+                                  : 0;
+        fonts.push_back({begin_boundary, end_boundary, resolve_fonts(typography), padding});
+        colors.push_back({begin_boundary, end_boundary,
+                          channels(semantics.disabled ? theme.typography().colors.disabled
+                                                      : typography_color(theme, semantics.type))});
+        state.rich_runs.push_back({begin_boundary, end_boundary, semantics, typography});
+    }
+    const bool changed = text_scene_->set_font_ranges(state.scene, std::move(fonts));
+    const bool color_changed = text_scene_->set_color_ranges(state.scene, std::move(colors));
+    const auto node = components_.root(component);
+    // Content may change without changing the range lengths or faces.
+    layout_->set_intrinsic_revision(node,
+                                    intrinsic_revision(text_scene_->revisions(state.scene)) + state.metric_revision);
+    dirty_->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                 runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Material);
+    return changed || color_changed;
+}
+
+String TextComponentHost::html_content(runtime::ComponentId component) const {
+    const auto* current = components_.state<TextComponentState>(component);
+    if (!current || !current->typography) {
+        throw std::invalid_argument("HTML content requires a live Typography component");
+    }
+    const auto& state = *current;
+    const auto& theme = components_.theme_scope(component)->snapshot();
+    const auto source = text_scene_->text_state(state.scene).content();
+    std::string html = "<div style=\"white-space:pre-wrap\" dir=\"";
+    const auto direction = text_scene_->text_state(state.scene).direction();
+    html += direction == TextDirection::LeftToRight ? "ltr" : direction == TextDirection::RightToLeft ? "rtl" : "auto";
+    html += "\">";
+    if (state.rich_content) {
+        for (const auto& run : state.rich_runs) {
+            html +=
+                semantic_html(String::from_utf8(source.bytes().substr(run.begin, run.end - run.begin)).value().view(),
+                              run.semantics, theme);
+        }
+    } else {
+        html += semantic_html(source, *state.typography, theme);
+    }
+    html += "</div>";
+    return String::from_utf8(html).value();
+}
+
 void TextComponentHost::apply_theme(runtime::ComponentId component) {
     auto* state = components_.state<TextComponentState>(component);
     if (state == nullptr || !text_scene_->contains(state->scene)) {
@@ -1213,6 +1404,9 @@ void TextComponentHost::apply_theme(runtime::ComponentId component) {
         } else if (text_scene_->set_color(state->scene, channels(color))) {
             dirty_->invalidate(node, runtime::DirtyFlags::Material);
         }
+    }
+    if (state->rich_content) {
+        apply_rich_content(component);
     }
     if (state->icon) {
         update_icon_colors(component);
@@ -1266,13 +1460,13 @@ void TextComponentHost::subscribe_theme(runtime::ComponentId component) {
                 static_cast<void>(theme->typography_fonts());
                 static_cast<void>(theme->typography_base_typography());
                 static_cast<void>(theme->typography_metrics());
-                if (state->typography->code) {
+                if (state->typography->code || state->rich_content) {
                     static_cast<void>(theme->typography_inline_code());
                 }
-                if (state->typography->keyboard) {
+                if (state->typography->keyboard || state->rich_content) {
                     static_cast<void>(theme->typography_inline_keyboard());
                 }
-                if (state->typography->code || state->typography->keyboard) {
+                if (state->typography->code || state->typography->keyboard || state->rich_content) {
                     static_cast<void>(theme->typography_inline_colors());
                 }
             } else if (!state->semantic_typography) {
@@ -1565,7 +1759,11 @@ void mount_typography_component(const TypographyProps& props, TypographySemantic
     state.typography->mark = initial_flag(TypographyPropsAccess::mark(props));
     state.typography->underline = initial_flag(TypographyPropsAccess::underline(props));
     state.typography->strikethrough = initial_flag(TypographyPropsAccess::strikethrough(props));
-    const auto content = read_prop(TypographyPropsAccess::content(props));
+    if (const auto& rich = TypographyPropsAccess::rich_content(props)) {
+        state.rich_content = read_prop(*rich);
+    }
+    const auto content =
+        state.rich_content ? state.rich_content->plain_text() : read_prop(TypographyPropsAccess::content(props));
     // Resolve once and reuse: `create` must already carry the semantic font size
     // and line height, otherwise the first frame would rasterize at a wrong
     // pixel size before the theme application runs.
@@ -1652,19 +1850,29 @@ void mount_typography_component(const TypographyProps& props, TypographySemantic
                                               runtime::DirtyFlags::Geometry);
         }));
     }
-    static_cast<void>(
-        connect_prop(scope, TypographyPropsAccess::content(props),
-                     [&host, component, text_scene = host.text_scene_, layout = host.layout_, dirty = host.dirty_,
-                      scene, node](String value) {
-                         if (!text_scene->set_content(scene, std::move(value))) {
-                             return;
-                         }
-                         static_cast<void>(layout->set_intrinsic_revision(
-                             node, intrinsic_revision(text_scene->revisions(scene)) +
-                                       host.components_.state<TextComponentState>(component)->metric_revision));
-                         dirty->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
-                                                     runtime::DirtyFlags::Geometry);
-                     }));
+    if (const auto& rich = TypographyPropsAccess::rich_content(props)) {
+        connect_prop(scope, *rich, [&host, component](TypographyContent value) {
+            auto& state = *host.components_.state<TextComponentState>(component);
+            state.rich_content = std::move(value);
+            host.text_scene_->set_content(state.scene, state.rich_content->plain_text());
+            host.apply_theme(component);
+            host.subscribe_theme(component);
+        });
+    } else {
+        static_cast<void>(
+            connect_prop(scope, TypographyPropsAccess::content(props),
+                         [&host, component, text_scene = host.text_scene_, layout = host.layout_, dirty = host.dirty_,
+                          scene, node](String value) {
+                             if (!text_scene->set_content(scene, std::move(value))) {
+                                 return;
+                             }
+                             static_cast<void>(layout->set_intrinsic_revision(
+                                 node, intrinsic_revision(text_scene->revisions(scene)) +
+                                           host.components_.state<TextComponentState>(component)->metric_revision));
+                             dirty->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                         runtime::DirtyFlags::Geometry);
+                         }));
+    }
     runtime::connect_layout_style(scope, TypographyPropsAccess::layout(props), node, *host.nodes_, *host.dirty_);
 
     const auto update_semantics = [&host, component](auto apply) {

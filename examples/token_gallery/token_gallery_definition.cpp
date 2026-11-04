@@ -1642,6 +1642,23 @@ void add_typography_features(const std::shared_ptr<GalleryState>& state) {
                        .layout(ryn::LayoutStyle{}.width(state->cell_width)));
     remember_target(state, "gallery.typography.paragraph-ellipsis");
     ryn::Paragraph(ryn::TypographyProps{}
+                       .content(ryn::TypographyContent{{
+                           {.content = u8"混合语义："},
+                           {.content = u8"Strong ", .strong = true},
+                           {.content = u8"Italic ", .italic = true},
+                           {.content = u8"code <>&\" ", .code = true},
+                           {.content = u8"Ctrl+C ", .keyboard = true},
+                           {.content = u8"Mark ", .mark = true},
+                           {.content = u8"Underline ", .underline = true},
+                           {.content = u8"Deleted\n", .strikethrough = true},
+                           {.content = u8"אבג / 中文 e\u0301：缩窄后省略，HTML 与纯文本仍复制完整来源。",
+                            .type = ryn::TypographyType::Danger},
+                       }})
+                       .ellipsis(ryn::TypographyEllipsis{.rows = 2, .expandable = true})
+                       .copyable(ryn::TypographyCopyable{.format = ryn::TypographyCopyFormat::Html})
+                       .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    remember_target(state, "gallery.typography.rich-content");
+    ryn::Paragraph(ryn::TypographyProps{}
                        .content(state->typography_value)
                        .editable(ryn::TypographyEditable{.max_length = 64, .auto_size = {true, 1, 4}})
                        .onEdit([state](ryn::String value) { state->typography_value.set(std::move(value)); })
@@ -1658,7 +1675,7 @@ void add_typography_features(const std::shared_ptr<GalleryState>& state) {
     remember_target(state, "gallery.typography.link");
     ryn::Link(ryn::LinkProps{}.content(u8"禁用 Link").disabled(true));
     remember_target(state, "gallery.typography.disabled-link");
-    state->telemetry.live_samples += 6;
+    state->telemetry.live_samples += 7;
 }
 
 void add_divider_base_samples(const std::shared_ptr<GalleryState>& state) {
