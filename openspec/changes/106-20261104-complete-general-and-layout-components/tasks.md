@@ -3,7 +3,7 @@
 ## 1. 通用：FloatButton
 
 - [x] 1.1 实现 typed FloatButton/Group/BackTop、主题、输入与生命周期，新增合同测试覆盖点击/悬停/受控、禁用/销毁、定位拖动和返回顶部。
-- [ ] 1.2 接入 FloatButton 独立页面与说明；运行 Linux HEADLESS Debug/Release 相关测试和目录校验，记录结果后提交。
+- [x] 1.2 接入 FloatButton 独立页面与说明；运行 Linux HEADLESS Debug/Release 相关测试和目录校验，记录结果后提交。
 
 ## 2. 通用：Typography 与分类收口
 

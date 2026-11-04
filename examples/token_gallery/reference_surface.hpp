@@ -163,4 +163,9 @@ private:
 
 void ReferenceSurface(ReferenceSurfaceProps props, ReferenceSurfaceContent content);
 
+// A retained, clipped native scroll target for component examples. The caller
+// owns the offset and connects its controls/BackTop to that same source.
+void ReferenceScrollViewport(ryn::Prop<float> offset, ryn::Prop<ryn::LogicalLength> width, float height,
+                             ReferenceSurfaceContent content);
+
 } // namespace rynui::example

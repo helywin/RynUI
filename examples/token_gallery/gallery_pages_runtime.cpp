@@ -1,6 +1,7 @@
 #include "gallery_pages_runtime.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
+#include "component/float_button_component.hpp"
 #include "component/collapse_component.hpp"
 #include "gallery_pages_host.hpp"
 #include "token_gallery_definition.hpp"
@@ -291,6 +292,11 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                                         route.family != previous_route.family);
         if (replaced) {
             check(!app.components().contains(previous_root), "native page owner survived navigation");
+            if (previous_route.component_identity == "ant.component.float-button") {
+                check(app.services().float_button().mounted().empty(), "native FloatButton survived page retirement");
+                const auto pointer = app.pointer().state(input::PointerIdentity::mouse());
+                check(!pointer || !pointer->capture, "native FloatButton page retirement retained capture");
+            }
             if (previous_session.valid()) {
                 check(!inputs.editors().find(previous_session.owner), "native editor survived page retirement");
                 check(inputs.sessions().active() != previous_session, "native text session survived page retirement");
@@ -326,6 +332,63 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 check(inputs.sessions().active() == previous_session, "native composition lost its owner");
                 break;
             }
+        }
+        if (route.component_identity == "ant.component.float-button") {
+            runtime::ComponentId floating;
+            for (const auto id : app.services().float_button().mounted()) {
+                const auto state = app.services().float_button().snapshot(id);
+                if (owns(app, id, root) && app.components().in_window_layer(id) && !state.menu.valid() &&
+                    !state.progress_view.valid()) {
+                    floating = id;
+                }
+            }
+            check(floating.valid(), "native FloatButton window layer is missing");
+            const auto before = app.services().float_button().snapshot(floating).bounds;
+            const auto& token = app.components().theme_scope(floating)->snapshot().float_button();
+            check(std::abs(before.x + before.width + token.inset_inline - events.viewport.width) < 1 &&
+                      std::abs(before.y + before.height + token.inset_block - events.viewport.height) < 1,
+                  "native FloatButton did not anchor to the window viewport");
+            const auto send = [&](input::PointerAction action, float x, float y) {
+                pages.dispatch(input::PointerInputEvent{
+                    input::PointerIdentity::mouse(), action,
+                    action == input::PointerAction::move ? input::PointerButton::none : input::PointerButton::primary,
+                    x, y});
+            };
+            send(input::PointerAction::down, before.x + before.width / 2, before.y + before.height / 2);
+            check(app.pointer().state(input::PointerIdentity::mouse())->capture.has_value(),
+                  "native FloatButton drag has no capture");
+            send(input::PointerAction::move, before.x + before.width / 2 - 80, before.y + before.height / 2 - 40);
+            render();
+            const auto dragged = app.services().float_button().snapshot(floating);
+            check(dragged.dragging && std::abs(dragged.bounds.x - before.x + 80) < 1 &&
+                      std::abs(dragged.bounds.y - before.y + 40) < 1,
+                  "native FloatButton drag did not update retained window geometry");
+            send(input::PointerAction::up, dragged.bounds.x + dragged.bounds.width / 2,
+                 dragged.bounds.y + dragged.bounds.height / 2);
+            check(!app.pointer().state(input::PointerIdentity::mouse())->capture &&
+                      !app.services().float_button().snapshot(floating).dragging,
+                  "native FloatButton release retained capture");
+            const auto lane = pages.snapshot().layout.document;
+            events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2, -2);
+            render();
+            check(app.services().float_button().snapshot(floating).bounds == dragged.bounds,
+                  "native document scroll moved its FloatButton window layer");
+            const auto image = read_frame("float-button-" + std::to_string(i));
+            const auto button = std::ranges::find_if(
+                app.mounted_buttons(), [&](const auto& candidate) { return owns(app, candidate.component, floating); });
+            check(button != app.mounted_buttons().end(), "native FloatButton has no Button input owner");
+            check_pixel(
+                image.get(),
+                {(dragged.bounds.x + dragged.bounds.width / 2) * events.scale, (dragged.bounds.y + 6) * events.scale},
+                app.snapshot(button->component).presentation_background);
+            check(app.focus().request_focus(button->interaction, input::FocusModality::keyboard),
+                  "native FloatButton is not keyboard reachable");
+            pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::down});
+            pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::up});
+            render();
+            send(input::PointerAction::down, dragged.bounds.x + dragged.bounds.width / 2,
+                 dragged.bounds.y + dragged.bounds.height / 2);
+            std::cout << "float_button_native=passed anchor=true drag=true capture=true keyboard=true gpu_pixel=true\n";
         }
         if (route.component_identity == "ant.component.select") {
             const auto mounted = app.services().select().mounted();

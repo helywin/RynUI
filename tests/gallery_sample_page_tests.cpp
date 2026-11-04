@@ -3,6 +3,7 @@
 #include "gallery_test_inventory.hpp"
 #include "gallery_page_controller.hpp"
 #include "component/otp_component.hpp"
+#include "component/float_button_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/select_component.hpp"
 #include "component/table_component.hpp"
@@ -28,6 +29,7 @@
 namespace {
 
 using namespace ryn;
+using namespace ryn::input;
 using namespace rynui::example;
 
 void require(bool value, const char* message) {
@@ -746,12 +748,50 @@ void test_layout_and_navigation_pages() {
             "Tabs round trip replaced retained state");
 }
 
+void test_float_button_page() {
+    Fixture f;
+    f.show("ant.component.float-button");
+    require(f.active.sample_runs("gallery.sample.float-button.actions") == 1 &&
+                !f.services.float_button().mounted().empty(),
+            "FloatButton canonical page has no real sample");
+    runtime::ComponentId floating;
+    runtime::ComponentId back_top;
+    for (auto id : f.services.float_button().mounted()) {
+        if (f.services.components().in_window_layer(id)) {
+            floating = id;
+        }
+        if (f.services.float_button().snapshot(id).progress_view.valid()) {
+            back_top = id;
+        }
+    }
+    require(floating.valid() && back_top.valid(), "FloatButton page missed window layer or BackTop");
+    const auto r = f.nodes.require(f.services.components().root(floating)).bounds;
+    require(r.x == 736 && r.y == 812, "FloatButton page window action did not anchor to viewport");
+    std::optional<InteractionId> back_action;
+    for (const auto& button : f.buttons.mounted_buttons()) {
+        if (f.within(button.component, back_top)) {
+            back_action = button.interaction;
+            break;
+        }
+    }
+    require(back_action && f.services.focus().request_focus(*back_action, FocusModality::keyboard),
+            "Gallery BackTop is not keyboard reachable");
+    f.services.focus().dispatch({Key::enter, KeyAction::down});
+    f.services.focus().dispatch({Key::enter, KeyAction::up});
+    f.sync();
+    require(!f.services.float_button().snapshot(back_top).visible,
+            "Gallery BackTop did not update its explicit scroll source");
+    f.show("ant.component.button");
+    require(f.services.float_button().mounted().empty(), "Off-page FloatButton resources survived page transition");
+}
+
 } // namespace
 
 int main() {
     try {
         test_compiled_source_metadata();
         test_legacy_identity_ownership();
+        test_float_button_page();
         test_registry_and_factory_isolation();
         test_complete_catalog_and_related_routes();
         test_input_semantics_and_draft_round_trip();

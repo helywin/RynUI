@@ -122,6 +122,8 @@ struct GalleryState final {
     ryn::Signal<bool> select_open{false};
     ryn::SelectRef select_ref;
     bool select_options_expanded{};
+    ryn::Signal<bool> float_open{false};
+    ryn::Signal<ryn::FloatButtonScrollState> float_scroll{ryn::FloatButtonScrollState{600, 1000, 160}};
     ryn::Signal<bool> card_loading{false};
     ryn::Signal<ryn::String> tabs_active{ryn::String{u8"draft"}};
     ryn::Signal<ryn::String> tabs_label{ryn::String{u8"设置 / Settings"}};
@@ -4108,6 +4110,101 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 3;
 }
 
+void add_float_button_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"FloatButton · 图标 / 徽标 / 分组 / 显式原生滚动目标");
+    Text(sample_text(u8"gallery.float-button.basics · 默认 / 主色 / 内容 / 禁用"));
+    Space(SpaceProps{}, SpaceContent{[state] {
+              FloatButton(
+                  FloatButtonProps{}.floating(false).tooltip(u8"帮助").badge(BadgeProps{}.count(3)).onClick([state] {
+                      state->common_feedback.set(u8"已执行浮动操作");
+                      ++state->telemetry.activations;
+                  }));
+              FloatButton(
+                  FloatButtonProps{}.floating(false).type(FloatButtonType::Primary).shape(FloatButtonShape::Square),
+                  {.icon = FloatButtonIcon{[] { Icon(IconProps{}.name(IconName::CustomerServiceOutlined)); }},
+                   .content = FloatButtonContent{[] { Text(u8"客服"); }}});
+              FloatButton(FloatButtonProps{}.floating(false).disabled(true));
+          }});
+    Text(TextProps{}.content(state->common_feedback));
+    Text(sample_text(u8"gallery.float-button.groups · 常驻 / 点击 / 悬停 / 四方向"));
+    FloatButtonGroup(FloatButtonGroupProps{}.floating(false).shape(FloatButtonShape::Square),
+                     FloatButtonGroupContent{[] {
+                         FloatButton();
+                         FloatButton(FloatButtonProps{}.type(FloatButtonType::Primary));
+                     }});
+    for (const auto placement : {FloatButtonPlacement::Top, FloatButtonPlacement::Bottom, FloatButtonPlacement::Left,
+                                 FloatButtonPlacement::Right}) {
+        FloatButtonGroup(
+            FloatButtonGroupProps{}.floating(false).trigger(FloatButtonTrigger::Click).placement(placement),
+            FloatButtonGroupContent{[] {
+                FloatButton();
+                FloatButton();
+            }});
+    }
+    FloatButtonGroup(FloatButtonGroupProps{}
+                         .floating(false)
+                         .trigger(FloatButtonTrigger::Hover)
+                         .placement(FloatButtonPlacement::Right),
+                     FloatButtonGroupContent{[] {
+                         FloatButton();
+                         FloatButton();
+                     }});
+    Text(sample_text(u8"gallery.float-button.controlled · 显式 open authority"));
+    FloatButtonGroup(FloatButtonGroupProps{}
+                         .floating(false)
+                         .trigger(FloatButtonTrigger::Click)
+                         .open(state->float_open)
+                         .onOpenChange([state](bool value) {
+                             state->float_open.set(value);
+                             ++state->telemetry.activations;
+                         }),
+                     FloatButtonGroupContent{[] {
+                         FloatButton();
+                         FloatButton();
+                     }});
+    Text(sample_text(u8"gallery.float-button.back-top · 滑块滚动真实内容 / 进度环返回顶部"));
+    Slider(SliderProps{}
+               .limits(SliderLimits{0, 840, 1})
+               .value(bind([scroll = state->float_scroll] { return double(scroll.get().offset); }))
+               .onChange([state](double value) {
+                   auto scroll = state->float_scroll.get();
+                   scroll.offset = float(value);
+                   state->float_scroll.set(scroll);
+               })
+               .layout(LayoutStyle{}.width(state->cell_width)));
+    ReferenceScrollViewport(
+        bind([scroll = state->float_scroll] { return scroll.get().offset; }), state->cell_width, 160,
+        ReferenceSurfaceContent{[] {
+            Flex(FlexProps{}.vertical(true), FlexContent{[] {
+                     for (int index = 0; index < 25; ++index) {
+                         Text(TextProps{}
+                                  .content(String::from_utf8("原生滚动内容 / Row " + std::to_string(index + 1)).value())
+                                  .layout(LayoutStyle{}.height(dp(40))));
+                     }
+                 }});
+        }});
+    FloatButtonBackTop(FloatButtonBackTopProps{}
+                           .button(FloatButtonProps{}.floating(false))
+                           .scroll(state->float_scroll)
+                           .showProgress(true)
+                           .visibilityHeight(100)
+                           .onScrollTo([state](float offset) {
+                               auto scroll = state->float_scroll.get();
+                               scroll.offset = offset;
+                               state->float_scroll.set(scroll);
+                           }));
+    Text(sample_text(u8"gallery.float-button.window · 窗口右下角真实浮动 / 可拖动"));
+    FloatButton(FloatButtonProps{}
+                    .type(FloatButtonType::Primary)
+                    .draggable(true)
+                    .tooltip(u8"窗口浮动入口，可拖动")
+                    .onClick([state] {
+                        ++state->telemetry.activations;
+                        state->common_feedback.set(u8"窗口浮动入口已点击");
+                    }));
+}
+
 void add_card_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Card · 标题 / 区域组合 / 保留编辑状态 / 加载");
@@ -6119,6 +6216,13 @@ struct GallerySampleFactory final {
 };
 
 constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
+    {{"gallery.sample.float-button.actions",
+      "ant.component.float-button",
+      {},
+      "浮动操作、分组与返回顶部",
+      "add_float_button_samples",
+      "include/ryn/float_button.hpp"},
+     add_float_button_samples},
     {{"gallery.sample.button.basics",
       "ant.component.button",
       {},

@@ -34,16 +34,28 @@
     },
     {
       "identity": "ant.component.float-button",
-      "status": "planned",
-      "summary": "悬浮按钮（FloatButton）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 FloatButton、Group 与 BackTop；typed Props/slots、窗口定位与拖动、显式滚动目标、主题和输入生命周期。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "默认/主色、圆形/方形、图标与内容、Tooltip 配置、Badge、禁用与点击",
+        "窗口四角浮动定位、可选拖动与 PointerRouter 捕获清理",
+        "常驻、点击、悬停、四方向和受控 Group；键盘、隐藏分支与保留身份",
+        "显式原生滚动源与回调、阈值、进度环、时长和 reduced motion"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "DOM/CSS/React、href/target 和 HTML 表单接口不属于原生 API",
+        "Windows/MSVC 与原生 GPU/窗口平台结果独立记录，不以 HEADLESS 代替"
       ],
       "evidence_identifiers": [
-        "source:components/float-button/index.en-US.md"
+        "source:components/float-button/index.en-US.md",
+        "openspec:106-20261104-complete-general-and-layout-components",
+        "api:include/ryn/float_button.hpp",
+        "runtime:src/component/float_button_component.cpp",
+        "test:rynui.float_button_basic",
+        "test:rynui.float_button_groups",
+        "test:rynui.float_button_back_top",
+        "test:rynui.gallery_sample_page",
+        "evidence:openspec/changes/106-20261104-complete-general-and-layout-components/evidence/float-button.md"
       ]
     },
     {

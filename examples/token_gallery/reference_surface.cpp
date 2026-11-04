@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -641,6 +642,59 @@ void ReferenceSurface(ReferenceSurfaceProps props, ReferenceSurfaceContent conte
         state.node, ryn::runtime::DirtyFlags::Measure | ryn::runtime::DirtyFlags::Layout |
                         ryn::runtime::DirtyFlags::Geometry | ryn::runtime::DirtyFlags::Material);
     host.record_mounted({component, state.node, state.scene, state.fragment});
+}
+
+void ReferenceScrollViewport(ryn::Prop<float> offset, ryn::Prop<ryn::LogicalLength> width, float height,
+                             ReferenceSurfaceContent content) {
+    if (!active_reference_surface_host || !std::isfinite(height) || height <= 0) {
+        throw std::invalid_argument("ReferenceScrollViewport needs an active host and positive height");
+    }
+
+    struct ScrollState final {
+        float offset{};
+    };
+
+    auto& services = active_reference_surface_host->application().services();
+    auto& build = ryn::runtime::require_component_build_context();
+    const auto id = build.mount_component<ScrollState>();
+    const auto node = build.root(id);
+    services.nodes().require(node).clip_content = true;
+    ryn::runtime::connect_layout_style(build.scope(id),
+                                       ryn::LayoutStyle{}.width(std::move(width)).height(ryn::dp(height)), node,
+                                       services.nodes(), services.dirty());
+    services.layout().set_layout(
+        node,
+        ryn::layout::ComponentLayout{
+            [&services](ryn::layout::LayoutEngine& engine, ryn::runtime::NodeId root, ryn::layout::Constraints limits) {
+                float width{};
+                for (auto child : services.nodes().require(root).children) {
+                    const auto measured =
+                        engine.measure_child(child, {0, limits.max_width, 0, std::numeric_limits<float>::infinity()});
+                    width = std::max(width, measured.width);
+                }
+                return limits.constrain({width, limits.max_height});
+            },
+            [&services, id](ryn::layout::LayoutEngine& engine, ryn::runtime::NodeId root, ryn::runtime::Rect bounds) {
+                const auto offset = services.components().state<ScrollState>(id)->offset;
+                float y = bounds.y - offset;
+                for (auto child : services.nodes().require(root).children) {
+                    const auto height = services.nodes().require(child).measured_size.height;
+                    engine.place_child(child, {bounds.x, y, bounds.width, height});
+                    y += height;
+                }
+            }});
+    build.on_resource_cleanup(id, [&services, node] { services.layout().remove_layout(node); });
+    ryn::detail::connect_prop(build.scope(id), offset, [&services, id, node](float value) {
+        if (!std::isfinite(value) || value < 0) {
+            throw std::invalid_argument("Invalid example scroll offset");
+        }
+        if (auto* state = services.components().state<ScrollState>(id)) {
+            state->offset = value;
+            services.dirty().invalidate(node, ryn::runtime::DirtyFlags::Layout | ryn::runtime::DirtyFlags::Geometry |
+                                                  ryn::runtime::DirtyFlags::HitTest);
+        }
+    });
+    build.mount_slot(id, content);
 }
 
 } // namespace rynui::example
