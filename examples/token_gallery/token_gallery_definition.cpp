@@ -1330,10 +1330,10 @@ void add_splitter_multiple_samples(const std::shared_ptr<GalleryState>& state) {
                      ++state->telemetry.activations;
                  })
                  .onResizeEnd([state](SplitterSizes) { state->splitter_feedback.set(u8"调整结束：捕获已释放"); }),
-             {SplitterPanel{SplitterPanelContent{[] { Text(u8"A · 初始 25%，范围 15%–70%"); }}}
+             {SplitterPanel{SplitterPanelContent{[] { Text(u8"A · 初始 25%，范围 15%–40%"); }}}
                   .defaultSize(SplitterSize::percent(25))
                   .min(SplitterSize::percent(15))
-                  .max(SplitterSize::percent(70)),
+                  .max(SplitterSize::percent(40)),
               SplitterPanel{SplitterPanelContent{[] { Input(InputProps{}.defaultValue(u8"B · 拖动保持草稿")); }}}
                   .defaultSize(SplitterSize::percent(35))
                   .min(SplitterSize{dp(96)}),

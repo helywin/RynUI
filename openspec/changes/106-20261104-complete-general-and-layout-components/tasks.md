@@ -32,8 +32,8 @@
 
 ## 7. 集成与文档校验
 
-- [ ] 7.1 更新完整支持范围、架构接口和精简验收；运行受影响公共头/依赖合同、格式检查、OpenSpec doctor、strict 全部文档校验及 git diff --check。
-- [ ] 7.2 构建 Linux 原生 Gallery；通过私有后台 Wayland 运行新增组件的有界自动输入验收，记录 GPU/输入实际结果，不启动用户桌面窗口。
+- [x] 7.1 更新完整支持范围、架构接口和精简验收；运行受影响公共头/依赖合同、格式检查、OpenSpec doctor、strict 全部文档校验及 git diff --check。
+- [x] 7.2 构建 Linux 原生 Gallery；通过私有后台 Wayland 运行新增组件的有界自动输入验收，记录 GPU/输入实际结果，不启动用户桌面窗口。
 
 ## 8. Windows 自动集成
 

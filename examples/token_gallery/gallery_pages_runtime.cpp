@@ -4,6 +4,9 @@
 #include "component/float_button_component.hpp"
 #include "component/collapse_component.hpp"
 #include "component/grid_component.hpp"
+#include "component/shell_layout_component.hpp"
+#include "component/splitter_component.hpp"
+#include <numeric>
 #include "component/masonry_component.hpp"
 #include "component/typography_component.hpp"
 #include "gallery_pages_host.hpp"
@@ -298,6 +301,24 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     }
                 }
                 submitter.frame_boundary.reset();
+                // A frame callback permits rendering the next frame; it is not
+                // a presentation fence. Pace the finite host's next input/action
+                // to the display refresh interval instead of bursting actions
+                // into the same compositor refresh cycle.
+                const auto* mode = SDL_GetCurrentDisplayMode(
+                    SDL_GetDisplayForWindow(static_cast<SDL_Window*>(events.platform.window())));
+                check(mode && std::isfinite(mode->refresh_rate) && mode->refresh_rate > 0,
+                      "native acceptance display has no refresh rate");
+                const auto next_action =
+                    std::min(frame_deadline, std::chrono::steady_clock::now() +
+                                                 std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                                     std::chrono::duration<double>{1.0 / mode->refresh_rate}));
+                while (std::chrono::steady_clock::now() < next_action) {
+                    events.consume(events.platform.wait_events(1));
+                    if (!events.error.empty() || events.quit) {
+                        throw std::runtime_error(events.error.empty() ? "Wayland page window closed" : events.error);
+                    }
+                }
                 ++result.checks;
                 write_gallery_page_acceptance(options.output, result);
                 std::cout << "page_acceptance_frame_callback\n" << std::flush;
@@ -376,6 +397,43 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         }
         throw std::runtime_error("native layout sample has no retained input");
     };
+    const auto key = [&](input::InteractionId interaction, input::Key value) {
+        check(app.focus().state().focused == interaction ||
+                  app.focus().request_focus(interaction, input::FocusModality::keyboard),
+              "native layout action could not receive focus");
+        pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::down});
+        pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::up});
+        render();
+    };
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& node = app.nodes().require(app.components().root(id));
+        auto rect = node.bounds;
+        rect.x += node.translation.x;
+        rect.y += node.translation.y;
+        return rect;
+    };
+    const auto reveal = [&](runtime::ComponentId id) {
+        const auto lane = pages.snapshot().layout.document;
+        const auto r = bounds(id);
+        events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2,
+                                -(r.y - lane.y - lane.height / 3) / 48);
+        render();
+        const auto visible = bounds(id);
+        check(visible.y >= lane.y && visible.y + 30 < lane.y + lane.height,
+              "native Splitter input target is outside document viewport");
+    };
+    const auto pointer = [&](input::PointerAction action, runtime::Point point) {
+        pages.dispatch(
+            input::PointerInputEvent{input::PointerIdentity::mouse(), action,
+                                     action == input::PointerAction::move || action == input::PointerAction::cancel
+                                         ? input::PointerButton::none
+                                         : input::PointerButton::primary,
+                                     point.x, point.y});
+    };
+    const auto captured = [&] {
+        const auto state = app.pointer().state(input::PointerIdentity::mouse());
+        return state && state->capture.has_value();
+    };
     constexpr std::array widths{1440, 960, 728, 480, 360};
     input::TextInputSessionStamp previous_session;
     runtime::ComponentId previous_root;
@@ -405,6 +463,14 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 check(app.services().float_button().mounted().empty(), "native FloatButton survived page retirement");
                 const auto pointer = app.pointer().state(input::PointerIdentity::mouse());
                 check(!pointer || !pointer->capture, "native FloatButton page retirement retained capture");
+            }
+            if (previous_route.component_identity == "ant.component.layout") {
+                check(app.services().shell_layout().mounted().empty(), "native Layout survived page retirement");
+                check(!captured(), "native Layout retirement retained capture");
+            }
+            if (previous_route.component_identity == "ant.component.splitter") {
+                check(app.services().splitter().mounted().empty(), "native Splitter survived page retirement");
+                check(!captured(), "native Splitter retirement retained capture");
             }
             if (previous_session.valid()) {
                 check(!inputs.editors().find(previous_session.owner), "native editor survived page retirement");
@@ -541,6 +607,165 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                   "native Masonry reflow reran its sample factory");
             previous_session = inputs.sessions().active();
             std::cout << "masonry_native=passed actions=true window_breakpoints=true retained_draft=true\n";
+        }
+        if (route.component_identity == "ant.component.layout") {
+            auto& shell = app.services().shell_layout();
+            runtime::ComponentId responsive;
+            runtime::ComponentId controlled;
+            for (const auto id : shell.mounted()) {
+                const auto value = shell.snapshot(id);
+                if (value.role == ryn::detail::ShellLayoutRole::Sider) {
+                    if (value.zero_width || std::abs(bounds(id).width - 200) < 1) {
+                        responsive = id;
+                    } else if (std::abs(bounds(id).width - 180) < 1 && value.trigger_visible) {
+                        controlled = id;
+                    }
+                }
+            }
+            check(responsive.valid() && controlled.valid(), "native responsive/controlled Siders are missing");
+            resize(1000);
+            render();
+            const auto wide = shell.snapshot(responsive);
+            check(!wide.broken && !wide.collapsed && std::abs(bounds(responsive).width - 200) < 1,
+                  "native Sider did not expand at the shared window lg breakpoint");
+            const auto draft = edit_input(wide.body);
+            resize(500);
+            render();
+            const auto narrow = shell.snapshot(responsive);
+            check(narrow.broken && narrow.collapsed && narrow.zero_width && narrow.trigger_visible &&
+                      bounds(responsive).width == 0 && narrow.body == wide.body,
+                  "native zero-width Sider lost its breakpoint, trigger or retained body");
+            check(!inputs.sessions().active().valid(), "native collapsed Sider retained its text session");
+            key(narrow.interaction, input::Key::enter);
+            check(!shell.snapshot(responsive).collapsed && inputs.display_snapshot(draft.first).text == draft.second,
+                  "native zero-width trigger failed to expand or preserve the draft");
+            key(narrow.interaction, input::Key::space);
+            check(shell.snapshot(responsive).collapsed, "native Sider trigger failed to collapse");
+            key(narrow.interaction, input::Key::enter);
+            check(!shell.snapshot(responsive).collapsed && inputs.display_snapshot(draft.first).text == draft.second,
+                  "native Sider trigger roundtrip lost its draft");
+            key(shell.snapshot(controlled).interaction, input::Key::enter);
+            check(shell.snapshot(controlled).collapsed && std::abs(bounds(controlled).width - 64) < 1,
+                  "native controlled Sider request did not update its typed value");
+            key(shell.snapshot(controlled).interaction, input::Key::enter);
+            check(!shell.snapshot(controlled).collapsed && std::abs(bounds(controlled).width - 180) < 1,
+                  "native controlled Sider did not restore its width");
+            check(pages.sample_runs("gallery.sample.layout.responsive") == 1 &&
+                      pages.sample_runs("gallery.sample.layout.controlled") == 1,
+                  "native Sider updates reran their sample factories");
+            static_cast<void>(edit_input(wide.body));
+            previous_session = inputs.sessions().active();
+            std::cout << "layout_native=passed window_breakpoints=true controlled=true zero_trigger=true "
+                         "retained_draft=true\n";
+        }
+        if (route.component_identity == "ant.component.splitter") {
+            auto& splitters = app.services().splitter();
+            runtime::ComponentId multiple;
+            runtime::ComponentId lazy;
+            for (const auto id : splitters.mounted()) {
+                const auto value = splitters.snapshot(id);
+                if (value.panels.size() == 3) {
+                    multiple = id;
+                }
+                if (value.lazy) {
+                    lazy = id;
+                }
+            }
+            check(multiple.valid() && lazy.valid(), "native multiple/lazy Splitters are missing");
+            const auto initial = splitters.snapshot(multiple);
+            const auto draft = edit_input(initial.panels[1].content);
+            reveal(initial.bars[0].component);
+            const auto seam = bounds(initial.bars[0].component);
+            const runtime::Point start{seam.x + seam.width / 2, seam.y + 20};
+            pointer(input::PointerAction::down, start);
+            check(captured(), "native Splitter drag did not capture pointer");
+            pointer(input::PointerAction::move, {start.x + 40, start.y});
+            render();
+            const auto moved = splitters.snapshot(multiple);
+            check(moved.dragging && moved.sizes[0] > initial.sizes[0] && moved.sizes[2] == initial.sizes[2] &&
+                      std::abs(moved.sizes[0] + moved.sizes[1] - initial.sizes[0] - initial.sizes[1]) < 1,
+                  "native Splitter drag did not preserve adjacent total or unrelated panel");
+            pointer(input::PointerAction::up, {start.x + 40, start.y});
+            render();
+            check(!captured() && !splitters.snapshot(multiple).dragging,
+                  "native Splitter release retained pointer capture");
+            const float total = std::accumulate(initial.sizes.begin(), initial.sizes.end(), 0.0F);
+            key(initial.bars[0].interaction, input::Key::home);
+            check(std::abs(splitters.snapshot(multiple).sizes[0] - total * .15F) < 1,
+                  "native Splitter Home ignored minimum");
+            key(initial.bars[0].interaction, input::Key::end);
+            const float maximum = total * .40F;
+            check(maximum < initial.sizes[0] + initial.sizes[1] - 96,
+                  "native Splitter maximum is masked by neighbor minimum");
+            const auto ended = splitters.snapshot(multiple);
+            check(std::abs(ended.sizes[0] - maximum) < 1 && ended.sizes[2] == initial.sizes[2] &&
+                      std::abs(ended.sizes[0] + ended.sizes[1] - initial.sizes[0] - initial.sizes[1]) < 1,
+                  "native Splitter End ignored max/neighbor min or adjacent total");
+            key(initial.bars[0].interaction, input::Key::left);
+            check(splitters.snapshot(multiple).sizes[0] < ended.sizes[0] &&
+                      inputs.display_snapshot(draft.first).text == draft.second,
+                  "native Splitter arrow failed or discarded draft");
+            const auto lazy_initial = splitters.snapshot(lazy);
+            const auto lazy_draft = edit_input(lazy_initial.panels[0].content);
+            const auto drag_lazy = [&] {
+                reveal(splitters.snapshot(lazy).bars[0].component);
+                const auto r = bounds(splitters.snapshot(lazy).bars[0].component);
+                const runtime::Point p{r.x + r.width / 2, r.y + 20};
+                pointer(input::PointerAction::down, p);
+                check(captured(), "native lazy Splitter has no pointer capture");
+                pointer(input::PointerAction::move, {p.x + 40, p.y});
+                render();
+                return runtime::Point{p.x + 40, p.y};
+            };
+            const auto cancelled_at = drag_lazy();
+            const auto preview = splitters.snapshot(lazy);
+            check(preview.dragging && preview.sizes == lazy_initial.sizes &&
+                      preview.visual_sizes == lazy_initial.visual_sizes && preview.preview_sizes[0] > preview.sizes[0],
+                  "native lazy Splitter committed its preview early");
+            pointer(input::PointerAction::cancel, cancelled_at);
+            render();
+            check(!captured() && !splitters.snapshot(lazy).dragging &&
+                      splitters.snapshot(lazy).sizes == lazy_initial.sizes,
+                  "native lazy Splitter cancellation committed or retained capture");
+            const auto released_at = drag_lazy();
+            pointer(input::PointerAction::up, released_at);
+            render();
+            const auto committed = splitters.snapshot(lazy);
+            check(!captured() && !committed.dragging && committed.sizes[0] > lazy_initial.sizes[0] &&
+                      std::abs(committed.sizes[0] + committed.sizes[1] - lazy_initial.sizes[0] -
+                               lazy_initial.sizes[1]) < 1,
+                  "native lazy Splitter release failed to commit adjacent sizes");
+            key(committed.bars[0].start_interaction, input::Key::enter);
+            const auto collapsed = splitters.snapshot(lazy);
+            check(collapsed.panels[0].collapsed && collapsed.sizes[0] == 0 &&
+                      collapsed.panels[0].content == lazy_initial.panels[0].content &&
+                      !inputs.sessions().active().valid(),
+                  "native Splitter retained collapse lost content or kept a text session");
+            key(collapsed.bars[0].end_interaction, input::Key::enter);
+            check(!splitters.snapshot(lazy).panels[0].collapsed &&
+                      inputs.display_snapshot(lazy_draft.first).text == lazy_draft.second &&
+                      std::abs(splitters.snapshot(lazy).sizes[0] - committed.sizes[0]) < 1,
+                  "native Splitter restore lost its size or draft");
+            activate(pages.target("gallery.splitter.destroy-hidden"));
+            render();
+            const auto old_content = splitters.snapshot(lazy).panels[0].content;
+            key(splitters.snapshot(lazy).bars[0].start_interaction, input::Key::enter);
+            check(splitters.snapshot(lazy).panels[0].destroy_on_hidden && !app.components().contains(old_content) &&
+                      !app.components().contains(lazy_draft.first),
+                  "native Splitter destroyOnHidden retained its hidden content/editor");
+            key(splitters.snapshot(lazy).bars[0].end_interaction, input::Key::enter);
+            check(splitters.snapshot(lazy).panels[0].content.valid() &&
+                      splitters.snapshot(lazy).panels[0].content != old_content,
+                  "native Splitter destroyOnHidden did not rebuild on restore");
+            check(pages.sample_runs("gallery.sample.splitter.lazy-collapse") == 1,
+                  "native Splitter interactions reran their sample factory");
+            // Retire the page with a live lazy gesture and text session to prove cleanup.
+            static_cast<void>(edit_input(splitters.snapshot(lazy).panels[0].content));
+            previous_session = inputs.sessions().active();
+            static_cast<void>(drag_lazy());
+            check(captured(), "native Splitter retirement test has no active capture");
+            std::cout << "splitter_native=passed drag=true keyboard_constraints=true lazy_cancel_commit=true "
+                         "collapse_destroy=true\n";
         }
         if (route.component_identity == "ant.component.float-button") {
             runtime::ComponentId floating;

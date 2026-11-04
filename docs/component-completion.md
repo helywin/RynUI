@@ -11,7 +11,7 @@
 | Typography | 106 补齐不可变 typed rich runs、整段 Unicode 混合字体排版与语义装饰、HTML/纯文本双 MIME 复制；保留 057 的编辑/提示合同 | 平台通用与 SDL mock 验证见 106 精简验收；Windows/MSVC 和原生剪贴板互操作单独验收；DOM/CSS/React 不移植 |
 | FloatButton | 106 实现 typed FloatButton/Group/BackTop、窗口定位与拖动、受控菜单、显式滚动目标及主题 | 平台通用与 Linux 私有 Wayland 定向 GPU/输入证据见 106；Windows 独立待测 |
 | Grid / Masonry | 106 实现窗口逻辑宽度共享断点、retained Row/Col，以及真实高度与稳定 keyed items 瀑布流 | 平台通用合同与本轮集成结果见 [106 集成证据](../openspec/changes/106-20261104-complete-general-and-layout-components/evidence/general-layout-integration.md)；窗口/GPU 与平台通用合同分开记录 |
-| Layout / Splitter | 106 实现嵌套 Header/Sider/ContentArea/Footer、共享窗口断点与受控零宽触发器，以及受约束拖动/键盘、lazy、折叠恢复和 destroyOnHidden | 公开范围见 [Layout](components/layout.md) / [Splitter](components/splitter.md)；平台通用证据见 106，Linux 集成结果单独记录，Windows/MSVC 待测 |
+| Layout / Splitter | 106 实现嵌套 Header/Sider/ContentArea/Footer、共享窗口断点与受控零宽触发器，以及受约束拖动/键盘、lazy、折叠恢复和 destroyOnHidden | 公开范围见 [Layout](components/layout.md) / [Splitter](components/splitter.md)；平台通用与 Linux 私有 GPU/输入结果见 [106 收口](../openspec/changes/106-20261104-complete-general-and-layout-components/evidence/layout-splitter-integration.md)，Windows/MSVC 待测 |
 | Divider | 045 补齐 dotted、尺寸、Start/End 与 scoped RTL、逻辑长度间距；重新审计发现这些是实际原生缺口 | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Button | 044 已实现颜色/六变体/ghost/真实虚线、保留 icon/loading slots、形状/block、ref/autoFocus/延迟加载与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Icon | 051 已实现完整 848 离线图标、三类/逐层双色、typed 自定义贝塞尔与 holes、保留 rotate/spin、Theme/motion/DPI 与窗口缓存清理 | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
