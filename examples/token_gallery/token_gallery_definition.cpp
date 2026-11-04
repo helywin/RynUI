@@ -3351,6 +3351,59 @@ void add_menu_samples(const std::shared_ptr<GalleryState>& state) {
                      [] { Text(sample_text(u8"gallery.menu.disabled · 切换菜单禁用")); });
               remember_target(state, "gallery.menu.disabled");
           }});
+    if (state->page_component == "ant.component.menu") {
+        Signal<bool> changed{false};
+        Signal<bool> collapsed{false};
+        Signal<MenuMode> mode{MenuMode::Horizontal};
+        const auto items = bind([changed] {
+            std::vector<MenuItem> rows{
+                {u8"home", u8"首页"},
+                {u8"tools",
+                 u8"工具",
+                 false,
+                 false,
+                 MenuItemKind::SubMenu,
+                 {{u8"build", u8"构建"},
+                  {u8"test", u8"测试"},
+                  {u8"more", u8"更多", false, false, MenuItemKind::SubMenu, {{u8"logs", u8"日志"}}}}},
+                {u8"settings", u8"工作区设置"},
+                {u8"help", u8"帮助与文档"}};
+            rows[0].icon = MenuIcon{[] { Icon(IconProps{}.name(IconName::HomeOutlined)); }};
+            if (changed.get()) {
+                std::reverse(rows.begin(), rows.end());
+                rows.push_back({u8"new", u8"新增项目"});
+            }
+            return rows;
+        });
+        Text(u8"Horizontal overflow / Vertical flyout / Inline collapsed · RTL 与稳定 key");
+        Menu(MenuProps{}
+                 .mode(mode)
+                 .items(items)
+                 .inlineCollapsed(collapsed)
+                 .direction(TextDirection::RightToLeft)
+                 .theme(MenuTheme::Dark)
+                 .onClick([state](MenuClickInfo info) {
+                     state->data_feedback.set(utf8("导航命令：" + std::string{info.key.bytes()}));
+                 })
+                 .layout(LayoutStyle{}
+                             .width(bind([mode, collapsed] {
+                                 return dp(mode.get() == MenuMode::Inline && collapsed.get() ? 80 : 300);
+                             }))
+                             .height(dp(176))));
+        remember_target(state, "gallery.menu.dynamic");
+        Space(SpaceProps{}.wrap(true), SpaceContent{[mode, changed, collapsed] {
+                  Button(ButtonProps{}.onClick([mode] {
+                      mode.set(mode.get() == MenuMode::Horizontal ? MenuMode::Vertical
+                               : mode.get() == MenuMode::Vertical ? MenuMode::Inline
+                                                                  : MenuMode::Horizontal);
+                  }),
+                         [] { Text(u8"切换三种模式"); });
+                  Button(ButtonProps{}.onClick([changed] { changed.set(!changed.get()); }),
+                         [] { Text(u8"重排并增删 key"); });
+                  Button(ButtonProps{}.onClick([collapsed] { collapsed.set(!collapsed.get()); }),
+                         [] { Text(u8"折叠图标导航"); });
+              }});
+    }
     ++state->telemetry.live_samples;
 }
 
@@ -3380,6 +3433,44 @@ void add_dropdown_samples(const std::shared_ptr<GalleryState>& state) {
                  Button(ButtonProps{}, [] { Text(sample_text(u8"gallery.dropdown.actions · 点击或右键打开命令")); });
              }});
     remember_target(state, "gallery.dropdown.actions");
+    if (state->page_component == "ant.component.dropdown") {
+        Text(u8"Hover + click · split button · 原生 flyout");
+        DropdownButton({.dropdown = DropdownProps{}
+                                        .trigger(DropdownTriggerMode::HoverClick)
+                                        .arrow(DropdownArrow{true, true})
+                                        .menu(MenuProps{}
+                                                  .mode(MenuMode::Vertical)
+                                                  .items({{u8"run", u8"运行任务"},
+                                                          {u8"tools",
+                                                           u8"工具",
+                                                           false,
+                                                           false,
+                                                           MenuItemKind::SubMenu,
+                                                           {{u8"logs", u8"查看日志"}, {u8"settings", u8"设置"}}}})
+                                                  .onClick([state](MenuClickInfo info) {
+                                                      state->data_feedback.set(
+                                                          utf8("分离菜单：" + std::string{info.key.bytes()}));
+                                                  })),
+                        .button = ButtonProps{}.type(ButtonType::Primary).onClick([state] {
+                            state->data_feedback.set(u8"分离按钮：已运行默认操作");
+                        }),
+                        .trigger_button = ButtonProps{}.type(ButtonType::Primary)},
+                       {.content = DropdownButtonContent{[] { Text(u8"运行"); }}});
+        remember_target(state, "gallery.dropdown.split");
+        Text(u8"Retained popupRender · 菜单与编辑草稿共同保留");
+        Dropdown(DropdownProps{}
+                     .arrow()
+                     .menu(MenuProps{}.items({{u8"apply", u8"应用"}, {u8"cancel", u8"取消"}}))
+                     .popupRender([](DropdownMenuContent menu) {
+                         Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[menu] {
+                                  Text(u8"自定义内容");
+                                  menu();
+                                  Input(InputProps{}.defaultValue(u8"关闭再打开会保留草稿"));
+                              }});
+                     }),
+                 DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"保留自定义 popup"); }); }});
+        remember_target(state, "gallery.dropdown.custom");
+    }
     ++state->telemetry.live_samples;
 }
 

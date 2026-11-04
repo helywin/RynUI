@@ -717,12 +717,32 @@ void test_layout_and_navigation_pages() {
     f.action("gallery.sample.menu.inline", "gallery.menu.disabled");
     require(!f.services.interactions().require(f.services.menu().snapshot(menu).interaction).eligible,
             "Menu disabled control changed");
+    const auto dynamic_menu = f.active.target("gallery.menu.dynamic");
+    require(dynamic_menu.valid() && f.services.menu().snapshot(dynamic_menu).overflow,
+            "Gallery horizontal Menu overflow sample missing");
+    f.services.menu().focus_menu(dynamic_menu);
+    f.key(input::Key::end);
+    f.key(input::Key::down);
+    require(!f.services.menu().snapshot(dynamic_menu).popups.empty(), "Gallery retained overflow popup did not open");
     f.show("ant.component.dropdown");
+    require(!f.services.components().contains(dynamic_menu), "Gallery page switch retained Menu flyouts");
     const auto dropdown = f.active.target("gallery.dropdown.actions");
     f.action("gallery.sample.dropdown.actions", "gallery.dropdown.actions");
     require(f.services.dropdown().snapshot(dropdown).geometry.visible, "Dropdown command trigger did not open");
     f.key(input::Key::escape);
     require(!f.services.dropdown().snapshot(dropdown).geometry.visible, "Dropdown Escape did not close");
+    const auto custom_dropdown = f.active.target("gallery.dropdown.custom");
+    require(custom_dropdown.valid() && f.active.target("gallery.dropdown.split").valid(),
+            "new Dropdown samples missing");
+    const auto custom_before = f.services.dropdown().snapshot(custom_dropdown);
+    f.action("gallery.sample.dropdown.actions", "gallery.dropdown.custom");
+    require(f.services.dropdown().snapshot(custom_dropdown).geometry.visible &&
+                f.services.dropdown().snapshot(custom_dropdown).arrow_visible,
+            "Gallery retained custom popup did not open");
+    f.key(input::Key::escape);
+    f.action("gallery.sample.dropdown.actions", "gallery.dropdown.custom");
+    require(f.services.dropdown().snapshot(custom_dropdown).content == custom_before.content,
+            "Gallery popup render lost retained content");
     f.show("ant.component.pagination");
     const auto pagination = f.active.target("gallery.pagination.controlled");
     const auto pages = f.services.pagination().snapshot(pagination);

@@ -364,40 +364,48 @@
     },
     {
       "identity": "ant.component.dropdown",
-      "status": "partial",
-      "summary": "原生 Dropdown 已提供点击/右键触发、受控显示、键盘关闭、窗口定位及焦点恢复；Gallery 可执行数据命令，平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Dropdown 已实现 hover/点击/右键组合、typed 分离按钮、保留自定义 popup、箭头与窗口定位、来源明确的受控请求、子浮层所有权和焦点恢复；平台验收独立记录。",
       "supported_scope": [
-        "retained Menu with click/context-menu triggers and controlled visibility",
-        "keyboard/outside close, popup positioning and focus restoration"
+        "hover/click/context-menu combinations with bounded delays, native activation gates and controlled source/cause events",
+        "typed split Button props/slots and retained popup renderer with optional native Menu content",
+        "twelve-direction placement/overflow, token-driven unified arrow fill, child popup/input ownership and focus restoration"
       ],
       "missing_scope": [
-        "hover trigger, split button and custom popup renderer",
-        "native Windows/Linux GPU/input acceptance remains independent"
+        "native Windows/Linux GPU, driver, system-font/DPI and input acceptance remain independent",
+        "Web DOM/CSS/React APIs, cross-window OS context menus and OS accessibility adapter are outside this native API"
       ],
       "evidence_identifiers": [
         "openspec:067-20261023-add-native-menu-and-dropdown",
         "openspec:072-20261023-add-data-and-selection-gallery",
         "test:rynui.dropdown_component",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/dropdown-linux.md",
+        "test:rynui.gallery_sample_page"
       ]
     },
     {
       "identity": "ant.component.menu",
-      "status": "partial",
-      "summary": "原生 Menu 已提供保留选项、受控选择/Inline 子菜单、禁用、键盘与有限滚动；Gallery 可切换选择、文字和禁用状态，平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Menu 已实现动态稳定 key、三种模式、横向溢出、纵向 flyout、折叠/RTL、主题、多选及完整键盘与滚动；Gallery 提供真实交互，平台验收独立记录。",
       "supported_scope": [
-        "fixed keyed items, controlled selection/open keys and inline submenus",
-        "reactive labels/disabled state, roving keyboard focus and finite scrolling"
+        "reactive keyed topology with retained rich labels/icons/extra content and predictable removal cleanup",
+        "Horizontal overflow popup, Vertical flyouts, Inline/collapsed navigation, typed theme/RTL",
+        "controlled selection/open authority, multiple selection, pointer/keyboard/scroll, finite hover delays and lifecycle cancellation"
       ],
       "missing_scope": [
-        "horizontal overflow, vertical flyout submenus and dynamic topology",
-        "native Windows/Linux GPU/input acceptance remains independent"
+        "native Windows/Linux GPU, driver, system-font/DPI and input acceptance remain independent",
+        "Web DOM/CSS/React APIs and OS accessibility adapter are outside this native API"
       ],
       "evidence_identifiers": [
         "openspec:067-20261023-add-native-menu-and-dropdown",
         "openspec:072-20261023-add-data-and-selection-gallery",
         "test:rynui.menu_component",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/menu-linux.md",
+        "test:rynui.gallery_sample_page"
       ]
     },
     {
