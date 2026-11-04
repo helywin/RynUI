@@ -66,6 +66,8 @@ struct MenuState final {
     MenuSubMenuTrigger submenu_trigger{MenuSubMenuTrigger::Hover};
     bool collapsed{};
     bool suppressed{};
+    bool input_active{true};
+    bool presented_popup{};
     bool overflow_open{};
     bool has_overflow{};
     runtime::Rect clip;
@@ -142,21 +144,20 @@ void validate_keys(const MenuKeys& keys) {
     }
 }
 
-void validate_items(const std::vector<MenuItem>& items, MenuKeys& keys, MenuMode mode, std::size_t depth) {
+void validate_items(const std::vector<MenuItem>& items, MenuKeys& keys, std::size_t depth) {
     if (depth > 32) {
         throw std::invalid_argument("Menu nesting exceeds 32 levels");
     }
     for (const auto& item : items) {
-        if (item.key.empty() || contains(keys, item.key)) {
+        if (item.key.empty() || item.key == String{overflow_key} || contains(keys, item.key)) {
             throw std::invalid_argument("Menu item keys must be nonempty and unique");
         }
         keys.push_back(item.key);
         if (item.kind < MenuItemKind::Item || item.kind > MenuItemKind::SubMenu ||
-            (item.kind != MenuItemKind::Group && item.kind != MenuItemKind::SubMenu && !item.children.empty()) ||
-            false) {
+            (item.kind != MenuItemKind::Group && item.kind != MenuItemKind::SubMenu && !item.children.empty())) {
             throw std::invalid_argument("Menu item topology is invalid");
         }
-        validate_items(item.children, keys, mode, depth + 1);
+        validate_items(item.children, keys, depth + 1);
     }
 }
 
@@ -164,11 +165,25 @@ MenuThemeToken menu_token(WindowComponentServices& services, runtime::ComponentI
     const auto& state = *services.components().state<MenuState>(id);
     auto token = services.components().theme_scope(id)->snapshot().menu();
     if (state.theme != MenuTheme::Inherit) {
-        ThemeConfig config;
-        config.algorithms = {state.theme == MenuTheme::Dark ? ThemeAlgorithm::Dark : ThemeAlgorithm::Default};
-        token.colors = resolve_theme(config).menu().colors;
+        static const auto light = resolve_theme().menu().colors;
+        static const auto dark = [] {
+            ThemeConfig config;
+            config.algorithms = {ThemeAlgorithm::Dark};
+            return resolve_theme(config).menu().colors;
+        }();
+        token.colors = state.theme == MenuTheme::Dark ? dark : light;
     }
     return token;
+}
+
+int menu_layer(WindowComponentServices& services, runtime::ComponentId id, std::size_t depth, int offset) {
+    const auto priority =
+        static_cast<std::int64_t>(services.components().theme_scope(id)->snapshot().dropdown().z_index_popup) +
+        static_cast<std::int64_t>(depth) * 3 + offset;
+    if (priority > std::numeric_limits<int>::max()) {
+        throw std::invalid_argument("Menu flyout z-index exceeds supported range");
+    }
+    return static_cast<int>(priority);
 }
 
 bool flyout(const MenuState& s) {
@@ -192,6 +207,12 @@ bool descendant(WindowComponentServices& services, runtime::ComponentId child, r
 
 bool row_open(const MenuState& s, const MenuRow& row) {
     return row.overflow ? s.overflow_open : contains(s.open, row.key);
+}
+
+MenuItem overflow_item() {
+    MenuItem item{overflow_key, String{}, false, false, MenuItemKind::SubMenu};
+    item.content = MenuLabel{[] { Icon(IconProps{}.name(IconName::EllipsisOutlined)); }};
+    return item;
 }
 
 } // namespace
@@ -231,8 +252,7 @@ void MenuComponentHost::validate(const MenuProps& props) {
         throw std::invalid_argument("Menu controlled/default state or mode conflicts");
     }
     MenuKeys keys;
-    validate_items(props.dynamic_items_ ? read_prop(*props.dynamic_items_) : props.items_, keys, read_prop(props.mode_),
-                   0);
+    validate_items(props.dynamic_items_ ? read_prop(*props.dynamic_items_) : props.items_, keys, 0);
     validate_keys(props.selected_ ? read_prop(*props.selected_) : props.default_selected_.value_or(MenuKeys{}));
     validate_keys(props.open_ ? read_prop(*props.open_) : props.default_open_.value_or(MenuKeys{}));
 }
@@ -264,6 +284,16 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     auto* s = services_->components().state<MenuState>(id);
     if (!s || !services_->components().scope(id).active()) {
         return;
+    }
+    const bool active = services_->components().branch_active(id) && services_->interactions().component_active(id);
+    if (!active && s->presented_popup) {
+        s->suppressed = true;
+        s->overflow_open = false;
+    }
+    s->input_active = active;
+    if (s->disabled || !s->input_active) {
+        s->hover_deadline.reset();
+        s->hover_row.reset();
     }
     const auto token = menu_token(*services_, id);
     services_->interactions().set_eligible(s->interaction, !s->disabled);
@@ -308,21 +338,15 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             services_->mark_scene_structure_dirty();
         }
         const auto layer =
-            row->panel
-                ? std::optional<int>{services_->components().theme_scope(id)->snapshot().dropdown().z_index_popup +
-                                     static_cast<int>(
-                                         services_->components().state<MenuRow>(s->rows[*row->panel])->depth) *
-                                         3 +
-                                     2}
-                : std::nullopt;
+            row->panel ? std::optional<int>{menu_layer(
+                             *services_, id, services_->components().state<MenuRow>(s->rows[*row->panel])->depth, 2)}
+                       : std::nullopt;
         if (services_->components().set_window_layer(s->rows[i], layer)) {
             geometry = true;
             services_->mark_scene_structure_dirty();
         }
         if (row->popup) {
-            if (services_->components().set_window_layer(
-                    *row->popup, services_->components().theme_scope(id)->snapshot().dropdown().z_index_popup +
-                                     static_cast<int>(row->depth) * 3 + 1)) {
+            if (services_->components().set_window_layer(*row->popup, menu_layer(*services_, id, row->depth, 1))) {
                 services_->mark_scene_structure_dirty();
             }
             const bool visible = flyout(*s) && shown && row_open(*s, *row) && !s->disabled && !s->suppressed &&
@@ -338,7 +362,7 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             const bool compact = s->collapsed && !row->panel && !row->parent;
             services_->components().set_branch_active(row->label_component, !compact || !row->icon);
             if (row->arrow) {
-                services_->components().set_branch_active(*row->arrow, !compact);
+                services_->components().set_branch_active(*row->arrow, !compact && !row->overflow);
             }
             if (row->extra) {
                 services_->components().set_branch_active(*row->extra, !compact);
@@ -353,7 +377,8 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         const auto& font = token.typography;
         row->typography.set({font.font_family, font.font_weight, false, font.font_size, font.line_height});
         if (row->kind == MenuItemKind::SubMenu) {
-            row->arrow_icon.set(row_open(*s, *row) && !flyout(*s)            ? IconName::DownOutlined
+            row->arrow_icon.set((row_open(*s, *row) && !flyout(*s)) || (s->mode == MenuMode::Horizontal && !row->panel)
+                                    ? IconName::DownOutlined
                                 : s->direction == TextDirection::RightToLeft ? IconName::LeftOutlined
                                                                              : IconName::RightOutlined);
         }
@@ -593,8 +618,9 @@ void MenuComponentHost::mount_rows(runtime::ComponentId id, const std::vector<Me
                                                                 : token.metrics.item_height);
                     for (auto child : services_->components().children(row_id)) {
                         const bool compact = state.collapsed && !row.panel && !row.parent;
-                        if (compact &&
-                            ((child == row.label_component && row.icon) || child == row.arrow || child == row.extra)) {
+                        if ((row.overflow && child == row.arrow) ||
+                            (compact && ((child == row.label_component && row.icon) || child == row.arrow ||
+                                         child == row.extra))) {
                             continue;
                         }
                         const auto size =
@@ -651,9 +677,7 @@ void MenuComponentHost::mount_rows(runtime::ComponentId id, const std::vector<Me
             row.popup = build.mount_component<MenuPanel>();
             auto& panel = build.state<MenuPanel>(*row.popup);
             panel.node = build.root(*row.popup);
-            services.components().set_window_layer(
-                *row.popup, services.components().theme_scope(id)->snapshot().dropdown().z_index_popup +
-                                static_cast<int>(depth) * 3 + 1);
+            services.components().set_window_layer(*row.popup, menu_layer(services, id, depth, 1));
             services.components().set_branch_active(*row.popup, false);
             panel.interaction =
                 services.interactions().create({*row.popup, panel.node, s.interaction, true, false, {}, false, false});
@@ -707,7 +731,7 @@ void MenuComponentHost::reconcile(runtime::ComponentId id, const std::vector<Men
         return;
     }
     MenuKeys keys;
-    validate_items(items, keys, s->mode, 0);
+    validate_items(items, keys, 0);
     if (contains(keys, String{overflow_key})) {
         throw std::invalid_argument("reserved Menu key");
     }
@@ -717,6 +741,15 @@ void MenuComponentHost::reconcile(runtime::ComponentId id, const std::vector<Men
                             : std::nullopt;
     const auto active_index = s->active.value_or(0);
     std::vector<runtime::ComponentId> next;
+
+    struct PendingRow final {
+        runtime::ComponentId id;
+        const MenuItem* item;
+        std::optional<std::size_t> parent;
+        std::size_t depth;
+    };
+
+    std::vector<PendingRow> pending;
     s->reconciling = true;
     try {
         const auto visit = [&](const auto& self, const std::vector<MenuItem>& list, std::optional<std::size_t> parent,
@@ -737,17 +770,20 @@ void MenuComponentHost::reconcile(runtime::ComponentId id, const std::vector<Men
                     services_->append_slot(id, Content{[&] { mount_rows(id, {flat}, {}, 0); }});
                     row_id = s->rows.back();
                 }
-                auto* row = services_->components().state<MenuRow>(row_id);
-                row->parent = parent;
-                row->depth = depth;
-                row->overflowed = false;
-                bind_row(id, row_id, item);
+                pending.push_back({row_id, &item, parent, depth});
                 const auto index = next.size();
                 next.push_back(row_id);
                 self(self, item.children, index, depth + (item.kind == MenuItemKind::SubMenu ? 1 : 0));
             }
         };
         visit(visit, items, {}, 0);
+        for (const auto& update : pending) {
+            auto* row = services_->components().state<MenuRow>(update.id);
+            row->parent = update.parent;
+            row->depth = update.depth;
+            row->overflowed = false;
+            bind_row(id, update.id, *update.item);
+        }
     } catch (...) {
         const auto partial = s->rows;
         s->rows = previous;
@@ -855,8 +891,7 @@ void MenuComponentHost::mount(const MenuProps& props, bool action_menu) {
     build.mount_slot(id, Content{[&] {
                          mount_rows(id, props.dynamic_items_ ? read_prop(*props.dynamic_items_) : props.items_, {}, 0);
                          if (s.mode == MenuMode::Horizontal) {
-                             mount_rows(id, {MenuItem{overflow_key, u8"…", false, false, MenuItemKind::SubMenu}}, {},
-                                        0);
+                             mount_rows(id, {overflow_item()}, {}, 0);
                              services.components().state<MenuRow>(s.rows.back())->overflow = true;
                          }
                      }});
@@ -1014,11 +1049,10 @@ void MenuComponentHost::mount(const MenuProps& props, bool action_menu) {
             if (value == MenuMode::Horizontal && !std::ranges::any_of(s->rows, [this](auto row) {
                     return services_->components().state<MenuRow>(row)->overflow;
                 })) {
-                services_->append_slot(
-                    id, Content{[&] {
-                        mount_rows(id, {MenuItem{overflow_key, u8"…", false, false, MenuItemKind::SubMenu}}, {}, 0);
-                        services_->components().state<MenuRow>(s->rows.back())->overflow = true;
-                    }});
+                services_->append_slot(id, Content{[&] {
+                                           mount_rows(id, {overflow_item()}, {}, 0);
+                                           services_->components().state<MenuRow>(s->rows.back())->overflow = true;
+                                       }});
             }
             for (auto row : s->rows) {
                 services_->components().state<MenuRow>(row)->overflowed = false;
@@ -1270,8 +1304,11 @@ void MenuComponentHost::on_input_boundary_changed() {
     for (auto id : mounted_) {
         if (auto* s = services_->components().state<MenuState>(id);
             s && !services_->interactions().component_active(id)) {
-            s->suppressed = true;
-            s->overflow_open = false;
+            s->hover_deadline.reset();
+            if (s->presented_popup) {
+                s->suppressed = true;
+                s->overflow_open = false;
+            }
             refresh(id, true);
         }
     }
@@ -1410,7 +1447,18 @@ void MenuComponentHost::position_window_layers(runtime::Size, runtime::Rect clip
     const auto ids = mounted_;
     for (auto id : ids) {
         auto* s = services_->components().state<MenuState>(id);
-        if (!s || !services_->components().branch_active(id)) {
+        if (!s) {
+            continue;
+        }
+        const bool active = services_->components().branch_active(id) && services_->interactions().component_active(id);
+        if (active != s->input_active) {
+            if (!active && s->presented_popup) {
+                s->suppressed = true;
+                s->overflow_open = false;
+            }
+            refresh(id, true);
+        }
+        if (!active) {
             continue;
         }
         s->clip = clip;
@@ -1430,6 +1478,7 @@ void MenuComponentHost::position_window_layers(runtime::Size, runtime::Rect clip
             if (!row->popup || !services_->components().branch_active(*row->popup)) {
                 return;
             }
+            s->presented_popup = true;
             if (row->panel) {
                 self(self, *row->panel);
             }

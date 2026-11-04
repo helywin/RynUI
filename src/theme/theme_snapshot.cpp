@@ -2238,6 +2238,8 @@ void apply_dropdown_override(DropdownThemeToken& token, const DropdownTokenOverr
     token.metrics.gap = fixed_length(o.gap, token.metrics.gap, "Dropdown gap is invalid", false);
     token.metrics.border_radius =
         fixed_length(o.border_radius, token.metrics.border_radius, "Dropdown border_radius is invalid", false);
+    token.metrics.arrow_size =
+        fixed_length(o.arrow_size, token.metrics.arrow_size, "Dropdown arrow_size is invalid", false);
     if (o.shadow) {
         token.shadow = *o.shadow;
     }

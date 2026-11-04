@@ -960,6 +960,285 @@ void short_label_full_width() {
     check(clicks == 1 && !f.services.dropdown().snapshot(id).geometry.visible,
           "right side of short-label row did not activate");
 }
+
+void hover_and_combined() {
+    for (auto mode : {DropdownTriggerMode::Hover, DropdownTriggerMode::HoverClick,
+                      DropdownTriggerMode::HoverContextMenu, DropdownTriggerMode::HoverClickContextMenu}) {
+        Fixture f;
+        std::vector<DropdownOpenInfo> requests;
+        f.services.set_motion_preference(animation::MotionPreference::reduced);
+        f.services.mount(Content{[&] {
+            Dropdown(DropdownProps{}
+                         .trigger(mode)
+                         .mouseEnterDelay(0.05F)
+                         .mouseLeaveDelay(0.1F)
+                         .menu(MenuProps{}.items({{u8"a", u8"Command"}}))
+                         .onOpenChange([&](DropdownOpenInfo info) { requests.push_back(info); }),
+                     DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Hover or click"); }); }});
+        }});
+        sync(f);
+        const auto id = f.services.dropdown().mounted()[0];
+        const auto button = f.buttons.mounted_buttons()[0];
+        check(f.services.focus().request_focus(button.interaction, FocusModality::keyboard),
+              "hover trigger focus failed");
+        const auto r = bounds(f, button.component);
+        const auto move = [&](float x, float y) {
+            f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::move, PointerButton::none, x, y});
+        };
+        move(r.x + 5, r.y + 5);
+        static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(40000)));
+        sync(f);
+        check(!f.services.dropdown().snapshot(id).geometry.visible && f.services.next_frame_deadline(),
+              "hover opened before delay or lost wake");
+        static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(50001)));
+        sync(f);
+        auto state = f.services.dropdown().snapshot(id);
+        check(state.geometry.visible && requests.size() == 1 && requests[0].cause == DropdownTriggerCause::Hover &&
+                  f.services.focus().state().focused == button.interaction,
+              "hover source/focus contract failed");
+        move(319, 239);
+        move(state.geometry.bounds.x + 8, state.geometry.bounds.y + 8);
+        static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(200000)));
+        sync(f);
+        check(f.services.dropdown().snapshot(id).geometry.visible, "popup entry did not cancel delayed close");
+        if (mode == DropdownTriggerMode::HoverClick || mode == DropdownTriggerMode::HoverClickContextMenu) {
+            click(f, button.component);
+            click(f, button.component);
+            move(319, 239);
+            static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(400000)));
+            sync(f);
+            check(f.services.dropdown().snapshot(id).geometry.visible, "combined click did not retain explicit open");
+            key(f, Key::escape);
+        } else {
+            move(319, 239);
+            static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(400000)));
+            sync(f);
+            check(!f.services.dropdown().snapshot(id).geometry.visible &&
+                      requests.back().cause == DropdownTriggerCause::Hover,
+                  "hover leave did not close with source");
+        }
+        move(r.x + 5, r.y + 5);
+        f.services.set_window_active(false);
+        f.services.set_window_active(true);
+        static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(700000)));
+        sync(f);
+        check(!f.services.dropdown().snapshot(id).geometry.visible && !f.services.next_frame_deadline(),
+              "environment revived delayed hover");
+        f.services.destroy(id);
+        sync(f);
+        check(f.services.interactions().size() == 0 && f.services.surfaces().size() == 0, "hover teardown leaked");
+    }
+}
+
+void custom_retained_popup() {
+    Fixture f;
+    int renders = 0;
+    std::vector<DropdownOpenInfo> requests;
+    f.services.mount(Content{[&] {
+        Dropdown(DropdownProps{}
+                     .arrow(DropdownArrow{true, true})
+                     .menu(MenuProps{}.items({{u8"run", u8"Run"}}))
+                     .popupRender([&](DropdownMenuContent menu) {
+                         ++renders;
+                         Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[&, menu] {
+                                  Text(u8"Retained custom popup");
+                                  menu();
+                                  Input(InputProps{}.defaultValue(u8"keep this draft"));
+                                  Dropdown(
+                                      DropdownProps{}.menu(MenuProps{}.items({{u8"child", u8"Child command"}})),
+                                      DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Child popup"); }); }});
+                              }});
+                     })
+                     .onOpenChange([&](DropdownOpenInfo info) { requests.push_back(info); }),
+                 DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Custom"); }); }});
+    }});
+    sync(f);
+    const auto child = f.services.dropdown().mounted()[0];
+    const auto owner = f.services.dropdown().mounted()[1];
+    const auto trigger = f.buttons.mounted_buttons()[0];
+    const auto editor = f.inputs.mounted_inputs()[0];
+    click(f, trigger.component);
+    const auto before = f.services.dropdown().snapshot(owner);
+    check(before.geometry.visible && before.menu.valid() && before.content.valid() && before.arrow_visible &&
+              renders == 1,
+          "custom renderer did not retain provided Menu and arrow");
+    check(f.services.focus().request_focus(editor.interaction, FocusModality::keyboard), "custom Input focus failed");
+    sync(f);
+    check(f.inputs.sessions().active().valid(), "custom Input session did not start");
+    const auto child_trigger = f.buttons.mounted_buttons()[1];
+    click(f, child_trigger.component);
+    check(f.services.dropdown().snapshot(owner).geometry.visible &&
+              f.services.dropdown().snapshot(child).geometry.visible,
+          "child popup treated as outside custom owner");
+    key(f, Key::escape);
+    check(!f.services.dropdown().snapshot(child).geometry.visible &&
+              f.services.dropdown().snapshot(owner).geometry.visible,
+          "custom child Escape closed owner");
+    key(f, Key::escape);
+    check(!f.services.dropdown().snapshot(owner).geometry.visible && !f.inputs.sessions().active().valid() &&
+              f.services.focus().state().focused == trigger.interaction,
+          "custom popup close did not cancel text session/restore focus");
+    click(f, trigger.component);
+    check(renders == 1 && f.services.dropdown().snapshot(owner).content == before.content &&
+              f.inputs.mounted_inputs()[0].component == editor.component,
+          "custom popup reopen remounted retained content");
+    const auto row = f.services.menu().snapshot(before.menu).rows[0];
+    click(f, row);
+    check(!f.services.dropdown().snapshot(owner).geometry.visible && requests.back().source == DropdownOpenSource::Menu,
+          "rendered native Menu lost closeOnSelect/source");
+    f.services.destroy(owner);
+    sync(f);
+    check(f.services.dropdown().mounted().empty() && f.services.interactions().size() == 0 &&
+              f.services.surfaces().size() == 0,
+          "custom popup subtree leaked");
+}
+
+void split_button_and_hover_retirement() {
+    Fixture f;
+    Signal<bool> loading{false};
+    int primary = 0;
+    int secondary = 0;
+    f.services.mount(Content{[&] {
+        DropdownButton(
+            {.dropdown = DropdownProps{}.menu(MenuProps{}.items({{u8"a", u8"Action"}})),
+             .button = ButtonProps{}.type(ButtonType::Primary).onClick([&] { ++primary; }),
+             .trigger_button = ButtonProps{}.type(ButtonType::Primary).loading(loading).onClick([&] { ++secondary; })},
+            {.content = DropdownButtonContent{[] { Text(u8"Run"); }},
+             .icon = DropdownButtonIcon{[] { Icon(IconProps{}.name(IconName::DownOutlined)); }}});
+    }});
+    sync(f);
+    const auto owner = f.services.dropdown().mounted()[0];
+    const auto main = f.buttons.mounted_buttons()[0];
+    const auto more = f.buttons.mounted_buttons()[1];
+    click(f, main.component);
+    check(primary == 1 && secondary == 0 && !f.services.dropdown().snapshot(owner).geometry.visible,
+          "split primary opened menu");
+    click(f, more.component);
+    check(primary == 1 && secondary == 1 && f.services.dropdown().snapshot(owner).geometry.visible,
+          "split trigger lost native callback");
+    key(f, Key::escape);
+    loading.set(true);
+    sync(f);
+    click(f, more.component);
+    check(secondary == 1 && !f.services.dropdown().snapshot(owner).geometry.visible,
+          "split trigger bypassed loading gate");
+    f.services.destroy(owner);
+    f.services.dispose();
+
+    Fixture self;
+    runtime::ComponentId id;
+    self.services.mount(Content{[&] {
+        Dropdown(
+            DropdownProps{}.trigger(DropdownTriggerMode::Hover).mouseEnterDelay(0).onOpenChange([&](DropdownOpenInfo) {
+                self.services.destroy(id);
+            }),
+            DropdownTrigger{[] { Text(u8"Retire on hover"); }});
+    }});
+    sync(self);
+    id = self.services.dropdown().mounted()[0];
+    const auto r = bounds(self, id);
+    self.services.pointer().dispatch(
+        {PointerIdentity::mouse(), PointerAction::move, PointerButton::none, r.x + 2, r.y + 2});
+    static_cast<void>(self.services.tick_animations(animation::AnimationTime::microseconds(1)));
+    sync(self);
+    check(!self.services.components().contains(id) && !self.services.next_frame_deadline() &&
+              self.services.surfaces().size() == 0,
+          "hover callback self-destruction retained work");
+    Fixture failed;
+    bool caught = false;
+    try {
+        failed.services.mount(Content{[] {
+            Dropdown(
+                DropdownProps{}.arrow().popupRender(DropdownPopup{[] { throw std::runtime_error("popup factory"); }}),
+                DropdownTrigger{[] { Text(u8"Throwing popup"); }});
+        }});
+    } catch (const std::runtime_error&) {
+        caught = true;
+    }
+    check(caught && failed.services.components().component_count() == 0 && failed.services.interactions().size() == 0 &&
+              failed.services.surfaces().size() == 0 && failed.services.rounded_effects().live_count() == 0,
+          "throwing custom popup retained partial resources");
+}
+
+void arrow_and_controlled_hover() {
+    Fixture f;
+    Signal<DropdownPlacement> placement{DropdownPlacement::Top};
+    Signal<DropdownArrow> arrow{DropdownArrow{true, true}};
+    Signal<ThemeConfig> theme{ThemeConfig{}};
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
+                  Dropdown(DropdownProps{}.defaultOpen(true).placement(placement).arrow(arrow).menu(
+                               MenuProps{}.items({{u8"a", u8"A"}})),
+                           DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"At edge"); }); }});
+              }});
+    }});
+    sync(f, 180, 120, {140, 90});
+    const auto id = f.services.dropdown().mounted()[0];
+    const auto rows = f.services.menu().snapshot(f.services.dropdown().snapshot(id).menu).rows;
+    for (int i = 0; i < 12; ++i) {
+        placement.set(static_cast<DropdownPlacement>(i));
+        sync(f, 180, 120, {140, 90});
+        const auto s = f.services.dropdown().snapshot(id);
+        check(s.arrow_visible && s.geometry.bounds.x >= 0 && s.geometry.bounds.y >= 0 &&
+                  s.geometry.bounds.x + s.geometry.bounds.width <= 180 &&
+                  s.geometry.bounds.y + s.geometry.bounds.height <= 120,
+              "arrow placement did not fit window");
+        check(std::ranges::count_if(f.services.rounded_effects().packed_instances(),
+                                    [](const auto& effect) {
+                                        return effect.geometry.kind == graphics::RoundedEffectKind::tooltip_fill;
+                                    }) == 1,
+              "arrow/body did not share one logical fill path");
+    }
+    arrow.set(DropdownArrow{false, false});
+    sync(f);
+    check(!f.services.dropdown().snapshot(id).arrow_visible &&
+              f.services.menu().snapshot(f.services.dropdown().snapshot(id).menu).rows == rows,
+          "arrow toggle remounted menu or stayed visible");
+    ThemeConfig custom;
+    custom.dropdown.tokens.arrow_size = dp(9);
+    theme.set(custom);
+    arrow.set(DropdownArrow{true, true});
+    sync(f);
+    check(std::ranges::any_of(f.services.rounded_effects().packed_instances(),
+                              [](const auto& effect) {
+                                  const auto* path = std::get_if<graphics::TooltipArrowPath>(&effect.geometry.path);
+                                  return path && path->length == 9;
+                              }),
+          "Dropdown arrow token did not update logical path");
+    custom.dropdown.tokens.arrow_size = dp(0);
+    theme.set(custom);
+    sync(f);
+    const auto settled = f.services.surfaces().diagnostics();
+    sync(f);
+    sync(f);
+    check(!f.services.dropdown().snapshot(id).arrow_visible && !f.services.next_frame_deadline() &&
+              f.services.surfaces().diagnostics().geometry_updates == settled.geometry_updates,
+          "zero-sized arrow kept idle work or stale fill");
+    f.services.dispose();
+
+    Fixture controlled;
+    Signal<bool> open{false};
+    std::vector<DropdownOpenInfo> requests;
+    controlled.services.mount(Content{[&] {
+        Dropdown(DropdownProps{}
+                     .open(open)
+                     .trigger(DropdownTriggerMode::Hover)
+                     .mouseEnterDelay(0)
+                     .onOpenChange([&](DropdownOpenInfo info) { requests.push_back(info); }),
+                 DropdownTrigger{[] { Text(u8"Controlled hover"); }});
+    }});
+    sync(controlled);
+    const auto owner = controlled.services.dropdown().mounted()[0];
+    const auto r = bounds(controlled, owner);
+    controlled.services.pointer().dispatch(
+        {PointerIdentity::mouse(), PointerAction::move, PointerButton::none, r.x + 2, r.y + 2});
+    static_cast<void>(controlled.services.tick_animations(animation::AnimationTime::microseconds(1)));
+    sync(controlled);
+    check(requests.size() == 1 && requests[0].cause == DropdownTriggerCause::Hover &&
+              !controlled.services.dropdown().snapshot(owner).geometry.visible,
+          "controlled hover refusal mutated authoritative state");
+    controlled.services.dispose();
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -975,6 +1254,10 @@ int main(int argc, char** argv) {
                 ++ran;
             }
         };
+        run("hover-combined", hover_and_combined);
+        run("custom-popup", custom_retained_popup);
+        run("split-retirement", split_button_and_hover_retirement);
+        run("arrow-controlled-hover", arrow_and_controlled_hover);
         run("trigger", trigger_actions_and_focus);
         run("controlled", controlled_and_clipping);
         run("modal-nested", modal_initial_and_nested);

@@ -2,6 +2,7 @@
 #include "support/input_fixture.hpp"
 #include "support/bundled_icon_checks.hpp"
 #include <iostream>
+#include <limits>
 #include <string_view>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
@@ -163,7 +164,7 @@ void uncontrolled_theme_validation() {
     check(changed.menu().metrics.item_height == 48 && changed.identity() != base.identity() &&
               changed.diagnostic_json().find("\"menu\":") != std::string::npos,
           "Menu Theme not represented");
-    for (int invalid = 0; invalid < 4; ++invalid) {
+    for (int invalid = 0; invalid < 5; ++invalid) {
         Fixture bad;
         bool rejected = false;
         try {
@@ -181,7 +182,14 @@ void uncontrolled_theme_validation() {
                 if (invalid == 3) {
                     props.mode(static_cast<MenuMode>(99));
                 }
-                Menu(props);
+                if (invalid == 4) {
+                    ThemeConfig config;
+                    config.dropdown.tokens.z_index_popup = std::numeric_limits<std::int32_t>::max();
+                    Theme(ThemeProps{}.config(config),
+                          ThemeContent{[] { Menu(MenuProps{}.mode(MenuMode::Horizontal)); }});
+                } else {
+                    Menu(props);
+                }
             }});
         } catch (const std::invalid_argument&) {
             rejected = true;
@@ -280,7 +288,11 @@ void dynamic_topology() {
                                   false,
                                   false,
                                   MenuItemKind::SubMenu,
-                                  v == 2 ? std::vector<MenuItem>{} : std::vector<MenuItem>{{u8"leaf", u8"Leaf"}}};
+                                  (v == 2 || v == 3) ? std::vector<MenuItem>{}
+                                                     : std::vector<MenuItem>{{u8"leaf", u8"Leaf"}}};
+                     if (v == 3) {
+                         return std::vector<MenuItem>{sub, a, {u8"leaf", u8"Root leaf"}, {u8"new", u8"New"}};
+                     }
                      return v == 0 ? std::vector<MenuItem>{a, sub} : std::vector<MenuItem>{sub, a, {u8"new", u8"New"}};
                  }))
                  .layout(LayoutStyle{}.width(dp(240)).height(dp(180))));
@@ -298,6 +310,12 @@ void dynamic_topology() {
     f.services.menu().focus_menu(id);
     key(f, Key::down);
     check(f.services.menu().snapshot(id).active_key == String{u8"leaf"}, "dynamic keyboard index stale");
+    version.set(3);
+    f.synchronize();
+    check(f.services.menu().snapshot(id).rows[2] == before[2] && slots == 1,
+          "reparented Menu key lost retained row/slot identity");
+    version.set(1);
+    f.synchronize();
     const auto leaf_bounds = f.nodes.require(f.services.components().root(before[2])).bounds;
     f.services.pointer().dispatch(
         {PointerIdentity::mouse(), PointerAction::down, PointerButton::primary, leaf_bounds.x + 5, leaf_bounds.y + 5});
@@ -380,6 +398,26 @@ void flyout_and_overflow() {
                   !f.services.next_frame_deadline(),
               "flyout resources leaked");
     }
+    Fixture hidden;
+    Signal<bool> visible{false};
+    hidden.services.mount(Content{[&] {
+        Modal(ModalProps{}.open(visible).footer(ModalFooterMode::None).width(280), ModalContent{[] {
+                  Menu(MenuProps{}.defaultOpenKeys({u8"sub"}).items(
+                      {{u8"sub", u8"Sub", false, false, MenuItemKind::SubMenu, {{u8"child", u8"Child"}}}}));
+              }});
+    }});
+    hidden.synchronize();
+    const auto owner = hidden.services.menu().mounted()[0];
+    check(hidden.services.menu().snapshot(owner).popups.empty(), "hidden Modal exposed Menu flyout");
+    visible.set(true);
+    hidden.synchronize();
+    check(hidden.services.menu().snapshot(owner).popups.size() == 1, "initial hidden Menu never positioned flyout");
+    visible.set(false);
+    hidden.synchronize();
+    visible.set(true);
+    hidden.synchronize();
+    check(hidden.services.menu().snapshot(owner).popups.empty(), "dismissed Menu flyout revived after parent hide");
+    hidden.services.dispose();
 }
 
 void hover_lifecycle() {
@@ -437,6 +475,11 @@ void dynamic_failure_and_retirement() {
                      if (version.get() == 1) {
                          return std::vector<MenuItem>{{u8"bad", u8"Bad"}, {u8"bad", u8"Duplicate"}};
                      }
+                     if (version.get() == 2) {
+                         MenuItem bad{u8"bad", u8"Bad"};
+                         bad.content = MenuLabel{[] { throw std::runtime_error("slot failure"); }};
+                         return std::vector<MenuItem>{{u8"b", u8"B"}, {u8"a", u8"A"}, bad};
+                     }
                      return std::vector<MenuItem>{{u8"a", u8"A"}, {u8"b", u8"B"}};
                  }))
                  .onSelect([&](MenuSelectInfo) { f.services.destroy(id); })
@@ -453,6 +496,16 @@ void dynamic_failure_and_retirement() {
         rejected = true;
     }
     check(rejected && f.services.menu().snapshot(id).rows == rows, "invalid dynamic topology mutated rows");
+    const auto surfaces = f.services.surfaces().size();
+    rejected = false;
+    try {
+        version.set(2);
+        f.synchronize();
+    } catch (const std::runtime_error&) {
+        rejected = true;
+    }
+    check(rejected && f.services.menu().snapshot(id).rows == rows && f.services.surfaces().size() == surfaces,
+          "throwing dynamic slot mutated retained topology or leaked resources");
     f.services.menu().focus_menu(id);
     key(f, Key::enter);
     check(!f.services.components().contains(id) && clicks == 0, "self-destruction delivered stale click");

@@ -8,6 +8,8 @@ struct DropdownSnapshot final {
     runtime::ComponentId trigger;
     runtime::ComponentId popup;
     runtime::ComponentId menu;
+    runtime::ComponentId content;
+    bool arrow_visible{};
     TooltipSnapshot geometry;
 };
 
@@ -32,6 +34,8 @@ public:
 
     void on_window_active(bool active) override;
     void on_input_boundary_changed() override;
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
     bool on_keyboard_input(const input::KeyboardInputEvent&) override;
     bool consume_scroll_boundary(const input::ScrollInputEvent&);
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
@@ -41,7 +45,8 @@ public:
 
 private:
     void refresh(runtime::ComponentId id);
-    void request_open(runtime::ComponentId id, bool open, DropdownOpenSource source, bool restore = true);
+    void request_open(runtime::ComponentId id, bool open, DropdownOpenSource source, bool restore = true,
+                      DropdownTriggerCause cause = DropdownTriggerCause::Pointer);
     void suppress(runtime::ComponentId id);
     void update_theme(runtime::ComponentId id, bool geometry);
     WindowComponentServices* services_;

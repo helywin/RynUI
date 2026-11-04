@@ -3,6 +3,9 @@
 #include "component/select_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
+#include <ryn/icon.hpp>
+#include <ryn/space.hpp>
+#include <cmath>
 #include <algorithm>
 
 namespace ryn::detail {
@@ -15,6 +18,19 @@ struct DropdownState final {
     input::InteractionId trigger_hit;
     input::InteractionId popup_hit;
     component::RetainedSurfaceId surface;
+    runtime::ComponentId arrow_component;
+    component::RetainedSurfaceId arrow_fill;
+    std::optional<graphics::TooltipArrowPath> arrow_path;
+    DropdownArrow arrow{false, false};
+    DropdownTriggerCause cause{DropdownTriggerCause::Pointer};
+    float enter_delay{0.15F};
+    float leave_delay{0.1F};
+    bool auto_focus{true};
+    bool hovered{};
+    bool click_open{};
+    std::optional<bool> hover_request;
+    std::optional<animation::AnimationTime> hover_deadline;
+    animation::MonotonicTimeCursor hover_clock;
     bool controlled{};
     bool open{};
     bool suppressed{};
@@ -93,18 +109,24 @@ runtime::ComponentId group(WindowComponentServices& services, layout::LayoutMode
 }
 
 void validate(DropdownTriggerMode mode, DropdownPlacement placement) {
-    if (mode < DropdownTriggerMode::Manual || mode > DropdownTriggerMode::ClickContextMenu ||
+    if (mode < DropdownTriggerMode::Manual || mode > DropdownTriggerMode::HoverClickContextMenu ||
         placement < DropdownPlacement::Top || placement > DropdownPlacement::RightBottom) {
         throw std::invalid_argument("Dropdown trigger or placement is invalid");
     }
 }
 
 bool click_trigger(DropdownTriggerMode mode) {
-    return mode == DropdownTriggerMode::Click || mode == DropdownTriggerMode::ClickContextMenu;
+    return mode == DropdownTriggerMode::Click || mode == DropdownTriggerMode::ClickContextMenu ||
+           mode == DropdownTriggerMode::HoverClick || mode == DropdownTriggerMode::HoverClickContextMenu;
 }
 
 bool context_trigger(DropdownTriggerMode mode) {
-    return mode == DropdownTriggerMode::ContextMenu || mode == DropdownTriggerMode::ClickContextMenu;
+    return mode == DropdownTriggerMode::ContextMenu || mode == DropdownTriggerMode::ClickContextMenu ||
+           mode == DropdownTriggerMode::HoverContextMenu || mode == DropdownTriggerMode::HoverClickContextMenu;
+}
+
+bool hover_trigger(DropdownTriggerMode mode) {
+    return mode >= DropdownTriggerMode::Hover && mode <= DropdownTriggerMode::HoverClickContextMenu;
 }
 } // namespace
 
@@ -147,6 +169,15 @@ void DropdownComponentHost::refresh(runtime::ComponentId id) {
         s->open && !s->suppressed && !s->disabled && window_active_ && services_->interactions().component_active(id);
     const bool changed = visible != s->snapshot.geometry.visible;
     s->snapshot.geometry.visible = visible;
+    if (changed && !visible) {
+        s->snapshot.arrow_visible = false;
+        s->hover_deadline.reset();
+        s->click_open = false;
+    }
+    if (s->arrow_component.valid() && (!visible || !s->arrow.visible) &&
+        services_->components().set_branch_active(s->arrow_component, false)) {
+        services_->mark_scene_structure_dirty();
+    }
     services_->interactions().set_eligible(s->trigger_hit, !s->disabled);
     if (services_->components().set_branch_active(s->snapshot.popup, visible)) {
         s->needs_measure = true;
@@ -165,7 +196,7 @@ void DropdownComponentHost::refresh(runtime::ComponentId id) {
         if (!s->restore_target) {
             s->restore_target = s->trigger_hit;
         }
-        s->focus_pending = true;
+        s->focus_pending = s->auto_focus && s->cause != DropdownTriggerCause::Hover;
         return;
     }
     s->focus_pending = false;
@@ -192,13 +223,16 @@ void DropdownComponentHost::refresh(runtime::ComponentId id) {
     }
 }
 
-void DropdownComponentHost::request_open(runtime::ComponentId id, bool open, DropdownOpenSource source, bool restore) {
+void DropdownComponentHost::request_open(runtime::ComponentId id, bool open, DropdownOpenSource source, bool restore,
+                                         DropdownTriggerCause cause) {
     auto* s = services_->components().state<DropdownState>(id);
     if (!s || !services_->components().scope(id).active() ||
         (open && (s->disabled || !window_active_ || !services_->interactions().component_active(id)))) {
         return;
     }
     const bool changed = s->open != open;
+    s->cause = cause;
+    s->hover_deadline.reset();
     s->restore = restore;
     if (open) {
         s->suppressed = false;
@@ -209,7 +243,7 @@ void DropdownComponentHost::request_open(runtime::ComponentId id, bool open, Dro
     const auto callback = s->on_open;
     refresh(id);
     if (changed && callback && services_->components().contains(id) && services_->components().scope(id).active()) {
-        callback({open, source});
+        callback({open, source, cause});
     }
 }
 
@@ -225,6 +259,9 @@ void DropdownComponentHost::suppress(runtime::ComponentId id) {
         s->open = false;
     }
     s->context_anchor.reset();
+    s->hover_deadline.reset();
+    s->hover_request.reset();
+    s->hovered = false;
     const auto callback = s->on_open;
     refresh(id);
     if (notify && callback && services_->components().contains(id) && services_->components().scope(id).active()) {
@@ -238,7 +275,8 @@ void DropdownComponentHost::update_theme(runtime::ComponentId id, bool geometry)
         return;
     }
     const auto& token = services_->components().theme_scope(id)->snapshot().dropdown();
-    if (services_->components().set_window_layer(s->snapshot.popup, token.z_index_popup)) {
+    if (services_->components().set_window_layer(s->snapshot.popup, token.z_index_popup) |
+        services_->components().set_window_layer(s->arrow_component, token.z_index_popup)) {
         services_->mark_scene_structure_dirty();
     }
     if (geometry) {
@@ -252,7 +290,9 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
         throw std::invalid_argument("Dropdown cannot combine open and defaultOpen");
     }
     validate(read_prop(props.trigger_), read_prop(props.placement_));
-    MenuComponentHost::validate(props.menu_);
+    if (!props.popup_) {
+        MenuComponentHost::validate(props.menu_);
+    }
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     const auto id = build.mount_component<DropdownState>();
@@ -266,6 +306,10 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
     s.adjust = read_prop(props.adjust_);
     s.close_on_select = read_prop(props.close_on_select_);
     s.on_open = props.on_open_;
+    s.arrow = read_prop(props.arrow_);
+    s.enter_delay = read_prop(props.enter_delay_);
+    s.leave_delay = read_prop(props.leave_delay_);
+    s.auto_focus = read_prop(props.auto_focus_);
     runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
     s.trigger_hit = services.interactions().create({id, s.node, {}, !s.disabled, true, {}, true, true});
     const auto hit = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
@@ -302,13 +346,25 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
                     auto* state = services_->components().state<DropdownState>(id);
                     if (state && click_trigger(state->mode)) {
                         state->context_anchor.reset();
-                        request_open(id, !state->snapshot.geometry.visible, DropdownOpenSource::Trigger);
+                        const bool open = !state->snapshot.geometry.visible;
+                        state->click_open = open;
+                        request_open(id, open, DropdownOpenSource::Trigger, true, DropdownTriggerCause::Keyboard);
                     }
                 };
                 services.interactions().set_focus_handlers(interaction, std::move(handlers));
             }
             services.interactions().set_focusable(s.trigger_hit, !s.native_trigger);
             services.interactions().set_tab_stop(s.trigger_hit, !s.native_trigger);
+            s.arrow_component = group(services, layout::BoxLayout{});
+            services.components().set_window_layer(s.arrow_component,
+                                                   build.theme_scope()->snapshot().dropdown().z_index_popup);
+            services.components().set_branch_active(s.arrow_component, false);
+            const auto arrow_fragment =
+                build.register_scene_fragment(s.arrow_component, runtime::SceneFragmentPlacement::before_children);
+            s.arrow_fill = services.surfaces().create_content_range(arrow_fragment, {});
+            build.on_resource_cleanup(s.arrow_component, [&services, fill = s.arrow_fill] {
+                services.surfaces().destroy_content_range(fill);
+            });
             s.snapshot.popup = group(services, layout::BoxLayout{});
             const auto popup_node = build.root(s.snapshot.popup);
             services.components().set_window_layer(s.snapshot.popup,
@@ -344,10 +400,36 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
                     request_open(id, false, DropdownOpenSource::Menu);
                 }
             };
-            build.mount_slot(s.snapshot.popup, Content{[&] {
-                                 services.menu().mount(menu, true);
-                                 s.snapshot.menu = services.components().children(s.snapshot.popup).back();
-                             }});
+            build.mount_slot(
+                s.snapshot.popup, Content{[&] {
+                    if (props.popup_ || props.popup_render_) {
+                        s.snapshot.content = group(services, layout::BoxLayout{});
+                        build.mount_slot(
+                            s.snapshot.content, Content{[&] {
+                                if (props.popup_) {
+                                    detail::SlotContentAccess::function (*props.popup_)();
+                                } else {
+                                    props.popup_render_(DropdownMenuContent{[this, id, menu] {
+                                        auto* state = services_->components().state<DropdownState>(id);
+                                        const auto& context = runtime::require_component_build_context();
+                                        if (!state || !services_->components().scope(id).active() ||
+                                            !context.has_ancestor(state->snapshot.popup) ||
+                                            state->snapshot.menu.valid()) {
+                                            throw std::logic_error(
+                                                "Dropdown menu content requires its live popup and mounts once");
+                                        }
+                                        services_->menu().mount(menu, true);
+                                        const auto mounted = services_->menu().mounted();
+                                        state->snapshot.menu = mounted.back();
+                                    }});
+                                }
+                            }});
+                    } else {
+                        services.menu().mount(menu, true);
+                        s.snapshot.menu = services.components().children(s.snapshot.popup).back();
+                        s.snapshot.content = s.snapshot.menu;
+                    }
+                }});
         }});
     services.layout().set_layout(
         s.node, layout::ComponentLayout{
@@ -388,6 +470,9 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
         }
         validate(mode, s->placement);
         s->mode = mode;
+        s->hover_deadline.reset();
+        s->hover_request.reset();
+        s->hovered = false;
     });
     connect_prop(scope, props.placement_, [this, id](DropdownPlacement placement) {
         auto* s = services_->components().state<DropdownState>(id);
@@ -409,6 +494,30 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
             s->close_on_select = value;
         }
     });
+    connect_prop(scope, props.arrow_, [this, id](DropdownArrow value) {
+        if (auto* s = services_->components().state<DropdownState>(id)) {
+            s->arrow = value;
+            update_theme(id, true);
+            refresh(id);
+        }
+    });
+    connect_prop(scope, props.auto_focus_, [this, id](bool value) {
+        if (auto* s = services_->components().state<DropdownState>(id)) {
+            s->auto_focus = value;
+        }
+    });
+    const auto delay = [&](const Prop<float>& prop, float DropdownState::* field) {
+        connect_prop(scope, prop, [this, id, field](float value) {
+            if (!std::isfinite(value) || value < 0 || value > 3600) {
+                throw std::invalid_argument("invalid Dropdown hover delay");
+            }
+            if (auto* s = services_->components().state<DropdownState>(id)) {
+                s->*field = value;
+            }
+        });
+    };
+    delay(props.enter_delay_, &DropdownState::enter_delay);
+    delay(props.leave_delay_, &DropdownState::leave_delay);
     const auto theme = build.theme_scope();
     const std::array accessors{
         &theme_runtime::ThemeScope::dropdown_colors, &theme_runtime::ThemeScope::dropdown_metrics,
@@ -478,7 +587,11 @@ bool DropdownComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
             }
             s->focus_last = event.key == input::Key::up;
             s->context_anchor.reset();
-            request_open(id, true, DropdownOpenSource::Trigger);
+            request_open(id, true, DropdownOpenSource::Trigger, true, DropdownTriggerCause::Keyboard);
+            if (auto* live = services_->components().state<DropdownState>(id);
+                live && live->snapshot.geometry.visible) {
+                live->focus_pending = true;
+            }
             return true;
         }
         if (event.key == input::Key::escape && s->snapshot.geometry.visible) {
@@ -504,7 +617,7 @@ bool DropdownComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
                                                         : static_cast<std::size_t>(found - stops.begin());
                 target = stops[(index + (reverse ? stops.size() - 1 : 1)) % stops.size()];
             }
-            request_open(id, false, DropdownOpenSource::Outside, false);
+            request_open(id, false, DropdownOpenSource::Outside, false, DropdownTriggerCause::Keyboard);
             if (target && can_focus(*services_, *target)) {
                 services_->focus().defer_focus(target, input::FocusModality::keyboard);
             }
@@ -512,7 +625,7 @@ bool DropdownComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
         }
     }
     if (escape) {
-        request_open(*escape, false, DropdownOpenSource::Escape);
+        request_open(*escape, false, DropdownOpenSource::Escape, true, DropdownTriggerCause::Keyboard);
         return true;
     }
     return false;
@@ -542,8 +655,7 @@ bool DropdownComponentHost::consume_scroll_boundary(const input::ScrollInputEven
 void DropdownComponentHost::on_pointer_input(const input::PointerInputEvent& event,
                                              std::optional<input::InteractionId> hit,
                                              std::optional<input::InteractionId> origin) {
-    if (mounted_.empty() || !window_active_ ||
-        (event.action != input::PointerAction::down && event.action != input::PointerAction::up)) {
+    if (mounted_.empty() || !window_active_) {
         return;
     }
     const auto ids = mounted_;
@@ -558,6 +670,36 @@ void DropdownComponentHost::on_pointer_input(const input::PointerInputEvent& eve
         const bool in_popup =
             s->snapshot.geometry.visible && ((record && descendant(*services_, record->component, s->snapshot.popup)) ||
                                              inside(s->snapshot.geometry.bounds, event.x, event.y));
+        if (event.action == input::PointerAction::cancel) {
+            s->hover_deadline.reset();
+            s->hover_request.reset();
+            s->hovered = false;
+            continue;
+        }
+        if (event.action == input::PointerAction::move && event.pointer.device == input::PointerDevice::mouse &&
+            hover_trigger(s->mode)) {
+            const bool hovered = in_trigger || in_popup;
+            if (hovered != s->hovered) {
+                s->hovered = hovered;
+                s->hover_deadline.reset();
+                const bool allowed = !in_trigger || trigger_can_activate(*services_, *s, hit);
+                s = services_->components().state<DropdownState>(id);
+                if (!s || !services_->components().scope(id).active()) {
+                    continue;
+                }
+                if (allowed && ((hovered && !s->snapshot.geometry.visible) ||
+                                (!hovered && s->snapshot.geometry.visible && !s->click_open))) {
+                    s->hover_request = hovered;
+                    s->hover_deadline =
+                        s->hover_clock.observe(services_->animation_time()).effective +
+                        animation::AnimationDuration::milliseconds((hovered ? s->enter_delay : s->leave_delay) * 1000);
+                    services_->request_frame();
+                } else {
+                    s->hover_request.reset();
+                }
+            }
+            continue;
+        }
         if (event.action == input::PointerAction::down && s->snapshot.geometry.visible && !in_trigger && !in_popup) {
             request_open(id, false, DropdownOpenSource::Outside, false);
         } else if (event.action == input::PointerAction::up && in_trigger && hit) {
@@ -571,14 +713,58 @@ void DropdownComponentHost::on_pointer_input(const input::PointerInputEvent& eve
             }
             if (event.button == input::PointerButton::primary && origin == hit && click_trigger(s->mode)) {
                 s->context_anchor.reset();
-                request_open(id, !s->snapshot.geometry.visible, DropdownOpenSource::Trigger);
+                const bool open = !s->snapshot.geometry.visible;
+                s->click_open = open;
+                request_open(id, open, DropdownOpenSource::Trigger);
             } else if (event.button == input::PointerButton::secondary && context_trigger(s->mode)) {
                 s->context_anchor = runtime::Point{event.x, event.y};
                 s->needs_measure = true;
-                request_open(id, true, DropdownOpenSource::Trigger);
+                s->click_open = true;
+                request_open(id, true, DropdownOpenSource::Trigger, true, DropdownTriggerCause::ContextMenu);
             }
         }
     }
+}
+
+std::size_t DropdownComponentHost::tick_auxiliary(animation::AnimationTime time) {
+    std::size_t changed = 0;
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        auto* s = services_->components().state<DropdownState>(id);
+        if (!s || !s->hover_deadline) {
+            continue;
+        }
+        if (!window_active_ || s->disabled || !services_->interactions().component_active(id)) {
+            s->hover_deadline.reset();
+            s->hover_request.reset();
+            continue;
+        }
+        if (s->hover_clock.observe(time).effective < *s->hover_deadline) {
+            continue;
+        }
+        const auto request = s->hover_request;
+        s->hover_deadline.reset();
+        s->hover_request.reset();
+        if (request) {
+            if (*request) {
+                s->context_anchor.reset();
+            }
+            request_open(id, *request, DropdownOpenSource::Trigger, false, DropdownTriggerCause::Hover);
+            ++changed;
+        }
+    }
+    return changed;
+}
+
+std::optional<animation::AnimationTime> DropdownComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> result;
+    for (auto id : mounted_) {
+        const auto* s = services_->components().state<DropdownState>(id);
+        if (s && s->hover_deadline && (!result || *s->hover_deadline < *result)) {
+            result = s->hover_deadline;
+        }
+    }
+    return result;
 }
 
 void DropdownComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect clip) {
@@ -613,7 +799,7 @@ void DropdownComponentHost::position_window_layers(runtime::Size viewport, runti
             // BoxLayout discovers the natural popup size, but does not stretch
             // its child when the popup minimum width exceeds the Menu's width.
             static_cast<void>(
-                engine.measure_child(services_->components().root(s->snapshot.menu),
+                engine.measure_child(services_->components().root(s->snapshot.content),
                                      layout::Constraints::fixed(std::max(0.0F, s->popup_size.width - padding * 2),
                                                                 std::max(0.0F, s->popup_size.height - padding * 2))));
             s->needs_measure = false;
@@ -625,14 +811,43 @@ void DropdownComponentHost::position_window_layers(runtime::Size viewport, runti
         if (s->context_anchor) {
             anchor = {s->context_anchor->x, s->context_anchor->y, 0, 0};
         }
-        s->snapshot.geometry = position_tooltip(anchor, s->popup_size, clip, s->placement,
-                                                s->context_anchor ? 0 : token.metrics.gap, s->adjust);
+        s->snapshot.geometry = position_tooltip(
+            anchor, s->popup_size, clip, s->placement,
+            s->context_anchor ? 0 : token.metrics.gap + (s->arrow.visible ? token.metrics.arrow_size : 0), s->adjust,
+            s->arrow.visible && s->arrow.point_at_center,
+            std::max(12.0F, token.metrics.border_radius + token.metrics.arrow_size));
         if (measure || services_->nodes().require(popup).bounds != s->snapshot.geometry.bounds) {
             engine.place_child(popup, s->snapshot.geometry.bounds);
         }
+        const auto arrow_size = token.metrics.arrow_size;
+        const int axis = static_cast<int>(s->snapshot.geometry.placement) / 3;
+        const auto bounds = s->snapshot.geometry.bounds;
+        const float extent = axis < 2 ? bounds.width : bounds.height;
+        const float radius = std::min(token.metrics.border_radius, std::min(bounds.width, bounds.height) / 2);
+        const float half_width = std::min(arrow_size, std::max(0.0F, extent / 2 - radius));
+        s->arrow_path.reset();
+        s->snapshot.arrow_visible = s->arrow.visible && half_width > 0;
+        if (services_->components().set_branch_active(s->arrow_component, s->snapshot.arrow_visible)) {
+            services_->mark_scene_structure_dirty();
+        }
+        if (s->snapshot.arrow_visible) {
+            const float center =
+                std::clamp(s->snapshot.geometry.arrow_center, radius + half_width, extent - radius - half_width);
+            s->arrow_path = graphics::TooltipArrowPath{static_cast<graphics::TooltipArrowSide>(axis), center,
+                                                       half_width, arrow_size};
+            const auto arrow_node = services_->components().root(s->arrow_component);
+            static_cast<void>(
+                engine.measure_child(arrow_node, layout::Constraints::fixed(bounds.width, bounds.height)));
+            engine.place_child(arrow_node, bounds);
+        }
+        services_->menu().position_window_layers(viewport, clip);
         if (s->focus_pending) {
             s->focus_pending = false;
-            services_->menu().focus_menu(s->snapshot.menu, s->focus_last);
+            if (s->snapshot.menu.valid()) {
+                services_->menu().focus_menu(s->snapshot.menu, s->focus_last);
+            } else if (const auto focus = trigger_focus(*services_, s->snapshot.content)) {
+                services_->focus().defer_focus(focus, input::FocusModality::keyboard);
+            }
             s->focus_last = false;
         }
     }
@@ -649,6 +864,17 @@ void DropdownComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
         graphics::QuadInstance q;
         q.bounds = {bounds.x, bounds.y, bounds.width, bounds.height};
         q.color = {token.background.red(), token.background.green(), token.background.blue(), token.background.alpha()};
+        q.opacity = s->arrow_path ? 0.0F : 1.0F;
+        if (s->arrow_path) {
+            const graphics::LogicalRoundedRect shape{
+                bounds, std::min(token.metrics.border_radius, std::min(bounds.width, bounds.height) / 2)};
+            const auto fill =
+                graphics::make_tooltip_fill_effect(shape, *s->arrow_path, token.background, 1, {},
+                                                   graphics::EffectClip{1, {0, 0, viewport.width, viewport.height}});
+            static_cast<void>(services_->surfaces().update_content_effects(s->arrow_fill, std::span{&fill, 1}));
+        } else {
+            static_cast<void>(services_->surfaces().update_content_effects(s->arrow_fill, {}));
+        }
         q.corner_radius = std::min(token.metrics.border_radius, std::min(bounds.width, bounds.height) / 2);
         static_cast<void>(services_->surfaces().update_surface(s->surface, std::span{&q, 1}));
         component::RetainedSurfaceEffects effects;
@@ -667,5 +893,20 @@ void Dropdown(DropdownProps props, DropdownTrigger trigger) {
         throw std::logic_error("Dropdown requires window component services");
     }
     detail::active_dropdowns->mount(props, trigger);
+}
+
+void DropdownButton(DropdownButtonProps props, DropdownButtonSlots slots) {
+    SpaceCompact(SpaceCompactProps{}, SpaceCompactContent{[props = std::move(props), slots = std::move(slots)] {
+                     Button(props.button, ButtonContent{detail::SlotContentAccess::function(slots.content)});
+                     Dropdown(props.dropdown, DropdownTrigger{[button = props.trigger_button, icon = slots.icon] {
+                                  Button(button, ButtonContent{[icon] {
+                                             if (icon) {
+                                                 detail::SlotContentAccess::function (*icon)();
+                                             } else {
+                                                 Icon(IconProps{}.name(IconName::EllipsisOutlined));
+                                             }
+                                         }});
+                              }});
+                 }});
 }
 } // namespace ryn

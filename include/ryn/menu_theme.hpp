@@ -95,9 +95,10 @@ struct DropdownMetricToken final {
     float max_height{320};
     float gap{4};
     float border_radius{8};
+    float arrow_size{6};
 
     [[nodiscard]] auto values() const {
-        return std::array{padding, item_height, min_width, max_height, gap, border_radius};
+        return std::array{padding, item_height, min_width, max_height, gap, border_radius, arrow_size};
     }
 
     friend bool operator==(const DropdownMetricToken&, const DropdownMetricToken&) = default;
@@ -119,6 +120,7 @@ struct DropdownTokenOverride final {
     std::optional<LogicalLength> max_height;
     std::optional<LogicalLength> gap;
     std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> arrow_size;
     std::optional<ShadowList> shadow;
     std::optional<std::int32_t> z_index_popup;
     friend bool operator==(const DropdownTokenOverride&, const DropdownTokenOverride&) = default;
