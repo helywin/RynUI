@@ -2166,36 +2166,41 @@ MenuThemeToken derive_menu(const AntDesignDefaultSeed& seed, const ThemeMapToken
 }
 
 void apply_menu_override(MenuThemeToken& token, const MenuTokenOverride& o) {
-    if (o.background) {
-        token.colors.background = *o.background;
-    }
-    if (o.text) {
-        token.colors.text = *o.text;
-    }
-    if (o.disabled) {
-        token.colors.disabled = *o.disabled;
-    }
-    if (o.selected) {
-        token.colors.selected = *o.selected;
-    }
-    if (o.selected_background) {
-        token.colors.selected_background = *o.selected_background;
-    }
-    if (o.hover_background) {
-        token.colors.hover_background = *o.hover_background;
-    }
-    if (o.danger) {
-        token.colors.danger = *o.danger;
-    }
-    if (o.divider) {
-        token.colors.divider = *o.divider;
-    }
-    if (o.group) {
-        token.colors.group = *o.group;
-    }
-    if (o.focus) {
-        token.colors.focus = *o.focus;
-    }
+    const auto apply_colors = [&](MenuColorToken& colors) {
+        if (o.background) {
+            colors.background = *o.background;
+        }
+        if (o.text) {
+            colors.text = *o.text;
+        }
+        if (o.disabled) {
+            colors.disabled = *o.disabled;
+        }
+        if (o.selected) {
+            colors.selected = *o.selected;
+        }
+        if (o.selected_background) {
+            colors.selected_background = *o.selected_background;
+        }
+        if (o.hover_background) {
+            colors.hover_background = *o.hover_background;
+        }
+        if (o.danger) {
+            colors.danger = *o.danger;
+        }
+        if (o.divider) {
+            colors.divider = *o.divider;
+        }
+        if (o.group) {
+            colors.group = *o.group;
+        }
+        if (o.focus) {
+            colors.focus = *o.focus;
+        }
+    };
+    apply_colors(token.colors);
+    apply_colors(token.light_colors);
+    apply_colors(token.dark_colors);
     token.metrics.item_height =
         fixed_length(o.item_height, token.metrics.item_height, "Menu item_height is invalid", true);
     token.metrics.item_margin =
@@ -2210,6 +2215,10 @@ void apply_menu_override(MenuThemeToken& token, const MenuTokenOverride& o) {
         fixed_length(o.group_height, token.metrics.group_height, "Menu group_height is invalid", true);
     token.metrics.divider_height =
         fixed_length(o.divider_height, token.metrics.divider_height, "Menu divider_height is invalid", true);
+    token.metrics.collapsed_width =
+        fixed_length(o.collapsed_width, token.metrics.collapsed_width, "Menu collapsed width is invalid", true);
+    token.metrics.collapsed_icon_size = fixed_length(o.collapsed_icon_size, token.metrics.collapsed_icon_size,
+                                                     "Menu collapsed icon size is invalid", true);
     if (o.font_family) {
         token.typography.font_family = *o.font_family;
     }
@@ -3488,6 +3497,22 @@ serialize_snapshot(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, c
         }
         append_color(stream, colors[i]);
     }
+    stream << "],\"lightColors\":[";
+    const auto light_colors = menu.light_colors.values();
+    for (std::size_t i = 0; i < light_colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, light_colors[i]);
+    }
+    stream << "],\"darkColors\":[";
+    const auto dark_colors = menu.dark_colors.values();
+    for (std::size_t i = 0; i < dark_colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, dark_colors[i]);
+    }
     stream << "],\"metrics\":[";
     const auto menu_metrics = menu.metrics.values();
     for (std::size_t i = 0; i < menu_metrics.size(); ++i) {
@@ -4019,6 +4044,12 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
     hash_shadow(hash, drawer.effects.shadow);
     hash_integer(hash, drawer.z_index_popup);
     for (const auto color : menu.colors.values()) {
+        hash_color(hash, color);
+    }
+    for (const auto color : menu.light_colors.values()) {
+        hash_color(hash, color);
+    }
+    for (const auto color : menu.dark_colors.values()) {
         hash_color(hash, color);
     }
     for (float value : menu.metrics.values()) {
@@ -5289,6 +5320,17 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     const bool inherit_navigation = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                     config.alias == AliasTokenOverride{} && config.algorithms.empty();
     auto menu = inherit_navigation ? parent->menu() : derive_menu(seed, map, alias, algorithms);
+    if (!inherit_navigation) {
+        const auto palette = [&](ThemeAlgorithm algorithm) {
+            const std::array variant{algorithm};
+            const auto variant_map = derive_map(seed, variant);
+            auto variant_alias = derive_alias(seed, variant_map, variant);
+            apply_alias_override(variant_alias, config.alias);
+            return derive_menu(seed, variant_map, variant_alias, variant).colors;
+        };
+        menu.light_colors = palette(ThemeAlgorithm::Default);
+        menu.dark_colors = palette(ThemeAlgorithm::Dark);
+    }
     apply_menu_override(menu, config.menu.tokens);
     DropdownThemeToken dropdown;
     if (inherit_navigation) {

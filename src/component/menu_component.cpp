@@ -2,6 +2,7 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "component/tooltip_component.hpp"
+#include "input/text_boundary.hpp"
 #include <ryn/icon.hpp>
 #include <algorithm>
 #include <cmath>
@@ -32,6 +33,8 @@ struct MenuRow final {
     runtime::SceneFragmentId hit;
     component::RetainedSurfaceId surface;
     runtime::ComponentId label_component;
+    std::optional<runtime::ComponentId> collapsed_label;
+    Signal<String> collapsed_text{String{}};
     std::optional<runtime::ComponentId> icon;
     std::optional<runtime::ComponentId> arrow;
     Signal<String> label{String{}};
@@ -83,6 +86,7 @@ struct MenuState final {
     bool multiple{};
     bool disabled{};
     bool action_menu{};
+    MenuColorToken applied_colors;
     bool focus_visible{};
     bool reveal{};
     float scroll{};
@@ -164,14 +168,10 @@ void validate_items(const std::vector<MenuItem>& items, MenuKeys& keys, std::siz
 MenuThemeToken menu_token(WindowComponentServices& services, runtime::ComponentId id) {
     const auto& state = *services.components().state<MenuState>(id);
     auto token = services.components().theme_scope(id)->snapshot().menu();
-    if (state.theme != MenuTheme::Inherit) {
-        static const auto light = resolve_theme().menu().colors;
-        static const auto dark = [] {
-            ThemeConfig config;
-            config.algorithms = {ThemeAlgorithm::Dark};
-            return resolve_theme(config).menu().colors;
-        }();
-        token.colors = state.theme == MenuTheme::Dark ? dark : light;
+    if (state.theme == MenuTheme::Dark) {
+        token.colors = token.dark_colors;
+    } else if (state.theme == MenuTheme::Light) {
+        token.colors = token.light_colors;
     }
     return token;
 }
@@ -184,6 +184,18 @@ int menu_layer(WindowComponentServices& services, runtime::ComponentId id, std::
         throw std::invalid_argument("Menu flyout z-index exceeds supported range");
     }
     return static_cast<int>(priority);
+}
+
+bool collapsed(const MenuState& s) {
+    return s.mode == MenuMode::Inline && s.collapsed;
+}
+
+String first_grapheme(const String& value) {
+    input::TextBoundaryMap boundaries;
+    if (value.empty() || !boundaries.assign(value.bytes())) {
+        return String{};
+    }
+    return String::from_utf8(value.bytes().substr(0, boundaries.next(0))).value();
 }
 
 bool flyout(const MenuState& s) {
@@ -270,7 +282,8 @@ MenuSnapshot MenuComponentHost::snapshot(runtime::ComponentId id) const {
                         s->interaction,
                         s->scroll,
                         {},
-                        s->has_overflow};
+                        s->has_overflow,
+                        s->applied_colors};
     for (auto row_id : s->rows) {
         const auto* row = services_->components().state<MenuRow>(row_id);
         if (row->popup && services_->components().branch_active(*row->popup)) {
@@ -296,6 +309,7 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         s->hover_row.reset();
     }
     const auto token = menu_token(*services_, id);
+    s->applied_colors = token.colors;
     services_->interactions().set_eligible(s->interaction, !s->disabled);
     std::optional<std::size_t> first;
     for (std::size_t i = 0; i < s->rows.size(); ++i) {
@@ -359,8 +373,11 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         services_->interactions().set_input_blocked(s->rows[i], disabled || !shown);
         services_->interactions().set_eligible(row->interaction, row->eligible);
         if (row->kind != MenuItemKind::Divider) {
-            const bool compact = s->collapsed && !row->panel && !row->parent;
-            services_->components().set_branch_active(row->label_component, !compact || !row->icon);
+            const bool compact = collapsed(*s) && !row->panel && row->depth == 0;
+            services_->components().set_branch_active(row->label_component, !compact);
+            if (row->collapsed_label) {
+                services_->components().set_branch_active(*row->collapsed_label, compact && !row->icon);
+            }
             if (row->arrow) {
                 services_->components().set_branch_active(*row->arrow, !compact && !row->overflow);
             }
@@ -375,7 +392,9 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                                        : selected                         ? token.colors.selected
                                                                           : token.colors.text));
         const auto& font = token.typography;
-        row->typography.set({font.font_family, font.font_weight, false, font.font_size, font.line_height});
+        const bool compact_font = collapsed(*s) && !row->panel && row->depth == 0;
+        row->typography.set({font.font_family, font.font_weight, false,
+                             compact_font ? token.metrics.collapsed_icon_size : font.font_size, font.line_height});
         if (row->kind == MenuItemKind::SubMenu) {
             row->arrow_icon.set((row_open(*s, *row) && !flyout(*s)) || (s->mode == MenuMode::Horizontal && !row->panel)
                                     ? IconName::DownOutlined
@@ -600,6 +619,8 @@ void MenuComponentHost::mount_rows(runtime::ComponentId id, const std::vector<Me
                         Icon(IconProps{}.name(row.arrow_icon));
                         row.arrow = services.components().children(row_id).back();
                     }
+                    Text(TextProps{}.content(row.collapsed_text));
+                    row.collapsed_label = services.components().children(row_id).back();
                 }},
                 row.foreground, row.typography);
         }
@@ -611,16 +632,26 @@ void MenuComponentHost::mount_rows(runtime::ComponentId id, const std::vector<Me
                     const auto& row = *services_->components().state<MenuRow>(row_id);
                     const auto& theme = services_->components().theme_scope(id)->snapshot();
                     const auto token = menu_token(*services_, id);
+                    const bool compact = collapsed(state) && !row.panel && row.depth == 0;
+                    if (compact) {
+                        if (const auto content = row.icon ? row.icon : row.collapsed_label) {
+                            static_cast<void>(
+                                engine.measure_child(services_->components().root(*content),
+                                                     {0, limits.max_width, 0, token.metrics.item_height}));
+                        }
+                        return limits.constrain(
+                            {std::max(0.0F, token.metrics.collapsed_width - token.metrics.item_margin * 2),
+                             row_height(row, token,
+                                        state.action_menu ? theme.dropdown().metrics.item_height
+                                                          : token.metrics.item_height)});
+                    }
                     float width = token.metrics.padding_inline * 2 +
                                   static_cast<float>(flyout(state) ? 0 : row.depth) * token.metrics.inline_indent;
                     float height = row_height(row, token,
                                               state.action_menu ? theme.dropdown().metrics.item_height
                                                                 : token.metrics.item_height);
                     for (auto child : services_->components().children(row_id)) {
-                        const bool compact = state.collapsed && !row.panel && !row.parent;
-                        if ((row.overflow && child == row.arrow) ||
-                            (compact && ((child == row.label_component && row.icon) || child == row.arrow ||
-                                         child == row.extra))) {
+                        if (child == row.collapsed_label || (row.overflow && child == row.arrow)) {
                             continue;
                         }
                         const auto size =
@@ -634,6 +665,16 @@ void MenuComponentHost::mount_rows(runtime::ComponentId id, const std::vector<Me
                     const auto& state = *services_->components().state<MenuState>(id);
                     const auto rect = row.panel ? row.full_bounds : allocated;
                     const auto token = menu_token(*services_, id);
+                    if (collapsed(state) && !row.panel && row.depth == 0) {
+                        if (const auto content = row.icon ? row.icon : row.collapsed_label) {
+                            const auto node = services_->components().root(*content);
+                            const auto size = engine.measure_child(node, {0, rect.width, 0, rect.height});
+                            engine.place_child(node,
+                                               {rect.x + (rect.width - size.width) / 2,
+                                                rect.y + (rect.height - size.height) / 2, size.width, size.height});
+                        }
+                        return;
+                    }
                     const auto place = [&](runtime::NodeId node, runtime::Rect child) {
                         if (state.direction == TextDirection::RightToLeft) {
                             child.x = rect.x + rect.width - (child.x - rect.x) - child.width;
@@ -669,8 +710,7 @@ void MenuComponentHost::mount_rows(runtime::ComponentId id, const std::vector<Me
                         services_->components().branch_active(row.label_component)) {
                         const auto node = services_->components().root(row.label_component);
                         const auto size = engine.measure_child(node, {0, std::max(0.0F, end - x), 0, rect.height});
-                        engine.place_child(
-                            node, {x, rect.y + (rect.height - size.height) / 2, std::max(0.0F, end - x), size.height});
+                        place(node, {x, rect.y + (rect.height - size.height) / 2, size.width, size.height});
                     }
                 }});
         if (item.kind == MenuItemKind::SubMenu) {
@@ -705,6 +745,7 @@ void MenuComponentHost::bind_row(runtime::ComponentId id, runtime::ComponentId r
     row->bindings = std::make_unique<Scope>();
     connect_prop(*row->bindings, item.label, [this, id, row_id](String value) {
         if (auto* row = services_->components().state<MenuRow>(row_id)) {
+            row->collapsed_text.set(first_grapheme(value));
             row->label.set(std::move(value));
             if (!services_->components().state<MenuState>(id)->reconciling) {
                 refresh(id, true);
@@ -929,7 +970,8 @@ void MenuComponentHost::mount(const MenuProps& props, bool action_menu) {
                     }
                 }
                 state.content_height = height;
-                return limits.constrain({width + margin * 2, height});
+                return limits.constrain(
+                    {collapsed(state) ? token.metrics.collapsed_width : width + margin * 2, height});
             },
             [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect rect) {
                 auto& state = *services_->components().state<MenuState>(id);

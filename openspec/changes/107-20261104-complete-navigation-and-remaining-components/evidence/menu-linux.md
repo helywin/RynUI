@@ -9,3 +9,5 @@
 - 上游对照：Ant Design 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e723cdd` 的 Menu API、interface、menu 实现及 horizontal/inline-collapsed demo；下载源仅在忽略的 out 中。
 - 4.2 的 Release、Gallery 和目录验证继续进行；本阶段不声称完成这些检查。Linux 原生 GPU/系统字体、Windows/MSVC 与人工桌面/IME 未在本阶段运行；63.1/64.*/65.1 由父线程追踪。
 - 格式检查：clang-format 22.1.3，876 个自有文件、0 失败；OpenSpec doctor healthy、strict 107/107，diff 检查通过。
+
+补充实现阶段：RTL 标签使用自然宽度镜像定位；InlineCollapsed 使用 collapsed_width/collapsed_icon_size Token、居中图标/Unicode 首字素回退，并暂停隐藏富标签输入。Light/Dark palette 从 scoped seed/alias/Menu Token 解析，variant-only 变化触发 menu_colors invalidation；新增完整 palette golden 字段。最终 Debug 定向验证含 Theme runtime，为 6/6 CTest 通过（Menu 仍为 8 组）；Release 收口继续由 4.2 追踪。

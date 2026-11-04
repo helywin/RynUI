@@ -487,6 +487,9 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.drawer().z_index_popup, after.drawer().z_index_popup, TokenIdentity::drawer_order, changed,
                       count);
     append_if_changed(before.menu().colors, after.menu().colors, TokenIdentity::menu_colors, changed, count);
+    append_if_changed(before.menu().light_colors, after.menu().light_colors, TokenIdentity::menu_colors, changed,
+                      count);
+    append_if_changed(before.menu().dark_colors, after.menu().dark_colors, TokenIdentity::menu_colors, changed, count);
     append_if_changed(before.menu().metrics, after.menu().metrics, TokenIdentity::menu_metrics, changed, count);
     append_if_changed(before.menu().typography, after.menu().typography, TokenIdentity::menu_typography, changed,
                       count);

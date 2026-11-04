@@ -34,10 +34,12 @@ struct MenuMetricToken final {
     float border_radius{8};
     float group_height{32};
     float divider_height{9};
+    float collapsed_width{80};
+    float collapsed_icon_size{16};
 
     [[nodiscard]] auto values() const {
-        return std::array{item_height,   item_margin,  padding_inline, inline_indent,
-                          border_radius, group_height, divider_height};
+        return std::array{item_height,  item_margin,    padding_inline,  inline_indent,      border_radius,
+                          group_height, divider_height, collapsed_width, collapsed_icon_size};
     }
 
     friend bool operator==(const MenuMetricToken&, const MenuMetricToken&) = default;
@@ -55,6 +57,8 @@ struct MenuThemeToken final {
     MenuColorToken colors;
     MenuMetricToken metrics;
     MenuTypographyToken typography;
+    MenuColorToken light_colors;
+    MenuColorToken dark_colors;
     friend bool operator==(const MenuThemeToken&, const MenuThemeToken&) = default;
 };
 
@@ -76,6 +80,8 @@ struct MenuTokenOverride final {
     std::optional<LogicalLength> border_radius;
     std::optional<LogicalLength> group_height;
     std::optional<LogicalLength> divider_height;
+    std::optional<LogicalLength> collapsed_width;
+    std::optional<LogicalLength> collapsed_icon_size;
     std::optional<SystemFontFamily> font_family;
     std::optional<LogicalLength> font_size;
     std::optional<LogicalLength> line_height;

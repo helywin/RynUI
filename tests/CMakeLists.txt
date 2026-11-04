@@ -1,3 +1,11 @@
+add_executable(rynui_theme_runtime_tests theme_runtime_tests.cpp)
+rynui_configure_cpp_target(rynui_theme_runtime_tests)
+target_include_directories(
+    rynui_theme_runtime_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    rynui_theme_runtime_tests PRIVATE rynui_runtime rynui_theme)
+add_test(NAME rynui.theme_runtime COMMAND rynui_theme_runtime_tests)
+
 foreach(menu_dropdown_test IN ITEMS menu_component dropdown_component)
     add_executable(rynui_${menu_dropdown_test}_tests ${menu_dropdown_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${menu_dropdown_test}_tests)
@@ -1268,13 +1276,7 @@ rynui_configure_cpp_target(rynui_theme_public_api_tests)
 target_link_libraries(rynui_theme_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.theme_public_api COMMAND rynui_theme_public_api_tests)
 
-add_executable(rynui_theme_runtime_tests theme_runtime_tests.cpp)
-rynui_configure_cpp_target(rynui_theme_runtime_tests)
-target_include_directories(
-    rynui_theme_runtime_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
-target_link_libraries(
-    rynui_theme_runtime_tests PRIVATE rynui_runtime rynui_theme)
-add_test(NAME rynui.theme_runtime COMMAND rynui_theme_runtime_tests)
+
 
 add_executable(
     rynui_ant_design_button_source_contract_tests

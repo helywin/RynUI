@@ -164,6 +164,40 @@ void uncontrolled_theme_validation() {
     check(changed.menu().metrics.item_height == 48 && changed.identity() != base.identity() &&
               changed.diagnostic_json().find("\"menu\":") != std::string::npos,
           "Menu Theme not represented");
+    Fixture palette;
+    Signal<ThemeConfig> palette_config{ThemeConfig{}};
+    Signal<MenuTheme> palette_mode{MenuTheme::Dark};
+    palette.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(palette_config),
+              ThemeContent{[&] { Menu(MenuProps{}.theme(palette_mode).items({{u8"a", u8"A"}})); }});
+    }});
+    palette.synchronize();
+    const auto palette_id = palette.services.menu().mounted()[0];
+    const auto palette_rows = palette.services.menu().snapshot(palette_id).rows;
+    ThemeConfig branded;
+    branded.seed.color_primary = Color::rgba8(220, 100, 25);
+    branded.menu.tokens.text = Color::rgba8(170, 35, 100);
+    palette_config.set(branded);
+    palette.synchronize();
+    check(palette.services.menu().snapshot(palette_id).colors.text == *branded.menu.tokens.text &&
+              palette.services.menu().snapshot(palette_id).colors.selected ==
+                  resolve_theme(branded).menu().dark_colors.selected,
+          "explicit Dark Menu ignored scoped seed/component color tokens");
+    palette_config.set(ThemeConfig{});
+    palette.synchronize();
+    const auto normal_background = resolve_theme().menu().colors.selected_background;
+    branded = {};
+    branded.menu.tokens.selected_background = normal_background;
+    palette_config.set(branded);
+    palette.synchronize();
+    check(palette.services.menu().snapshot(palette_id).colors.selected_background == normal_background,
+          "variant-only token change did not invalidate Dark Menu colors");
+    palette_mode.set(MenuTheme::Light);
+    palette.synchronize();
+    check(palette.services.menu().snapshot(palette_id).colors == resolve_theme(branded).menu().light_colors &&
+              palette.services.menu().snapshot(palette_id).rows == palette_rows,
+          "reactive Light palette changed retained Menu topology or ignored overrides");
+    palette.services.dispose();
     for (int invalid = 0; invalid < 5; ++invalid) {
         Fixture bad;
         bool rejected = false;
@@ -270,11 +304,13 @@ void reactive_active_reveal() {
 void dynamic_topology() {
     Fixture f;
     Signal<int> version{0};
+    Signal<bool> collapsed_state{false};
     Signal<String> first{String{u8"First"}};
     int slots = 0;
     f.services.mount(Content{[&] {
         Menu(MenuProps{}
                  .mode(MenuMode::Inline)
+                 .inlineCollapsed(collapsed_state)
                  .defaultOpenKeys({u8"sub"})
                  .items(bind([&] {
                      const auto v = version.get();
@@ -301,6 +337,17 @@ void dynamic_topology() {
     const auto id = f.services.menu().mounted()[0];
     const auto before = f.services.menu().snapshot(id).rows;
     const auto input = f.inputs.mounted_inputs().front().component;
+    const auto editor = f.inputs.mounted_inputs().front();
+    check(f.services.focus().request_focus(editor.interaction, FocusModality::keyboard), "rich label focus failed");
+    f.synchronize();
+    collapsed_state.set(true);
+    f.synchronize();
+    check(!f.services.components().branch_active(input) && !f.inputs.sessions().active().valid() && slots == 1,
+          "collapsed rich label kept active input or remounted content");
+    collapsed_state.set(false);
+    f.synchronize();
+    check(f.services.components().branch_active(input) && f.inputs.mounted_inputs()[0].component == input && slots == 1,
+          "expanded rich label lost retained input identity");
     version.set(1);
     f.synchronize();
     const auto after = f.services.menu().snapshot(id).rows;
@@ -360,6 +407,13 @@ void flyout_and_overflow() {
         }});
         f.synchronize();
         const auto id = f.services.menu().mounted()[0];
+        if (mode != MenuMode::Inline) {
+            const auto first = f.services.menu().snapshot(id).rows[0];
+            const auto& children = f.services.components().children(first);
+            const auto label = f.nodes.require(f.services.components().root(children[0])).bounds;
+            const auto arrow = f.nodes.require(f.services.components().root(children[1])).bounds;
+            check(label.x >= arrow.x + arrow.width + 4, "RTL Menu label overlapped its leading submenu arrow");
+        }
         f.services.menu().focus_menu(id);
         key(f, mode == MenuMode::Horizontal ? Key::down : Key::left);
         auto snap = f.services.menu().snapshot(id);
@@ -418,6 +472,38 @@ void flyout_and_overflow() {
     hidden.synchronize();
     check(hidden.services.menu().snapshot(owner).popups.empty(), "dismissed Menu flyout revived after parent hide");
     hidden.services.dispose();
+    Fixture rail;
+    Signal<bool> folded{true};
+    rail.services.mount(Content{[&] {
+        ThemeConfig config;
+        config.menu.tokens.collapsed_width = dp(72);
+        config.menu.tokens.collapsed_icon_size = dp(18);
+        Theme(
+            ThemeProps{}.config(config), ThemeContent{[&] {
+                Menu(MenuProps{}
+                         .mode(MenuMode::Inline)
+                         .inlineCollapsed(folded)
+                         .items({{u8"text", u8"Álpha"},
+                                 {u8"sub", u8"Tools", false, false, MenuItemKind::SubMenu, {{u8"child", u8"Child"}}}}));
+            }});
+    }});
+    rail.synchronize();
+    const auto rail_id = rail.services.menu().mounted()[0];
+    const auto rail_node = rail.services.components().root(rail_id);
+    check(rail.nodes.require(rail_node).bounds.width == 72, "collapsed Menu did not use its Theme rail width");
+    bool grapheme = false;
+    for (const auto& text : rail.services.text().mounted_texts()) {
+        grapheme |= rail.services.components().branch_active(text.component) &&
+                    rail.scene.text_state(text.scene).content() == String{u8"Á"}.view();
+    }
+    check(grapheme, "collapsed Menu split a Unicode grapheme or omitted the text fallback");
+    const auto rail_rows = rail.services.menu().snapshot(rail_id).rows;
+    folded.set(false);
+    rail.synchronize();
+    folded.set(true);
+    rail.synchronize();
+    check(rail.services.menu().snapshot(rail_id).rows == rail_rows, "collapse toggle remounted Menu rows");
+    rail.services.dispose();
 }
 
 void hover_lifecycle() {

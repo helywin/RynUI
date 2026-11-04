@@ -13,6 +13,7 @@ struct MenuSnapshot final {
     float scroll{};
     std::vector<runtime::Rect> popups;
     bool overflow{};
+    MenuColorToken colors;
 };
 
 class MenuComponentHost final : public WindowComponentParticipant {

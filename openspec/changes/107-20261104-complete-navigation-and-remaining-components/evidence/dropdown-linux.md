@@ -10,3 +10,5 @@
 - 上游依据为 Ant Design 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e723cdd` 的 Dropdown API、实现、dropdown-button 类型/实现与 custom-dropdown、dropdown-button demo；其 Web Dropdown.Button 已弃用，本地 helper 使用 Button + SpaceCompact 原生组合。
 - Release、最终支持清单/生成目录验收继续在 3.2/4.2 追踪。原生 Gallery/GPU、Windows/MSVC、系统字体/DPI/IME 未在本阶段运行；不勾选 63.1/64.*/65.1。
 - clang-format 22.1.3：876 个自有文件、0 失败；OpenSpec doctor healthy、strict 107/107、diff 检查通过。
+
+补充实现阶段：DropdownMenuContent 增加 popup weak lifetime 与 window/owner generation 检查；保存的内容在窗口销毁后调用会被拒绝。对应定向 Debug 为 6/6 CTest，Dropdown 27 组全部通过；Release 继续由 3.2 追踪。

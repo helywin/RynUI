@@ -15,6 +15,7 @@ thread_local DropdownComponentHost* active_dropdowns{};
 struct DropdownState final {
     runtime::NodeId node;
     DropdownSnapshot snapshot;
+    std::shared_ptr<const int> popup_lifetime{std::make_shared<const int>(0)};
     input::InteractionId trigger_hit;
     input::InteractionId popup_hit;
     component::RetainedSurfaceId surface;
@@ -409,19 +410,28 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
                                 if (props.popup_) {
                                     detail::SlotContentAccess::function (*props.popup_)();
                                 } else {
-                                    props.popup_render_(DropdownMenuContent{[this, id, menu] {
-                                        auto* state = services_->components().state<DropdownState>(id);
-                                        const auto& context = runtime::require_component_build_context();
-                                        if (!state || !services_->components().scope(id).active() ||
-                                            !context.has_ancestor(state->snapshot.popup) ||
-                                            state->snapshot.menu.valid()) {
-                                            throw std::logic_error(
-                                                "Dropdown menu content requires its live popup and mounts once");
-                                        }
-                                        services_->menu().mount(menu, true);
-                                        const auto mounted = services_->menu().mounted();
-                                        state->snapshot.menu = mounted.back();
-                                    }});
+                                    props.popup_render_(DropdownMenuContent{
+                                        [this, id, menu, lifetime = std::weak_ptr<const int>{s.popup_lifetime},
+                                         host = &services.components()] {
+                                            if (lifetime.expired()) {
+                                                throw std::logic_error("Dropdown popup renderer is retired");
+                                            }
+                                            const auto& context = runtime::require_component_build_context();
+                                            if (&context.host() != host) {
+                                                throw std::logic_error(
+                                                    "Dropdown menu content belongs to another window");
+                                            }
+                                            auto* state = services_->components().state<DropdownState>(id);
+                                            if (!state || !services_->components().scope(id).active() ||
+                                                !context.has_ancestor(state->snapshot.popup) ||
+                                                state->snapshot.menu.valid()) {
+                                                throw std::logic_error(
+                                                    "Dropdown menu content requires its live popup and mounts once");
+                                            }
+                                            services_->menu().mount(menu, true);
+                                            const auto mounted = services_->menu().mounted();
+                                            state->snapshot.menu = mounted.back();
+                                        }});
                                 }
                             }});
                     } else {

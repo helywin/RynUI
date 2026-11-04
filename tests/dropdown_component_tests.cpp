@@ -1091,6 +1091,25 @@ void custom_retained_popup() {
     check(f.services.dropdown().mounted().empty() && f.services.interactions().size() == 0 &&
               f.services.surfaces().size() == 0,
           "custom popup subtree leaked");
+    std::optional<DropdownMenuContent> retired_content;
+    {
+        Fixture gone;
+        gone.services.mount(Content{[&] {
+            Dropdown(DropdownProps{}.popupRender([&](DropdownMenuContent content) {
+                retired_content = content;
+                content();
+            }),
+                     DropdownTrigger{[] { Text(u8"Window lifetime"); }});
+        }});
+        sync(gone);
+    }
+    bool retired_rejected = false;
+    try {
+        (*retired_content)();
+    } catch (const std::logic_error&) {
+        retired_rejected = true;
+    }
+    check(retired_rejected, "retained menu renderer accessed a destroyed window");
 }
 
 void split_button_and_hover_retirement() {
