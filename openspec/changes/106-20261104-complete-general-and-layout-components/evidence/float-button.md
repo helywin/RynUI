@@ -14,6 +14,6 @@ python tools/run_gallery_page_acceptance.py out/build/linux-gcc/examples/Debug/r
 
 实际 Linux / GNU / Debug / Ninja Multi-Config，私有后台 Mutter/Wayland，**Vulkan / SPIR-V / system fonts**。结果：**2 cases、31 checks、5 submitted frames，passed=true、return_code=0、desktop_fallback=false**。覆盖真实窗口锚定、拖动、捕获释放、键盘激活、文档滚动后位置保持、背景像素回读，以及离页销毁时取消未完成捕获。输入来自组件宿主的合成事件分发，GPU、窗口与像素回读在实际后台环境运行；没有操作用户桌面或系统鼠标键盘。
 
-格式检查 clang-format 22.1.3：845 个自有源文件、0 failures；OpenSpec doctor 健康、strict 文档校验 106/106、`git diff --check` 通过。原始日志、JSON 与图片仅在 ignored `out/`，未提交运行附件。
+格式检查 clang-format 22.1.3：850 个自有源文件、0 failures；OpenSpec doctor 健康、strict 文档校验 106/106、`git diff --check` 通过。原始日志、JSON 与图片仅在 ignored `out/`，未提交运行附件。
 
 边界：该原生流程定向覆盖窗口浮动按钮，不代表全部 Group/BackTop 状态的 GPU 像素矩阵。Windows/MSVC、系统 IME、实际桌面及跨显示器体验未实测，不勾选 change 的 Windows 或总体集成任务。人工体验不作为完成前置项。
