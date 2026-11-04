@@ -1,8 +1,8 @@
 # Steps
 
-固定 `std::vector<StepsItem>`，key 非空且唯一。`current` 为受控 `Prop<std::size_t>`，`defaultCurrent` 为默认索引，两者互斥；默认 0。`current >= count` 表示全部完成，不回写 current。单项 `status` 优先于按原始索引派生的状态。只有 `onChange` 存在才启用导航，受控拒绝可重试。
+`std::vector<StepsItem>` 或响应式 `Prop<std::vector<StepsItem>>`，key 非空且唯一。`current` 为受控 `Prop<std::size_t>`，`defaultCurrent` 为默认索引，两者互斥；默认 0。`current >= count` 表示全部完成，不回写 current。单项 `status` 优先于按原始索引派生的状态。只有 `onChange` 存在才启用导航，受控拒绝可重试。
 
-标题、副标题、说明、禁用、可见和状态响应式更新；typed 富 slots 只挂载一次。拓扑改变需要重新挂载。
+标题、副标题、说明、禁用、可见和状态响应式更新；typed 富 slots 只挂载一次。响应式集合按 key 增删和重排，未变项保留身份。相同 key 的富 slot 工厂是构造内容；替换富结构需使用新 key，文本和状态可直接更新。
 
 在窗口 `Content` 中调用。以下受控示例由应用明确接受请求；保留 `current` 值即可拒绝，后续显式激活可以重试。函数体作为 API 示例编译验证：
 
@@ -34,10 +34,21 @@ void steps_example(ryn::Signal<std::size_t>& current, ryn::Signal<bool>& review_
 
 Theme 使用 `ThemeConfig::steps` 的独立 `tokens`、`seed`、`algorithm`；颜色更新不重测量，最终派生度量先校验再发布。`LayoutStyle` 只控制外部布局。有限宽高下裁剪实际文字、富内容、表面与命中。
 
-首版不提供动态拓扑替换、dot/inline/navigation/panel/percent/maxCount、自动 responsive/RTL、动画或 Web 辅助技术桥接。核心验证范围为 Windows MSVC headless，Gallery 另见下节；不代表原生 GPU、Linux 或系统 IME 验收。
+Change 107 增加下述原生合同；平台证据分开记录，不代表系统 IME 或辅助技术桥接。
 
 ## Gallery
 
 Gallery 目录的 Steps 跳转到 `gallery.steps.workflow`。发布流程由应用接受 `onChange` 并回写 current，显示原始索引与操作反馈；上一步/下一步可推进到全部完成。“横纵切换”“切换尺寸”“切换错误状态”“显隐审核”“锁定资料与审核”更新真实 Props。资料说明内 Input 与“保存备注”按钮独立操作；外部重置恢复可用状态并保留备注，“编辑备注”使用原 InputRef。
 
 方向键与 Home/End 只移动步骤焦点，Enter/Space 才请求切换；隐藏审核后发布步骤仍是原始索引 2。平台通用 Recording 命令为 `out/build/windows-msvc/tests/Debug/rynui_token_gallery_frame_tests.exe --navigation-only`，执行结果见 [082 证据](../openspec/changes/082-20261025-add-navigation-gallery/evidence/01-gallery.md)。该验证覆盖 Default/Dark/Compact × 1200/560 × 900 的 logical scene、真实事件和保留身份，不代表原生 GPU、窗口、Linux、IME 或辅助技术验收。
+
+
+## Change 107
+
+`type(Default|Dot|Inline|Navigation|Panel)` 分别绘制编号状态圆、居中点、带保留说明浮层的紧凑点、导航下划线与面板背景；变体更新不重新挂载富内容。`percent(optional<float>)` 为 Default 当前 Process 状态绘制逻辑单位进度环，范围 0–100。`maxCount(0)` 不折叠；大于等于 3 时在当前项周围保留有限窗口，隐藏范围以不可交互省略项表示。
+
+`responsive(true)` 默认开启，共享窗口宽度小于 532 logical px 时使用纵向（Inline 保持紧凑横向）；`vertical(true)` 显式纵向优先。`rtl` 镜像横向顺序及方向键。动画使用 Theme motion 和组件拥有的有限 target；`animated(false)`、reduced motion、失活和销毁结束动画。
+
+动态项要求非空唯一 key。删除当前项时，非受控索引夹紧到邻项；重排保留当前 key。受控 current 始终由应用决定。动态工厂抛异常恢复原结构，禁用、折叠和移除项清理输入边界。Gallery 增加动态重排/保留编辑器和四种展示变体。
+
+依据：[Ant Design 固定 Steps API](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/steps/index.en-US.md)。自动验证和实际平台边界见 change 107 evidence。

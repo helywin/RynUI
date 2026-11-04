@@ -778,6 +778,27 @@ foreach(float_button_case IN ITEMS basic positioning_drag anchors groups control
     add_test(NAME rynui.float_button_${float_button_case} COMMAND rynui_float_button_tests ${float_button_case})
 endforeach()
 
+foreach(tabs_test IN ITEMS tabs_model tabs_theme tabs_public_api tabs_component)
+    add_executable(rynui_${tabs_test}_tests ${tabs_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${tabs_test}_tests)
+    target_link_libraries(rynui_${tabs_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${tabs_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${tabs_test} COMMAND rynui_${tabs_test}_tests)
+endforeach()
+
+add_executable(rynui_navigation_c_gallery_tests navigation_c_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_navigation_c_gallery_tests)
+target_include_directories(rynui_navigation_c_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_navigation_c_gallery_tests PRIVATE rynui_token_gallery_reference_surface rynui_components)
+target_compile_definitions(rynui_navigation_c_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(navigation_component IN ITEMS pagination steps tabs)
+    add_test(NAME rynui.${navigation_component}_completion_gallery COMMAND rynui_navigation_c_gallery_tests ${navigation_component})
+endforeach()
+
 include("${PROJECT_SOURCE_DIR}/cmake/RynUIGalleryTests.cmake")
 
 if(NOT RYNUI_HAS_SDL_GPU)
@@ -794,7 +815,7 @@ endif()
 
 
 
-foreach(select_test IN ITEMS select_model select_theme select_public_api select_component card_theme card_public_api card_component tabs_model tabs_theme tabs_public_api tabs_component modal_model modal_public_api modal_theme modal_boundary modal_component drawer_model drawer_public_api drawer_theme drawer_component popconfirm_model popconfirm_public_api popconfirm_theme popconfirm_component)
+foreach(select_test IN ITEMS select_model select_theme select_public_api select_component card_theme card_public_api card_component modal_model modal_public_api modal_theme modal_boundary modal_component drawer_model drawer_public_api drawer_theme drawer_component popconfirm_model popconfirm_public_api popconfirm_theme popconfirm_component)
     add_executable(rynui_${select_test}_tests ${select_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${select_test}_tests)
     target_link_libraries(rynui_${select_test}_tests PRIVATE rynui_components)

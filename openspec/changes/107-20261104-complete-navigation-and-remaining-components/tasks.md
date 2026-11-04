@@ -24,18 +24,18 @@
 
 ## 5. 导航：Pagination
 
-- [ ] 5.1 按对应 spec 与 design 矩阵实现 Pagination 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 5.2 为 Pagination 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 5.1 按对应 spec 与 design 矩阵实现 Pagination 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 5.2 为 Pagination 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 6. 导航：Steps
 
-- [ ] 6.1 按对应 spec 与 design 矩阵实现 Steps 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 6.2 为 Steps 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 6.1 按对应 spec 与 design 矩阵实现 Steps 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 6.2 为 Steps 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 7. 导航：Tabs
 
-- [ ] 7.1 按对应 spec 与 design 矩阵实现 Tabs 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 7.2 为 Tabs 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 7.1 按对应 spec 与 design 矩阵实现 Tabs 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 7.2 为 Tabs 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 8. 数据录入：AutoComplete
 
@@ -314,7 +314,7 @@
 
 ## 63. Linux 自动平台集成
 
-- [ ] 63.1 构建 导航新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
+- [x] 63.1 构建 导航新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
 - [ ] 63.2 构建 数据录入新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
 - [ ] 63.3 构建 数据展示新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
 - [ ] 63.4 构建 反馈新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。

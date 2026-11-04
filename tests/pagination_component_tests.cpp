@@ -3,6 +3,8 @@
 #include "support/bundled_icon_checks.hpp"
 #include <iostream>
 #include <limits>
+#include <ryn/select.hpp>
+#include "component/select_component.hpp"
 
 namespace {
 using namespace ryn;
@@ -261,10 +263,109 @@ void hidden_pagination_flex_flow() {
               "hideOnSinglePage change did not restore flow");
     }
 }
+
+void extended_controls() {
+    static_assert(requires(PaginationProps p, Signal<bool> flag, Signal<PaginationAlign> align,
+                           Signal<std::vector<std::size_t>> sizes) {
+        p.defaultPageSize(20)
+            .showSizeChanger(flag)
+            .pageSizeOptions(sizes)
+            .showQuickJumper(flag)
+            .simple(flag)
+            .readOnly(flag)
+            .responsive(flag)
+            .align(align);
+    });
+    Fixture f;
+    Signal<bool> simple{false};
+    Signal<bool> responsive{false};
+    Signal<std::size_t> total{201};
+    std::vector<std::pair<std::size_t, std::size_t>> changes;
+    int renders{};
+    PaginationRange range;
+    f.services.mount(Content{[&] {
+        Pagination(PaginationProps{}
+                       .total(total)
+                       .defaultPageSize(20)
+                       .showQuickJumper()
+                       .showSizeChanger()
+                       .simple(simple)
+                       .responsive(responsive)
+                       .layout(LayoutStyle{}.width(dp(520)))
+                       .showTotal([&](auto, PaginationRange r) {
+                           range = r;
+                           return String{u8"Records"};
+                       })
+                       .itemRender([&](PaginationItemContext item) {
+                           ++renders;
+                           Text(TextProps{}.content(bind([type = item.type, label = item.label] {
+                               switch (type.get()) {
+                               case PaginationItemType::Previous:
+                                   return String{u8"‹"};
+                               case PaginationItemType::Next:
+                                   return String{u8"›"};
+                               case PaginationItemType::JumpPrevious:
+                               case PaginationItemType::JumpNext:
+                                   return String{u8"…"};
+                               case PaginationItemType::Page:
+                                   return label.get();
+                               }
+                               return String{};
+                           })));
+                       })
+                       .onChange([&](auto page, auto size) { changes.emplace_back(page, size); }));
+    }});
+    f.synchronize(600, {0, 0, 600, 240});
+    const auto id = f.services.pagination().mounted().front();
+    check(renders == 11 && range.first == 1 && range.last == 20, "retained item renderer/total range");
+    auto snap = f.services.pagination().snapshot(id);
+    check(!ryn_test::find_bundled_icon(f.services, snap.items.front(), IconName::LeftOutlined) &&
+              !ryn_test::find_bundled_icon(f.services, snap.items.back(), IconName::RightOutlined),
+          "itemRender did not replace default navigation icons");
+    const auto input = f.inputs.mounted_inputs().front();
+    const auto enter = [&](String value) {
+        auto& editor = f.inputs.editors().require(input.editor);
+        static_cast<void>(editor.set_value(value.bytes()));
+        f.inputs.submit(input.component);
+        f.synchronize(600, {0, 0, 600, 240});
+    };
+    enter(u8" 999 ");
+    check(f.services.pagination().snapshot(id).current == 11 && range.first == 201 && range.last == 201,
+          "quick jump clamp/range");
+    const auto count = changes.size();
+    for (auto invalid : {u8"abc", u8"2.5", u8"-1", u8"184467440737095516160"}) {
+        enter(String::from_utf8(std::string_view{reinterpret_cast<const char*>(invalid)}).value());
+    }
+    check(changes.size() == count, "invalid jump emitted request");
+    enter(u8"0");
+    check(f.services.pagination().snapshot(id).current == 1, "zero jump clamp");
+    simple.set(true);
+    f.synchronize(600, {0, 0, 600, 240});
+    check(f.services.pagination().snapshot(id).items.size() == 2 && renders == 11, "simple retained buttons");
+    enter(u8"3");
+    check(f.services.pagination().snapshot(id).current == 3, "simple editor jump");
+    const auto select = f.services.select().mounted().front();
+    click(f, f.services.select().snapshot(select).selector);
+    auto options = f.services.select().snapshot(select);
+    check(options.visible && options.rows.size() == 5, "size changer popup/options");
+    click(f, options.rows[2]);
+    check(f.services.pagination().snapshot(id).page_size == 50 && changes.back().second == 50,
+          "uncontrolled page size event");
+    total.set(0);
+    f.synchronize(600, {0, 0, 600, 240});
+    check(range.first == 0 && range.last == 0, "empty total range");
+    responsive.set(true);
+    f.synchronize(520, {0, 0, 520, 240});
+    check(f.services.pagination().snapshot(id).compact, "container responsive size");
+    f.services.destroy(id);
+    check(f.services.interactions().size() == 0 && f.inputs.mounted_inputs().empty(), "extended cleanup");
+}
+
 } // namespace
 
 int main() {
     try {
+        extended_controls();
         controlled();
         keyboard_and_theme();
         token_contracts_and_callback_cleanup();

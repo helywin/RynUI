@@ -1,4 +1,5 @@
 #include "component/steps_component.hpp"
+#include "component/popover_component.hpp"
 #include "support/navigation_fixture.hpp"
 #include <iostream>
 #include <limits>
@@ -365,10 +366,147 @@ void boundaries_lifetime_and_validation() {
               "invalid Steps partially mounted");
     }
 }
+
+void inline_child_popover_escape() {
+    Fixture f;
+    f.services.mount(Content{[] {
+        Steps(StepsProps{}.type(StepsType::Inline).onChange([](std::size_t) {}),
+              {StepsItem{u8"one", u8"One"}.richDescription(StepsDescription{[] {
+                  Popover(PopoverProps{}.trigger(PopoverTriggerMode::Click),
+                          PopoverTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Nested details"); }); }},
+                          {.content = PopoverContent{[] { Input(InputProps{}.defaultValue(u8"Nested draft")); }}});
+              }})});
+    }});
+    sync(f);
+    const auto steps = f.services.steps().mounted().front();
+    const auto row = f.services.steps().snapshot(steps).items.front();
+    check(f.services.focus().request_focus(interaction(f, row), FocusModality::keyboard), "Inline row focus");
+    sync(f);
+    const auto popup = f.services.popover().mounted().front();
+    check(f.services.focus().request_focus(f.buttons.mounted_buttons().front().interaction, FocusModality::keyboard),
+          "Inline child Popover trigger focus");
+    sync(f);
+    key(f, Key::enter);
+    check(f.services.popover().snapshot(popup).geometry.visible, "Inline child Popover did not open");
+    const auto editor = f.inputs.mounted_inputs().front();
+    check(f.services.focus().state().focused == editor.interaction ||
+              f.services.focus().request_focus(editor.interaction, FocusModality::keyboard),
+          "child Popover input focus");
+    sync(f);
+    key(f, Key::escape);
+    check(!f.services.popover().snapshot(popup).geometry.visible && f.services.components().branch_active(popup),
+          "Inline Steps stole first Escape from its child Popover");
+    key(f, Key::escape);
+    check(!f.services.components().branch_active(popup) && !f.inputs.sessions().active().valid(),
+          "Inline Steps second Escape retained description/session");
+}
+
+void dynamic_variants_and_motion() {
+    static_assert(requires(Signal<std::vector<StepsItem>> items, Signal<StepsType> type, Signal<bool> flag) {
+        Steps(StepsProps{}.type(type).rtl(flag).responsive(flag).percent(35).maxCount(3).animated(flag), items);
+    });
+    Fixture f;
+    int title_runs{};
+    StepsItem a{u8"a", u8"First"};
+    a.richDescription(StepsDescription{[&] {
+        ++title_runs;
+        Input(InputProps{}.defaultValue(u8"draft"));
+    }});
+    StepsItem b{u8"b", u8"Second"};
+    StepsItem c{u8"c", u8"Third"};
+    Signal<std::vector<StepsItem>> items{std::vector{a, b, c}};
+    Signal<StepsType> type{StepsType::Default};
+    Signal<bool> rtl{false};
+    Signal<std::size_t> max{0};
+    std::vector<std::size_t> requests;
+    f.services.mount(Content{[&] {
+        Steps(
+            StepsProps{}.type(type).rtl(rtl).maxCount(max).percent(35).onChange([&](auto i) { requests.push_back(i); }),
+            items);
+    }});
+    sync(f);
+    const auto id = f.services.steps().mounted().front();
+    const auto original = f.services.steps().snapshot(id);
+    const auto editor = f.inputs.mounted_inputs().front();
+    static_cast<void>(f.inputs.editors().require(editor.editor).set_value("retained draft"));
+    items.set({c, a, b});
+    sync(f);
+    auto snap = f.services.steps().snapshot(id);
+    check(snap.items == std::vector{original.items[2], original.items[0], original.items[1]} && snap.current == 1 &&
+              title_runs == 1,
+          "Steps keyed reorder remounted rich contents/current");
+    check(f.inputs.editors().require(editor.editor).value() == "retained draft", "Steps lost draft");
+    click(f, snap.items[2]);
+    check(requests.back() == 2 && f.services.steps().snapshot(id).current == 2, "Steps reorder callback index");
+    auto changed = b;
+    changed.title(u8"Renamed");
+    items.set({c, a, changed, StepsItem{u8"d", u8"Fourth"}});
+    sync(f);
+    check(f.services.steps().snapshot(id).items[2] == original.items[1], "Steps replaced existing key");
+    for (auto variant :
+         {StepsType::Dot, StepsType::Inline, StepsType::Navigation, StepsType::Panel, StepsType::Default}) {
+        type.set(variant);
+        sync(f);
+        if (variant == StepsType::Inline) {
+            check(f.services.focus().request_focus(interaction(f, f.services.steps().snapshot(id).items[1]),
+                                                   FocusModality::keyboard),
+                  "Inline row focus");
+            sync(f);
+            check(f.services.components().branch_active(editor.component),
+                  "Inline retained rich description popup absent");
+            key(f, Key::escape);
+            check(!f.services.components().branch_active(editor.component),
+                  "Inline Escape did not close retained popup");
+        }
+        check(title_runs == 1 && f.services.steps().snapshot(id).items[1] == original.items[0],
+              "Steps variant remounted rich slot");
+    }
+    rtl.set(true);
+    sync(f);
+    snap = f.services.steps().snapshot(id);
+    check(bounds(f, snap.items[0]).x > bounds(f, snap.items[3]).x, "Steps RTL layout");
+    max.set(3);
+    sync(f);
+    snap = f.services.steps().snapshot(id);
+    check(std::ranges::count(snap.shown, true) <= 3, "Steps maxCount did not collapse range");
+    sync(f, 400);
+    check(f.services.steps().snapshot(id).vertical, "Steps container responsive orientation");
+    bool rejected{};
+    try {
+        items.set({a, a});
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && f.services.steps().snapshot(id).items == snap.items, "Steps invalid topology changed live tree");
+    bool threw{};
+    try {
+        items.set(
+            {a, b, StepsItem{u8"bad", u8"Bad"}.richTitle(StepsTitle{[] { throw std::runtime_error("factory"); }})});
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+    check(threw && f.services.steps().snapshot(id).items == snap.items, "Steps factory failure lost old tree");
+    max.set(0);
+    items.set({a, b});
+    sync(f);
+    check(!f.services.components().contains(original.items[2]) && title_runs == 1, "Steps removal cleanup");
+    f.services.set_motion_preference(animation::MotionPreference::normal);
+    f.services.focus().request_focus(interaction(f, f.services.steps().snapshot(id).items[0]), FocusModality::keyboard);
+    key(f, Key::enter);
+    check(f.services.steps().snapshot(id).motion < 1, "Steps activation motion missing");
+    f.services.tick_animations(animation::AnimationTime::microseconds(1000000));
+    check(f.services.steps().snapshot(id).motion == 1, "Steps motion did not finish");
+    f.services.destroy(id);
+    check(f.services.interactions().size() == 0 && f.services.animations().diagnostics().active == 0,
+          "Steps dynamic teardown");
+}
+
 } // namespace
 
 int main() {
     try {
+        dynamic_variants_and_motion();
+        inline_child_popover_escape();
         controlled_focus_and_retry();
         states_and_native_scene();
         rich_geometry_flow_and_theme();

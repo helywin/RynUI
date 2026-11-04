@@ -2788,6 +2788,53 @@ void add_tabs_samples(const std::shared_ptr<GalleryState>& state) {
            [] { Text(sample_text(u8"gallery.tabs.toggle-label · 切换标签 / 禁用")); });
     remember_target(state, "gallery.tabs.toggle-label");
     ++state->telemetry.live_samples;
+    Text(u8"Editable-card · 键控新增 / 删除 / 重排 / lazy / destroyOnHidden");
+    auto editable_items = Signal<std::vector<TabItem>>{std::vector<TabItem>{
+        TabItem{u8"draft", u8"保留草稿", TabContent{[] { Input(InputProps{}.defaultValue(u8"重排后保留")); }}}
+            .richLabel(TabLabel{[] { Text(u8"富标签 · Draft"); }})
+            .closable(false),
+        TabItem{u8"details", u8"按需详情", TabContent{[] { Input(InputProps{}.defaultValue(u8"按需挂载内容")); }}}
+            .destroyOnHidden(true)}};
+    auto serial = std::make_shared<std::size_t>(0);
+    Tabs(TabsProps{}
+             .type(TabsType::EditableCard)
+             .lazy()
+             .layout(LayoutStyle{}.width(state->document_width))
+             .extraStart(TabsExtra{[] { Text(u8"工作区"); }})
+             .extraEnd(TabsExtra{[state, editable_items] {
+                 Button(ButtonProps{}.onClick([editable_items] {
+                     auto values = editable_items.get();
+                     std::reverse(values.begin(), values.end());
+                     editable_items.set(std::move(values));
+                 }),
+                        [] { Text(u8"重排"); });
+                 remember_target(state, "gallery.tabs.reorder");
+             }})
+             .onEdit([editable_items, serial](String key, TabsEditAction action) {
+                 auto values = editable_items.get();
+                 if (action == TabsEditAction::Add) {
+                     const auto key = utf8("new-" + std::to_string(++*serial));
+                     values.emplace_back(key, key, TabContent{[] { Input(InputProps{}.defaultValue(u8"新页草稿")); }});
+                 } else {
+                     std::erase_if(values, [&](const auto& item) { return item.key() == key; });
+                 }
+                 editable_items.set(std::move(values));
+             }),
+         editable_items);
+    remember_target(state, "gallery.tabs.editable");
+    for (auto placement : {TabsPlacement::Left, TabsPlacement::Right}) {
+        Text(String::from_utf8(std::u8string_view{placement == TabsPlacement::Left ? u8"左侧 / RTL / 定制 indicator"
+                                                                                   : u8"右侧保留面板"})
+                 .value());
+        Tabs(TabsProps{}
+                 .placement(placement)
+                 .rtl(placement == TabsPlacement::Left)
+                 .indicator(TabsIndicator{20, TabsIndicatorAlign::Center})
+                 .layout(LayoutStyle{}.width(state->cell_width).height(dp(200))),
+             basic());
+        remember_target(state, placement == TabsPlacement::Left ? "gallery.tabs.left" : "gallery.tabs.right");
+    }
+    state->telemetry.live_samples += 3;
 }
 
 void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
@@ -3328,6 +3375,45 @@ void add_pagination_samples(const std::shared_ptr<GalleryState>& state) {
                    .onChange([state](std::size_t page, std::size_t) { state->table_page.set(page); }));
     remember_target(state, identity);
     ++state->telemetry.live_samples;
+    Text(u8"页大小 / 快速跳页 / 总数 / 自适应对齐");
+    Pagination(PaginationProps{}
+                   .total(std::size_t{247})
+                   .defaultPageSize(20)
+                   .onChange([state](std::size_t page, std::size_t size) {
+                       state->data_feedback.set(utf8("分页 / " + std::to_string(page) + " / " + std::to_string(size)));
+                   })
+                   .showSizeChanger()
+                   .showQuickJumper()
+                   .responsive()
+                   .align(PaginationAlign::End)
+                   .layout(LayoutStyle{}.width(state->document_width))
+                   .showTotal([](std::size_t total, PaginationRange range) {
+                       return utf8(std::to_string(range.first) + "–" + std::to_string(range.last) + " / " +
+                                   std::to_string(total));
+                   }));
+    remember_target(state, "gallery.pagination.advanced");
+    Text(TextProps{}.content(state->data_feedback));
+    Text(u8"Simple · 输入页码后 Enter 或离开编辑器");
+    Pagination(PaginationProps{}.total(std::size_t{105}).simple().showSizeChanger(false));
+    remember_target(state, "gallery.pagination.simple");
+    Text(u8"Typed itemRender · 保留自定义按钮内容");
+    Pagination(PaginationProps{}.total(std::size_t{50}).itemRender([](PaginationItemContext item) {
+        Text(TextProps{}.content(bind([type = item.type, label = item.label] {
+            switch (type.get()) {
+            case PaginationItemType::Previous:
+                return String{u8"‹"};
+            case PaginationItemType::Next:
+                return String{u8"›"};
+            case PaginationItemType::JumpPrevious:
+            case PaginationItemType::JumpNext:
+                return String{u8"…"};
+            case PaginationItemType::Page:
+                return label.get();
+            }
+            return String{};
+        })));
+    }));
+    state->telemetry.live_samples += 3;
 }
 
 void add_menu_samples(const std::shared_ptr<GalleryState>& state) {
@@ -5099,6 +5185,45 @@ void add_steps_samples(const std::shared_ptr<GalleryState>& state) {
                  }});
          }});
     ++state->telemetry.live_samples;
+    auto dynamic = Signal<std::vector<StepsItem>>{
+        std::vector<StepsItem>{StepsItem{u8"one", u8"起点"}.richDescription(
+                                   StepsDescription{[] { Input(InputProps{}.defaultValue(u8"保留步骤草稿")); }}),
+                               StepsItem{u8"two", u8"处理中"}, StepsItem{u8"three", u8"完成"}}};
+    Text(u8"动态键控步骤 · 重排后保留编辑内容");
+    Steps(StepsProps{}.defaultCurrent(1).percent(65).onChange(
+              [state](std::size_t index) { state->steps_feedback.set(utf8("动态步骤 / " + std::to_string(index))); }),
+          dynamic);
+    remember_target(state, "gallery.steps.dynamic");
+    Button(ButtonProps{}.onClick([dynamic] {
+        auto values = dynamic.get();
+        std::rotate(values.begin(), values.begin() + 1, values.end());
+        dynamic.set(std::move(values));
+    }),
+           [] { Text(u8"重排步骤"); });
+    remember_target(state, "gallery.steps.reorder");
+    for (auto variant : {StepsType::Dot, StepsType::Inline, StepsType::Navigation, StepsType::Panel}) {
+        Text(String::from_utf8(std::u8string_view{variant == StepsType::Dot          ? u8"Dot"
+                                                  : variant == StepsType::Inline     ? u8"Inline"
+                                                  : variant == StepsType::Navigation ? u8"Navigation"
+                                                                                     : u8"Panel"})
+                 .value());
+        Steps(StepsProps{}
+                  .type(variant)
+                  .rtl()
+                  .defaultCurrent(1)
+                  .maxCount(variant == StepsType::Dot ? 3 : 4)
+                  .onChange([](std::size_t) {}),
+              {StepsItem{u8"one", u8"开始"}.richDescription(
+                   StepsDescription{[] { Input(InputProps{}.defaultValue(u8"步骤说明草稿")); }}),
+               {u8"two", u8"处理"},
+               {u8"three", u8"复核"},
+               {u8"four", u8"完成"}});
+        remember_target(state, variant == StepsType::Dot          ? "gallery.steps.dot"
+                               : variant == StepsType::Inline     ? "gallery.steps.inline"
+                               : variant == StepsType::Navigation ? "gallery.steps.navigation"
+                                                                  : "gallery.steps.panel");
+    }
+    state->telemetry.live_samples += 5;
 }
 
 void add_time_picker_samples(const std::shared_ptr<GalleryState>& state) {

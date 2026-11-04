@@ -1,5 +1,8 @@
 #include "component/steps_component.hpp"
+#include "component/popover_component.hpp"
+#include "component/responsive_layout.hpp"
 #include "component/navigation_model.hpp"
+#include "component/navigation_transition.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
@@ -11,9 +14,19 @@ namespace {
 thread_local StepsComponentHost* active_steps{};
 
 struct StepsRow final {
+    String key;
+    std::shared_ptr<NavigationBindings> bindings{std::make_shared<NavigationBindings>()};
+    Signal<String> number{String{}};
+    bool shown{true};
+    bool collapsed{};
+    bool hide_description{};
+    bool inline_popup{};
+    bool popup_dismissed{};
+    component::RetainedSurfaceId popup_surface;
     runtime::ComponentId component;
     runtime::NodeId node;
     runtime::NodeId title_node;
+    runtime::ComponentId title_component;
     runtime::ComponentId subtitle_component;
     runtime::ComponentId description_component;
     runtime::NodeId icon_node;
@@ -42,22 +55,63 @@ struct StepsState final {
     runtime::NodeId node;
     StepsModel model;
     std::vector<StepsRow> rows;
+    std::vector<StepsItem> descriptors;
     StepsSize size{StepsSize::Default};
     bool vertical{};
+    bool explicit_vertical{};
+    bool responsive{true};
+    float window_width{};
+    bool rtl{};
+    bool animated{true};
+    StepsType type{StepsType::Default};
+    std::optional<float> percent;
+    std::size_t max_count{};
+    std::unique_ptr<NavigationTransition> motion;
+    std::optional<std::size_t> motion_current;
     Signal<runtime::SemanticTypography> title_font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> detail_font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> icon_font{runtime::SemanticTypography{}};
-    std::array<theme_runtime::Subscription, 3> subscriptions;
+    std::array<theme_runtime::Subscription, 4> subscriptions;
     std::optional<std::size_t> hovered;
     std::optional<std::size_t> pressed;
     runtime::Rect clip;
     std::function<void(std::size_t)> callback;
 };
 
+std::size_t row_index(const StepsState& s, const String& key) {
+    for (std::size_t i = 0; i < s.rows.size(); ++i) {
+        if (s.rows[i].key == key) {
+            return i;
+        }
+    }
+    return s.rows.size();
+}
+
+void validate(StepsType value) {
+    if (value < StepsType::Default || value > StepsType::Panel) {
+        throw std::invalid_argument("Steps type is invalid");
+    }
+}
+
+void validate_percent(std::optional<float> value) {
+    if (value && (!std::isfinite(*value) || *value < 0 || *value > 100)) {
+        throw std::invalid_argument("Steps percent must be in [0, 100]");
+    }
+}
+
 void validate(StepsSize value) {
     if (value != StepsSize::Default && value != StepsSize::Small) {
         throw std::invalid_argument("Steps size is invalid");
     }
+}
+
+bool descendant(WindowComponentServices& services, runtime::ComponentId child, runtime::ComponentId owner) {
+    for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
+        if (*current == owner) {
+            return true;
+        }
+    }
+    return false;
 }
 
 runtime::SemanticForeground fg(Color c) {
@@ -77,17 +131,21 @@ bool subtitle_shown(const StepsRow& row) {
 }
 
 bool description_shown(const StepsRow& row) {
-    return row.rich_description || !row.description.get().empty();
+    return !row.hide_description && (row.rich_description || !row.description.get().empty());
 }
 
 float icon_extent(const StepsState& s, const StepsMetricToken& m) {
+    if (s.type == StepsType::Dot || s.type == StepsType::Inline) {
+        const float extent = s.size == StepsSize::Small ? m.icon_size_small : m.icon_size;
+        return extent * (s.type == StepsType::Inline ? 0.25F : 0.375F);
+    }
     return s.size == StepsSize::Small ? m.icon_size_small : m.icon_size;
 }
 
 std::optional<std::size_t> focused(WindowComponentServices& services, const StepsState& s) {
     const auto focus = services.focus().state().focused;
     for (std::size_t i = 0; i < s.rows.size(); ++i) {
-        if (focus == s.rows[i].interaction && s.model.eligible(i) &&
+        if (focus == s.rows[i].interaction && s.model.eligible(i) && s.rows[i].shown && !s.rows[i].collapsed &&
             services.interactions().branch_active(s.rows[i].interaction)) {
             return i;
         }
@@ -98,7 +156,7 @@ std::optional<std::size_t> focused(WindowComponentServices& services, const Step
 std::optional<std::size_t> edge(const StepsState& s, bool last = false) {
     for (std::size_t n = 0; n < s.rows.size(); ++n) {
         const auto i = last ? s.rows.size() - 1 - n : n;
-        if (s.model.eligible(i)) {
+        if (s.model.eligible(i) && s.rows[i].shown && !s.rows[i].collapsed) {
             return i;
         }
     }
@@ -151,7 +209,11 @@ StepsSnapshot StepsComponentHost::snapshot(runtime::ComponentId id) const {
         result.items.push_back(s->rows[i].component);
         result.statuses.push_back(s->model.status(i));
         result.icons.push_back(s->rows[i].icon_node);
+        result.keys.push_back(s->rows[i].key);
+        result.shown.push_back(s->rows[i].shown);
     }
+    result.vertical = s->vertical;
+    result.motion = s->motion ? s->motion->value() : 1;
     return result;
 }
 
@@ -159,6 +221,32 @@ void StepsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     auto* s = services_->components().state<StepsState>(id);
     if (!s || !services_->components().scope(id).active()) {
         return;
+    }
+    if (s->motion) {
+        if (s->motion_current && *s->motion_current != s->model.current) {
+            s->motion->restart(s->animated);
+        }
+        s->motion_current = s->model.current;
+        if (!s->animated || !animation::resolve_motion_policy(services_->components().theme_scope(id)->snapshot(),
+                                                              services_->motion_preference())
+                                 .enabled()) {
+            s->motion->settle();
+        }
+    }
+    for (auto& row : s->rows) {
+        row.shown = true;
+        row.collapsed = false;
+    }
+    if (s->max_count >= 3 && s->rows.size() > s->max_count) {
+        const auto visible = s->max_count - 2;
+        const auto center = std::min(s->model.current, s->rows.size() - 1);
+        const auto begin = std::min(center > visible / 2 ? center - visible / 2 : 0, s->rows.size() - visible);
+        const auto end = begin + visible;
+        for (std::size_t i = 0; i < s->rows.size(); ++i) {
+            s->rows[i].shown =
+                (i >= begin && i < end) || (begin > 0 && i == begin - 1) || (end < s->rows.size() && i == end);
+            s->rows[i].collapsed = s->rows[i].shown && (i < begin || i >= end);
+        }
     }
     const auto& t = services_->components().theme_scope(id)->snapshot().steps();
     const auto& m = t.metrics;
@@ -189,16 +277,19 @@ void StepsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         auto& row = s->rows[i];
         const auto& item = s->model.items[i];
         const auto status = s->model.status(i);
-        if (services_->components().set_branch_active(row.component, item.visible)) {
+        const bool row_shown = item.visible && row.shown;
+        row.hide_description = s->type == StepsType::Inline || row.collapsed;
+        row.number.set(row.collapsed ? String{u8"…"} : String::from_utf8(std::to_string(i + 1)).value());
+        if (services_->components().set_branch_active(row.component, row_shown)) {
             services_->mark_scene_structure_dirty();
             geometry = true;
         }
-        services_->nodes().require(row.node).out_of_flow = !item.visible;
+        services_->nodes().require(row.node).out_of_flow = !row_shown;
         // A display-only row still hosts native child input; only true disabled/hidden state gates descendants.
-        if (services_->interactions().set_eligible(row.interaction, item.visible && !item.disabled)) {
+        if (services_->interactions().set_eligible(row.interaction, row_shown && !row.collapsed && !item.disabled)) {
             services_->dirty().invalidate(row.node, runtime::DirtyFlags::HitTest);
         }
-        services_->interactions().set_focusable(row.interaction, s->model.eligible(i));
+        services_->interactions().set_focusable(row.interaction, s->model.eligible(i) && row_shown && !row.collapsed);
         services_->interactions().set_tab_stop(row.interaction, entry == i);
         const Color title = item.disabled                             ? t.colors.disabled
                             : status == StepsStatus::Error            ? t.colors.error
@@ -222,16 +313,44 @@ void StepsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             }
             services_->nodes().require(services_->components().root(component)).out_of_flow = !active;
         };
-        branch(row.subtitle_component, subtitle_shown(row));
-        branch(row.description_component, description_shown(row));
+        branch(row.title_component, !row.collapsed);
+        branch(row.subtitle_component, subtitle_shown(row) && !row.collapsed);
+        const auto focused = services_->focus().state().focused;
+        const auto* focus_record = focused ? services_->interactions().find(*focused) : nullptr;
+        row.inline_popup =
+            s->type == StepsType::Inline && row_shown && !row.collapsed && !item.disabled && !row.popup_dismissed &&
+            (row.rich_description || !row.description.get().empty()) && services_->focus().state().window_active &&
+            services_->interactions().component_active(id) &&
+            (s->hovered == i || (focus_record && descendant(*services_, focus_record->component, row.component)));
+        if (services_->components().set_window_layer(
+                row.description_component, s->type == StepsType::Inline ? std::optional<int>{1030} : std::nullopt)) {
+            services_->mark_scene_structure_dirty();
+            if (s->type != StepsType::Inline) {
+                runtime::NodePropertyWriter writer{services_->nodes(), services_->dirty()};
+                const auto translation = services_->nodes().require(row.node).translation;
+                const auto restore = [&](auto&& self, runtime::NodeId node) -> void {
+                    writer.set_translation(node, translation);
+                    for (auto child : services_->nodes().require(node).children) {
+                        if (!services_->nodes().require(child).clip_boundary) {
+                            self(self, child);
+                        }
+                    }
+                };
+                restore(restore, services_->components().root(row.description_component));
+            }
+        }
+        branch(row.description_component, row.inline_popup || (description_shown(row) && !row.collapsed));
+        boundaries.emplace_back(row.description_component, s->type == StepsType::Inline && !row.inline_popup);
         if (!row.custom_icon) {
             const bool number = status == StepsStatus::Wait || status == StepsStatus::Process;
-            branch(row.number_component, number);
-            branch(row.status_component, !number);
+            branch(row.number_component,
+                   (number || row.collapsed) && s->type != StepsType::Dot && s->type != StepsType::Inline);
+            branch(row.status_component,
+                   !number && !row.collapsed && s->type != StepsType::Dot && s->type != StepsType::Inline);
             row.status_icon.set(status == StepsStatus::Error ? IconName::CloseOutlined : IconName::CheckOutlined);
         }
-        boundaries.emplace_back(row.component,
-                                !item.visible || item.disabled || !services_->focus().state().window_active);
+        boundaries.emplace_back(row.component, !row_shown || row.collapsed || item.disabled ||
+                                                   !services_->focus().state().window_active);
     }
     services_->dirty().invalidate(s->node, geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                           runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
@@ -240,6 +359,13 @@ void StepsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         if (services_->components().contains(component)) {
             services_->set_input_blocked(component, blocked);
         }
+    }
+    s = services_->components().state<StepsState>(id);
+    if (!s) {
+        return;
+    }
+    if (!services_->components().branch_active(id) || !services_->interactions().component_active(id)) {
+        s->motion->settle();
     }
     reconcile(id);
 }
@@ -251,7 +377,8 @@ void StepsComponentHost::reconcile(runtime::ComponentId id) {
     }
     std::vector<input::InteractionId> cancelled;
     for (std::size_t i = 0; i < s->rows.size(); ++i) {
-        if (!s->model.eligible(i) || !services_->interactions().branch_active(s->rows[i].interaction)) {
+        if (!s->model.eligible(i) || !s->rows[i].shown || s->rows[i].collapsed ||
+            !services_->interactions().branch_active(s->rows[i].interaction)) {
             if (s->pressed == i) {
                 s->pressed.reset();
             }
@@ -269,8 +396,8 @@ void StepsComponentHost::reconcile(runtime::ComponentId id) {
 
 void StepsComponentHost::activate(runtime::ComponentId id, std::size_t i) {
     auto* s = services_->components().state<StepsState>(id);
-    if (!s || i >= s->rows.size() || !services_->interactions().branch_active(s->rows[i].interaction) ||
-        !s->model.request(i)) {
+    if (!s || i >= s->rows.size() || !s->rows[i].shown || s->rows[i].collapsed ||
+        !services_->interactions().branch_active(s->rows[i].interaction) || !s->model.request(i)) {
         return;
     }
     const auto callback = s->callback;
@@ -280,7 +407,367 @@ void StepsComponentHost::activate(runtime::ComponentId id, std::size_t i) {
     }
 }
 
+void StepsComponentHost::mount_row(runtime::ComponentId id, const StepsItem& item, bool initial) {
+    auto& services = *services_;
+    auto& s = *services.components().state<StepsState>(id);
+    const auto i = row_index(s, item.key_);
+    const auto content = Content{[&] {
+        auto& children = runtime::require_component_build_context();
+        auto& row = s.rows[i];
+
+        row.component = children.mount_component<int>(0);
+        children.on_resource_cleanup(row.component, [bindings = row.bindings] { bindings->dispose(); });
+        row.node = children.root(row.component);
+        row.title.set(read_prop(item.title_));
+        row.subtitle.set(read_prop(item.subtitle_));
+        row.description.set(read_prop(item.description_));
+        row.custom_icon = item.icon_.has_value();
+        row.rich_subtitle = item.rich_subtitle_.has_value();
+        row.rich_description = item.rich_description_.has_value();
+        row.interaction = services.interactions().create({row.component, row.node, {}, false, true, {}, true, false});
+        const auto hit =
+            children.register_scene_fragment(row.component, runtime::SceneFragmentPlacement::before_children);
+        services.scene_composer().set_fragment(hit, {}, row.interaction);
+        const auto fragment =
+            children.register_scene_fragment(row.component, runtime::SceneFragmentPlacement::before_children);
+        row.surface = services.surfaces().create_content_range(fragment, {});
+        children.on_resource_cleanup(row.component, [&services, row_component = row.component, node = row.node, hit,
+                                                     interaction = row.interaction, surface = row.surface] {
+            services.interactions().set_input_blocked(row_component, false);
+            services.pointer().cancel_interaction(interaction);
+            services.focus().cancel_interaction(interaction);
+            services.interactions().remove(interaction);
+            services.scene_composer().remove_fragment(hit);
+            services.surfaces().destroy_content_range(surface);
+            services.layout().remove_layout(node);
+        });
+        services.layout().set_layout(
+            row.node, layout::ComponentLayout{
+                          [this, id, key = item.key_](layout::LayoutEngine& e, runtime::NodeId, layout::Constraints c) {
+                              const auto* s = services_->components().state<StepsState>(id);
+                              const auto i = s ? row_index(*s, key) : 0;
+                              return s && i < s->rows.size() ? measure_item(id, i, e, c) : runtime::Size{};
+                          },
+                          [this, id, key = item.key_](layout::LayoutEngine& e, runtime::NodeId, runtime::Rect b) {
+                              const auto* s = services_->components().state<StepsState>(id);
+                              const auto i = s ? row_index(*s, key) : 0;
+                              if (s && i < s->rows.size()) {
+                                  place_item(id, i, e, b);
+                              }
+                          }});
+        input::InteractionHandlers handlers;
+        handlers.target = [this, id, key = item.key_](input::PointerDispatchContext& event) {
+            auto* current = services_->components().state<StepsState>(id);
+            const auto i = current ? row_index(*current, key) : 0;
+            if (!current || i >= current->rows.size()) {
+                return;
+            }
+            if (event.kind() == input::PointerEventKind::cancel) {
+                current->pressed.reset();
+                refresh(id, false);
+                return;
+            }
+            if (!current->model.eligible(i) || !services_->interactions().branch_active(current->rows[i].interaction) ||
+                event.event().button != input::PointerButton::primary) {
+                return;
+            }
+            if (event.kind() == input::PointerEventKind::down) {
+                current->pressed = i;
+                static_cast<void>(event.capture_pointer());
+                event.stop_propagation();
+                refresh(id, false);
+            } else if (event.kind() == input::PointerEventKind::up) {
+                const auto& row = current->rows[i];
+                const auto& node = services_->nodes().require(row.node);
+                const bool hit = current->pressed == i && event.press_origin() == row.interaction &&
+                                 inside(graphics::intersect_effect_bounds(
+                                            translated(node), services_->nodes().content_clip(row.node, current->clip)),
+                                        event.event().x, event.event().y);
+                current->pressed.reset();
+                static_cast<void>(event.release_pointer_capture());
+                event.stop_propagation();
+                refresh(id, false);
+                if (hit) {
+                    activate(id, i);
+                }
+            }
+        };
+        services.interactions().set_handlers(row.interaction, std::move(handlers));
+        input::FocusHandlers focus;
+        focus.state_changed = [this, id](input::FocusPresentation) {
+            refresh(id, false);
+        };
+        services.interactions().set_focus_handlers(row.interaction, std::move(focus));
+        children.mount_slot(
+            row.component, Content{[&] {
+                auto& inner = runtime::require_component_build_context();
+                const auto icon = inner.mount_component<int>(0);
+                row.icon_node = inner.root(icon);
+                services.nodes().require(row.icon_node).clip_content = true;
+                services.layout().set_layout(
+                    row.icon_node,
+                    layout::ComponentLayout{
+                        [&services](layout::LayoutEngine& e, runtime::NodeId node, layout::Constraints c) {
+                            runtime::Size result;
+                            for (auto child : services.nodes().require(node).children) {
+                                if (services.nodes().require(child).out_of_flow) {
+                                    continue;
+                                }
+                                const auto size = e.measure_child(child, {0, c.max_width, 0, c.max_height});
+                                result.width = std::max(result.width, size.width);
+                                result.height = std::max(result.height, size.height);
+                            }
+                            return c.constrain(result);
+                        },
+                        [&services](layout::LayoutEngine& e, runtime::NodeId node, runtime::Rect b) {
+                            for (auto child : services.nodes().require(node).children) {
+                                const auto& n = services.nodes().require(child);
+                                if (n.out_of_flow) {
+                                    continue;
+                                }
+                                const float w = std::min(b.width, n.layout_size.width);
+                                const float h = std::min(b.height, n.layout_size.height);
+                                e.place_child(child, {b.x + (b.width - w) / 2, b.y + (b.height - h) / 2, w, h});
+                            }
+                        }});
+                inner.on_resource_cleanup(icon,
+                                          [&services, node = row.icon_node] { services.layout().remove_layout(node); });
+                inner.mount_slot_with_semantic_text_style(
+                    icon, Content{[&] {
+                        auto& icon_build = runtime::require_component_build_context();
+                        if (item.icon_) {
+                            SlotContentAccess::function (*item.icon_)();
+                        } else {
+                            row.number_component =
+                                slot(services, icon_build,
+                                     Content{[number = row.number] { Text(TextProps{}.content(number)); }},
+                                     row.icon_color, s.icon_font);
+                            row.status_component =
+                                slot(services, icon_build,
+                                     Content{[name = row.status_icon] { Icon(IconProps{}.name(name)); }},
+                                     row.icon_color, s.icon_font);
+                        }
+                    }},
+                    Prop<runtime::SemanticForeground>{row.icon_color}, Prop<runtime::SemanticTypography>{s.icon_font});
+                row.title_node = inner.root(
+                    slot(services, inner,
+                         item.rich_title_
+                             ? Content{[content = *item.rich_title_] { SlotContentAccess::function(content)(); }}
+                             : Content{[title = row.title] { Text(TextProps{}.content(title)); }},
+                         row.title_color, s.title_font));
+                row.subtitle_component =
+                    slot(services, inner,
+                         item.rich_subtitle_
+                             ? Content{[content = *item.rich_subtitle_] { SlotContentAccess::function(content)(); }}
+                             : Content{[title = row.subtitle] { Text(TextProps{}.content(title)); }},
+                         row.detail_color, s.detail_font);
+                row.description_component =
+                    slot(services, inner,
+                         item.rich_description_
+                             ? Content{[content = *item.rich_description_] { SlotContentAccess::function(content)(); }}
+                             : Content{[title = row.description] { Text(TextProps{}.content(title)); }},
+                         row.detail_color, s.detail_font);
+            }});
+    }};
+    if (initial) {
+        runtime::require_component_build_context().mount_slot(id, content);
+    } else {
+        services.append_slot(id, content);
+    }
+    s.rows[i].title_component = services.components().children(s.rows[i].component)[1];
+    const auto desc = s.rows[i].description_component;
+    const auto decorations = Content{[&] {
+        auto& build = runtime::require_component_build_context();
+        const auto fragment = build.register_scene_fragment(desc, runtime::SceneFragmentPlacement::before_children);
+        s.rows[i].popup_surface = services.surfaces().create_content_range(fragment, {});
+        build.on_resource_cleanup(desc, [&services, surface = s.rows[i].popup_surface, desc] {
+            services.interactions().set_input_blocked(desc, false);
+            services.surfaces().destroy_content_range(surface);
+        });
+    }};
+    if (initial) {
+        runtime::require_component_build_context().mount_slot(desc, decorations);
+    } else {
+        services.append_slot(desc, decorations);
+    }
+}
+
+void StepsComponentHost::bind_row(runtime::ComponentId id, const StepsItem& item) {
+    auto& s = *services_->components().state<StepsState>(id);
+    auto& row = s.rows[row_index(s, item.key_)];
+    auto& bindings = row.bindings->reset();
+    connect_prop(bindings, item.title_, [this, id, key = item.key_](String value) {
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            const auto i = row_index(*s, key);
+            if (i >= s->rows.size()) {
+                return;
+            }
+            s->rows[i].title.set(std::move(value));
+        }
+    });
+    connect_prop(bindings, item.subtitle_, [this, id, key = item.key_](String value) {
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            const auto i = row_index(*s, key);
+            if (i >= s->rows.size()) {
+                return;
+            }
+            s->rows[i].subtitle.set(std::move(value));
+            refresh(id, true);
+        }
+    });
+    connect_prop(bindings, item.description_, [this, id, key = item.key_](String value) {
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            const auto i = row_index(*s, key);
+            if (i >= s->rows.size()) {
+                return;
+            }
+            s->rows[i].description.set(std::move(value));
+            refresh(id, true);
+        }
+    });
+    connect_prop(bindings, item.visible_, [this, id, key = item.key_](bool value) {
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            const auto i = row_index(*s, key);
+            if (i >= s->rows.size()) {
+                return;
+            }
+            s->model.items[i].visible = value;
+            refresh(id, true);
+        }
+    });
+    connect_prop(bindings, item.disabled_, [this, id, key = item.key_](bool value) {
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            const auto i = row_index(*s, key);
+            if (i >= s->rows.size()) {
+                return;
+            }
+            s->model.items[i].disabled = value;
+            refresh(id, false);
+        }
+    });
+    connect_prop(bindings, item.status_, [this, id, key = item.key_](std::optional<StepsStatus> value) {
+        if (value) {
+            validate_steps_status(*value);
+        }
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            const auto i = row_index(*s, key);
+            if (i >= s->rows.size()) {
+                return;
+            }
+            s->model.items[i].status = value;
+            refresh(id, false);
+        }
+    });
+}
+
+void StepsComponentHost::update_items(runtime::ComponentId id, const std::vector<StepsItem>& items) {
+    std::vector<NavigationItemModel> models;
+    for (const auto& item : items) {
+        const auto status = read_prop(item.status_);
+        if (status) {
+            validate_steps_status(*status);
+        }
+        models.push_back({item.key_, read_prop(item.disabled_), read_prop(item.visible_), status});
+    }
+    validate_navigation_items(models);
+    auto* s = services_->components().state<StepsState>(id);
+    if (!s) {
+        return;
+    }
+    const auto old_descriptors = s->descriptors;
+    const auto old_rows = s->rows;
+    const auto old_model = s->model;
+    const auto current_key =
+        s->model.current < s->rows.size() ? std::optional{s->rows[s->model.current].key} : std::nullopt;
+    std::vector<StepsRow> rows;
+    std::vector<runtime::ComponentId> removed;
+    std::vector<bool> added;
+    for (const auto& item : items) {
+        const auto i = row_index(*s, item.key_);
+        added.push_back(i == s->rows.size());
+        if (i < s->rows.size()) {
+            rows.push_back(s->rows[i]);
+        } else {
+            rows.emplace_back();
+            rows.back().key = item.key_;
+        }
+    }
+    for (const auto& row : s->rows) {
+        if (row.component.valid() &&
+            std::ranges::none_of(items, [&](const auto& item) { return row.key == item.key_; })) {
+            removed.push_back(row.component);
+        }
+    }
+    s->descriptors = items;
+    s->rows = std::move(rows);
+    s->model.items = std::move(models);
+    s->pressed.reset();
+    s->hovered.reset();
+    if (!s->model.controlled) {
+        const auto it = current_key ? row_index(*s, *current_key) : s->rows.size();
+        s->model.current = it < s->rows.size() ? it
+                           : s->rows.empty()   ? 0
+                                               : std::min(s->model.current, s->rows.size() - 1);
+    }
+    try {
+        for (std::size_t i = 0; i < items.size(); ++i) {
+            if (!services_->components().contains(id)) {
+                return;
+            }
+            if (added[i]) {
+                mount_row(id, items[i]);
+            }
+        }
+    } catch (...) {
+        s = services_->components().state<StepsState>(id);
+        if (s) {
+            for (std::size_t i = 0; i < added.size(); ++i) {
+                if (added[i] && services_->components().contains(s->rows[i].component)) {
+                    services_->destroy(s->rows[i].component);
+                }
+            }
+            s->descriptors = old_descriptors;
+            s->rows = old_rows;
+            s->model = old_model;
+            refresh(id, true);
+        }
+        throw;
+    }
+    for (auto component : removed) {
+        services_->destroy(component);
+        if (!services_->components().contains(id)) {
+            return;
+        }
+    }
+    for (const auto& item : items) {
+        const auto old =
+            std::ranges::find_if(old_descriptors, [&](const auto& descriptor) { return descriptor.key_ == item.key_; });
+        if (old == old_descriptors.end() || *old != item) {
+            bind_row(id, item);
+        }
+    }
+    refresh(id, true);
+}
+
+void StepsComponentHost::mount(const StepsProps& props, const Prop<std::vector<StepsItem>>& items) {
+    const auto initial = read_prop(items);
+    mount(props, initial);
+    const auto id = mounted_.back();
+    auto first = std::make_shared<bool>(true);
+    connect_prop(services_->components().scope(id), items, [this, id, first](std::vector<StepsItem> value) {
+        if (std::exchange(*first, false)) {
+            return;
+        }
+        update_items(id, value);
+    });
+}
+
 void StepsComponentHost::mount(const StepsProps& props, const std::vector<StepsItem>& items) {
+    validate(read_prop(props.type_));
+    validate_percent(read_prop(props.percent_));
+    if (read_prop(props.max_count_) != 0 && read_prop(props.max_count_) < 3) {
+        throw std::invalid_argument("Steps maxCount must be zero or at least 3");
+    }
     validate(read_prop(props.size_));
     validate_steps_status(read_prop(props.status_));
     if (props.current_ && props.default_current_) {
@@ -304,181 +791,41 @@ void StepsComponentHost::mount(const StepsProps& props, const std::vector<StepsI
     const auto id = build.mount_component<StepsState>();
     auto& s = build.state<StepsState>(id);
     s.node = build.root(id);
+    s.motion = std::make_unique<NavigationTransition>(services, id);
     s.model = std::move(model);
     s.callback = props.on_change_;
     s.vertical = read_prop(props.vertical_);
+    s.explicit_vertical = s.vertical;
+    s.type = read_prop(props.type_);
+    s.responsive = read_prop(props.responsive_);
+    s.rtl = read_prop(props.rtl_);
+    s.animated = read_prop(props.animated_);
+    s.percent = read_prop(props.percent_);
+    s.max_count = read_prop(props.max_count_);
     s.size = read_prop(props.size_);
     s.rows.resize(items.size());
+    s.descriptors = items;
     services.nodes().require(s.node).clip_content = true;
     runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
     build.on_resource_cleanup(id, [&services, node = s.node] { services.layout().remove_layout(node); });
-    build.mount_slot(
-        id, Content{[&] {
-            auto& children = runtime::require_component_build_context();
-            for (std::size_t i = 0; i < items.size(); ++i) {
-                auto& row = s.rows[i];
-                const auto& item = items[i];
-                row.component = children.mount_component<int>(0);
-                row.node = children.root(row.component);
-                row.title.set(read_prop(item.title_));
-                row.subtitle.set(read_prop(item.subtitle_));
-                row.description.set(read_prop(item.description_));
-                row.custom_icon = item.icon_.has_value();
-                row.rich_subtitle = item.rich_subtitle_.has_value();
-                row.rich_description = item.rich_description_.has_value();
-                row.interaction =
-                    services.interactions().create({row.component, row.node, {}, false, true, {}, true, false});
-                const auto hit =
-                    children.register_scene_fragment(row.component, runtime::SceneFragmentPlacement::before_children);
-                services.scene_composer().set_fragment(hit, {}, row.interaction);
-                const auto fragment =
-                    children.register_scene_fragment(row.component, runtime::SceneFragmentPlacement::before_children);
-                row.surface = services.surfaces().create_content_range(fragment, {});
-                children.on_resource_cleanup(row.component,
-                                             [&services, row_component = row.component, node = row.node, hit,
-                                              interaction = row.interaction, surface = row.surface] {
-                                                 services.interactions().set_input_blocked(row_component, false);
-                                                 services.pointer().cancel_interaction(interaction);
-                                                 services.focus().cancel_interaction(interaction);
-                                                 services.interactions().remove(interaction);
-                                                 services.scene_composer().remove_fragment(hit);
-                                                 services.surfaces().destroy_content_range(surface);
-                                                 services.layout().remove_layout(node);
-                                             });
-                services.layout().set_layout(
-                    row.node,
-                    layout::ComponentLayout{[this, id, i](layout::LayoutEngine& e, runtime::NodeId,
-                                                          layout::Constraints c) { return measure_item(id, i, e, c); },
-                                            [this, id, i](layout::LayoutEngine& e, runtime::NodeId, runtime::Rect b) {
-                                                place_item(id, i, e, b);
-                                            }});
-                input::InteractionHandlers handlers;
-                handlers.target = [this, id, i](input::PointerDispatchContext& event) {
-                    auto* current = services_->components().state<StepsState>(id);
-                    if (!current) {
-                        return;
-                    }
-                    if (event.kind() == input::PointerEventKind::cancel) {
-                        current->pressed.reset();
-                        refresh(id, false);
-                        return;
-                    }
-                    if (!current->model.eligible(i) ||
-                        !services_->interactions().branch_active(current->rows[i].interaction) ||
-                        event.event().button != input::PointerButton::primary) {
-                        return;
-                    }
-                    if (event.kind() == input::PointerEventKind::down) {
-                        current->pressed = i;
-                        static_cast<void>(event.capture_pointer());
-                        event.stop_propagation();
-                        refresh(id, false);
-                    } else if (event.kind() == input::PointerEventKind::up) {
-                        const auto& row = current->rows[i];
-                        const auto& node = services_->nodes().require(row.node);
-                        const bool hit =
-                            current->pressed == i && event.press_origin() == row.interaction &&
-                            inside(graphics::intersect_effect_bounds(
-                                       translated(node), services_->nodes().content_clip(row.node, current->clip)),
-                                   event.event().x, event.event().y);
-                        current->pressed.reset();
-                        static_cast<void>(event.release_pointer_capture());
-                        event.stop_propagation();
-                        refresh(id, false);
-                        if (hit) {
-                            activate(id, i);
-                        }
-                    }
-                };
-                services.interactions().set_handlers(row.interaction, std::move(handlers));
-                input::FocusHandlers focus;
-                focus.state_changed = [this, id](input::FocusPresentation) {
-                    refresh(id, false);
-                };
-                services.interactions().set_focus_handlers(row.interaction, std::move(focus));
-                children.mount_slot(
-                    row.component, Content{[&] {
-                        auto& inner = runtime::require_component_build_context();
-                        const auto icon = inner.mount_component<int>(0);
-                        row.icon_node = inner.root(icon);
-                        services.nodes().require(row.icon_node).clip_content = true;
-                        services.layout().set_layout(
-                            row.icon_node,
-                            layout::ComponentLayout{
-                                [&services](layout::LayoutEngine& e, runtime::NodeId node, layout::Constraints c) {
-                                    runtime::Size result;
-                                    for (auto child : services.nodes().require(node).children) {
-                                        if (services.nodes().require(child).out_of_flow) {
-                                            continue;
-                                        }
-                                        const auto size = e.measure_child(child, {0, c.max_width, 0, c.max_height});
-                                        result.width = std::max(result.width, size.width);
-                                        result.height = std::max(result.height, size.height);
-                                    }
-                                    return c.constrain(result);
-                                },
-                                [&services](layout::LayoutEngine& e, runtime::NodeId node, runtime::Rect b) {
-                                    for (auto child : services.nodes().require(node).children) {
-                                        const auto& n = services.nodes().require(child);
-                                        if (n.out_of_flow) {
-                                            continue;
-                                        }
-                                        const float w = std::min(b.width, n.layout_size.width);
-                                        const float h = std::min(b.height, n.layout_size.height);
-                                        e.place_child(child, {b.x + (b.width - w) / 2, b.y + (b.height - h) / 2, w, h});
-                                    }
-                                }});
-                        inner.on_resource_cleanup(
-                            icon, [&services, node = row.icon_node] { services.layout().remove_layout(node); });
-                        inner.mount_slot_with_semantic_text_style(
-                            icon, Content{[&] {
-                                auto& icon_build = runtime::require_component_build_context();
-                                if (item.icon_) {
-                                    SlotContentAccess::function (*item.icon_)();
-                                } else {
-                                    row.number_component =
-                                        slot(services, icon_build,
-                                             Content{[number = String::from_utf8(std::to_string(i + 1)).value()] {
-                                                 Text(number);
-                                             }},
-                                             row.icon_color, s.icon_font);
-                                    row.status_component =
-                                        slot(services, icon_build,
-                                             Content{[name = row.status_icon] { Icon(IconProps{}.name(name)); }},
-                                             row.icon_color, s.icon_font);
-                                }
-                            }},
-                            Prop<runtime::SemanticForeground>{row.icon_color},
-                            Prop<runtime::SemanticTypography>{s.icon_font});
-                        row.title_node = inner.root(slot(
-                            services, inner,
-                            item.rich_title_
-                                ? Content{[content = *item.rich_title_] { SlotContentAccess::function(content)(); }}
-                                : Content{[title = row.title] { Text(TextProps{}.content(title)); }},
-                            row.title_color, s.title_font));
-                        row.subtitle_component = slot(
-                            services, inner,
-                            item.rich_subtitle_
-                                ? Content{[content = *item.rich_subtitle_] { SlotContentAccess::function(content)(); }}
-                                : Content{[title = row.subtitle] { Text(TextProps{}.content(title)); }},
-                            row.detail_color, s.detail_font);
-                        row.description_component =
-                            slot(services, inner,
-                                 item.rich_description_
-                                     ? Content{[content = *item.rich_description_] {
-                                           SlotContentAccess::function(content)();
-                                       }}
-                                     : Content{[title = row.description] { Text(TextProps{}.content(title)); }},
-                                 row.detail_color, s.detail_font);
-                    }});
-            }
-        }});
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        s.rows[i].key = items[i].key_;
+        mount_row(id, items[i], true);
+    }
     services.layout().set_layout(
         s.node,
         layout::ComponentLayout{
             [this, id](layout::LayoutEngine& e, runtime::NodeId, layout::Constraints c) { return measure(id, e, c); },
             [this, id](layout::LayoutEngine& e, runtime::NodeId, runtime::Rect b) { place(id, e, b); }});
     mounted_.push_back(id);
+    // Ant Steps retains its documented 532 threshold, using the same window
+    // width signal as the shared responsive layout host.
+    connect_prop(build.scope(id), Prop<float>{services.responsive_layout().window_width()}, [this, id](float width) {
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            s->window_width = width;
+            refresh(id, true);
+        }
+    });
     if (props.current_) {
         connect_prop(build.scope(id), *props.current_, [this, id](std::size_t value) {
             if (auto* s = services_->components().state<StepsState>(id)) {
@@ -503,50 +850,48 @@ void StepsComponentHost::mount(const StepsProps& props, const std::vector<StepsI
     });
     connect_prop(build.scope(id), props.vertical_, [this, id](bool value) {
         if (auto* s = services_->components().state<StepsState>(id)) {
+            s->explicit_vertical = value;
             s->vertical = value;
             refresh(id, true);
         }
     });
-    for (std::size_t i = 0; i < items.size(); ++i) {
-        connect_prop(build.scope(id), items[i].title_, [this, id, i](String value) {
-            if (auto* s = services_->components().state<StepsState>(id)) {
-                s->rows[i].title.set(std::move(value));
-            }
-        });
-        connect_prop(build.scope(id), items[i].subtitle_, [this, id, i](String value) {
-            if (auto* s = services_->components().state<StepsState>(id)) {
-                s->rows[i].subtitle.set(std::move(value));
-                refresh(id, true);
-            }
-        });
-        connect_prop(build.scope(id), items[i].description_, [this, id, i](String value) {
-            if (auto* s = services_->components().state<StepsState>(id)) {
-                s->rows[i].description.set(std::move(value));
-                refresh(id, true);
-            }
-        });
-        connect_prop(build.scope(id), items[i].visible_, [this, id, i](bool value) {
-            if (auto* s = services_->components().state<StepsState>(id)) {
-                s->model.items[i].visible = value;
-                refresh(id, true);
-            }
-        });
-        connect_prop(build.scope(id), items[i].disabled_, [this, id, i](bool value) {
-            if (auto* s = services_->components().state<StepsState>(id)) {
-                s->model.items[i].disabled = value;
-                refresh(id, false);
-            }
-        });
-        connect_prop(build.scope(id), items[i].status_, [this, id, i](std::optional<StepsStatus> value) {
-            if (value) {
-                validate_steps_status(*value);
-            }
-            if (auto* s = services_->components().state<StepsState>(id)) {
-                s->model.items[i].status = value;
-                refresh(id, false);
-            }
-        });
+    for (const auto& item : items) {
+        bind_row(id, item);
     }
+    connect_prop(build.scope(id), props.type_, [this, id](StepsType value) {
+        validate(value);
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            s->type = value;
+            refresh(id, true);
+        }
+    });
+    connect_prop(build.scope(id), props.percent_, [this, id](std::optional<float> value) {
+        validate_percent(value);
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            s->percent = value;
+            refresh(id, false);
+        }
+    });
+    connect_prop(build.scope(id), props.max_count_, [this, id](std::size_t value) {
+        if (value != 0 && value < 3) {
+            throw std::invalid_argument("Steps maxCount must be zero or at least 3");
+        }
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            s->max_count = value;
+            refresh(id, true);
+        }
+    });
+    const auto boolean = [&](const Prop<bool>& prop, bool StepsState::* field) {
+        connect_prop(build.scope(id), prop, [this, id, field](bool value) {
+            if (auto* s = services_->components().state<StepsState>(id)) {
+                s->*field = value;
+                refresh(id, true);
+            }
+        });
+    };
+    boolean(props.responsive_, &StepsState::responsive);
+    boolean(props.rtl_, &StepsState::rtl);
+    boolean(props.animated_, &StepsState::animated);
     const auto theme = build.theme_scope();
     const std::array accessors{&theme_runtime::ThemeScope::steps_colors, &theme_runtime::ThemeScope::steps_metrics,
                                &theme_runtime::ThemeScope::steps_effects};
@@ -556,6 +901,12 @@ void StepsComponentHost::mount(const StepsProps& props, const std::vector<StepsI
                            [theme, accessor = accessors[i]] { static_cast<void>((theme.get()->*accessor)()); });
     }
     refresh(id, true);
+    s.subscriptions[3] = theme->capture([this, id](theme_runtime::DirtyPhase) { refresh(id, false); },
+                                        [theme] {
+                                            static_cast<void>(theme->motion_enabled());
+                                            static_cast<void>(theme->motion_unit());
+                                            static_cast<void>(theme->motion_base());
+                                        });
 }
 
 runtime::Size StepsComponentHost::measure_item(runtime::ComponentId id, std::size_t i, layout::LayoutEngine& engine,
@@ -564,6 +915,25 @@ runtime::Size StepsComponentHost::measure_item(runtime::ComponentId id, std::siz
     auto& row = s.rows[i];
     const auto& m = services_->components().theme_scope(id)->snapshot().steps().metrics;
     const float icon = std::min(icon_extent(s, m), c.max_width);
+    if (row.collapsed) {
+        static_cast<void>(engine.measure_child(row.icon_node, {icon, icon, icon, icon}));
+        return c.constrain({icon, icon});
+    }
+    if (s.type == StepsType::Dot || s.type == StepsType::Inline) {
+        static_cast<void>(engine.measure_child(row.icon_node, {icon, icon, icon, icon}));
+        row.title_size = engine.measure_child(row.title_node, {0, c.max_width, 0, c.max_height});
+        row.subtitle_size = subtitle_shown(row)
+                                ? engine.measure_child(services_->components().root(row.subtitle_component),
+                                                       {0, c.max_width, 0, c.max_height})
+                                : runtime::Size{};
+        row.description_size = description_shown(row)
+                                   ? engine.measure_child(services_->components().root(row.description_component),
+                                                          {0, c.max_width, 0, c.max_height})
+                                   : runtime::Size{};
+        return c.constrain(
+            {std::max({icon, row.title_size.width, row.subtitle_size.width, row.description_size.width}),
+             icon + m.icon_gap + row.title_size.height + row.subtitle_size.height + row.description_size.height});
+    }
     static_cast<void>(engine.measure_child(row.icon_node, {0, icon, 0, icon}));
     const float gap = std::min(m.icon_gap, std::max(0.0F, c.max_width - icon));
     const float available = std::max(0.0F, c.max_width - icon - gap);
@@ -592,42 +962,75 @@ void StepsComponentHost::place_item(runtime::ComponentId id, std::size_t i, layo
     auto& s = *services_->components().state<StepsState>(id);
     auto& row = s.rows[i];
     const auto& m = services_->components().theme_scope(id)->snapshot().steps().metrics;
+    const auto place = [&](runtime::NodeId node, runtime::Rect rect, bool stretch_width = false,
+                           bool stretch_height = false) {
+        if (s.rtl && !s.vertical) {
+            rect.x = b.x + b.width - (rect.x - b.x) - rect.width;
+        }
+        engine.place_child(node, rect, stretch_width, stretch_height);
+    };
     const float icon = std::min(icon_extent(s, m), std::min(b.width, b.height));
-    engine.place_child(row.icon_node, {b.x, b.y, icon, icon}, true, true);
+    if (row.collapsed) {
+        place(row.icon_node, {b.x + (b.width - icon) / 2, b.y, icon, icon}, true, true);
+        return;
+    }
+    if (s.type == StepsType::Dot || s.type == StepsType::Inline) {
+        place(row.icon_node, {b.x + (b.width - icon) / 2, b.y, icon, icon}, true, true);
+        float y = b.y + icon + m.icon_gap;
+        const auto part = [&](runtime::NodeId node, runtime::Size size) {
+            const float height = std::min(size.height, std::max(0.0F, b.y + b.height - y));
+            const float width = std::min(size.width, b.width);
+            place(node, {b.x + (b.width - width) / 2, y, width, height});
+            y += height;
+        };
+        part(row.title_node, row.title_size);
+        if (subtitle_shown(row)) {
+            part(services_->components().root(row.subtitle_component), row.subtitle_size);
+        }
+        if (description_shown(row)) {
+            part(services_->components().root(row.description_component), row.description_size);
+        }
+        return;
+    }
+    place(row.icon_node, {b.x, b.y, icon, icon}, true, true);
     const float gap = std::min(m.icon_gap, std::max(0.0F, b.width - icon));
     const float x = b.x + icon + gap;
     const float width = std::max(0.0F, b.width - icon - gap);
     const float header = std::min(b.height, std::max(std::max(row.title_size.height, row.subtitle_size.height), icon));
     const float th = std::min(header, row.title_size.height);
     const float tw = std::min(width, row.title_size.width);
-    engine.place_child(row.title_node, {x, b.y + (header - th) / 2, tw, th});
+    place(row.title_node, {x, b.y + (header - th) / 2, tw, th});
     if (subtitle_shown(row)) {
         const float sg = std::min(m.subtitle_gap, width - tw);
         const float sh = std::min(header, row.subtitle_size.height);
-        engine.place_child(services_->components().root(row.subtitle_component),
-                           {x + tw + sg, b.y + (header - sh) / 2,
-                            std::min(std::max(0.0F, width - tw - sg), row.subtitle_size.width), sh});
+        place(services_->components().root(row.subtitle_component),
+              {x + tw + sg, b.y + (header - sh) / 2, std::min(std::max(0.0F, width - tw - sg), row.subtitle_size.width),
+               sh});
     }
     if (description_shown(row)) {
         const float dg = std::min(m.description_gap, std::max(0.0F, b.height - header));
-        engine.place_child(services_->components().root(row.description_component),
-                           {x, b.y + header + dg, std::min(width, row.description_size.width),
-                            std::min(std::max(0.0F, b.height - header - dg), row.description_size.height)});
+        place(services_->components().root(row.description_component),
+              {x, b.y + header + dg, std::min(width, row.description_size.width),
+               std::min(std::max(0.0F, b.height - header - dg), row.description_size.height)});
     }
 }
 
 runtime::Size StepsComponentHost::measure(runtime::ComponentId id, layout::LayoutEngine& engine,
                                           layout::Constraints c) {
     auto& s = *services_->components().state<StepsState>(id);
+    const bool vertical = s.explicit_vertical || (s.responsive && s.window_width < 532 && s.type != StepsType::Inline);
+    if (s.vertical != vertical) {
+        s.vertical = vertical;
+    }
     const auto& m = services_->components().theme_scope(id)->snapshot().steps().metrics;
-    const auto count =
-        static_cast<std::size_t>(std::ranges::count_if(s.model.items, [](const auto& item) { return item.visible; }));
+    const auto count = static_cast<std::size_t>(std::ranges::count_if(
+        s.rows, [&](const auto& row) { return row.shown && s.model.items[row_index(s, row.key)].visible; }));
     if (!count) {
         return c.constrain({});
     }
     float natural_width = 0;
     for (std::size_t i = 0; i < s.rows.size(); ++i) {
-        if (s.model.items[i].visible) {
+        if (s.model.items[i].visible && s.rows[i].shown) {
             auto& row = s.rows[i];
             row.natural = engine.measure_child(
                 row.node, {0, std::numeric_limits<float>::infinity(), 0, std::numeric_limits<float>::infinity()});
@@ -639,7 +1042,7 @@ runtime::Size StepsComponentHost::measure(runtime::ComponentId id, layout::Layou
     const float allocated = s.vertical ? width : std::max(0.0F, width - total_gap) / static_cast<float>(count);
     float height = 0;
     for (std::size_t i = 0; i < s.rows.size(); ++i) {
-        if (s.model.items[i].visible) {
+        if (s.model.items[i].visible && s.rows[i].shown) {
             auto& row = s.rows[i];
             row.allocated =
                 engine.measure_child(row.node, {allocated, allocated, 0, std::numeric_limits<float>::infinity()});
@@ -655,14 +1058,14 @@ runtime::Size StepsComponentHost::measure(runtime::ComponentId id, layout::Layou
 void StepsComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& engine, runtime::Rect b) {
     auto& s = *services_->components().state<StepsState>(id);
     const auto& m = services_->components().theme_scope(id)->snapshot().steps().metrics;
-    const auto count =
-        static_cast<std::size_t>(std::ranges::count_if(s.model.items, [](const auto& item) { return item.visible; }));
+    const auto count = static_cast<std::size_t>(std::ranges::count_if(
+        s.rows, [&](const auto& row) { return row.shown && s.model.items[row_index(s, row.key)].visible; }));
     if (!count) {
         return;
     }
     float natural_height = 0;
     for (std::size_t i = 0; i < s.rows.size(); ++i) {
-        if (s.model.items[i].visible) {
+        if (s.model.items[i].visible && s.rows[i].shown) {
             natural_height += s.rows[i].allocated.height;
         }
     }
@@ -673,15 +1076,19 @@ void StepsComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& en
     const float scale = natural_height > remaining && natural_height > 0 ? remaining / natural_height : 1;
     float cursor = 0;
     for (std::size_t i = 0; i < s.rows.size(); ++i) {
-        if (!s.model.items[i].visible) {
+        if (!s.model.items[i].visible || !s.rows[i].shown) {
             continue;
         }
         auto& row = s.rows[i];
         const float w = s.vertical ? b.width : remaining / static_cast<float>(count);
         const float h = s.vertical ? row.allocated.height * scale : b.height;
         static_cast<void>(engine.measure_child(row.node, layout::Constraints::fixed(w, h)));
-        engine.place_child(row.node, {b.x + (s.vertical ? 0 : cursor), b.y + (s.vertical ? cursor : 0), w, h}, true,
-                           true);
+        engine.place_child(row.node,
+                           {b.x + (s.vertical ? 0
+                                   : s.rtl    ? b.width - cursor - w
+                                              : cursor),
+                            b.y + (s.vertical ? cursor : 0), w, h},
+                           true, true);
         cursor += (s.vertical ? h : w) + gap;
     }
 }
@@ -692,13 +1099,33 @@ bool StepsComponentHost::on_keyboard_input(const input::KeyboardInputEvent& even
         if (!s) {
             continue;
         }
+        if (event.key == input::Key::escape && event.action == input::KeyAction::down && s->type == StepsType::Inline) {
+            const auto focused = services_->focus().state().focused;
+            const auto* record = focused ? services_->interactions().find(*focused) : nullptr;
+            if (record && services_->popover().owns_escape(id, record->component)) {
+                return false;
+            }
+            bool dismissed = false;
+            for (auto& row : s->rows) {
+                if (row.inline_popup) {
+                    row.popup_dismissed = true;
+                    dismissed = true;
+                }
+            }
+            if (dismissed) {
+                refresh(id, false);
+                return true;
+            }
+        }
         auto target = focused(*services_, *s);
         if (!target) {
             continue;
         }
         const bool activation = event.key == input::Key::enter || event.key == input::Key::space;
-        const bool previous = event.key == (s->vertical ? input::Key::up : input::Key::left);
-        const bool next = event.key == (s->vertical ? input::Key::down : input::Key::right);
+        const bool previous = event.key == (s->vertical ? input::Key::up
+                                            : s->rtl    ? input::Key::right
+                                                        : input::Key::left);
+        const bool next = event.key == (s->vertical ? input::Key::down : s->rtl ? input::Key::left : input::Key::right);
         if (!activation && !previous && !next && event.key != input::Key::home && event.key != input::Key::end) {
             return false;
         }
@@ -708,7 +1135,7 @@ bool StepsComponentHost::on_keyboard_input(const input::KeyboardInputEvent& even
         if (previous || next) {
             for (std::size_t n = 0; n < s->rows.size(); ++n) {
                 target = (*target + (previous ? s->rows.size() - 1 : 1)) % s->rows.size();
-                if (s->model.eligible(*target)) {
+                if (s->model.eligible(*target) && s->rows[*target].shown && !s->rows[*target].collapsed) {
                     break;
                 }
             }
@@ -737,11 +1164,23 @@ void StepsComponentHost::on_pointer_input(const input::PointerInputEvent& event,
         }
         std::optional<std::size_t> hovered;
         for (std::size_t i = 0; event.action != input::PointerAction::cancel && i < s->rows.size(); ++i) {
-            if (hit == s->rows[i].interaction) {
+            const auto* record = hit ? services_->interactions().find(*hit) : nullptr;
+            if (hit == s->rows[i].interaction ||
+                (record && descendant(*services_, record->component, s->rows[i].component))) {
                 hovered = i;
             }
         }
+        if (event.action == input::PointerAction::down && !hovered && s->type == StepsType::Inline) {
+            for (auto& row : s->rows) {
+                row.popup_dismissed = true;
+            }
+            refresh(id, false);
+            continue;
+        }
         if (s->hovered != hovered) {
+            if (hovered) {
+                s->rows[*hovered].popup_dismissed = false;
+            }
             s->hovered = hovered;
             refresh(id, false);
         }
@@ -751,7 +1190,18 @@ void StepsComponentHost::on_pointer_input(const input::PointerInputEvent& event,
 void StepsComponentHost::on_input_boundary_changed() {
     const auto ids = mounted_;
     for (auto id : ids) {
+        if (auto* s = services_->components().state<StepsState>(id);
+            s && !services_->interactions().component_active(id)) {
+            s->motion->settle();
+        }
         reconcile(id);
+    }
+}
+
+void StepsComponentHost::synchronize_auxiliary_motion() {
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        refresh(id, false);
     }
 }
 
@@ -760,10 +1210,44 @@ void StepsComponentHost::on_window_active(bool active) {
     for (auto id : ids) {
         if (auto* s = services_->components().state<StepsState>(id)) {
             if (!active) {
+                s->motion->settle();
                 s->pressed.reset();
                 s->hovered.reset();
             }
             refresh(id, false);
+        }
+    }
+}
+
+void StepsComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect document_clip) {
+    for (auto id : mounted_) {
+        auto* s = services_->components().state<StepsState>(id);
+        if (!s || s->type != StepsType::Inline || !services_->components().branch_active(id)) {
+            continue;
+        }
+        const auto& token = services_->components().theme_scope(id)->snapshot().popover();
+        for (auto& row : s->rows) {
+            if (!row.inline_popup) {
+                continue;
+            }
+            const auto node = services_->components().root(row.description_component);
+            const auto clip = services_->component_clip(row.description_component, viewport, document_clip);
+            auto& engine = services_->layout();
+            const auto size = engine.measure_child(node, {0, std::min(token.max_width, clip.width), 0, clip.height});
+            const auto anchor = translated(services_->nodes().require(row.node));
+            const float x = std::clamp(anchor.x, clip.x, std::max(clip.x, clip.x + clip.width - size.width));
+            const float y = anchor.y + anchor.height + size.height <= clip.y + clip.height
+                                ? anchor.y + anchor.height
+                                : std::max(clip.y, anchor.y - size.height);
+            engine.place_child(node, {x, y, size.width, size.height});
+            runtime::NodePropertyWriter writer{services_->nodes(), services_->dirty()};
+            const auto reset = [&](auto&& self, runtime::NodeId child) -> void {
+                writer.set_translation(child, {});
+                for (auto nested : services_->nodes().require(child).children) {
+                    self(self, nested);
+                }
+            };
+            reset(reset, node);
         }
     }
 }
@@ -778,35 +1262,85 @@ void StepsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
         const auto& t = services_->components().theme_scope(id)->snapshot().steps();
         const auto focus = services_->focus().state();
         for (std::size_t i = 0; i < s->rows.size(); ++i) {
-            if (!s->model.items[i].visible) {
+            if (!s->model.items[i].visible || !s->rows[i].shown) {
                 continue;
             }
             const auto& row = s->rows[i];
+            if (row.inline_popup) {
+                const auto& popup = services_->nodes().require(services_->components().root(row.description_component));
+                const auto& token = services_->components().theme_scope(id)->snapshot().popover();
+                const auto effects = graphics::make_corner_fill_effects(
+                    {popup.bounds,
+                     std::min(token.border_radius, std::min(popup.bounds.width, popup.bounds.height) / 2)},
+                    {true, true, true, true}, token.background, services_->nodes().content_opacity(row.node),
+                    popup.translation,
+                    graphics::EffectClip{
+                        1, services_->component_clip(row.description_component, viewport, document_clip)});
+                static_cast<void>(services_->surfaces().update_content_effects(row.popup_surface, effects));
+            } else {
+                static_cast<void>(services_->surfaces().update_content_effects(row.popup_surface, {}));
+            }
             const auto& node = services_->nodes().require(row.node);
             const auto& icon = services_->nodes().require(row.icon_node);
             const auto status = s->model.status(i);
             const float opacity = services_->nodes().content_opacity(row.node);
+            const float activation_opacity =
+                opacity * (status == StepsStatus::Process ? 0.5F + 0.5F * s->motion->value() : 1);
             const graphics::EffectClip clip{1, services_->nodes().content_clip(row.node, s->clip)};
             const graphics::EffectClip decoration_clip{2, s->clip};
             std::vector<graphics::RoundedEffectInstance> effects;
             if (!row.custom_icon) {
-                const auto color = status == StepsStatus::Error     ? t.colors.error_background
-                                   : status == StepsStatus::Finish  ? t.colors.finish_background
-                                   : status == StepsStatus::Process ? t.colors.process_background
-                                                                    : t.colors.wait_background;
+                const auto color =
+                    (s->type == StepsType::Dot || s->type == StepsType::Inline) && status == StepsStatus::Process
+                        ? t.colors.finished_connector
+                    : status == StepsStatus::Error   ? t.colors.error_background
+                    : status == StepsStatus::Finish  ? t.colors.finish_background
+                    : status == StepsStatus::Process ? t.colors.process_background
+                                                     : t.colors.wait_background;
                 const auto circle = graphics::make_corner_fill_effects(
                     {icon.bounds, std::min(icon.bounds.width, icon.bounds.height) / 2}, {true, true, true, true}, color,
-                    opacity, icon.translation, clip);
+                    activation_opacity, icon.translation, clip);
                 effects.insert(effects.end(), circle.begin(), circle.end());
+            }
+            if (s->type == StepsType::Panel || s->type == StepsType::Navigation) {
+                const auto background = graphics::make_corner_fill_effects(
+                    {node.bounds, s->type == StepsType::Panel ? t.metrics.icon_gap : 0}, {true, true, true, true},
+                    status == StepsStatus::Process ? t.colors.finish_background : t.colors.wait_background, opacity,
+                    node.translation, clip);
+                if (s->type == StepsType::Panel) {
+                    effects.insert(effects.begin(), background.begin(), background.end());
+                }
+                if (status == StepsStatus::Process) {
+                    runtime::Rect bar{node.bounds.x, node.bounds.y + node.bounds.height - 2, node.bounds.width, 2};
+                    const auto underline = graphics::make_corner_fill_effects({bar, 0}, {false, false, false, false},
+                                                                              t.colors.finished_connector, opacity,
+                                                                              node.translation, clip);
+                    effects.insert(effects.end(), underline.begin(), underline.end());
+                }
+            }
+            if (s->type == StepsType::Default && s->percent && status == StepsStatus::Process) {
+                // A finite segmented ring in logical units, using the shared CPU effect store.
+                const float radius = std::min(icon.bounds.width, icon.bounds.height) / 2 + 2;
+                constexpr float pi = 3.14159265358979323846F;
+                for (int segment = 0; segment < 60; ++segment) {
+                    const float angle = (static_cast<float>(segment) / 60 * 2 - 0.5F) * pi;
+                    runtime::Rect dot{icon.bounds.x + icon.bounds.width / 2 + std::cos(angle) * radius - 1,
+                                      icon.bounds.y + icon.bounds.height / 2 + std::sin(angle) * radius - 1, 2, 2};
+                    const auto part = graphics::make_corner_fill_effects(
+                        {dot, 1}, {true, true, true, true},
+                        segment < *s->percent * 0.6F ? t.colors.finished_connector : t.colors.connector, opacity,
+                        node.translation, decoration_clip);
+                    effects.insert(effects.end(), part.begin(), part.end());
+                }
             }
             std::optional<std::size_t> next;
             for (std::size_t j = i + 1; j < s->rows.size(); ++j) {
-                if (s->model.items[j].visible) {
+                if (s->model.items[j].visible && s->rows[j].shown) {
                     next = j;
                     break;
                 }
             }
-            if (next) {
+            if (next && s->type != StepsType::Panel && s->type != StepsType::Navigation) {
                 const auto& following = services_->nodes().require(s->rows[*next].node);
                 const float line_width =
                     std::min(t.metrics.line_width, s->vertical ? icon.bounds.width : icon.bounds.height);
@@ -818,6 +1352,10 @@ void StepsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
                                                 icon.bounds.y + (icon.bounds.height - line_width) / 2,
                                                 std::max(0.0F, following.bounds.x - node.bounds.x - node.bounds.width),
                                                 line_width};
+                if (!s->vertical && s->rtl) {
+                    line.x = following.bounds.x + following.bounds.width;
+                    line.width = std::max(0.0F, node.bounds.x - line.x);
+                }
                 const auto rail = graphics::make_corner_fill_effects(
                     {line, 0}, {false, false, false, false},
                     s->model.status(*next) == StepsStatus::Error ? t.colors.error
@@ -840,6 +1378,13 @@ void StepsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
 } // namespace ryn::detail
 
 namespace ryn {
+void Steps(StepsProps props, Prop<std::vector<StepsItem>> items) {
+    if (!detail::active_steps) {
+        throw std::logic_error("Steps requires window component services");
+    }
+    detail::active_steps->mount(props, items);
+}
+
 void Steps(StepsProps props, std::vector<StepsItem> items) {
     if (!detail::active_steps) {
         throw std::logic_error("Steps requires window component services");

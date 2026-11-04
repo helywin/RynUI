@@ -1817,7 +1817,7 @@ void test_data_and_selection_gallery_after_document_scroll() {
     };
     auto& tables = services.table();
     auto& pagination = services.pagination();
-    require(tables.mounted().size() == 1 && pagination.mounted().size() == 1 && services.menu().mounted().size() == 2 &&
+    require(tables.mounted().size() == 1 && pagination.mounted().size() == 4 && services.menu().mounted().size() == 2 &&
                 services.dropdown().mounted().size() == 1,
             "data Gallery examples absent");
     const auto table = tables.mounted().front();
@@ -5128,7 +5128,7 @@ void test_navigation_gallery_after_document_scroll() {
                 focus_edges(workflow.items[0]);
                 key(input::Key::enter);
                 require(services.steps().snapshot(steps).current == 0, "Steps Enter failed to commit");
-                key(orientation == 0 ? input::Key::right : input::Key::down);
+                key(services.steps().snapshot(steps).vertical ? input::Key::down : input::Key::right);
                 require(f.host->focus().state().focused == interaction(workflow.items[1]) &&
                             services.steps().snapshot(steps).current == 0,
                         "Steps arrow committed or missed original item");
@@ -5154,7 +5154,7 @@ void test_navigation_gallery_after_document_scroll() {
             click(workflow.items[2]);
             feedback("gallery.steps.feedback", "切换 / 2");
             key(input::Key::home);
-            key(input::Key::right);
+            key(services.steps().snapshot(steps).vertical ? input::Key::down : input::Key::right);
             require(f.host->focus().state().focused == interaction(workflow.items[2]) &&
                         services.steps().snapshot(steps).current == 2,
                     "Steps hidden item changed original index or arrow committed");

@@ -425,40 +425,50 @@
     },
     {
       "identity": "ant.component.pagination",
-      "status": "partial",
-      "summary": "原生 Pagination 已提供受控/默认页码、页数与页大小、跳段按钮和单页隐藏；Gallery 与实际 Table 联动，平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Pagination 已补齐页大小、快速跳页、simple、响应式对齐、typed item 内容与总数；受控请求、非法输入和收缩边界通过 Linux HEADLESS 合同，平台验收独立记录。",
       "supported_scope": [
         "controlled/default current page, total and page size, page/jump buttons",
-        "reactive updates, disabled state, hide-on-single-page layout and Table composition"
+        "reactive updates, disabled state, hide-on-single-page layout and Table composition",
+        "controlled/default page and pageSize with independent authority and size/change events",
+        "native Select size changer, validated quick jump and read-only/simple mode",
+        "shared window responsive size, alignment, total ranges and retained typed item rendering",
+        "disabled/hide-on-single-page, clamp/empty/overflow arithmetic and callback destruction cleanup"
       ],
       "missing_scope": [
-        "page-size selector, quick jumper and simple mode",
-        "native Windows/Linux GPU/input acceptance remains independent"
+        "native Linux GPU/window/input/system IME/accessibility and actual Windows MSVC acceptance remain independent category integration tasks",
+        "Web DOM/CSS/React compatibility APIs are outside native scope"
       ],
       "evidence_identifiers": [
         "openspec:066-20261023-add-native-table-and-pagination",
         "openspec:072-20261023-add-data-and-selection-gallery",
         "test:rynui.pagination_component",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/pagination-linux.md",
+        "docs:docs/pagination.md"
       ]
     },
     {
       "identity": "ant.component.steps",
-      "status": "partial",
-      "summary": "原生 Steps 首版提供保留 keyed 步骤、横纵两向/两尺寸、四状态与原生连接线、受控 current 和键盘导航；富 slots 保留原生子控件，复杂展示变体后续扩展。",
+      "status": "implemented",
+      "summary": "原生 Steps 已补齐动态键控结构、Dot/Inline/Navigation/Panel、percent/maxCount、响应式/RTL 与有限主题动画；富内容身份保留，平台验收独立记录。",
       "supported_scope": [
-        "typed reactive fixed keyed items, controlled/default current and original-index callbacks",
+        "typed reactive keyed items, controlled/default current and original-index callbacks",
         "Wait/Process/Finish/Error state projection, item overrides, native number/check/error and connectors",
         "horizontal/vertical layouts and Default/Small sizes with retained rich title/subtitle/description/icon slots",
         "roving Tab and directional/Home/End focus, explicit Enter/Space/pointer activation and controlled rejection/retry",
         "independent native child input, disabled/hidden/Modal/Spin/window gates and owned input-block teardown",
         "finite glyph/surface/hit clipping, visible external focus outlines and complete component Theme resolution",
-        "interactive controlled Gallery workflow and production catalog anchor, next/previous/reset, direction/size/status/visibility/disabled controls, native retained description editor and keyboard requests; Recording Default/Dark/Compact at 1200/560 x 900"
+        "interactive controlled Gallery workflow and production catalog anchor, next/previous/reset, direction/size/status/visibility/disabled controls, native retained description editor and keyboard requests; Recording Default/Dark/Compact at 1200/560 x 900",
+        "dynamic keyed append/remove/reorder with retained rich slots, current-key preservation and exception rollback",
+        "Default/Dot/Inline/Navigation/Panel logical visuals, retained inline detail popup and finite percent ring",
+        "maxCount disabled ellipses, responsive orientation, RTL layout and directional keyboard navigation",
+        "finite Theme activation motion, reduced/inactive/hidden cancellation and native input cleanup"
       ],
       "missing_scope": [
-        "dynamic topology, dot/inline/navigation/panel/percent/maxCount variants, automatic responsive/RTL and animation",
-        "native GPU/native-window/Linux/system IME and assistive technology acceptance remain independent",
-        "complete Ant Design Web/DOM/CSS API"
+        "native Linux GPU/window/input/system IME/accessibility and actual Windows MSVC acceptance remain independent category integration tasks",
+        "Web DOM/CSS/React compatibility APIs are outside native scope"
       ],
       "evidence_identifiers": [
         "source:components/steps/index.en-US.md",
@@ -469,23 +479,30 @@
         "test:rynui.navigation_block_lifetime_steps_hidden_blur",
         "openspec:082-20261025-add-navigation-gallery",
         "evidence:openspec/changes/082-20261025-add-navigation-gallery/evidence/01-gallery.md",
-        "test:rynui_token_gallery_frame_tests --navigation-only"
+        "test:rynui_token_gallery_frame_tests --navigation-only",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/steps-linux.md",
+        "docs:docs/steps.md"
       ]
     },
     {
       "identity": "ant.component.tabs",
-      "status": "partial",
-      "summary": "RynUI 已提供原生 Tabs：固定 typed 面板、受控选择、保留草稿、Line/Card、三尺寸/上下/居中、键盘与横向溢出；动态结构等扩展尚未覆盖，原生平台证据独立记录。",
+      "status": "implemented",
+      "summary": "原生 Tabs 已补齐动态键控编辑、lazy/destroy、四方向/RTL、富标签/extra、溢出菜单与定制 indicator/有限动画；保留未变面板草稿，平台验收独立记录。",
       "supported_scope": [
-        "typed reactive Props/TabItem labels/disabled and prebuilt retained TabContent panels",
+        "typed reactive Props/TabItem labels/disabled and retained TabContent panels",
         "controlled/default String keys, disabled navigation, single Tab entry and pointer/keyboard activation",
         "Line/Card, three sizes, Top/Bottom, centered and clipped arrow/wheel overflow navigation",
-        "retained Input/Select state, hidden panel focus/IME/popup cleanup and Tabs Component Token"
+        "retained Input/Select state, hidden panel focus/IME/popup cleanup and Tabs Component Token",
+        "dynamic keyed add/remove/reorder, controlled rejection and deterministic active removal fallback",
+        "editable-card add/close/Delete edit requests, closable/hideAdd and retained rich labels/extra slots",
+        "explicit lazy/forceRender/destroyOnHidden with hidden focus/capture/IME/popup cleanup and factory rollback",
+        "Top/Bottom/Left/Right, RTL keyboard/wheel/layout, clipped arrows and native Menu/Dropdown overflow",
+        "custom indicator size/alignment, finite Theme activation motion and reduced/inactive cleanup"
       ],
       "missing_scope": [
-        "dynamic items/reorder, editable-card, lazy/destroyOnHidden and activation animation",
-        "vertical/RTL, rich labels/extra content, overflow popup and custom indicator",
-        "Web/DOM/CSS compatibility aliases"
+        "native Linux GPU/window/input/system IME/accessibility and actual Windows MSVC acceptance remain independent category integration tasks",
+        "Web DOM/CSS/React compatibility APIs are outside native scope"
       ],
       "evidence_identifiers": [
         "source:components/tabs/index.en-US.md",
@@ -495,7 +512,9 @@
         "test:tabs_public_api",
         "test:tabs_component",
         "test:token_gallery_frame",
-        "docs:docs/tabs.md"
+        "docs:docs/tabs.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/tabs-linux.md"
       ]
     },
     {

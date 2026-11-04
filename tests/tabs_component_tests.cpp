@@ -206,7 +206,7 @@ void overflow_and_locality(float scale) {
     f.synchronize();
     const auto id = f.services.tabs().mounted()[0];
     auto s = f.services.tabs().snapshot(id);
-    check(s.overflow && s.scroll == 0 && tab_stops(f) == 1 &&
+    check(s.overflow && s.scroll == 0 && tab_stops(f) == 2 &&
               !f.services.interactions().require(interaction(f, s.next)).focusable,
           "overflow navigation became a Tab stop");
     click(f, s.next);
@@ -269,7 +269,7 @@ void overflow_and_locality(float scale) {
     s = f.services.tabs().snapshot(id);
     const auto& moved = f.nodes.require(f.services.components().root(s.headers[0]));
     check(std::abs(moved.translation.x - (17.25F - s.scroll)) < 0.001F && moved.translation.y == 13.5F &&
-              bounds(f, s.next).x == 17.25F + 160 - 24,
+              bounds(f, s.next).x == s.viewport.x + s.viewport.width,
           "Tabs scroll lost ancestor translation");
     width.set(dp(2400));
     f.synchronize(2400, {0, 0, 2400, 240});
@@ -455,6 +455,173 @@ void capture_disposal() {
               f.services.rounded_effects().live_count() == 0,
           "captured Tabs leaked pointer or effects");
 }
+
+void forced_panel_retention_policy() {
+    Fixture f;
+    Signal<String> active{String{u8"a"}};
+    Signal<bool> centered{false};
+    int runs{};
+    f.services.mount(Content{[&] {
+        Tabs(TabsProps{}.activeKey(active).lazy().destroyOnHidden().centered(centered),
+             {TabItem{u8"a", u8"A", TabContent{[] { Text(u8"A body"); }}},
+              TabItem{u8"b", u8"B", TabContent{[&] {
+                          ++runs;
+                          Input(InputProps{}.defaultValue(u8"forced draft"));
+                      }}}
+                  .forceRender()});
+    }});
+    f.synchronize();
+    const auto input = f.inputs.mounted_inputs().front();
+    check(runs == 1, "forceRender initial body count");
+    centered.set(true);
+    f.synchronize();
+    active.set(u8"b");
+    f.synchronize();
+    active.set(u8"a");
+    f.synchronize();
+    check(runs == 1 && f.services.components().contains(input.component),
+          "forceRender/destroyOnHidden remounted retained body");
+    f.services.dispose();
+    check(f.inputs.mounted_inputs().empty(), "forceRender cleanup");
+}
+
+void dynamic_edit_lazy_and_placements() {
+    Fixture f;
+    int first_runs{};
+    int second_runs{};
+    int rich_runs{};
+    auto a = TabItem{u8"a", u8"A", TabContent{[&] {
+                         ++first_runs;
+                         Input(InputProps{}.defaultValue(u8"draft"));
+                     }}}
+                 .richLabel(TabLabel{[&] {
+                     ++rich_runs;
+                     Text(u8"Rich label");
+                 }})
+                 .closable(false);
+    auto b = TabItem{u8"b", u8"B", TabContent{[&] {
+                         ++second_runs;
+                         Input(InputProps{}.defaultValue(u8"second"));
+                     }}};
+    Signal<std::vector<TabItem>> items{std::vector{a, b}};
+    Signal<TabsPlacement> placement{TabsPlacement::Top};
+    Signal<bool> rtl{false};
+    Signal<bool> destroy{false};
+    std::vector<std::pair<String, TabsEditAction>> edits;
+    f.services.mount(Content{[&] {
+        Tabs(TabsProps{}
+                 .type(TabsType::EditableCard)
+                 .lazy()
+                 .destroyOnHidden(destroy)
+                 .rtl(rtl)
+                 .placement(placement)
+                 .indicator(TabsIndicator{12, TabsIndicatorAlign::End})
+                 .layout(LayoutStyle{}.width(dp(260)))
+                 .extraStart(TabsExtra{[] { Text(u8"Start"); }})
+                 .extraEnd(TabsExtra{[] { Text(u8"End"); }})
+                 .onEdit([&](String key, TabsEditAction action) { edits.emplace_back(key, action); }),
+             items);
+    }});
+    f.synchronize();
+    const auto id = f.services.tabs().mounted().front();
+    const auto activate_at = [&](std::size_t index) {
+        const auto header = f.services.tabs().snapshot(id).headers[index];
+        check(f.services.focus().request_focus(interaction(f, header), FocusModality::keyboard), "dynamic tab focus");
+        f.synchronize();
+        key(f, Key::enter);
+    };
+    const auto original = f.services.tabs().snapshot(id);
+    check(first_runs == 1 && second_runs == 0 && rich_runs == 1, "Tabs lazy mount/rich label");
+    std::optional<InteractionId> close_focus;
+    for (auto hit : f.services.interactions().declaration_order()) {
+        const auto& record = f.services.interactions().require(hit);
+        if (record.component == original.headers[1] || !record.focusable) {
+            continue;
+        }
+        for (auto ancestor = std::optional{record.component}; ancestor;
+             ancestor = f.services.components().parent(*ancestor)) {
+            if (*ancestor == original.headers[1]) {
+                close_focus = hit;
+                break;
+            }
+        }
+    }
+    check(close_focus && f.services.focus().request_focus(*close_focus, FocusModality::keyboard),
+          "offscreen close control focus");
+    f.synchronize();
+    check(f.services.tabs().snapshot(id).scroll > 0 && f.services.tabs().snapshot(id).active == 0,
+          "Tabs did not reveal a focused native header child");
+    activate_at(0);
+    const auto input = f.inputs.mounted_inputs().front();
+    static_cast<void>(f.inputs.editors().require(input.editor).set_value("draft kept"));
+    items.set({b, a});
+    f.synchronize();
+    auto snap = f.services.tabs().snapshot(id);
+    check(snap.headers == std::vector{original.headers[1], original.headers[0]} && snap.active == 1 &&
+              first_runs == 1 && rich_runs == 1,
+          "Tabs keyed reorder remounted selected panel/label");
+    check(f.inputs.editors().require(input.editor).value() == "draft kept", "Tabs reorder lost editor draft");
+    activate_at(0);
+    check(second_runs == 1 && first_runs == 1, "Tabs lazy activation");
+    activate_at(1);
+    check(first_runs == 1, "Tabs retained lazy panel remounted");
+    destroy.set(true);
+    f.synchronize();
+    check(!f.services.tabs().snapshot(id).rendered[0], "Tabs destroyOnHidden did not retire body");
+    activate_at(0);
+    check(second_runs == 2 && !f.services.components().contains(input.component),
+          "Tabs destroyOnHidden did not clean Input");
+    click(f, f.services.tabs().snapshot(id).add);
+    check(edits.back().second == TabsEditAction::Add, "Tabs add request");
+    const auto header = f.services.tabs().snapshot(id).headers[0];
+    check(f.services.focus().request_focus(interaction(f, header), FocusModality::keyboard), "Tabs editable focus");
+    key(f, Key::delete_forward);
+    check(edits.back() == std::pair{String{u8"b"}, TabsEditAction::Remove}, "Tabs Delete remove request");
+    for (auto side : {TabsPlacement::Top, TabsPlacement::Bottom, TabsPlacement::Left, TabsPlacement::Right}) {
+        placement.set(side);
+        rtl.set(side == TabsPlacement::Top || side == TabsPlacement::Left);
+        f.synchronize();
+        snap = f.services.tabs().snapshot(id);
+        const auto h = bounds(f, snap.headers[0]);
+        const auto panel = bounds(f, snap.panels[*snap.active]);
+        check(std::isfinite(h.x) && std::isfinite(h.y) && panel.width >= 0 && panel.height >= 0,
+              "Tabs placement finite geometry");
+        if (side == TabsPlacement::Left || side == TabsPlacement::Right) {
+            check(h.x >= panel.x + panel.width, "Tabs vertical RTL/Right layout");
+        }
+    }
+    bool rejected{};
+    try {
+        items.set({a, a});
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && f.services.tabs().snapshot(id).headers == snap.headers, "Tabs invalid keys changed live tree");
+    bool threw{};
+    try {
+        items.set({a, TabItem{u8"bad", u8"Bad", TabContent{[] { throw std::runtime_error("body"); }}}.forceRender()});
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+    check(threw && f.services.tabs().snapshot(id).headers == snap.headers, "Tabs failed factory did not roll back");
+    items.set({a});
+    f.synchronize();
+    check(f.services.tabs().snapshot(id).key == String{u8"a"} && !f.services.components().contains(original.headers[1]),
+          "Tabs active removal fallback");
+    items.set({a, TabItem{u8"motion", u8"Motion", TabContent{[] { Text(u8"Finite activation"); }}}});
+    f.synchronize();
+    f.services.set_motion_preference(animation::MotionPreference::normal);
+    activate_at(1);
+    check(f.services.tabs().snapshot(id).motion < 1, "Tabs finite activation motion missing");
+    f.services.set_motion_preference(animation::MotionPreference::reduced);
+    check(f.services.tabs().snapshot(id).motion == 1 && f.services.animations().diagnostics().active == 0,
+          "Tabs reduced motion did not settle activation");
+    f.services.destroy(id);
+    check(f.services.tabs().mounted().empty() && f.inputs.mounted_inputs().empty() &&
+              f.services.interactions().size() == 0,
+          "Tabs dynamic cleanup");
+}
+
 } // namespace
 
 int main() {
@@ -463,6 +630,8 @@ int main() {
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
     try {
+        forced_panel_retention_policy();
+        dynamic_edit_lazy_and_placements();
         retained_panels_and_navigation();
         controlled_keys();
         for (float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {

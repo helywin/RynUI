@@ -14,6 +14,10 @@ struct TabsSnapshot final {
     float scroll{};
     float maximum_scroll{};
     bool overflow{};
+    runtime::ComponentId add;
+    runtime::ComponentId more;
+    std::vector<bool> rendered;
+    float motion{1};
 };
 
 class TabsComponentHost final : public WindowComponentParticipant {
@@ -21,6 +25,7 @@ public:
     explicit TabsComponentHost(WindowComponentServices& services);
     ~TabsComponentHost();
     void mount(const TabsProps&, const std::vector<TabItem>&);
+    void mount(const TabsProps&, const Prop<std::vector<TabItem>>&);
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;
@@ -40,10 +45,19 @@ public:
                           std::optional<input::InteractionId>) override;
     bool on_scroll_input(const input::ScrollInputEvent&) override;
     void on_window_active(bool active) override;
+    void synchronize_auxiliary_motion() override;
+    void on_input_boundary_changed() override;
+    void prepare_auxiliary_layout() override;
     void position_window_layers(runtime::Size, runtime::Rect) override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
+    void mount_header(runtime::ComponentId, std::size_t, bool initial = false);
+    void mount_panel(runtime::ComponentId, std::size_t, bool initial = false);
+    void bind_item(runtime::ComponentId, std::size_t);
+    void update_items(runtime::ComponentId, const std::vector<TabItem>&);
+    void edit(runtime::ComponentId, String, TabsEditAction);
+    void rebuild_more(runtime::ComponentId, const std::vector<std::size_t>&);
     void refresh(runtime::ComponentId id, bool geometry);
     void activate(runtime::ComponentId id, std::size_t index);
     void scroll_to(runtime::ComponentId id, float value);

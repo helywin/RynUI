@@ -34,6 +34,7 @@ public:
     [[nodiscard]] std::optional<String> request(std::size_t index);
     void reconcile(String value);
     void set_disabled(std::size_t index, bool disabled);
+    void set_options(std::vector<TabOption> options);
 
 private:
     std::vector<TabOption> options_;

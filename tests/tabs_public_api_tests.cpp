@@ -26,6 +26,28 @@ static_assert(requires(Signal<String> key, Signal<String> label, Signal<bool> di
 });
 static_assert(!std::is_convertible_v<Content, TabContent>);
 
+static_assert(requires(Signal<std::vector<TabItem>> items, Signal<bool> flag, Signal<TabsIndicator> indicator) {
+    Tabs(TabsProps{}
+             .type(TabsType::EditableCard)
+             .placement(TabsPlacement::Left)
+             .rtl(flag)
+             .lazy(flag)
+             .destroyOnHidden(flag)
+             .hideAdd(flag)
+             .animated(flag)
+             .indicator(indicator)
+             .extraStart(TabsExtra{[] {}})
+             .extraEnd(TabsExtra{[] {}})
+             .onEdit([](String, TabsEditAction) {}),
+         items);
+    TabItem{u8"a", u8"A", TabContent{[] {}}}
+        .richLabel(TabLabel{[] {}})
+        .closable(flag)
+        .forceRender()
+        .destroyOnHidden(true);
+});
+static_assert(!std::is_convertible_v<TabsExtra, TabLabel>);
+
 int main() {
     return 0;
 }

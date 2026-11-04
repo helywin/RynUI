@@ -10,6 +10,11 @@ struct PaginationSnapshot final {
     std::vector<runtime::ComponentId> items;
     std::vector<std::size_t> targets;
     bool hidden{};
+    runtime::ComponentId size_changer;
+    runtime::ComponentId jumper;
+    runtime::ComponentId total;
+    bool simple{};
+    bool compact{};
 };
 
 class PaginationComponentHost final : public WindowComponentParticipant {
@@ -36,6 +41,10 @@ public:
 private:
     void refresh(runtime::ComponentId, bool geometry);
     void request(runtime::ComponentId, std::size_t index);
+    void change(runtime::ComponentId, std::size_t page, std::size_t size);
+    void jump(runtime::ComponentId, String);
+    runtime::Size measure(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
+    void place(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
 };

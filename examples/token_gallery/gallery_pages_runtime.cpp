@@ -5,6 +5,10 @@
 #include "component/breadcrumb_component.hpp"
 #include "component/dropdown_component.hpp"
 #include "component/menu_component.hpp"
+#include "component/pagination_component.hpp"
+#include "component/steps_component.hpp"
+#include "component/tabs_component.hpp"
+#include "component/popover_component.hpp"
 #include "component/float_button_component.hpp"
 #include "component/collapse_component.hpp"
 #include "component/grid_component.hpp"
@@ -775,6 +779,209 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                   "native Dropdown retirement retained popup/editor/session/capture");
             std::cout << "dropdown_native=passed controlled=true hover=true split=true flyout=true retained_draft=true "
                          "retired=true\n";
+        }
+        if (route.component_identity == "ant.component.pagination") {
+            auto& paging = app.services().pagination();
+            const auto owner = pages.target("gallery.pagination.advanced");
+            const auto run = [&](runtime::ComponentId target) {
+                reveal(target);
+                activate(target);
+                render();
+            };
+            const auto press = [&](input::Key value) {
+                pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::down});
+                pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::up});
+                render();
+            };
+            const auto enter_page = [&](runtime::ComponentId target, String text) {
+                reveal(target);
+                for (const auto& input : inputs.mounted_inputs()) {
+                    if (owns(app, input.component, target) && app.interactions().branch_active(input.interaction)) {
+                        check(app.focus().state().focused == input.interaction ||
+                                  app.focus().request_focus(input.interaction, input::FocusModality::keyboard),
+                              "native Pagination editor focus failed");
+                        pages.dispatch(input::KeyboardInputEvent{input::Key::a, input::KeyAction::down,
+                                                                 input::KeyModifier::control});
+                        pages.dispatch(input::KeyboardInputEvent{input::Key::a, input::KeyAction::up,
+                                                                 input::KeyModifier::control});
+                        pages.dispatch(input::TextCommitted{std::move(text), inputs.sessions().active()});
+                        press(input::Key::enter);
+                        return;
+                    }
+                }
+                throw std::runtime_error("native Pagination editor absent");
+            };
+            resize(1000);
+            render();
+            reveal(owner);
+            check(paging.snapshot(owner).page_size == 20, "native Pagination initial size wrong");
+            run(paging.snapshot(owner).size_changer);
+            press(input::Key::down);
+            press(input::Key::enter);
+            check(paging.snapshot(owner).page_size == 50 && paging.snapshot(owner).pages == 5,
+                  "native Pagination size changer callback failed");
+            enter_page(paging.snapshot(owner).jumper, u8"3");
+            check(paging.snapshot(owner).current == 3, "native Pagination jumper callback failed");
+            check(std::ranges::any_of(
+                      app.services().text().mounted_texts(),
+                      [&](const auto& text) {
+                          return app.services().text().scene_service().text_state(text.scene).content().bytes() ==
+                                 String{u8"分页 / 3 / 50"}.bytes();
+                      }),
+                  "native Pagination public onChange feedback missing");
+            const auto simple = pages.target("gallery.pagination.simple");
+            enter_page(paging.snapshot(simple).jumper, u8"4");
+            check(paging.snapshot(simple).current == 4 && paging.snapshot(simple).simple,
+                  "native Pagination simple editor failed");
+            resize(360);
+            render();
+            check(paging.snapshot(owner).compact, "native Pagination responsive compact mode absent");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native Pagination retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(paging.mounted().empty() && !inputs.sessions().active().valid(),
+                  "native Pagination retirement leaked input");
+            std::cout << "pagination_native=passed size_callback=true jumper_callback=true simple=true retired=true\n";
+        }
+        if (route.component_identity == "ant.component.steps") {
+            auto& steps = app.services().steps();
+            const auto owner = pages.target("gallery.steps.dynamic");
+            const auto run = [&](runtime::ComponentId target) {
+                reveal(target);
+                activate(target);
+                render();
+            };
+            const auto before = steps.snapshot(owner);
+            reveal(before.items[0]);
+            const auto draft = edit_input(before.items[0]);
+            run(pages.target("gallery.steps.reorder"));
+            const auto reordered = steps.snapshot(owner);
+            check(reordered.keys.front() == String{u8"two"} && reordered.items.back() == before.items.front() &&
+                      std::string{inputs.display_snapshot(draft.first).text} == draft.second,
+                  "native Steps reorder lost retained editor draft");
+            run(reordered.items[2]);
+            check(steps.snapshot(owner).current == 2, "native Steps dynamic selection callback failed");
+            check(std::ranges::any_of(app.services().text().mounted_texts(),
+                                      [&](const auto& text) {
+                                          return app.services()
+                                                     .text()
+                                                     .scene_service()
+                                                     .text_state(text.scene)
+                                                     .content()
+                                                     .bytes()
+                                                     .find(String{u8"动态步骤 / 2"}.bytes()) != std::string_view::npos;
+                                      }),
+                  "native Steps public onChange feedback missing");
+            for (const auto name :
+                 {"gallery.steps.dot", "gallery.steps.inline", "gallery.steps.navigation", "gallery.steps.panel"}) {
+                const auto variant = pages.target(name);
+                const auto index = std::string_view{name} == "gallery.steps.dot" ? 1U : 0U;
+                const auto row = steps.snapshot(variant).items[index];
+                run(row);
+                check(steps.snapshot(variant).current == index, "native Steps variant selection failed");
+                if (std::string_view{name} == "gallery.steps.inline") {
+                    const auto detail_draft = edit_input(row);
+                    pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::down});
+                    pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::up});
+                    render();
+                    check(!app.components().branch_active(detail_draft.first) && !inputs.sessions().active().valid(),
+                          "native Inline Steps Escape retained description/editor session");
+                }
+                const auto motion_deadline =
+                    std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(2));
+                while (steps.snapshot(variant).motion < 1 && std::chrono::steady_clock::now() < motion_deadline) {
+                    render();
+                }
+                check(steps.snapshot(variant).motion == 1, "native Steps animation did not finish");
+            }
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "native Steps retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(steps.mounted().empty() && !app.components().contains(draft.first) &&
+                      !inputs.sessions().active().valid() && app.services().animations().diagnostics().active == 0,
+                  "native Steps retirement leaked editor/motion");
+            std::cout << "steps_native=passed variants=true keyed_draft=true inline_boundary=true finite_motion=true "
+                         "retired=true\n";
+        }
+        if (route.component_identity == "ant.component.tabs") {
+            auto& tabs = app.services().tabs();
+            const auto owner = pages.target("gallery.tabs.editable");
+            const auto run = [&](runtime::ComponentId target) {
+                reveal(target);
+                activate(target);
+                render();
+            };
+            const auto press = [&](input::Key value) {
+                pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::down});
+                pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::up});
+                render();
+            };
+            reveal(owner);
+            const auto original = tabs.snapshot(owner);
+            check(original.headers.size() == 2 && original.rendered[0] && !original.rendered[1],
+                  "native editable Tabs lazy contract absent");
+            const auto draft = edit_input(original.panels[0]);
+            run(original.headers[1]);
+            check(tabs.snapshot(owner).key == String{u8"details"} && tabs.snapshot(owner).rendered[1],
+                  "native Tabs lazy panel activation failed");
+            const auto retired = edit_input(tabs.snapshot(owner).panels[1]);
+            run(original.headers[0]);
+            check(!tabs.snapshot(owner).rendered[1] && !app.components().contains(retired.first) &&
+                      std::string{inputs.display_snapshot(draft.first).text} == draft.second,
+                  "native Tabs destroyOnHidden lost retained draft or kept hidden editor");
+            run(pages.target("gallery.tabs.reorder"));
+            const auto reordered = tabs.snapshot(owner);
+            check(reordered.headers.front() == original.headers.back() &&
+                      reordered.headers.back() == original.headers.front() &&
+                      std::string{inputs.display_snapshot(draft.first).text} == draft.second,
+                  "native Tabs reorder remounted retained content");
+            run(reordered.add);
+            run(tabs.snapshot(owner).add);
+            check(tabs.snapshot(owner).headers.size() == 4, "native Tabs onEdit add callback failed");
+            const auto added = tabs.snapshot(owner).headers.back();
+            run(added);
+            press(input::Key::delete_forward);
+            check(tabs.snapshot(owner).headers.size() == 3 && !app.components().contains(added),
+                  "native Tabs onEdit remove callback failed");
+            resize(480);
+            render();
+            reveal(owner);
+            const auto narrow = tabs.snapshot(owner);
+            check(narrow.overflow, "native Tabs narrow overflow absent");
+            run(narrow.more);
+            bool popup_open = false;
+            for (auto id : app.services().dropdown().mounted()) {
+                if (owns(app, id, narrow.more) && app.services().dropdown().snapshot(id).geometry.visible) {
+                    popup_open = true;
+                }
+            }
+            check(popup_open, "native Tabs overflow Dropdown did not open");
+            press(input::Key::end);
+            press(input::Key::enter);
+            check(tabs.snapshot(owner).key != narrow.key, "native Tabs overflow Menu callback did not change panel");
+            for (const auto name : {"gallery.tabs.left", "gallery.tabs.right"}) {
+                const auto vertical = pages.target(name);
+                run(tabs.snapshot(vertical).headers[1]);
+                const auto selected = tabs.snapshot(vertical);
+                check(selected.active == 1 && bounds(selected.headers[1]).y > bounds(selected.headers[0]).y,
+                      "native Tabs vertical/RTL interaction failed");
+            }
+            const auto motion_deadline = std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(2));
+            while (tabs.snapshot(owner).motion < 1 && std::chrono::steady_clock::now() < motion_deadline) {
+                render();
+            }
+            check(tabs.snapshot(owner).motion == 1, "native Tabs animation did not finish");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "native Tabs retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(tabs.mounted().empty() && app.services().dropdown().mounted().empty() &&
+                      app.services().menu().mounted().empty() && !app.components().contains(draft.first) &&
+                      !inputs.sessions().active().valid() && !captured() &&
+                      app.services().animations().diagnostics().active == 0,
+                  "native Tabs retirement retained popup/editor/motion");
+            std::cout << "tabs_native=passed editable_callbacks=true keyed_draft=true lazy_destroy=true "
+                         "overflow_menu=true vertical_rtl=true finite_motion=true retired=true\n";
         }
         if (route.component_identity == "ant.component.anchor") {
             const auto owner = pages.target("gallery.anchor.component");

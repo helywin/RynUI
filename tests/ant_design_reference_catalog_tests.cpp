@@ -150,7 +150,14 @@ void test_typed_support_status() {
                 "native Flex/Space completion lost implementation evidence");
     }
     require_partial("ant.component.config-provider");
-    require_partial("ant.component.tabs");
+    for (const auto identity : {"ant.component.pagination", "ant.component.steps", "ant.component.tabs"}) {
+        const auto* entry = find_ant_design_reference_entry(identity);
+        require(entry && entry->support_status == GallerySupportStatus::implemented &&
+                    entry->evidence_identifiers.find("openspec:107-") != std::string_view::npos &&
+                    entry->evidence_identifiers.find("test:") != std::string_view::npos &&
+                    entry->missing_scope.find("MSVC") != std::string_view::npos,
+                "completed navigation contract lost implementation evidence or platform boundary");
+    }
     require_partial("ant.component.modal");
     const auto* modal = find_ant_design_reference_entry("ant.component.modal");
     require(modal->supported_scope.find("retained") != std::string_view::npos &&
@@ -159,7 +166,7 @@ void test_typed_support_status() {
             "Modal catalog lost native scope or implementation evidence");
     const auto* tabs = find_ant_design_reference_entry("ant.component.tabs");
     require(tabs->supported_scope.find("retained") != std::string_view::npos &&
-                tabs->missing_scope.find("dynamic") != std::string_view::npos &&
+                tabs->supported_scope.find("dynamic") != std::string_view::npos &&
                 tabs->evidence_identifiers.find("test:tabs_component") != std::string_view::npos,
             "Tabs catalog lost native scope or implementation evidence");
     require(gallery_support_status_name(GallerySupportStatus::implemented) == "implemented" &&

@@ -1,5 +1,6 @@
 #include "component/tabs_model.hpp"
 #include <stdexcept>
+#include <algorithm>
 #include <unordered_set>
 
 namespace ryn::detail {
@@ -87,6 +88,26 @@ void TabsModel::reconcile(String value) {
         throw std::logic_error("Uncontrolled Tabs cannot reconcile an external activeKey");
     }
     value_ = std::move(value);
+}
+
+void TabsModel::set_options(std::vector<TabOption> options) {
+    TabsModel validated{options};
+    const auto previous = active();
+    options_ = std::move(options);
+    if (!controlled_ && !active()) {
+        const auto start = previous.value_or(0);
+        std::optional<std::size_t> fallback;
+        for (std::size_t i = std::min(start, options_.size()); i < options_.size(); ++i) {
+            if (!options_[i].disabled) {
+                fallback = i;
+                break;
+            }
+        }
+        if (!fallback) {
+            fallback = last_enabled();
+        }
+        value_ = fallback ? options_[*fallback].key : String{};
+    }
 }
 
 void TabsModel::set_disabled(std::size_t index, bool disabled) {
