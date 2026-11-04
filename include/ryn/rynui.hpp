@@ -31,6 +31,8 @@
 #include <ryn/design_token.hpp>
 #include <ryn/divider.hpp>
 #include <ryn/flex.hpp>
+#include <ryn/breakpoints.hpp>
+#include <ryn/grid.hpp>
 #include <ryn/icon.hpp>
 #include <ryn/input.hpp>
 #include <ryn/input_number.hpp>

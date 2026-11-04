@@ -2173,6 +2173,66 @@ void add_flex_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 4;
 }
 
+void add_grid_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Grid · 24 列、窗口断点与 retained 输入");
+    Text(sample_text(u8"gallery.grid.responsive · xs=24 / sm=12 / md=8 / lg=6，窗口断点逐字段覆盖"));
+    GridGutter gutter{Responsive<LogicalLength>{dp(8)}.at(Breakpoint::Md, dp(24)), Responsive<LogicalLength>{dp(12)}};
+    Row(RowProps{}.gutter(gutter).layout(LayoutStyle{}.width(state->document_width)), RowContent{[] {
+            for (int index = 0; index < 4; ++index) {
+                const auto options = Responsive<ColOptions>{ColOptions{.span = 24}}
+                                         .at(Breakpoint::Sm, ColOptions{.span = 12})
+                                         .at(Breakpoint::Md, ColOptions{.span = 8})
+                                         .at(Breakpoint::Lg, ColOptions{.span = 6});
+                Col(ColProps{}.responsive(options), ColContent{[index] {
+                        Card(CardProps{}.title(String::from_utf8("Col " + std::to_string(index + 1)).value()),
+                             CardContent{[] { Input(InputProps{}.defaultValue(u8"窗口变化保留草稿")); }});
+                    }});
+            }
+        }});
+    remember_target(state, "gallery.grid.responsive");
+    Text(sample_text(u8"gallery.grid.offset · offset / order / push-pull / 双轴 gutter"));
+    Row(RowProps{}.gutter(dp(16), dp(16)).align(RowAlign::Middle).layout(LayoutStyle{}.width(state->document_width)),
+        RowContent{[] {
+            Col(ColProps{}.span(8).order(1).push(1),
+                ColContent{[] { Button(ButtonProps{}, [] { Text(u8"order 1 / push 1"); }); }});
+            Col(ColProps{}.span(8).offset(8).order(0).pull(1),
+                ColContent{[] { Button(ButtonProps{}, [] { Text(u8"offset 8 / pull 1"); }); }});
+            Col(ColProps{}.span(12), ColContent{[] { Text(u8"换行后继续使用 24 列"); }});
+        }});
+    remember_target(state, "gallery.grid.offset");
+    Text(sample_text(u8"gallery.grid.flex · 固定 120 dp + 1:2 剩余空间"));
+    Row(RowProps{}.wrap(false).gutter(dp(8)).layout(LayoutStyle{}.width(state->document_width)), RowContent{[] {
+            Col(ColProps{}.flex(GridFlex::fixed(dp(120))), ColContent{[] { Text(u8"120 dp"); }});
+            Col(ColProps{}.flex(GridFlex::fill()), ColContent{[] { Input(InputProps{}.defaultValue(u8"flex 1")); }});
+            Col(ColProps{}.flex(GridFlex::fill(2)), ColContent{[] { Input(InputProps{}.defaultValue(u8"flex 2")); }});
+        }});
+    remember_target(state, "gallery.grid.flex");
+    Text(sample_text(u8"gallery.grid.rtl · 方向与 span=0 隐藏保留内容"));
+    Signal<FlexDirection> direction{FlexDirection::RightToLeft};
+    Signal<int> span{8};
+    Space(SpaceProps{}, SpaceContent{[direction, span] {
+              Button(ButtonProps{}.onClick([direction] {
+                  direction.set(direction.get() == FlexDirection::RightToLeft ? FlexDirection::LeftToRight
+                                                                              : FlexDirection::RightToLeft);
+              }),
+                     [] { Text(u8"切换 RTL"); });
+              Button(ButtonProps{}.onClick([span] { span.set(span.get() == 0 ? 8 : 0); }),
+                     [] { Text(u8"隐藏 / 恢复列"); });
+          }});
+    Row(RowProps{}
+            .direction(direction)
+            .gutter(dp(16))
+            .justify(RowJustify::SpaceBetween)
+            .layout(LayoutStyle{}.width(state->document_width)),
+        RowContent{[span] {
+            Col(ColProps{}.span(span), ColContent{[] { Input(InputProps{}.defaultValue(u8"隐藏后保持草稿")); }});
+            Col(ColProps{}.span(8), ColContent{[] { Text(u8"logical end"); }});
+        }});
+    remember_target(state, "gallery.grid.rtl");
+    state->telemetry.live_samples += 4;
+}
+
 void add_space_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Space · separator / baseline / Compact / mixed / Addon");
@@ -6343,6 +6403,13 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_flex_samples",
       "include/ryn/flex.hpp"},
      add_flex_samples},
+    {{"gallery.sample.grid.layouts",
+      "ant.component.grid",
+      {},
+      "二十四列、响应断点与弹性",
+      "add_grid_samples",
+      "include/ryn/grid.hpp"},
+     add_grid_samples},
     {{"gallery.sample.space.composition",
       "ant.component.space",
       {},

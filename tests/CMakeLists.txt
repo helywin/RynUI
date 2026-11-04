@@ -1,6 +1,16 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_grid_component_tests grid_component_tests.cpp)
+rynui_configure_cpp_target(rynui_grid_component_tests)
+target_link_libraries(rynui_grid_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_grid_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(grid_case IN ITEMS breakpoints spans responsive flex alignment lifecycle)
+    add_test(NAME rynui.grid_${grid_case} COMMAND rynui_grid_component_tests ${grid_case})
+endforeach()
+
 foreach(projection_target IN ITEMS tests benchmark)
     add_executable(rynui_state_projection_${projection_target} state_projection_${projection_target}.cpp)
     rynui_configure_cpp_target(rynui_state_projection_${projection_target})

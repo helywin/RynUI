@@ -171,16 +171,26 @@
     },
     {
       "identity": "ant.component.grid",
-      "status": "planned",
-      "summary": "栅格（Grid）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Row/Col 支持窗口响应式二十四列、逐字段覆盖、typed flex、双轴 gutter、RTL 与隐藏输入生命周期。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed RowProps/ColProps、RowContent/ColContent 与 reactive Prop<T>",
+        "span/offset/order/push/pull、typed grow/shrink/basis 与约束冻结",
+        "窗口 xs..xxxl 逐字段覆盖，响应式 align/justify/gutter、wrap、RTL",
+        "span=0 保留身份并阻断命中/焦点/捕获，稳定 retained 测量/放置"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "DOM、CSS 单位字符串、React useBreakpoint 等 Web 专用接口不迁入；平台窗口/GPU 验收独立追踪"
       ],
       "evidence_identifiers": [
-        "source:components/grid/index.en-US.md"
+        "source:components/grid/index.en-US.md",
+        "openspec:106-20261104-complete-general-and-layout-components",
+        "test:rynui.grid_breakpoints",
+        "test:rynui.grid_spans",
+        "test:rynui.grid_responsive",
+        "test:rynui.grid_flex",
+        "test:rynui.grid_alignment",
+        "test:rynui.grid_lifecycle"
       ]
     },
     {

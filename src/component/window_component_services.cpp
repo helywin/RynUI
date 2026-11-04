@@ -37,6 +37,7 @@
 #include "component/table_component.hpp"
 #include "component/empty_result_component.hpp"
 #include "component/input_component.hpp"
+#include "component/responsive_layout.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -113,6 +114,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     text_.attach_window_services(*this);
     animations_.reserve(256, 64, 256);
     animations_.set_schedule_observer(&frame_requests);
+    responsive_layout_ = std::make_unique<ResponsiveLayoutHost>(*this);
     typography_ = std::make_unique<TypographyComponentHost>(*this);
     float_button_ = std::make_unique<FloatButtonComponentHost>(*this);
     divider_ = std::make_unique<DividerComponentHost>(*this);
@@ -495,6 +497,7 @@ std::optional<animation::AnimationTime> WindowComponentServices::next_frame_dead
 
 bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, runtime::Rect clip, runtime::Point origin,
                                                      float gap, bool unbounded_root_height) {
+    responsive_layout_->set_window_width(viewport.width);
     auto& text_scene = text_.scene_service();
     for (auto* participant : participants_) {
         participant->prepare_auxiliary_layout();

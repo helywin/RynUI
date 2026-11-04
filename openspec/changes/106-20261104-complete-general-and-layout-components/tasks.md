@@ -12,8 +12,8 @@
 
 ## 3. 布局：Grid
 
-- [ ] 3.1 实现 Row/Col、共享响应断点、跨度/偏移/排序/位移/flex、双轴 gutter、RTL/隐藏；合同测试覆盖窗口变化与稳定身份。
-- [ ] 3.2 接入 Grid 页面与文档；运行相关 HEADLESS Debug/Release 测试和目录校验后提交。
+- [x] 3.1 实现 Row/Col、共享响应断点、跨度/偏移/排序/位移/flex、双轴 gutter、RTL/隐藏；合同测试覆盖窗口变化与稳定身份。
+- [x] 3.2 接入 Grid 页面与文档；运行相关 HEADLESS Debug/Release 测试和目录校验后提交。
 
 ## 4. 布局：Layout
 

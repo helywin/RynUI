@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 67 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 68 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -54,6 +54,10 @@ void add_next() {}'''
           by_id['gallery.sample.message.workflow'].theme_path == 'ThemeConfig.message.tokens',
           'forwarding header or shared NoticeThemeConfig mapping failed')
     check(not by_id['gallery.sample.flex.layouts'].theme_path, 'invented a component token for Flex')
+    check('RowProps' in by_id['gallery.sample.grid.layouts'].props and
+          'ColProps' in by_id['gallery.sample.grid.layouts'].props and
+          'ColContent' in by_id['gallery.sample.grid.layouts'].slots,
+          'Grid source omitted its real typed Row/Col API')
     check('add_bidi_input(' in by_id['gallery.sample.input.bidi'].code, 'wrapper excerpt omitted its actual sample')
     check(MODULE.render(records) == MODULE.render(MODULE.generate(ROOT)), 'generation is nondeterministic')
     print(f'Gallery source/API/token contracts: {len(records)} samples passed')

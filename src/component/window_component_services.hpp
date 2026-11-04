@@ -55,6 +55,7 @@ class BreadcrumbComponentHost;
 class StepsComponentHost;
 class SkeletonComponentHost;
 class NoticeComponentHost;
+class ResponsiveLayoutHost;
 
 class WindowComponentParticipant {
 public:
@@ -364,6 +365,10 @@ public:
         return text_;
     }
 
+    [[nodiscard]] ResponsiveLayoutHost& responsive_layout() noexcept {
+        return *responsive_layout_;
+    }
+
     [[nodiscard]] const TextComponentHost& text() const noexcept {
         return text_;
     }
@@ -487,6 +492,7 @@ private:
     std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<SkeletonComponentHost> skeleton_;
     std::unique_ptr<NoticeComponentHost> notices_;
+    std::unique_ptr<ResponsiveLayoutHost> responsive_layout_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;
