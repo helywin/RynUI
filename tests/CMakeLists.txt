@@ -495,6 +495,17 @@ target_compile_definitions(rynui_time_navigation_merge_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.time_navigation_merge COMMAND rynui_time_navigation_merge_tests)
 
+
+add_executable(rynui_picker_completion_tests picker_completion_tests.cpp)
+rynui_configure_cpp_target(rynui_picker_completion_tests)
+target_link_libraries(rynui_picker_completion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_picker_completion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(picker_case IN ITEMS format time_rules ranges date_modes native_time native_date native_ranges multiple_authority datetime_drafts failure_cleanup wheel_motion)
+    add_test(NAME rynui.picker_completion_${picker_case} COMMAND rynui_picker_completion_tests ${picker_case})
+endforeach()
+
 foreach(time_test IN ITEMS time_picker_model time_picker_public_api)
     add_executable(rynui_${time_test}_tests ${time_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${time_test}_tests)

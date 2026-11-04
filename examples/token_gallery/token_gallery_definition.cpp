@@ -7460,6 +7460,236 @@ struct GallerySampleFactory final {
     void (*mount)(const std::shared_ptr<GalleryState>&);
 };
 
+void add_date_modes_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<DatePickerMode> mode{DatePickerMode::Date};
+    Signal<PickerLocale> locale{PickerLocale{}};
+    Signal<TextDirection> direction{TextDirection::LeftToRight};
+    Signal<DatePickerValue> value{CivilDate{2026, 11, 5}};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"日期／周／月／季度／年份 · locale 与 RTL");
+             DatePicker(DatePickerProps{}
+                            .value(value)
+                            .picker(mode)
+                            .locale(locale)
+                            .direction(direction)
+                            .clock([] { return CivilDateTime{CivilDate{2026, 11, 5}, TimeOfDay{9, 30}}; })
+                            .showNow()
+                            .presets({{String{u8"release"}, String{u8"发布日"},
+                                       [] { return DatePickerValue{CivilDate{2026, 12, 1}}; }}})
+                            .onChange([value](DatePickerValue v) mutable { value.set(v); })
+                            .layout(LayoutStyle{}.width(dp(280))),
+                        DatePickerFooter{[state] {
+                            Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(4)), FlexContent{[state] {
+                                     Input(InputProps{}.defaultValue(String{u8"保留的面板备注"}));
+                                     remember_target(state, "gallery.date-picker.mode-note");
+                                     Popover(PopoverProps{}.trigger(PopoverTriggerMode::Click), PopoverTrigger{[state] {
+                                                 Button(ButtonProps{}, ButtonContent{[] { Text(u8"编辑日期子浮层"); }});
+                                                 remember_target(state, "gallery.date-picker.child-trigger");
+                                             }},
+                                             PopoverSlots{{}, PopoverContent{[state] {
+                                                              Input(InputProps{}.defaultValue(String{u8"子浮层草稿"}));
+                                                              remember_target(state,
+                                                                              "gallery.date-picker.child-editor");
+                                                          }}});
+                                 }});
+                        }});
+             remember_target(state, "gallery.date-picker.modes");
+             Button(ButtonProps{}.onClick([mode]() mutable {
+                 mode.set(static_cast<DatePickerMode>((static_cast<int>(mode.get()) + 1) % 5));
+             }),
+                    ButtonContent{[] { Text(sample_text(u8"gallery.date-picker.picker-mode · 切换日期模式")); }});
+             gallery_target("gallery.date-picker.picker-mode");
+             Button(ButtonProps{}.onClick([locale]() mutable {
+                 auto v = locale.get();
+                 v.first_day = v.first_day ? 0 : 1;
+                 v.first_week_contains = v.first_day ? 4 : 1;
+                 locale.set(v);
+             }),
+                    ButtonContent{[] { Text(sample_text(u8"gallery.date-picker.locale · Sunday / ISO Monday")); }});
+             gallery_target("gallery.date-picker.locale");
+             Button(ButtonProps{}.onClick([direction]() mutable {
+                 direction.set(direction.get() == TextDirection::RightToLeft ? TextDirection::LeftToRight
+                                                                             : TextDirection::RightToLeft);
+             }),
+                    ButtonContent{[] { Text(sample_text(u8"gallery.date-picker.rtl · 切换方向")); }});
+             gallery_target("gallery.date-picker.rtl");
+         }});
+    state->telemetry.live_samples += 1;
+}
+
+void add_date_range_multiple_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<DatePickerMultipleValue> multiple{DatePickerMultipleValue{CivilDate{2026, 11, 5}}};
+    Signal<DatePickerRangeValue> range{DatePickerRangeValue{CivilDate{2026, 11, 5}, CivilDate{2026, 11, 12}}};
+    Signal<bool> accept{true};
+    PickerRangePolicy policy;
+    policy.allow_empty = {true, true};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"多选确认与可空范围 · 锁定 accepted 值可观察受控拒绝");
+             DatePicker(
+                 DatePickerProps{}
+                     .multiple()
+                     .multipleValue(multiple)
+                     .multiplePresets(
+                         {{String{u8"work-days"}, String{u8"工作日预设"},
+                           [] { return DatePickerMultipleValue{CivilDate{2026, 11, 5}, CivilDate{2026, 11, 6}}; }}})
+                     .defaultPanelDate(CivilDate{2026, 11, 1})
+                     .onMultipleChange([multiple, accept](DatePickerMultipleValue v) mutable {
+                         if (accept.get()) {
+                             multiple.set(std::move(v));
+                         }
+                     })
+                     .layout(LayoutStyle{}.width(dp(300))));
+             remember_target(state, "gallery.date-picker.multiple");
+             DateRangePicker(DateRangePickerProps{}
+                                 .value(range)
+                                 .policy(policy)
+                                 .picker(DatePickerProps{}
+                                             .defaultPanelDate(CivilDate{2026, 11, 1})
+                                             .format(u8"DD/MM/YYYY")
+                                             .layout(LayoutStyle{}.width(dp(220))))
+                                 .onChange([range, accept](DatePickerRangeValue v) mutable {
+                                     if (accept.get()) {
+                                         range.set(v);
+                                     }
+                                 }));
+             remember_target(state, "gallery.date-picker.range");
+             Button(ButtonProps{}.onClick([accept]() mutable { accept.set(!accept.get()); }),
+                    ButtonContent{[] { Text(sample_text(u8"gallery.date-picker.range-authority · 切换范围接受")); }});
+             gallery_target("gallery.date-picker.range-authority");
+         }});
+    state->telemetry.live_samples += 1;
+}
+
+void add_date_time_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<DatePickerDateTimeValue> value{CivilDateTime{CivilDate{2026, 11, 5}, TimeOfDay{9, 30}}};
+    Signal<DateTimePickerRangeValue> range{DateTimePickerRangeValue{
+        CivilDateTime{CivilDate{2026, 11, 5}, TimeOfDay{9}}, CivilDateTime{CivilDate{2026, 11, 5}, TimeOfDay{18}}}};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"日期与精确时间原子确认 · CivilDateTime 没有隐式时区转换");
+             DatePicker(DatePickerProps{}
+                            .showTime(TimePickerProps{}.precision(TimePickerPrecision::Millisecond))
+                            .format(u8"DD/MM/YYYY HH:mm:ss.SSS")
+                            .dateTimeValue(value)
+                            .dateTimePresets({{String{u8"precise-noon"}, String{u8"日期时间预设"},
+                                               [] {
+                                                   return DatePickerDateTimeValue{
+                                                       CivilDateTime{CivilDate{2026, 11, 5}, TimeOfDay{12, 0, 0, 125}}};
+                                               }}})
+                            .onDateTimeChange([value](DatePickerDateTimeValue v) mutable { value.set(v); })
+                            .layout(LayoutStyle{}.width(dp(320))));
+             remember_target(state, "gallery.date-picker.datetime");
+             DateRangePicker(DateTimeRangePickerProps{}
+                                 .value(range)
+                                 .picker(DatePickerProps{}
+                                             .showTime(TimePickerProps{}.precision(TimePickerPrecision::Minute))
+                                             .defaultPanelDate(CivilDate{2026, 11, 1})
+                                             .layout(LayoutStyle{}.width(dp(250))))
+                                 .onChange([range](DateTimePickerRangeValue v) mutable { range.set(v); }));
+             remember_target(state, "gallery.date-picker.datetime-range");
+         }});
+    state->telemetry.live_samples += 1;
+}
+
+void add_time_precision_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<TimePickerValue> value{TimeOfDay{12, 30, 0, 125}};
+    Signal<bool> twelve{true};
+    Signal<bool> scroll{false};
+    TimePickerRules rules;
+    rules.millisecond_step = 125;
+    rules.disabled_milliseconds = [](int, int, int, int ms) {
+        return ms == 500;
+    };
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"AM/PM、整数毫秒、依赖禁用、Now 与预设");
+             TimePicker(
+                 TimePickerProps{}
+                     .value(value)
+                     .precision(TimePickerPrecision::Millisecond)
+                     .use12Hours(twelve)
+                     .rules(rules)
+                     .changeOnScroll(scroll)
+                     .clock([] { return TimeOfDay{9, 30, 0, 125}; })
+                     .showNow()
+                     .presets({{String{u8"noon"}, String{u8"正午"}, [] { return TimePickerValue{TimeOfDay{12}}; }}})
+                     .onChange([value](TimePickerValue v) mutable { value.set(v); })
+                     .layout(LayoutStyle{}.width(dp(300))),
+                 TimePickerFooter{[state] {
+                     Input(InputProps{}.defaultValue(String{u8"保留的精确时间备注"}));
+                     remember_target(state, "gallery.time-picker.precise-note");
+                 }});
+             remember_target(state, "gallery.time-picker.precise");
+             Button(ButtonProps{}.onClick([twelve]() mutable { twelve.set(!twelve.get()); }),
+                    ButtonContent{[] { Text(sample_text(u8"gallery.time-picker.twelve · 12 / 24 小时")); }});
+             gallery_target("gallery.time-picker.twelve");
+             Button(ButtonProps{}.onClick([scroll]() mutable { scroll.set(!scroll.get()); }),
+                    ButtonContent{[] { Text(sample_text(u8"gallery.time-picker.scroll-select · 滚轮选择")); }});
+             gallery_target("gallery.time-picker.scroll-select");
+         }});
+    state->telemetry.live_samples += 1;
+}
+
+void add_time_range_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<TimePickerRangeValue> value{TimePickerRangeValue{TimeOfDay{9}, TimeOfDay{18}}};
+    Signal<bool> accept{true};
+    PickerRangePolicy policy;
+    policy.allow_empty = {true, true};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"时间范围 · 端点草稿、可空、排序与整体提交");
+             TimeRangePicker(
+                 TimeRangePickerProps{}
+                     .value(value)
+                     .policy(policy)
+                     .picker(TimePickerProps{}
+                                 .use12Hours()
+                                 .precision(TimePickerPrecision::Minute)
+                                 .layout(LayoutStyle{}.width(dp(240))))
+                     .disabledTime([](TimeOfDay time, PickerEndpoint endpoint, const TimePickerRangeValue& range) {
+                         return endpoint == PickerEndpoint::End && range.start && time.hour() == range.start->hour() &&
+                                time.minute() < range.start->minute();
+                     })
+                     .onChange([value, accept](TimePickerRangeValue v) mutable {
+                         if (accept.get()) {
+                             value.set(v);
+                         }
+                     }));
+             remember_target(state, "gallery.time-picker.range");
+             Button(ButtonProps{}.onClick([accept]() mutable { accept.set(!accept.get()); }),
+                    ButtonContent{[] { Text(sample_text(u8"gallery.time-picker.range-authority · 切换范围接受")); }});
+             gallery_target("gallery.time-picker.range-authority");
+         }});
+    state->telemetry.live_samples += 1;
+}
+
 constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
     {{"gallery.sample.float-button.actions",
       "ant.component.float-button",
@@ -7995,6 +8225,41 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "include/ryn/design_token.hpp",
       GalleryPageKind::tokens},
      add_shadow_cells},
+    {{"gallery.sample.date-picker.modes",
+      "ant.component.date-picker",
+      {},
+      "日期模式、locale 与 RTL",
+      "add_date_modes_samples",
+      "include/ryn/date_picker.hpp"},
+     add_date_modes_samples},
+    {{"gallery.sample.date-picker.range-multiple",
+      "ant.component.date-picker",
+      {},
+      "范围与多选确认",
+      "add_date_range_multiple_samples",
+      "include/ryn/date_picker.hpp"},
+     add_date_range_multiple_samples},
+    {{"gallery.sample.date-picker.date-time",
+      "ant.component.date-picker",
+      {},
+      "日期时间组合值",
+      "add_date_time_samples",
+      "include/ryn/date_picker.hpp"},
+     add_date_time_samples},
+    {{"gallery.sample.time-picker.precision",
+      "ant.component.time-picker",
+      {},
+      "12 小时与精确毫秒",
+      "add_time_precision_samples",
+      "include/ryn/time_picker.hpp"},
+     add_time_precision_samples},
+    {{"gallery.sample.time-picker.range",
+      "ant.component.time-picker",
+      {},
+      "时间范围与受控拒绝",
+      "add_time_range_samples",
+      "include/ryn/time_picker.hpp"},
+     add_time_range_samples},
 });
 
 constexpr auto sample_descriptors = [] {

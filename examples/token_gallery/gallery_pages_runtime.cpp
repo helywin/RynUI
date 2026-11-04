@@ -4,6 +4,8 @@
 #include "component/auto_complete_component.hpp"
 #include "component/color_picker_component.hpp"
 #include "component/cascader_component.hpp"
+#include "component/date_picker_component.hpp"
+#include "component/time_picker_component.hpp"
 #include "component/anchor_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/dropdown_component.hpp"
@@ -832,6 +834,295 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                   "native Dropdown retirement retained popup/editor/session/capture");
             std::cout << "dropdown_native=passed controlled=true hover=true split=true flyout=true retained_draft=true "
                          "retired=true\n";
+        }
+        if (route.component_identity == "ant.component.date-picker" ||
+            route.component_identity == "ant.component.time-picker") {
+            auto& dates = app.services().date_picker();
+            auto& times = app.services().time_picker();
+            const auto run = [&](runtime::ComponentId target) {
+                reveal(target);
+                activate(target);
+                render();
+            };
+            const auto labelled = [&](runtime::ComponentId owner, String label) {
+                for (const auto& text : app.services().text().mounted_texts()) {
+                    if (!owns(app, text.component, owner) ||
+                        app.services().text().scene_service().text_state(text.scene).content().bytes() !=
+                            label.bytes()) {
+                        continue;
+                    }
+                    for (const auto& button : app.mounted_buttons()) {
+                        if (owns(app, text.component, button.component) &&
+                            app.interactions().branch_active(button.interaction)) {
+                            return button.component;
+                        }
+                    }
+                }
+                throw std::runtime_error("native picker action label is missing");
+            };
+            const auto focus_selector = [&](runtime::ComponentId component) {
+                const auto editor = std::ranges::find_if(
+                    inputs.mounted_inputs(), [&](const auto& input) { return input.component == component; });
+                check(editor != inputs.mounted_inputs().end(), "native picker selector missing");
+                check(app.focus().state().focused == editor->interaction ||
+                          app.focus().request_focus(editor->interaction, input::FocusModality::keyboard),
+                      "native picker selector could not receive focus");
+            };
+            const auto date_open = [&](runtime::ComponentId owner) {
+                std::cout << "picker_native_open=date mode=" << static_cast<int>(dates.snapshot(owner).mode) << '\n'
+                          << std::flush;
+                reveal(owner);
+                focus_selector(dates.snapshot(owner).input);
+                press(input::Key::down);
+                check(dates.snapshot(owner).visible, "native DatePicker did not open");
+            };
+            const auto time_open = [&](runtime::ComponentId owner) {
+                std::cout << "picker_native_open=time\n" << std::flush;
+                reveal(owner);
+                focus_selector(times.snapshot(owner).selector);
+                press(input::Key::down);
+                check(times.snapshot(owner).visible, "native TimePicker did not open");
+            };
+            const auto range_dates = [&](runtime::ComponentId owner) {
+                std::vector<runtime::ComponentId> result;
+                for (auto id : dates.mounted()) {
+                    if (owns(app, id, owner)) {
+                        result.push_back(id);
+                    }
+                }
+                check(result.size() == 2, "native date range endpoints missing");
+                return result;
+            };
+            const auto range_times = [&](runtime::ComponentId owner) {
+                std::vector<runtime::ComponentId> result;
+                for (auto id : times.mounted()) {
+                    if (owns(app, id, owner)) {
+                        result.push_back(id);
+                    }
+                }
+                check(result.size() == 2, "native time range endpoints missing");
+                return result;
+            };
+            if (route.component_identity == "ant.component.date-picker") {
+                check(dates.mounted().size() == 9 && times.mounted().size() == 3, "native DatePicker examples missing");
+                const auto modes = pages.target("gallery.date-picker.modes");
+                date_open(modes);
+                const auto original = dates.snapshot(modes);
+                check(original.mode == DatePickerMode::Date && original.cells.size() == 42, "native day grid missing");
+                const auto cell_label = [&](runtime::ComponentId owner) {
+                    std::string label;
+                    for (const auto& text : app.services().text().mounted_texts()) {
+                        if (owns(app, text.component, owner)) {
+                            label += app.services().text().scene_service().text_state(text.scene).content().bytes();
+                        }
+                    }
+                    return label;
+                };
+                const auto sunday = cell_label(original.cells[0]);
+                const auto note = replace_text(pages.target("gallery.date-picker.mode-note"), u8"saved date note");
+                press(input::Key::escape);
+                run(pages.target("gallery.date-picker.locale"));
+                run(pages.target("gallery.date-picker.rtl"));
+                date_open(modes);
+                auto mode = dates.snapshot(modes);
+                check(cell_label(mode.cells[0]) != sunday && bounds(mode.cells[0]).x > bounds(mode.cells[1]).x &&
+                          inputs.display_snapshot(note.component).text == "saved date note",
+                      "native date RTL or retained footer failed");
+                for (const auto expected : {DatePickerMode::Week, DatePickerMode::Month, DatePickerMode::Quarter,
+                                            DatePickerMode::Year, DatePickerMode::Date}) {
+                    press(input::Key::escape);
+                    run(pages.target("gallery.date-picker.picker-mode"));
+                    date_open(modes);
+                    mode = dates.snapshot(modes);
+                    const auto cells = expected == DatePickerMode::Quarter                                     ? 4U
+                                       : expected == DatePickerMode::Month || expected == DatePickerMode::Year ? 12U
+                                                                                                               : 42U;
+                    check(mode.mode == expected && mode.cells.size() == cells && mode.input == original.input,
+                          "native picker mode did not update its retained real grid");
+                }
+                activate(labelled(modes, u8"发布日"));
+                render();
+                check(dates.snapshot(modes).value == DatePickerValue{CivilDate{2026, 12, 1}},
+                      "native date preset callback failed");
+                date_open(modes);
+                activate(labelled(modes, u8"Today"));
+                render();
+                check(dates.snapshot(modes).value == DatePickerValue{CivilDate{2026, 11, 5}},
+                      "native explicit date clock failed");
+
+                run(pages.target("gallery.date-picker.range-authority"));
+                const auto multiple = pages.target("gallery.date-picker.multiple");
+                const auto accepted = dates.snapshot(multiple).multiple_value;
+                date_open(multiple);
+                click(dates.snapshot(multiple).cells[15]);
+                check(dates.snapshot(multiple).pending_multiple != accepted &&
+                          dates.snapshot(multiple).multiple_value == accepted,
+                      "native multiple pending value escaped authority");
+                activate(labelled(multiple, u8"OK"));
+                render();
+                check(dates.snapshot(multiple).multiple_value == accepted, "native multiple refusal changed accepted");
+                run(pages.target("gallery.date-picker.range-authority"));
+                date_open(multiple);
+                click(dates.snapshot(multiple).cells[15]);
+                activate(labelled(multiple, u8"OK"));
+                render();
+                check(dates.snapshot(multiple).multiple_value != accepted, "native multiple accepted callback failed");
+
+                const auto range = range_dates(pages.target("gallery.date-picker.range"));
+                date_open(range[0]);
+                replace_text(dates.snapshot(range[0]).input, u8"12/11/2026");
+                press(input::Key::enter);
+                check(dates.snapshot(range[1]).visible, "native date range did not activate end");
+                replace_text(dates.snapshot(range[1]).input, u8"14/11/2026");
+                press(input::Key::enter);
+                check(dates.snapshot(range[0]).value == DatePickerValue{CivilDate{2026, 11, 12}} &&
+                          dates.snapshot(range[1]).value == DatePickerValue{CivilDate{2026, 11, 14}},
+                      "native typed date range did not publish atomically");
+                const auto datetime = pages.target("gallery.date-picker.datetime");
+                date_open(datetime);
+                activate(labelled(datetime, u8"日期时间预设"));
+                render();
+                check(dates.snapshot(datetime).date_time_value ==
+                          DatePickerDateTimeValue{CivilDateTime{CivilDate{2026, 11, 5}, TimeOfDay{12, 0, 0, 125}}},
+                      "native date/time preset lost integer milliseconds");
+                const auto datetime_range = range_dates(pages.target("gallery.date-picker.datetime-range"));
+                const auto old_end = dates.snapshot(datetime_range[1]).date_time_value;
+                date_open(datetime_range[1]);
+                click(dates.snapshot(datetime_range[1]).cells[15]);
+                activate(labelled(datetime_range[1], u8"OK"));
+                render();
+                check(dates.snapshot(datetime_range[1]).date_time_value != old_end &&
+                          dates.snapshot(datetime_range[0]).date_time_value.has_value(),
+                      "native date/time range confirmation failed");
+
+                const auto form_picker = dates.mounted()[1];
+                const auto form_draft = dates.snapshot(form_picker).draft;
+                date_open(form_picker);
+                replace_text(dates.snapshot(form_picker).input, u8"unfinished date");
+                run(pages.target("gallery.date-picker.reset"));
+                check(dates.snapshot(form_picker).draft == form_draft,
+                      "native Form String date reset did not restore accepted draft");
+                date_open(modes);
+                activate(pages.target("gallery.date-picker.child-trigger"));
+                render();
+                const auto child = replace_text(pages.target("gallery.date-picker.child-editor"), u8"saved child note");
+                const auto child_popup = *std::ranges::find_if(app.services().popover().mounted(), [&](auto id) {
+                    return owns(app, child.component, app.services().popover().snapshot(id).popup);
+                });
+                const auto stamp = inputs.sessions().active();
+                pages.dispatch(input::CompositionChanged{String{u8"日期候选"}, {}, stamp});
+                render();
+                press(input::Key::escape);
+                check(!inputs.editors().require(stamp.owner).composition().active &&
+                          app.services().popover().snapshot(child_popup).geometry.visible &&
+                          dates.snapshot(modes).visible,
+                      "native date preedit Escape closed its popup");
+                press(input::Key::escape);
+                check(!app.services().popover().snapshot(child_popup).geometry.visible && dates.snapshot(modes).visible,
+                      "native date child popup Escape closed its parent");
+                activate(pages.target("gallery.date-picker.child-trigger"));
+                render();
+                focus_editor(child.component);
+                previous_session = inputs.sessions().active();
+                pages.dispatch(input::CompositionChanged{String{u8"退场候选"}, {}, previous_session});
+                render();
+                std::cout << "date_picker_native=passed modes=5 locale=true rtl=true multiple_authority=true "
+                             "date_range=true datetime_range=true presets_clock=true form_reset=true "
+                             "retained_footer=true child_popup_escape=true\n";
+            } else {
+                check(times.mounted().size() == 5, "native TimePicker examples missing");
+                const auto precise = pages.target("gallery.time-picker.precise");
+                time_open(precise);
+                auto state = times.snapshot(precise);
+                check(state.rows[4].size() == 2 && state.column_clips[4].width > 0 && state.column_clips[3].width > 0 &&
+                          state.pending.hour() == 12,
+                      "native AM/PM or millisecond columns missing");
+                const auto note = replace_text(pages.target("gallery.time-picker.precise-note"), u8"saved time note");
+                click(state.rows[4][0]);
+                check(times.snapshot(precise).pending.hour() == 0 && times.snapshot(precise).value->hour() == 12,
+                      "native AM row lost pending/accepted distinction");
+                activate(times.snapshot(precise).confirm);
+                render();
+                check(times.snapshot(precise).value->hour() == 0, "native AM confirmation failed");
+                time_open(precise);
+                focus_editor(times.snapshot(precise).selector);
+                for (int step = 0; step < 5 && times.snapshot(precise).active_column != 3; ++step) {
+                    press(times.snapshot(precise).active_column > 3 ? input::Key::left : input::Key::right);
+                }
+                press(input::Key::down);
+                check(times.snapshot(precise).pending.millisecond() == 250, "native millisecond keyboard step failed");
+                activate(times.snapshot(precise).confirm);
+                render();
+                check(times.snapshot(precise).value->millisecond() == 250, "native millisecond commit failed");
+                time_open(precise);
+                activate(labelled(precise, u8"Now"));
+                render();
+                check(times.snapshot(precise).value == TimePickerValue{TimeOfDay{9, 30, 0, 125}},
+                      "native explicit Now clock failed");
+                time_open(precise);
+                activate(labelled(precise, u8"正午"));
+                render();
+                check(times.snapshot(precise).value == TimePickerValue{TimeOfDay{12}}, "native time preset failed");
+                run(pages.target("gallery.time-picker.scroll-select"));
+                time_open(precise);
+                state = times.snapshot(precise);
+                const auto clip = state.column_clips[0];
+                events.inject_scroll_at(clip.x + 4, clip.y + 4, -1);
+                render();
+                check(times.snapshot(precise).pending != state.pending && times.snapshot(precise).value == state.value,
+                      "native changeOnScroll failed or bypassed confirmation");
+                activate(times.snapshot(precise).confirm);
+                render();
+                check(times.snapshot(precise).value != state.value, "native scroll selection did not publish");
+                run(pages.target("gallery.time-picker.twelve"));
+                time_open(precise);
+                check(times.snapshot(precise).column_clips[4].width == 0 &&
+                          inputs.display_snapshot(note.component).text == "saved time note",
+                      "native 24-hour mode or retained precise footer failed");
+                press(input::Key::escape);
+
+                const auto range = range_times(pages.target("gallery.time-picker.range"));
+                run(pages.target("gallery.time-picker.range-authority"));
+                const auto set_range = [&] {
+                    time_open(range[0]);
+                    replace_text(times.snapshot(range[0]).selector, format_time_of_day(TimeOfDay{10}, "h:mm a"));
+                    press(input::Key::enter);
+                    check(times.snapshot(range[1]).visible, "native time range did not activate end");
+                    replace_text(times.snapshot(range[1]).selector, format_time_of_day(TimeOfDay{19}, "h:mm a"));
+                    press(input::Key::enter);
+                };
+                set_range();
+                check(times.snapshot(range[0]).value == TimePickerValue{TimeOfDay{9}} &&
+                          times.snapshot(range[1]).value == TimePickerValue{TimeOfDay{18}},
+                      "native rejected time range changed accepted values");
+                run(pages.target("gallery.time-picker.range-authority"));
+                set_range();
+                check(times.snapshot(range[0]).value == TimePickerValue{TimeOfDay{10}} &&
+                          times.snapshot(range[1]).value == TimePickerValue{TimeOfDay{19}},
+                      "native accepted time range did not publish atomically");
+                const auto form_picker = times.mounted()[1];
+                const auto form_draft = times.snapshot(form_picker).draft;
+                time_open(form_picker);
+                replace_text(times.snapshot(form_picker).selector, u8"unfinished time");
+                run(pages.target("gallery.time-picker.reset"));
+                check(times.snapshot(form_picker).draft == form_draft, "native Form String time reset failed");
+                time_open(precise);
+                focus_editor(note.component);
+                previous_session = inputs.sessions().active();
+                pages.dispatch(input::CompositionChanged{String{u8"时间候选"}, {}, previous_session});
+                render();
+                std::cout << "time_picker_native=passed am_pm=true milliseconds=true presets_now=true "
+                             "change_on_scroll=true range_authority=true form_reset=true retained_footer=true\n";
+            }
+            check(inputs.editors().require(previous_session.owner).composition().active,
+                  "native picker retirement has no active Core preedit");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "native picker retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(dates.mounted().empty() && times.mounted().empty() &&
+                      !inputs.editors().find(previous_session.owner) && !inputs.sessions().active().valid() &&
+                      !captured(),
+                  "native picker retirement retained editor/popup/session/capture");
         }
         if (route.component_identity == "ant.component.cascader") {
             auto& cascader = app.services().cascader();

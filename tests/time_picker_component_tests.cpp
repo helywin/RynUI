@@ -84,6 +84,29 @@ void verify_column_geometry(Fixture& f, const detail::TimePickerSnapshot& s) {
     const auto color = token.colors.selected_background;
     std::size_t surfaces = 0;
     for (const auto& command : f.services.scene_composer().ordered_scene().commands()) {
+        if (command.kind == graphics::SceneDrawKind::rounded_effect) {
+            const auto effects = f.services.surfaces().effects().packed_instances();
+            for (std::uint32_t i = 0; i < command.instance_count; ++i) {
+                const auto& effect = effects[command.first_instance + i];
+                auto rect = effect.geometry.shape.rect;
+                rect.x += effect.geometry.translation.x;
+                rect.y += effect.geometry.translation.y;
+                if (effect.material.color != color || effect.material.opacity <= 0 || !effect.material.visible ||
+                    rect.width <= 0 || rect.height <= 0) {
+                    continue;
+                }
+                if (effect.geometry.ancestor_clip) {
+                    rect = graphics::intersect_effect_bounds(rect, effect.geometry.ancestor_clip->bounds);
+                }
+                if (rect.width <= 0 || rect.height <= 0) {
+                    continue;
+                }
+                ++surfaces;
+                check(std::ranges::any_of(s.column_clips, [&](auto clip) { return contains(clip, rect); }),
+                      "selected clipped effect escaped column clip");
+            }
+            continue;
+        }
         if (command.kind != graphics::SceneDrawKind::quad) {
             continue;
         }

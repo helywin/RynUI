@@ -293,3 +293,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET rynui_token_gallery)
             LABELS "linux;gpu;private-wayland" TIMEOUT "${native_ctest_timeout}" RUN_SERIAL TRUE)
     endforeach()
 endif()
+
+add_executable(rynui_picker_gallery_tests picker_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_picker_gallery_tests)
+target_include_directories(rynui_picker_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_picker_gallery_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_picker_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.date_picker_completion_gallery COMMAND rynui_picker_gallery_tests date)
+add_test(NAME rynui.time_picker_completion_gallery COMMAND rynui_picker_gallery_tests time)

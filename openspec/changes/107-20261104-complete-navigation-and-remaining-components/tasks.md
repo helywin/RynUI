@@ -59,8 +59,8 @@
 
 ## 12. 数据录入：DatePicker
 
-- [ ] 12.1 按对应 spec 与 design 矩阵实现 DatePicker 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 12.2 为 DatePicker 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 12.1 按对应 spec 与 design 矩阵实现 DatePicker 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 12.2 为 DatePicker 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 13. 数据录入：Form
 
@@ -109,8 +109,8 @@
 
 ## 22. 数据录入：TimePicker
 
-- [ ] 22.1 按对应 spec 与 design 矩阵实现 TimePicker 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 22.2 为 TimePicker 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 22.1 按对应 spec 与 design 矩阵实现 TimePicker 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 22.2 为 TimePicker 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 23. 数据录入：Transfer
 

@@ -76,6 +76,7 @@ CivilDate clamped(CivilDate date, const DatePickerRules& rules) {
 
 DatePickerModel::DatePickerModel(DatePickerValue value, bool controlled, CivilDate panel, DatePickerRules rules)
     : value_(value), controlled_(controlled), active_(value.value_or(panel)) {
+    mode_ = rules.type;
     configure(std::move(rules));
 }
 
@@ -97,8 +98,31 @@ void DatePickerModel::reconcile(DatePickerValue value) {
 }
 
 bool DatePickerModel::eligible(CivilDate date) const {
-    return (!rules_.min || date >= *rules_.min) && (!rules_.max || date <= *rules_.max) &&
-           (!rules_.disabled || !rules_.disabled(date));
+    if (!owner_active()) {
+        return false;
+    }
+    auto first = date;
+    auto last = date;
+    if (mode_ == DatePickerMode::Month || mode_ == DatePickerMode::Quarter) {
+        const auto month = mode_ == DatePickerMode::Month ? date.month() : (date.month() - 1) / 3 * 3 + 1;
+        first = CivilDate{date.year(), month, 1};
+        const auto final_month = mode_ == DatePickerMode::Month ? month : month + 2;
+        unsigned day = 31;
+        while (!CivilDate::valid(date.year(), final_month, day)) {
+            --day;
+        }
+        last = CivilDate{date.year(), final_month, day};
+    } else if (mode_ == DatePickerMode::Year || mode_ == DatePickerMode::Decade) {
+        const int year = mode_ == DatePickerMode::Year ? date.year() : std::max(1, date.year() / 10 * 10);
+        first = CivilDate{year, 1, 1};
+        last = CivilDate{std::min(9999, mode_ == DatePickerMode::Year ? year : year + 9), 12, 31};
+    } else if (mode_ == DatePickerMode::Week) {
+        first = normalized(date);
+        last = civil(std::min(days(first) + std::chrono::days{6}, days(CivilDate{9999, 12, 31})));
+    }
+    return (!rules_.min || last >= *rules_.min) && (!rules_.max || first <= *rules_.max) &&
+           (!rules_.disabled || !rules_.disabled(date)) && owner_active() &&
+           (!rules_.info || !rules_.info(date, {mode_, rules_.from})) && owner_active();
 }
 
 std::optional<DatePickerValue> DatePickerModel::request(DatePickerValue value) {
@@ -142,6 +166,22 @@ bool DatePickerModel::move(int count) {
 }
 
 bool DatePickerModel::boundary(bool last) {
+    if (mode_ != DatePickerMode::Date && mode_ != DatePickerMode::Week) {
+        CivilDate next = active_;
+        if (mode_ == DatePickerMode::Month || mode_ == DatePickerMode::Quarter) {
+            next = CivilDate{active_.year(), last ? (mode_ == DatePickerMode::Month ? 12U : 10U) : 1U, 1};
+        } else {
+            const int span = mode_ == DatePickerMode::Year ? 10 : 100;
+            const int year = std::clamp(
+                active_.year() / span * span + (last ? span - (mode_ == DatePickerMode::Year ? 1 : 10) : 0), 1, 9999);
+            next = CivilDate{year, 1, 1};
+        }
+        next = clamped(next, rules_);
+        const bool changed = next != active_;
+        active_ = next;
+        return changed;
+    }
+
     unsigned day = last ? 31 : 1;
     while (!CivilDate::valid(active_.year(), active_.month(), day)) {
         --day;
@@ -155,7 +195,8 @@ bool DatePickerModel::boundary(bool last) {
 std::array<DatePickerValue, 42> DatePickerModel::grid() const {
     std::array<DatePickerValue, 42> result;
     const auto first = days(panel());
-    const auto start = first - std::chrono::days{std::chrono::weekday{first}.c_encoding()};
+    const auto start =
+        first - std::chrono::days{(std::chrono::weekday{first}.c_encoding() + 7 - locale_.first_day) % 7};
     for (int i = 0; i < 42; ++i) {
         const auto day = start + std::chrono::days{i};
         if (day >= days(CivilDate{1, 1, 1}) && day <= days(CivilDate{9999, 12, 31})) {
@@ -163,6 +204,63 @@ std::array<DatePickerValue, 42> DatePickerModel::grid() const {
         }
     }
     return result;
+}
+
+void DatePickerModel::view(DatePickerMode mode, PickerLocale locale) {
+    if (mode < DatePickerMode::Date || mode > DatePickerMode::Decade) {
+        throw std::invalid_argument("Invalid date picker mode");
+    }
+    locale.validate();
+    mode_ = mode;
+    locale_ = std::move(locale);
+}
+
+std::size_t DatePickerModel::cell_count() const {
+    return mode_ == DatePickerMode::Date || mode_ == DatePickerMode::Week ? 42
+           : mode_ == DatePickerMode::Quarter                             ? 4
+                                                                          : 12;
+}
+
+DatePickerValue DatePickerModel::cell(std::size_t index) const {
+    if (index >= cell_count()) {
+        return {};
+    }
+    if (mode_ == DatePickerMode::Date || mode_ == DatePickerMode::Week) {
+        return grid()[index];
+    }
+    if (mode_ == DatePickerMode::Month || mode_ == DatePickerMode::Quarter) {
+        return CivilDate{active_.year(),
+                         static_cast<unsigned>(mode_ == DatePickerMode::Month ? index + 1 : index * 3 + 1), 1};
+    }
+    const int year = mode_ == DatePickerMode::Year ? active_.year() / 10 * 10 - 1 + static_cast<int>(index)
+                                                   : active_.year() / 100 * 100 - 10 + static_cast<int>(index) * 10;
+    if (mode_ == DatePickerMode::Decade && year == 0) {
+        return CivilDate{1, 1, 1};
+    }
+    return year >= 1 && year <= 9999 ? DatePickerValue{CivilDate{year, 1, 1}} : DatePickerValue{};
+}
+
+CivilDate DatePickerModel::normalized(CivilDate date) const {
+    if (mode_ == DatePickerMode::Month) {
+        return {date.year(), date.month(), 1};
+    }
+    if (mode_ == DatePickerMode::Quarter) {
+        return {date.year(), (date.month() - 1) / 3 * 3 + 1, 1};
+    }
+    if (mode_ == DatePickerMode::Year) {
+        return {date.year(), 1, 1};
+    }
+    if (mode_ == DatePickerMode::Decade) {
+        return {std::max(1, date.year() / 10 * 10), 1, 1};
+    }
+    if (mode_ == DatePickerMode::Week) {
+        const auto start =
+            std::max(days(CivilDate{1, 1, 1}),
+                     days(date) - std::chrono::days{
+                                      (std::chrono::weekday{days(date)}.c_encoding() + 7 - locale_.first_day) % 7});
+        return civil(start);
+    }
+    return date;
 }
 
 CivilDate DatePickerModel::utc_date() {

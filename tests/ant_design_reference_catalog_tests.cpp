@@ -158,6 +158,15 @@ void test_typed_support_status() {
                     entry->missing_scope.find("MSVC") != std::string_view::npos,
                 "completed navigation contract lost implementation evidence or platform boundary");
     }
+    for (const auto identity : {"ant.component.date-picker", "ant.component.time-picker"}) {
+        const auto* entry = find_ant_design_reference_entry(identity);
+        require(entry && entry->support_status == GallerySupportStatus::implemented &&
+                    entry->supported_scope.find("typed") != std::string_view::npos &&
+                    entry->evidence_identifiers.find("openspec:107-") != std::string_view::npos &&
+                    entry->evidence_identifiers.find("picker_completion_native_ranges") != std::string_view::npos &&
+                    entry->missing_scope.find("MSVC") != std::string_view::npos,
+                "native picker completion lost typed range evidence or platform boundary");
+    }
     require_partial("ant.component.modal");
     const auto* modal = find_ant_design_reference_entry("ant.component.modal");
     require(modal->supported_scope.find("retained") != std::string_view::npos &&

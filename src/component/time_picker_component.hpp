@@ -10,10 +10,10 @@ struct TimePickerSnapshot final {
     runtime::ComponentId confirm;
     runtime::ComponentId cancel;
     runtime::ComponentId clear;
-    std::array<runtime::ComponentId, 3> columns;
-    std::array<std::vector<runtime::ComponentId>, 3> rows;
-    std::array<runtime::Rect, 3> column_clips;
-    std::array<float, 3> scroll{};
+    std::array<runtime::ComponentId, 5> columns;
+    std::array<std::vector<runtime::ComponentId>, 5> rows;
+    std::array<runtime::Rect, 5> column_clips;
+    std::array<float, 5> scroll{};
     runtime::Rect bounds;
     TimePickerValue value;
     TimeOfDay pending;
@@ -28,6 +28,7 @@ public:
     explicit TimePickerComponentHost(WindowComponentServices&);
     ~TimePickerComponentHost();
     void mount(const TimePickerProps&, const std::optional<TimePickerFooter>&);
+    void mount_range(const TimeRangePickerProps&, const std::optional<TimePickerFooter>&);
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;

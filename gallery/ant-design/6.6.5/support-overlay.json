@@ -629,22 +629,23 @@
     },
     {
       "identity": "ant.component.date-picker",
-      "status": "partial",
-      "summary": "原生 DatePicker 首版提供 typed 公历单日期、严格 ISO 输入、真实 42 格月历、范围/禁用规则和保留 footer；支持受控开合、键盘选择与 Theme，复杂格式及范围选择后续扩展。",
+      "status": "implemented",
+      "summary": "原生 DatePicker 完成日期/周/月/季度/年真实面板、typed 多选/日期与日期时间范围、locale/格式、时钟/预设和保留富 slots；受控 authority、Form 重置、RTL、有限动画及失败清理有定向合同，平台验收独立记录。",
       "supported_scope": [
-        "typed Gregorian CivilDate 0001-01-01 through 9999-12-31 and optional selection",
-        "strict YYYY-MM-DD input, clear, disabled, inputReadOnly, three sizes and four Input variants/status",
-        "retained six-week calendar, month/year navigation, pointer and keyboard selection",
-        "controlled/default value and open state, min/max dates and finite disabled-date navigation",
-        "typed retained footer/ref, child popup and Table wheel ownership, Modal/Spin/hidden suppression",
-        "component Theme inheritance/algorithm/overrides with final metric and publication validation",
-        "interactive Gallery with deterministic controlled calendar/ISO input, clear, range/disabled rules and retained footer",
-        "explicit Form String adapter with real submit/reset/ref focus and whole-picker disabled/readOnly gates"
+        "source-compatible Gregorian CivilDate and optional single-value ISO API",
+        "real Date/Week/Month/Quarter/Year/Decade panels, controlled panel date and mode, locale week-year and validated formats",
+        "typed multiple selection, CivilDateTime integration and DateRangePicker date/date-time values with atomic pending/accepted authority",
+        "allow-empty/order/disabled endpoint policies, disabledDate info/from and dependent disabledTime validation",
+        "explicit clock Today/Now, lazy keyed single/multiple/date-time/range presets",
+        "retained typed rich cells/panel/header/footer/icon slots and actual input refs, keyboard/preedit/inner-popup ownership",
+        "Theme, responsive width, RTL, placement fallback and finite lifetime-aware animation",
+        "same-value Form reset without fake change, controlled refusal/event ordering and throwing/self-destroying callback cleanup",
+        "independent actual Gallery pages with modes/locale/RTL/multiple/date-time/range authority controls",
+        "Linux private Wayland/Vulkan finite DatePicker/TimePicker/Button sequence with actual input, retained draft, Core preedit and off-page cleanup"
       ],
       "missing_scope": [
-        "RangePicker, multiple/time/week/month/quarter/year modes, locale/RTL and free date formats",
-        "presets, custom cells/panels, animations and full Ant Design Web/DOM/CSS API",
-        "native GPU/Linux/system IME and assistive technology acceptance remain independent"
+        "Web DOM/CSS/React interfaces are outside native scope",
+        "Windows MSVC, physical system IME candidate UI, assistive technology, real desktop and cross-monitor acceptance remain independent platform boundaries"
       ],
       "evidence_identifiers": [
         "source:components/date-picker/index.en-US.md",
@@ -656,7 +657,16 @@
         "test:rynui.date_picker_component",
         "test:rynui.date_picker_theme",
         "openspec:079-20261025-add-form-and-picker-gallery",
-        "test:tests/token_gallery_frame_tests.cpp#test_date_picker_gallery_after_document_scroll"
+        "test:tests/token_gallery_frame_tests.cpp#test_date_picker_gallery_after_document_scroll",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.picker_completion_format",
+        "test:rynui.picker_completion_ranges",
+        "test:rynui.picker_completion_native_date",
+        "test:rynui.picker_completion_native_ranges",
+        "test:rynui.picker_completion_failure_cleanup",
+        "test:rynui.date_picker_completion_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/date-picker-linux.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/picker-integration.md"
       ]
     },
     {
@@ -926,23 +936,23 @@
     },
     {
       "identity": "ant.component.time-picker",
-      "status": "partial",
-      "summary": "原生 TimePicker 首版提供 typed 单时间、严格 24 小时输入、保留时分秒列、确认/即时提交、步长与禁用规则；支持受控开合、键盘、Form String 适配重置及 Theme，范围和复杂格式后续扩展。",
+      "status": "implemented",
+      "summary": "原生 TimePicker 完成整数毫秒与 12/24 小时、typed 可空时间范围、依赖禁用规则、locale/格式、显式 Now/预设和滚轮选择；保留富 slots、受控 authority、Form 重置及有限动画有定向合同，平台验收独立记录。",
       "supported_scope": [
-        "typed optional TimeOfDay, strict HH:mm:ss and minute-only HH:mm parsing/formatting",
-        "retained Input and scrollable hour/minute/second columns, pointer/keyboard selection and wheel-only scrolling",
-        "pending confirmation or immediate legal-row commit, controlled/default value and open authority",
-        "finite step/range/disabled rules, clear, inputReadOnly, three sizes and four Input variants/status",
-        "typed retained footer/ref, explicit String Form adapter reset and ordinary-update draft preservation",
-        "child DatePicker/Select/Dropdown/Table ownership, Modal/Spin/hidden suppression and footer blur/session cleanup",
-        "component Theme inheritance/algorithm/overrides with final metric and descendant publication validation",
-        "interactive Gallery catalog jump, controlled minute input/columns/confirm/cancel/clear and fixed range/step/disabled rules",
-        "separate seconds String Form with actual submit/ref failure focus/reset, whole-picker gates and retained drafts/identity across Default/Dark/Compact at 1200/560 widths"
+        "source-compatible TimeOfDay and optional single-value API with exact integer milliseconds",
+        "real 12/24 hour and AM/PM columns, minute/second/millisecond precision with all step boundaries",
+        "validated locale display/input formats and hierarchical dependent disabled-time predicates",
+        "TimeRangePicker typed nullable endpoints, allow-empty/order/disabled policies, pending/accepted and controlled open/endpoint authority",
+        "explicit clock Now, lazy keyed presets, needConfirm and geometry-bounded changeOnScroll without remounting rows",
+        "retained typed reactive rich cells/panel/footer/icon slots and real input refs",
+        "Theme, RTL, placement fallback and finite lifetime-aware animation",
+        "same-value Form reset, preedit/nested popup/Tab ownership and throwing/self-destroying callback cleanup",
+        "independent actual Gallery page with precise 12/24 hour, Now/presets, scroll-select and range authority controls",
+        "Linux private Wayland/Vulkan finite DatePicker/TimePicker/Button sequence with actual input, retained draft, Core preedit and off-page cleanup"
       ],
       "missing_scope": [
-        "RangePicker, 12-hour/millisecond modes, locale/free formats, Now/presets and changeOnScroll",
-        "animations and full Ant Design Web/DOM/CSS API",
-        "native GPU/Linux/system IME and assistive technology acceptance remain independent"
+        "Web DOM/CSS/React interfaces are outside native scope",
+        "Windows MSVC, physical system IME candidate UI, assistive technology, real desktop and cross-monitor acceptance remain independent platform boundaries"
       ],
       "evidence_identifiers": [
         "source:components/time-picker/index.en-US.md",
@@ -956,7 +966,16 @@
         "test:rynui.time_picker_integration",
         "test:rynui.time_picker_review_reset",
         "openspec:079-20261025-add-form-and-picker-gallery",
-        "test:tests/token_gallery_frame_tests.cpp#test_time_picker_gallery_after_document_scroll"
+        "test:tests/token_gallery_frame_tests.cpp#test_time_picker_gallery_after_document_scroll",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.picker_completion_format",
+        "test:rynui.picker_completion_ranges",
+        "test:rynui.picker_completion_native_time",
+        "test:rynui.picker_completion_native_ranges",
+        "test:rynui.picker_completion_failure_cleanup",
+        "test:rynui.time_picker_completion_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/time-picker-linux.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/picker-integration.md"
       ]
     },
     {
