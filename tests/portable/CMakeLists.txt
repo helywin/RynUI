@@ -12,6 +12,7 @@ function(rynui_portable_test name source)
 endfunction()
 
 rynui_portable_test(transfer_component "transfer_component_tests.cpp")
+rynui_portable_test(transfer_complete "transfer_complete_tests.cpp")
 rynui_portable_test(cascader_component "cascader_component_tests.cpp")
 rynui_portable_test(menu_component "menu_component_tests.cpp")
 rynui_portable_test(dropdown_component "dropdown_component_tests.cpp")

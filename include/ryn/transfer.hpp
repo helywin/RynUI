@@ -12,7 +12,7 @@ class TransferComponentHost;
 using TransferKey = std::variant<String, double>;
 using TransferKeys = std::vector<TransferKey>;
 enum class TransferDirection { Left, Right };
-enum class TransferSelection { All, Current, Invert, Clear };
+enum class TransferSelection { All, Current, Invert, Clear, RemoveAll, RemoveCurrent };
 
 struct TransferItemSlot final {};
 
@@ -52,7 +52,71 @@ struct TransferPagination final {
     bool enabled{};
     std::size_t page_size{10};
     bool show_size_changer{};
+    bool simple{true};
+    bool show_less_items{};
+    std::vector<std::size_t> page_size_options{10, 20, 50, 100};
+    bool controlled_page_size{};
     friend bool operator==(const TransferPagination&, const TransferPagination&) = default;
+};
+
+struct TransferLocale final {
+    std::array<String, 2> titles{String{u8"Source"}, String{u8"Target"}};
+    std::array<String, 2> empty{String{u8"No data"}, String{u8"No data"}};
+    String search_placeholder{u8"Search here"};
+    String item_unit{u8"item"};
+    String items_unit{u8"items"};
+    String loading{u8"Loading…"};
+    String select_all{u8"Select all"};
+    String deselect_all{u8"Deselect all"};
+    String select_current{u8"Select current page"};
+    String select_invert{u8"Invert selection"};
+    String clear{u8"Clear selection"};
+    String remove{u8"Remove"};
+    String remove_all{u8"Remove all"};
+    String remove_current{u8"Remove current page"};
+    std::array<String, 2> actions{String{u8"Move to target"}, String{u8"Move to source"}};
+    PaginationLocale pagination;
+    friend bool operator==(const TransferLocale&, const TransferLocale&) = default;
+};
+
+struct TransferSearchOptions final {
+    String placeholder;
+    std::array<String, 2> default_values;
+};
+
+struct TransferSelectAllInfo final {
+    TransferDirection direction;
+    std::size_t selected_count{};
+    std::size_t total_count{};
+};
+
+struct TransferActionContext final {
+    TransferDirection direction;
+    Prop<bool> disabled;
+    Prop<String> label;
+    Prop<TextDirection> text_direction;
+    std::function<void()> activate;
+};
+
+struct TransferActionSlot final {};
+
+using TransferAction = SlotContent<TransferActionSlot>;
+
+struct TransferSelectAllContext final {
+    TransferDirection direction;
+    Prop<std::size_t> selected_count;
+    Prop<std::size_t> total_count;
+    Prop<String> label;
+};
+
+struct TransferSelectAllSlot final {};
+
+using TransferSelectAllLabel = SlotContent<TransferSelectAllSlot>;
+
+struct TransferPageInfo final {
+    TransferDirection direction;
+    std::size_t page{};
+    std::size_t page_size{};
 };
 
 struct TransferListContext final {
@@ -62,6 +126,11 @@ struct TransferListContext final {
     Prop<bool> disabled;
     std::function<void(TransferKey, bool)> on_item_select;
     std::function<void(TransferKeys, bool)> on_item_select_all;
+    Prop<String> query;
+    Prop<TransferLocale> locale;
+    Prop<TextDirection> text_direction;
+    Prop<bool> show_remove{false};
+    std::function<void(TransferKeys)> on_item_remove;
 };
 
 struct TransferListSlot final {};
@@ -103,6 +172,15 @@ public:
         return *this;
     }
 
+    TransferProps& showSearch(TransferSearchOptions value) {
+        show_search_ = true;
+        if (!value.placeholder.empty()) {
+            search_placeholder_ = std::move(value.placeholder);
+        }
+        search_default_ = std::move(value.default_values);
+        return *this;
+    }
+
     TransferProps& showSelectAll(Prop<bool> value) {
         select_all_ = std::move(value);
         return *this;
@@ -120,6 +198,16 @@ public:
 
     TransferProps& pagination(Prop<TransferPagination> value) {
         pagination_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& pagination(bool enabled) {
+        pagination_ = TransferPagination{enabled};
+        return *this;
+    }
+
+    TransferProps& onPageChange(std::function<void(TransferPageInfo)> value) {
+        on_page_ = std::move(value);
         return *this;
     }
 
@@ -178,7 +266,7 @@ public:
         return *this;
     }
 
-    TransferProps& titles(std::array<String, 2> value) {
+    TransferProps& titles(Prop<std::array<String, 2>> value) {
         titles_ = std::move(value);
         return *this;
     }
@@ -228,6 +316,72 @@ public:
         return *this;
     }
 
+    TransferProps& locale(Prop<TransferLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& rowSpacing(Prop<float> value) {
+        row_spacing_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& operations(Prop<std::array<String, 2>> value) {
+        operations_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& searchDefaultValue(Prop<std::array<String, 2>> value) {
+        search_default_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& action(TransferDirection direction, std::function<TransferAction(TransferActionContext)> value) {
+        action_slots_[direction == TransferDirection::Right] = std::move(value);
+        return *this;
+    }
+
+    TransferProps& actions(Prop<std::array<String, 2>> value) {
+        return operations(std::move(value));
+    }
+
+    TransferProps& actions(std::array<std::function<TransferAction(TransferActionContext)>, 2> value) {
+        action_slots_[1] = std::move(value[0]);
+        action_slots_[0] = std::move(value[1]);
+        return *this;
+    }
+
+    TransferProps& additionalActions(std::vector<TransferAction> value) {
+        additional_actions_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& selectionsIcon(TransferTitle value) {
+        selections_icon_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& selectAllLabel(TransferDirection direction,
+                                  std::function<TransferSelectAllLabel(TransferSelectAllContext)> value) {
+        select_all_slots_[direction == TransferDirection::Right] = std::move(value);
+        return *this;
+    }
+
+    TransferProps& selectAllLabels(std::function<String(TransferSelectAllInfo)> value) {
+        select_all_label_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& footer(std::function<TransferFooter(TransferListContext)> value) {
+        footer_factory_ = std::move(value);
+        return *this;
+    }
+
+    TransferProps& rowKey(std::function<TransferKey(const TransferItem&)> value) {
+        row_key_ = std::move(value);
+        return *this;
+    }
+
     TransferProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -247,15 +401,15 @@ private:
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
-    Prop<float> height_{200};
-    Prop<float> width_{220};
-    Prop<String> search_placeholder_{String{u8"Search here"}};
-    Prop<String> empty_{String{u8"No data"}};
+    std::optional<Prop<float>> height_;
+    std::optional<Prop<float>> width_;
+    std::optional<Prop<String>> search_placeholder_;
+    std::optional<Prop<String>> empty_;
     std::optional<Prop<TransferKeys>> target_;
     std::optional<TransferKeys> default_target_;
     std::optional<Prop<TransferKeys>> selected_;
     std::optional<TransferKeys> default_selected_;
-    std::array<String, 2> titles_{String{u8"Source"}, String{u8"Target"}};
+    std::optional<Prop<std::array<String, 2>>> titles_;
     std::array<std::optional<TransferTitle>, 2> title_slots_;
     std::array<std::optional<TransferFooter>, 2> footers_;
     std::function<TransferListContent(TransferListContext)> list_;
@@ -265,6 +419,18 @@ private:
     std::function<void(TransferSelectInfo)> on_select_;
     std::function<void(TransferDirection, String)> on_search_;
     std::function<void(TransferScrollInfo)> on_scroll_;
+    std::function<void(TransferPageInfo)> on_page_;
+    Prop<TransferLocale> locale_{TransferLocale{}};
+    Prop<float> row_spacing_{0};
+    Prop<std::array<String, 2>> operations_{std::array<String, 2>{String{}, String{}}};
+    Prop<std::array<String, 2>> search_default_{std::array<String, 2>{String{}, String{}}};
+    std::array<std::function<TransferAction(TransferActionContext)>, 2> action_slots_;
+    std::vector<TransferAction> additional_actions_;
+    std::array<std::function<TransferSelectAllLabel(TransferSelectAllContext)>, 2> select_all_slots_;
+    std::function<String(TransferSelectAllInfo)> select_all_label_;
+    std::optional<TransferTitle> selections_icon_;
+    std::function<TransferFooter(TransferListContext)> footer_factory_;
+    std::function<TransferKey(const TransferItem&)> row_key_;
     LayoutStyle layout_;
 };
 

@@ -379,6 +379,15 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                           before.cascader().shadow != after.cascader().shadow ||
                           before.cascader().z_index_popup != after.cascader().z_index_popup,
                       TokenIdentity::cascader_effects, changed, count);
+    append_if_changed(before.transfer().colors, after.transfer().colors, TokenIdentity::transfer_colors, changed,
+                      count);
+    append_if_changed(before.transfer().metrics, after.transfer().metrics, TokenIdentity::transfer_metrics, changed,
+                      count);
+    append_if_changed(before.transfer().typography, after.transfer().typography, TokenIdentity::transfer_typography,
+                      changed, count);
+    append_if_changed(before.transfer().effects, after.transfer().effects, TokenIdentity::transfer_effects, changed,
+                      count);
+    append_if_changed(before.transfer().order, after.transfer().order, TokenIdentity::transfer_order, changed, count);
     append_if_changed(before.anchor().colors, after.anchor().colors, TokenIdentity::anchor_colors, changed, count);
     append_if_changed(before.anchor().metrics, after.anchor().metrics, TokenIdentity::anchor_metrics, changed, count);
     append_if_changed(before.anchor().effects, after.anchor().effects, TokenIdentity::anchor_effects, changed, count);
@@ -1587,6 +1596,36 @@ const CascaderThemeToken& ThemeScope::cascader_effects() const {
     return snapshot().cascader();
 }
 
+const TransferThemeToken& ThemeScope::transfer_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::transfer_colors);
+    return snapshot().transfer();
+}
+
+const TransferThemeToken& ThemeScope::transfer_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::transfer_metrics);
+    return snapshot().transfer();
+}
+
+const TransferThemeToken& ThemeScope::transfer_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::transfer_typography);
+    return snapshot().transfer();
+}
+
+const TransferThemeToken& ThemeScope::transfer_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::transfer_effects);
+    return snapshot().transfer();
+}
+
+const TransferThemeToken& ThemeScope::transfer_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::transfer_order);
+    return snapshot().transfer();
+}
+
 const AnchorThemeToken& ThemeScope::anchor_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::anchor_colors);
@@ -2237,6 +2276,11 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Splitter.metrics",
         "ColorPicker.colors",
         "ColorPicker.metrics",
+        "Transfer.colors",
+        "Transfer.metrics",
+        "Transfer.typography",
+        "Transfer.effects",
+        "Transfer.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2345,6 +2389,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tree_select_tree_colors:
     case TokenIdentity::color_picker_colors:
     case TokenIdentity::cascader_colors:
+    case TokenIdentity::transfer_colors:
+    case TokenIdentity::transfer_order:
     case TokenIdentity::anchor_colors:
     case TokenIdentity::breadcrumb_colors:
     case TokenIdentity::steps_colors:
@@ -2392,6 +2438,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_effects:
     case TokenIdentity::collapse_effects:
     case TokenIdentity::segmented_effects:
+    case TokenIdentity::transfer_effects:
     case TokenIdentity::anchor_effects:
     case TokenIdentity::breadcrumb_effects:
     case TokenIdentity::steps_effects:
@@ -2410,6 +2457,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_typography:
     case TokenIdentity::input_typography:
     case TokenIdentity::text_font_family:
+    case TokenIdentity::transfer_typography:
     case TokenIdentity::text_font_weight:
     case TokenIdentity::text_font_size:
     case TokenIdentity::text_line_height:
@@ -2440,6 +2488,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::auto_complete_typography:
     case TokenIdentity::tree_select_tree_metrics:
     case TokenIdentity::color_picker_metrics:
+    case TokenIdentity::transfer_metrics:
     case TokenIdentity::anchor_metrics:
     case TokenIdentity::breadcrumb_metrics:
     case TokenIdentity::steps_metrics:

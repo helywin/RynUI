@@ -148,6 +148,11 @@ public:
     [[nodiscard]] const CascaderThemeToken& cascader_metrics() const;
     [[nodiscard]] const CascaderThemeToken& cascader_typography() const;
     [[nodiscard]] const CascaderThemeToken& cascader_effects() const;
+    [[nodiscard]] const TransferThemeToken& transfer_colors() const;
+    [[nodiscard]] const TransferThemeToken& transfer_metrics() const;
+    [[nodiscard]] const TransferThemeToken& transfer_typography() const;
+    [[nodiscard]] const TransferThemeToken& transfer_effects() const;
+    [[nodiscard]] const TransferThemeToken& transfer_order() const;
     [[nodiscard]] const AnchorThemeToken& anchor_colors() const;
     [[nodiscard]] const AnchorThemeToken& anchor_metrics() const;
     [[nodiscard]] const AnchorThemeToken& anchor_effects() const;

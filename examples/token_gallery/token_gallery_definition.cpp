@@ -1,3 +1,4 @@
+#include "runtime/prop_connection.hpp"
 #include "token_gallery_definition.hpp"
 
 #include "ant_design_reference_catalog.hpp"
@@ -3431,48 +3432,223 @@ void add_transfer_samples(const std::shared_ptr<GalleryState>& state) {
     Signal<TransferKeys> target{TransferKeys{1.0, 3.0}};
     Signal<TransferKeys> selected{TransferKeys{}};
     Signal<bool> one_way{false};
+    Signal<bool> accept{true};
+    Signal<TextDirection> direction{TextDirection::LeftToRight};
+    Signal<float> height{160};
+    Signal<float> width{240};
+    Signal<float> spacing{2};
+    TransferLocale chinese;
+    chinese.titles = {String{u8"可用项目"}, String{u8"已选项目"}};
+    chinese.empty = {String{u8"无可用项目"}, String{u8"无已选项目"}};
+    chinese.item_unit = u8"项";
+    chinese.items_unit = u8"项";
+    chinese.search_placeholder = u8"搜索项目";
+    chinese.loading = u8"加载中";
+    chinese.select_all = u8"全选";
+    chinese.deselect_all = u8"取消全选";
+    chinese.select_current = u8"选择本页";
+    chinese.select_invert = u8"反选";
+    chinese.clear = u8"清空";
+    chinese.remove = u8"移除";
+    chinese.remove_all = u8"全部移除";
+    chinese.remove_current = u8"移除本页";
+    chinese.actions = {String{u8"移入"}, String{u8"移出"}};
+    chinese.pagination.items_per_page = u8" 项/页";
+    chinese.pagination.jump_placeholder = u8"页码";
+    Signal<TransferLocale> locale{chinese};
+    ThemeConfig initial;
+    initial.transfer.tokens.header = Color::rgba8(230, 244, 255);
+    initial.transfer.tokens.footer = Color::rgba8(246, 255, 237);
+    initial.transfer.tokens.selected = Color::rgba8(186, 224, 255);
+    initial.transfer.tokens.actions_width = dp(80);
+    initial.transfer.tokens.item_height = dp(36);
+    Signal<ThemeConfig> tokens{initial};
     Text(TextProps{}.content(state->data_feedback));
-    Transfer(
-        TransferProps{}
-            .dataSource(items)
-            .targetKeys(target)
-            .selectedKeys(selected)
-            .showSearch(true)
-            .oneWay(one_way)
-            .pagination(TransferPagination{true, 5, true})
-            .onChange([state, target](TransferChangeInfo event) {
-                target.set(event.target_keys);
-                state->data_feedback.set(
-                    utf8(std::string{event.direction == TransferDirection::Right ? "Moved right: " : "Moved left: "} +
-                         std::to_string(event.moved_keys.size())));
-            })
-            .onSelectChange([selected](TransferSelectInfo event) {
-                event.source_selected_keys.insert(event.source_selected_keys.end(), event.target_selected_keys.begin(),
-                                                  event.target_selected_keys.end());
-                selected.set(event.source_selected_keys);
-            })
-            .onSearch([state](TransferDirection direction, String query) {
-                state->data_feedback.set(
-                    utf8(std::string{direction == TransferDirection::Right ? "Target search: " : "Source search: "} +
-                         std::string{query.bytes()}));
-            })
-            .footer(TransferDirection::Left, TransferFooter{[] { Text(u8"真实分页 / 禁用 Item 2"); }})
-            .layout(LayoutStyle{}.width(dp(560))));
+    Text(u8"Transfer Token / 双侧独立搜索和分页 / 受控回调 / 动态几何 / RTL");
+    Theme(ThemeProps{}.config(tokens), ThemeContent{[=] {
+              Transfer(
+                  TransferProps{}
+                      .dataSource(items)
+                      .targetKeys(target)
+                      .selectedKeys(selected)
+                      .showSearch(true)
+                      .oneWay(one_way)
+                      .direction(direction)
+                      .locale(locale)
+                      .operations(bind([locale] { return locale.get().actions; }))
+                      .listHeight(height)
+                      .listWidth(width)
+                      .rowSpacing(spacing)
+                      .pagination(TransferPagination{true, 5, true, true, false, {5, 10, 20}})
+                      .onChange([state, target, accept](TransferChangeInfo event) {
+                          if (!accept.get()) {
+                              state->data_feedback.set(u8"Transfer move refused");
+                              return;
+                          }
+                          target.set(event.target_keys);
+                          state->data_feedback.set(
+                              utf8(std::string{event.direction == TransferDirection::Right ? "Moved right: "
+                                                                                           : "Moved left: "} +
+                                   std::to_string(event.moved_keys.size())));
+                      })
+                      .onSelectChange([selected](TransferSelectInfo event) {
+                          event.source_selected_keys.insert(event.source_selected_keys.end(),
+                                                            event.target_selected_keys.begin(),
+                                                            event.target_selected_keys.end());
+                          selected.set(event.source_selected_keys);
+                      })
+                      .onSearch([state](TransferDirection side, String query) {
+                          state->data_feedback.set(utf8(
+                              std::string{side == TransferDirection::Right ? "Target search: " : "Source search: "} +
+                              std::string{query.bytes()}));
+                      })
+                      .onScroll([state](TransferScrollInfo event) {
+                          state->data_feedback.set(utf8("List scroll: " + std::to_string(event.offset)));
+                      })
+                      .footer(TransferDirection::Left,
+                              TransferFooter{[] { Text(u8"真实分页 / Item 2 禁用 / Shift+Space 范围选择"); }})
+                      .layout(LayoutStyle{}.width(bind([width] { return dp(width.get() * 2 + 96); }))));
+          }});
     remember_target(state, "gallery.transfer.lists");
+    Button(ButtonProps{}.onClick([accept] { accept.set(!accept.get()); }),
+           ButtonContent{[] { Text(u8"接受 / 拒绝受控移动"); }});
+    remember_target(state, "gallery.transfer.accept");
     Button(ButtonProps{}.onClick([one_way] { one_way.set(!one_way.get()); }),
            ButtonContent{[] { Text(u8"切换 oneWay / 行内删除"); }});
     remember_target(state, "gallery.transfer.one-way");
+    Button(ButtonProps{}.onClick([direction] {
+        direction.set(direction.get() == TextDirection::RightToLeft ? TextDirection::LeftToRight
+                                                                    : TextDirection::RightToLeft);
+    }),
+           ButtonContent{[] { Text(u8"RTL / LTR"); }});
+    remember_target(state, "gallery.transfer.direction");
+    Button(ButtonProps{}.onClick([locale, chinese] {
+        locale.set(locale.get().item_unit == chinese.item_unit ? TransferLocale{} : chinese);
+    }),
+           ButtonContent{[] { Text(u8"中文 / English locale"); }});
+    remember_target(state, "gallery.transfer.locale");
+    Button(ButtonProps{}.onClick([height, width, spacing] {
+        height.set(height.get() == 160 ? 96 : 160);
+        width.set(width.get() == 240 ? 200 : 240);
+        spacing.set(spacing.get() == 2 ? 7 : 2);
+    }),
+           ButtonContent{[] { Text(u8"动态列表尺寸和行间距"); }});
+    remember_target(state, "gallery.transfer.geometry");
+    Button(ButtonProps{}.onClick([tokens, initial] {
+        auto next = initial;
+        if (tokens.get() == initial) {
+            next.transfer.tokens.header = Color::rgba8(255, 241, 184);
+            next.transfer.tokens.item_height = dp(44);
+            next.transfer.tokens.radius = dp(12);
+            next.transfer.tokens.font_size = dp(16);
+            next.transfer.tokens.line_height = dp(25);
+        }
+        tokens.set(next);
+    }),
+           ButtonContent{[] { Text(u8"局部 Transfer Token 颜色 / 字体 / 尺寸"); }});
+    remember_target(state, "gallery.transfer.tokens");
     auto rich = TransferItem{String{u8"draft"}, u8"Retained input draft"};
     rich.content = TransferItemContent{[] { Input(InputProps{}.defaultValue(String{u8"移动和重排时保留此草稿"})); }};
     Transfer(TransferProps{}
                  .dataSource(std::vector<TransferItem>{rich, {String{u8"plain"}, u8"Plain item"}})
                  .defaultSelectedKeys({String{u8"draft"}})
                  .listHeight(100)
+                 .locale(chinese)
                  .onChange([state](TransferChangeInfo event) {
                      state->data_feedback.set(utf8("Rich row moved: " + std::to_string(event.moved_keys.size())));
                  })
                  .layout(LayoutStyle{}.width(dp(560))));
     remember_target(state, "gallery.transfer.rich");
+    Text(u8"保留自定义列表 / footer TextArea / 受控动作和动态计数");
+    Transfer(
+        TransferProps{}
+            .dataSource(items)
+            .listHeight(180)
+            .locale(chinese)
+            .showSearch(true)
+            .renderList([](TransferListContext context) {
+                return TransferListContent{[context] {
+                    const auto item_key = [](const TransferKey& key) {
+                        return std::holds_alternative<String>(key) ? std::get<String>(key)
+                                                                   : utf8(std::to_string(std::get<double>(key)));
+                    };
+                    Table(TableProps<TransferItem>{}
+                              .dataSource(context.filtered_items)
+                              .rowKey([item_key](const TransferItem& item) { return item_key(item.key); })
+                              .columns({TableColumn<TransferItem>{u8"item", u8"项目",
+                                                                  [](TableCell<TransferItem> cell) {
+                                                                      Text(TextProps{}.content(
+                                                                          bind([cell] { return cell.value().title; })));
+                                                                  }}})
+                              .rowSelection(
+                                  {bind([context, item_key] {
+                                       std::vector<String> keys;
+                                       for (const auto& key : ryn::detail::read_prop(context.selected_keys)) {
+                                           keys.push_back(item_key(key));
+                                       }
+                                       return keys;
+                                   }),
+                                   [context, item_key](std::vector<String> selected) {
+                                       const auto before = ryn::detail::read_prop(context.selected_keys);
+                                       TransferKeys add;
+                                       TransferKeys remove;
+                                       for (const auto& item : ryn::detail::read_prop(context.filtered_items)) {
+                                           if (item.disabled) {
+                                               continue;
+                                           }
+                                           const bool checked =
+                                               std::ranges::find(selected, item_key(item.key)) != selected.end();
+                                           const bool was_checked = std::ranges::find(before, item.key) != before.end();
+                                           if (checked && !was_checked) {
+                                               add.push_back(item.key);
+                                           }
+                                           if (!checked && was_checked) {
+                                               remove.push_back(item.key);
+                                           }
+                                       }
+                                       if (!remove.empty()) {
+                                           context.on_item_select_all(std::move(remove), false);
+                                       }
+                                       if (!add.empty()) {
+                                           context.on_item_select_all(std::move(add), true);
+                                       }
+                                   },
+                                   [context](const TransferItem& item) {
+                                       return item.disabled || ryn::detail::read_prop(context.disabled);
+                                   }})
+                              .pageSize(std::size_t{100})
+                              .showHeader(false)
+                              .scrollY(140)
+                              .size(ControlSize::Small));
+                }};
+            })
+            .selectAllLabel(TransferDirection::Left,
+                            [](TransferSelectAllContext context) {
+                                return TransferSelectAllLabel{[context] { Text(TextProps{}.content(context.label)); }};
+                            })
+            .action(TransferDirection::Right,
+                    [](TransferActionContext context) {
+                        return TransferAction{[context] {
+                            Button(ButtonProps{}.disabled(context.disabled).onClick(context.activate),
+                                   ButtonContent{[] { Text(u8"+"); }});
+                        }};
+                    })
+            .footer([](TransferListContext context) {
+                return TransferFooter{[context] {
+                    TextArea(TextAreaProps{}
+                                 .disabled(context.disabled)
+                                 .defaultValue(String{u8"保留的 footer 草稿"})
+                                 .layout(LayoutStyle{}.height(dp(32))));
+                    if (context.direction == TransferDirection::Left) {
+                        gallery_target("gallery.transfer.custom.footer");
+                    }
+                }};
+            })
+            .onChange([state](TransferChangeInfo event) {
+                state->data_feedback.set(utf8("Custom list moved: " + std::to_string(event.moved_keys.size())));
+            })
+            .layout(LayoutStyle{}.width(dp(560))));
+    remember_target(state, "gallery.transfer.custom");
     ++state->telemetry.live_samples;
 }
 

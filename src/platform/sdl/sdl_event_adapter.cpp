@@ -312,6 +312,7 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
                             to_logical_coordinate(event.button.x, metrics),
                             to_logical_coordinate(event.button.y, metrics),
                             event.button.clicks,
+                            result.pointer_shift.value_or((SDL_GetModState() & SDL_KMOD_SHIFT) != 0),
                         });
         }
         return;
@@ -333,6 +334,7 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
     }
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP: {
+        result.pointer_shift = (event.key.mod & SDL_KMOD_SHIFT) != 0;
         const auto key = map_key(event.key.key);
         if (key.has_value()) {
             append_if_valid(result, KeyboardInputEvent{
@@ -353,6 +355,7 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
         append_if_valid(result, WindowInputEvent{WindowInputAction::focus_gained, 0, 0});
         return;
     case SDL_EVENT_WINDOW_FOCUS_LOST:
+        result.pointer_shift = false;
         append_if_valid(result, WindowInputEvent{WindowInputAction::focus_lost, 0, 0});
         return;
     case SDL_EVENT_WINDOW_RESIZED:

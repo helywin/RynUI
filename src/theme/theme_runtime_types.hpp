@@ -238,6 +238,11 @@ enum class TokenIdentity : std::uint8_t {
     splitter_metrics,
     color_picker_colors,
     color_picker_metrics,
+    transfer_colors,
+    transfer_metrics,
+    transfer_typography,
+    transfer_effects,
+    transfer_order,
     count,
 };
 

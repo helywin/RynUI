@@ -10,6 +10,7 @@ add_library(rynui_theme STATIC
     theme/segmented_theme.cpp
     theme/date_picker_theme.cpp
     theme/form_theme.cpp
+    theme/transfer_theme.cpp
     theme/anchor_theme.cpp
     theme/cascader_theme.cpp
     theme/breadcrumb_theme.cpp

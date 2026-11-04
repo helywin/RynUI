@@ -1,6 +1,8 @@
 #include "gallery_pages_runtime.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
+#include "component/transfer_component.hpp"
+#include "component/table_component.hpp"
 #include "component/auto_complete_component.hpp"
 #include "component/color_picker_component.hpp"
 #include "component/cascader_component.hpp"
@@ -1744,6 +1746,148 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             send(input::PointerAction::down, dragged.bounds.x + dragged.bounds.width / 2,
                  dragged.bounds.y + dragged.bounds.height / 2);
             std::cout << "float_button_native=passed anchor=true drag=true capture=true keyboard=true gpu_pixel=true\n";
+        }
+        if (route.component_identity == "ant.component.transfer") {
+            auto& transfer = app.services().transfer();
+            const auto lists = pages.target("gallery.transfer.lists");
+            const auto rich = pages.target("gallery.transfer.rich");
+            reveal(lists);
+            auto before = transfer.snapshot(lists);
+            check(transfer.mounted().size() == 3, "native Transfer complete examples missing");
+            const auto selected = std::ranges::find_if(app.interactions().declaration_order(), [&](auto hit) {
+                return app.interactions().require(hit).component == before.rows[0].checkbox;
+            });
+            check(selected != app.interactions().declaration_order().end() &&
+                      app.focus().request_focus(*selected, input::FocusModality::keyboard),
+                  "native Transfer Checkbox cannot focus");
+            press(input::Key::space);
+            activate(before.move[1]);
+            render();
+            check(transfer.snapshot(lists).target_keys.size() == 3 && has_text(u8"Moved right: 1"),
+                  "native Transfer controlled move callback missing");
+            reveal(pages.target("gallery.transfer.accept"));
+            activate(pages.target("gallery.transfer.accept"));
+            render();
+            auto range = transfer.snapshot(lists);
+            const auto select_range = [&] {
+                reveal(range.rows[4].checkbox);
+                click(range.rows[4].checkbox);
+                reveal(range.rows[6].checkbox);
+                const auto range_rect = bounds(range.rows[6].checkbox);
+                for (auto action : {input::PointerAction::down, input::PointerAction::up}) {
+                    pages.dispatch(input::PointerInputEvent{
+                        input::PointerIdentity::mouse(), action, input::PointerButton::primary,
+                        range_rect.x + range_rect.width / 2, range_rect.y + range_rect.height / 2, 0, true});
+                }
+                render();
+                check(transfer.snapshot(lists).selected_keys == TransferKeys{4.0, 5.0, 6.0},
+                      "native Transfer pointer Shift metadata did not select keyed range");
+            };
+            select_range();
+            reveal(lists);
+            activate(range.move[1]);
+            render();
+            check(transfer.snapshot(lists).target_keys.size() == 3 && has_text(u8"Transfer move refused"),
+                  "native Transfer controlled refusal mutated authority");
+            reveal(pages.target("gallery.transfer.accept"));
+            activate(pages.target("gallery.transfer.accept"));
+            render();
+            // Selection is independently controlled; the application accepted
+            // onSelectChange clearing it even when it refused targetKeys.
+            select_range();
+            reveal(lists);
+            activate(range.move[1]);
+            render();
+            check(transfer.snapshot(lists).target_keys.size() == 6 && has_text(u8"Moved right: 3"),
+                  "native Transfer controlled acceptance lost range request");
+            reveal(pages.target("gallery.transfer.locale"));
+            activate(pages.target("gallery.transfer.locale"));
+            render();
+            check(has_text(u8"Source"), "native Transfer locale did not update retained text");
+            reveal(pages.target("gallery.transfer.direction"));
+            activate(pages.target("gallery.transfer.direction"));
+            render();
+            reveal(lists);
+            check(transfer.snapshot(lists).sections[0].x > transfer.snapshot(lists).sections[1].x,
+                  "native Transfer RTL panel order wrong");
+            reveal(pages.target("gallery.transfer.geometry"));
+            activate(pages.target("gallery.transfer.geometry"));
+            render();
+            reveal(lists);
+            auto resized = transfer.snapshot(lists);
+            check(resized.viewports[0].height == 96 && resized.rows[0].component == before.rows[0].component,
+                  "native Transfer geometry remounted rows or stayed stale");
+            const auto lane = pages.snapshot().layout.document;
+            const auto root_bounds = bounds(lists);
+            const auto& root_node = app.nodes().require(app.components().root(lists));
+            const auto list = resized.viewports[0];
+            const float x = list.x + root_node.translation.x + 6;
+            const float y = list.y + root_node.translation.y + 6;
+            check(x >= lane.x && x < lane.x + lane.width && y >= lane.y && y < lane.y + lane.height,
+                  "native Transfer list scroll target is outside viewport");
+            events.inject_scroll_at(x, y, -.25F);
+            render();
+            check(transfer.snapshot(lists).scroll[0] > 0 && has_text(u8"List scroll:"),
+                  "native Transfer fractional scroll callback missing");
+            static_cast<void>(root_bounds);
+            reveal(pages.target("gallery.transfer.tokens"));
+            activate(pages.target("gallery.transfer.tokens"));
+            render();
+            reveal(lists);
+            const auto themed = app.components().theme_scope(lists)->snapshot().transfer();
+            check(themed.metrics.item_height == 44 && themed.colors.header == Color::rgba8(255, 241, 184),
+                  "native Transfer component Token update did not apply");
+            const auto themed_section = transfer.snapshot(lists).sections[0];
+            const auto themed_translation = app.nodes().require(app.components().root(lists)).translation;
+            const auto transfer_image = read_frame("transfer-token-" + std::to_string(i));
+            check_pixel(transfer_image.get(),
+                        {(themed_section.x + themed_translation.x + themed_section.width / 2) * events.scale,
+                         (themed_section.y + themed_translation.y + 6) * events.scale},
+                        themed.colors.header);
+            reveal(rich);
+            const auto note = replace_text(rich, u8"Transfer retained draft");
+            const auto rich_before = transfer.snapshot(rich);
+            activate(rich_before.move[1]);
+            render();
+            check(transfer.snapshot(rich).target_keys == TransferKeys{String{u8"draft"}} &&
+                      inputs.display_snapshot(note.component).text == "Transfer retained draft",
+                  "native Transfer row move lost rich draft");
+            const auto custom = pages.target("gallery.transfer.custom");
+            auto& tables = app.services().table();
+            const auto table = std::ranges::find_if(
+                tables.mounted(), [&](auto id) { return owns(app, id, custom) && !tables.snapshot(id).rows.empty(); });
+            check(table != tables.mounted().end(), "native Transfer retained Table missing");
+            const auto checkbox = tables.snapshot(*table).rows.front().checkbox;
+            reveal(checkbox);
+            click(checkbox);
+            check(transfer.snapshot(custom).selected_keys.size() == 1,
+                  "native Transfer custom Table selection callback missing");
+            const auto custom_move = transfer.snapshot(custom).move[1];
+            reveal(custom_move);
+            activate(custom_move);
+            render();
+            check(transfer.snapshot(custom).target_keys.size() == 1 && has_text(u8"Custom list moved: 1"),
+                  "native Transfer custom action callback missing");
+            const auto footer = pages.target("gallery.transfer.custom.footer");
+            reveal(footer);
+            const auto footer_note = replace_text(footer, u8"Transfer custom footer draft");
+            capture_editor(footer);
+            previous_session = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"未提交"}, {}, previous_session});
+            render();
+            check(inputs.editors().require(previous_session.owner).composition().active,
+                  "native Transfer preedit missing");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native Transfer retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(transfer.mounted().empty() && !app.components().contains(note.component) &&
+                      !app.components().contains(footer_note.component) && !inputs.sessions().active().valid() &&
+                      !captured() && !inputs.editors().find(previous_session.owner),
+                  "native Transfer retirement retained rich input/preedit/capture");
+            std::cout << "transfer_native=passed controlled_move=true controlled_refusal=true shift_metadata=true "
+                         "custom_table_action=true locale_rtl_geometry=true rich_draft=true "
+                         "preedit_capture_retired=true\n";
         }
         if (route.component_identity == "ant.component.color-picker") {
             auto& colors = app.services().color_picker();

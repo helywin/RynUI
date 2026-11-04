@@ -77,6 +77,8 @@ struct PlatformEvents {
     std::uint64_t suppressed_compatibility_mouse_events{0};
     std::uint64_t rejected_text_events{0};
     input::PlatformInputBatch input;
+    // Seeded before pumping; keyboard events then update this in queue order.
+    std::optional<bool> pointer_shift;
 
     void clear() noexcept {
         text_session = {};
@@ -88,6 +90,7 @@ struct PlatformEvents {
         suppressed_compatibility_mouse_events = 0;
         rejected_text_events = 0;
         input.clear();
+        pointer_shift.reset();
     }
 };
 

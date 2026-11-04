@@ -149,6 +149,9 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
             if (cascader_) {
                 cascader_->on_focus_changed();
             }
+            if (transfer_) {
+                transfer_->on_focus_changed();
+            }
             if (tree_select_) {
                 tree_select_->on_focus_changed();
             }

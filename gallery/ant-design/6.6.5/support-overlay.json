@@ -980,24 +980,28 @@
     },
     {
       "identity": "ant.component.transfer",
-      "status": "partial",
-      "summary": "原生 Transfer 提供真实双列表、搜索、选择、双向移动、oneWay、分页与稳定 keyed 富行；独立 Token 和完整扩展合同仍待补齐。",
+      "status": "implemented",
+      "summary": "原生 Transfer 已完成 typed 数据/受控请求、独立 scoped Token、动态几何、本地化/RTL、保留扩展 slots 及完整输入/失败清理合同；平台边界分别记录。",
       "supported_scope": [
-        "String/number typed stable keys、受控/default targetKeys/selectedKeys",
-        "实际 Checkbox/Input/Button/Pagination、全选/反选/清空、disabled 隔离与移动事件",
-        "按侧搜索、fractional wheel/onScroll、分页和页大小、oneWay 行内删除",
-        "响应数据重排/移动保留行内草稿、typed title/footer/item/list slots",
-        "Theme 组合、size/status/RTL、readOnly/visible/loading 与离页清理"
+        "String/number stable keys、rowKey、受控/default targetKeys/selectedKeys、同步重入和批处理权威校验",
+        "真实 Checkbox/Input/Button/Pagination、双向移动、oneWay 删除、全选/当前页/范围选择/反选/清空",
+        "按侧搜索、fractional wheel/boundary handoff、独立分页及可配置页大小的受控请求",
+        "17 色/13 metrics/typography/effects/order、scoped seed/algorithm/inherit 与完整 Theme dirty/hash/golden",
+        "动态 listWidth/listHeight/size/rowSpacing/pagination、有限最终几何校验与事务回滚/完整 retirement",
+        "完整 typed locale、可响应 operations/selectAllLabels、保留 item/title/list/footer/action/icon slots 与真实 Table 组合",
+        "RTL Checkbox/列表/动作/搜索/分页/footer；稳定 keyed 富行草稿、重排和移动",
+        "Input/TextArea/嵌套 popup、composition/Tab/Escape、焦点 reveal、capture/session 及 disabled/readOnly/loading/visible/modal/window/zero-area 清理",
+        "绑定/render/filter/factory/handler 异常与自销毁、owner-thread/generation/side 校验、idle/no-op 有限唤醒"
       ],
       "missing_scope": [
-        "独立 Transfer Component Token、完整本地化/自定义 action slots",
-        "动态几何 Prop/非法值回滚、Checkbox RTL 和完整嵌套输入/IME/浮层合同",
-        "Linux 原生 GPU、Windows MSVC、系统 IME 与辅助技术平台验收",
-        "DOM/CSS/React 和浏览器事件接口不移植"
+        "Windows MSVC、物理系统 IME 候选窗及 OS 辅助技术平台证据独立验证",
+        "DOM/CSS/React、HTML 属性、浏览器事件及 Web refs 不属于原生接口"
       ],
       "evidence_identifiers": [
         "source:components/transfer/index.en-US.md",
         "test:rynui.portable.transfer_component",
+        "test:rynui.portable.transfer_complete",
+        "test:rynui.transfer_theme",
         "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },

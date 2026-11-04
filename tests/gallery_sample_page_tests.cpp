@@ -836,7 +836,7 @@ void test_cascader_transfer_pages() {
     activate_button(shown->remove);
     require(f.services.cascader().snapshot(tag_id).tags.size() == 2, "Cascader Gallery tag removal callback failed");
     f.show("ant.component.transfer");
-    require(f.services.cascader().mounted().empty() && f.services.transfer().mounted().size() == 2,
+    require(f.services.cascader().mounted().empty() && f.services.transfer().mounted().size() == 3,
             "Cascader leave/Transfer mount failed");
     id = f.services.transfer().mounted()[0];
     auto transfer = f.services.transfer().snapshot(id);
@@ -849,6 +849,34 @@ void test_cascader_transfer_pages() {
     activate_button(transfer.move[1]);
     require(f.services.transfer().snapshot(id).target_keys.size() == 3,
             "Transfer Gallery controlled callback did not accept move");
+    const auto custom = f.services.transfer().mounted()[2];
+    const auto owns = [&](runtime::ComponentId child, runtime::ComponentId parent) {
+        for (auto current = std::optional{child}; current; current = f.services.components().parent(*current)) {
+            if (*current == parent) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto table = std::ranges::find_if(f.services.table().mounted(), [&](auto value) {
+        return owns(value, custom) && !f.services.table().snapshot(value).rows.empty();
+    });
+    require(table != f.services.table().mounted().end(), "Transfer Gallery custom native Table missing");
+    const auto row = f.services.table().snapshot(*table).rows.front().checkbox;
+    const auto cell = std::ranges::find_if(f.selections.mounted(), [&](const auto& c) { return c.component == row; });
+    require(cell != f.selections.mounted().end() &&
+                f.services.focus().request_focus(cell->interaction, FocusModality::keyboard),
+            "Transfer custom Table row selection missing");
+    f.key(Key::space);
+    require(f.services.transfer().snapshot(custom).selected_keys.size() == 1,
+            "Transfer custom Table selection callback did not update context");
+    const auto action = f.services.transfer().snapshot(custom).move[1];
+    const auto button = std::ranges::find_if(f.buttons.mounted_buttons(),
+                                             [&](const auto& value) { return owns(value.component, action); });
+    require(button != f.buttons.mounted_buttons().end(), "Transfer custom action missing");
+    activate_button(button->component);
+    require(f.services.transfer().snapshot(custom).target_keys.size() == 1,
+            "Transfer custom native Table/action move did not apply");
     f.show("ant.component.button");
     require(f.services.transfer().mounted().empty(), "Transfer survived page leave");
 }

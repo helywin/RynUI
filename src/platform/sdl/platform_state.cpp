@@ -303,6 +303,7 @@ public:
 
     void poll_events(PlatformWindowHandle window, PlatformEvents& result) override {
         auto metrics = window_metrics(window);
+        result.pointer_shift = (SDL_GetModState() & SDL_KMOD_SHIFT) != 0;
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
             refresh_window_metrics(window, event, metrics);
@@ -316,6 +317,7 @@ public:
 
     void wait_events(PlatformWindowHandle window, std::uint32_t timeout_milliseconds, PlatformEvents& result) override {
         auto metrics = window_metrics(window);
+        result.pointer_shift = (SDL_GetModState() & SDL_KMOD_SHIFT) != 0;
         SDL_Event event{};
         if (SDL_WaitEventTimeout(&event, static_cast<Sint32>(timeout_milliseconds))) {
             refresh_window_metrics(window, event, metrics);

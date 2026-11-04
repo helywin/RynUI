@@ -7,6 +7,7 @@
 #include "theme/breadcrumb_theme.hpp"
 #include "theme/anchor_theme.hpp"
 #include "theme/cascader_theme.hpp"
+#include "theme/transfer_theme.hpp"
 #include "theme/steps_theme.hpp"
 #include "theme/skeleton_theme.hpp"
 #include "theme/notice_theme.hpp"
@@ -4159,7 +4160,7 @@ ThemeSnapshot::ThemeSnapshot(
     InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
     CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result,
     DatePickerThemeToken date_picker, FormThemeToken form, BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor,
-    ColorPickerThemeToken color_picker, CascaderThemeToken cascader, StepsThemeToken steps,
+    TransferThemeToken transfer, ColorPickerThemeToken color_picker, CascaderThemeToken cascader, StepsThemeToken steps,
     std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
     DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
     std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
@@ -4174,18 +4175,18 @@ ThemeSnapshot::ThemeSnapshot(
       divider_(std::move(divider)), slider_(std::move(slider)), tooltip_(std::move(tooltip)),
       select_(std::move(select)), card_(std::move(card)), tabs_(std::move(tabs)), segmented_(std::move(segmented)),
       date_picker_(std::move(date_picker)), form_(std::move(form)), breadcrumb_(std::move(breadcrumb)),
-      anchor_(std::move(anchor)), color_picker_(std::move(color_picker)), cascader_(std::move(cascader)),
-      steps_(std::move(steps)), time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)),
-      timeline_(std::move(timeline)), avatar_(std::move(avatar)), rate_(std::move(rate)),
-      statistic_(std::move(statistic)), tree_(std::move(tree)), auto_complete_(std::move(auto_complete)),
-      tree_select_(std::move(tree_select)), layout_(std::move(layout)), splitter_(std::move(splitter)),
-      descriptions_(std::move(descriptions)), popover_(std::move(popover)), message_(std::move(message)),
-      notification_(std::move(notification)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
-      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
-      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
-      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
-      collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
-      algorithms_(std::move(algorithms)) {
+      anchor_(std::move(anchor)), transfer_(std::move(transfer)), color_picker_(std::move(color_picker)),
+      cascader_(std::move(cascader)), steps_(std::move(steps)), time_picker_(std::move(time_picker)),
+      skeleton_(std::move(skeleton)), timeline_(std::move(timeline)), avatar_(std::move(avatar)),
+      rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
+      auto_complete_(std::move(auto_complete)), tree_select_(std::move(tree_select)), layout_(std::move(layout)),
+      splitter_(std::move(splitter)), descriptions_(std::move(descriptions)), popover_(std::move(popover)),
+      message_(std::move(message)), notification_(std::move(notification)), modal_(std::move(modal)),
+      tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
+      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
+      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
+      table_(std::move(table)), collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)),
+      input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4464,6 +4465,27 @@ ThemeSnapshot::ThemeSnapshot(
         metric(v);
     }
     status_json << "]}";
+    status_json << ",\"transfer\":{\"colors\":[";
+    first = true;
+    for (auto v : transfer_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : transfer_.metrics.values()) {
+        metric(v);
+    }
+    status_json << "],\"typography\":[";
+    first = true;
+    metric(transfer_.typography.font_size);
+    metric(transfer_.typography.line_height);
+    hash_integer(identity_, transfer_.typography.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(transfer_.typography.font_family) << ",\"effects\":[";
+    first = true;
+    metric(transfer_.effects.focus_width);
+    metric(transfer_.effects.focus_offset);
+    hash_integer(identity_, transfer_.order);
+    status_json << "],\"order\":" << transfer_.order << '}';
     status_json << ",\"anchor\":{\"colors\":[";
     first = true;
     for (auto v : anchor_.colors.values()) {
@@ -4954,15 +4976,16 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.table_ == right.table_ && left.empty_ == right.empty_ && left.result_ == right.result_ &&
            left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
            left.date_picker_ == right.date_picker_ && left.form_ == right.form_ && left.anchor_ == right.anchor_ &&
-           left.cascader_ == right.cascader_ && left.color_picker_ == right.color_picker_ &&
-           left.breadcrumb_ == right.breadcrumb_ && left.steps_ == right.steps_ &&
-           *left.time_picker_ == *right.time_picker_ && *left.skeleton_ == *right.skeleton_ &&
-           left.descriptions_ == right.descriptions_ && *left.popover_ == *right.popover_ &&
-           *left.message_ == *right.message_ && *left.notification_ == *right.notification_ &&
-           *left.timeline_ == *right.timeline_ && *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ &&
-           *left.statistic_ == *right.statistic_ && *left.tree_ == *right.tree_ &&
-           *left.auto_complete_ == *right.auto_complete_ && *left.tree_select_ == *right.tree_select_ &&
-           *left.layout_ == *right.layout_ && *left.splitter_ == *right.splitter_;
+           left.cascader_ == right.cascader_ && left.transfer_ == right.transfer_ &&
+           left.color_picker_ == right.color_picker_ && left.breadcrumb_ == right.breadcrumb_ &&
+           left.steps_ == right.steps_ && *left.time_picker_ == *right.time_picker_ &&
+           *left.skeleton_ == *right.skeleton_ && left.descriptions_ == right.descriptions_ &&
+           *left.popover_ == *right.popover_ && *left.message_ == *right.message_ &&
+           *left.notification_ == *right.notification_ && *left.timeline_ == *right.timeline_ &&
+           *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ && *left.statistic_ == *right.statistic_ &&
+           *left.tree_ == *right.tree_ && *left.auto_complete_ == *right.auto_complete_ &&
+           *left.tree_select_ == *right.tree_select_ && *left.layout_ == *right.layout_ &&
+           *left.splitter_ == *right.splitter_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -5720,6 +5743,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_anchor_override(token, config.anchor.tokens);
         return token;
     }();
+    auto transfer = [&] {
+        TransferThemeToken token;
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.transfer.algorithm;
+        if (inherit) {
+            token = parent->transfer();
+        } else if (config.transfer.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.transfer.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            token = detail::derive_transfer(component_seed, component_map,
+                                            derive_alias(component_seed, component_map, algorithms));
+        } else {
+            token = detail::derive_transfer(seed, map, alias);
+        }
+        detail::apply_transfer_override(token, config.transfer.tokens);
+        return token;
+    }();
     auto color_picker = [&] {
         auto component_seed = seed;
         if (config.color_picker.algorithm) {
@@ -6382,10 +6424,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         std::move(badge), std::move(alert), std::move(spin), std::move(progress), std::move(input_number),
         std::move(pagination), std::move(table), std::move(collapse), std::move(segmented), std::move(empty),
         std::move(result), std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(anchor),
-        std::move(color_picker), std::move(cascader), std::move(steps), std::move(time_picker), std::move(skeleton),
-        std::move(descriptions), std::move(popover), std::move(message), std::move(notification), std::move(timeline),
-        std::move(avatar), std::move(rate), std::move(statistic), std::move(tree), std::move(auto_complete),
-        std::move(tree_select), std::move(layout), std::move(splitter));
+        std::move(transfer), std::move(color_picker), std::move(cascader), std::move(steps), std::move(time_picker),
+        std::move(skeleton), std::move(descriptions), std::move(popover), std::move(message), std::move(notification),
+        std::move(timeline), std::move(avatar), std::move(rate), std::move(statistic), std::move(tree),
+        std::move(auto_complete), std::move(tree_select), std::move(layout), std::move(splitter));
 }
 
 } // namespace ryn

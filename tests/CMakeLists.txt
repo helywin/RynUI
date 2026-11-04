@@ -1,3 +1,17 @@
+add_executable(rynui_transfer_theme_tests transfer_theme_tests.cpp)
+rynui_configure_cpp_target(rynui_transfer_theme_tests)
+target_include_directories(rynui_transfer_theme_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_transfer_theme_tests PRIVATE rynui_theme)
+add_test(NAME rynui.transfer_theme COMMAND rynui_transfer_theme_tests)
+
+add_executable(rynui_transfer_complete_tests transfer_complete_tests.cpp)
+rynui_configure_cpp_target(rynui_transfer_complete_tests)
+target_link_libraries(rynui_transfer_complete_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_transfer_complete_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.transfer_complete COMMAND rynui_transfer_complete_tests)
+
 add_executable(rynui_color_picker_component_tests color_picker_component_tests.cpp)
 rynui_configure_cpp_target(rynui_color_picker_component_tests)
 target_link_libraries(rynui_color_picker_component_tests PRIVATE rynui_components)

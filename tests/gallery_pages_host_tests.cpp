@@ -1,5 +1,6 @@
 #include "gallery_pages_host.hpp"
 #include "gallery_sample_registry.hpp"
+#include "gallery_sample_source.hpp"
 #include "gallery_test_inventory.hpp"
 #include "component/selection_component.hpp"
 #include "component/color_picker_component.hpp"
@@ -61,7 +62,7 @@ struct Fixture final : ryn_test::input_component::Fixture {
 bool within(Fixture&, runtime::ComponentId, runtime::ComponentId);
 
 void test_color_number_pages() {
-    require(gallery_samples().size() == 80 && gallery_legacy_test_ids().size() == 458,
+    require(gallery_samples().size() == gallery_sample_sources().size() && gallery_legacy_test_ids().size() == 458,
             "Gallery sample/legacy inventories drifted");
     for (const auto& target : gallery_legacy_test_targets()) {
         require(std::ranges::find(gallery_samples(), target.sample_identity, &GallerySampleDescriptor::identity) !=

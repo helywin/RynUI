@@ -17,6 +17,9 @@ static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.pad
 static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.input_font_size)&, const char*>);
 static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.color_picker.tokens.panel_width)&, float>);
 static_assert(std::same_as<decltype(ryn::resolve_theme().color_picker()), const ryn::ColorPickerThemeToken&>);
+static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.transfer.tokens.list_width)&, float>);
+static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.transfer.tokens.header)&, const char*>);
+static_assert(std::same_as<decltype(ryn::resolve_theme().transfer()), const ryn::TransferThemeToken&>);
 static_assert(!std::constructible_from<ryn::ThemeContent, ryn::Content>);
 static_assert(!std::constructible_from<ryn::Content, ryn::ThemeContent>);
 static_assert(std::is_same_v<decltype(&ryn::Theme), void (*)(ryn::ThemeProps, ryn::ThemeContent)>);

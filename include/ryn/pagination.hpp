@@ -2,6 +2,7 @@
 #include <ryn/component.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
+#include <ryn/text.hpp>
 #include <functional>
 #include <optional>
 #include <vector>
@@ -27,8 +28,30 @@ struct PaginationItemContext final {
     Binding<bool> active;
 };
 
+struct PaginationLocale final {
+    String items_per_page{u8" / page"};
+    String page_separator{u8"/ "};
+    String jump_placeholder{u8"Go to"};
+    friend bool operator==(const PaginationLocale&, const PaginationLocale&) = default;
+};
+
 class PaginationProps final {
 public:
+    PaginationProps& locale(Prop<PaginationLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
+    PaginationProps& direction(Prop<TextDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
+    PaginationProps& showLessItems(Prop<bool> value) {
+        less_ = std::move(value);
+        return *this;
+    }
+
     PaginationProps& total(Prop<std::size_t> value) {
         total_ = std::move(value);
         return *this;
@@ -131,6 +154,9 @@ public:
 
 private:
     friend class detail::PaginationComponentHost;
+    Prop<PaginationLocale> locale_{PaginationLocale{}};
+    Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    Prop<bool> less_{false};
     Prop<std::size_t> total_{0};
     std::optional<Prop<std::size_t>> current_;
     std::optional<std::size_t> default_current_;

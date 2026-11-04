@@ -14,6 +14,7 @@
 #include <ryn/form_tokens.hpp>
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/anchor_tokens.hpp>
+#include <ryn/transfer_tokens.hpp>
 #include <ryn/color_picker_tokens.hpp>
 #include <ryn/cascader_tokens.hpp>
 #include <ryn/steps_tokens.hpp>
@@ -1627,6 +1628,13 @@ struct AnchorThemeConfig final {
     friend bool operator==(const AnchorThemeConfig&, const AnchorThemeConfig&) = default;
 };
 
+struct TransferThemeConfig final {
+    TransferTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TransferThemeConfig&, const TransferThemeConfig&) = default;
+};
+
 struct StepsThemeConfig final {
     StepsTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1759,6 +1767,7 @@ struct ThemeConfig final {
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
     AnchorThemeConfig anchor;
+    TransferThemeConfig transfer;
     ColorPickerThemeConfig color_picker;
     CascaderThemeConfig cascader;
     DatePickerThemeConfig date_picker;
@@ -2384,6 +2393,10 @@ public:
         return cascader_;
     }
 
+    [[nodiscard]] const TransferThemeToken& transfer() const noexcept {
+        return transfer_;
+    }
+
     [[nodiscard]] const AnchorThemeToken& anchor() const noexcept {
         return anchor_;
     }
@@ -2518,7 +2531,7 @@ private:
         SpinThemeToken spin, ProgressThemeToken progress, InputNumberThemeToken input_number,
         PaginationThemeToken pagination, TableThemeToken table, CollapseThemeToken collapse,
         SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result, DatePickerThemeToken date_picker,
-        FormThemeToken form, BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor,
+        FormThemeToken form, BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor, TransferThemeToken transfer,
         ColorPickerThemeToken color_picker, CascaderThemeToken cascader, StepsThemeToken steps,
         std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
         DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
@@ -2550,6 +2563,7 @@ private:
     FormThemeToken form_;
     BreadcrumbThemeToken breadcrumb_;
     AnchorThemeToken anchor_;
+    TransferThemeToken transfer_;
     ColorPickerThemeToken color_picker_;
     CascaderThemeToken cascader_;
     StepsThemeToken steps_;

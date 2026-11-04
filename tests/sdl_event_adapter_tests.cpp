@@ -336,6 +336,44 @@ void test_secondary_button_preserves_coordinates_action_and_clicks() {
             "secondary compatibility mouse event was duplicated");
 }
 
+void test_pointer_shift_follows_event_order() {
+    PlatformEvents result;
+    SdlWindowMetrics metrics{640, 480};
+    const auto saved = SDL_GetModState();
+    result.pointer_shift = false;
+    // SDL may already report the final state of a pumped queue.
+    SDL_SetModState(SDL_KMOD_SHIFT);
+    SdlEventAdapter::merge(result, mouse_button(SDL_EVENT_MOUSE_BUTTON_DOWN, 1, SDL_BUTTON_LEFT), metrics);
+    SDL_Event key{};
+    key.type = SDL_EVENT_KEY_DOWN;
+    key.key.key = SDLK_LSHIFT;
+    key.key.mod = SDL_KMOD_LSHIFT;
+    SdlEventAdapter::merge(result, key, metrics);
+    SDL_SetModState(SDL_KMOD_NONE);
+    SdlEventAdapter::merge(result, mouse_button(SDL_EVENT_MOUSE_BUTTON_DOWN, 1, SDL_BUTTON_LEFT), metrics);
+    key.type = SDL_EVENT_KEY_UP;
+    key.key.mod = SDL_KMOD_NONE;
+    SdlEventAdapter::merge(result, key, metrics);
+    SdlEventAdapter::merge(result, mouse_button(SDL_EVENT_MOUSE_BUTTON_UP, 1, SDL_BUTTON_LEFT), metrics);
+    SDL_SetModState(saved);
+    require(result.input.size() == 3, "Shift metadata changed normalized input ordering");
+    require(!std::get<PointerInputEvent>(result.input.events()[0]).shift &&
+                std::get<PointerInputEvent>(result.input.events()[1]).shift &&
+                !std::get<PointerInputEvent>(result.input.events()[2]).shift,
+            "pointer Shift used the final pump state instead of event order");
+    result.pointer_shift = true;
+    SDL_Event lost{};
+    lost.type = SDL_EVENT_WINDOW_FOCUS_LOST;
+    SdlEventAdapter::merge(result, lost, metrics);
+    SdlEventAdapter::merge(result, mouse_button(SDL_EVENT_MOUSE_BUTTON_DOWN, 1, SDL_BUTTON_LEFT), metrics);
+    require(!std::get<PointerInputEvent>(result.input.events().back()).shift,
+            "focus loss retained pointer Shift metadata");
+    result.clear();
+    require(!result.pointer_shift.has_value(), "batch clear retained pointer Shift state");
+    const PointerInputEvent legacy{PointerIdentity::mouse(), PointerAction::down, PointerButton::primary, 1, 2, 1};
+    require(!legacy.shift, "legacy pointer aggregate acquired Shift");
+}
+
 void test_expose_redraw_survives_a_mixed_input_batch() {
     PlatformEvents result;
     result.input.reserve(4);
@@ -367,6 +405,7 @@ int main() {
         test_quit_and_frame_summary_regression();
         test_secondary_button_preserves_coordinates_action_and_clicks();
         test_expose_redraw_survives_a_mixed_input_batch();
+        test_pointer_shift_follows_event_order();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

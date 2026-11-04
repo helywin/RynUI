@@ -264,6 +264,97 @@ void hidden_pagination_flex_flow() {
     }
 }
 
+void localized_rtl_controlled_editor() {
+    Fixture f;
+    Signal<std::size_t> page{10};
+    Signal<std::size_t> size{10};
+    Signal<TextDirection> direction{TextDirection::RightToLeft};
+    Signal<bool> simple{false};
+    PaginationLocale translated;
+    translated.items_per_page = u8" 项/页";
+    translated.page_separator = u8"共 ";
+    translated.jump_placeholder = u8"页码";
+    Signal<PaginationLocale> locale{translated};
+    bool accept = false;
+    std::vector<std::pair<std::size_t, std::size_t>> requests;
+    f.services.mount(Content{[&] {
+        Pagination(PaginationProps{}
+                       .total(1000)
+                       .current(page)
+                       .pageSize(size)
+                       .pageSizeOptions(std::vector<std::size_t>{10, 20, 50})
+                       .locale(locale)
+                       .direction(direction)
+                       .showLessItems(true)
+                       .showSizeChanger()
+                       .showQuickJumper()
+                       .simple(simple)
+                       .layout(LayoutStyle{}.width(dp(600)).height(dp(80)))
+                       .onChange([&](auto next, auto count) {
+                           requests.emplace_back(next, count);
+                           if (accept) {
+                               batch([&] {
+                                   page.set(next);
+                                   size.set(count);
+                               });
+                           }
+                       }));
+    }});
+    const auto sync = [&] {
+        f.synchronize(600, {0, 0, 600, 240});
+    };
+    sync();
+    const auto id = f.services.pagination().mounted().front();
+    const auto initial = f.services.pagination().snapshot(id);
+    const auto rect = [&](runtime::ComponentId c) {
+        return f.nodes.require(f.services.components().root(c)).bounds;
+    };
+    check(initial.items.size() == 9 && rect(initial.items.front()).x > rect(initial.items.back()).x,
+          "localized less-items Pagination did not retain RTL navigation");
+    const auto select = f.services.select().mounted().front();
+    const auto choose = [&](std::size_t row) {
+        click(f, f.services.select().snapshot(select).selector);
+        const auto options = f.services.select().snapshot(select);
+        check(options.visible, "localized Pagination Select did not open");
+        check(options.total_rows == 3, "localized Pagination Select option count differs");
+        const auto found = std::ranges::find(options.row_indices, row);
+        check(found != options.row_indices.end(), "localized Pagination option is not in the retained window");
+        click(f, options.rows.at(static_cast<std::size_t>(found - options.row_indices.begin())));
+    };
+    choose(1);
+    check(requests.size() == 1 && requests.back().second == 20 && f.services.pagination().snapshot(id).page_size == 10,
+          "localized RTL Pagination ignored controlled size refusal");
+    accept = true;
+    choose(2);
+    check(requests.size() == 2 && f.services.pagination().snapshot(id).page_size == 50,
+          "localized RTL Pagination ignored controlled size acceptance");
+    const auto editor = f.inputs.mounted_inputs().front();
+    const auto jump = [&](String value) {
+        static_cast<void>(f.inputs.editors().require(editor.editor).set_value(value.bytes()));
+        f.inputs.submit(editor.component);
+        sync();
+    };
+    accept = false;
+    jump(u8"3");
+    check(f.services.pagination().snapshot(id).current == 10 && requests.back().first == 3,
+          "localized RTL quick jumper ignored controlled refusal");
+    accept = true;
+    jump(u8"4");
+    check(f.services.pagination().snapshot(id).current == 4, "localized RTL quick jumper failed acceptance");
+    const auto count = requests.size();
+    jump(u8"2.5");
+    check(requests.size() == count, "localized quick jumper accepted a fraction");
+    direction.set(TextDirection::LeftToRight);
+    locale.set(PaginationLocale{});
+    simple.set(true);
+    sync();
+    const auto changed = f.services.pagination().snapshot(id);
+    check(changed.simple && changed.jumper == initial.jumper && changed.size_changer == initial.size_changer &&
+              rect(changed.items.front()).x < rect(changed.items.back()).x,
+          "dynamic locale/direction/simple update remounted or failed to reorder controls");
+    f.services.dispose();
+}
+
 void extended_controls() {
     static_assert(requires(PaginationProps p, Signal<bool> flag, Signal<PaginationAlign> align,
                            Signal<std::vector<std::size_t>> sizes) {
@@ -366,6 +457,7 @@ void extended_controls() {
 int main() {
     try {
         extended_controls();
+        localized_rtl_controlled_editor();
         controlled();
         keyboard_and_theme();
         token_contracts_and_callback_cleanup();

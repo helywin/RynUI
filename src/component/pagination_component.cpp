@@ -37,6 +37,10 @@ struct PaginationState final {
     std::size_t current{1};
     std::size_t pages{1};
     std::size_t page_size{10};
+    PaginationLocale locale;
+    TextDirection direction{TextDirection::LeftToRight};
+    bool less{};
+    Signal<TextDirection> child_direction{TextDirection::LeftToRight};
     bool controlled{};
     bool controlled_size{};
     bool simple{};
@@ -68,6 +72,7 @@ struct PaginationState final {
     bool hidden{};
     ControlSize size{ControlSize::Middle};
     float extent{32};
+    float simple_count_width{72};
     float gap{8};
     std::array<theme_runtime::Subscription, 2> subscriptions;
     std::function<void(std::size_t, std::size_t)> on_change;
@@ -163,11 +168,13 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     std::ranges::sort(sizes);
     sizes.erase(std::unique(sizes.begin(), sizes.end()), sizes.end());
     for (auto size : sizes) {
-        options.push_back({SelectValue{String::from_utf8(std::to_string(size)).value()},
-                           String::from_utf8(std::to_string(size) + " / page").value(), false});
+        options.push_back(
+            {SelectValue{String::from_utf8(std::to_string(size)).value()},
+             String::from_utf8(std::to_string(size) + std::string(s->locale.items_per_page.bytes())).value(), false});
     }
     s->options.set(std::move(options));
-    s->simple_text.set(String::from_utf8("/ " + std::to_string(s->pages)).value());
+    s->simple_text.set(
+        String::from_utf8(std::string(s->locale.page_separator.bytes()) + std::to_string(s->pages)).value());
     if (s->simple) {
         s->draft.set(String::from_utf8(std::to_string(s->current)).value());
     }
@@ -198,22 +205,24 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     };
     auxiliary(s->total_component, static_cast<bool>(s->total_render), 0);
     std::vector<std::pair<std::size_t, bool>> targets;
-    if (s->pages <= 9) {
+    const std::size_t radius = s->less ? 1 : 2;
+    const std::size_t jump_step = radius * 2 + 1;
+    if (s->pages <= (s->less ? 5 : 9)) {
         for (std::size_t page = 1; page <= s->pages; ++page) {
             targets.emplace_back(page, false);
         }
     } else {
-        const auto start = s->current > 3 ? s->current - 2 : std::size_t{2};
-        const auto end = s->current >= s->pages - 2 ? s->pages - 1 : s->current + 2;
+        const auto start = s->current > radius + 1 ? s->current - radius : std::size_t{2};
+        const auto end = s->current >= s->pages - radius ? s->pages - 1 : s->current + radius;
         targets.emplace_back(1, false);
         if (start > 2) {
-            targets.emplace_back(s->current > 5 ? s->current - 5 : 1, true);
+            targets.emplace_back(s->current > jump_step ? s->current - jump_step : 1, true);
         }
         for (auto page = start; page <= end; ++page) {
             targets.emplace_back(page, false);
         }
         if (end < s->pages - 1) {
-            targets.emplace_back(s->current > s->pages - 5 ? s->pages : s->current + 5, true);
+            targets.emplace_back(s->current > s->pages - jump_step ? s->pages : s->current + jump_step, true);
         }
         targets.emplace_back(s->pages, false);
     }
@@ -234,9 +243,11 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                           ? (item.target < s->current ? PaginationItemType::JumpPrevious : PaginationItemType::JumpNext)
                           : PaginationItemType::Page);
         const bool navigation_icon = index == 0 || index == 10 || jump;
-        item.icon.set(index == 0    ? IconName::LeftOutlined
-                      : index == 10 ? IconName::RightOutlined
-                                    : IconName::EllipsisOutlined);
+        item.icon.set(
+            index == 0 ? (s->direction == TextDirection::RightToLeft ? IconName::RightOutlined : IconName::LeftOutlined)
+            : index == 10
+                ? (s->direction == TextDirection::RightToLeft ? IconName::LeftOutlined : IconName::RightOutlined)
+                : IconName::EllipsisOutlined);
         item.icon_visible.set(navigation_icon);
         item.label.set(navigation_icon ? String{} : String::from_utf8(std::to_string(item.target)).value());
         item.disabled.set(s->disabled || (index == 0 && s->current == 1) || (index == 10 && s->current == s->pages));
@@ -261,7 +272,7 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         // Prev, editor, page count, next; all are retained across mode changes.
         s->flow.emplace_back(s->items[0].component, s->extent);
         auxiliary(s->jumper, true, 64);
-        auxiliary(s->simple_total, true, 72);
+        auxiliary(s->simple_total, true, s->simple_count_width);
         s->flow.emplace_back(s->items[10].component, s->extent);
     } else {
         for (const auto& item : s->items) {
@@ -354,10 +365,14 @@ runtime::Size PaginationComponentHost::measure(runtime::ComponentId id, layout::
     float width{};
     for (auto& [child, extent] : s.flow) {
         auto node = services_->components().root(child);
-        const auto measured =
-            engine.measure_child(node, {extent, extent > 0 ? extent : limits.max_width, s.extent, s.extent});
-        if (extent == 0) {
+        const bool natural = child == s.simple_total;
+        const auto measured = engine.measure_child(
+            node, {natural ? 0 : extent, natural || extent == 0 ? limits.max_width : extent, s.extent, s.extent});
+        if (extent == 0 || natural) {
             extent = measured.width;
+        }
+        if (natural) {
+            s.simple_count_width = extent;
         }
         width += extent + s.gap;
     }
@@ -373,12 +388,32 @@ void PaginationComponentHost::place(runtime::ComponentId id, layout::LayoutEngin
     for (const auto& [child, extent] : s.flow) {
         width += extent + s.gap;
     }
-    float x = bounds.x + std::max(0.0F, bounds.width - width) * (s.align == PaginationAlign::Center ? 0.5F
+    const bool wrap_size =
+        s.show_size_changer.value_or(s.total > 50) && width > bounds.width && bounds.height >= s.extent * 2 + s.gap;
+    if (wrap_size) {
+        for (const auto& [child, extent] : s.flow) {
+            if (child == s.size_changer) {
+                width -= extent + s.gap;
+            }
+        }
+    }
+    float x = bounds.x + std::max(0.0F, bounds.width - width) * (s.align == PaginationAlign::Center ? .5F
                                                                  : s.align == PaginationAlign::End  ? 1.0F
                                                                                                     : 0.0F);
+    if (s.direction == TextDirection::RightToLeft) {
+        x = bounds.x + bounds.width - (x - bounds.x);
+    }
     for (const auto& [child, extent] : s.flow) {
-        engine.place_child(services_->components().root(child), {x, bounds.y, extent, s.extent});
-        x += extent + s.gap;
+        if (wrap_size && child == s.size_changer) {
+            const float actual = std::min(extent, bounds.width);
+            engine.place_child(services_->components().root(child),
+                               {s.direction == TextDirection::RightToLeft ? bounds.x + bounds.width - actual : bounds.x,
+                                bounds.y + s.extent + s.gap, actual, s.extent});
+            continue;
+        }
+        engine.place_child(services_->components().root(child),
+                           {s.direction == TextDirection::RightToLeft ? x - extent : x, bounds.y, extent, s.extent});
+        x += (s.direction == TextDirection::RightToLeft ? -1 : 1) * (extent + s.gap);
     }
 }
 
@@ -391,6 +426,11 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
         valid_size(size);
     }
     valid_control_size(read_prop(props.size_));
+    const auto direction = read_prop(props.direction_);
+    if (direction != TextDirection::Auto && direction != TextDirection::LeftToRight &&
+        direction != TextDirection::RightToLeft) {
+        throw std::invalid_argument("Pagination direction is invalid");
+    }
     if (props.current_ && props.default_current_) {
         throw std::invalid_argument("Pagination current and defaultCurrent conflict");
     }
@@ -403,6 +443,10 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
     auto& s = build.state<PaginationState>(id);
     s.node = build.root(id);
     s.controlled = props.current_.has_value();
+    s.locale = read_prop(props.locale_);
+    s.direction = read_prop(props.direction_);
+    s.child_direction.set(s.direction);
+    s.less = read_prop(props.less_);
     s.current = props.current_ ? read_prop(*props.current_) : props.default_current_.value_or(1);
     s.total = read_prop(props.total_);
     s.page_size = props.page_size_ ? read_prop(*props.page_size_) : props.default_page_size_.value_or(10);
@@ -426,8 +470,9 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
     initial_sizes.erase(std::unique(initial_sizes.begin(), initial_sizes.end()), initial_sizes.end());
     std::vector<SelectOption> initial_options;
     for (auto size : initial_sizes) {
-        initial_options.push_back({SelectValue{String::from_utf8(std::to_string(size)).value()},
-                                   String::from_utf8(std::to_string(size) + " / page").value(), false});
+        initial_options.push_back(
+            {SelectValue{String::from_utf8(std::to_string(size)).value()},
+             String::from_utf8(std::to_string(size) + std::string(s.locale.items_per_page.bytes())).value(), false});
     }
     s.options.set(std::move(initial_options));
     s.selected_size.set(SelectValue{String::from_utf8(std::to_string(s.page_size)).value()});
@@ -483,13 +528,15 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
             s.total_component = wrap([label = s.total_text] { Text(TextProps{}.content(label)); });
             services.layout().set_layout(services.components().root(s.total_component), layout::BoxLayout{});
             s.simple_total = wrap([label = s.simple_text] { Text(TextProps{}.content(label)); });
-            s.jumper = wrap([this, id, &s] {
+            services.layout().set_layout(services.components().root(s.simple_total), layout::BoxLayout{});
+            s.jumper = wrap([this, id, &s, locale = props.locale_] {
                 Input(InputProps{}
+                          .direction(s.child_direction)
                           .value(s.draft)
                           .disabled(s.controls_disabled)
                           .readOnly(s.editor_read_only)
                           .size(s.control_size)
-                          .placeholder(u8"Go to")
+                          .placeholder(bind([locale] { return read_prop(locale).jump_placeholder; }))
                           .onChange([this, id](String value) {
                               if (auto* current = services_->components().state<PaginationState>(id)) {
                                   current->draft.set(std::move(value));
@@ -504,6 +551,7 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
             });
             s.size_changer = wrap([this, id, &s] {
                 Select(SelectProps{}
+                           .direction(s.child_direction)
                            .options(s.options)
                            .value(s.selected_size)
                            .disabled(s.controls_disabled)
@@ -574,6 +622,29 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
         }
         if (auto* s = services_->components().state<PaginationState>(id)) {
             s->align = value;
+            refresh(id, true);
+        }
+    });
+    connect_prop(scope, props.locale_, [this, id](PaginationLocale value) {
+        if (auto* s = services_->components().state<PaginationState>(id)) {
+            s->locale = value;
+            refresh(id, true);
+        }
+    });
+    connect_prop(scope, props.direction_, [this, id](TextDirection value) {
+        if (auto* s = services_->components().state<PaginationState>(id)) {
+            if (value != TextDirection::Auto && value != TextDirection::LeftToRight &&
+                value != TextDirection::RightToLeft) {
+                throw std::invalid_argument("Pagination direction is invalid");
+            }
+            s->direction = value;
+            s->child_direction.set(value);
+            refresh(id, true);
+        }
+    });
+    connect_prop(scope, props.less_, [this, id](bool value) {
+        if (auto* s = services_->components().state<PaginationState>(id)) {
+            s->less = value;
             refresh(id, true);
         }
     });
