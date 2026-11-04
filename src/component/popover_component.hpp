@@ -39,6 +39,7 @@ public:
     void position_window_layer(runtime::ComponentId, runtime::Size, runtime::Rect);
     void position_ancestors(runtime::ComponentId, runtime::Size, runtime::Rect);
     [[nodiscard]] bool owns_escape(runtime::ComponentId ancestor, runtime::ComponentId focused) const;
+    void dismiss_descendants(runtime::ComponentId ancestor);
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     std::size_t tick_auxiliary(animation::AnimationTime) override;
     std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;

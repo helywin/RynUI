@@ -11,6 +11,8 @@ function(rynui_portable_test name source)
     add_test(NAME rynui.portable.${name} COMMAND rynui_portable_${name})
 endfunction()
 
+rynui_portable_test(transfer_component "transfer_component_tests.cpp")
+rynui_portable_test(cascader_component "cascader_component_tests.cpp")
 rynui_portable_test(menu_component "menu_component_tests.cpp")
 rynui_portable_test(dropdown_component "dropdown_component_tests.cpp")
 rynui_portable_test(default_theme "default_theme_tests.cpp")

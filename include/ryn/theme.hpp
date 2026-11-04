@@ -15,6 +15,7 @@
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/anchor_tokens.hpp>
 #include <ryn/color_picker_tokens.hpp>
+#include <ryn/cascader_tokens.hpp>
 #include <ryn/steps_tokens.hpp>
 #include <ryn/time_picker_tokens.hpp>
 #include <ryn/skeleton_tokens.hpp>
@@ -81,6 +82,8 @@ struct SeedTokenOverride final {
 };
 
 struct AliasTokenOverride final {
+    std::optional<LogicalLength> line_width_focus;
+    std::optional<LogicalLength> focus_outline_offset;
     std::optional<Color> color_text;
     std::optional<Color> color_text_secondary;
     std::optional<Color> color_text_disabled;
@@ -109,6 +112,14 @@ struct ButtonColorTokenOverride final {
 };
 
 struct ButtonTokenOverride final {
+    std::optional<LogicalLength> content_line_height_small;
+    std::optional<LogicalLength> content_line_height;
+    std::optional<LogicalLength> content_line_height_large;
+    std::optional<Color> disabled_background;
+    std::optional<Color> text_hover_background;
+    std::optional<Color> text_active_background;
+    std::optional<Color> text_hover_color;
+    std::optional<Color> text_active_color;
     std::optional<Color> default_color;
     std::optional<Color> default_background;
     std::optional<Color> default_border_color;
@@ -171,6 +182,13 @@ struct TextThemeConfig final {
 };
 
 struct InputTokenOverride final {
+    std::optional<LogicalLength> input_line_height_small;
+    std::optional<LogicalLength> input_line_height;
+    std::optional<LogicalLength> input_line_height_large;
+    std::optional<Color> disabled_background;
+    std::optional<LogicalLength> control_height_small;
+    std::optional<LogicalLength> control_height;
+    std::optional<LogicalLength> control_height_large;
     std::optional<Color> color;
     std::optional<Color> placeholder_color;
     std::optional<Color> background;
@@ -1595,6 +1613,13 @@ struct ColorPickerThemeConfig final {
     friend bool operator==(const ColorPickerThemeConfig&, const ColorPickerThemeConfig&) = default;
 };
 
+struct CascaderThemeConfig final {
+    CascaderTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const CascaderThemeConfig&, const CascaderThemeConfig&) = default;
+};
+
 struct AnchorThemeConfig final {
     AnchorTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1735,6 +1760,7 @@ struct ThemeConfig final {
     BreadcrumbThemeConfig breadcrumb;
     AnchorThemeConfig anchor;
     ColorPickerThemeConfig color_picker;
+    CascaderThemeConfig cascader;
     DatePickerThemeConfig date_picker;
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -2354,6 +2380,10 @@ public:
         return color_picker_;
     }
 
+    [[nodiscard]] const CascaderThemeToken& cascader() const noexcept {
+        return cascader_;
+    }
+
     [[nodiscard]] const AnchorThemeToken& anchor() const noexcept {
         return anchor_;
     }
@@ -2477,29 +2507,27 @@ private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
 
-    ThemeSnapshot(FloatButtonThemeToken float_button, AntDesignDefaultSeed seed, ThemeMapToken map,
-                  ThemeAliasToken alias, ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
-                  CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
-                  DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
-                  SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-                  DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
-                  DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
-                  AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
-                  InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-                  CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                  ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
-                  BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor, ColorPickerThemeToken color_picker,
-                  StepsThemeToken steps, std::shared_ptr<const TimePickerThemeToken> time_picker,
-                  std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions,
-                  std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
-                  std::shared_ptr<const NoticeThemeToken> notification,
-                  std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
-                  std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
-                  std::shared_ptr<const TreeThemeToken> tree,
-                  std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
-                  std::shared_ptr<const TreeSelectThemeToken> tree_select,
-                  std::shared_ptr<const LayoutThemeToken> layout, std::shared_ptr<const SplitterThemeToken> splitter);
+    ThemeSnapshot(
+        FloatButtonThemeToken float_button, AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
+        ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
+        RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
+        TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs,
+        ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
+        DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
+        std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert,
+        SpinThemeToken spin, ProgressThemeToken progress, InputNumberThemeToken input_number,
+        PaginationThemeToken pagination, TableThemeToken table, CollapseThemeToken collapse,
+        SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result, DatePickerThemeToken date_picker,
+        FormThemeToken form, BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor,
+        ColorPickerThemeToken color_picker, CascaderThemeToken cascader, StepsThemeToken steps,
+        std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
+        DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
+        std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
+        std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
+        std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
+        std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
+        std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
+        std::shared_ptr<const SplitterThemeToken> splitter);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2523,6 +2551,7 @@ private:
     BreadcrumbThemeToken breadcrumb_;
     AnchorThemeToken anchor_;
     ColorPickerThemeToken color_picker_;
+    CascaderThemeToken cascader_;
     StepsThemeToken steps_;
     std::shared_ptr<const TimePickerThemeToken> time_picker_;
     std::shared_ptr<const SkeletonThemeToken> skeleton_;

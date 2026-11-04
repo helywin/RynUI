@@ -551,16 +551,28 @@
     },
     {
       "identity": "ant.component.cascader",
-      "status": "planned",
-      "summary": "级联选择（Cascader）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Cascader 完成多列单选/多选、保留标签、独立 Theme、Unicode 搜索、应用加载器、Panel 和输入生命周期合同。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "String/number typed paths，受控/default value、open、expandedPath、searchValue 及当前受控权威",
+        "真实可移除/自定义保留 tags，responsive maxTagCount、grapheme 截断、自定义占位符和可操作溢出浮层",
+        "稳定 key/content_revision、富 Input 草稿保留、动态校验、异常与重入的完整组件退场",
+        "列/搜索/状态区独立裁剪，精确滚轮边缘交接、RTL、键盘 Home/End/arrows/Page 和富子控件显露",
+        "完整 Unicode 搜索归一化，filter/sort/render/limit、selector/search Core IME、嵌套浮层和焦点离开清理",
+        "显式应用 loader、owner-thread completion、原子取消票据、错误/Retry 和旧/重复/外线程完成拒绝",
+        "独立 Cascader Component Token、seed/algorithm/inherit、四个失效域、size/status/variant/placement 和 typed ref/events/slots",
+        "实际 Gallery tags/Theme/scroll/search/loader 示例及 Linux 私有 Wayland Vulkan 有限自动验收"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Windows MSVC、系统 IME 候选窗口和辅助技术的独立平台实测",
+        "DOM/CSS/React、浏览器 URL 和 portal 接口不属于原生 API"
       ],
       "evidence_identifiers": [
-        "source:components/cascader/index.en-US.md"
+        "source:components/cascader/index.en-US.md",
+        "test:rynui.portable.cascader_component",
+        "test:rynui.cascader_theme",
+        "test:rynui.gallery_sample_page",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {
@@ -949,16 +961,25 @@
     },
     {
       "identity": "ant.component.transfer",
-      "status": "planned",
-      "summary": "穿梭框（Transfer）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Transfer 提供真实双列表、搜索、选择、双向移动、oneWay、分页与稳定 keyed 富行；独立 Token 和完整扩展合同仍待补齐。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "String/number typed stable keys、受控/default targetKeys/selectedKeys",
+        "实际 Checkbox/Input/Button/Pagination、全选/反选/清空、disabled 隔离与移动事件",
+        "按侧搜索、fractional wheel/onScroll、分页和页大小、oneWay 行内删除",
+        "响应数据重排/移动保留行内草稿、typed title/footer/item/list slots",
+        "Theme 组合、size/status/RTL、readOnly/visible/loading 与离页清理"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "独立 Transfer Component Token、完整本地化/自定义 action slots",
+        "动态几何 Prop/非法值回滚、Checkbox RTL 和完整嵌套输入/IME/浮层合同",
+        "Linux 原生 GPU、Windows MSVC、系统 IME 与辅助技术平台验收",
+        "DOM/CSS/React 和浏览器事件接口不移植"
       ],
       "evidence_identifiers": [
-        "source:components/transfer/index.en-US.md"
+        "source:components/transfer/index.en-US.md",
+        "test:rynui.portable.transfer_component",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {

@@ -44,8 +44,8 @@
 
 ## 9. 数据录入：Cascader
 
-- [ ] 9.1 按对应 spec 与 design 矩阵实现 Cascader 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 9.2 为 Cascader 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 9.1 按对应 spec 与 design 矩阵实现 Cascader 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 9.2 为 Cascader 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 10. 数据录入：Checkbox
 

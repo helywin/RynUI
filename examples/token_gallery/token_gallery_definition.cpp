@@ -3422,6 +3422,185 @@ void add_pagination_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 3;
 }
 
+void add_transfer_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    std::vector<TransferItem> items;
+    for (int i = 0; i < 24; ++i) {
+        items.push_back({static_cast<double>(i), utf8("Item " + std::to_string(i)), String{}, i == 2});
+    }
+    Signal<TransferKeys> target{TransferKeys{1.0, 3.0}};
+    Signal<TransferKeys> selected{TransferKeys{}};
+    Signal<bool> one_way{false};
+    Text(TextProps{}.content(state->data_feedback));
+    Transfer(
+        TransferProps{}
+            .dataSource(items)
+            .targetKeys(target)
+            .selectedKeys(selected)
+            .showSearch(true)
+            .oneWay(one_way)
+            .pagination(TransferPagination{true, 5, true})
+            .onChange([state, target](TransferChangeInfo event) {
+                target.set(event.target_keys);
+                state->data_feedback.set(
+                    utf8(std::string{event.direction == TransferDirection::Right ? "Moved right: " : "Moved left: "} +
+                         std::to_string(event.moved_keys.size())));
+            })
+            .onSelectChange([selected](TransferSelectInfo event) {
+                event.source_selected_keys.insert(event.source_selected_keys.end(), event.target_selected_keys.begin(),
+                                                  event.target_selected_keys.end());
+                selected.set(event.source_selected_keys);
+            })
+            .onSearch([state](TransferDirection direction, String query) {
+                state->data_feedback.set(
+                    utf8(std::string{direction == TransferDirection::Right ? "Target search: " : "Source search: "} +
+                         std::string{query.bytes()}));
+            })
+            .footer(TransferDirection::Left, TransferFooter{[] { Text(u8"真实分页 / 禁用 Item 2"); }})
+            .layout(LayoutStyle{}.width(dp(560))));
+    remember_target(state, "gallery.transfer.lists");
+    Button(ButtonProps{}.onClick([one_way] { one_way.set(!one_way.get()); }),
+           ButtonContent{[] { Text(u8"切换 oneWay / 行内删除"); }});
+    remember_target(state, "gallery.transfer.one-way");
+    auto rich = TransferItem{String{u8"draft"}, u8"Retained input draft"};
+    rich.content = TransferItemContent{[] { Input(InputProps{}.defaultValue(String{u8"移动和重排时保留此草稿"})); }};
+    Transfer(TransferProps{}
+                 .dataSource(std::vector<TransferItem>{rich, {String{u8"plain"}, u8"Plain item"}})
+                 .defaultSelectedKeys({String{u8"draft"}})
+                 .listHeight(100)
+                 .onChange([state](TransferChangeInfo event) {
+                     state->data_feedback.set(utf8("Rich row moved: " + std::to_string(event.moved_keys.size())));
+                 })
+                 .layout(LayoutStyle{}.width(dp(560))));
+    remember_target(state, "gallery.transfer.rich");
+    ++state->telemetry.live_samples;
+}
+
+void add_cascader_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<CascaderPaths> selected{CascaderPaths{}};
+    const std::vector<CascaderOption> options{
+        {u8"cn", String{u8"中国"}, u8"中国", {{u8"hz", 1.0, u8"杭州"}, {u8"nj", 2.0, u8"南京"}}},
+        {u8"eu", String{u8"Europe"}, u8"Europe", {{u8"paris", String{u8"Paris"}, u8"Paris"}}},
+        {u8"off", String{u8"off"}, u8"Disabled", {}, true}};
+    Text(TextProps{}.content(state->data_feedback));
+    Cascader(CascaderProps{}
+                 .options(options)
+                 .value(selected)
+                 .showSearch(true)
+                 .placeholder(String{u8"选择地区 / Search paths"})
+                 .popupContent(CascaderPopupContent{[state] {
+                     Popover(PopoverProps{}.trigger(PopoverTriggerMode::Click), PopoverTrigger{[state] {
+                                 Button(ButtonProps{}, ButtonContent{[] { Text(u8"编辑子浮层草稿"); }});
+                                 remember_target(state, "gallery.cascader.child-trigger");
+                             }},
+                             PopoverSlots{{}, PopoverContent{[state] {
+                                              Input(InputProps{}.placeholder(String{u8"保留子浮层草稿"}));
+                                              remember_target(state, "gallery.cascader.child-editor");
+                                          }}});
+                 }})
+                 .onChange([state, selected](CascaderPaths paths) {
+                     selected.set(paths);
+                     state->data_feedback.set(utf8("Cascader paths: " + std::to_string(paths.size())));
+                 })
+                 .layout(LayoutStyle{}.width(dp(400))));
+    remember_target(state, "gallery.cascader.selector");
+    CascaderPanel(CascaderProps{}
+                      .options(options)
+                      .multiple(true)
+                      .showCheckedStrategy(CascaderCheckedStrategy::ShowChild)
+                      .onChange([state](CascaderPaths paths) {
+                          state->data_feedback.set(utf8("Checked leaves: " + std::to_string(paths.size())));
+                      })
+                      .layout(LayoutStyle{}.width(dp(540)).height(dp(240))));
+    remember_target(state, "gallery.cascader.panel");
+    const auto load_attempts = std::make_shared<unsigned>(0);
+    Text(u8"本地加载器：首次明确演示错误，随后可点击 Retry");
+    Cascader(CascaderProps{}
+                 .options(std::vector<CascaderOption>{
+                     {u8"lazy", String{u8"lazy"}, u8"Load local application data", {}, false, false, false}})
+                 .loadData([state, load_attempts](CascaderLoadRequest request) {
+                     if (++*load_attempts == 1) {
+                         state->data_feedback.set(String{u8"本地演示的首次错误；点击 Retry 重试"});
+                         (void)request.complete({{}, String{u8"Local demo error"}});
+                         return;
+                     }
+                     state->data_feedback.set(String{u8"加载器由应用提供；本例同步提供本地数据"});
+                     static_cast<void>(request.complete({{{u8"loaded", 42.0, u8"Loaded child"}}, {}}));
+                 })
+                 .layout(LayoutStyle{}.width(dp(400))));
+    remember_target(state, "gallery.cascader.lazy");
+    Text(u8"可删除标签、responsive 溢出与受控选择");
+    Signal<CascaderPaths> tags{
+        CascaderPaths{{String{u8"中国"}, 1.0}, {String{u8"中国"}, 2.0}, {String{u8"Europe"}, String{u8"Paris"}}}};
+    Cascader(CascaderProps{}
+                 .options(options)
+                 .multiple(true)
+                 .value(tags)
+                 .maxTagCount(CascaderTagCount::Responsive)
+                 .maxTagTextLength(std::size_t{10})
+                 .maxTagPlaceholder(
+                     [](const CascaderPaths& values) { return utf8("还有 " + std::to_string(values.size()) + " 项"); })
+                 .onChange([state, tags](CascaderPaths value) {
+                     tags.set(value);
+                     state->data_feedback.set(utf8("Tags: " + std::to_string(value.size())));
+                 })
+                 .layout(LayoutStyle{}.width(dp(400))));
+    remember_target(state, "gallery.cascader.tags");
+    Text(u8"独立 Cascader Token、Unicode 搜索和长列滚动");
+    ThemeConfig themed;
+    themed.cascader.tokens.option_selected_background = Color::rgba8(230, 255, 235);
+    themed.cascader.tokens.option_selected_color = Color::rgba8(20, 100, 55);
+    themed.cascader.tokens.option_height = dp(36);
+    themed.cascader.tokens.column_width = dp(200);
+    themed.cascader.tokens.dropdown_height = dp(180);
+    themed.cascader.tokens.tag_background = Color::rgba8(230, 255, 235);
+    std::vector<CascaderOption> long_options;
+    for (int i = 0; i < 30; ++i) {
+        const auto label = utf8("Straße / 分组 " + std::to_string(i));
+        long_options.push_back({utf8("long-" + std::to_string(i)), double(i), label});
+    }
+    Theme(ThemeProps{}.config(themed), ThemeContent{[state, long_options] {
+              CascaderPanel(CascaderProps{}
+                                .options(long_options)
+                                .showSearch(true)
+                                .onChange([state](CascaderPaths value) {
+                                    state->data_feedback.set(
+                                        utf8("Theme search selections: " + std::to_string(value.size())));
+                                })
+                                .layout(LayoutStyle{}.width(dp(400))));
+          }});
+    remember_target(state, "gallery.cascader.theme-scroll");
+    Text(u8"保留自定义标签；编辑草稿后可单项移除");
+    Signal<CascaderPaths> rich_tags{CascaderPaths{{String{u8"中国"}, 1.0}}};
+    Cascader(CascaderProps{}
+                 .options(options)
+                 .multiple(true)
+                 .value(rich_tags)
+                 .tagRender([](CascaderTagInfo info) {
+                     return CascaderTagContent{[info] {
+                         Flex(FlexProps{}.align(FlexAlign::Center).gap(dp(4)), FlexContent{[info] {
+                                  Input(InputProps{}
+                                            .defaultValue(String{u8"保留的标签草稿"})
+                                            .disabled(info.disabled)
+                                            .layout(LayoutStyle{}.width(dp(160))));
+                                  Button(ButtonProps{}.disabled(info.disabled).onClick(info.onClose),
+                                         ButtonContent{[] { Text(u8"移除"); }});
+                              }});
+                     }};
+                 })
+                 .onChange([rich_tags](CascaderPaths value) { rich_tags.set(value); })
+                 .layout(LayoutStyle{}.width(dp(440))));
+    remember_target(state, "gallery.cascader.custom-tags");
+    Text(u8"保留的自定义触发器与空状态");
+    Cascader(CascaderProps{}
+                 .triggerContent(CascaderTriggerContent{[] { Text(u8"打开空目录"); }})
+                 .emptyContent(CascaderEmptyContent{[] { Text(u8"应用提供的空目录内容"); }})
+                 .layout(LayoutStyle{}.width(dp(240))));
+    remember_target(state, "gallery.cascader.custom-trigger");
+    ++state->telemetry.live_samples;
+}
+
 void add_menu_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(sample_text(u8"gallery.menu.inline · Menu / Dropdown · 导航与命令"));
@@ -7497,6 +7676,20 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_steps_samples",
       "include/ryn/steps.hpp"},
      add_steps_samples},
+    {{"gallery.sample.transfer.lists",
+      "ant.component.transfer",
+      {},
+      "双列表、搜索、分页与保留草稿",
+      "add_transfer_samples",
+      "include/ryn/transfer.hpp"},
+     add_transfer_samples},
+    {{"gallery.sample.cascader.paths",
+      "ant.component.cascader",
+      {},
+      "层级路径、多选与应用加载器",
+      "add_cascader_samples",
+      "include/ryn/cascader.hpp"},
+     add_cascader_samples},
     {{"gallery.sample.menu.inline",
       "ant.component.menu",
       {},

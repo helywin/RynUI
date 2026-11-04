@@ -62,7 +62,10 @@ void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overr
         }
         return value->value();
     };
+    const std::array heights{overrides.control_height_small, overrides.control_height, overrides.control_height_large};
     const std::array fonts{overrides.input_font_size_small, overrides.input_font_size, overrides.input_font_size_large};
+    const std::array lines{overrides.input_line_height_small, overrides.input_line_height,
+                           overrides.input_line_height_large};
     const std::array horizontal{overrides.padding_inline_small, overrides.padding_inline,
                                 overrides.padding_inline_large};
     const std::array vertical{overrides.padding_block_small, overrides.padding_block, overrides.padding_block_large};
@@ -73,6 +76,8 @@ void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overr
     const float base_font = length(overrides.input_font_size, next.sizes[1].font_size, true);
     for (std::size_t i = 0; i < next.sizes.size(); ++i) {
         auto& size = next.sizes[i];
+        const bool height_changed = heights[i] && heights[i]->value() != size.control_height;
+        size.control_height = length(heights[i], size.control_height, true);
         const float font = length(fonts[i], i == 0 && !next.small_font_explicit ? base_font : size.font_size, true);
         if (font != size.font_size) {
             size.line_height = font * (size.line_height / size.font_size);
@@ -84,6 +89,15 @@ void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overr
                 const float half = (size.control_height - size.line_height) * 5.0F;
                 size.padding_block =
                     std::max(0.0F, (i == 2 ? std::ceil(half) : std::floor(half + 0.5F)) / 10.0F - next.border_width);
+            }
+        }
+        const float line = length(lines[i], size.line_height, true);
+        if (line != size.line_height || height_changed) {
+            size.line_height = line;
+            if (!next.padding_block_explicit[i]) {
+                const float half = (size.control_height - size.line_height) * 5.0F;
+                size.padding_block =
+                    std::max(0.F, (i == 2 ? std::ceil(half) : std::floor(half + .5F)) / 10.F - next.border_width);
             }
         }
         size.padding_inline = length(horizontal[i], size.padding_inline);
@@ -103,6 +117,7 @@ void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overr
     color(next.colors.foreground, overrides.color);
     color(next.colors.placeholder, overrides.placeholder_color);
     color(next.colors.background, overrides.background);
+    color(next.colors.disabled_background, overrides.disabled_background);
     color(next.colors.border, overrides.border_color);
     color(next.colors.hover_border, overrides.hover_border_color);
     color(next.colors.active_border, overrides.active_border_color);

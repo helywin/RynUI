@@ -144,6 +144,10 @@ public:
     [[nodiscard]] const TreeSelectThemeToken& tree_select_tree_metrics() const;
     [[nodiscard]] const ColorPickerThemeToken& color_picker_colors() const;
     [[nodiscard]] const ColorPickerThemeToken& color_picker_metrics() const;
+    [[nodiscard]] const CascaderThemeToken& cascader_colors() const;
+    [[nodiscard]] const CascaderThemeToken& cascader_metrics() const;
+    [[nodiscard]] const CascaderThemeToken& cascader_typography() const;
+    [[nodiscard]] const CascaderThemeToken& cascader_effects() const;
     [[nodiscard]] const AnchorThemeToken& anchor_colors() const;
     [[nodiscard]] const AnchorThemeToken& anchor_metrics() const;
     [[nodiscard]] const AnchorThemeToken& anchor_effects() const;

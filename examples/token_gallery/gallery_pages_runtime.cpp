@@ -3,6 +3,7 @@
 #include "component/select_component.hpp"
 #include "component/auto_complete_component.hpp"
 #include "component/color_picker_component.hpp"
+#include "component/cascader_component.hpp"
 #include "component/anchor_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/dropdown_component.hpp"
@@ -831,6 +832,131 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                   "native Dropdown retirement retained popup/editor/session/capture");
             std::cout << "dropdown_native=passed controlled=true hover=true split=true flyout=true retained_draft=true "
                          "retired=true\n";
+        }
+        if (route.component_identity == "ant.component.cascader") {
+            auto& cascader = app.services().cascader();
+            check(cascader.mounted().size() == 7, "native Cascader examples absent");
+            const auto selector_id = pages.target("gallery.cascader.selector");
+            reveal(selector_id);
+            activate(cascader.snapshot(selector_id).selector);
+            render();
+            activate(pages.target("gallery.cascader.child-trigger"));
+            render();
+            const auto child_editor = replace_text(pages.target("gallery.cascader.child-editor"), u8"child draft");
+            const auto child_stamp = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"子候选"}, {}, child_stamp});
+            render();
+            check(inputs.editors().require(child_stamp.owner).composition().active,
+                  "native Cascader child popup has no preedit");
+            const auto child_popup = *std::ranges::find_if(app.services().popover().mounted(), [&](auto id) {
+                return owns(app, pages.target("gallery.cascader.child-trigger"),
+                            app.services().popover().snapshot(id).trigger);
+            });
+            const auto escape = [&] {
+                pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::down});
+                pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::up});
+                render();
+            };
+            escape();
+            check(!inputs.editors().require(child_stamp.owner).composition().active &&
+                      app.services().popover().snapshot(child_popup).geometry.visible &&
+                      cascader.snapshot(selector_id).open,
+                  "native child preedit Escape closed an outer popup");
+            escape();
+            check(!app.services().popover().snapshot(child_popup).geometry.visible &&
+                      cascader.snapshot(selector_id).open &&
+                      inputs.display_snapshot(child_editor.component).text == "child draft",
+                  "native child popup Escape lost ownership or retained draft");
+            escape();
+            const auto tags_id = cascader.mounted()[3];
+            reveal(tags_id);
+            render();
+            auto tags = cascader.snapshot(tags_id);
+            const auto shown = std::ranges::find_if(tags.tags, [](const auto& tag) { return tag.shown; });
+            if (shown == tags.tags.end()) {
+                std::cerr << "cascader_tag_measure selector=" << bounds(tags.selector).width
+                          << " values=" << tags.value.size() << " tags=" << tags.tags.size();
+                for (const auto& tag : tags.tags) {
+                    const auto box = bounds(tag.component);
+                    std::cerr << " tag=" << box.width << ',' << box.height << ',' << tag.shown;
+                }
+                std::cerr << '\n';
+            }
+            check(shown != tags.tags.end(), "native Cascader has no visible selected tag");
+            check(std::ranges::any_of(tags.tags, [](const auto& tag) { return !tag.shown; }),
+                  "native responsive Cascader tags have no overflow");
+            activate(tags.overflow);
+            render();
+            check(std::ranges::any_of(app.services().popover().mounted(),
+                                      [&](auto id) {
+                                          return owns(app, id, tags_id) &&
+                                                 app.services().popover().snapshot(id).geometry.visible;
+                                      }) &&
+                      !cascader.snapshot(tags_id).open,
+                  "native responsive overflow did not open an independent popup");
+            escape();
+            activate(shown->remove);
+            render();
+            check(cascader.snapshot(tags_id).tags.size() == 2 && !cascader.snapshot(tags_id).open,
+                  "native tag removal/refusal/open boundary");
+            const auto lazy_id = cascader.mounted()[2];
+            reveal(lazy_id);
+            activate(cascader.snapshot(lazy_id).selector);
+            render();
+            activate(cascader.snapshot(lazy_id).rows[0].component);
+            render();
+            check(!cascader.snapshot(lazy_id).error.empty(), "native Cascader local error status absent");
+            activate(cascader.snapshot(lazy_id).retry);
+            render();
+            check(cascader.snapshot(lazy_id).error.empty() && cascader.snapshot(lazy_id).rows.size() == 2,
+                  "native Cascader Retry did not complete local children");
+            pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::down});
+            pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::up});
+            render();
+            const auto panel_id = cascader.mounted()[4];
+            reveal(panel_id);
+            render();
+            auto panel = cascader.snapshot(panel_id);
+            const auto editor = std::ranges::find_if(
+                inputs.mounted_inputs(), [&](const auto& input) { return input.component == panel.search; });
+            check(editor != inputs.mounted_inputs().end(), "native Cascader search editor absent");
+            check(app.focus().request_focus(editor->interaction, input::FocusModality::keyboard),
+                  "native Cascader search focus");
+            pages.dispatch(input::TextCommitted{String{u8"STRASSE"}, inputs.sessions().active()});
+            render();
+            panel = cascader.snapshot(panel_id);
+            check(std::ranges::count_if(panel.rows, [](const auto& r) { return r.shown; }) == 30,
+                  "native full Unicode Cascader search");
+            const auto r = bounds(panel.rows[0].component);
+            events.inject_scroll_at(r.x + 8, r.y + 8, -.125F);
+            render();
+            check(cascader.snapshot(panel_id).scroll[0] > 0, "native Cascader input-first fractional wheel");
+            activate(cascader.snapshot(panel_id).rows[0].component);
+            pages.dispatch(input::KeyboardInputEvent{input::Key::end, input::KeyAction::down});
+            pages.dispatch(input::KeyboardInputEvent{input::Key::end, input::KeyAction::up});
+            render();
+            panel = cascader.snapshot(panel_id);
+            const auto last_row = bounds(panel.rows.back().component);
+            const auto viewport = bounds(panel.rows.back().viewport);
+            check(panel.scroll[0] > 100 && last_row.y >= viewport.y &&
+                      last_row.y + last_row.height <= viewport.y + viewport.height + .01F,
+                  "native Cascader End did not reveal the focused last row");
+            check(app.focus().request_focus(editor->interaction, input::FocusModality::keyboard),
+                  "native Cascader search refocus");
+            const auto stamp = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"候选"}, {}, stamp});
+            render();
+            check(inputs.editors().require(stamp.owner).composition().active, "native Cascader Core preedit absent");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native Cascader retirement route rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(cascader.mounted().empty() && !inputs.editors().find(stamp.owner) &&
+                      !inputs.sessions().active().valid() && !captured(),
+                  "native Cascader retirement retained editor/session/capture");
+            std::cout << "cascader_native=passed tags=true loader_error_retry=true theme=true unicode_search=true "
+                         "responsive_overflow=true child_popup=true focus_reveal=true fractional_scroll=true "
+                         "core_preedit=true retired=true\n";
         }
         if (route.component_identity == "ant.component.pagination") {
             auto& paging = app.services().pagination();

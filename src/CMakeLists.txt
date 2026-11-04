@@ -11,6 +11,7 @@ add_library(rynui_theme STATIC
     theme/date_picker_theme.cpp
     theme/form_theme.cpp
     theme/anchor_theme.cpp
+    theme/cascader_theme.cpp
     theme/breadcrumb_theme.cpp
     theme/steps_theme.cpp
     theme/time_picker_theme.cpp
@@ -222,6 +223,8 @@ add_library(rynui_components STATIC
     component/avatar_component.cpp
     component/tree_model.cpp
     component/tree_component.cpp
+    component/transfer_component.cpp
+    component/cascader_component.cpp
     component/tree_select_component.cpp
     component/form_component.cpp
     component/feedback_component.cpp

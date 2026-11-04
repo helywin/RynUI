@@ -51,6 +51,8 @@ class AvatarComponentHost;
 class RateComponentHost;
 class StatisticComponentHost;
 class TreeComponentHost;
+class CascaderComponentHost;
+class TransferComponentHost;
 class TreeSelectComponentHost;
 class AnchorComponentHost;
 class BreadcrumbComponentHost;
@@ -265,6 +267,14 @@ public:
 
     [[nodiscard]] AutoCompleteComponentHost& auto_complete() noexcept {
         return *auto_complete_;
+    }
+
+    [[nodiscard]] TransferComponentHost& transfer() noexcept {
+        return *transfer_;
+    }
+
+    [[nodiscard]] CascaderComponentHost& cascader() noexcept {
+        return *cascader_;
     }
 
     [[nodiscard]] TreeSelectComponentHost& tree_select() noexcept {
@@ -516,6 +526,8 @@ private:
     std::unique_ptr<RateComponentHost> rate_;
     std::unique_ptr<StatisticComponentHost> statistic_;
     std::unique_ptr<TreeComponentHost> tree_;
+    std::unique_ptr<TransferComponentHost> transfer_;
+    std::unique_ptr<CascaderComponentHost> cascader_;
     std::unique_ptr<TreeSelectComponentHost> tree_select_;
     std::unique_ptr<AnchorComponentHost> anchor_;
     std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;

@@ -368,6 +368,17 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       changed, count);
     append_if_changed(before.color_picker().metrics(), after.color_picker().metrics(),
                       TokenIdentity::color_picker_metrics, changed, count);
+    append_if_changed(before.cascader().colors, after.cascader().colors, TokenIdentity::cascader_colors, changed,
+                      count);
+    append_if_changed(before.cascader().metrics, after.cascader().metrics, TokenIdentity::cascader_metrics, changed,
+                      count);
+    append_if_changed(before.cascader().typography, after.cascader().typography, TokenIdentity::cascader_typography,
+                      changed, count);
+    append_if_changed(false,
+                      before.cascader().effects != after.cascader().effects ||
+                          before.cascader().shadow != after.cascader().shadow ||
+                          before.cascader().z_index_popup != after.cascader().z_index_popup,
+                      TokenIdentity::cascader_effects, changed, count);
     append_if_changed(before.anchor().colors, after.anchor().colors, TokenIdentity::anchor_colors, changed, count);
     append_if_changed(before.anchor().metrics, after.anchor().metrics, TokenIdentity::anchor_metrics, changed, count);
     append_if_changed(before.anchor().effects, after.anchor().effects, TokenIdentity::anchor_effects, changed, count);
@@ -1552,6 +1563,30 @@ const ColorPickerThemeToken& ThemeScope::color_picker_metrics() const {
     return snapshot_->color_picker();
 }
 
+const CascaderThemeToken& ThemeScope::cascader_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::cascader_colors);
+    return snapshot().cascader();
+}
+
+const CascaderThemeToken& ThemeScope::cascader_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::cascader_metrics);
+    return snapshot().cascader();
+}
+
+const CascaderThemeToken& ThemeScope::cascader_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::cascader_typography);
+    return snapshot().cascader();
+}
+
+const CascaderThemeToken& ThemeScope::cascader_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::cascader_effects);
+    return snapshot().cascader();
+}
+
 const AnchorThemeToken& ThemeScope::anchor_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::anchor_colors);
@@ -2138,6 +2173,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "DatePicker.order",
         "Form.colors",
         "Form.metrics",
+        "Cascader.colors",
+        "Cascader.metrics",
+        "Cascader.typography",
+        "Cascader.effects",
         "Anchor.colors",
         "Anchor.metrics",
         "Anchor.effects",
@@ -2305,6 +2344,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tree_select_colors:
     case TokenIdentity::tree_select_tree_colors:
     case TokenIdentity::color_picker_colors:
+    case TokenIdentity::cascader_colors:
     case TokenIdentity::anchor_colors:
     case TokenIdentity::breadcrumb_colors:
     case TokenIdentity::steps_colors:
@@ -2326,6 +2366,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::time_picker_colors:
     case TokenIdentity::time_picker_order:
         return DirtyPhase::paint_material;
+    case TokenIdentity::cascader_effects:
+        return DirtyPhase::geometry | DirtyPhase::paint_material | DirtyPhase::hit_test;
     case TokenIdentity::alias_color_focus_outline:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_line_width_focus:
@@ -2376,6 +2418,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_base_typography:
     case TokenIdentity::divider_typography:
     case TokenIdentity::tooltip_typography:
+    case TokenIdentity::cascader_typography:
     case TokenIdentity::menu_typography:
     case TokenIdentity::select_typography:
     case TokenIdentity::card_typography:
@@ -2417,6 +2460,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_control_height_large:
     case TokenIdentity::button_control_heights:
     case TokenIdentity::input_layout_metrics:
+    case TokenIdentity::cascader_metrics:
     case TokenIdentity::menu_metrics:
     case TokenIdentity::dropdown_metrics:
     case TokenIdentity::select_metrics:

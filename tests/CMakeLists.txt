@@ -312,6 +312,11 @@ target_compile_definitions(rynui_auto_complete_complete_tests PRIVATE
 foreach(case IN ITEMS window async renderers form_editor)
     add_test(NAME rynui.auto_complete_complete_${case} COMMAND rynui_auto_complete_complete_tests ${case})
 endforeach()
+add_executable(rynui_cascader_theme_tests cascader_theme_tests.cpp)
+rynui_configure_cpp_target(rynui_cascader_theme_tests)
+target_link_libraries(rynui_cascader_theme_tests PRIVATE rynui_theme)
+target_include_directories(rynui_cascader_theme_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+add_test(NAME rynui.cascader_theme COMMAND rynui_cascader_theme_tests)
 
 if(NOT RYNUI_HAS_SDL_GPU)
     add_executable(rynui_theme_algorithm_tests theme_algorithm_tests.cpp)

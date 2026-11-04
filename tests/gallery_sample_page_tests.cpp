@@ -8,6 +8,8 @@
 #include "component/select_component.hpp"
 #include "component/table_component.hpp"
 #include "component/tree_select_component.hpp"
+#include "component/cascader_component.hpp"
+#include "component/transfer_component.hpp"
 #include "component/form_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/divider_component.hpp"
@@ -809,11 +811,54 @@ void test_float_button_page() {
     require(f.services.float_button().mounted().empty(), "Off-page FloatButton resources survived page transition");
 }
 
+void test_cascader_transfer_pages() {
+    Fixture f;
+    const auto activate_button = [&](runtime::ComponentId component) {
+        const auto it =
+            std::ranges::find_if(f.buttons.mounted_buttons(), [&](const auto& b) { return b.component == component; });
+        require(it != f.buttons.mounted_buttons().end(), "native Gallery button missing");
+        require(f.services.focus().request_focus(it->interaction, FocusModality::keyboard),
+                "native Gallery button cannot focus");
+        f.key(Key::enter);
+    };
+    f.show("ant.component.cascader");
+    require(f.services.cascader().mounted().size() == 7, "Cascader standalone examples missing");
+    auto id = f.services.cascader().mounted()[1];
+    auto cascader = f.services.cascader().snapshot(id);
+    activate_button(cascader.rows[0].component);
+    require(f.services.cascader().snapshot(id).value.size() == 2,
+            "Cascader Gallery multi callback did not select leaves");
+    const auto tag_id = f.services.cascader().mounted()[3];
+    auto tags = f.services.cascader().snapshot(tag_id);
+    require(tags.tags.size() == 3 && tags.tags[0].remove.valid(), "Cascader Gallery retained tags absent");
+    const auto shown = std::ranges::find_if(tags.tags, [](const auto& tag) { return tag.shown; });
+    require(shown != tags.tags.end(), "Cascader Gallery responsive fitting hid every tag");
+    activate_button(shown->remove);
+    require(f.services.cascader().snapshot(tag_id).tags.size() == 2, "Cascader Gallery tag removal callback failed");
+    f.show("ant.component.transfer");
+    require(f.services.cascader().mounted().empty() && f.services.transfer().mounted().size() == 2,
+            "Cascader leave/Transfer mount failed");
+    id = f.services.transfer().mounted()[0];
+    auto transfer = f.services.transfer().snapshot(id);
+    const auto selected = std::ranges::find_if(f.selections.mounted(),
+                                               [&](const auto& c) { return c.component == transfer.rows[0].checkbox; });
+    require(selected != f.selections.mounted().end() &&
+                f.services.focus().request_focus(selected->interaction, FocusModality::keyboard),
+            "Transfer Gallery Checkbox missing");
+    f.key(Key::space);
+    activate_button(transfer.move[1]);
+    require(f.services.transfer().snapshot(id).target_keys.size() == 3,
+            "Transfer Gallery controlled callback did not accept move");
+    f.show("ant.component.button");
+    require(f.services.transfer().mounted().empty(), "Transfer survived page leave");
+}
+
 } // namespace
 
 int main() {
     try {
         test_compiled_source_metadata();
+        test_cascader_transfer_pages();
         test_legacy_identity_ownership();
         test_float_button_page();
         test_registry_and_factory_isolation();

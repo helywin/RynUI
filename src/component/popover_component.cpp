@@ -791,6 +791,19 @@ std::optional<animation::AnimationTime> PopoverComponentHost::next_auxiliary_dea
     return result;
 }
 
+void PopoverComponentHost::dismiss_descendants(runtime::ComponentId ancestor) {
+    const auto ids = mounted_;
+    for (auto it = ids.rbegin(); it != ids.rend(); ++it) {
+        auto* s = services_->components().state<PopoverState>(*it);
+        if (!s || !s->view.geometry.visible || !descendant(*services_, *it, ancestor)) {
+            continue;
+        }
+        s->click_open = false;
+        s->model.dismiss();
+        request_open(*it, false, false);
+    }
+}
+
 bool PopoverComponentHost::owns_escape(runtime::ComponentId ancestor, runtime::ComponentId focused) const {
     for (auto id : mounted_) {
         const auto* s = services_->components().state<PopoverState>(id);

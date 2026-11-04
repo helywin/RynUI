@@ -25,6 +25,8 @@
 #include "component/statistic_component.hpp"
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
+#include "component/cascader_component.hpp"
+#include "component/transfer_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/anchor_component.hpp"
 #include "component/steps_component.hpp"
@@ -144,6 +146,9 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     focus_.set_observer([this] {
         if (!retiring_failed_component_) {
             auto_complete_->on_focus_changed();
+            if (cascader_) {
+                cascader_->on_focus_changed();
+            }
             if (tree_select_) {
                 tree_select_->on_focus_changed();
             }
@@ -160,6 +165,8 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     rate_ = std::make_unique<RateComponentHost>(*this);
     statistic_ = std::make_unique<StatisticComponentHost>(*this);
     tree_ = std::make_unique<TreeComponentHost>(*this);
+    transfer_ = std::make_unique<TransferComponentHost>(*this);
+    cascader_ = std::make_unique<CascaderComponentHost>(*this);
     tree_select_ = std::make_unique<TreeSelectComponentHost>(*this);
     anchor_ = std::make_unique<AnchorComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
