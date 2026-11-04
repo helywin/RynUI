@@ -36,4 +36,26 @@ python tools/run_gallery_page_acceptance.py out/build/linux-gcc/examples/Debug/r
 
 ## 任务边界
 
-组件任务 1.1/1.2、2.1/2.2、3.1/3.2、5.1/5.2 保持完成，共 **8/16**。Layout/Splitter 4/6 节保持待集成；7.1/7.2 总体任务等待全部组件与上述组合 GPU 问题收口；8.1/8.2 Windows 仍未勾选。不新增人工任务，不 archive 或创建 PR。
+组件任务 1.1/1.2、2.1/2.2、3.1/3.2、5.1/5.2 保持完成，共 **8/16**。Layout/Splitter 4/6 节保持待集成；上述组合 GPU 阻塞已由下节定向修复，7.1/7.2 总体任务仍等待全部组件；8.1/8.2 Windows 仍未勾选。不新增人工任务，不 archive 或创建 PR。
+
+## 组合阻塞定向修复
+
+同日，以 main `ed4588625160a579de788909440566449764403a` 重建 `linux-gcc` Debug Gallery（最多 `-j 2`）后复现。定位结果：验收驱动把 GPU **submitted** 当作可立即推进下一次 resize/动态操作的边界，缺少 compositor frame 同步；在本机 NVIDIA 615.78.08 / 私有 Mutter 51.1 的 Wayland FIFO 路径触发交换链 image release 停滞。
+
+- GDB 主线程栈为 `SdlSceneRenderer::submit_frame → SDL_WaitAndAcquireGPUSwapchainTexture → vkAcquireNextImageKHR → NVIDIA EGL → drmSyncobjTimelineWait`。对应 frame-in-flight fence 已释放，swapchain 为 1000×900 / 2 images，无待重建标记；不是该帧的 layout/upload/draw 等待。私有 compositor 主线程仍在 GLib poll；Wayland 双端记录显示 commit 已接收，后续 FIFO/frame 进度停止。
+- 原组合在 `insert` 前保持 **2 cases / 53 checks / 11 frames**；Button→Button→Masonry→Button 同样将 Masonry 放在第三页 Dark+Compact，仍超时于 `reorder`，排除之前 Typography/Grid 状态为必要条件。原组合禁用全部 ordered scene draws、仅保留清屏的 GDB 对照仍停在同类 image acquire，排除实际组件 geometry/shader；单独加入 `SDL_SyncWindow` 和在阻塞处补一次 `SDL_PumpEvents` 均无效，没有保留这些试验。
+- 修复仅作用于有限 Linux 原生验收：在布局/输入同步后、GPU surface commit 前登记 `wl_surface.frame`；提交后通过正常 SDL 事件等待取得回调，才推进下一个动作。回调等待最多 **5 秒**且受原 **60 秒**总期限限制，关闭/适配错误立即失败，RAII 清理 listener。保留全部 resize、主题顺序、键盘输入、动态 item 和离页检查。未改 renderer、Core、GPU ABI、资源 owner/epoch、调度器、驱动或 compositor 配置；普通交互运行不启用此同步。
+- 同一修复后二进制的 GDB 消融仅强制 `done()` 返回 true、保留回调登记，原组合再次陷入同类 WSI 等待，证明实际等待边界有作用。反向故障注入强制返回 false，按预期在回调期限内以 exit **1**、`passed=false`、明确 deadline error 退出，记录 **1 submitted frame / 0 completed cases**；这不是成功验收 case。
+
+新增两个仅 Linux 原生构建注册的可复用 CTest；均强制复用私有后台 Wayland runner，自动超时且不回退桌面：
+
+```text
+ctest --preset linux-gcc-debug -R '^rynui[.]gallery_(native_(general_layout|masonry_compact)|page_acceptance_(options|runner))$' --output-on-failure
+ctest --preset linux-gcc-debug -R '^rynui[.]gallery_native_(general_layout|masonry_compact)$' --repeat until-fail:2 --output-on-failure
+```
+
+第一组 **4/4 通过**，包含 options/runner 2 项和实际 GPU 序列 2 项。原组合 **4 cases / 106 checks / 16 submitted frames / 16 frame callbacks**；Dark+Compact 对照 **4 cases / 72 checks / 11 submitted frames / 11 frame callbacks**。两者均为 **Vulkan / SPIR-V / system fonts、passed=true、return_code=0、desktop_fallback=false**，耗时约 **5 秒 / 3 秒**。第二组每条再连续运行两次，**4 次实际 GPU 调用全部通过**，覆盖全部 height/insert/reorder/remove、窗口断点、草稿与离页清理。
+
+额外仅构建并运行受影响调度合同 `rynui.frame_scheduler`，**1/1 通过**；复用前述组件 HEADLESS 矩阵，没有重复完整 CTest 或原生矩阵。clang-format 22.1.3：**863 files / 0 failures**；目录生成/自检、OpenSpec doctor、strict 全部 **106/106**、`git diff --check` 通过。
+
+原始 GDB/协议日志、故障注入、JSON、二进制仅存 ignored `out/106-gpu-fix/`，正式回归结果在 `out/gallery-pages/linux-gcc/Debug/`。frame callback 表示 compositor 帧边界，不等于物理 scanout 或完整像素等价；本次修复的是验收同步，不宣称驱动内部缺陷或通用 renderer 快速 resize 压力验证已完成。Layout/Splitter、Windows/MSVC、实际桌面、跨显示器和系统 IME 边界保持前述状态。

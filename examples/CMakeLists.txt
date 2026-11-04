@@ -88,6 +88,13 @@ target_link_libraries(
         rynui_renderer_sdl
         SDL3::SDL3
 )
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # The finite native fixture observes compositor frame callbacks. Keep this
+    # platform service in the example, outside Core and renderer/common.
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(RYNUI_GALLERY_WAYLAND REQUIRED IMPORTED_TARGET wayland-client>=1.18)
+    target_link_libraries(rynui_token_gallery PRIVATE PkgConfig::RYNUI_GALLERY_WAYLAND)
+endif()
 target_compile_definitions(
     rynui_token_gallery
     PRIVATE

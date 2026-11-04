@@ -238,3 +238,23 @@ target_link_libraries(rynui_gallery_page_acceptance_tests PRIVATE rynui_gallery_
 target_compile_definitions(rynui_gallery_page_acceptance_tests PRIVATE "RYNUI_GALLERY_SOURCE_ROOT=\"${PROJECT_SOURCE_DIR}\"")
 add_test(NAME rynui.gallery_page_acceptance_options COMMAND rynui_gallery_page_acceptance_tests)
 add_test(NAME rynui.gallery_page_acceptance_runner COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/gallery_page_acceptance_runner_tests.py" "$<TARGET_FILE:rynui_gallery_page_acceptance_tests>")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET rynui_token_gallery)
+    foreach(native_sequence IN ITEMS general_layout masonry_compact)
+        if(native_sequence STREQUAL "general_layout")
+            set(native_pages --page ant.component.typography --page ant.component.grid)
+        else()
+            # Preserve Masonry's third-page Dark+Compact theme without relying
+            # on Typography/Grid state or on a Default-only isolated run.
+            set(native_pages --page ant.component.button --page ant.component.button)
+        endif()
+        add_test(NAME rynui.gallery_native_${native_sequence}
+            COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_gallery_page_acceptance.py"
+                "$<TARGET_FILE:rynui_token_gallery>" --preset "${RYNUI_CONFIGURE_PRESET}"
+                --configuration "$<CONFIG>" --timeout 60
+                --log-dir "${PROJECT_SOURCE_DIR}/out/gallery-pages/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/${native_sequence}"
+                ${native_pages} --page ant.component.masonry --page ant.component.button)
+        set_tests_properties(rynui.gallery_native_${native_sequence} PROPERTIES
+            LABELS "linux;gpu;private-wayland" TIMEOUT 85 RUN_SERIAL TRUE)
+    endforeach()
+endif()

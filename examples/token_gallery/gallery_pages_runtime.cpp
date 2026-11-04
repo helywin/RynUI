@@ -26,10 +26,55 @@
 #include <string_view>
 #include <memory>
 #include <SDL3/SDL.h>
+#ifdef __linux__
+#include <wayland-client.h>
+#endif
 
 namespace rynui::example {
 namespace {
 using namespace ryn;
+
+#ifdef __linux__
+// A submitted Vulkan command is not a compositor frame boundary. Native
+// acceptance advances its next resize/action only after this callback, while
+// continuing to dispatch the window's normal event queue.
+class AcceptanceFrameBoundary final {
+public:
+    explicit AcceptanceFrameBoundary(SDL_Window* window) {
+        const auto properties = SDL_GetWindowProperties(window);
+        auto* surface = static_cast<wl_surface*>(
+            SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr));
+        if (!surface) {
+            throw std::runtime_error("Linux page acceptance requires a Wayland surface");
+        }
+        callback_ = wl_surface_frame(surface);
+        if (!callback_) {
+            throw std::runtime_error("Wayland page frame callback allocation failed");
+        }
+        static const wl_callback_listener listener{
+            [](void* data, wl_callback*, std::uint32_t) { static_cast<AcceptanceFrameBoundary*>(data)->done_ = true; }};
+        if (wl_callback_add_listener(callback_, &listener, this) != 0) {
+            wl_callback_destroy(callback_);
+            throw std::runtime_error("Wayland page frame listener registration failed");
+        }
+    }
+
+    AcceptanceFrameBoundary(const AcceptanceFrameBoundary&) = delete;
+    AcceptanceFrameBoundary& operator=(const AcceptanceFrameBoundary&) = delete;
+
+    ~AcceptanceFrameBoundary() {
+        wl_callback_destroy(callback_);
+    }
+
+    bool done() const noexcept {
+        return done_;
+    }
+
+private:
+    wl_callback* callback_{};
+    bool done_{};
+};
+#endif
 
 class GalleryPageEvents final : public runtime::FrameEventSource {
 public:
@@ -133,6 +178,9 @@ public:
     std::string error;
     std::uint64_t cursor_syncs{};
     bool trace{};
+#ifdef __linux__
+    std::unique_ptr<AcceptanceFrameBoundary> frame_boundary;
+#endif
 
     GalleryPageSubmitter(GalleryPageEvents& source, GalleryPagesHost& gallery,
                          ryn::detail::ButtonComponentHost& application, ryn::detail::InputComponentHost& input,
@@ -181,6 +229,12 @@ public:
             renderer.set_clear_color(resolve_theme(pages.theme()).alias().color_background_container);
             if (trace) {
                 std::cout << "page_acceptance_submit_begin\n" << std::flush;
+#ifdef __linux__
+                // Arm after layout/input synchronization, immediately before
+                // the GPU's surface commit, rather than before polling events.
+                frame_boundary =
+                    std::make_unique<AcceptanceFrameBoundary>(static_cast<SDL_Window*>(events.platform.window()));
+#endif
             }
             const auto submitted = renderer.submit_frame(time);
             if (trace) {
@@ -230,6 +284,24 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 result.host_input_area = inputs.sessions().diagnostics().areas > 0;
                 result.host_cursor_sync = submitter.cursor_syncs > 0;
                 write_gallery_page_acceptance(options.output, result);
+#ifdef __linux__
+                check(bool(submitter.frame_boundary), "Wayland page frame boundary was not armed");
+                const auto frame_deadline =
+                    std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(5));
+                while (!submitter.frame_boundary->done()) {
+                    if (std::chrono::steady_clock::now() >= frame_deadline) {
+                        throw std::runtime_error("Wayland page frame callback deadline exceeded");
+                    }
+                    events.consume(events.platform.wait_events(10));
+                    if (!events.error.empty() || events.quit) {
+                        throw std::runtime_error(events.error.empty() ? "Wayland page window closed" : events.error);
+                    }
+                }
+                submitter.frame_boundary.reset();
+                ++result.checks;
+                write_gallery_page_acceptance(options.output, result);
+                std::cout << "page_acceptance_frame_callback\n" << std::flush;
+#endif
                 return;
             }
             events.consume(events.platform.wait_events(10));
