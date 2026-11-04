@@ -214,6 +214,9 @@ std::string component_values(const ThemeSnapshot& snapshot, std::string_view ide
     if (identity == "ant.component.segmented") {
         return resolved_component_values(snapshot.segmented());
     }
+    if (identity == "ant.component.anchor") {
+        return resolved_component_values(snapshot.anchor());
+    }
     if (identity == "ant.component.breadcrumb") {
         return resolved_component_values(snapshot.breadcrumb());
     }

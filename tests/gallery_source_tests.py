@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 77 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 79 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -47,6 +47,14 @@ void add_next() {}'''
         if row.theme_path.startswith('ThemeConfig.') and row.theme_path.endswith('.tokens'):
             check(bool(row.token_names), f'component token mapping is empty: {row.identity}')
     by_id = {r.identity: r for r in records}
+    check('BreadcrumbProps' in by_id['gallery.sample.breadcrumb.dynamic'].props and
+          'MenuProps' in by_id['gallery.sample.breadcrumb.dynamic'].code and
+          'direction' in by_id['gallery.sample.breadcrumb.dynamic'].methods,
+          'Breadcrumb source omitted its dynamic menu or RTL contract')
+    check('AnchorProps' in by_id['gallery.sample.anchor.navigation'].props and
+          'onScrollTo' in by_id['gallery.sample.anchor.navigation'].methods and
+          by_id['gallery.sample.anchor.navigation'].theme_path == 'ThemeConfig.anchor.tokens',
+          'Anchor source omitted its explicit native target or Theme contract')
     check('FloatButtonProps' in by_id['gallery.sample.float-button.actions'].props,
           'FloatButton source was lost while integrating layout samples')
     check('InputProps' in by_id['gallery.sample.input.basics'].props and

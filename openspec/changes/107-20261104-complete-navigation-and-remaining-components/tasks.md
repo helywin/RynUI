@@ -4,13 +4,13 @@
 
 ## 1. 导航：Anchor
 
-- [ ] 1.1 按对应 spec 与 design 矩阵实现 Anchor 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 1.2 为 Anchor 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 1.1 按对应 spec 与 design 矩阵实现 Anchor 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 1.2 为 Anchor 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 2. 导航：Breadcrumb
 
-- [ ] 2.1 按对应 spec 与 design 矩阵实现 Breadcrumb 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 2.2 为 Breadcrumb 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 2.1 按对应 spec 与 design 矩阵实现 Breadcrumb 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 2.2 为 Breadcrumb 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 3. 导航：Dropdown
 

@@ -1,6 +1,10 @@
 #include "gallery_pages_runtime.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
+#include "component/anchor_component.hpp"
+#include "component/breadcrumb_component.hpp"
+#include "component/dropdown_component.hpp"
+#include "component/menu_component.hpp"
 #include "component/float_button_component.hpp"
 #include "component/collapse_component.hpp"
 #include "component/grid_component.hpp"
@@ -374,7 +378,9 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             const auto* record = app.interactions().find(id);
             if (record && record->focusable && record->eligible && app.interactions().branch_active(id) &&
                 owns(app, record->component, owner)) {
-                check(app.focus().request_focus(id, input::FocusModality::keyboard),
+                check(app.focus().state().window_active &&
+                          (app.focus().state().focused == id ||
+                           app.focus().request_focus(id, input::FocusModality::keyboard)),
                       "native sample action could not receive keyboard focus");
                 pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::down});
                 pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::up});
@@ -420,7 +426,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         render();
         const auto visible = bounds(id);
         check(visible.y >= lane.y && visible.y + 30 < lane.y + lane.height,
-              "native Splitter input target is outside document viewport");
+              "native sample target is outside document viewport");
     };
     const auto pointer = [&](input::PointerAction action, runtime::Point point) {
         pages.dispatch(
@@ -463,6 +469,14 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 check(app.services().float_button().mounted().empty(), "native FloatButton survived page retirement");
                 const auto pointer = app.pointer().state(input::PointerIdentity::mouse());
                 check(!pointer || !pointer->capture, "native FloatButton page retirement retained capture");
+            }
+            if (previous_route.component_identity == "ant.component.breadcrumb") {
+                check(app.services().breadcrumb().mounted().empty(), "native Breadcrumb survived page retirement");
+                check(!captured(), "native Breadcrumb retirement retained capture");
+            }
+            if (previous_route.component_identity == "ant.component.anchor") {
+                check(app.services().anchor().mounted().empty(), "native Anchor survived page retirement");
+                check(!captured(), "native Anchor retirement retained capture");
             }
             if (previous_route.component_identity == "ant.component.layout") {
                 check(app.services().shell_layout().mounted().empty(), "native Layout survived page retirement");
@@ -562,6 +576,235 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             check(pages.sample_runs("gallery.sample.grid.layouts") == 1, "native Grid reflow reran its sample factory");
             previous_session = inputs.sessions().active();
             std::cout << "grid_native=passed window_breakpoints=true retained_draft=true\n";
+        }
+        if (route.component_identity == "ant.component.breadcrumb") {
+            const auto owner = pages.target("gallery.breadcrumb.dynamic-component");
+            auto& breadcrumbs = app.services().breadcrumb();
+            const auto run = [&](runtime::ComponentId target) {
+                reveal(target);
+                activate(target);
+                render();
+            };
+            const auto original = breadcrumbs.snapshot(owner);
+            check(original.items.size() == 4, "native dynamic Breadcrumb absent");
+            reveal(original.items[1]);
+            const auto draft = edit_input(original.items[1]);
+            const auto editor_session = inputs.sessions().active();
+            run(pages.target("gallery.breadcrumb.reorder"));
+            const auto reordered = breadcrumbs.snapshot(owner);
+            check(reordered.items.front() == original.items.back() &&
+                      reordered.items.back() == original.items.front() && app.components().contains(draft.first),
+                  "native Breadcrumb reorder lost retained draft");
+            check(std::string{inputs.display_snapshot(draft.first).text} == draft.second,
+                  "native Breadcrumb reordered editor lost its actual draft");
+            run(pages.target("gallery.breadcrumb.topology"));
+            check(breadcrumbs.snapshot(owner).items.size() == 3, "native Breadcrumb removal failed");
+            run(pages.target("gallery.breadcrumb.direction"));
+            run(breadcrumbs.snapshot(owner).items.back());
+            bool menu_open = false;
+            std::vector<runtime::ComponentId> owned_popups;
+            for (auto popup : app.services().dropdown().mounted()) {
+                if (owns(app, popup, owner) && app.services().dropdown().snapshot(popup).geometry.visible) {
+                    menu_open = true;
+                    owned_popups.push_back(app.services().dropdown().snapshot(popup).popup);
+                }
+            }
+            check(menu_open, "native Breadcrumb built-in menu did not open");
+            pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::down});
+            pages.dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::up});
+            render();
+            bool callback_seen = false;
+            for (const auto& text : app.services().text().mounted_texts()) {
+                const auto content = app.services().text().scene_service().text_state(text.scene).content().bytes();
+                callback_seen |= content.find(String{u8"菜单 / overview"}.bytes()) != std::string_view::npos;
+            }
+            check(callback_seen, "native Breadcrumb menu selection did not deliver its actual callback");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native Breadcrumb retirement route rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(!app.components().contains(owner) && app.services().breadcrumb().mounted().empty() && !captured(),
+                  "native Breadcrumb retirement retained its root/focus capture");
+            check(!inputs.editors().find(editor_session.owner) && !inputs.sessions().active().valid(),
+                  "native Breadcrumb retirement retained editor/session");
+            check(std::ranges::none_of(owned_popups, [&](auto popup) { return app.components().contains(popup); }),
+                  "native Breadcrumb retirement retained popup owner");
+            std::cout << "breadcrumb_native=passed keyed_topology=true retained_draft=true menu=true "
+                         "menu_callback=true rtl=true retired=true\n";
+        }
+        if (route.component_identity == "ant.component.menu") {
+            auto& menus = app.services().menu();
+            const auto owner = pages.target("gallery.menu.dynamic");
+            const auto run = [&](runtime::ComponentId target) {
+                reveal(target);
+                activate(target);
+                render();
+            };
+            reveal(owner);
+            const auto original = menus.snapshot(owner);
+            // Eight application rows plus the retained horizontal overflow trigger.
+            check(original.rows.size() == 9, "native dynamic Menu rows absent");
+            check(original.overflow, "native horizontal Menu overflow absent");
+            run(pages.target("gallery.menu.topology"));
+            const auto changed = menus.snapshot(owner);
+            check(changed.rows.size() == 10 && changed.rows.front() == original.rows[7],
+                  "native Menu reorder/add lost retained rows");
+            run(pages.target("gallery.menu.topology"));
+            run(pages.target("gallery.menu.mode"));
+            reveal(owner);
+            menus.focus_menu(owner);
+            const auto interaction = menus.snapshot(owner).interaction;
+            key(interaction, input::Key::down);
+            check(menus.snapshot(owner).active_key == String{u8"tools"}, "native Menu keyboard missed submenu");
+            key(interaction, input::Key::left);
+            check(menus.snapshot(owner).popups.size() == 1 && menus.snapshot(owner).active_key == String{u8"build"},
+                  "native RTL Menu flyout did not open");
+            key(interaction, input::Key::enter);
+            check(std::ranges::any_of(app.services().text().mounted_texts(),
+                                      [&](const auto& text) {
+                                          return app.services()
+                                                     .text()
+                                                     .scene_service()
+                                                     .text_state(text.scene)
+                                                     .content()
+                                                     .bytes()
+                                                     .find(String{u8"导航命令：build"}.bytes()) !=
+                                                 std::string_view::npos;
+                                      }),
+                  "native Menu flyout command callback missing");
+            key(interaction, input::Key::escape);
+            check(menus.snapshot(owner).popups.empty(), "native Menu flyout did not close");
+            run(pages.target("gallery.menu.mode"));
+            run(pages.target("gallery.menu.collapsed"));
+            check(std::abs(bounds(owner).width - 80) < 1 && menus.snapshot(owner).rows == original.rows,
+                  "native collapsed Menu changed retained rows or width");
+            reveal(owner);
+            menus.focus_menu(owner);
+            key(interaction, input::Key::down);
+            key(interaction, input::Key::left);
+            check(!menus.snapshot(owner).popups.empty(), "native collapsed Menu flyout did not reopen");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native Menu retirement route rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(!app.components().contains(owner) && menus.mounted().empty() && !captured(),
+                  "native Menu retirement retained rows/flyout/capture");
+            std::cout
+                << "menu_native=passed keyed_topology=true overflow=true rtl_flyout=true collapsed=true retired=true\n";
+        }
+        if (route.component_identity == "ant.component.dropdown") {
+            auto& dropdowns = app.services().dropdown();
+            auto& menus = app.services().menu();
+            const auto run = [&](runtime::ComponentId target) {
+                reveal(target);
+                activate(target);
+                render();
+            };
+            const auto press = [&](input::Key value) {
+                pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::down});
+                pages.dispatch(input::KeyboardInputEvent{value, input::KeyAction::up});
+                render();
+            };
+            const auto feedback = [&](std::string_view expected) {
+                return std::ranges::any_of(app.services().text().mounted_texts(), [&](const auto& text) {
+                    return app.services()
+                               .text()
+                               .scene_service()
+                               .text_state(text.scene)
+                               .content()
+                               .bytes()
+                               .find(expected) != std::string_view::npos;
+                });
+            };
+            const auto controlled = pages.target("gallery.dropdown.actions");
+            run(controlled);
+            check(dropdowns.snapshot(controlled).geometry.visible, "native controlled Dropdown did not open");
+            press(input::Key::enter);
+            check(!dropdowns.snapshot(controlled).geometry.visible && feedback(String{u8"已执行命令：refresh"}.bytes()),
+                  "native controlled Dropdown selection did not callback/close");
+            const auto split = pages.target("gallery.dropdown.split");
+            run(split);
+            check(feedback(String{u8"分离按钮：已运行默认操作"}.bytes()), "native split primary callback missing");
+            runtime::ComponentId split_dropdown;
+            for (auto id : dropdowns.mounted()) {
+                if (owns(app, id, split)) {
+                    split_dropdown = id;
+                }
+            }
+            check(split_dropdown.valid(), "native split Dropdown missing");
+            const auto trigger = dropdowns.snapshot(split_dropdown).trigger;
+            reveal(trigger);
+            const auto r = bounds(trigger);
+            pointer(input::PointerAction::move, {r.x + r.width / 2, r.y + r.height / 2});
+            const auto hover_deadline = std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(2));
+            do {
+                render();
+            } while (!dropdowns.snapshot(split_dropdown).geometry.visible &&
+                     std::chrono::steady_clock::now() < hover_deadline);
+            const auto opened = dropdowns.snapshot(split_dropdown);
+            check(opened.geometry.visible && opened.arrow_visible, "native split hover/arrow did not open");
+            menus.focus_menu(opened.menu);
+            render();
+            press(input::Key::down);
+            press(input::Key::right);
+            check(menus.snapshot(opened.menu).popups.size() == 1, "native Dropdown Menu flyout did not open");
+            press(input::Key::enter);
+            check(feedback(String{u8"分离菜单：logs"}.bytes()), "native split flyout callback missing");
+            press(input::Key::escape);
+            press(input::Key::escape);
+            check(!dropdowns.snapshot(split_dropdown).geometry.visible, "native split Dropdown did not close");
+            const auto custom = pages.target("gallery.dropdown.custom");
+            run(custom);
+            const auto popup = dropdowns.snapshot(custom).popup;
+            check(dropdowns.snapshot(custom).geometry.visible, "native custom Dropdown did not open");
+            const auto draft = edit_input(custom);
+            const auto session = inputs.sessions().active();
+            press(input::Key::escape);
+            check(!dropdowns.snapshot(custom).geometry.visible && !inputs.sessions().active().valid(),
+                  "native custom Dropdown close retained input session");
+            run(custom);
+            check(dropdowns.snapshot(custom).popup == popup &&
+                      std::string{inputs.display_snapshot(draft.first).text} == draft.second,
+                  "native custom Dropdown reopen lost retained popup/draft");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native Dropdown retirement route rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(dropdowns.mounted().empty() && menus.mounted().empty() && !app.components().contains(popup) &&
+                      !inputs.editors().find(session.owner) && !inputs.sessions().active().valid() && !captured(),
+                  "native Dropdown retirement retained popup/editor/session/capture");
+            std::cout << "dropdown_native=passed controlled=true hover=true split=true flyout=true retained_draft=true "
+                         "retired=true\n";
+        }
+        if (route.component_identity == "ant.component.anchor") {
+            const auto owner = pages.target("gallery.anchor.component");
+            auto& anchors = app.services().anchor();
+            const auto run = [&](runtime::ComponentId target) {
+                reveal(target);
+                activate(target);
+                render();
+            };
+            const auto original = anchors.snapshot(owner);
+            check(original.keys.size() == 5, "native Anchor has no complete hierarchy");
+            app.services().set_motion_preference(animation::MotionPreference::reduced);
+            run(original.items[2]);
+            check(anchors.snapshot(owner).active == String{u8"api"},
+                  "native Anchor target callback did not scroll/highlight");
+            const auto& viewport_node =
+                app.nodes().require(app.components().root(pages.target("gallery.anchor.viewport")));
+            check(!viewport_node.children.empty() &&
+                      std::abs(viewport_node.bounds.y - app.nodes().require(viewport_node.children.front()).bounds.y -
+                               480) < .01F,
+                  "native Anchor callback did not move its real scroll content");
+            run(pages.target("gallery.anchor.direction"));
+            check(!app.components().branch_active(original.items[1]), "native horizontal Anchor exposed nested item");
+            run(pages.target("gallery.anchor.direction"));
+            run(pages.target("gallery.anchor.topology"));
+            check(anchors.snapshot(owner).keys.size() == 4, "native Anchor removal did not reconcile");
+            run(pages.target("gallery.anchor.topology"));
+            check(anchors.snapshot(owner).items[0] == original.items[0], "native Anchor remounted unchanged key");
+            app.services().set_motion_preference(animation::MotionPreference::normal);
+            std::cout << "anchor_native=passed target_callback=true hierarchy=true keyed_topology=true\n";
         }
         if (route.component_identity == "ant.component.masonry") {
             const auto owner = pages.target("gallery.masonry.measured");

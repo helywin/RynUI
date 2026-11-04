@@ -13,7 +13,8 @@ class BreadcrumbComponentHost final : public WindowComponentParticipant {
 public:
     explicit BreadcrumbComponentHost(WindowComponentServices&);
     ~BreadcrumbComponentHost();
-    void mount(const BreadcrumbProps&, const std::vector<BreadcrumbItem>&);
+    void mount(const BreadcrumbProps&);
+    void prepare_auxiliary_layout() override;
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;
@@ -36,6 +37,9 @@ public:
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
+    void append_item(runtime::ComponentId, const BreadcrumbItem&, runtime::ComponentBuildContext*);
+    void update_items(runtime::ComponentId, runtime::ComponentBuildContext* = nullptr);
+    void bind_item(runtime::ComponentId, std::size_t, const BreadcrumbItem&);
     void refresh(runtime::ComponentId, bool);
     void reconcile(runtime::ComponentId);
     void activate(runtime::ComponentId, std::size_t);

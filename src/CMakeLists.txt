@@ -10,6 +10,7 @@ add_library(rynui_theme STATIC
     theme/segmented_theme.cpp
     theme/date_picker_theme.cpp
     theme/form_theme.cpp
+    theme/anchor_theme.cpp
     theme/breadcrumb_theme.cpp
     theme/steps_theme.cpp
     theme/time_picker_theme.cpp
@@ -256,6 +257,7 @@ add_library(rynui_components STATIC
     component/table_component.cpp
     component/collapse_component.cpp
     component/segmented_component.cpp
+    component/anchor_component.cpp
     component/breadcrumb_component.cpp
     component/steps_component.cpp
     component/otp_component.cpp

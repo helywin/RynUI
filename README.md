@@ -135,6 +135,7 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [Input](docs/input.md)：单行输入家族、公开焦点引用与原生系统输入提示。
 - [Select](docs/select.md)：单选/搜索/动态选项、键盘与窗口层、主题和首版范围。
 - [Card](docs/card.md)：内容区域组合、尺寸与主题、loading 保留状态和子控件交互。
+- [Anchor](docs/anchor.md)：显式原生滚动目标、层级与横向导航、活动跟踪和可取消平滑滚动。
 - [Breadcrumb](docs/breadcrumb.md)、[Steps](docs/steps.md)：保留富内容的层级导航、步骤状态与原生键盘交互。
 - [Form](docs/form.md)、[DatePicker](docs/date-picker.md)、[TimePicker](docs/time-picker.md)：显式字段绑定、同步校验与单日期/时间输入的原生首版范围。
 - [组件收尾](docs/component-completion.md)：已有组件的原生功能缺口与实施顺序。

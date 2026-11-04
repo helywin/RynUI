@@ -51,6 +51,7 @@ class RateComponentHost;
 class StatisticComponentHost;
 class TreeComponentHost;
 class TreeSelectComponentHost;
+class AnchorComponentHost;
 class BreadcrumbComponentHost;
 class StepsComponentHost;
 class SkeletonComponentHost;
@@ -317,6 +318,10 @@ public:
         return *tree_;
     }
 
+    [[nodiscard]] AnchorComponentHost& anchor() noexcept {
+        return *anchor_;
+    }
+
     [[nodiscard]] BreadcrumbComponentHost& breadcrumb() noexcept {
         return *breadcrumb_;
     }
@@ -506,6 +511,7 @@ private:
     std::unique_ptr<StatisticComponentHost> statistic_;
     std::unique_ptr<TreeComponentHost> tree_;
     std::unique_ptr<TreeSelectComponentHost> tree_select_;
+    std::unique_ptr<AnchorComponentHost> anchor_;
     std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;
     std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<SkeletonComponentHost> skeleton_;

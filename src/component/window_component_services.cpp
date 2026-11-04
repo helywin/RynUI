@@ -25,6 +25,7 @@
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
 #include "component/breadcrumb_component.hpp"
+#include "component/anchor_component.hpp"
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
 #include "component/notice_component.hpp"
@@ -158,6 +159,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     statistic_ = std::make_unique<StatisticComponentHost>(*this);
     tree_ = std::make_unique<TreeComponentHost>(*this);
     tree_select_ = std::make_unique<TreeSelectComponentHost>(*this);
+    anchor_ = std::make_unique<AnchorComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
     steps_ = std::make_unique<StepsComponentHost>(*this);
     skeleton_ = std::make_unique<SkeletonComponentHost>(*this);

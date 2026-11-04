@@ -1,3 +1,13 @@
+add_executable(rynui_navigation_completion_gallery_tests navigation_completion_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_navigation_completion_gallery_tests)
+target_include_directories(rynui_navigation_completion_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_navigation_completion_gallery_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_navigation_completion_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.anchor_gallery COMMAND rynui_navigation_completion_gallery_tests)
+add_test(NAME rynui.breadcrumb_completion_gallery COMMAND rynui_navigation_completion_gallery_tests breadcrumb)
+
 add_executable(rynui_layout_splitter_gallery_tests layout_splitter_gallery_tests.cpp)
 rynui_configure_cpp_target(rynui_layout_splitter_gallery_tests)
 target_include_directories(rynui_layout_splitter_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")

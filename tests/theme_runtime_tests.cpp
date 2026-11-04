@@ -464,6 +464,43 @@ void test_descendant_validation_respects_reset_and_expired_scopes() {
     require(second_root->update(*compact), "expired child blocked an otherwise valid parent update");
 }
 
+void test_navigation_identity_alignment() {
+    using Identity = ryn::theme_runtime::TokenIdentity;
+    using Phase = ryn::theme_runtime::DirtyPhase;
+    const std::pair<Identity, std::string_view> identities[]{{Identity::form_metrics, "Form.metrics"},
+                                                             {Identity::anchor_colors, "Anchor.colors"},
+                                                             {Identity::anchor_metrics, "Anchor.metrics"},
+                                                             {Identity::anchor_effects, "Anchor.effects"},
+                                                             {Identity::breadcrumb_colors, "Breadcrumb.colors"},
+                                                             {Identity::breadcrumb_metrics, "Breadcrumb.metrics"},
+                                                             {Identity::breadcrumb_effects, "Breadcrumb.effects"},
+                                                             {Identity::steps_colors, "Steps.colors"},
+                                                             {Identity::time_picker_colors, "TimePicker.colors"},
+                                                             {Identity::menu_colors, "Menu.colors"},
+                                                             {Identity::dropdown_metrics, "Dropdown.metrics"}};
+    for (const auto& [identity, name] : identities) {
+        require(ryn::theme_runtime::token_identity_name(identity) == name,
+                "navigation TokenIdentity insertion shifted diagnostic names");
+    }
+    const auto scope = ryn::theme_runtime::ThemeScope::create_default();
+    int anchor_updates = 0;
+    int breadcrumb_updates = 0;
+    auto anchor = scope->capture(
+        [&](Phase phase) {
+            ++anchor_updates;
+            require(phase == Phase::paint_material, "Anchor color invalidated unrelated geometry");
+        },
+        [&] { static_cast<void>(scope->anchor_colors()); });
+    auto breadcrumb =
+        scope->capture([&](Phase) { ++breadcrumb_updates; }, [&] { static_cast<void>(scope->breadcrumb_colors()); });
+    ryn::ThemeConfig config;
+    config.anchor.tokens.item = ryn::Color::rgba8(25, 50, 75);
+    require(scope->update(config) && anchor_updates == 1 && breadcrumb_updates == 0 &&
+                scope->changed_identities().size() == 1 &&
+                scope->changed_identities().front() == Identity::anchor_colors,
+            "Anchor color update notified another navigation component");
+}
+
 void test_focus_outline_seed_invalidation() {
     const auto scope = ryn::theme_runtime::ThemeScope::create_default();
     int notifications = 0;
@@ -496,6 +533,7 @@ int main() {
         test_descendant_validation_before_parent_publication();
         test_descendant_validation_respects_reset_and_expired_scopes();
         test_focus_outline_seed_invalidation();
+        test_navigation_identity_alignment();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

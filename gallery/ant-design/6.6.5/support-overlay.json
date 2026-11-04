@@ -321,34 +321,47 @@
     },
     {
       "identity": "ant.component.anchor",
-      "status": "planned",
-      "summary": "锚点（Anchor）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Anchor 提供显式滚动状态/请求、动态键控层级、横纵方向、活动跟踪、偏移/边界、固定及静态模式和可取消平滑滚动。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive keyed hierarchy and retained rich title slots; append/remove/reorder/update without unrelated remounts",
+        "explicit native ScrollState compatible with BackTop, host scroll requests, tracking bounds and global/per-item target offsets",
+        "vertical/horizontal projection, affix/static placeholder and active ink; controlled active key and click/change callbacks",
+        "finite monotonic smooth scrolling, bottom clamping, reduced motion, user/visibility/input-boundary cancellation and callback destruction/exception safety",
+        "independent interactive Gallery with real clipped content, scroll slider, direction and topology controls; dedicated Theme family"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "URL/hash/history, DOM/CSS/React and browser routing APIs are outside native scope",
+        "native GPU/window, Linux platform, Windows MSVC, system IME and assistive technology evidence remain independent"
       ],
       "evidence_identifiers": [
-        "source:components/anchor/index.en-US.md"
+        "source:components/anchor/index.en-US.md",
+        "api:include/ryn/anchor.hpp",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.anchor_component",
+        "test:rynui.anchor_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/anchor-linux.md"
       ]
     },
     {
       "identity": "ant.component.breadcrumb",
-      "status": "partial",
-      "summary": "原生 Breadcrumb 首版提供固定 keyed 层级、当前项投影、富标题/图标/分隔符、原生键盘和指针激活；保留子控件与隐藏恢复，router 与响应式布局后续扩展。",
+      "status": "implemented",
+      "summary": "原生 Breadcrumb 支持响应式键控拓扑、保留富标题/图标、每项分隔符、内置 Dropdown/Menu、换行与 RTL；激活使用原生 key/index 事件。",
       "supported_scope": [
         "typed reactive items with unique keys, current last-visible item and original-index activation",
         "retained rich title/icon/separator slots with independent native child input",
         "pointer and Enter/Space navigation, disabled/hidden/Modal/Spin/window input gates",
         "hidden-item flow removal and identity restoration, finite glyph/surface/hit clipping and external focus outlines",
         "component Theme inheritance/algorithm/overrides, final validation and owned input-block teardown",
-        "interactive Gallery trail and production catalog anchor, original key/index feedback, reactive rename/visibility/disabled/restore, retained current and no-handler native child editing; Recording Default/Dark/Compact at 1200/560 x 900"
+        "interactive Gallery trail and production catalog anchor, original key/index feedback, reactive rename/visibility/disabled/restore, retained current and no-handler native child editing; Recording Default/Dark/Compact at 1200/560 x 900",
+        "reactive keyed topology append/remove/reorder/update; preserved native editor drafts and cleanup of removed/replaced popup/focus/capture",
+        "built-in current MenuProps/DropdownProps composition and native menu callbacks, per-item separator/activation/dropdown icon",
+        "container-width wrapping and LTR/RTL mirroring without remounts; existing vector API remains callable",
+        "independent dynamic Gallery trail with menu, retained editor, keyed reorder/remove/restore and RTL controls"
       ],
       "missing_scope": [
-        "dynamic topology, automatic wrapping/responsive/RTL, router/href/params and built-in dropdown",
-        "native GPU/native-window/Linux/system IME and assistive technology acceptance remain independent",
-        "complete Ant Design Web/DOM/CSS API"
+        "router/href/params, DOM/CSS/React and browser routing are outside native scope",
+        "native GPU/window, Linux platform, Windows MSVC, system IME and assistive technology evidence remain independent"
       ],
       "evidence_identifiers": [
         "source:components/breadcrumb/index.en-US.md",
@@ -359,7 +372,9 @@
         "test:rynui.navigation_block_lifetime_breadcrumb_hidden_blur",
         "openspec:082-20261025-add-navigation-gallery",
         "evidence:openspec/changes/082-20261025-add-navigation-gallery/evidence/01-gallery.md",
-        "test:rynui_token_gallery_frame_tests --navigation-only"
+        "test:rynui_token_gallery_frame_tests --navigation-only",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/breadcrumb-linux.md"
       ]
     },
     {

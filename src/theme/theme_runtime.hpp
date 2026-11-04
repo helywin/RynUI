@@ -142,6 +142,9 @@ public:
     [[nodiscard]] const TreeSelectThemeToken& tree_select_order() const;
     [[nodiscard]] const TreeSelectThemeToken& tree_select_tree_colors() const;
     [[nodiscard]] const TreeSelectThemeToken& tree_select_tree_metrics() const;
+    [[nodiscard]] const AnchorThemeToken& anchor_colors() const;
+    [[nodiscard]] const AnchorThemeToken& anchor_metrics() const;
+    [[nodiscard]] const AnchorThemeToken& anchor_effects() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_colors() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_metrics() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_effects() const;

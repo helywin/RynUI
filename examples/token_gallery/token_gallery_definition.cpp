@@ -205,6 +205,14 @@ struct GalleryState final {
     ryn::Signal<bool> date_form_read_only{false};
     ryn::Signal<ryn::String> date_help{ryn::String{u8"允许 2026-10-05 至 2026-11-25，每月 13 日不可选"}};
     ryn::Signal<ryn::String> date_feedback{ryn::String{u8"尚未保存日期"}};
+    ryn::Signal<ryn::AnchorScrollState> anchor_scroll{ryn::AnchorScrollState{0, 1200, 180}};
+    ryn::Signal<bool> anchor_affix{false};
+    ryn::Signal<bool> anchor_horizontal{false};
+    ryn::Signal<bool> anchor_extra{true};
+    ryn::Signal<ryn::String> anchor_feedback{ryn::String{u8"选择锚点或拖动滑块滚动正文"}};
+    ryn::Signal<bool> breadcrumb_reversed{false};
+    ryn::Signal<bool> breadcrumb_rtl{false};
+    ryn::Signal<bool> breadcrumb_extra{true};
     ryn::Signal<ryn::String> breadcrumb_title{ryn::String{u8"项目"}};
     ryn::Signal<bool> breadcrumb_visible{true};
     ryn::Signal<bool> breadcrumb_draft_visible{true};
@@ -555,7 +563,15 @@ template <typename Visitor> void visit_gallery_draft_fields(GalleryState& state,
         visit("state/date_form_read_only", state.date_form_read_only);
         visit("state/date_help", state.date_help);
     }
+    if (state.page_component == "ant.component.anchor") {
+        visit("state/anchor_affix", state.anchor_affix);
+        visit("state/anchor_horizontal", state.anchor_horizontal);
+        visit("state/anchor_extra", state.anchor_extra);
+    }
     if (state.page_component == "ant.component.breadcrumb") {
+        visit("state/breadcrumb_reversed", state.breadcrumb_reversed);
+        visit("state/breadcrumb_rtl", state.breadcrumb_rtl);
+        visit("state/breadcrumb_extra", state.breadcrumb_extra);
         visit("state/breadcrumb_title", state.breadcrumb_title);
         visit("state/breadcrumb_visible", state.breadcrumb_visible);
         visit("state/breadcrumb_draft_visible", state.breadcrumb_draft_visible);
@@ -3387,21 +3403,24 @@ void add_menu_samples(const std::shared_ptr<GalleryState>& state) {
                  })
                  .layout(LayoutStyle{}
                              .width(bind([mode, collapsed] {
-                                 return dp(mode.get() == MenuMode::Inline && collapsed.get() ? 80 : 300);
+                                 return dp(mode.get() == MenuMode::Inline && collapsed.get() ? 80 : 180);
                              }))
                              .height(dp(176))));
         remember_target(state, "gallery.menu.dynamic");
-        Space(SpaceProps{}.wrap(true), SpaceContent{[mode, changed, collapsed] {
+        Space(SpaceProps{}.wrap(true), SpaceContent{[state, mode, changed, collapsed] {
                   Button(ButtonProps{}.onClick([mode] {
                       mode.set(mode.get() == MenuMode::Horizontal ? MenuMode::Vertical
                                : mode.get() == MenuMode::Vertical ? MenuMode::Inline
                                                                   : MenuMode::Horizontal);
                   }),
                          [] { Text(u8"切换三种模式"); });
+                  remember_target(state, "gallery.menu.mode");
                   Button(ButtonProps{}.onClick([changed] { changed.set(!changed.get()); }),
                          [] { Text(u8"重排并增删 key"); });
+                  remember_target(state, "gallery.menu.topology");
                   Button(ButtonProps{}.onClick([collapsed] { collapsed.set(!collapsed.get()); }),
                          [] { Text(u8"折叠图标导航"); });
+                  remember_target(state, "gallery.menu.collapsed");
               }});
     }
     ++state->telemetry.live_samples;
@@ -4725,6 +4744,87 @@ void add_card_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 8;
 }
 
+void add_anchor_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(sample_text(u8"gallery.anchor.navigation · 显式滚动目标与层级锚点"));
+    Text(TextProps{}.content(bind([state] {
+        return sample_text(state,
+                           utf8("gallery.anchor.feedback · " + std::string{state->anchor_feedback.get().bytes()}));
+    })));
+    const std::vector<AnchorItem> items{
+        AnchorItem{u8"overview", u8"概览", 0}.children({{u8"details", u8"实现细节", 240}}),
+        AnchorItem{u8"api", u8"公开 API", 480}.richTitle(AnchorTitle{[] {
+            Flex(FlexProps{}.gap(dp(4)), FlexContent{[] {
+                     Icon(IconProps{}.name(IconName::SearchOutlined));
+                     Text(u8"公开 API");
+                 }});
+        }}),
+        {u8"examples", u8"示例", 720},
+        AnchorItem{u8"footer", u8"尾部边界", 1080}.targetOffset(24)};
+    Anchor(AnchorProps{}
+               .affix(state->anchor_affix)
+               .showInkInFixed(true)
+               .direction(bind([horizontal = state->anchor_horizontal] {
+                   return horizontal.get() ? AnchorDirection::Horizontal : AnchorDirection::Vertical;
+               }))
+               .scroll(state->anchor_scroll)
+               .items(bind([items, extra = state->anchor_extra] {
+                   auto result = items;
+                   if (!extra.get()) {
+                       result.erase(result.begin() + 2);
+                   }
+                   return result;
+               }))
+               .onScrollTo([state](float offset) {
+                   auto scroll = state->anchor_scroll.get();
+                   scroll.offset = offset;
+                   state->anchor_scroll.set(scroll);
+               })
+               .onClick([state](AnchorClickEvent& event) {
+                   ++state->telemetry.activations;
+                   gallery_value_changed<String>("gallery.anchor.activate", [state](String value) {
+                       state->anchor_feedback.set(value);
+                   })(event.key);
+               })
+               .onChange(
+                   [state](String key) { state->anchor_feedback.set(utf8("当前锚点 / " + std::string{key.bytes()})); })
+               .layout(LayoutStyle{}.width(state->cell_width)));
+    remember_target(state, "gallery.anchor.component");
+    Slider(SliderProps{}
+               .limits(SliderLimits{0, 1020, 1})
+               .value(bind([scroll = state->anchor_scroll] { return double(scroll.get().offset); }))
+               .onChange([state](double value) {
+                   auto scroll = state->anchor_scroll.get();
+                   scroll.offset = float(value);
+                   state->anchor_scroll.set(scroll);
+               })
+               .layout(LayoutStyle{}.width(state->cell_width)));
+    remember_target(state, "gallery.anchor.scroll");
+    ReferenceScrollViewport(bind([scroll = state->anchor_scroll] { return scroll.get().offset; }), state->cell_width,
+                            180, ReferenceSurfaceContent{[] {
+                                Flex(FlexProps{}.vertical(true).gap(dp(0)), FlexContent{[] {
+                                         for (const auto* title :
+                                              {u8"概览 / Overview", u8"实现细节 / Details", u8"公开 API",
+                                               u8"示例 / Examples", u8"尾部边界 / Footer"}) {
+                                             Text(TextProps{}
+                                                      .content(String::from_utf8(std::u8string_view{title}).value())
+                                                      .layout(LayoutStyle{}.height(dp(240))));
+                                         }
+                                     }});
+                            }});
+    remember_target(state, "gallery.anchor.viewport");
+    Button(ButtonProps{}.onClick([state] { state->anchor_horizontal.set(!state->anchor_horizontal.get()); }),
+           [] { Text(sample_text(u8"gallery.anchor.direction · 横向 / 纵向")); });
+    remember_target(state, "gallery.anchor.direction");
+    Button(ButtonProps{}.onClick([state] { state->anchor_affix.set(!state->anchor_affix.get()); }),
+           [] { Text(sample_text(u8"gallery.anchor.affix · 固定 / 静态")); });
+    remember_target(state, "gallery.anchor.affix");
+    Button(ButtonProps{}.onClick([state] { state->anchor_extra.set(!state->anchor_extra.get()); }),
+           [] { Text(sample_text(u8"gallery.anchor.topology · 删除 / 恢复示例锚点")); });
+    remember_target(state, "gallery.anchor.topology");
+    ++state->telemetry.live_samples;
+}
+
 void add_breadcrumb_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Flex(FlexProps{}
@@ -4829,6 +4929,60 @@ void add_breadcrumb_samples(const std::shared_ptr<GalleryState>& state) {
                        remember_target(state, "gallery.breadcrumb.focus");
                    }});
          }});
+    ++state->telemetry.live_samples;
+}
+
+void add_breadcrumb_dynamic_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(sample_text(u8"gallery.breadcrumb.dynamic · 动态拓扑 / 内置菜单 / 换行与 RTL"));
+    const auto home = BreadcrumbItem{u8"home", u8"Home"}
+                          .icon(BreadcrumbIcon{[] { Icon(IconProps{}.name(IconName::HomeOutlined)); }})
+                          .menu(MenuProps{}
+                                    .items({{u8"overview", u8"Overview"}, {u8"settings", u8"Settings"}})
+                                    .onClick([state](MenuClickInfo info) {
+                                        ++state->telemetry.activations;
+                                        state->breadcrumb_feedback.set(utf8("菜单 / " + std::string{info.key.bytes()}));
+                                    }));
+    const auto draft = BreadcrumbItem{u8"draft", u8"Draft"}.richTitle(BreadcrumbTitle{[state] {
+        Input(InputProps{}
+                  .value(state->breadcrumb_draft)
+                  .placeholder(u8"Keyed draft")
+                  .onChange([state](String value) { state->breadcrumb_draft.set(value); })
+                  .layout(LayoutStyle{}.width(dp(140))));
+    }});
+    const auto extra =
+        BreadcrumbItem{u8"extra", u8"Dynamic section"}.separator(BreadcrumbSeparator{[] { Text(u8"›"); }});
+    const auto end = BreadcrumbItem{u8"end", u8"Current"};
+    Breadcrumb(BreadcrumbProps{}
+                   .items(bind([state, home, draft, extra, end] {
+                       std::vector<BreadcrumbItem> result{home, draft};
+                       if (state->breadcrumb_extra.get()) {
+                           result.push_back(extra);
+                       }
+                       result.push_back(end);
+                       if (state->breadcrumb_reversed.get()) {
+                           std::reverse(result.begin(), result.end());
+                       }
+                       return result;
+                   }))
+                   .direction(bind([rtl = state->breadcrumb_rtl] {
+                       return rtl.get() ? TextDirection::RightToLeft : TextDirection::LeftToRight;
+                   }))
+                   .onActivate([state](BreadcrumbActivation event) {
+                       state->breadcrumb_feedback.set(
+                           utf8(std::string{event.key.bytes()} + " / " + std::to_string(event.index)));
+                   })
+                   .layout(LayoutStyle{}.width(state->cell_width)));
+    remember_target(state, "gallery.breadcrumb.dynamic-component");
+    Button(ButtonProps{}.onClick([state] { state->breadcrumb_reversed.set(!state->breadcrumb_reversed.get()); }),
+           [] { Text(sample_text(u8"gallery.breadcrumb.reorder · 重排键控条目")); });
+    remember_target(state, "gallery.breadcrumb.reorder");
+    Button(ButtonProps{}.onClick([state] { state->breadcrumb_extra.set(!state->breadcrumb_extra.get()); }),
+           [] { Text(sample_text(u8"gallery.breadcrumb.topology · 删除 / 恢复条目")); });
+    remember_target(state, "gallery.breadcrumb.topology");
+    Button(ButtonProps{}.onClick([state] { state->breadcrumb_rtl.set(!state->breadcrumb_rtl.get()); }),
+           [] { Text(sample_text(u8"gallery.breadcrumb.direction · RTL / LTR")); });
+    remember_target(state, "gallery.breadcrumb.direction");
     ++state->telemetry.live_samples;
 }
 
@@ -6862,6 +7016,20 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_icon_samples",
       "include/ryn/icon.hpp"},
      add_icon_samples},
+    {{"gallery.sample.anchor.navigation",
+      "ant.component.anchor",
+      {},
+      "层级、方向、滚动与动态锚点",
+      "add_anchor_samples",
+      "include/ryn/anchor.hpp"},
+     add_anchor_samples},
+    {{"gallery.sample.breadcrumb.dynamic",
+      "ant.component.breadcrumb",
+      {},
+      "动态键控、菜单与 RTL",
+      "add_breadcrumb_dynamic_samples",
+      "include/ryn/breadcrumb.hpp"},
+     add_breadcrumb_dynamic_samples},
     {{"gallery.sample.breadcrumb.trail",
       "ant.component.breadcrumb",
       {},
@@ -7470,6 +7638,7 @@ TokenGalleryDefinition make_gallery_frame_definition(std::span<const GalleryPage
                                                             add_empty_and_result_samples(state);
                                                             add_form_samples(state);
                                                             add_date_picker_samples(state);
+                                                            add_anchor_samples(state);
                                                             add_breadcrumb_samples(state);
                                                             add_steps_samples(state);
                                                             add_time_picker_samples(state);

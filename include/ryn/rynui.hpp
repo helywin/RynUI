@@ -11,6 +11,7 @@
 #include <ryn/tree_select.hpp>
 #include <ryn/form.hpp>
 #include <ryn/breadcrumb.hpp>
+#include <ryn/anchor.hpp>
 #include <ryn/steps.hpp>
 #include <ryn/empty.hpp>
 #include <ryn/result.hpp>
