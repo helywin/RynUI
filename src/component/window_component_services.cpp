@@ -1,4 +1,6 @@
 #include "component/window_component_services.hpp"
+#include "component/shell_layout_component.hpp"
+#include "component/splitter_component.hpp"
 #include "component/typography_component.hpp"
 #include "component/float_button_component.hpp"
 #include "component/divider_component.hpp"
@@ -117,6 +119,8 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     animations_.set_schedule_observer(&frame_requests);
     responsive_layout_ = std::make_unique<ResponsiveLayoutHost>(*this);
     masonry_ = std::make_unique<MasonryComponentHost>(*this);
+    shell_layout_ = std::make_unique<ShellLayoutComponentHost>(*this);
+    splitter_ = std::make_unique<SplitterComponentHost>(*this);
     typography_ = std::make_unique<TypographyComponentHost>(*this);
     float_button_ = std::make_unique<FloatButtonComponentHost>(*this);
     divider_ = std::make_unique<DividerComponentHost>(*this);

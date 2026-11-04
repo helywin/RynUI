@@ -17,8 +17,8 @@
 
 ## 4. 布局：Layout
 
-- [ ] 4.1 实现嵌套 Layout/Header/Footer/Content/Sider、主题、响应式/受控折叠与触发器；自动测试验证零宽度、焦点和生命周期。
-- [ ] 4.2 接入 Layout 页面与文档；运行相关 HEADLESS Debug/Release 测试和目录校验后提交。
+- [x] 4.1 实现嵌套 Layout/Header/Footer/Content/Sider、主题、响应式/受控折叠与触发器；自动测试验证零宽度、焦点和生命周期。
+- [x] 4.2 接入 Layout 页面与文档；运行相关 HEADLESS Debug/Release 测试和目录校验后提交。
 
 ## 5. 布局：Masonry
 
@@ -27,8 +27,8 @@
 
 ## 6. 布局：Splitter
 
-- [ ] 6.1 实现多面板尺寸求解、指针/键盘调整、约束、折叠/恢复、受控值、lazy、事件与隐藏生命周期；自动测试覆盖嵌套、取消和销毁。
-- [ ] 6.2 接入 Splitter 页面与文档；运行相关 HEADLESS Debug/Release 测试和目录校验后提交。
+- [x] 6.1 实现多面板尺寸求解、指针/键盘调整、约束、折叠/恢复、受控值、lazy、事件与隐藏生命周期；自动测试覆盖嵌套、取消和销毁。
+- [x] 6.2 接入 Splitter 页面与文档；运行相关 HEADLESS Debug/Release 测试和目录校验后提交。
 
 ## 7. 集成与文档校验
 

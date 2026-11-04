@@ -4103,7 +4103,8 @@ ThemeSnapshot::ThemeSnapshot(
     std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
     std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
     std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
-    std::shared_ptr<const TreeSelectThemeToken> tree_select)
+    std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
+    std::shared_ptr<const SplitterThemeToken> splitter)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), float_button_(std::move(float_button)),
@@ -4113,13 +4114,14 @@ ThemeSnapshot::ThemeSnapshot(
       steps_(std::move(steps)), time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)),
       timeline_(std::move(timeline)), avatar_(std::move(avatar)), rate_(std::move(rate)),
       statistic_(std::move(statistic)), tree_(std::move(tree)), auto_complete_(std::move(auto_complete)),
-      tree_select_(std::move(tree_select)), descriptions_(std::move(descriptions)), popover_(std::move(popover)),
-      message_(std::move(message)), notification_(std::move(notification)), modal_(std::move(modal)),
-      tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
-      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
-      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
-      table_(std::move(table)), collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      tree_select_(std::move(tree_select)), layout_(std::move(layout)), splitter_(std::move(splitter)),
+      descriptions_(std::move(descriptions)), popover_(std::move(popover)), message_(std::move(message)),
+      notification_(std::move(notification)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
+      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
+      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
+      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
+      collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4516,6 +4518,28 @@ ThemeSnapshot::ThemeSnapshot(
         }
         status_json << "]}";
     }
+    status_json << ",\"splitter\":{\"colors\":[";
+    first = true;
+    for (auto value : splitter_->colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto value : splitter_->metrics.values()) {
+        metric(value);
+    }
+    status_json << "]}";
+    status_json << ",\"layout\":{\"colors\":[";
+    first = true;
+    for (auto value : layout_->colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto value : layout_->metrics.values()) {
+        metric(value);
+    }
+    status_json << "]}";
     status_json << ",\"timeline\":{\"colors\":[";
     first = true;
     for (const auto value : timeline_->colors.values()) {
@@ -4805,7 +4829,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            *left.message_ == *right.message_ && *left.notification_ == *right.notification_ &&
            *left.timeline_ == *right.timeline_ && *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ &&
            *left.statistic_ == *right.statistic_ && *left.tree_ == *right.tree_ &&
-           *left.auto_complete_ == *right.auto_complete_ && *left.tree_select_ == *right.tree_select_;
+           *left.auto_complete_ == *right.auto_complete_ && *left.tree_select_ == *right.tree_select_ &&
+           *left.layout_ == *right.layout_ && *left.splitter_ == *right.splitter_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -5909,6 +5934,206 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     if (fo.shadow) {
         float_button.shadow = *fo.shadow;
     }
+    auto layout = [&] {
+        auto token = std::make_shared<LayoutThemeToken>();
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.layout.algorithm;
+        if (inherit) {
+            *token = parent->layout();
+        } else {
+            auto component_seed = seed;
+            if (config.layout.algorithm) {
+                apply_seed_override(component_seed, config.layout.seed);
+            }
+            const auto component_map = derive_map(component_seed, algorithms);
+            const auto a = derive_alias(component_seed, component_map, algorithms);
+            const auto body_background =
+                contains_dark(algorithms) ? component_map.color_background_base : Color::rgba8(245, 245, 245);
+            token->colors = {body_background,
+                             Color::rgba8(0, 21, 41),
+                             a.color_text,
+                             body_background,
+                             a.color_text,
+                             Color::rgba8(0, 21, 41),
+                             Color::rgba8(255, 255, 255, 166),
+                             Color::rgba8(0, 33, 64),
+                             Color::rgba8(255, 255, 255),
+                             a.color_background_container,
+                             a.color_text,
+                             a.color_background_container,
+                             a.color_text,
+                             a.color_focus_outline};
+            token->metrics.header_height = component_map.control_height * 2;
+            token->metrics.header_padding_inline = component_map.control_height_large * 1.25F;
+            token->metrics.footer_padding_block = component_map.control_height_small;
+            token->metrics.footer_padding_inline = token->metrics.header_padding_inline;
+            token->metrics.trigger_height = component_map.control_height_large + component_map.size_xs;
+            token->metrics.zero_trigger_width = component_map.control_height_large;
+            token->metrics.zero_trigger_height = component_map.control_height_large;
+            token->metrics.zero_trigger_top = token->metrics.header_height;
+            token->metrics.font_size = component_map.font_size;
+            token->metrics.line_height = component_map.line_height * component_map.font_size;
+        }
+        const auto& o = config.layout.tokens;
+        if (o.body_background) {
+            token->colors.body_background = *o.body_background;
+        }
+        if (o.header_background) {
+            token->colors.header_background = *o.header_background;
+        }
+        if (o.header_text) {
+            token->colors.header_text = *o.header_text;
+        }
+        if (o.footer_background) {
+            token->colors.footer_background = *o.footer_background;
+        }
+        if (o.footer_text) {
+            token->colors.footer_text = *o.footer_text;
+        }
+        if (o.sider_background) {
+            token->colors.sider_background = *o.sider_background;
+        }
+        if (o.sider_text) {
+            token->colors.sider_text = *o.sider_text;
+        }
+        if (o.trigger_background) {
+            token->colors.trigger_background = *o.trigger_background;
+        }
+        if (o.trigger_text) {
+            token->colors.trigger_text = *o.trigger_text;
+        }
+        if (o.light_sider_background) {
+            token->colors.light_sider_background = *o.light_sider_background;
+        }
+        if (o.light_sider_text) {
+            token->colors.light_sider_text = *o.light_sider_text;
+        }
+        if (o.light_trigger_background) {
+            token->colors.light_trigger_background = *o.light_trigger_background;
+        }
+        if (o.light_trigger_text) {
+            token->colors.light_trigger_text = *o.light_trigger_text;
+        }
+        if (o.focus) {
+            token->colors.focus = *o.focus;
+        }
+        token->metrics.header_height = fixed_length(o.header_height, token->metrics.header_height,
+                                                    "Layout header_height must be finite and non-negative");
+        token->metrics.header_padding_inline =
+            fixed_length(o.header_padding_inline, token->metrics.header_padding_inline,
+                         "Layout header_padding_inline must be finite and non-negative");
+        token->metrics.footer_padding_block =
+            fixed_length(o.footer_padding_block, token->metrics.footer_padding_block,
+                         "Layout footer_padding_block must be finite and non-negative");
+        token->metrics.footer_padding_inline =
+            fixed_length(o.footer_padding_inline, token->metrics.footer_padding_inline,
+                         "Layout footer_padding_inline must be finite and non-negative");
+        token->metrics.trigger_height = fixed_length(o.trigger_height, token->metrics.trigger_height,
+                                                     "Layout trigger_height must be finite and non-negative");
+        token->metrics.zero_trigger_width = fixed_length(o.zero_trigger_width, token->metrics.zero_trigger_width,
+                                                         "Layout zero_trigger_width must be finite and non-negative");
+        token->metrics.zero_trigger_height = fixed_length(o.zero_trigger_height, token->metrics.zero_trigger_height,
+                                                          "Layout zero_trigger_height must be finite and non-negative");
+        token->metrics.zero_trigger_top = fixed_length(o.zero_trigger_top, token->metrics.zero_trigger_top,
+                                                       "Layout zero_trigger_top must be finite and non-negative");
+        token->metrics.trigger_icon_size =
+            fixed_length(o.trigger_icon_size, token->metrics.trigger_icon_size,
+                         "Layout trigger_icon_size must be finite and non-negative", true);
+        token->metrics.focus_width = fixed_length(o.focus_width, token->metrics.focus_width,
+                                                  "Layout focus_width must be finite and non-negative");
+        token->metrics.font_size = fixed_length(o.font_size, token->metrics.font_size,
+                                                "Layout font_size must be finite and non-negative", true);
+        token->metrics.line_height = fixed_length(o.line_height, token->metrics.line_height,
+                                                  "Layout line_height must be finite and non-negative", true);
+        double extent{};
+        for (auto value : token->metrics.values()) {
+            extent += static_cast<double>(value) * 4;
+        }
+        if (!std::isfinite(extent) || extent > std::numeric_limits<float>::max()) {
+            throw std::invalid_argument("Layout combined extents overflow");
+        }
+        return token;
+    }();
+    auto splitter = [&] {
+        auto token = std::make_shared<SplitterThemeToken>();
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.splitter.algorithm;
+        if (inherit) {
+            *token = parent->splitter();
+        } else {
+            auto component_seed = seed;
+            if (config.splitter.algorithm) {
+                apply_seed_override(component_seed, config.splitter.seed);
+            }
+            const auto m = derive_map(component_seed, algorithms);
+            const auto a = derive_alias(component_seed, m, algorithms);
+            token->colors = {a.color_background_container,
+                             a.color_border_secondary,
+                             m.color_primary_border,
+                             m.color_primary,
+                             a.color_text_secondary,
+                             a.color_background_container_disabled,
+                             a.color_focus_outline,
+                             Color{m.color_primary.red(), m.color_primary.green(), m.color_primary.blue(), 0.2F}};
+            token->metrics.collapse_width = m.font_size_small;
+            token->metrics.collapse_height = m.control_height_small;
+            token->metrics.icon_size = m.font_size_small;
+            token->metrics.focus_width = a.line_width_focus;
+        }
+        const auto& o = config.splitter.tokens;
+        if (o.panel_background) {
+            token->colors.panel_background = *o.panel_background;
+        }
+        if (o.bar) {
+            token->colors.bar = *o.bar;
+        }
+        if (o.hover_bar) {
+            token->colors.hover_bar = *o.hover_bar;
+        }
+        if (o.active_bar) {
+            token->colors.active_bar = *o.active_bar;
+        }
+        if (o.icon) {
+            token->colors.icon = *o.icon;
+        }
+        if (o.collapse_background) {
+            token->colors.collapse_background = *o.collapse_background;
+        }
+        if (o.focus) {
+            token->colors.focus = *o.focus;
+        }
+        if (o.preview) {
+            token->colors.preview = *o.preview;
+        }
+        token->metrics.split_bar_size = fixed_length(o.split_bar_size, token->metrics.split_bar_size,
+                                                     "Splitter split_bar_size must be finite and non-negative");
+        token->metrics.split_trigger_size =
+            fixed_length(o.split_trigger_size, token->metrics.split_trigger_size,
+                         "Splitter split_trigger_size must be finite and non-negative", true);
+        token->metrics.split_bar_draggable_size =
+            fixed_length(o.split_bar_draggable_size, token->metrics.split_bar_draggable_size,
+                         "Splitter split_bar_draggable_size must be finite and non-negative");
+        token->metrics.collapse_width = fixed_length(o.collapse_width, token->metrics.collapse_width,
+                                                     "Splitter collapse_width must be finite and non-negative", true);
+        token->metrics.collapse_height = fixed_length(o.collapse_height, token->metrics.collapse_height,
+                                                      "Splitter collapse_height must be finite and non-negative", true);
+        token->metrics.icon_size = fixed_length(o.icon_size, token->metrics.icon_size,
+                                                "Splitter icon_size must be finite and non-negative", true);
+        token->metrics.focus_width = fixed_length(o.focus_width, token->metrics.focus_width,
+                                                  "Splitter focus_width must be finite and non-negative");
+        token->metrics.keyboard_step = fixed_length(o.keyboard_step, token->metrics.keyboard_step,
+                                                    "Splitter keyboard_step must be finite and non-negative", true);
+        double extent{};
+        for (auto value : token->metrics.values()) {
+            extent += static_cast<double>(value) * 65536;
+        }
+        if (!std::isfinite(extent) || extent > std::numeric_limits<float>::max()) {
+            throw std::invalid_argument("Splitter combined extents overflow");
+        }
+        return token;
+    }();
     return ThemeSnapshot(
         std::move(float_button), std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
         std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography), std::move(divider),
@@ -5920,7 +6145,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         std::move(result), std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(steps),
         std::move(time_picker), std::move(skeleton), std::move(descriptions), std::move(popover), std::move(message),
         std::move(notification), std::move(timeline), std::move(avatar), std::move(rate), std::move(statistic),
-        std::move(tree), std::move(auto_complete), std::move(tree_select));
+        std::move(tree), std::move(auto_complete), std::move(tree_select), std::move(layout), std::move(splitter));
 }
 
 } // namespace ryn

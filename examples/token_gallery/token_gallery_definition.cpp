@@ -77,6 +77,15 @@ struct GalleryState final {
     ryn::Signal<ryn::LogicalLength> document_width{ryn::dp(840.0F)};
     ryn::Signal<ryn::LogicalLength> cell_width{ryn::dp(260.0F)};
     ryn::Signal<bool> narrow_layout{false};
+    ryn::Signal<ryn::SplitterSizes> splitter_percentages{ryn::SplitterSizes{35, 65}};
+    ryn::Signal<bool> splitter_resizable{true};
+    ryn::Signal<bool> splitter_destroy{false};
+    ryn::Signal<bool> splitter_motion{true};
+    ryn::Signal<ryn::SplitterOrientation> splitter_orientation{ryn::SplitterOrientation::Horizontal};
+    ryn::Signal<ryn::String> splitter_feedback{ryn::String{u8"拖动或聚焦分隔条，用箭头/Home/End 调整"}};
+    ryn::Signal<bool> shell_collapsed{false};
+    ryn::Signal<bool> shell_light{false};
+    ryn::Signal<ryn::String> shell_feedback{ryn::String{u8"侧栏状态与窗口断点回调"}};
     ryn::Signal<ryn::LogicalLength> navigation_track_height{ryn::dp(1.0F)};
     ryn::Signal<ryn::LogicalLength> navigation_thumb_height{ryn::dp(1.0F)};
     ryn::Signal<ryn::LogicalLength> document_track_height{ryn::dp(1.0F)};
@@ -1308,6 +1317,198 @@ void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view 
                    ++state->telemetry.live_samples;
                }});
     remember_target(state, test_id);
+}
+
+void add_splitter_multiple_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(TextProps{}.content(state->splitter_feedback));
+    Splitter(SplitterProps{}
+                 .layout(LayoutStyle{}.width(state->document_width).height(dp(220)))
+                 .onResizeStart([state](SplitterSizes) { state->splitter_feedback.set(u8"调整开始：指针已捕获"); })
+                 .onResize([state](SplitterSizes) {
+                     state->splitter_feedback.set(u8"持续更新面板布局");
+                     ++state->telemetry.activations;
+                 })
+                 .onResizeEnd([state](SplitterSizes) { state->splitter_feedback.set(u8"调整结束：捕获已释放"); }),
+             {SplitterPanel{SplitterPanelContent{[] { Text(u8"A · 初始 25%，范围 15%–70%"); }}}
+                  .defaultSize(SplitterSize::percent(25))
+                  .min(SplitterSize::percent(15))
+                  .max(SplitterSize::percent(70)),
+              SplitterPanel{SplitterPanelContent{[] { Input(InputProps{}.defaultValue(u8"B · 拖动保持草稿")); }}}
+                  .defaultSize(SplitterSize::percent(35))
+                  .min(SplitterSize{dp(96)}),
+              SplitterPanel{SplitterPanelContent{[] { Text(u8"C · 剩余空间；拖动左侧分隔条不改变此面板"); }}}});
+}
+
+void add_splitter_controlled_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Space(SpaceProps{}.size(dp(8)), [state] {
+        Button(ButtonProps{}.onClick([state] { state->splitter_resizable.set(!state->splitter_resizable.get()); }),
+               [] { Text(u8"启用/禁用调整"); });
+        Button(ButtonProps{}.onClick([state] { state->splitter_percentages.set({35, 65}); }),
+               [] { Text(u8"重置 35% / 65%"); });
+    });
+    Splitter(SplitterProps{}
+                 .layout(LayoutStyle{}.width(state->document_width).height(dp(220)))
+                 .draggerIcon(SplitterDraggerIcon{[] { Icon(IconProps{}.name(IconName::HolderOutlined)); }})
+                 .onDraggerDoubleClick([state](std::size_t) {
+                     state->splitter_percentages.set({35, 65});
+                     ++state->telemetry.activations;
+                 })
+                 .onResize([state](SplitterSizes values) {
+                     const float total = values[0] + values[1];
+                     if (total > 0) {
+                         state->splitter_percentages.set({values[0] / total * 100, values[1] / total * 100});
+                     }
+                 }),
+             {SplitterPanel{SplitterPanelContent{[] { Text(u8"受控百分比；双击分隔条重置"); }}}
+                  .size(bind([state] { return SplitterSize::percent(state->splitter_percentages.get()[0]); }))
+                  .min(SplitterSize::percent(20))
+                  .resizable(state->splitter_resizable),
+              SplitterPanel{SplitterPanelContent{[] { Input(InputProps{}.defaultValue(u8"自定义拖动图标")); }}}
+                  .size(bind([state] { return SplitterSize::percent(state->splitter_percentages.get()[1]); }))
+                  .min(SplitterSize::percent(20))
+                  .resizable(state->splitter_resizable)});
+}
+
+void add_splitter_lazy_collapse_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Space(SpaceProps{}.size(dp(8)), [state] {
+        Button(ButtonProps{}.onClick([state] { state->splitter_destroy.set(!state->splitter_destroy.get()); }),
+               [] { Text(u8"保留/销毁隐藏内容"); });
+        remember_target(state, "gallery.splitter.destroy-hidden");
+        Button(ButtonProps{}.onClick([state] { state->splitter_motion.set(!state->splitter_motion.get()); }),
+               [] { Text(u8"折叠动画"); });
+        Button(ButtonProps{}.onClick([state] {
+            state->splitter_orientation.set(state->splitter_orientation.get() == SplitterOrientation::Horizontal
+                                                ? SplitterOrientation::Vertical
+                                                : SplitterOrientation::Horizontal);
+        }),
+               [] { Text(u8"水平/垂直"); });
+    });
+    Splitter(SplitterProps{}
+                 .orientation(state->splitter_orientation)
+                 .lazy()
+                 .destroyOnHidden(state->splitter_destroy)
+                 .collapseMotion(state->splitter_motion)
+                 .layout(LayoutStyle{}.width(state->document_width).height(dp(260)))
+                 .startIcon(SplitterStartIcon{[] { Icon(IconProps{}.name(IconName::MinusOutlined)); }})
+                 .endIcon(SplitterEndIcon{[] { Icon(IconProps{}.name(IconName::PlusOutlined)); }})
+                 .onCollapse([state](SplitterCollapsed, SplitterSizes) { ++state->telemetry.activations; }),
+             {SplitterPanel{SplitterPanelContent{[] {
+                  Input(InputProps{}.defaultValue(u8"折叠时按全局策略保留或销毁"));
+              }}}.collapsible(SplitterCollapsible{true, true, SplitterIconVisibility::Always}),
+              SplitterPanel{SplitterPanelContent{[] {
+                  Text(u8"lazy 拖动只移动预览线，释放后提交；此面板覆盖为始终保留内容。");
+              }}}.collapsible(SplitterCollapsible{true, true, SplitterIconVisibility::Always})
+                  .destroyOnHidden(false)});
+}
+
+void add_splitter_nested_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Splitter(SplitterProps{}.layout(LayoutStyle{}.width(state->document_width).height(dp(300))),
+             {SplitterPanel{SplitterPanelContent{[] { Text(u8"左侧工作区"); }}}
+                  .defaultSize(SplitterSize::percent(30))
+                  .collapsible(),
+              SplitterPanel{SplitterPanelContent{[] {
+                  Splitter(SplitterProps{}.orientation(SplitterOrientation::Vertical),
+                           {SplitterPanel{SplitterPanelContent{[] { Text(u8"嵌套上方面板"); }}}.collapsible(),
+                            SplitterPanel{SplitterPanelContent{[] {
+                                Input(InputProps{}.defaultValue(u8"嵌套下方草稿"));
+                            }}}.collapsible()});
+              }}}});
+}
+
+void add_shell_structure_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    ThemeConfig header_theme;
+    header_theme.layout.tokens.header_text = Color::rgba8(255, 255, 255);
+    Theme(ThemeProps{}.config(header_theme), ThemeContent{[state] {
+              Layout(
+                  LayoutProps{}.layout(LayoutStyle{}.width(state->document_width).height(dp(320))), LayoutContent{[] {
+                      Header(HeaderProps{}, HeaderContent{[] { Text(u8"RynUI · Header"); }});
+                      Layout(LayoutProps{}, LayoutContent{[] {
+                                 Sider(SiderProps{}.width(dp(152)).theme(SiderTheme::Light), SiderContent{[] {
+                                           Flex(FlexProps{}.vertical(true).gap(dp(12)), FlexContent{[] {
+                                                    Text(u8"项目导航");
+                                                    Button(ButtonProps{}, [] { Text(u8"概览"); });
+                                                    Button(ButtonProps{}, [] { Text(u8"设置"); });
+                                                }});
+                                       }});
+                                 ContentArea(ContentProps{}, ContentBody{[] {
+                                                 Flex(FlexProps{}.vertical(true).gap(dp(12)), FlexContent{[] {
+                                                          Text(u8"嵌套 Layout 自动检测直属 Sider，正文取得剩余空间。");
+                                                          Input(InputProps{}.defaultValue(u8"调整侧栏时保留此草稿"));
+                                                      }});
+                                             }});
+                                 Sider(SiderProps{}.width(dp(120)).collapsedWidth(dp(48)).reverseArrow().collapsible(),
+                                       SiderContent{[] { Text(u8"右侧工具"); }});
+                             }});
+                      Footer(FooterProps{}, FooterContent{[] { Text(u8"Footer · Theme 控制背景、内边距和字号"); }});
+                  }});
+          }});
+}
+
+void add_shell_responsive_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(TextProps{}.content(state->shell_feedback));
+    Layout(LayoutProps{}.layout(LayoutStyle{}.width(state->document_width).height(dp(260))), LayoutContent{[state] {
+               Sider(SiderProps{}
+                         .width(dp(200))
+                         .collapsedWidth(dp(0))
+                         .collapsible()
+                         .breakpoint(SiderBreakpoint::Lg)
+                         .onBreakpoint([state](bool broken) {
+                             state->shell_feedback.set(broken ? String{u8"窗口小于 lg：零宽度触发器仍可聚焦"}
+                                                              : String{u8"窗口达到 lg：侧栏展开"});
+                         })
+                         .onCollapse([state](bool, SiderCollapseType) { ++state->telemetry.activations; }),
+                     SiderContent{[] {
+                         Flex(FlexProps{}.vertical(true).gap(dp(12)), FlexContent{[] {
+                                  Text(u8"响应式侧栏");
+                                  Input(InputProps{}.defaultValue(u8"零宽折叠后仍保留"));
+                              }});
+                     }});
+               ContentArea(ContentProps{}, ContentBody{[] {
+                               Text(u8"改变窗口宽度触发 lg=992 "
+                                    u8"断点。侧栏为零宽度时，外侧菜单触发器支持点击、Tab、Enter 和 Space。");
+                           }});
+           }});
+}
+
+void add_shell_controlled_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Space(SpaceProps{}.size(dp(8)), [state] {
+        Button(ButtonProps{}.onClick([state] { state->shell_collapsed.set(!state->shell_collapsed.get()); }),
+               [] { Text(u8"外部折叠/展开"); });
+        Button(ButtonProps{}.onClick([state] { state->shell_light.set(!state->shell_light.get()); }),
+               [] { Text(u8"Light / Dark"); });
+    });
+    Layout(LayoutProps{}.layout(LayoutStyle{}.width(state->document_width).height(dp(220))), LayoutContent{[state] {
+               Sider(
+                   SiderProps{}
+                       .width(dp(180))
+                       .collapsedWidth(dp(64))
+                       .collapsible()
+                       .collapsed(state->shell_collapsed)
+                       .theme(bind([state] { return state->shell_light.get() ? SiderTheme::Light : SiderTheme::Dark; }))
+                       .trigger(SiderTrigger{[] { Text(u8"切换"); }})
+                       .onCollapse([state](bool value, SiderCollapseType) {
+                           state->shell_collapsed.set(value);
+                           ++state->telemetry.activations;
+                       }),
+                   SiderContent{[] { Text(u8"受控 + 自定义触发器"); }});
+               ContentArea(ContentProps{},
+                           ContentBody{[] { Text(u8"受控状态由调用方更新；外部按钮同样可以管理隐藏触发器的侧栏。"); }});
+               Sider(SiderProps{}
+                         .width(dp(100))
+                         .collapsedWidth(dp(32))
+                         .collapsed(state->shell_collapsed)
+                         .collapsible()
+                         .trigger(SiderTriggerMode::Hidden)
+                         .theme(SiderTheme::Light),
+                     SiderContent{[] { Text(u8"无触发器"); }});
+           }});
 }
 
 void add_theme_button_samples(const std::shared_ptr<GalleryState>& state) {
@@ -6507,6 +6708,55 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_masonry_samples",
       "include/ryn/masonry.hpp"},
      add_masonry_samples},
+    {{"gallery.sample.splitter.multiple",
+      "ant.component.splitter",
+      {},
+      "多面板、约束与连续调整",
+      "add_splitter_multiple_samples",
+      "include/ryn/splitter.hpp"},
+     add_splitter_multiple_samples},
+    {{"gallery.sample.splitter.controlled",
+      "ant.component.splitter",
+      {},
+      "受控百分比、自定义拖动图标与双击",
+      "add_splitter_controlled_samples",
+      "include/ryn/splitter.hpp"},
+     add_splitter_controlled_samples},
+    {{"gallery.sample.splitter.lazy-collapse",
+      "ant.component.splitter",
+      {},
+      "Lazy、双侧折叠、动画与隐藏生命周期",
+      "add_splitter_lazy_collapse_samples",
+      "include/ryn/splitter.hpp"},
+     add_splitter_lazy_collapse_samples},
+    {{"gallery.sample.splitter.nested",
+      "ant.component.splitter",
+      {},
+      "嵌套水平/垂直面板",
+      "add_splitter_nested_samples",
+      "include/ryn/splitter.hpp"},
+     add_splitter_nested_samples},
+    {{"gallery.sample.layout.structure",
+      "ant.component.layout",
+      {},
+      "页头、双侧栏、正文与页尾",
+      "add_shell_structure_samples",
+      "include/ryn/layout.hpp"},
+     add_shell_structure_samples},
+    {{"gallery.sample.layout.responsive",
+      "ant.component.layout",
+      {},
+      "响应断点与零宽侧栏",
+      "add_shell_responsive_samples",
+      "include/ryn/layout.hpp"},
+     add_shell_responsive_samples},
+    {{"gallery.sample.layout.controlled",
+      "ant.component.layout",
+      {},
+      "受控、自定义触发器与主题",
+      "add_shell_controlled_samples",
+      "include/ryn/layout.hpp"},
+     add_shell_controlled_samples},
     {{"gallery.sample.space.composition",
       "ant.component.space",
       {},

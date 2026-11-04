@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 70 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 77 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -64,6 +64,12 @@ void add_next() {}'''
           'MasonryContent' in by_id['gallery.sample.masonry.layouts'].slots and
           'onLayoutChange' in by_id['gallery.sample.masonry.layouts'].methods,
           'Masonry source omitted its real typed keyed layout API')
+    check('SiderProps' in by_id['gallery.sample.layout.responsive'].props and
+          'ContentArea' in by_id['gallery.sample.layout.responsive'].code,
+          'Layout source omitted its native Sider/ContentArea API')
+    check('SplitterProps' in by_id['gallery.sample.splitter.lazy-collapse'].props and
+          'destroyOnHidden' in by_id['gallery.sample.splitter.lazy-collapse'].methods,
+          'Splitter source omitted its native lazy/lifecycle API')
     check('add_bidi_input(' in by_id['gallery.sample.input.bidi'].code, 'wrapper excerpt omitted its actual sample')
     check(MODULE.render(records) == MODULE.render(MODULE.generate(ROOT)), 'generation is nondeterministic')
     print(f'Gallery source/API/token contracts: {len(records)} samples passed')

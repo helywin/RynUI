@@ -289,7 +289,7 @@ Props builder 是规范入口，简单组件可以提供不损失语义的 conve
 
 - 组件信息架构与语义：General、Layout、Navigation、Data Entry、Data Display、Feedback 等类别保持一致的职责边界。
 - 基础组件：Button、Icon、Typography、Input、Checkbox、Radio、Switch、Slider、Select、Tabs、Menu、Tooltip、Popover、Card、Table、Tree、Modal/Dialog、Drawer、Alert、Message、Notification、Progress、Skeleton 和 Spin 等按 Ant Design 的外观层级、尺寸、状态和交互规则设计。
-- 布局：`Flex` 负责主轴/交叉轴、wrap 和 gap；`Space` 负责相邻内容的一致间距；`Grid` 使用 `Row`/`Col`、gutter、span、offset、order 和响应式断点；`Layout` 负责应用级 Header/Sider/Content/Footer 结构。
+- 布局：`Flex` 负责主轴/交叉轴、wrap 和 gap；`Space` 负责相邻内容的一致间距；`Grid` 使用 `Row`/`Col`、gutter、span、offset、order 和响应式断点；`Layout` 负责应用级 Header/Sider/ContentArea/Footer 结构；`Masonry` 按真实高度与稳定 key 分列；`Splitter` 通过受约束的相邻尺寸求解支持拖动、键盘、lazy 和折叠生命周期。正文入口 `ContentArea(ContentProps, ContentBody)` 避免与根 slot 类型 `ryn::Content` 冲突。
 - 交互状态：default、hover、active/pressed、focus-visible、selected/checked、disabled、loading、success、warning 和 error 必须完整、可预测且跨组件一致。
 - 图标、文案、空状态、反馈时机和危险操作层级遵循 Ant Design 的企业级信息表达原则。
 
@@ -299,9 +299,13 @@ Props builder 是规范入口，简单组件可以提供不损失语义的 conve
 
 Slider / RangeSlider 使用原子 `SliderLimits` 与独立 typed 值，两个范围 thumb 各自保留 node、interaction、focus 与 surface；通过 WindowComponentServices 和共同 logical scene 绘制。数值变化更新 retained geometry，不重执行无关组件，颜色与 metrics token 独立失效。公开行为与支持边界见 [Slider 合同](slider.md)。
 
-`Grid` 的断点命名与初始阈值采用 Ant Design 6：`xs=480`、`sm=576`、`md=768`、`lg=992`、`xl=1200`、`xxl=1600`、`xxxl=1920`。阈值以窗口可用内容宽度为输入，并通过 Theme/Scale 配置保留受控覆盖能力。
+`Grid` 的断点命名与初始阈值采用 Ant Design 6：`xs=480`、`sm=576`、`md=768`、`lg=992`、`xl=1200`、`xxl=1600`、`xxxl=1920`。共享 `Breakpoint/Breakpoints/Responsive<T>` 与窗口服务发布的可用逻辑宽度用于 Row/Col、Masonry 和 Sider；`SiderBreakpoint` 是 `Breakpoint` 的别名，阈值通过 `Breakpoints::width()` 读取。响应式覆盖逐字段应用；普通容器收窄不改变窗口断点。
 
 桌面窗口缩放时，布局必须按断点、flex、wrap、gutter 和 content constraints 重排；不得把单一设备分辨率写死到组件实现。
+
+Typography 的不可变 typed rich runs 表达语义颜色、字体与装饰，完整来源统一进行 Unicode 双向分析、字簇和换行，再以真实字体生成混合样式 logical glyph/装饰。任意 HTML 输入和 URL 导航不属于该 API。HTML 仅作为转义后的剪贴板输出，与原始纯文本一起交给平台无关 TextClipboard；SDL 平台适配负责 `text/plain;charset=utf-8` / `text/html` 数据所有权与释放，Windows 使用私有 CF_HTML 适配。平台互操作证据与 Core 字节合同分开记录。
+
+FloatButton 的窗口定位与 Group/BackTop 复用窗口输入服务；BackTop 接受显式原生 scroll target（偏移、范围、滚动回调），不持有 SDL、DOM 或 renderer。新组件只修改共同 logical scene/stores，视觉来自 Component Token；隐藏、取消和离页均通过 owner/generation 清理焦点、捕获和文本会话。
 
 ### 9.4 Design Token 与主题
 

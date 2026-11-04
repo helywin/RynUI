@@ -195,16 +195,34 @@
     },
     {
       "identity": "ant.component.layout",
-      "status": "planned",
-      "summary": "布局（Layout）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Layout/Header/Sider/ContentArea/Footer 已提供嵌套剩余空间布局、窗口响应侧栏、受控折叠、零宽可访问触发器及 Theme Token；平台集成独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed Props/slots and reactive Prop<T>; retained nested shell and direct-Sider detection",
+        "Header/Footer/content allocation and multiple light/dark Siders",
+        "window xs through xxxl breakpoints with onBreakpoint/onCollapse",
+        "controlled/default collapsed, width/collapsedWidth, reverse/custom/hidden/zero-width triggers",
+        "pointer/keyboard focus, hidden input/capture/session cleanup and retained drafts",
+        "ThemeConfig.layout.tokens and independent canonical Gallery examples"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "DOM/CSS/SSR and Web-only fixed positioning are excluded from the native API",
+        "native GPU and Windows integration are tracked separately in change106"
       ],
       "evidence_identifiers": [
-        "source:components/layout/index.en-US.md"
+        "source:components/layout/index.en-US.md",
+        "openspec:106-20261104-complete-general-and-layout-components",
+        "test:rynui.shell_layout_nested",
+        "test:rynui.shell_layout_responsive",
+        "test:rynui.shell_layout_controlled",
+        "test:rynui.shell_layout_zero_width",
+        "test:rynui.shell_layout_initial_zero",
+        "test:rynui.shell_layout_theme",
+        "test:rynui.shell_layout_lifecycle",
+        "test:rynui.shell_layout_custom",
+        "test:rynui.shell_layout_validation",
+        "test:rynui.shell_layout_shared_breakpoints",
+        "test:rynui.shell_layout_gallery"
       ]
     },
     {
@@ -264,16 +282,41 @@
     },
     {
       "identity": "ant.component.splitter",
-      "status": "planned",
-      "summary": "分隔面板（Splitter）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Splitter 已提供多面板、逻辑/百分比尺寸、受控与默认值、min/max、指针/键盘、双侧折叠、真实 lazy 预览、隐藏内容策略和动画；平台集成独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed SplitterProps/Panel/size/slots and reactive properties; horizontal/vertical/RTL and nested panels",
+        "bounded finite multi-panel solver; controlled/default logical and percentage sizes",
+        "PointerRouter capture, keyboard arrows/Home/End, resize start/change/end and double-click callbacks",
+        "two-side collapse/restore, icon visibility and custom dragger/collapse icons",
+        "lazy logical-scene preview with release-only commit; cancellation and generation-safe callbacks",
+        "global/per-panel destroyOnHidden with retained drafts or new content generation",
+        "ThemeConfig.splitter.tokens, optional collapse motion and reduced-motion behavior",
+        "independent canonical Gallery samples and real page/input/teardown contracts"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "DOM/CSS/React and deprecated Web aliases are excluded from the native API",
+        "native GPU and Windows integration are tracked separately in change106"
       ],
       "evidence_identifiers": [
-        "source:components/splitter/index.en-US.md"
+        "source:components/splitter/index.en-US.md",
+        "openspec:106-20261104-complete-general-and-layout-components",
+        "test:rynui.splitter_model",
+        "test:rynui.splitter_sizes",
+        "test:rynui.splitter_drag_constraints",
+        "test:rynui.splitter_lazy",
+        "test:rynui.splitter_keyboard",
+        "test:rynui.splitter_collapse_retained",
+        "test:rynui.splitter_destroy_hidden",
+        "test:rynui.splitter_controlled",
+        "test:rynui.splitter_partial_controlled",
+        "test:rynui.splitter_cancel_disabled",
+        "test:rynui.splitter_nested",
+        "test:rynui.splitter_custom_double_click",
+        "test:rynui.splitter_callbacks",
+        "test:rynui.splitter_motion",
+        "test:rynui.splitter_theme_validation",
+        "test:rynui.splitter_gallery"
       ]
     },
     {

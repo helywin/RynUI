@@ -69,3 +69,9 @@
 #include <ryn/theme.hpp>
 #include <ryn/typography.hpp>
 #include <ryn/version.hpp>
+
+#include <ryn/layout.hpp>
+
+#include <ryn/splitter.hpp>
+
+#include <ryn/breakpoints.hpp>

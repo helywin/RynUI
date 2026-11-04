@@ -94,6 +94,10 @@ public:
     [[nodiscard]] const SelectThemeToken& select_typography() const;
     [[nodiscard]] const SelectThemeToken& select_effects() const;
     [[nodiscard]] const SelectThemeToken& select_order() const;
+    [[nodiscard]] const SplitterThemeToken& splitter_colors() const;
+    [[nodiscard]] const SplitterThemeToken& splitter_metrics() const;
+    [[nodiscard]] const LayoutThemeToken& layout_colors() const;
+    [[nodiscard]] const LayoutThemeToken& layout_metrics() const;
     [[nodiscard]] const CardThemeToken& card_colors() const;
     [[nodiscard]] const CardThemeToken& card_metrics() const;
     [[nodiscard]] const CardThemeToken& card_typography() const;

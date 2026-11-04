@@ -359,25 +359,8 @@ void test_inheritance_diagnostics_and_atomic_failure() {
 void test_checked_in_goldens() {
     const auto check = [](const char* name, const ryn::ThemeConfig& config) {
         const auto snapshot = ryn::resolve_theme(config);
-        const auto legacy = [](std::string json) {
-            // The pinned fixtures predate FloatButton. Preserve byte comparison
-            // of every legacy token; identity now also hashes the additive token.
-            const auto field = json.find(",\"floatButton\":");
-            if (field != std::string::npos) {
-                require(json.ends_with("}}\n") || json.ends_with("}}"),
-                        "FloatButton diagnostic is not the final object");
-                json.erase(field, json.rfind('}') - field);
-            }
-            const auto identity = json.find("\"identity\":\"");
-            require(identity != std::string::npos, "Theme diagnostic has no identity");
-            const auto start = identity + 12;
-            const auto end = json.find('"', start);
-            require(end != std::string::npos, "Theme diagnostic identity is malformed");
-            json.replace(start, end - start, "additive-component-identity");
-            return json;
-        };
-        require(legacy(snapshot.diagnostic_json()) == legacy(read_golden(name)),
-                "resolved legacy Theme tokens differ from their checked-in golden");
+        require(snapshot.diagnostic_json() == read_golden(name),
+                "resolved Theme tokens differ from their checked-in golden");
         const auto& floating = snapshot.float_button();
         require(floating.size == snapshot.map().control_height_large &&
                     floating.icon_size == snapshot.map().font_size_small * 1.5F &&

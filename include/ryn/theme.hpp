@@ -2,6 +2,8 @@
 
 #include <ryn/menu_theme.hpp>
 #include <ryn/float_button_tokens.hpp>
+#include <ryn/layout_tokens.hpp>
+#include <ryn/splitter_tokens.hpp>
 
 #include <ryn/design_token.hpp>
 #include <ryn/tag_badge_tokens.hpp>
@@ -1697,6 +1699,20 @@ struct TreeSelectThemeConfig final {
     friend bool operator==(const TreeSelectThemeConfig&, const TreeSelectThemeConfig&) = default;
 };
 
+struct SplitterThemeConfig final {
+    SplitterTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const SplitterThemeConfig&, const SplitterThemeConfig&) = default;
+};
+
+struct LayoutThemeConfig final {
+    LayoutTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const LayoutThemeConfig&, const LayoutThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     FloatButtonThemeConfig float_button;
     StepsThemeConfig steps;
@@ -1748,6 +1764,8 @@ struct ThemeConfig final {
     TreeThemeConfig tree;
     AutoCompleteThemeConfig auto_complete;
     TreeSelectThemeConfig tree_select;
+    LayoutThemeConfig layout;
+    SplitterThemeConfig splitter;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -2417,6 +2435,14 @@ public:
         return *auto_complete_;
     }
 
+    [[nodiscard]] const SplitterThemeToken& splitter() const noexcept {
+        return *splitter_;
+    }
+
+    [[nodiscard]] const LayoutThemeToken& layout() const noexcept {
+        return *layout_;
+    }
+
     [[nodiscard]] const TreeSelectThemeToken& tree_select() const noexcept {
         return *tree_select_;
     }
@@ -2443,7 +2469,8 @@ private:
         std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
         std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
         std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
-        std::shared_ptr<const TreeSelectThemeToken> tree_select);
+        std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
+        std::shared_ptr<const SplitterThemeToken> splitter);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2475,6 +2502,8 @@ private:
     std::shared_ptr<const TreeThemeToken> tree_;
     std::shared_ptr<const AutoCompleteThemeToken> auto_complete_;
     std::shared_ptr<const TreeSelectThemeToken> tree_select_;
+    std::shared_ptr<const LayoutThemeToken> layout_;
+    std::shared_ptr<const SplitterThemeToken> splitter_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;

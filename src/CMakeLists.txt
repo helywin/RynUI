@@ -272,8 +272,11 @@ add_library(rynui_components STATIC
     component/component_scene.cpp
     component/default_theme.cpp
     component/float_button_component.cpp
-    component/flex_component.cpp
     component/responsive_layout.cpp
+    component/splitter_model.cpp
+    component/splitter_component.cpp
+    component/shell_layout_component.cpp
+    component/flex_component.cpp
     component/grid_component.cpp
     component/masonry_component.cpp
     component/layout_component_context.cpp

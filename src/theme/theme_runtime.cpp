@@ -423,6 +423,12 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.tabs().typography, after.tabs().typography, TokenIdentity::tabs_typography, changed,
                       count);
     append_if_changed(before.tabs().effects, after.tabs().effects, TokenIdentity::tabs_effects, changed, count);
+    append_if_changed(before.splitter().colors, after.splitter().colors, TokenIdentity::splitter_colors, changed,
+                      count);
+    append_if_changed(before.splitter().metrics, after.splitter().metrics, TokenIdentity::splitter_metrics, changed,
+                      count);
+    append_if_changed(before.layout().colors, after.layout().colors, TokenIdentity::layout_colors, changed, count);
+    append_if_changed(before.layout().metrics, after.layout().metrics, TokenIdentity::layout_metrics, changed, count);
     append_if_changed(before.collapse().colors, after.collapse().colors, TokenIdentity::collapse_colors, changed,
                       count);
     append_if_changed(before.collapse().metrics, after.collapse().metrics, TokenIdentity::collapse_metrics, changed,
@@ -1198,6 +1204,30 @@ const TooltipThemeToken& ThemeScope::tooltip_order() const {
     ensure_owner_thread();
     record(TokenIdentity::tooltip_order);
     return snapshot_->tooltip();
+}
+
+const SplitterThemeToken& ThemeScope::splitter_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::splitter_colors);
+    return snapshot_->splitter();
+}
+
+const SplitterThemeToken& ThemeScope::splitter_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::splitter_metrics);
+    return snapshot_->splitter();
+}
+
+const LayoutThemeToken& ThemeScope::layout_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::layout_colors);
+    return snapshot_->layout();
+}
+
+const LayoutThemeToken& ThemeScope::layout_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::layout_metrics);
+    return snapshot_->layout();
 }
 
 const CollapseThemeToken& ThemeScope::collapse_colors() const {
@@ -2119,6 +2149,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "TreeSelect.treeColors",
         "TreeSelect.treeMetrics",
         "FloatButton",
+        "Layout.colors",
+        "Layout.metrics",
+        "Splitter.colors",
+        "Splitter.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2155,8 +2189,12 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::message_order:
     case TokenIdentity::notification_order:
         return DirtyPhase::geometry | DirtyPhase::hit_test;
+    case TokenIdentity::splitter_metrics:
+    case TokenIdentity::layout_metrics:
     case TokenIdentity::skeleton_metrics:
         return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
+    case TokenIdentity::splitter_colors:
+    case TokenIdentity::layout_colors:
     case TokenIdentity::skeleton_colors:
         return DirtyPhase::paint_material;
     case TokenIdentity::empty_metrics:

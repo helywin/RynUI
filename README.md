@@ -22,10 +22,11 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 领域 | 已有实现 |
 | --- | --- |
 | 响应式状态 | `Signal`、`Memo`、`Effect`、`Binding`、`Scope` 与 `Prop<T>` |
-| 组件与布局 | `Title`、`Text`、`Paragraph`、`Link`、`Divider`、`Button`、单行 `Input`、`Flex`、`Space`；布局支持换行、对齐、间距和伸缩 |
+| 组件与布局 | `Title`、`Text`、`Paragraph`、`Link`、`Divider`、`Button`、单行 `Input`、`Flex`、`Space`、`Row/Col`、`Layout/ContentArea/Sider`、`Masonry`、`Splitter`；见 [布局组件](docs/components/layout.md)、[Grid](docs/grid.md)、[Masonry](docs/masonry.md) 和 [Splitter](docs/components/splitter.md) |
 | 主题与交互 | 默认、暗色、紧凑、品牌色和嵌套主题；鼠标交互、键盘焦点、禁用/加载状态与基础状态动画 |
 | 文本 | UTF-8 `ryn::String`/`StringView`、C++20 `u8"..."` 字面量、中英文排版、字体回退与高 DPI 字形绘制 |
-| 排版与分割线 | 五级标题、行内语义与装饰、字素安全省略和展开、全文复制、操作提示、TextArea 多行原地编辑、Link 交互；范围见 [Typography](docs/typography.md) 与 [Divider](docs/divider.md) |
+| 排版与分割线 | 五级标题、typed rich runs 与混合语义排版、字素安全省略和展开、HTML/纯文本复制、操作提示、TextArea 多行原地编辑、Link 交互；范围见 [Typography](docs/typography.md) 与 [Divider](docs/divider.md) |
+| 浮动操作 | FloatButton、Group 与显式原生滚动目标 BackTop；见 [FloatButton](docs/float-button.md) |
 | 单行编辑 | Input / Password / Search、四变体、统计与软硬上限、焦点引用、原生用途提示、自定义图标和清空；字素安全选区、剪贴板、撤销/重做与 IME，见 [Input](docs/input.md) |
 | 输入建议 | AutoComplete 自由文本、动态键控建议、保留富标签、受控选择/开合、键盘、组合输入门禁和 Form 同值 reset；见 [AutoComplete](docs/auto-complete.md) |
 | 层级选择 | Tree 固定层级、受控展开/单选、级联勾选、禁用隔离、保留富标题、键盘导航与有限滚动；见 [Tree](docs/tree.md) |
@@ -56,7 +57,7 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
 | 可移植框架基础 | 独立宿主/GPU 所有权、共同场景上传事务、Recording 数据验收、无 SDL 的 HEADLESS 构建和非阻塞帧入口 |
 
-当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项；Typography 富文本等仍未提供。
+当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项。通用 4 项与布局 7 项已实现各自原生合同；新增能力与分平台验收见 [106 清单](openspec/changes/106-20261104-complete-general-and-layout-components/tasks.md)。
 
 已有组件按原生桌面范围持续收尾，Web 专用 API 不移植。单行家族见 [052 清单](openspec/changes/052-20261003-complete-native-input-features/tasks.md)；[053 TextArea](openspec/changes/053-20261003-add-native-text-area/tasks.md)已实现多行编辑、统计、autoSize、滚动与 resize；[054 OTP](openspec/changes/054-20261003-add-native-otp-input/tasks.md)已实现 Unicode 分格、粘贴/formatter/mask、组导航与动态长度。[055 双向文本](openspec/changes/055-20261003-complete-native-bidirectional-text/tasks.md)补齐 Unicode 17 Arabic/Hebrew 排版、视觉 caret/不连续选区和 reactive 段落方向，Input 家族原生功能已实现；Linux 原生验收仍独立待完成。
 

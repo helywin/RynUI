@@ -57,6 +57,8 @@ class SkeletonComponentHost;
 class NoticeComponentHost;
 class ResponsiveLayoutHost;
 class MasonryComponentHost;
+class ShellLayoutComponentHost;
+class SplitterComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -217,6 +219,14 @@ public:
 
     [[nodiscard]] FloatButtonComponentHost& float_button() noexcept {
         return *float_button_;
+    }
+
+    [[nodiscard]] SplitterComponentHost& splitter() noexcept {
+        return *splitter_;
+    }
+
+    [[nodiscard]] ShellLayoutComponentHost& shell_layout() noexcept {
+        return *shell_layout_;
     }
 
     [[nodiscard]] TypographyComponentHost& typography() noexcept {
@@ -468,6 +478,8 @@ private:
     std::optional<font::FontIdentity> clipping_density_font_;
     std::optional<float> clipping_antialias_guard_;
     std::unique_ptr<FloatButtonComponentHost> float_button_;
+    std::unique_ptr<ShellLayoutComponentHost> shell_layout_;
+    std::unique_ptr<SplitterComponentHost> splitter_;
     std::unique_ptr<TypographyComponentHost> typography_;
     std::unique_ptr<DividerComponentHost> divider_;
     std::unique_ptr<SpaceAddonHost> space_addon_;

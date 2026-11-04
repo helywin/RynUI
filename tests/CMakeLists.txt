@@ -1,3 +1,24 @@
+add_executable(rynui_splitter_component_tests splitter_component_tests.cpp)
+rynui_configure_cpp_target(rynui_splitter_component_tests)
+target_link_libraries(rynui_splitter_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_splitter_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(splitter_case IN ITEMS model sizes drag_constraints lazy keyboard collapse_retained destroy_hidden controlled
+        partial_controlled cancel_disabled nested custom_double_click callbacks motion theme_validation)
+    add_test(NAME rynui.splitter_${splitter_case} COMMAND rynui_splitter_component_tests ${splitter_case})
+endforeach()
+
+add_executable(rynui_shell_layout_component_tests shell_layout_component_tests.cpp)
+rynui_configure_cpp_target(rynui_shell_layout_component_tests)
+target_link_libraries(rynui_shell_layout_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_shell_layout_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(shell_case IN ITEMS nested responsive shared_breakpoints controlled zero_width initial_zero theme lifecycle custom validation)
+    add_test(NAME rynui.shell_layout_${shell_case} COMMAND rynui_shell_layout_component_tests ${shell_case})
+endforeach()
+
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
