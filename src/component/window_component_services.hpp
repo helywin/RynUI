@@ -19,6 +19,7 @@ namespace ryn::detail {
 
 class InputComponentHost;
 class TypographyComponentHost;
+class FloatButtonComponentHost;
 class DividerComponentHost;
 class SpaceAddonHost;
 class SliderComponentHost;
@@ -209,6 +210,10 @@ public:
 
     [[nodiscard]] InputComponentHost* input_runtime() const noexcept {
         return input_runtime_;
+    }
+
+    [[nodiscard]] FloatButtonComponentHost& float_button() noexcept {
+        return *float_button_;
     }
 
     [[nodiscard]] TypographyComponentHost& typography() noexcept {
@@ -451,6 +456,7 @@ private:
     InputComponentHost* input_runtime_{};
     std::optional<font::FontIdentity> clipping_density_font_;
     std::optional<float> clipping_antialias_guard_;
+    std::unique_ptr<FloatButtonComponentHost> float_button_;
     std::unique_ptr<TypographyComponentHost> typography_;
     std::unique_ptr<DividerComponentHost> divider_;
     std::unique_ptr<SpaceAddonHost> space_addon_;

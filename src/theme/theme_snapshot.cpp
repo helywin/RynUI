@@ -4087,11 +4087,11 @@ Color detail::semantic_status_background(const ThemeSnapshot& theme, InputStatus
 }
 
 ThemeSnapshot::ThemeSnapshot(
-    AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button, TextThemeToken text,
-    SwitchThemeToken switch_token, CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
-    DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select,
-    CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer,
-    PopconfirmThemeToken popconfirm, MenuThemeToken menu, DropdownThemeToken dropdown,
+    FloatButtonThemeToken float_button, AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
+    ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
+    RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
+    TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
+    DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu, DropdownThemeToken dropdown,
     std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag,
     BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
     InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
@@ -4106,20 +4106,20 @@ ThemeSnapshot::ThemeSnapshot(
     std::shared_ptr<const TreeSelectThemeToken> tree_select)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
-      radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
-      slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), segmented_(std::move(segmented)), date_picker_(std::move(date_picker)),
-      form_(std::move(form)), breadcrumb_(std::move(breadcrumb)), steps_(std::move(steps)),
-      time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), timeline_(std::move(timeline)),
-      avatar_(std::move(avatar)), rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
-      auto_complete_(std::move(auto_complete)), tree_select_(std::move(tree_select)),
-      descriptions_(std::move(descriptions)), popover_(std::move(popover)), message_(std::move(message)),
-      notification_(std::move(notification)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
-      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
-      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
-      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
-      collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
-      algorithms_(std::move(algorithms)) {
+      radio_(std::move(radio)), typography_(std::move(typography)), float_button_(std::move(float_button)),
+      divider_(std::move(divider)), slider_(std::move(slider)), tooltip_(std::move(tooltip)),
+      select_(std::move(select)), card_(std::move(card)), tabs_(std::move(tabs)), segmented_(std::move(segmented)),
+      date_picker_(std::move(date_picker)), form_(std::move(form)), breadcrumb_(std::move(breadcrumb)),
+      steps_(std::move(steps)), time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)),
+      timeline_(std::move(timeline)), avatar_(std::move(avatar)), rate_(std::move(rate)),
+      statistic_(std::move(statistic)), tree_(std::move(tree)), auto_complete_(std::move(auto_complete)),
+      tree_select_(std::move(tree_select)), descriptions_(std::move(descriptions)), popover_(std::move(popover)),
+      message_(std::move(message)), notification_(std::move(notification)), modal_(std::move(modal)),
+      tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
+      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
+      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
+      table_(std::move(table)), collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)),
+      input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4640,6 +4640,32 @@ ThemeSnapshot::ThemeSnapshot(
         status_json << ']';
     }
     status_json << "]}";
+    status_json << ",\"floatButton\":{\"metrics\":[";
+    first = true;
+    for (const float value :
+         {float_button_.size, float_button_.icon_size, float_button_.content_font_size, float_button_.border_radius,
+          float_button_.gap, float_button_.inset_inline, float_button_.inset_block}) {
+        metric(value);
+    }
+    status_json << "],\"colors\":[";
+    first = true;
+    for (const auto value : {float_button_.background, float_button_.primary_background, float_button_.color,
+                             float_button_.primary_color}) {
+        color(value);
+    }
+    hash_shadow(identity_, float_button_.shadow);
+    status_json << "],\"shadow\":[";
+    for (std::size_t index = 0; index < float_button_.shadow.size(); ++index) {
+        if (index) {
+            status_json << ',';
+        }
+        const auto& shadow = float_button_.shadow[index];
+        status_json << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                    << shadow.blur << ',' << shadow.spread << ',';
+        append_color(status_json, shadow.color);
+        status_json << ']';
+    }
+    status_json << "]}";
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -4759,18 +4785,19 @@ const std::string& ThemeSnapshot::diagnostic_json() const noexcept {
 }
 
 bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
-    return left.seed_ == right.seed_ && left.map_ == right.map_ && left.alias_ == right.alias_ &&
-           left.button_ == right.button_ && left.text_ == right.text_ && left.switch_token_ == right.switch_token_ &&
-           left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
-           left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
-           left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
-           left.modal_ == right.modal_ && left.tag_ == right.tag_ && left.badge_ == right.badge_ &&
-           left.drawer_ == right.drawer_ && left.popconfirm_ == right.popconfirm_ && left.alert_ == right.alert_ &&
-           left.spin_ == right.spin_ && left.progress_ == right.progress_ && left.menu_ == right.menu_ &&
-           left.dropdown_ == right.dropdown_ && *left.input_ == *right.input_ &&
-           left.algorithms_ == right.algorithms_ && left.input_number_ == right.input_number_ &&
-           left.pagination_ == right.pagination_ && left.table_ == right.table_ && left.empty_ == right.empty_ &&
-           left.result_ == right.result_ && left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
+    return left.float_button_ == right.float_button_ && left.seed_ == right.seed_ && left.map_ == right.map_ &&
+           left.alias_ == right.alias_ && left.button_ == right.button_ && left.text_ == right.text_ &&
+           left.switch_token_ == right.switch_token_ && left.checkbox_ == right.checkbox_ &&
+           left.radio_ == right.radio_ && left.typography_ == right.typography_ && left.divider_ == right.divider_ &&
+           left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ && left.select_ == right.select_ &&
+           left.card_ == right.card_ && left.tabs_ == right.tabs_ && left.modal_ == right.modal_ &&
+           left.tag_ == right.tag_ && left.badge_ == right.badge_ && left.drawer_ == right.drawer_ &&
+           left.popconfirm_ == right.popconfirm_ && left.alert_ == right.alert_ && left.spin_ == right.spin_ &&
+           left.progress_ == right.progress_ && left.menu_ == right.menu_ && left.dropdown_ == right.dropdown_ &&
+           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_ &&
+           left.input_number_ == right.input_number_ && left.pagination_ == right.pagination_ &&
+           left.table_ == right.table_ && left.empty_ == right.empty_ && left.result_ == right.result_ &&
+           left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
            left.date_picker_ == right.date_picker_ && left.form_ == right.form_ &&
            left.breadcrumb_ == right.breadcrumb_ && left.steps_ == right.steps_ &&
            *left.time_picker_ == *right.time_picker_ && *left.skeleton_ == *right.skeleton_ &&
@@ -5838,11 +5865,55 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_tree_override(token->tree, config.tree_select.tokens.tree);
         return token;
     }();
+    auto float_button = parent && config.inherit ? parent->float_button() : FloatButtonThemeToken{};
+    if (!parent || !config.inherit || config.seed != SeedTokenOverride{} || config.alias != AliasTokenOverride{} ||
+        !config.algorithms.empty()) {
+        float_button.size = map.control_height_large;
+        float_button.icon_size = map.font_size_small * 1.5F;
+        float_button.content_font_size = map.font_size_small;
+        float_button.border_radius = map.border_radius_large;
+        float_button.gap = map.size;
+        float_button.inset_inline = map.size_large;
+        float_button.inset_block = map.size_large * 2;
+        float_button.background = alias.color_background_elevated;
+        float_button.primary_background = map.color_primary;
+        float_button.color = alias.color_text;
+        float_button.primary_color = button.primary_color;
+        float_button.shadow = alias.box_shadow_secondary;
+    }
+    const auto& fo = config.float_button.tokens;
+    float_button.size = fixed_length(fo.size, float_button.size, "FloatButton size must be positive", true);
+    float_button.icon_size =
+        fixed_length(fo.icon_size, float_button.icon_size, "FloatButton icon size must be positive", true);
+    float_button.content_font_size = fixed_length(fo.content_font_size, float_button.content_font_size,
+                                                  "FloatButton content font size must be positive", true);
+    float_button.border_radius =
+        fixed_length(fo.border_radius, float_button.border_radius, "FloatButton radius must be nonnegative");
+    float_button.gap = fixed_length(fo.gap, float_button.gap, "FloatButton gap must be nonnegative");
+    float_button.inset_inline =
+        fixed_length(fo.inset_inline, float_button.inset_inline, "FloatButton inline inset must be nonnegative");
+    float_button.inset_block =
+        fixed_length(fo.inset_block, float_button.inset_block, "FloatButton block inset must be nonnegative");
+    if (fo.background) {
+        float_button.background = *fo.background;
+    }
+    if (fo.primary_background) {
+        float_button.primary_background = *fo.primary_background;
+    }
+    if (fo.color) {
+        float_button.color = *fo.color;
+    }
+    if (fo.primary_color) {
+        float_button.primary_color = *fo.primary_color;
+    }
+    if (fo.shadow) {
+        float_button.shadow = *fo.shadow;
+    }
     return ThemeSnapshot(
-        std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text), std::move(switch_token),
-        std::move(checkbox), std::move(radio), std::move(typography), std::move(divider), std::move(slider),
-        std::move(tooltip), std::move(select), std::move(card), std::move(tabs), std::move(modal), std::move(drawer),
-        std::move(popconfirm), std::move(menu), std::move(dropdown),
+        std::move(float_button), std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
+        std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography), std::move(divider),
+        std::move(slider), std::move(tooltip), std::move(select), std::move(card), std::move(tabs), std::move(modal),
+        std::move(drawer), std::move(popconfirm), std::move(menu), std::move(dropdown),
         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms), std::move(tag),
         std::move(badge), std::move(alert), std::move(spin), std::move(progress), std::move(input_number),
         std::move(pagination), std::move(table), std::move(collapse), std::move(segmented), std::move(empty),

@@ -59,6 +59,7 @@ void append_if_changed(const Value& before, const Value& after, TokenIdentity id
 std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& after,
                             std::array<TokenIdentity, identity_count>& changed) {
     std::size_t count = 0;
+    append_if_changed(before.float_button(), after.float_button(), TokenIdentity::float_button, changed, count);
     const auto& before_alias = before.alias();
     const auto& after_alias = after.alias();
     append_if_changed(before_alias.opacity_loading, after_alias.opacity_loading, TokenIdentity::alias_opacity_loading,
@@ -2117,6 +2118,7 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "TreeSelect.order",
         "TreeSelect.treeColors",
         "TreeSelect.treeMetrics",
+        "FloatButton",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2125,6 +2127,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
 
 DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     switch (identity) {
+    case TokenIdentity::float_button:
+        return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::paint_material | DirtyPhase::hit_test;
     case TokenIdentity::statistic_colors:
         return DirtyPhase::paint_material;
     case TokenIdentity::statistic_metrics:
@@ -2370,4 +2374,12 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     return DirtyPhase::none;
 }
 
+} // namespace ryn::theme_runtime
+
+namespace ryn::theme_runtime {
+const FloatButtonThemeToken& ThemeScope::float_button() const {
+    ensure_owner_thread();
+    record(TokenIdentity::float_button);
+    return snapshot_->float_button();
+}
 } // namespace ryn::theme_runtime

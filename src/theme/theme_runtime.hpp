@@ -59,6 +59,7 @@ public:
     [[nodiscard]] const ThemeAliasToken& alias() const;
     [[nodiscard]] const ThemeMapToken& map() const;
     [[nodiscard]] const ButtonThemeToken& button() const;
+    [[nodiscard]] const FloatButtonThemeToken& float_button() const;
     [[nodiscard]] const TextThemeToken& text() const;
     [[nodiscard]] const detail::InputTokenSet& input_layout_metrics() const;
     [[nodiscard]] const detail::InputTokenSet& input_typography() const;

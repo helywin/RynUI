@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/menu_theme.hpp>
+#include <ryn/float_button_tokens.hpp>
 
 #include <ryn/design_token.hpp>
 #include <ryn/tag_badge_tokens.hpp>
@@ -1697,6 +1698,7 @@ struct TreeSelectThemeConfig final {
 };
 
 struct ThemeConfig final {
+    FloatButtonThemeConfig float_button;
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
     DatePickerThemeConfig date_picker;
@@ -2284,6 +2286,11 @@ public:
     [[nodiscard]] const RadioThemeToken& radio() const noexcept;
     [[nodiscard]] const TypographyThemeToken& typography() const noexcept;
     [[nodiscard]] const DividerThemeToken& divider() const noexcept;
+
+    [[nodiscard]] const FloatButtonThemeToken& float_button() const noexcept {
+        return float_button_;
+    }
+
     [[nodiscard]] const SliderThemeToken& slider() const noexcept;
     [[nodiscard]] const TooltipThemeToken& tooltip() const noexcept;
     [[nodiscard]] const SelectThemeToken& select() const noexcept;
@@ -2419,16 +2426,17 @@ private:
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
 
     ThemeSnapshot(
-        AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
-        TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox, RadioThemeToken radio,
-        TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
-        SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-        DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu, DropdownThemeToken dropdown,
-        std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag,
-        BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
-        InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-        CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result,
-        DatePickerThemeToken date_picker, FormThemeToken form, BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
+        FloatButtonThemeToken float_button, AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
+        ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
+        RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
+        TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs,
+        ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
+        DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
+        std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert,
+        SpinThemeToken spin, ProgressThemeToken progress, InputNumberThemeToken input_number,
+        PaginationThemeToken pagination, TableThemeToken table, CollapseThemeToken collapse,
+        SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result, DatePickerThemeToken date_picker,
+        FormThemeToken form, BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
         std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
         DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
         std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
@@ -2446,6 +2454,7 @@ private:
     CheckboxThemeToken checkbox_;
     RadioThemeToken radio_;
     TypographyThemeToken typography_;
+    FloatButtonThemeToken float_button_;
     DividerThemeToken divider_;
     SliderThemeToken slider_;
     TooltipThemeToken tooltip_;

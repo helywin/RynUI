@@ -23,6 +23,7 @@
 #include <ryn/dropdown.hpp>
 
 #include <ryn/button.hpp>
+#include <ryn/float_button.hpp>
 #include <ryn/tag.hpp>
 #include <ryn/badge.hpp>
 #include <ryn/checkbox.hpp>

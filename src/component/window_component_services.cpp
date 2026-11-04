@@ -1,5 +1,6 @@
 #include "component/window_component_services.hpp"
 #include "component/typography_component.hpp"
+#include "component/float_button_component.hpp"
 #include "component/divider_component.hpp"
 #include "component/space_addon.hpp"
 #include "component/slider_component.hpp"
@@ -113,6 +114,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     animations_.reserve(256, 64, 256);
     animations_.set_schedule_observer(&frame_requests);
     typography_ = std::make_unique<TypographyComponentHost>(*this);
+    float_button_ = std::make_unique<FloatButtonComponentHost>(*this);
     divider_ = std::make_unique<DividerComponentHost>(*this);
     space_addon_ = std::make_unique<SpaceAddonHost>(*this);
     slider_ = std::make_unique<SliderComponentHost>(*this);

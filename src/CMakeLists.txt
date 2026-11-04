@@ -271,6 +271,7 @@ add_library(rynui_components STATIC
     component/retained_surface_service.cpp
     component/component_scene.cpp
     component/default_theme.cpp
+    component/float_button_component.cpp
     component/flex_component.cpp
     component/layout_component_context.cpp
     component/space_component.cpp

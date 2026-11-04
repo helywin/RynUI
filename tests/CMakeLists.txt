@@ -709,6 +709,16 @@ if(TARGET rynui_renderer_recording)
         COMMAND rynui_effect_range_benchmark --smoke --iterations 2 --warmup 1 --rounds 1)
 endif()
 
+add_executable(rynui_float_button_tests float_button_tests.cpp)
+rynui_configure_cpp_target(rynui_float_button_tests)
+target_link_libraries(rynui_float_button_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_float_button_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(float_button_case IN ITEMS basic positioning_drag anchors groups controlled_hover back_top reduced_lifecycle off_page validation)
+    add_test(NAME rynui.float_button_${float_button_case} COMMAND rynui_float_button_tests ${float_button_case})
+endforeach()
+
 include("${PROJECT_SOURCE_DIR}/cmake/RynUIGalleryTests.cmake")
 
 if(NOT RYNUI_HAS_SDL_GPU)

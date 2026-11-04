@@ -224,6 +224,7 @@ enum class TokenIdentity : std::uint8_t {
     tree_select_order,
     tree_select_tree_colors,
     tree_select_tree_metrics,
+    float_button,
     count,
 };
 
