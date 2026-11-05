@@ -44,6 +44,7 @@ struct ModalState final {
     bool footer_slot{};
     bool centered{};
     bool restore{true};
+    bool focus_trap{true};
     bool ready{};
     bool needs_layout{true};
     bool reveal{true};
@@ -191,12 +192,14 @@ ModalSnapshot ModalComponentHost::snapshot(runtime::ComponentId id) const {
 void ModalComponentHost::on_dispose() noexcept {
     mounted_.clear();
     stack_.clear();
+    confinement_dirty_ = false;
     transitions_.clear();
     focus_pending_ = false;
     restore_target_.reset();
 }
 
 void ModalComponentHost::on_destroy() noexcept {
+    const auto stack_size = stack_.size();
     if (!stack_.empty() && !services_->components().contains(stack_.back().owner)) {
         focus_pending_ = true;
         restore_target_.reset();
@@ -211,11 +214,11 @@ void ModalComponentHost::on_destroy() noexcept {
     std::erase_if(stack_, [this](const auto& entry) { return !services_->components().contains(entry.owner); });
     std::erase_if(mounted_, [this](auto id) { return !services_->components().contains(id); });
     std::erase_if(transitions_, [this](const auto& event) { return !services_->components().contains(event.owner); });
-    if (focus_pending_) {
+    if (focus_pending_ || stack_.size() != stack_size) {
+        confinement_dirty_ = true;
         // No user callbacks in this noexcept cleanup. Window services reconcile
         // pointer/focus state after every host has retired its resources.
-        services_->interactions().set_input_boundary(stack_.empty() ? std::optional<runtime::ComponentId>{}
-                                                                    : stack_.back().overlay);
+        services_->interactions().set_input_boundary(confinement_root());
     }
 }
 
@@ -335,9 +338,9 @@ void ModalComponentHost::reconcile() {
                     }
                 }
             }
-            if (top_changed) {
-                services_->set_input_boundary(top ? std::optional{top->overlay}
-                                                  : std::optional<runtime::ComponentId>{});
+            if (top_changed || confinement_dirty_) {
+                confinement_dirty_ = false;
+                services_->set_input_boundary(confinement_root());
             }
             on_input_boundary_changed();
         } while (reconcile_again_);
@@ -348,14 +351,27 @@ void ModalComponentHost::reconcile() {
     }
 }
 
+std::optional<runtime::ComponentId> ModalComponentHost::confinement_root() const noexcept {
+    // A non-trapping preview cannot release another still-open modal's boundary.
+    for (auto entry = stack_.rbegin(); entry != stack_.rend(); ++entry) {
+        const auto* state = services_->components().state<ModalState>(entry->owner);
+        if (state && state->focus_trap) {
+            const auto top = stack_.back().overlay;
+            // Sibling dialogs have no shared modal subtree; confine to the top layer
+            // rather than exposing the window or blocking that layer behind a sibling.
+            return descendant(*services_, top, entry->overlay) ? entry->overlay : top;
+        }
+    }
+    return {};
+}
+
 void ModalComponentHost::focus_top() {
     auto& services = *services_;
     if (!services.focus().state().window_active) {
         return;
     }
     const auto top = stack_.empty() ? std::optional<Entry>{} : stack_.back();
-    if (services.interactions().input_boundary() !=
-        (top ? std::optional{top->overlay} : std::optional<runtime::ComponentId>{})) {
+    if (services.interactions().input_boundary() != confinement_root()) {
         return;
     }
     if (restore_target_ && can_focus(services, *restore_target_)) {
@@ -379,7 +395,8 @@ void ModalComponentHost::focus_top() {
     std::optional<input::InteractionId> other;
     for (auto id : services.interactions().declaration_order()) {
         const auto* record = services.interactions().find(id);
-        if (!record || id == s->dialog_hit || !record->tab_stop || !can_focus(services, id)) {
+        if (!record || id == s->dialog_hit || !record->tab_stop || !can_focus(services, id) ||
+            !descendant(services, record->component, top->overlay)) {
             continue;
         }
         if (!other) {
@@ -514,6 +531,7 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
     s.footer_slot = slots.footer.has_value();
     s.centered = read_prop(props.centered_);
     s.restore = read_prop(props.restore_focus_);
+    s.focus_trap = read_prop(props.focus_trap_);
     s.title.set(read_prop(props.title_));
     s.ok_text.set(read_prop(props.ok_text_));
     s.cancel_text.set(read_prop(props.cancel_text_));
@@ -780,6 +798,15 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
         if (auto* s = services_->components().state<ModalState>(id)) {
             s->centered = value;
             refresh(id, true);
+        }
+    });
+    connect_prop(scope, props.focus_trap_, [this, id](bool value) {
+        if (auto* state = services_->components().state<ModalState>(id)) {
+            if (state->focus_trap != value) {
+                state->focus_trap = value;
+                confinement_dirty_ = true;
+                refresh(id, false);
+            }
         }
     });
     connect_prop(scope, props.restore_focus_, [this, id](bool value) {

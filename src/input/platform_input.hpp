@@ -1,4 +1,5 @@
 #pragma once
+#include "input/file_drop.hpp"
 
 #include "input/text_input_events.hpp"
 #include "input/text_clipboard.hpp"
@@ -148,8 +149,9 @@ struct WindowInputEvent {
     friend bool operator==(const WindowInputEvent&, const WindowInputEvent&) = default;
 };
 
-using PlatformInputEvent = std::variant<PointerInputEvent, ScrollInputEvent, KeyboardInputEvent, WindowInputEvent,
-                                        TextCommitted, CompositionChanged, CandidatesChanged, ClipboardChanged>;
+using PlatformInputEvent =
+    std::variant<PointerInputEvent, ScrollInputEvent, KeyboardInputEvent, WindowInputEvent, TextCommitted,
+                 CompositionChanged, CandidatesChanged, ClipboardChanged, FileDropEvent>;
 
 [[nodiscard]] bool is_valid(const PointerIdentity& identity) noexcept;
 [[nodiscard]] bool is_valid(const PointerInputEvent& event) noexcept;

@@ -1091,16 +1091,30 @@
     },
     {
       "identity": "ant.component.upload",
-      "status": "planned",
-      "summary": "上传（Upload）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Upload 已实现稳定受控文件模型、真实 Image 列表/预览、原生宿主选择与 drop/paste 边界及可取消应用传输；不提供默认 HTTP。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed stable UID/fileList/status/progress/error、受控权威、accept/multiple/directory/maxCount、beforeUpload/transform/Keep/Ignore",
+        "显式应用 customRequest、独立进度/成功/失败/重试/取消、异步 onRemove 与旧/重复/外线程结果拒绝",
+        "原生 Button/Drag area、键盘、typed NativeFileServices、SDL chooser SDK adapter、拥有路径的 file-drop 与原生文件 MIME paste",
+        "Text/Picture/PictureCard/PictureCircle，实际 PNG/JPEG/BMP 缩略图/圆形裁剪、共享 PreviewGroup、preview/download/remove/actions callbacks",
+        "稳定 UID 保留文件草稿/预览变换，局部 item/icon renderer 替换、typed trigger/action-icon slots 与弱生命周期 action handles",
+        "disabled/readOnly/visible/size/status、独立五域 Upload Token、RTL/locale/image_preview、ref 与 typed Form decode/encode/focus adapter",
+        "真实 Gallery 控件，明确标注的手动合成传输；Linux HEADLESS 与私有 Wayland Vulkan 像素/交互/退休验收"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "真实 OS chooser/portal、跨应用 clipboard、Windows/MSVC/D3D12、系统 IME 与 OS AT 尚无平台实测；SDK mock 不代表 OS chooser 通过",
+        "SDL chooser 取消只拒绝结果，SDK 没有 OS request 关闭句柄；默认宿主仅识别 PNG/JPEG/BMP MIME/图片 bytes，其他 MIME 由应用服务提供",
+        "HTTP/URL/服务器响应/下载 IO 属于应用，DOM/CSS/React/浏览器 input 与 portal 语义不进入 Core"
       ],
       "evidence_identifiers": [
-        "source:components/upload/index.en-US.md"
+        "source:components/upload/index.en-US.md",
+        "test:rynui.upload_model_transport",
+        "test:rynui.upload_component_basic",
+        "test:rynui.upload_component_form",
+        "test:rynui.file_service_sdk",
+        "test:rynui.upload_gallery",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {
@@ -1275,16 +1289,29 @@
     },
     {
       "identity": "ant.component.image",
-      "status": "planned",
-      "summary": "图片（Image）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Image/PreviewGroup 已实现真实 RGBA 解码/共享 GPU 资源、应用 loader、受控预览、手势与保留工具栏；平台边界独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "不可变 encoded/decoded ImageSource 与显式应用 loader，PNG/JPEG/BMP 实际像素、loading/placeholder/error/fallback、alt 与原生标签",
+        "独立 RGBA8 Image ABI 2/资源/采样路径，logical CPU scene v3、共同事务/owner/epoch/失败重试；Quad/Glyph/RoundedEffect ABI v2 保持不变",
+        "Contain/Cover/Fill/None/ScaleDown、尺寸/比例、真实圆形 clip、边界/stride/bytes/溢出与输入上限校验",
+        "PreviewGroup 稳定 keys、受控 current/open、原子 items/current 更新、动态空列表恢复与保留当前变换",
+        "键盘/指针预览、zoom/rotate/flip/drag/clamp/reset/navigation、RTL、locale、retained actions renderer 与 focus/IME/capture 清理",
+        "owner-thread completion、旧/重复/取消结果拒绝、loader 重入/throw/self-destroy 和外部 action 生命周期保护",
+        "独立五域 Image Component Token、完整 Theme golden、真实 Gallery 控件及 Linux 私有 Wayland Vulkan/SPIR-V 读回"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Windows/MSVC/D3D12、系统 IME 与 OS 辅助技术平台证据独立验证",
+        "文件/URL IO 属于宿主/应用；Core 不抓取网络，JPEG EXIF 方向由应用规范化；SVG/动画格式返回 unsupported_format",
+        "DOM/CSS/HTML/React 与浏览器 img/portal 语义不属于原生接口"
       ],
       "evidence_identifiers": [
-        "source:components/image/index.en-US.md"
+        "source:components/image/index.en-US.md",
+        "test:rynui.image_component_basic",
+        "test:rynui.image_resource_pixels",
+        "test:rynui.image_gallery",
+        "test:rynui.portable.theme_algorithm",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {

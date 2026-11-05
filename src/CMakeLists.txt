@@ -11,6 +11,7 @@ add_library(rynui_theme STATIC
     theme/date_picker_theme.cpp
     theme/form_theme.cpp
     theme/transfer_theme.cpp
+    theme/media_theme.cpp
     theme/anchor_theme.cpp
     theme/cascader_theme.cpp
     theme/breadcrumb_theme.cpp
@@ -185,7 +186,15 @@ rynui_configure_cpp_target(rynui_layout)
 target_include_directories(rynui_layout PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_layout PRIVATE rynui_runtime)
 
+add_library(rynui_image STATIC image/image_source.cpp)
+rynui_configure_cpp_target(rynui_image)
+target_include_directories(rynui_image PUBLIC "${PROJECT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(rynui_image PRIVATE RynUI::StbImage)
+rynui_assert_direct_dependencies(rynui_image RynUI::StbImage)
+rynui_assert_core_link_closure(rynui_image)
+
 add_library(rynui_graphics STATIC
+    graphics/image_scene.cpp
     graphics/glyph_atlas.cpp
     graphics/glyph_scene.cpp
     graphics/graphics.cpp
@@ -209,6 +218,13 @@ target_link_libraries(rynui_text_scene PRIVATE
     rynui_text
 )
 
+add_library(rynui_upload_model STATIC component/upload_model.cpp)
+rynui_configure_cpp_target(rynui_upload_model)
+target_include_directories(rynui_upload_model PUBLIC "${PROJECT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(rynui_upload_model PUBLIC rynui_string)
+rynui_assert_direct_dependencies(rynui_upload_model rynui_string)
+rynui_assert_core_link_closure(rynui_upload_model)
+
 add_library(rynui_components STATIC
     component/date_picker_model.cpp
     component/date_picker_component.cpp
@@ -224,6 +240,9 @@ add_library(rynui_components STATIC
     component/statistic_component.cpp
     component/timeline_component.cpp
     component/avatar_component.cpp
+    component/upload_component.cpp
+    component/image_component.cpp
+    component/image_model.cpp
     component/tree_model.cpp
     component/tree_component.cpp
     component/transfer_component.cpp
@@ -314,6 +333,8 @@ target_link_libraries(rynui_components PRIVATE
     rynui_text_input_session
     rynui_text_clipboard_commands
     rynui_graphics
+    rynui_image
+    rynui_upload_model
     rynui_interaction
     rynui_layout
     rynui_motion
@@ -324,6 +345,7 @@ target_link_libraries(rynui_components PRIVATE
 )
 
 add_library(rynui_renderer_common STATIC
+    renderer/common/image_gpu_resources.cpp
     renderer/common/scene_capabilities.cpp
     renderer/common/scene_metrics.cpp
     renderer/common/scene_packing.cpp
@@ -348,6 +370,7 @@ endif()
 
 if(RYNUI_HAS_SDL_HOST)
 add_library(rynui_platform_sdl STATIC
+    platform/sdl/file_services.cpp
     platform/sdl/sdl_event_adapter.cpp
     platform/sdl/platform_state.cpp
 )
@@ -433,6 +456,8 @@ rynui_assert_direct_dependencies(
     rynui_text_input_session
     rynui_text_clipboard_commands
     rynui_graphics
+    rynui_image
+    rynui_upload_model
     rynui_interaction
     rynui_layout
     rynui_motion

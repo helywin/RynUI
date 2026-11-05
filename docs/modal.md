@@ -18,7 +18,7 @@ width为正且有限的logical units，默认520；centered控制垂直居中。
 
 Modal脱离父级Box/Flex/Space和顶层正文流，不占空间或gap，保留逻辑owner和Theme。默认顶部距离100，宽度与高度按窗口安全边距夹紧；centered启用垂直居中。正文可滚动，标题与页脚固定；Tab焦点及超高TextArea的插入点会显露，滚动只更新像素对齐的平移和裁剪。正文内的TextArea、Select菜单和Tabs标签栏先处理自己的滚轮。
 
-最新打开的Modal是唯一输入边界。Tab/Shift+Tab在其中环绕，无入口时停留在对话框；打开优先正文入口，其次默认OK和其他入口。关闭恢复仍有效、可见且未禁用的触发入口，嵌套关闭恢复父级；可用restoreFocusAfterClose关闭自动恢复。背景仍绘制并保留自身disabled值，无遮罩颜色也不会透传输入。Escape先处理编辑器组合事务，再处理Select/Tooltip，最后请求取消Modal。子浮层可越过正文和对话框边缘，仍夹紧在窗口内。
+默认最新打开的Modal是唯一输入边界。`focusTrap(false)` 可释放本层的焦点限制，但不会解除仍打开的其他 Modal 所需的输入限制；嵌套层继承底层边界，无共同模态祖先的兄弟层收口到顶层。动态切换和销毁后重新解析存活栈。Tab/Shift+Tab在其中环绕，无入口时停留在对话框；打开优先正文入口，其次默认OK和其他入口。关闭恢复仍有效、可见且未禁用的触发入口，嵌套关闭恢复父级；可用restoreFocusAfterClose关闭自动恢复。背景仍绘制并保留自身disabled值，无遮罩颜色也不会透传输入。Escape先处理编辑器组合事务，再处理Select/Tooltip，最后请求取消Modal。子浮层可越过正文和对话框边缘，仍夹紧在窗口内。
 
 动态销毁/懒加载、动画、静态confirm/Promise自动关闭、拖动/resize、mask blur、RTL、响应断点宽度、平台可访问性桥接和Web/DOM API不在首版。实际状态以061的tasks与evidence为准。
 

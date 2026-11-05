@@ -11,6 +11,7 @@
 #include "component/cascader_component.hpp"
 #include "component/transfer_component.hpp"
 #include "component/form_component.hpp"
+#include "component/upload_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/divider_component.hpp"
 #include "component/dropdown_component.hpp"
@@ -264,14 +265,15 @@ void test_registry_and_factory_isolation() {
         require(f.surfaces.mounted_surfaces().size() == expected, "inactive sample surfaces remained mounted");
         require(f.active.telemetry().content_runs == 1, "page content was reconstructed during layout");
     }
-    require(f.inputs.mounted_inputs().empty() && f.buttons.mounted_buttons().empty(), "Upload mounted a fake demo");
-    require(
-        std::ranges::any_of(f.services.text().mounted_texts(),
-                            [&](const auto& text) {
-                                return f.scene.text_state(text.scene).content().bytes().find("尚未提供稳定原生组件") !=
-                                       std::string_view::npos;
-                            }),
-        "Upload omitted its honest explanation");
+    require(f.services.upload().mounted().size() == 1 && f.inputs.mounted_inputs().empty() &&
+                !f.buttons.mounted_buttons().empty(),
+            "Upload page lacks its actual native component/controls");
+    require(std::ranges::any_of(f.services.text().mounted_texts(),
+                                [&](const auto& text) {
+                                    return f.scene.text_state(text.scene).content().bytes().find("no HTTP request") !=
+                                           std::string_view::npos;
+                                }),
+            "Upload omitted its explicit synthetic transport explanation");
     f.show("ant.component.list");
     require(std::ranges::any_of(f.services.text().mounted_texts(),
                                 [&](const auto& text) {
@@ -310,7 +312,9 @@ void test_complete_catalog_and_related_routes() {
     require(f.surfaces.mounted_surfaces().size() > 4 && f.active.telemetry().content_runs == 1,
             "Token palette/scales/shadows were not mounted");
     f.show("ant.component.upload");
-    require(f.inputs.mounted_inputs().empty() && f.buttons.mounted_buttons().empty(),
+    require(f.inputs.mounted_inputs().empty() &&
+                std::ranges::all_of(f.buttons.mounted_buttons(),
+                                    [&](const auto& button) { return f.within(button.component, f.pages->root()); }),
             "Token controls survived page destruction");
 }
 

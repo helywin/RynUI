@@ -28,6 +28,8 @@
 namespace rynui::example {
 namespace {
 
+#include "generated_media_fixture.inc"
+
 struct GalleryRecord final {
     ryn::String key;
     ryn::String name;
@@ -3468,6 +3470,317 @@ void add_pagination_samples(const std::shared_ptr<GalleryState>& state) {
         })));
     }));
     state->telemetry.live_samples += 3;
+}
+
+std::shared_ptr<const ryn::EncodedImage> media_fixture_source() {
+    return ryn::EncodedImage::copy(std::as_bytes(std::span{media_fixture_png}));
+}
+
+std::shared_ptr<const ryn::NativeFile> media_fixture_file(ryn::String name = ryn::String{u8"fixture.png"}) {
+    auto file = std::make_shared<ryn::NativeFile>();
+    file->name = std::move(name);
+    file->mime_type = u8"image/png";
+    const auto source = media_fixture_source();
+    file->bytes = std::make_shared<const std::vector<std::byte>>(source->bytes().begin(), source->bytes().end());
+    file->size = file->bytes->size();
+    return file;
+}
+
+void add_image_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+
+    struct Pending final {
+        ImageCompletion done;
+        Signal<String> message{String{u8"No pending load"}};
+    };
+
+    const auto pending = std::make_shared<Pending>();
+    const ImageSource encoded{media_fixture_source()};
+    Signal<ImageSource> source{encoded};
+    Signal<bool> disabled{false};
+    Signal<bool> visible{true};
+    Signal<bool> rtl{false};
+    Signal<bool> accept{true};
+    Signal<bool> open{false};
+    Signal<ImageFit> fit{ImageFit::Contain};
+    const auto loader = std::make_shared<ImageLoader>();
+    loader->start = [pending](ImageCompletion done) {
+        pending->done = std::move(done);
+        pending->message.set(u8"Application loader pending; use delivery controls");
+        return [pending] {
+            pending->message.set(u8"Application loader cancelled");
+        };
+    };
+    ImageRef reference;
+    Text(u8"Decoded PNG fixture · real RGBA/alpha pixels · application IO boundary");
+    Flex(FlexProps{}.wrap(true).gap(dp(8)), FlexContent{[=] {
+             Button(ButtonProps{}.onClick([=] { source.set(ImageSource{std::make_shared<ImageLoader>(*loader)}); }),
+                    [] { Text(u8"Start loading"); });
+             remember_target(state, "gallery.image.load");
+             Button(ButtonProps{}.onClick([=] {
+                 if (pending->done) {
+                     const auto accepted = pending->done(decode_image(*media_fixture_source()));
+                     pending->message.set(accepted ? String{u8"Owner delivered decoded pixels"}
+                                                   : String{u8"Stale/duplicate delivery rejected"});
+                 }
+             }),
+                    [] { Text(u8"Deliver pixels"); });
+             remember_target(state, "gallery.image.deliver");
+             Button(ButtonProps{}.onClick([=] {
+                 if (pending->done) {
+                     static_cast<void>(
+                         pending->done({{}, {ImageErrorCode::loader_failure, "Synthetic application source failure"}}));
+                 }
+             }),
+                    [] { Text(u8"Deliver failure"); });
+             remember_target(state, "gallery.image.failure");
+             Button(ButtonProps{}.onClick([=] { visible.set(!visible.get()); }),
+                    [] { Text(u8"Toggle visibility / cancel"); });
+             Button(ButtonProps{}.onClick([=] { disabled.set(!disabled.get()); }), [] { Text(u8"Toggle disabled"); });
+             Button(ButtonProps{}.onClick(
+                        [=] { fit.set(fit.get() == ImageFit::Contain ? ImageFit::Cover : ImageFit::Contain); }),
+                    [] { Text(u8"Contain / cover"); });
+             Button(ButtonProps{}.onClick([=] { accept.set(!accept.get()); }),
+                    [] { Text(u8"Accept / refuse preview request"); });
+             Button(ButtonProps{}.onClick([=] { static_cast<void>(reference.preview()); }),
+                    [] { Text(u8"Open preview"); });
+             remember_target(state, "gallery.image.preview");
+         }});
+    Text(TextProps{}.content(pending->message));
+    Image(ImageProps{}
+              .source(source)
+              .alt(u8"Three by two color/alpha fixture")
+              .visible(visible)
+              .disabled(disabled)
+              .fit(fit)
+              .open(open)
+              .ref(reference)
+              .onOpenChange([=](bool value) {
+                  if (accept.get()) {
+                      open.set(value);
+                  }
+              })
+              .onLoad([pending] { pending->message.set(u8"Image onLoad: decoded pixels are ready"); })
+              .onError([pending](const ImageError& error) {
+                  pending->message.set(String::from_utf8(error.message).value());
+              })
+              .layout(LayoutStyle{}.width(dp(240)).height(dp(160))),
+          {.placeholder = ImagePlaceholder{[] { Text(u8"Native placeholder: waiting for application source"); }},
+           .error = ImageErrorContent{[] { Text(u8"Native error: use Deliver pixels or fallback sample"); }}});
+    remember_target(state, "gallery.image.primary");
+    const std::array<std::byte, 4> malformed{};
+    Text(u8"Malformed source → real decoded fallback");
+    Image(ImageProps{}
+              .source(ImageSource{EncodedImage::copy(malformed)})
+              .fallback(encoded)
+              .alt(u8"Fallback pixels")
+              .layout(LayoutStyle{}.width(dp(120)).height(dp(80))));
+    Signal<std::vector<ImagePreviewItem>> items{{{String{u8"alpha"}, encoded, String{u8"Alpha fixture"}},
+                                                 {String{u8"second"}, encoded, String{u8"Second fixture"}}}};
+    Signal<std::size_t> current{0};
+    Signal<bool> grouped{false};
+    auto actions = std::make_shared<ImageActionsRenderer>();
+    actions->render = [](const ImagePreviewActions& api) {
+        Input(InputProps{}.defaultValue(u8"Retained toolbar draft"));
+        Flex(FlexProps{}.wrap(true).gap(dp(4)), FlexContent{[api] {
+                 for (const auto action :
+                      {ImageAction::Previous, ImageAction::Next, ImageAction::ZoomIn, ImageAction::ZoomOut,
+                       ImageAction::RotateRight, ImageAction::FlipX, ImageAction::Reset, ImageAction::Close}) {
+                     Button(ButtonProps{}.onClick([api, action] { api.invoke(action); }), [action] {
+                         const auto label = action == ImageAction::Previous      ? u8"Previous"
+                                            : action == ImageAction::Next        ? u8"Next"
+                                            : action == ImageAction::ZoomIn      ? u8"Zoom in"
+                                            : action == ImageAction::ZoomOut     ? u8"Zoom out"
+                                            : action == ImageAction::RotateRight ? u8"Rotate"
+                                            : action == ImageAction::FlipX       ? u8"Flip"
+                                            : action == ImageAction::Reset       ? u8"Reset"
+                                                                                 : u8"Close";
+                         Text(TextProps{}.content(String::from_utf8(std::u8string_view{label}).value()));
+                     });
+                 }
+             }});
+    };
+    Button(ButtonProps{}.onClick([=] {
+        auto value = items.get();
+        std::reverse(value.begin(), value.end());
+        items.set(std::move(value));
+    }),
+           [] { Text(u8"Reorder stable keys"); });
+    remember_target(state, "gallery.image.reorder");
+    Button(ButtonProps{}.onClick([=] { rtl.set(!rtl.get()); }), [] { Text(u8"Toggle RTL"); });
+    PreviewGroup(PreviewGroupProps{}
+                     .items(items)
+                     .current(current)
+                     .open(grouped)
+                     .rtl(rtl)
+                     .actionsRender(std::shared_ptr<const ImageActionsRenderer>{actions})
+                     .onChange([=](std::size_t value, std::size_t) { current.set(value); })
+                     .onOpenChange([=](bool value, std::size_t) { grouped.set(value); }));
+    remember_target(state, "gallery.image.group");
+    state->telemetry.live_samples += 3;
+}
+
+void add_upload_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+
+    struct Demo final {
+        struct Work final {
+            UploadRequest request;
+            bool active{true};
+            float percent{};
+        };
+
+        std::vector<Work> jobs;
+        std::vector<UploadRemoveCompletion> removals;
+        Signal<String> feedback{String{u8"Synthetic application transport: no HTTP request is performed"}};
+    };
+
+    const auto demo = std::make_shared<Demo>();
+    Signal<UploadFiles> files{UploadFiles{}};
+    Signal<UploadListType> list{UploadListType::Picture};
+    Signal<bool> disabled{false};
+    Signal<bool> read_only{false};
+    Signal<bool> rtl{false};
+    Signal<bool> accept{true};
+    Signal<std::shared_ptr<const UploadItemRenderer>> renderer{std::shared_ptr<const UploadItemRenderer>{}};
+    const auto rich = std::make_shared<UploadItemRenderer>();
+    rich->render = [](Signal<UploadFile> file, const UploadItemActions& actions) {
+        Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[file, actions] {
+                 Text(TextProps{}.content(bind([file] { return file.get().name; })));
+                 Input(InputProps{}.defaultValue(u8"Retained file item draft"));
+                 Progress(ProgressProps{}.percent(bind([file] { return file.get().percent; })));
+                 Button(ButtonProps{}.onClick(actions.preview), [] { Text(u8"Preview"); });
+                 Button(ButtonProps{}.onClick(actions.remove), [] { Text(u8"Remove"); });
+                 Button(ButtonProps{}.onClick(actions.cancel), [] { Text(u8"Abort"); });
+             }});
+    };
+    UploadRef reference;
+    Text(u8"Synthetic app transport · manual progress/success/failure · actual decoded thumbnail fixture");
+    Flex(FlexProps{}.wrap(true).gap(dp(8)), FlexContent{[=] {
+             Button(ButtonProps{}.onClick([=] { static_cast<void>(reference.select({media_fixture_file()})); }),
+                    [] { Text(u8"Select repository fixture"); });
+             remember_target(state, "gallery.upload.fixture");
+             Button(ButtonProps{}.onClick(
+                        [=] { static_cast<void>(reference.select({media_fixture_file(u8"ignored.png")})); }),
+                    [] { Text(u8"Select ignored fixture"); });
+             remember_target(state, "gallery.upload.ignore");
+             Button(ButtonProps{}.onClick([=] {
+                 for (auto& job : demo->jobs) {
+                     if (job.active) {
+                         job.percent = std::min(99.F, job.percent + 20);
+                         static_cast<void>(job.request.progress(job.percent));
+                     }
+                 }
+             }),
+                    [] { Text(u8"Deliver progress +20%"); });
+             remember_target(state, "gallery.upload.progress");
+             Button(ButtonProps{}.onClick([=] {
+                 for (auto& job : demo->jobs) {
+                     if (job.active) {
+                         job.active = false;
+                         static_cast<void>(job.request.success({String{u8"Synthetic fixture result"}, {}}));
+                     }
+                 }
+             }),
+                    [] { Text(u8"Deliver synthetic success"); });
+             remember_target(state, "gallery.upload.success");
+             Button(ButtonProps{}.onClick([=] {
+                 for (auto& job : demo->jobs) {
+                     if (job.active) {
+                         job.active = false;
+                         static_cast<void>(
+                             job.request.failure(String{u8"Synthetic transport failure; retry available"}));
+                     }
+                 }
+             }),
+                    [] { Text(u8"Deliver failure"); });
+             remember_target(state, "gallery.upload.failure");
+             Button(ButtonProps{}.onClick([=] {
+                 const auto callbacks = std::move(demo->removals);
+                 demo->removals.clear();
+                 for (const auto& done : callbacks) {
+                     static_cast<void>(done(true));
+                 }
+             }),
+                    [] { Text(u8"Approve pending removal"); });
+             remember_target(state, "gallery.upload.remove");
+             Button(ButtonProps{}.onClick(
+                        [=] { list.set(static_cast<UploadListType>((static_cast<int>(list.get()) + 1) % 4)); }),
+                    [] { Text(u8"Text / picture / card / circle"); });
+             remember_target(state, "gallery.upload.list");
+             Button(ButtonProps{}.onClick([=] { renderer.set(renderer.get() ? nullptr : rich); }),
+                    [] { Text(u8"Custom retained file draft"); });
+             remember_target(state, "gallery.upload.custom");
+             Button(ButtonProps{}.onClick([=] { read_only.set(!read_only.get()); }),
+                    [] { Text(u8"Toggle read only"); });
+             Button(ButtonProps{}.onClick([=] { disabled.set(!disabled.get()); }),
+                    [] { Text(u8"Toggle disabled / cancel"); });
+             Button(ButtonProps{}.onClick([=] { accept.set(!accept.get()); }),
+                    [] { Text(u8"Accept / refuse controlled list"); });
+             Button(ButtonProps{}.onClick([=] { rtl.set(!rtl.get()); }), [] { Text(u8"Toggle RTL"); });
+         }});
+    Text(TextProps{}.content(demo->feedback));
+    Upload(UploadProps{}
+               .fileList(files)
+               .listType(list)
+               .type(UploadType::Drag)
+               .accept(u8".png,.jpg,.jpeg,.bmp")
+               .multiple()
+               .pastable()
+               .maxCount(3)
+               .disabled(disabled)
+               .readOnly(read_only)
+               .rtl(rtl)
+               .itemRender(renderer)
+               .ref(reference)
+               .beforeUpload([demo](const UploadFile& file, const UploadFiles&) {
+                   if (file.name == String{u8"ignored.png"}) {
+                       demo->feedback.set(u8"Actual beforeUpload decision: Ignore");
+                   }
+                   return UploadBeforeResult{file.name == String{u8"ignored.png"} ? UploadBeforeDecision::Ignore
+                                                                                  : UploadBeforeDecision::Upload,
+                                             {}};
+               })
+               .customRequest([demo](const UploadRequest& request) {
+                   const auto index = demo->jobs.size();
+                   demo->jobs.push_back({request, true});
+                   demo->feedback.set(u8"Synthetic request pending; deliver manually or cancel");
+                   return [weak = std::weak_ptr<Demo>(demo), index] {
+                       if (const auto demo = weak.lock(); demo && index < demo->jobs.size()) {
+                           demo->jobs[index].active = false;
+                           demo->feedback.set(u8"Synthetic request cancelled");
+                       }
+                   };
+               })
+               .onChange([=](const UploadChange& change) {
+                   if (accept.get()) {
+                       files.set(change.file_list);
+                   }
+                   const char* action = change.reason == UploadChangeReason::Selection  ? "Selected"
+                                        : change.reason == UploadChangeReason::Start    ? "Uploading"
+                                        : change.reason == UploadChangeReason::Progress ? "Progress"
+                                        : change.reason == UploadChangeReason::Success  ? "Completed"
+                                        : change.reason == UploadChangeReason::Failure  ? "Failed"
+                                        : change.reason == UploadChangeReason::Remove   ? "Removed"
+                                                                                        : "Cancelled";
+                   demo->feedback.set(String::from_utf8(std::string(action) + ": " +
+                                                        std::string(change.file.name.bytes()) + " (" +
+                                                        std::to_string(change.file_list.size()) + " files)")
+                                          .value());
+               })
+               .onRemove([demo](const UploadFile&, UploadRemoveCompletion done) {
+                   demo->removals.push_back(std::move(done));
+                   demo->feedback.set(u8"Removal pending application approval");
+                   return UploadCancel{};
+               })
+               .onDownload([demo](const UploadFile& file) {
+                   demo->feedback.set(
+                       String::from_utf8("Application download callback: " + std::string(file.name.bytes())).value());
+               })
+               .onSelectionError([demo](FileServiceError, String message) { demo->feedback.set(std::move(message)); })
+               .layout(LayoutStyle{}.width(dp(640))));
+    remember_target(state, "gallery.upload.primary");
+    state->telemetry.live_samples += 1;
 }
 
 void add_transfer_samples(const std::shared_ptr<GalleryState>& state) {
@@ -8875,6 +9188,20 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_steps_samples",
       "include/ryn/steps.hpp"},
      add_steps_samples},
+    {{"gallery.sample.image.native",
+      "ant.component.image",
+      {},
+      "真实像素、异步源与原生预览",
+      "add_image_samples",
+      "include/ryn/image.hpp"},
+     add_image_samples},
+    {{"gallery.sample.upload.native",
+      "ant.component.upload",
+      {},
+      "原生文件选择与合成应用传输",
+      "add_upload_samples",
+      "include/ryn/upload.hpp"},
+     add_upload_samples},
     {{"gallery.sample.transfer.lists",
       "ant.component.transfer",
       {},

@@ -324,3 +324,12 @@ target_compile_definitions(rynui_picker_gallery_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.date_picker_completion_gallery COMMAND rynui_picker_gallery_tests date)
 add_test(NAME rynui.time_picker_completion_gallery COMMAND rynui_picker_gallery_tests time)
+
+add_executable(rynui_media_gallery_tests "${PROJECT_SOURCE_DIR}/tests/media_gallery_tests.cpp")
+rynui_configure_cpp_target(rynui_media_gallery_tests)
+target_link_libraries(rynui_media_gallery_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_media_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.image_gallery COMMAND rynui_media_gallery_tests image)
+add_test(NAME rynui.upload_gallery COMMAND rynui_media_gallery_tests upload)

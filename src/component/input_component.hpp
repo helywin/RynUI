@@ -98,6 +98,7 @@ public:
     [[nodiscard]] input::TextEditResult dispatch(const input::CompositionChanged&);
     [[nodiscard]] input::TextEditResult dispatch(const input::CandidatesChanged&);
     [[nodiscard]] bool dispatch(const input::ScrollInputEvent&);
+    [[nodiscard]] bool dispatch(const input::FileDropEvent&);
     void submit(runtime::ComponentId);
     [[nodiscard]] input::TextEditResult replace_range(runtime::ComponentId, input::TextSelection, StringView);
     // Refresh caret/scroll geometry before a caret-anchored compound window layer is positioned.

@@ -337,8 +337,32 @@ public:
     BindingSceneApi(SdlGpuBinding& binding, FakePlatformApi& api) : binding_(&binding), api_(&api) {}
 
     ryn::detail::SceneBackendCapabilities capabilities() const noexcept override {
-        return ryn::detail::baseline_scene_capabilities();
+        auto result = ryn::detail::baseline_scene_capabilities();
+        result.images = false;
+        result.rgba8_sampling = false;
+        result.image_abi_version = 0;
+        return result;
     }
+
+    void* create_image_texture(std::uint32_t, std::uint32_t) override {
+        throw std::logic_error("Binding lifecycle fixture excludes Image");
+    }
+
+    void* create_image_buffer(std::size_t) override {
+        throw std::logic_error("Binding lifecycle fixture excludes Image");
+    }
+
+    bool upload_image_texture(void*, const ryn::detail::ImageTextureUpload&) override {
+        throw std::logic_error("Binding lifecycle fixture excludes Image");
+    }
+
+    bool upload_image_buffer(void*, std::size_t, std::span<const std::byte>) override {
+        throw std::logic_error("Binding lifecycle fixture excludes Image");
+    }
+
+    void release_image_texture(void*) noexcept override {}
+
+    void release_image_buffer(void*) noexcept override {}
 
     std::uint64_t device_epoch() const noexcept override {
         return binding_->epoch();

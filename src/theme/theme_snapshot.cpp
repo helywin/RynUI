@@ -8,6 +8,7 @@
 #include "theme/anchor_theme.hpp"
 #include "theme/cascader_theme.hpp"
 #include "theme/transfer_theme.hpp"
+#include "theme/media_theme.hpp"
 #include "theme/steps_theme.hpp"
 #include "theme/skeleton_theme.hpp"
 #include "theme/notice_theme.hpp"
@@ -4232,17 +4233,18 @@ ThemeSnapshot::ThemeSnapshot(
     std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
     std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
     std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
-    std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions)
+    std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
+    ImageThemeToken image, UploadThemeToken upload)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), float_button_(std::move(float_button)),
       divider_(std::move(divider)), slider_(std::move(slider)), tooltip_(std::move(tooltip)),
       select_(std::move(select)), card_(std::move(card)), tabs_(std::move(tabs)), segmented_(std::move(segmented)),
       date_picker_(std::move(date_picker)), form_(std::move(form)), breadcrumb_(std::move(breadcrumb)),
-      anchor_(std::move(anchor)), transfer_(std::move(transfer)), color_picker_(std::move(color_picker)),
-      cascader_(std::move(cascader)), steps_(std::move(steps)), time_picker_(std::move(time_picker)),
-      skeleton_(std::move(skeleton)), timeline_(std::move(timeline)), avatar_(std::move(avatar)),
-      rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
+      anchor_(std::move(anchor)), transfer_(std::move(transfer)), image_(std::move(image)), upload_(std::move(upload)),
+      color_picker_(std::move(color_picker)), cascader_(std::move(cascader)), steps_(std::move(steps)),
+      time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), timeline_(std::move(timeline)),
+      avatar_(std::move(avatar)), rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
       auto_complete_(std::move(auto_complete)), tree_select_(std::move(tree_select)), layout_(std::move(layout)),
       splitter_(std::move(splitter)), mentions_(std::move(mentions)), descriptions_(std::move(descriptions)),
       popover_(std::move(popover)), message_(std::move(message)), notification_(std::move(notification)),
@@ -4551,6 +4553,48 @@ ThemeSnapshot::ThemeSnapshot(
     metric(transfer_.effects.focus_offset);
     hash_integer(identity_, transfer_.order);
     status_json << "],\"order\":" << transfer_.order << '}';
+    status_json << ",\"image\":{\"colors\":[";
+    first = true;
+    for (auto v : image_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : image_.metrics.values()) {
+        metric(v);
+    }
+    status_json << "],\"typography\":[";
+    first = true;
+    metric(image_.typography.font_size);
+    metric(image_.typography.line_height);
+    hash_integer(identity_, image_.typography.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(image_.typography.font_family) << ",\"effects\":[";
+    first = true;
+    metric(image_.effects.focus_width);
+    metric(image_.effects.focus_offset);
+    hash_integer(identity_, image_.order);
+    status_json << "],\"order\":" << image_.order << '}';
+    status_json << ",\"upload\":{\"colors\":[";
+    first = true;
+    for (auto v : upload_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : upload_.metrics.values()) {
+        metric(v);
+    }
+    status_json << "],\"typography\":[";
+    first = true;
+    metric(upload_.typography.font_size);
+    metric(upload_.typography.line_height);
+    hash_integer(identity_, upload_.typography.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(upload_.typography.font_family) << ",\"effects\":[";
+    first = true;
+    metric(upload_.effects.focus_width);
+    metric(upload_.effects.focus_offset);
+    hash_integer(identity_, upload_.order);
+    status_json << "],\"order\":" << upload_.order << '}';
     status_json << ",\"anchor\":{\"colors\":[";
     first = true;
     for (auto v : anchor_.colors.values()) {
@@ -5174,16 +5218,17 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.table_ == right.table_ && left.empty_ == right.empty_ && left.result_ == right.result_ &&
            left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
            left.date_picker_ == right.date_picker_ && left.form_ == right.form_ && left.anchor_ == right.anchor_ &&
-           left.cascader_ == right.cascader_ && left.transfer_ == right.transfer_ &&
-           left.color_picker_ == right.color_picker_ && left.breadcrumb_ == right.breadcrumb_ &&
-           left.steps_ == right.steps_ && *left.time_picker_ == *right.time_picker_ &&
-           *left.skeleton_ == *right.skeleton_ && left.descriptions_ == right.descriptions_ &&
-           *left.popover_ == *right.popover_ && *left.message_ == *right.message_ &&
-           *left.notification_ == *right.notification_ && *left.timeline_ == *right.timeline_ &&
-           *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ && *left.statistic_ == *right.statistic_ &&
-           *left.tree_ == *right.tree_ && *left.auto_complete_ == *right.auto_complete_ &&
-           *left.tree_select_ == *right.tree_select_ && *left.layout_ == *right.layout_ &&
-           *left.splitter_ == *right.splitter_ && *left.mentions_ == *right.mentions_;
+           left.image_ == right.image_ && left.upload_ == right.upload_ && left.cascader_ == right.cascader_ &&
+           left.transfer_ == right.transfer_ && left.color_picker_ == right.color_picker_ &&
+           left.breadcrumb_ == right.breadcrumb_ && left.steps_ == right.steps_ &&
+           *left.time_picker_ == *right.time_picker_ && *left.skeleton_ == *right.skeleton_ &&
+           left.descriptions_ == right.descriptions_ && *left.popover_ == *right.popover_ &&
+           *left.message_ == *right.message_ && *left.notification_ == *right.notification_ &&
+           *left.timeline_ == *right.timeline_ && *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ &&
+           *left.statistic_ == *right.statistic_ && *left.tree_ == *right.tree_ &&
+           *left.auto_complete_ == *right.auto_complete_ && *left.tree_select_ == *right.tree_select_ &&
+           *left.layout_ == *right.layout_ && *left.splitter_ == *right.splitter_ &&
+           *left.mentions_ == *right.mentions_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -5960,6 +6005,44 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_transfer_override(token, config.transfer.tokens);
         return token;
     }();
+    auto image = [&] {
+        ImageThemeToken token;
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.image.algorithm;
+        if (inherit) {
+            token = parent->image();
+        } else if (config.image.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.image.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            token = detail::derive_image(component_seed, component_map,
+                                         derive_alias(component_seed, component_map, algorithms));
+        } else {
+            token = detail::derive_image(seed, map, alias);
+        }
+        detail::apply_image_override(token, config.image.tokens);
+        return token;
+    }();
+    auto upload = [&] {
+        UploadThemeToken token;
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.upload.algorithm;
+        if (inherit) {
+            token = parent->upload();
+        } else if (config.upload.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.upload.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            token = detail::derive_upload(component_seed, component_map,
+                                          derive_alias(component_seed, component_map, algorithms));
+        } else {
+            token = detail::derive_upload(seed, map, alias);
+        }
+        detail::apply_upload_override(token, config.upload.tokens);
+        return token;
+    }();
     auto color_picker = [&] {
         auto component_seed = seed;
         if (config.color_picker.algorithm) {
@@ -6691,7 +6774,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         std::move(transfer), std::move(color_picker), std::move(cascader), std::move(steps), std::move(time_picker),
         std::move(skeleton), std::move(descriptions), std::move(popover), std::move(message), std::move(notification),
         std::move(timeline), std::move(avatar), std::move(rate), std::move(statistic), std::move(tree),
-        std::move(auto_complete), std::move(tree_select), std::move(layout), std::move(splitter), std::move(mentions));
+        std::move(auto_complete), std::move(tree_select), std::move(layout), std::move(splitter), std::move(mentions),
+        std::move(image), std::move(upload));
 }
 
 } // namespace ryn

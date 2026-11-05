@@ -1,6 +1,8 @@
 #pragma once
+#include <ryn/file_service.hpp>
 
 #include "animation/runtime.hpp"
+#include "graphics/image_scene.hpp"
 #include "animation/motion_policy.hpp"
 #include "component/retained_surface_service.hpp"
 #include "component/text_component.hpp"
@@ -49,6 +51,8 @@ class FormComponentHost;
 class DescriptionsComponentHost;
 class TimelineComponentHost;
 class AvatarComponentHost;
+class ImageComponentHost;
+class UploadComponentHost;
 class RateComponentHost;
 class StatisticComponentHost;
 class TreeComponentHost;
@@ -91,6 +95,10 @@ public:
 
     virtual void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                                   std::optional<input::InteractionId>) {}
+
+    virtual bool on_file_drop(const input::FileDropEvent&) {
+        return false;
+    }
 
     virtual bool on_scroll_input(const input::ScrollInputEvent&) {
         return false;
@@ -159,6 +167,21 @@ public:
     void dispose() noexcept;
     void set_window_active(bool active);
     bool dispatch_scroll(const input::ScrollInputEvent& event);
+    bool dispatch_file_drop(const input::FileDropEvent& event);
+
+    void bind_file_services(NativeFileServices* value, std::uint32_t window_id) noexcept {
+        file_services_ = value;
+        file_window_id_ = window_id;
+    }
+
+    [[nodiscard]] NativeFileServices* file_services() const noexcept {
+        return file_services_;
+    }
+
+    [[nodiscard]] std::uint32_t file_window_id() const noexcept {
+        return file_window_id_;
+    }
+
     bool set_input_boundary(std::optional<runtime::ComponentId> root);
     bool set_input_blocked(runtime::ComponentId root, bool blocked);
     void request_frame() noexcept;
@@ -320,6 +343,18 @@ public:
 
     [[nodiscard]] TimelineComponentHost& timeline() noexcept {
         return *timeline_;
+    }
+
+    [[nodiscard]] UploadComponentHost& upload() noexcept {
+        return *upload_;
+    }
+
+    [[nodiscard]] ImageComponentHost& image() noexcept {
+        return *image_;
+    }
+
+    [[nodiscard]] graphics::ImageStore& images() noexcept {
+        return images_;
     }
 
     [[nodiscard]] AvatarComponentHost& avatar() noexcept {
@@ -529,6 +564,22 @@ private:
     std::unique_ptr<DescriptionsComponentHost> descriptions_;
     std::unique_ptr<TimelineComponentHost> timeline_;
     std::unique_ptr<AvatarComponentHost> avatar_;
+    graphics::ImageStore images_;
+    std::unique_ptr<ImageComponentHost> image_;
+    std::unique_ptr<UploadComponentHost> upload_;
+    NativeFileServices* file_services_{};
+    std::uint32_t file_window_id_{};
+
+    struct InputLayoutContext final {
+        runtime::Size viewport;
+        runtime::Rect clip;
+        runtime::Point origin;
+        float gap{};
+        bool unbounded{};
+    };
+
+    std::optional<InputLayoutContext> input_layout_;
+    bool synchronizing_layout_{};
     std::unique_ptr<RateComponentHost> rate_;
     std::unique_ptr<StatisticComponentHost> statistic_;
     std::unique_ptr<TreeComponentHost> tree_;

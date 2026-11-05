@@ -47,6 +47,30 @@ public:
         recording.cancel_upload_batch();
     }
 
+    void* create_image_texture(std::uint32_t w, std::uint32_t h) override {
+        return recording.create_image_texture(w, h);
+    }
+
+    void* create_image_buffer(std::size_t n) override {
+        return recording.create_image_buffer(n);
+    }
+
+    bool upload_image_texture(void* h, const ImageTextureUpload& u) override {
+        return recording.upload_image_texture(h, u);
+    }
+
+    bool upload_image_buffer(void* h, std::size_t n, std::span<const std::byte> b) override {
+        return recording.upload_image_buffer(h, n, b);
+    }
+
+    void release_image_texture(void* h) noexcept override {
+        recording.release_image_texture(h);
+    }
+
+    void release_image_buffer(void* h) noexcept override {
+        recording.release_image_buffer(h);
+    }
+
     void* create_vertex_buffer(std::size_t size) override {
         return recording.create_vertex_buffer(size);
     }

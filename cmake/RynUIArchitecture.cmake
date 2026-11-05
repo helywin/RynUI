@@ -4,7 +4,7 @@ include_guard(GLOBAL)
 # directory makes backend headers reachable to the compiler.
 function(rynui_verify_core_includes source_directory)
     foreach(area IN ITEMS animation base component font foundation graphics input interaction layout
-            motion reactive runtime text theme renderer/common)
+            motion reactive runtime text theme image renderer/common)
         file(GLOB_RECURSE sources CONFIGURE_DEPENDS
             "${source_directory}/${area}/*.hpp" "${source_directory}/${area}/*.cpp")
         foreach(source IN LISTS sources)

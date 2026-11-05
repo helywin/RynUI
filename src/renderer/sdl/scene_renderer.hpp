@@ -71,6 +71,13 @@ public:
     bool upload(detail::QuadGpuBufferHandle buffer, std::size_t offset, std::span<const std::byte> bytes) override;
     [[nodiscard]] const char* last_error() const noexcept override;
 
+    void* create_image_texture(std::uint32_t width, std::uint32_t height) override;
+    void* create_image_buffer(std::size_t size) override;
+    bool upload_image_texture(void*, const ImageTextureUpload&) override;
+    bool upload_image_buffer(void*, std::size_t, std::span<const std::byte>) override;
+    void release_image_texture(void*) noexcept override;
+    void release_image_buffer(void*) noexcept override;
+    void draw_image(std::uint32_t index, std::uint32_t generation) override;
     GlyphGpuSamplerHandle create_glyph_sampler() override;
     GlyphGpuTextureHandle create_glyph_texture(std::uint32_t width, std::uint32_t height) override;
     GlyphGpuBufferHandle create_glyph_buffer(std::size_t size) override;
@@ -113,7 +120,7 @@ private:
     bool flush_buffer_upload_chunk();
     bool flush_texture_upload_chunk();
     bool upload_buffer(void* buffer, std::size_t offset, std::span<const std::byte> bytes, const char* label);
-    enum class ResourceKind { quad, glyph, effect, texture, sampler };
+    enum class ResourceKind { quad, glyph, effect, texture, sampler, image_texture, image_buffer };
 
     struct Resource final {
         void* native{};
@@ -137,6 +144,8 @@ private:
     SceneBackendCapabilities capabilities_;
     void* quad_pipeline_{nullptr};
     void* glyph_pipeline_{nullptr};
+    void* image_pipeline_{nullptr};
+    void* image_sampler_{nullptr};
     void* effect_pipeline_{nullptr};
     void* quad_buffer_{nullptr};
     const GlyphGpuResources* glyph_resources_{nullptr};

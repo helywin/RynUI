@@ -5,6 +5,9 @@
 #include <ryn/descriptions.hpp>
 #include <ryn/timeline.hpp>
 #include <ryn/avatar.hpp>
+#include <ryn/image.hpp>
+#include <ryn/upload.hpp>
+#include <ryn/form_upload.hpp>
 #include <ryn/rate.hpp>
 #include <ryn/statistic.hpp>
 #include <ryn/tree.hpp>

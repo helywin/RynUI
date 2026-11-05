@@ -13,6 +13,49 @@ target_compile_definitions(rynui_form_integration_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.form_integration COMMAND rynui_form_integration_tests)
+add_library(rynui_upload_public_api_compile OBJECT upload_public_api_compile.cpp)
+rynui_configure_cpp_target(rynui_upload_public_api_compile)
+target_link_libraries(rynui_upload_public_api_compile PRIVATE rynui_components)
+add_executable(rynui_upload_component_tests upload_component_tests.cpp)
+rynui_configure_cpp_target(rynui_upload_component_tests)
+target_link_libraries(rynui_upload_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_upload_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+    "RYNUI_IMAGE_FIXTURES=\"${PROJECT_SOURCE_DIR}/tests/fixtures/images\"")
+foreach(upload_case IN ITEMS basic transport controlled before dialog drop paste rich lifecycle failures theme idle form form_scope validation)
+    add_test(NAME rynui.upload_component_${upload_case} COMMAND rynui_upload_component_tests ${upload_case})
+endforeach()
+
+if(RYNUI_HAS_SDL_HOST)
+    add_executable(rynui_file_service_tests file_service_tests.cpp)
+    rynui_configure_cpp_target(rynui_file_service_tests)
+    target_link_libraries(rynui_file_service_tests PRIVATE rynui_platform_sdl SDL3::SDL3)
+    target_compile_definitions(rynui_file_service_tests PRIVATE "RYNUI_IMAGE_FIXTURES=\"${PROJECT_SOURCE_DIR}/tests/fixtures/images\"")
+    add_test(NAME rynui.file_service_sdk COMMAND rynui_file_service_tests)
+endif()
+
+add_executable(rynui_upload_model_tests upload_model_tests.cpp)
+rynui_configure_cpp_target(rynui_upload_model_tests)
+target_link_libraries(rynui_upload_model_tests PRIVATE rynui_upload_model)
+foreach(upload_model_case IN ITEMS accept multiple before async_before transport controlled remove cancel reentrant validation)
+    add_test(NAME rynui.upload_model_${upload_model_case} COMMAND rynui_upload_model_tests ${upload_model_case})
+endforeach()
+
+add_library(rynui_image_public_api_compile OBJECT image_public_api_compile.cpp)
+rynui_configure_cpp_target(rynui_image_public_api_compile)
+target_link_libraries(rynui_image_public_api_compile PRIVATE rynui_components)
+
+add_executable(rynui_image_component_tests image_component_tests.cpp)
+rynui_configure_cpp_target(rynui_image_component_tests)
+target_link_libraries(rynui_image_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_image_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+    "RYNUI_IMAGE_FIXTURES=\"${PROJECT_SOURCE_DIR}/tests/fixtures/images\"")
+foreach(image_component_case IN ITEMS basic async fallback controlled group gestures failures idle model preview_source theme controlled_group rich lifetime boundaries circle ratio controller stack)
+    add_test(NAME rynui.image_component_${image_component_case} COMMAND rynui_image_component_tests ${image_component_case})
+endforeach()
 
 add_executable(rynui_transfer_theme_tests transfer_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_transfer_theme_tests)
@@ -883,6 +926,17 @@ foreach(effect_dirty_case IN ITEMS material geometry)
     add_test(NAME rynui.effect_dirty_retry_${effect_dirty_case}
         COMMAND rynui_effect_dirty_retry_tests ${effect_dirty_case})
 endforeach()
+
+if(TARGET rynui_renderer_recording)
+add_executable(rynui_image_resource_tests image_resource_tests.cpp)
+rynui_configure_cpp_target(rynui_image_resource_tests)
+target_link_libraries(rynui_image_resource_tests PRIVATE rynui_image rynui_renderer_common rynui_renderer_recording)
+target_compile_definitions(rynui_image_resource_tests PRIVATE "RYNUI_IMAGE_FIXTURES=\"${PROJECT_SOURCE_DIR}/tests/fixtures/images\"")
+foreach(image_case IN ITEMS decode validate pixels transaction epoch capability idle)
+    add_test(NAME rynui.image_resource_${image_case} COMMAND rynui_image_resource_tests ${image_case})
+endforeach()
+
+endif()
 
 if(TARGET rynui_renderer_recording)
     add_executable(rynui_effect_range_benchmark effect_range_benchmark.cpp)
@@ -2857,4 +2911,11 @@ if(TARGET shadercross)
             "-DTEST_CJK_FONT=${RYNUI_VALIDATION_CJK_FONT_FILE}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_shadercross_override.cmake"
     )
+endif()
+
+if(RYNUI_HAS_SDL_GPU)
+    add_executable(rynui_image_gpu_tests image_gpu_tests.cpp)
+    rynui_configure_cpp_target(rynui_image_gpu_tests)
+    target_link_libraries(rynui_image_gpu_tests PRIVATE rynui_renderer_sdl rynui_renderer_common rynui_image SDL3::SDL3)
+    rynui_embed_target_shaders(rynui_image_gpu_tests)
 endif()

@@ -133,7 +133,15 @@ void test_pages_and_geometry() {
     f.show("ant.component.upload");
     require(!f.services.components().contains(old), "retired page remains live");
     require(f.host.sample_runs("gallery.sample.button.basics") == 0, "unvisited sample is active");
-    require(!f.host.target("gallery.page.examples").valid(), "planned page has a fake live sample");
+    require(f.host.target("gallery.page.examples").valid() && f.host.sample_runs("gallery.sample.upload.native") == 1,
+            "Upload page omitted its real registered factory");
+    for (const auto& candidate : f.host.model().pages()) {
+        if (candidate.entry->support_status == GallerySupportStatus::planned) {
+            f.show(candidate.entry->identity);
+            require(!f.host.target("gallery.page.examples").valid(), "planned page has a fake live sample");
+            break;
+        }
+    }
 }
 
 void test_wheel_and_routes() {

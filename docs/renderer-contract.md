@@ -64,3 +64,11 @@ SceneBackend 必须显式提供 SceneBackendCapabilities：logical scene v3、pa
 - backend：显式声明必需能力/版本与输入限制，实现源数据复制、opaque handle 的 kind/owner/epoch、begin/commit/cancel、ordered draws 与 submitted/deferred/failed；保持成功 upload 后 caller memory 可立即释放。
 - 恢复：从同一 CPU scene/atlas 重建，保留组件/editor 身份；旧代际附件不可提交，不能通过新 device 释放旧 handle。
 - 验证：以 Recording 检查真实 bytes、范围、顺序、失败与 epoch；每个真实 GPU/OS 另留 shader、字体、输入/DPI、窗口与生命周期证据。第二真实 backend、新平台宿主及自动 device-loss 等在各自 change 中实现。
+
+## Image 扩展（107）
+
+Image 保持 logical scene v3 和既有 packed ABI v2 三类记录不变；新增 `SceneDrawKind::image` 与独立 `image_packed_abi_version=2`。Core 的 ImageStore 以 index/generation 保留不可变 ImagePixels、logical bounds/clip/pivot/顺时针旋转、flip 与 opacity，不含 renderer handle。Image draw 的 first_instance 为 slot index、instance_count 固定 1、atlas_page 字段在此 kind 表示 slot generation；不得跨图片合并。ImageGpuInstance 独立为 112 bytes、16-byte alignment，七个 float4 offset 为 0/16/32/48/64/80/96，分别是 NDC rect、UV、clip、tint、translation/opacity、rotation basis、可选圆形裁剪的 NDC rectangle；圆形覆盖率在独立 shader 中计算，祖先矩形 clip 保持独立。几何投影与 Glyph 共用数学合同，采样是独立 RGBA8 shader，绝不经过 R8 atlas。
+
+图像像素为左上原点 RGBA8 straight alpha；RGB 保留输入的编码值，无 ICC/gamma 转换，使用已有 source-alpha blending。PNG 的 16-bit 输入归一至 8-bit；JPEG EXIF 方向不自动应用，应用可先规范化元数据/像素。透明像素的 RGB 保留，解码器不预乘。ImagePixels 校验正尺寸、行宽/stride、实际最后一行、溢出与配置上限，拥有源 bytes；decoder 不读取路径或 URL。默认上限为边长 16384、解码 256 MiB、编码 64 MiB。
+
+SceneCpuData 在旧五个 aggregate 成员后增加可选 ImageStore。SceneResources 共同 preflight 在 begin 前校验 Image ABI=2、images/rgba8_sampling、buffer bytes 与 texture extent；无 Image 数据的旧调用保持有效。ImageGpuResources 在共同事务内上传独立 texture/buffer，纹理源只携带 bytes/offset/row stride/width/height。SDL backend 逐行复制、清零 padding（row 256 bytes、batch offset 512），pixels_per_row 按 RGBA pixels 计算；Recording 保留紧凑 RGBA bytes。上传返回成功后拥有所有源数据。附件检查 generation，事务失败失效附件并强制重传；epoch 变化 abandon 旧 device handle，再从同一 CPU Store 重建；显式 retire 仍在 backend/device 存活时释放。无变化不重传，geometry-only 更新只上传 instance。平台 shader/真实颜色验证独立于 Recording 结果。

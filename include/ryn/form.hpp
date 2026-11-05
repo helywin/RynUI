@@ -8,6 +8,7 @@
 #include <ryn/text_area.hpp>
 #include <ryn/switch.hpp>
 #include <ryn/checkbox.hpp>
+#include <ryn/upload.hpp>
 
 #include <concepts>
 #include <cstdint>
@@ -635,6 +636,17 @@ public:
         };
         geometry_ = [value] {
             return detail::capture_form_switch(value).second;
+        };
+        return *this;
+    }
+
+    FormItemProps& control(const UploadRef& value) {
+        control_ = [value] {
+            return std::pair<std::function<bool(const detail::FormFocusContext&)>, std::function<void()>>{
+                detail::capture_form_upload(value), {}};
+        };
+        geometry_ = [value] {
+            return detail::capture_form_upload_geometry(value);
         };
         return *this;
     }

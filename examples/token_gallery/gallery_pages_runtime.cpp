@@ -4,6 +4,8 @@
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
+#include "component/image_component.hpp"
+#include "component/upload_component.hpp"
 #include "component/transfer_component.hpp"
 #include "component/table_component.hpp"
 #include "component/auto_complete_component.hpp"
@@ -36,6 +38,7 @@
 #include "component/selection_component.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
+#include "platform/sdl/file_services.hpp"
 #include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "text/text_engine.hpp"
@@ -148,7 +151,8 @@ public:
                     [this](const auto& value) {
                         using T = std::decay_t<decltype(value)>;
                         if constexpr (std::is_same_v<T, input::PointerInputEvent> ||
-                                      std::is_same_v<T, input::ScrollInputEvent>) {
+                                      std::is_same_v<T, input::ScrollInputEvent> ||
+                                      std::is_same_v<T, input::FileDropEvent>) {
                             auto mapped = value;
                             mapped.x =
                                 token_gallery_pointer_to_render_logical(value.x, platform.display_scale(), scale);
@@ -238,7 +242,8 @@ public:
                                         text_scene.glyph_scene().instances(),
                                         &app.rounded_effects(),
                                         {static_cast<std::uint32_t>(metrics.pixel_width),
-                                         static_cast<std::uint32_t>(metrics.pixel_height), events.scale}})) {
+                                         static_cast<std::uint32_t>(metrics.pixel_height), events.scale},
+                                        &app.services().images()})) {
                 throw std::runtime_error(renderer.last_error());
             }
             if (trace) {
@@ -1768,6 +1773,137 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                  dragged.bounds.y + dragged.bounds.height / 2);
             std::cout << "float_button_native=passed anchor=true drag=true capture=true keyboard=true gpu_pixel=true\n";
         }
+        if (route.component_identity == "ant.component.image") {
+            auto& images = app.services().image();
+            const auto id = pages.target("gallery.image.primary");
+            reveal(id);
+            auto view = images.snapshot(id);
+            check(view.status == ImageStatus::Ready && view.image.has_value(), "Native Image has no decoded source");
+            const auto* record = app.services().images().find(*view.image);
+            check(record && record->instance.pixels->width() == 3, "Native Image CPU record missing");
+            const auto r = record->instance.bounds;
+            pointer(input::PointerAction::move, {0, 0});
+            render();
+            const auto frame = read_frame("image-native-" + std::to_string(i));
+            check_pixel(frame.get(), {(r.x + r.width / 6) * events.scale, (r.y + r.height / 4) * events.scale},
+                        Color::rgba8(255, 0, 0));
+            const auto background = app.components().theme_scope(id)->snapshot().image().colors.background;
+            constexpr float alpha = 128.F / 255;
+            check_pixel(frame.get(), {(r.x + r.width / 2) * events.scale, (r.y + r.height / 4) * events.scale},
+                        Color{background.red() * (1 - alpha), alpha + background.green() * (1 - alpha),
+                              background.blue() * (1 - alpha)});
+            const auto run = [&](std::string_view name) {
+                reveal(pages.target(name));
+                activate(pages.target(name));
+                render();
+            };
+            run("gallery.image.preview");
+            view = images.snapshot(id);
+            check(view.open && app.services().images().live_count() >= 2, "Native Image preview did not open");
+            check(app.focus().state().focused == view.canvas_interaction ||
+                      app.focus().request_focus(view.canvas_interaction, input::FocusModality::keyboard),
+                  "Native Image preview canvas focus failed");
+            press(input::Key::up);
+            check(images.snapshot(id).transform.scale > 1, "Native Image keyboard zoom failed");
+            const auto canvas = images.snapshot(id).canvas_bounds;
+            pointer(input::PointerAction::down, {canvas.x + canvas.width / 2, canvas.y + canvas.height / 2});
+            pointer(input::PointerAction::move, {canvas.x + canvas.width * 2, canvas.y + canvas.height * 2});
+            render();
+            check(images.snapshot(id).dragging && captured(), "Native preview pointer capture missing");
+            pointer(input::PointerAction::up, {canvas.x + canvas.width * 2, canvas.y + canvas.height * 2});
+            render();
+            check(!images.snapshot(id).dragging && !captured(), "Native preview release retained capture");
+            press(input::Key::escape);
+            check(!images.snapshot(id).open, "Native preview Escape did not close");
+            run("gallery.image.load");
+            check(images.snapshot(id).status == ImageStatus::Loading, "Native Image loading example is static");
+            run("gallery.image.deliver");
+            check(images.snapshot(id).status == ImageStatus::Ready, "Native Image manual source delivery failed");
+            run("gallery.image.load");
+            run("gallery.image.failure");
+            check(images.snapshot(id).status == ImageStatus::Error, "Native Image error example did not fail");
+            run("gallery.image.load");
+            run("gallery.image.deliver");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "Image retirement route rejected");
+            pages.process();
+            render();
+            check(images.mounted().empty() && app.services().images().live_count() == 0 && !captured(),
+                  "Native Image page retirement leaked");
+            std::cout << "image_native=passed rgba_pixel=true alpha_pixel=true preview_keyboard=true bounded_drag=true "
+                         "source_loading_error=true retirement=true\n";
+        }
+        if (route.component_identity == "ant.component.upload") {
+            auto& uploads = app.services().upload();
+            const auto id = pages.target("gallery.upload.primary");
+            const auto run = [&](std::string_view name) {
+                reveal(pages.target(name));
+                activate(pages.target(name));
+                render();
+            };
+            run("gallery.upload.fixture");
+            auto view = uploads.snapshot(id);
+            check(view.files.size() == 1 && view.files[0].status == UploadFileStatus::Uploading,
+                  "Native Upload synthetic request missing");
+            const auto uid = view.files[0].uid;
+            const auto row = view.rows[0].component;
+            reveal(row);
+            view = uploads.snapshot(id);
+            const auto image = app.services().image().snapshot(view.rows[0].image);
+            check(image.image.has_value(), "Native Upload has no actual thumbnail");
+            const auto* record = app.services().images().find(*image.image);
+            check(record != nullptr, "Native Upload image resource missing");
+            const auto rect = record->instance.bounds;
+            const auto frame = read_frame("upload-native-" + std::to_string(i));
+            const auto background =
+                app.components().theme_scope(view.rows[0].image)->snapshot().image().colors.background;
+            constexpr float alpha = 128.F / 255;
+            check_pixel(frame.get(),
+                        {(rect.x + rect.width / 2) * events.scale, (rect.y + rect.height / 4) * events.scale},
+                        Color{background.red() * (1 - alpha), alpha + background.green() * (1 - alpha),
+                              background.blue() * (1 - alpha)});
+            run("gallery.upload.ignore");
+            check(uploads.snapshot(id).files.size() == 1, "Native beforeUpload Ignore failed");
+            run("gallery.upload.progress");
+            check(uploads.snapshot(id).files[0].percent == 20 && uploads.snapshot(id).rows[0].component == row,
+                  "Native progress did not retain row");
+            run("gallery.upload.failure");
+            check(uploads.snapshot(id).files[0].status == UploadFileStatus::Error, "Native failure control failed");
+            check(uploads.retry(id, uid), "Native Upload retry failed");
+            render();
+            run("gallery.upload.success");
+            check(uploads.snapshot(id).files[0].status == UploadFileStatus::Done, "Native synthetic success failed");
+            reveal(uploads.snapshot(id).rows[0].component);
+            check(uploads.preview(id, uid), "Native Upload default preview failed");
+            render();
+            check(app.services().image().snapshot(uploads.snapshot(id).preview_group).open,
+                  "Native Upload shared preview did not open");
+            press(input::Key::escape);
+            run("gallery.upload.custom");
+            const auto content = uploads.snapshot(id).rows[0].content;
+            const auto draft = edit_input(content);
+            run("gallery.upload.list");
+            check(uploads.snapshot(id).rows[0].content == content &&
+                      std::string(inputs.display_snapshot(draft.first).text) == draft.second,
+                  "Native Upload list mode lost retained draft");
+            check(uploads.remove(id, uid), "Native Upload remove request failed");
+            run("gallery.upload.remove");
+            check(uploads.snapshot(id).files.empty(), "Native remove approval failed");
+            run("gallery.upload.fixture");
+            check(uploads.snapshot(id).files[0].status == UploadFileStatus::Uploading,
+                  "Native cancellation fixture did not start");
+            check(uploads.abort(id, uploads.snapshot(id).files[0].uid), "Native transport cancellation failed");
+            run("gallery.upload.success");
+            check(uploads.snapshot(id).files[0].status == UploadFileStatus::Cancelled,
+                  "Late success overrode cancelled native upload");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "Upload retirement route rejected");
+            pages.process();
+            render();
+            check(uploads.mounted().empty() && app.services().images().live_count() == 0 && !captured(),
+                  "Native Upload page retirement leaked");
+            std::cout << "upload_native=passed synthetic_transport_labeled=true actual_thumbnail_pixel=true "
+                         "ignore=true progress=true retry=true cancel_stale=true preview=true retained_draft=true "
+                         "removal=true retirement=true\n";
+        }
         if (route.component_identity == "ant.component.transfer") {
             auto& transfer = app.services().transfer();
             const auto lists = pages.target("gallery.transfer.lists");
@@ -2940,8 +3076,10 @@ int run_gallery_pages(int argc, char** argv) {
         runtime::DirtyQueues dirty(nodes, &frames);
         text::TextEngine engine(*fonts);
         ryn::detail::TextSceneService scene(*fonts, engine, frames);
+        ryn::detail::SdlFileServices native_files(*platform.state);
         ryn::detail::WindowComponentServices services(
             nodes, layout, dirty, scene, ryn::detail::make_default_ui_font_resolver(*fonts, font_chain, scale), frames);
+        services.bind_file_services(&native_files, SDL_GetWindowID(static_cast<SDL_Window*>(platform.state->window())));
         ryn::detail::ButtonComponentHost app(services);
         ReferenceSurfaceHost surfaces(app);
         ryn::detail::InputComponentHost inputs(services, *platform.state, *platform.state);

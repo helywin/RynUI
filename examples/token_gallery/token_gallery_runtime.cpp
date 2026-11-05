@@ -15,6 +15,7 @@
 #include "graphics/quad_primitive.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
+#include "platform/sdl/file_services.hpp"
 #include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "runtime/animation_frame_deadline.hpp"
@@ -269,6 +270,13 @@ private:
             return;
         }
         application_->pointer().dispatch(mapped);
+    }
+
+    void dispatch(const ryn::input::FileDropEvent& event) {
+        auto mapped = event;
+        mapped.x = token_gallery_pointer_to_render_logical(event.x, platform_->display_scale(), *render_scale_);
+        mapped.y = token_gallery_pointer_to_render_logical(event.y, platform_->display_scale(), *render_scale_);
+        application_->services().dispatch_file_drop(mapped);
     }
 
     void dispatch(const ryn::input::ScrollInputEvent& event) {
@@ -587,7 +595,8 @@ public:
                                           text_scene_->glyph_scene().instances(),
                                           &application_->rounded_effects(),
                                           {static_cast<std::uint32_t>(metrics.pixel_width),
-                                           static_cast<std::uint32_t>(metrics.pixel_height), *render_scale_}},
+                                           static_cast<std::uint32_t>(metrics.pixel_height), *render_scale_},
+                                          &application_->services().images()},
                                          &upload_timing)) {
                 last_error_ = renderer_->last_error();
                 return ryn::runtime::FrameSubmissionResult::failed;
@@ -1122,8 +1131,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::runtime::DirtyQueues dirty(nodes, &frame_requests);
         ryn::text::TextEngine text_engine(*fonts);
         ryn::detail::TextSceneService text_scene(*fonts, text_engine, frame_requests);
+        ryn::detail::SdlFileServices native_files(platform);
         ryn::detail::WindowComponentServices services(nodes, layout, dirty, text_scene, std::move(font_resolver),
                                                       frame_requests);
+        services.bind_file_services(&native_files, SDL_GetWindowID(static_cast<SDL_Window*>(platform.window())));
         ryn::detail::ButtonComponentHost application(services);
         ReferenceSurfaceHost reference_surfaces(application);
         ryn::detail::InputComponentHost inputs(services, platform, platform);

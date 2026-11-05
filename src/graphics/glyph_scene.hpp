@@ -136,6 +136,7 @@ enum class SceneDrawKind : std::uint8_t {
     quad,
     glyph,
     rounded_effect,
+    image,
 };
 
 struct SceneDrawCommand {

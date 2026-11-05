@@ -1806,6 +1806,10 @@ bool InputComponentHost::dispatch_text_area_resize(runtime::ComponentId componen
     return true;
 }
 
+bool InputComponentHost::dispatch(const input::FileDropEvent& event) {
+    return host_->dispatch_file_drop(event);
+}
+
 bool InputComponentHost::dispatch(const input::ScrollInputEvent& event) {
     if (!input::is_valid(event) || !host_->focus().state().window_active) {
         return false;

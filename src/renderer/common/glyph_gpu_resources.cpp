@@ -226,6 +226,9 @@ void GlyphGpuResources::upload_instance_ranges(graphics::GlyphInstanceStore& ins
 void draw_ordered_scene(const graphics::OrderedScene& scene, SceneDrawApi& api) {
     for (const graphics::SceneDrawCommand command : scene.commands()) {
         switch (command.kind) {
+        case graphics::SceneDrawKind::image:
+            api.draw_image(command.first_instance, command.atlas_page);
+            break;
         case graphics::SceneDrawKind::quad:
             api.draw_quad(command.first_instance, command.instance_count);
             break;

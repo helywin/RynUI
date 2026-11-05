@@ -7,6 +7,12 @@ endif()
 include("${RYNUI_SOURCE_DIR}/cmake/dependencies/RynUIDependencyLock.cmake")
 
 set(required_variables
+    RYNUI_STB_IMAGE_VERSION
+    RYNUI_STB_COMMIT
+    RYNUI_STB_SOURCE_URL
+    RYNUI_STB_SOURCE_SHA256
+    RYNUI_STB_IMAGE_HEADER_SHA256
+    RYNUI_STB_LICENSE
     RYNUI_NOTO_SANS_ARABIC_VERSION
     RYNUI_NOTO_SANS_ARABIC_COMMIT
     RYNUI_NOTO_SANS_ARABIC_SOURCE_URL
@@ -104,6 +110,8 @@ foreach(required_variable IN LISTS required_variables)
 endforeach()
 
 foreach(hash_variable IN ITEMS
+        RYNUI_STB_SOURCE_SHA256
+        RYNUI_STB_IMAGE_HEADER_SHA256
         RYNUI_NOTO_SANS_ARABIC_SOURCE_SHA256
         RYNUI_NOTO_SANS_HEBREW_SOURCE_SHA256
         RYNUI_SHEENBIDI_SOURCE_SHA256
@@ -223,6 +231,7 @@ foreach(name IN ITEMS BIDI_TEST BIDI_CHARACTER_TEST)
 endforeach()
 
 set(license_records
+    "${RYNUI_SOURCE_DIR}/third_party/licenses/stb_image-2.30.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/SheenBidi-3.0.0.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/utf8proc-2.11.3.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/libdecor-0.2.5.txt"

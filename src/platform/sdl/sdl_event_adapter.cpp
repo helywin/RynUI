@@ -279,6 +279,25 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
         result.input.append(std::move(target));
         return;
     }
+    case SDL_EVENT_DROP_BEGIN:
+    case SDL_EVENT_DROP_POSITION:
+    case SDL_EVENT_DROP_FILE:
+    case SDL_EVENT_DROP_COMPLETE: {
+        if (!event.drop.windowID || (result.window_id && result.window_id != event.drop.windowID)) {
+            return;
+        }
+        const auto action = event.type == SDL_EVENT_DROP_BEGIN      ? input::FileDropAction::Begin
+                            : event.type == SDL_EVENT_DROP_POSITION ? input::FileDropAction::Position
+                            : event.type == SDL_EVENT_DROP_FILE     ? input::FileDropAction::File
+                                                                    : input::FileDropAction::Complete;
+        // Pinned SDL3 owns temporary drop.data. Copy during this event; never SDL_free it.
+        append_if_valid(
+            result,
+            input::FileDropEvent{action, action == input::FileDropAction::File ? owned_text(event.drop.data) : String{},
+                                 to_logical_coordinate(event.drop.x, metrics),
+                                 to_logical_coordinate(event.drop.y, metrics), event.drop.windowID});
+        return;
+    }
     case SDL_EVENT_MOUSE_WHEEL: {
         const auto direction = wheel_direction_sign(event.wheel.direction);
         if (direction.has_value()) {

@@ -26,6 +26,12 @@ bool SceneBackend::valid_attachment(const SceneAttachment& value) const noexcept
             return false;
         }
         switch (command.kind) {
+        case graphics::SceneDrawKind::image:
+            if (command.instance_count != 1 || !value.images_ ||
+                !value.images_->drawable(command.first_instance, command.atlas_page)) {
+                return false;
+            }
+            break;
         case graphics::SceneDrawKind::quad:
             if (!value.quads_ || end > value.quad_count_) {
                 return false;
@@ -62,6 +68,7 @@ SceneResources::SceneResources(SceneBackend& backend)
     : backend_(&backend), state_(std::make_shared<SceneResourceState>()) {
     validate_scene_capabilities(backend.capabilities());
     glyphs_ = std::make_unique<GlyphGpuResources>(backend);
+    images_ = std::make_unique<ImageGpuResources>(backend);
     effects_ = std::make_unique<RoundedEffectGpuResources>(backend);
     state_->owner = backend.owner_id();
     state_->epoch = backend.device_epoch();
@@ -72,6 +79,9 @@ SceneResources::~SceneResources() {
 }
 
 void SceneResources::abandon_stale_device() noexcept {
+    if (images_) {
+        images_->abandon_device();
+    }
     if (quads_) {
         quads_->abandon_device();
     }
@@ -90,6 +100,7 @@ void SceneResources::retire() noexcept {
         abandon_stale_device();
     }
     quads_.reset();
+    images_.reset();
     glyphs_.reset();
     effects_.reset();
 }
@@ -97,6 +108,9 @@ void SceneResources::retire() noexcept {
 void SceneResources::rollback(SceneCpuData data) noexcept {
     state_->ready = false;
     retry_required_ = true;
+    if (images_) {
+        images_->invalidate_upload();
+    }
     if (effects_) {
         effects_->invalidate_upload();
     }
@@ -126,6 +140,13 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         validate_scene_device_metrics(data.metrics);
         const auto capabilities = backend_->capabilities();
         validate_scene_capabilities(capabilities);
+        if (data.images && data.images->live_count() &&
+            (!capabilities.images || !capabilities.rgba8_sampling ||
+             capabilities.image_abi_version != image_packed_abi_version)) {
+            throw std::invalid_argument("Backend lacks required Image RGBA8 ABI/capability");
+        }
+        ImageGpuResources::preflight(data.images, capabilities.maximum_buffer_bytes, capabilities.maximum_texture_width,
+                                     capabilities.maximum_texture_height);
         const auto quad_capacity = quads_ && state_->epoch == backend_->device_epoch() ? quads_->capacity() : 0;
         validate_scene_buffer_requirement(capabilities,
                                           quad_buffer_capacity(data.quads ? data.quads->size() : 0, quad_capacity),
@@ -144,11 +165,13 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         if (state_->epoch != backend_->device_epoch() || !glyphs_ || !effects_) {
             abandon_stale_device();
             quads_.reset();
+            images_.reset();
             glyphs_.reset();
             effects_.reset();
             state_->epoch = backend_->device_epoch();
             rollback(data);
             glyphs_ = std::make_unique<GlyphGpuResources>(*backend_);
+            images_ = std::make_unique<ImageGpuResources>(*backend_);
             effects_ = std::make_unique<RoundedEffectGpuResources>(*backend_);
         }
         if (retry_required_) {
@@ -185,6 +208,7 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         if (timing) {
             timing->effects = std::chrono::steady_clock::now();
         }
+        images_->synchronize(data.images, data.metrics);
         if (!backend_->finish_upload_batch()) {
             backend_->cancel_upload_batch();
             rollback(data);
@@ -214,6 +238,7 @@ SceneAttachment SceneResources::attach(const graphics::OrderedScene& scene) cons
     result.revision_ = state_->revision;
     result.quads_ = quads_ ? quads_->handle() : nullptr;
     result.glyphs_ = glyphs_.get();
+    result.images_ = images_.get();
     result.effects_ = effects_.get();
     result.scene_ = &scene;
     result.quad_count_ = quad_count_;

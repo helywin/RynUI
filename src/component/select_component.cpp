@@ -2528,11 +2528,10 @@ void SelectComponentHost::position_window_layer(runtime::ComponentId id, runtime
         return;
     }
     if (!services_->interactions().component_active(id)) {
-        refresh(id, false);
-        s = select_state(*services_, id);
-        if (!s) {
-            return;
+        if (s->visible) {
+            refresh(id, false);
         }
+        return;
     }
     const auto& placed = services_->nodes().require(s->node);
     if (placed.place_count != 0) {

@@ -250,7 +250,20 @@ void popups_and_wheel_priority() {
           "inside Tabs wheel unhandled");
     sync(f);
     check(f.services.tabs().snapshot(inside_tabs).scroll > 0, "inside Tabs did not scroll");
-    click(f, f.buttons.mounted_buttons()[1].component);
+    // Tabs also owns retained overflow buttons; select the actual Tooltip trigger by ownership.
+    const auto trigger = std::ranges::find_if(f.buttons.mounted_buttons(), [&](const auto& button) {
+        for (auto current = std::optional{button.component}; current;
+             current = f.services.components().parent(*current)) {
+            if (*current == inside_tip) {
+                return true;
+            }
+        }
+        return false;
+    });
+    check(trigger != f.buttons.mounted_buttons().end(), "inside Tooltip trigger was not mounted");
+    const auto trigger_bounds = bounds(f, trigger->component);
+    check(trigger_bounds.width > 0 && trigger_bounds.height > 0, "inside Tooltip trigger was not placed");
+    click(f, trigger->component);
     check(f.services.tooltip().snapshot(inside_tip).visible, "inside Tooltip did not open");
     key(f, Key::escape);
     check(!f.services.tooltip().snapshot(inside_tip).visible, "inside Tooltip did not consume Escape");

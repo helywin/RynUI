@@ -67,6 +67,13 @@ public:
     bool begin_upload_batch() override;
     bool finish_upload_batch() override;
     void cancel_upload_batch() noexcept override;
+    void* create_image_texture(std::uint32_t width, std::uint32_t height) override;
+    void* create_image_buffer(std::size_t size) override;
+    bool upload_image_texture(void*, const ImageTextureUpload&) override;
+    bool upload_image_buffer(void*, std::size_t, std::span<const std::byte>) override;
+    void release_image_texture(void*) noexcept override;
+    void release_image_buffer(void*) noexcept override;
+    void draw_image(std::uint32_t index, std::uint32_t generation) override;
     void* create_vertex_buffer(std::size_t size) override;
     void release_buffer(void* handle) noexcept override;
     bool upload(void* handle, std::size_t offset, std::span<const std::byte> bytes) override;
@@ -100,7 +107,7 @@ public:
     runtime::FrameSubmissionResult submit_frame(animation::AnimationTime time) override;
 
 private:
-    enum class Kind { quad, glyph, effect, texture, sampler };
+    enum class Kind { quad, glyph, effect, texture, sampler, image_texture, image_buffer };
 
     struct Resource final {
         Kind kind;

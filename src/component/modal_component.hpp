@@ -78,12 +78,14 @@ private:
     bool reveal_focus(runtime::ComponentId, bool caret_ready);
     bool scroll_to(runtime::ComponentId, float);
     void focus_top();
+    std::optional<runtime::ComponentId> confinement_root() const noexcept;
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     std::vector<Entry> stack_;
     std::vector<Transition> transitions_;
     std::uint64_t next_order_{};
     bool mounting_{};
+    bool confinement_dirty_{};
     bool reconciling_{};
     bool reconcile_again_{};
     bool notifying_{};

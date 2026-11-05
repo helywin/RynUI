@@ -13,6 +13,7 @@ struct SceneCpuData final {
     graphics::GlyphInstanceStore& glyphs;
     graphics::RoundedEffectStore* effects;
     SceneDeviceMetrics metrics;
+    graphics::ImageStore* images{};
 };
 
 struct SceneUploadTiming final {
@@ -55,6 +56,7 @@ private:
     std::shared_ptr<SceneResourceState> state_;
     std::unique_ptr<detail::QuadGpuBuffer> quads_;
     std::unique_ptr<GlyphGpuResources> glyphs_;
+    std::unique_ptr<ImageGpuResources> images_;
     std::unique_ptr<RoundedEffectGpuResources> effects_;
     std::uint32_t quad_count_{};
     std::uint32_t glyph_count_{};

@@ -79,13 +79,14 @@ bool RecordingRenderer::finish_upload_batch() {
     }
     for (const auto& upload : pending_) {
         auto& target = *upload.resource;
-        if (target.kind == Kind::texture) {
+        if (target.kind == Kind::texture || target.kind == Kind::image_texture) {
             for (std::uint32_t row = 0; row < upload.rectangle.height; ++row) {
+                const auto bpp = target.kind == Kind::image_texture ? 4U : 1U;
                 const auto destination =
                     static_cast<std::size_t>(upload.rectangle.y + row) * target.width + upload.rectangle.x;
-                std::memcpy(target.bytes.data() + destination,
+                std::memcpy(target.bytes.data() + destination * bpp,
                             upload.bytes.data() + upload.offset + static_cast<std::size_t>(row) * upload.pitch,
-                            upload.rectangle.width);
+                            upload.rectangle.width * bpp);
             }
         } else if (!upload.bytes.empty()) {
             std::memcpy(target.bytes.data() + upload.offset, upload.bytes.data(), upload.bytes.size());
@@ -107,9 +108,10 @@ void RecordingRenderer::cancel_upload_batch() noexcept {
 
 void* RecordingRenderer::create(Kind kind, std::size_t size, std::uint32_t width, std::uint32_t height) {
     require_owner();
-    if ((kind == Kind::texture &&
+    if (((kind == Kind::texture || kind == Kind::image_texture) &&
          (width > capabilities_.maximum_texture_width || height > capabilities_.maximum_texture_height)) ||
-        (kind != Kind::texture && kind != Kind::sampler && (!size || size > capabilities_.maximum_buffer_bytes))) {
+        (kind != Kind::texture && kind != Kind::image_texture && kind != Kind::sampler &&
+         (!size || size > capabilities_.maximum_buffer_bytes))) {
         error_ = "Recording resource exceeds renderer input limit";
         return nullptr;
     }
@@ -278,7 +280,8 @@ bool RecordingRenderer::upload_glyph_texture(void* handle, const GlyphTextureUpl
 std::span<const std::byte> RecordingRenderer::buffer_bytes(void* handle) const {
     require_owner();
     auto* resource = find(handle);
-    if (!resource || resource->kind == Kind::texture || resource->kind == Kind::sampler) {
+    if (!resource || resource->kind == Kind::texture || resource->kind == Kind::image_texture ||
+        resource->kind == Kind::sampler) {
         throw std::invalid_argument("Recording resource is not a buffer");
     }
     return require(handle, resource->kind).bytes;
@@ -286,7 +289,11 @@ std::span<const std::byte> RecordingRenderer::buffer_bytes(void* handle) const {
 
 std::span<const std::byte> RecordingRenderer::texture_bytes(void* handle) const {
     require_owner();
-    return require(handle, Kind::texture).bytes;
+    auto* r = find(handle);
+    if (!r || (r->kind != Kind::texture && r->kind != Kind::image_texture)) {
+        throw std::invalid_argument("Not a texture");
+    }
+    return require(handle, r->kind).bytes;
 }
 
 void RecordingRenderer::record(graphics::SceneDrawKind kind, void* handle, Kind resource_kind, std::uint32_t first,
@@ -356,5 +363,65 @@ runtime::FrameSubmissionResult RecordingRenderer::submit_frame(animation::Animat
     drawing_ = false;
     ++counters_.frames;
     return runtime::FrameSubmissionResult::submitted;
+}
+} // namespace ryn::detail
+
+namespace ryn::detail {
+void* RecordingRenderer::create_image_texture(std::uint32_t w, std::uint32_t h) {
+    if (!w || !h || std::uint64_t(w) * h > std::numeric_limits<std::size_t>::max() / 4) {
+        throw std::length_error("Invalid RGBA extent");
+    }
+    return create(Kind::image_texture, std::size_t(w) * h * 4, w, h);
+}
+
+void* RecordingRenderer::create_image_buffer(std::size_t size) {
+    return create(Kind::image_buffer, size);
+}
+
+bool RecordingRenderer::upload_image_buffer(void* h, std::size_t offset, std::span<const std::byte> bytes) {
+    return upload_buffer(h, Kind::image_buffer, offset, bytes);
+}
+
+void RecordingRenderer::release_image_texture(void* h) noexcept {
+    release(h, Kind::image_texture);
+}
+
+void RecordingRenderer::release_image_buffer(void* h) noexcept {
+    release(h, Kind::image_buffer);
+}
+
+bool RecordingRenderer::upload_image_texture(void* h, const ImageTextureUpload& u) {
+    require_owner();
+    auto& r = require(h, Kind::image_texture);
+    validate_image_texture_upload(u, r.width, r.height);
+    if (!batch_) {
+        throw std::logic_error("Image upload batch absent");
+    }
+    if (inject(RecordingFailure::upload_exception)) {
+        throw std::runtime_error("Injected image upload exception");
+    }
+    if (inject(RecordingFailure::upload)) {
+        return false;
+    }
+    std::vector<std::byte> pixels(std::size_t(u.width) * u.height * 4);
+    for (std::uint32_t row = 0; row < u.height; ++row) {
+        std::memcpy(pixels.data() + std::size_t(row) * u.width * 4,
+                    u.bytes.data() + u.source_offset + std::size_t(row) * u.source_row_pitch, std::size_t(u.width) * 4);
+    }
+    pending_.push_back({&r, 0, {0, 0, u.width, u.height}, u.width * 4, std::move(pixels)});
+    ++counters_.uploads;
+    counters_.uploaded_bytes += std::uint64_t(u.width) * u.height * 4;
+    return true;
+}
+
+void RecordingRenderer::draw_image(std::uint32_t index, std::uint32_t generation) {
+    const auto* images = attachment().images();
+    if (!images || !images->drawable(index, generation)) {
+        throw std::logic_error("Invalid Image attachment");
+    }
+    auto* texture = images->texture(index);
+    static_cast<void>(require(texture, Kind::image_texture));
+    record(graphics::SceneDrawKind::image, images->buffer(), Kind::image_buffer, index, 1, index + 1,
+           sizeof(ImageGpuInstance), generation, texture);
 }
 } // namespace ryn::detail

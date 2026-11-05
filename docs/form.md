@@ -66,7 +66,7 @@ void DeviceForm(std::function<void(ryn::FormResult)> save) {
 
 ## 原生自动绑定与自定义 adapter
 
-命名 FormItem 的 control slot 中，首个兼容的 Input、TextArea、InputNumber、Select、Checkbox 或 Switch 自动接入 typed value/change、disabled/readOnly、status、ref 与表单上下文。InputNumber 根据 field 类型选择 double 或 exact decimal；SelectValues 对应 Multiple/Tags。已有显式 value/onChange 接线保持其权威，并占用首控件位置；后续兄弟控件不自动接线。Mentions、AutoComplete、日期时间、Cascader、Transfer 与 ColorPicker 的私有输入/选择控件不占用外层 Item 的自动位置或 Enter；popup 内建立的独立 FormItem 保留自己的绑定作用域。嵌套 FormItem 建立自己的控件位置；嵌套 Form 建立新的表单作用域。
+命名 FormItem 的 control slot 中，首个兼容的 Input、TextArea、InputNumber、Select、Checkbox 或 Switch 自动接入 typed value/change、disabled/readOnly、status、ref 与表单上下文。InputNumber 根据 field 类型选择 double 或 exact decimal；SelectValues 对应 Multiple/Tags。已有显式 value/onChange 接线保持其权威，并占用首控件位置；后续兄弟控件不自动接线。Mentions、AutoComplete、日期时间、Cascader、Transfer、Upload 与 ColorPicker 的私有输入/选择控件不占用外层 Item 的自动位置或 Enter；popup 内建立的独立 FormItem 保留自己的绑定作用域。嵌套 FormItem 建立自己的控件位置；嵌套 Form 建立新的表单作用域。
 
 ```cpp
 void AutomaticForm() {

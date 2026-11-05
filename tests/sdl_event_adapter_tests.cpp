@@ -406,6 +406,41 @@ void test_expose_redraw_survives_a_mixed_input_batch() {
     require(!result.redraw_requested, "event-batch clear retained a stale redraw request");
 }
 
+void test_drop_owns_temporary_paths_and_routes_window() {
+    PlatformEvents result;
+    result.window_id = 7;
+    SdlWindowMetrics metrics{640, 480, 1280, 960, 2, 1};
+    SDL_Event event{};
+    event.type = SDL_EVENT_DROP_FILE;
+    event.drop.windowID = 8;
+    event.drop.x = 10;
+    event.drop.y = 15;
+    char path[]{"workspace/colors.png"};
+    event.drop.data = path;
+    SdlEventAdapter::merge(result, event, metrics);
+    require(result.input.empty(), "Foreign window drop accepted");
+    event.drop.windowID = 7;
+    SdlEventAdapter::merge(result, event, metrics);
+    path[0] = 'X';
+    const auto file = std::get<ryn::input::FileDropEvent>(result.input.events()[0]);
+    require(file.locator == ryn::String{u8"workspace/colors.png"}, "SDL temporary drop data was not copied");
+    require(near(file.x, 20) && near(file.y, 30) && file.window_id == 7, "Drop metrics/window mapping failed");
+    event.type = SDL_EVENT_DROP_COMPLETE;
+    event.drop.data = nullptr;
+    SdlEventAdapter::merge(result, event, metrics);
+    require(std::get<ryn::input::FileDropEvent>(result.input.events()[1]).action ==
+                ryn::input::FileDropAction::Complete,
+            "Drop completion order lost");
+    ryn::input::PlatformInputBatch bounded(4, 3);
+    bool rejected{};
+    try {
+        bounded.append(file);
+    } catch (const std::length_error&) {
+        rejected = true;
+    }
+    require(rejected && bounded.empty(), "Drop payload exceeded input boundary");
+}
+
 } // namespace
 
 int main() {
@@ -420,6 +455,7 @@ int main() {
         test_secondary_button_preserves_coordinates_action_and_clicks();
         test_expose_redraw_survives_a_mixed_input_batch();
         test_pointer_shift_follows_event_order();
+        test_drop_owns_temporary_paths_and_routes_window();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

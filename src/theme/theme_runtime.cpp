@@ -402,6 +402,18 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.transfer().effects, after.transfer().effects, TokenIdentity::transfer_effects, changed,
                       count);
     append_if_changed(before.transfer().order, after.transfer().order, TokenIdentity::transfer_order, changed, count);
+    append_if_changed(before.image().colors, after.image().colors, TokenIdentity::image_colors, changed, count);
+    append_if_changed(before.image().metrics, after.image().metrics, TokenIdentity::image_metrics, changed, count);
+    append_if_changed(before.image().typography, after.image().typography, TokenIdentity::image_typography, changed,
+                      count);
+    append_if_changed(before.image().effects, after.image().effects, TokenIdentity::image_effects, changed, count);
+    append_if_changed(before.image().order, after.image().order, TokenIdentity::image_order, changed, count);
+    append_if_changed(before.upload().colors, after.upload().colors, TokenIdentity::upload_colors, changed, count);
+    append_if_changed(before.upload().metrics, after.upload().metrics, TokenIdentity::upload_metrics, changed, count);
+    append_if_changed(before.upload().typography, after.upload().typography, TokenIdentity::upload_typography, changed,
+                      count);
+    append_if_changed(before.upload().effects, after.upload().effects, TokenIdentity::upload_effects, changed, count);
+    append_if_changed(before.upload().order, after.upload().order, TokenIdentity::upload_order, changed, count);
     append_if_changed(before.anchor().colors, after.anchor().colors, TokenIdentity::anchor_colors, changed, count);
     append_if_changed(before.anchor().metrics, after.anchor().metrics, TokenIdentity::anchor_metrics, changed, count);
     append_if_changed(before.anchor().effects, after.anchor().effects, TokenIdentity::anchor_effects, changed, count);
@@ -1640,6 +1652,66 @@ const TransferThemeToken& ThemeScope::transfer_order() const {
     return snapshot().transfer();
 }
 
+const ImageThemeToken& ThemeScope::image_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::image_colors);
+    return snapshot().image();
+}
+
+const ImageThemeToken& ThemeScope::image_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::image_metrics);
+    return snapshot().image();
+}
+
+const ImageThemeToken& ThemeScope::image_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::image_typography);
+    return snapshot().image();
+}
+
+const ImageThemeToken& ThemeScope::image_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::image_effects);
+    return snapshot().image();
+}
+
+const ImageThemeToken& ThemeScope::image_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::image_order);
+    return snapshot().image();
+}
+
+const UploadThemeToken& ThemeScope::upload_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::upload_colors);
+    return snapshot().upload();
+}
+
+const UploadThemeToken& ThemeScope::upload_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::upload_metrics);
+    return snapshot().upload();
+}
+
+const UploadThemeToken& ThemeScope::upload_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::upload_typography);
+    return snapshot().upload();
+}
+
+const UploadThemeToken& ThemeScope::upload_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::upload_effects);
+    return snapshot().upload();
+}
+
+const UploadThemeToken& ThemeScope::upload_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::upload_order);
+    return snapshot().upload();
+}
+
 const AnchorThemeToken& ThemeScope::anchor_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::anchor_colors);
@@ -2337,6 +2409,17 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Mentions.effects",
         "Mentions.order",
         "Mentions.input",
+        "Image.colors",
+        "Image.metrics",
+        "Image.typography",
+        "Image.effects",
+        "Image.order",
+        "Upload.colors",
+        "Upload.metrics",
+        "Upload.typography",
+        "Upload.effects",
+        "Upload.order",
+
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2449,7 +2532,11 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tree_select_tree_colors:
     case TokenIdentity::color_picker_colors:
     case TokenIdentity::cascader_colors:
+    case TokenIdentity::image_colors:
+    case TokenIdentity::upload_colors:
     case TokenIdentity::transfer_colors:
+    case TokenIdentity::image_order:
+    case TokenIdentity::upload_order:
     case TokenIdentity::transfer_order:
     case TokenIdentity::anchor_colors:
     case TokenIdentity::breadcrumb_colors:
@@ -2499,6 +2586,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_effects:
     case TokenIdentity::collapse_effects:
     case TokenIdentity::segmented_effects:
+    case TokenIdentity::image_effects:
+    case TokenIdentity::upload_effects:
     case TokenIdentity::transfer_effects:
     case TokenIdentity::anchor_effects:
     case TokenIdentity::breadcrumb_effects:
@@ -2518,6 +2607,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_typography:
     case TokenIdentity::input_typography:
     case TokenIdentity::text_font_family:
+    case TokenIdentity::image_typography:
+    case TokenIdentity::upload_typography:
     case TokenIdentity::transfer_typography:
     case TokenIdentity::text_font_weight:
     case TokenIdentity::text_font_size:
@@ -2550,6 +2641,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::auto_complete_typography:
     case TokenIdentity::tree_select_tree_metrics:
     case TokenIdentity::color_picker_metrics:
+    case TokenIdentity::image_metrics:
+    case TokenIdentity::upload_metrics:
     case TokenIdentity::transfer_metrics:
     case TokenIdentity::anchor_metrics:
     case TokenIdentity::breadcrumb_metrics:

@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 91 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 93 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -51,6 +51,15 @@ void add_next() {}'''
           'MentionsProps' in by_id['gallery.sample.mentions.editing'].code and
           '10000' in by_id['gallery.sample.mentions.editing'].code,
           'Mentions source omitted actual editing, long suggestions or synthetic async example')
+    check('ImageProps' in by_id['gallery.sample.image.native'].props and
+          'PreviewGroupProps' in by_id['gallery.sample.image.native'].props and
+          by_id['gallery.sample.image.native'].theme_path == 'ThemeConfig.image.tokens',
+          'Image source omitted the actual native component/group or tokens')
+    check('UploadProps' in by_id['gallery.sample.upload.native'].props and
+          'customRequest' in by_id['gallery.sample.upload.native'].methods and
+          'UploadTrigger' in by_id['gallery.sample.upload.native'].slots and
+          by_id['gallery.sample.upload.native'].theme_path == 'ThemeConfig.upload.tokens',
+          'Upload source omitted typed application transport, slots or tokens')
     check('SelectSource' in by_id['gallery.sample.select.options'].code and
           'SelectMode::Multiple' in by_id['gallery.sample.select.options'].code and
           'SelectMode::Tags' in by_id['gallery.sample.select.options'].code,

@@ -22,6 +22,8 @@
 #include "component/descriptions_component.hpp"
 #include "component/timeline_component.hpp"
 #include "component/avatar_component.hpp"
+#include "component/image_component.hpp"
+#include "component/upload_component.hpp"
 #include "component/rate_component.hpp"
 #include "component/statistic_component.hpp"
 #include "component/tree_component.hpp"
@@ -168,6 +170,8 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     descriptions_ = std::make_unique<DescriptionsComponentHost>(*this);
     timeline_ = std::make_unique<TimelineComponentHost>(*this);
     avatar_ = std::make_unique<AvatarComponentHost>(*this);
+    image_ = std::make_unique<ImageComponentHost>(*this);
+    upload_ = std::make_unique<UploadComponentHost>(*this);
     rate_ = std::make_unique<RateComponentHost>(*this);
     statistic_ = std::make_unique<StatisticComponentHost>(*this);
     tree_ = std::make_unique<TreeComponentHost>(*this);
@@ -294,6 +298,28 @@ bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& eve
     return time_picker_->consume_scroll_boundary(event) || date_picker_->consume_scroll_boundary(event) ||
            dropdown_->consume_scroll_boundary(event) || popover_->consume_scroll_boundary(event) ||
            notices_->consume_scroll_boundary(event) || interactions_.input_boundary().has_value();
+}
+
+bool WindowComponentServices::dispatch_file_drop(const input::FileDropEvent& event) {
+    if (!input::is_valid(event) || !focus_.state().window_active || event.window_id != file_window_id_ ||
+        synchronizing_layout_ || !input_layout_) {
+        return false;
+    }
+    if (!dirty_->layout_roots().empty() || !dirty_->placement_roots().empty() || !dirty_->geometry_nodes().empty() ||
+        !dirty_->transform_nodes().empty() || !dirty_->text_nodes().empty() || !dirty_->hit_test_nodes().empty() ||
+        scene_composer_.needs_rebuild()) {
+        const auto context = *input_layout_;
+        if (!layout_and_synchronize(context.viewport, context.clip, context.origin, context.gap, context.unbounded)) {
+            return false;
+        }
+    }
+    const auto participants = participants_;
+    for (auto it = participants.rbegin(); it != participants.rend(); ++it) {
+        if (std::ranges::find(participants_, *it) != participants_.end() && (*it)->on_file_drop(event)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool WindowComponentServices::set_input_boundary(std::optional<runtime::ComponentId> root) {
@@ -463,6 +489,7 @@ bool WindowComponentServices::retire_failed_component(runtime::ComponentId id) n
 }
 
 void WindowComponentServices::dispose() noexcept {
+    input_layout_.reset();
     if (!components().active()) {
         return;
     }
@@ -524,6 +551,19 @@ std::optional<animation::AnimationTime> WindowComponentServices::next_frame_dead
 
 bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, runtime::Rect clip, runtime::Point origin,
                                                      float gap, bool unbounded_root_height) {
+    struct LayoutInputGuard final {
+        bool& active;
+        bool previous;
+
+        LayoutInputGuard(bool& value) : active(value), previous(value) {
+            active = true;
+        }
+
+        ~LayoutInputGuard() {
+            active = previous;
+        }
+    } guard{synchronizing_layout_};
+
     responsive_layout_->set_window_width(viewport.width);
     auto& text_scene = text_.scene_service();
     for (auto* participant : participants_) {
@@ -651,6 +691,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     if (text_edit_) {
         text_edit_->synchronize_pointer_cursor();
     }
+    input_layout_ = InputLayoutContext{viewport, clip, origin, gap, unbounded_root_height};
     return true;
 }
 

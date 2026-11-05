@@ -949,6 +949,67 @@ void slider_dots_clip_with_body() {
     check(f.services.rounded_effects().live_count() == 0, "clipped Slider dot effects leaked");
 }
 
+void dynamic_trap_stack_retains_confinement() {
+    Fixture f;
+    Signal<bool> outer_open{true};
+    Signal<bool> inner_open{false};
+    Signal<bool> inner_trap{false};
+    Signal<bool> sibling_open{false};
+    InputRef sibling_editor;
+    InputRef background;
+    InputRef outer_editor;
+    InputRef inner_editor;
+    f.services.mount(Content{[&] {
+        Input(InputProps{}.ref(background));
+        Modal(ModalProps{}.open(outer_open), ModalContent{[&] {
+                  Input(InputProps{}.ref(outer_editor));
+                  Modal(ModalProps{}.open(inner_open).focusTrap(inner_trap).onCancel([&](ModalCancelReason) {
+                      inner_open.set(false);
+                  }),
+                        ModalContent{[&] { Input(InputProps{}.ref(inner_editor)); }});
+              }});
+        Modal(ModalProps{}.open(sibling_open).focusTrap(false).onCancel([&](ModalCancelReason) {
+            sibling_open.set(false);
+        }),
+              ModalContent{[&] { Input(InputProps{}.ref(sibling_editor)); }});
+    }});
+    sync(f);
+    const auto outer = f.services.modal().mounted()[0];
+    const auto inner = f.services.modal().mounted()[1];
+    const auto outer_boundary = f.services.modal().snapshot(outer).overlay;
+    const auto inner_boundary = f.services.modal().snapshot(inner).overlay;
+    check(outer_editor.focus() && !background.focus(), "Outer Modal baseline confinement failed");
+    inner_open.set(true);
+    sync(f);
+    check(f.services.interactions().input_boundary() == outer_boundary && !background.focus() && inner_editor.focus(),
+          "Non-trapping child released its underlying Modal confinement");
+    inner_trap.set(true);
+    sync(f);
+    check(f.services.interactions().input_boundary() == inner_boundary && !outer_editor.focus(),
+          "Dynamic inner trap did not replace confinement");
+    inner_trap.set(false);
+    sync(f);
+    check(f.services.interactions().input_boundary() == outer_boundary && !background.focus(),
+          "Dynamic trap release cleared a required underlying boundary");
+    key(f, Key::escape);
+    check(!f.services.modal().snapshot(inner).visible && f.services.modal().snapshot(outer).visible &&
+              f.services.interactions().input_boundary() == outer_boundary && outer_editor.focus(),
+          "Escape/restore did not retire only the innermost Modal");
+    sibling_open.set(true);
+    sync(f);
+    const auto sibling = f.services.modal().mounted()[2];
+    check(f.services.interactions().input_boundary() == f.services.modal().snapshot(sibling).overlay &&
+              sibling_editor.focus() && !background.focus() && !outer_editor.focus(),
+          "Non-trapping sibling bypassed or blocked the required Modal confinement");
+    f.services.destroy(sibling);
+    sync(f);
+    check(f.services.interactions().input_boundary() == outer_boundary && outer_editor.focus() && !background.focus(),
+          "Retiring sibling did not restore the surviving Modal boundary");
+    outer_open.set(false);
+    sync(f);
+    check(!f.services.interactions().input_boundary() && background.focus(), "Last Modal retained confinement");
+}
+
 void hidden_select_does_not_request_frames() {
     Signal<bool> open{false};
     Fixture f;
@@ -988,6 +1049,7 @@ int main() {
         body_controls_clip_and_background_hover();
         slider_dots_clip_with_body();
         hidden_select_does_not_request_frames();
+        dynamic_trap_stack_retains_confinement();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

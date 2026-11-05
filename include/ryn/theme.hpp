@@ -15,6 +15,7 @@
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/anchor_tokens.hpp>
 #include <ryn/transfer_tokens.hpp>
+#include <ryn/media_tokens.hpp>
 #include <ryn/color_picker_tokens.hpp>
 #include <ryn/cascader_tokens.hpp>
 #include <ryn/steps_tokens.hpp>
@@ -1654,6 +1655,20 @@ struct AnchorThemeConfig final {
     friend bool operator==(const AnchorThemeConfig&, const AnchorThemeConfig&) = default;
 };
 
+struct ImageThemeConfig final {
+    ImageTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const ImageThemeConfig&, const ImageThemeConfig&) = default;
+};
+
+struct UploadThemeConfig final {
+    UploadTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const UploadThemeConfig&, const UploadThemeConfig&) = default;
+};
+
 struct TransferThemeConfig final {
     TransferTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1794,6 +1809,8 @@ struct ThemeConfig final {
     BreadcrumbThemeConfig breadcrumb;
     AnchorThemeConfig anchor;
     TransferThemeConfig transfer;
+    ImageThemeConfig image;
+    UploadThemeConfig upload;
     ColorPickerThemeConfig color_picker;
     CascaderThemeConfig cascader;
     DatePickerThemeConfig date_picker;
@@ -2420,6 +2437,14 @@ public:
         return cascader_;
     }
 
+    [[nodiscard]] const ImageThemeToken& image() const noexcept {
+        return image_;
+    }
+
+    [[nodiscard]] const UploadThemeToken& upload() const noexcept {
+        return upload_;
+    }
+
     [[nodiscard]] const TransferThemeToken& transfer() const noexcept {
         return transfer_;
     }
@@ -2571,7 +2596,8 @@ private:
         std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
         std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
         std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
-        std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions);
+        std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
+        ImageThemeToken image, UploadThemeToken upload);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2595,6 +2621,8 @@ private:
     BreadcrumbThemeToken breadcrumb_;
     AnchorThemeToken anchor_;
     TransferThemeToken transfer_;
+    ImageThemeToken image_;
+    UploadThemeToken upload_;
     ColorPickerThemeToken color_picker_;
     CascaderThemeToken cascader_;
     StepsThemeToken steps_;

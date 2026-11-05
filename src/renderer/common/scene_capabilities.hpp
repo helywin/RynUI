@@ -21,6 +21,9 @@ struct SceneBackendCapabilities final {
     std::uint64_t maximum_buffer_bytes{};
     std::uint32_t maximum_texture_width{};
     std::uint32_t maximum_texture_height{};
+    std::uint32_t image_abi_version{};
+    bool images{};
+    bool rgba8_sampling{};
 };
 
 [[nodiscard]] constexpr SceneBackendCapabilities baseline_scene_capabilities() noexcept {
@@ -35,7 +38,10 @@ struct SceneBackendCapabilities final {
             true,
             maximum,
             maximum,
-            maximum};
+            maximum,
+            2,
+            true,
+            true};
 }
 
 void validate_scene_capabilities(const SceneBackendCapabilities& capabilities);

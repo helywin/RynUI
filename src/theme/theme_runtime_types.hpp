@@ -6,7 +6,7 @@
 
 namespace ryn::theme_runtime {
 
-enum class TokenIdentity : std::uint8_t {
+enum class TokenIdentity : std::uint16_t {
     alias_color_text,
     alias_color_text_secondary,
     alias_color_text_disabled,
@@ -249,6 +249,16 @@ enum class TokenIdentity : std::uint8_t {
     mentions_effects,
     mentions_order,
     mentions_input,
+    image_colors,
+    image_metrics,
+    image_typography,
+    image_effects,
+    image_order,
+    upload_colors,
+    upload_metrics,
+    upload_typography,
+    upload_effects,
+    upload_order,
     count,
 };
 

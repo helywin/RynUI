@@ -154,6 +154,16 @@ public:
     [[nodiscard]] const CascaderThemeToken& cascader_metrics() const;
     [[nodiscard]] const CascaderThemeToken& cascader_typography() const;
     [[nodiscard]] const CascaderThemeToken& cascader_effects() const;
+    [[nodiscard]] const ImageThemeToken& image_colors() const;
+    [[nodiscard]] const ImageThemeToken& image_metrics() const;
+    [[nodiscard]] const ImageThemeToken& image_typography() const;
+    [[nodiscard]] const ImageThemeToken& image_effects() const;
+    [[nodiscard]] const ImageThemeToken& image_order() const;
+    [[nodiscard]] const UploadThemeToken& upload_colors() const;
+    [[nodiscard]] const UploadThemeToken& upload_metrics() const;
+    [[nodiscard]] const UploadThemeToken& upload_typography() const;
+    [[nodiscard]] const UploadThemeToken& upload_effects() const;
+    [[nodiscard]] const UploadThemeToken& upload_order() const;
     [[nodiscard]] const TransferThemeToken& transfer_colors() const;
     [[nodiscard]] const TransferThemeToken& transfer_metrics() const;
     [[nodiscard]] const TransferThemeToken& transfer_typography() const;

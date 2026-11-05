@@ -80,6 +80,15 @@ bool is_valid(const WindowInputEvent& event) noexcept {
     return event.width == 0 && event.height == 0;
 }
 
+bool is_valid(const FileDropEvent& event) noexcept {
+    const auto value = event.locator.bytes();
+    return event.action >= FileDropAction::Begin && event.action <= FileDropAction::Complete && event.window_id != 0 &&
+           std::isfinite(event.x) && std::isfinite(event.y) &&
+           (event.action == FileDropAction::File
+                ? (!value.empty() && value.size() <= text_event_max_bytes && value.find(char(0)) == value.npos)
+                : value.empty());
+}
+
 bool is_valid(const PlatformInputEvent& event) noexcept {
     return std::visit([](const auto& value) { return is_valid(value); }, event);
 }
@@ -108,6 +117,8 @@ bool PlatformInputBatch::append(PlatformInputEvent event) {
             using T = std::decay_t<decltype(value)>;
             if constexpr (std::is_same_v<T, TextCommitted> || std::is_same_v<T, CompositionChanged>) {
                 return value.text.size_bytes();
+            } else if constexpr (std::is_same_v<T, FileDropEvent>) {
+                return value.locator.size_bytes();
             } else if constexpr (std::is_same_v<T, CandidatesChanged>) {
                 return payload_bytes(value);
             } else {

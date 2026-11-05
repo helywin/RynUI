@@ -11,6 +11,7 @@
 #include <span>
 #include <optional>
 #include <vector>
+#include <stdexcept>
 
 namespace ryn::detail {
 
@@ -99,6 +100,13 @@ private:
 class SceneDrawApi {
 public:
     virtual ~SceneDrawApi() = default;
+
+    virtual void draw_image(std::uint32_t index, std::uint32_t generation) {
+        (void)index;
+        (void)generation;
+        throw std::logic_error("Image drawing is unavailable");
+    }
+
     virtual void draw_quad(std::uint32_t first, std::uint32_t count) = 0;
     virtual void draw_glyph(std::uint32_t atlas_page, std::uint32_t first, std::uint32_t count) = 0;
     virtual void draw_rounded_effect(std::uint32_t first, std::uint32_t count) = 0;

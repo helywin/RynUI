@@ -102,6 +102,8 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
     capabilities_ = baseline_scene_capabilities();
     capabilities_.r8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8_UNORM,
                                                              SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    capabilities_.rgba8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                                                                SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
     validate_scene_capabilities(capabilities_);
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
@@ -146,6 +148,18 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
             SDL_GPUVertexAttribute{5, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 80},
         };
         glyph_pipeline_ = build_pipeline("glyph", sizeof(GlyphGpuInstance), glyph_attributes, 1);
+        const std::array image_attributes{SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
+                                          SDL_GPUVertexAttribute{1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
+                                          SDL_GPUVertexAttribute{2, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32},
+                                          SDL_GPUVertexAttribute{3, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 48},
+                                          SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 64},
+                                          SDL_GPUVertexAttribute{5, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 80},
+                                          SDL_GPUVertexAttribute{6, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 96}};
+        image_pipeline_ = build_pipeline("image", sizeof(ImageGpuInstance), image_attributes, 1);
+        image_sampler_ = create_glyph_sampler();
+        if (!image_sampler_) {
+            throw std::runtime_error("Failed to create Image sampler");
+        }
         const std::array effect_attributes{
             SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
             SDL_GPUVertexAttribute{1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
@@ -158,6 +172,14 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
         effect_pipeline_ =
             build_pipeline("rounded_effect", sizeof(detail::RoundedEffectGpuInstance), effect_attributes, 0);
     } catch (...) {
+        if (image_pipeline_) {
+            SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(image_pipeline_));
+            image_pipeline_ = nullptr;
+        }
+        if (image_sampler_) {
+            release_glyph_sampler(image_sampler_);
+            image_sampler_ = nullptr;
+        }
         if (glyph_pipeline_ != nullptr) {
             SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
             glyph_pipeline_ = nullptr;
@@ -170,6 +192,13 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
 
 SdlSceneRenderer::~SdlSceneRenderer() {
     cancel_upload_batch();
+    if (image_sampler_) {
+        release_glyph_sampler(image_sampler_);
+    }
+    if (image_pipeline_) {
+        SDL_ReleaseGPUGraphicsPipeline(static_cast<SDL_GPUDevice*>(binding_.device()),
+                                       static_cast<SDL_GPUGraphicsPipeline*>(image_pipeline_));
+    }
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     if (effect_pipeline_ != nullptr) {
         SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
@@ -457,6 +486,7 @@ void SdlSceneRenderer::Resource::release() noexcept {
         SDL_ReleaseGPUSampler(gpu, static_cast<SDL_GPUSampler*>(native));
         break;
     case ResourceKind::texture:
+    case ResourceKind::image_texture:
         SDL_ReleaseGPUTexture(gpu, static_cast<SDL_GPUTexture*>(native));
         break;
     default:
@@ -1062,4 +1092,102 @@ bool SdlSceneRenderer::upload_buffer(void* buffer, std::size_t offset, std::span
     return true;
 }
 
+} // namespace ryn::detail
+
+namespace ryn::detail {
+void* SdlSceneRenderer::create_image_texture(std::uint32_t w, std::uint32_t h) {
+    if (!platform_->is_owner_thread() || !w || !h || w > capabilities_.maximum_texture_width ||
+        h > capabilities_.maximum_texture_height || !capabilities_.rgba8_sampling) {
+        return nullptr;
+    }
+    SDL_GPUTextureCreateInfo info{};
+    info.type = SDL_GPU_TEXTURETYPE_2D;
+    info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    info.width = w;
+    info.height = h;
+    info.layer_count_or_depth = 1;
+    info.num_levels = 1;
+    info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    return track_resource(SDL_CreateGPUTexture(static_cast<SDL_GPUDevice*>(binding_.device()), &info),
+                          ResourceKind::image_texture, 0, w, h);
+}
+
+void* SdlSceneRenderer::create_image_buffer(std::size_t size) {
+    auto* h = create_glyph_buffer(size);
+    if (h) {
+        resources_.at(h)->kind = ResourceKind::image_buffer;
+    }
+    return h;
+}
+
+bool SdlSceneRenderer::upload_image_buffer(void* h, std::size_t offset, std::span<const std::byte> bytes) {
+    const auto* r = resource(h, ResourceKind::image_buffer);
+    if (!r || offset > r->size || bytes.size() > r->size - offset) {
+        return false;
+    }
+    return upload_buffer(r->native, offset, bytes, "Image");
+}
+
+void SdlSceneRenderer::release_image_buffer(void* h) noexcept {
+    release_resource(h, ResourceKind::image_buffer);
+}
+
+void SdlSceneRenderer::release_image_texture(void* h) noexcept {
+    release_resource(h, ResourceKind::image_texture);
+}
+
+bool SdlSceneRenderer::upload_image_texture(void* h, const ImageTextureUpload& u) {
+    const auto* r = resource(h, ResourceKind::image_texture);
+    if (!platform_->is_owner_thread() || !r || !upload_batch_active_) {
+        return false;
+    }
+    try {
+        validate_image_texture_upload(u, r->width, r->height);
+        const auto pitch = (std::uint64_t(u.width) * 4 + 255) / 256 * 256;
+        if (pitch * u.height > std::numeric_limits<Uint32>::max()) {
+            throw std::length_error("Image transfer exceeds SDL uint32 limit");
+        }
+        const auto count = static_cast<Uint32>(pitch * u.height);
+        if (!flush_buffer_upload_chunk()) {
+            return false;
+        }
+        if (!active_texture_transfer_ || !texture_layout_.can_fit(count)) {
+            if (!flush_texture_upload_chunk() || !begin_texture_upload_chunk(count)) {
+                return false;
+            }
+        }
+        const auto offset = texture_layout_.append(r->native, {0, 0, u.width, u.height}, static_cast<Uint32>(pitch / 4),
+                                                   u.height, count);
+        auto* target = static_cast<std::byte*>(active_texture_mapped_) + offset;
+        std::memset(target, 0, count);
+        for (std::uint32_t row = 0; row < u.height; ++row) {
+            std::memcpy(target + std::size_t(row) * pitch,
+                        u.bytes.data() + u.source_offset + std::size_t(row) * u.source_row_pitch,
+                        std::size_t(u.width) * 4);
+        }
+        return true;
+    } catch (const std::exception& error) {
+        last_error_ = error.what();
+        return false;
+    }
+}
+
+void SdlSceneRenderer::draw_image(std::uint32_t index, std::uint32_t generation) {
+    const auto* images = attachment().images();
+    if (!active_render_pass_ || !images || !images->drawable(index, generation)) {
+        throw std::logic_error("Invalid SDL Image draw");
+    }
+    auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
+    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(image_pipeline_));
+    const SDL_GPUBufferBinding vertex{
+        static_cast<SDL_GPUBuffer*>(native_resource(images->buffer(), ResourceKind::image_buffer)),
+        index * static_cast<Uint32>(sizeof(ImageGpuInstance))};
+    SDL_BindGPUVertexBuffers(pass, 0, &vertex, 1);
+    const SDL_GPUTextureSamplerBinding texture{
+        static_cast<SDL_GPUTexture*>(native_resource(images->texture(index), ResourceKind::image_texture)),
+        static_cast<SDL_GPUSampler*>(native_resource(image_sampler_, ResourceKind::sampler))};
+    SDL_BindGPUFragmentSamplers(pass, 0, &texture, 1);
+    SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
+}
 } // namespace ryn::detail

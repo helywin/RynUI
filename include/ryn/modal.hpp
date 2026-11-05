@@ -66,6 +66,11 @@ public:
         return *this;
     }
 
+    ModalProps& focusTrap(Prop<bool> value = true) {
+        focus_trap_ = std::move(value);
+        return *this;
+    }
+
     ModalProps& keyboard(Prop<bool> value = true) {
         keyboard_ = std::move(value);
         return *this;
@@ -137,6 +142,7 @@ private:
     Prop<bool> centered_{false};
     Prop<bool> closable_{true};
     Prop<bool> keyboard_{true};
+    Prop<bool> focus_trap_{true};
     Prop<ModalMask> mask_{ModalMask{}};
     Prop<bool> confirm_loading_{false};
     Prop<ModalFooterMode> footer_{ModalFooterMode::Default};

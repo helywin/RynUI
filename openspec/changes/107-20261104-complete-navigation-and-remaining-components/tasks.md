@@ -124,8 +124,8 @@
 
 ## 25. 数据录入：Upload
 
-- [ ] 25.1 按对应 spec 与 design 矩阵实现 Upload 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 25.2 为 Upload 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 25.1 按对应 spec 与 design 矩阵实现 Upload 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 25.2 为 Upload 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 26. 数据展示：Avatar
 
@@ -169,8 +169,8 @@
 
 ## 34. 数据展示：Image
 
-- [ ] 34.1 按对应 spec 与 design 矩阵实现 Image 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 34.2 为 Image 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 34.1 按对应 spec 与 design 矩阵实现 Image 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 34.2 为 Image 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 35. 数据展示：List
 
@@ -315,7 +315,7 @@
 ## 63. Linux 自动平台集成
 
 - [x] 63.1 构建 导航新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
-- [ ] 63.2 构建 数据录入新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
+- [x] 63.2 构建 数据录入新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
 - [ ] 63.3 构建 数据展示新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
 - [ ] 63.4 构建 反馈新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。
 - [ ] 63.5 构建 其他新增/受影响组件的原生 Gallery，通过私有后台 Wayland 执行有界 GPU/输入与离页清理序列，记录真实 callback/平台结果；不重复纯逻辑全矩阵。

@@ -504,7 +504,8 @@ void OrderedScene::append(SceneDrawCommand command) {
     if (!commands_.empty()) {
         SceneDrawCommand& previous = commands_.back();
         const bool compatible =
-            previous.kind == command.kind && previous.atlas_page == command.atlas_page &&
+            command.kind != SceneDrawKind::image && previous.kind == command.kind &&
+            previous.atlas_page == command.atlas_page &&
             static_cast<std::uint64_t>(previous.first_instance) + previous.instance_count == command.first_instance;
         if (compatible) {
             const std::uint64_t merged = static_cast<std::uint64_t>(previous.instance_count) + command.instance_count;

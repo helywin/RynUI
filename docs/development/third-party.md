@@ -9,6 +9,7 @@ RynUI 不强制绑定 vcpkg、Conan 或某个 Linux 发行版。CMake 通过 `RY
 
 | 依赖 | 上游版本 | Source | SHA256 | License | 作用域 |
 |---|---|---|---|---|---|
+| stb_image | `2.30` / `d14d46f6b44456eb88beac58cba833a4135d4c89` | 精确 commit archive | `1b59a668a789a28a8fd4e01ff1413eec7eaeb28688bafdc66ec7068f4e7095e1` | MIT OR Unlicense | Core 的内存 PNG/JPEG/BMP 解码，不含文件 IO |
 | SDL3 | `3.4.14` / `147a8ee32dbf9ac02f3794964490687b6bbda1bc` | `SDL3-3.4.14.tar.gz` | `30d4aa2b3037718142b32dffd4e72f917ebb6cc5227150e7bb9c45efb2153aeb` | Zlib | 平台与 GPU 后端 |
 | libdecor | `0.2.5` + audited patches | `libdecor-0.2.5.tar.gz` | `39c109a9a7eae943ba34d18a282c447d5729f9c486c8bc05ea305e4acd341522` | MIT | 仅 Linux `BUNDLED` 的 Wayland client-side decoration |
 | SDL_shadercross | `e55cf5e31ced6f3d1be5cc6d0c50e99384f9f4ba` | commit archive | `342bb6a8e734745eb5951f25c87fa7aad62f46b3736def8681d9fa7ad046887f` | Zlib | 仅构建期 host tool |
@@ -95,3 +96,5 @@ SheenBidi 的 MSVC atomic fallback 包含 Windows SDK，因此 BUNDLED 强制标
 单一 HLSL source 在 build tree 中离线生成 DXIL 与 SPIR-V。原生 `BUNDLED` 构建只为当前 host 构建 `shadercross` CLI；`SYSTEM` 与所有交叉编译必须通过 `RYNUI_SHADERCROSS_EXECUTABLE` 提供可运行的 host tool，configure 会先执行 `--help` 探测。交叉编译绝不执行 target binary。
 
 `SDL_shadercross`、SPIRV-Cross 和 DXC 都只存在于构建工具链。RynUI library 与示例应用不链接 `SDL3_shadercross` runtime library，也不分发 DXC binary；如在其他产品流程中复制这些上游二进制，发布方必须单独复核 archive 内 license terms。
+
+图像解码的 BUNDLED source override 为 `FETCHCONTENT_SOURCE_DIR_RYNUI_STB`；SYSTEM 必须显式提供 `RYNUI_SYSTEM_STB_IMAGE_DIRECTORY`，两种模式均校验锁定头文件 SHA256，不搜索系统目录、不回退。仅编译 PNG/JPEG/BMP，其他格式返回 unsupported_format。依赖 license 见 `third_party/licenses/stb_image-2.30.txt`。

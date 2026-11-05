@@ -375,6 +375,8 @@ GPU 资源和 pipeline 必须在所属 renderer/binding 销毁前 retire；bindi
 
 纹理上传共同层只传 atlas R8 源 byte view、offset、row stride 与目标 rectangle；backend 在返回成功前拥有有效 pixels，自行完成 transfer 对齐/padding，不能把 SDK transfer layout 返回到 Core/common。backend 显式声明 scene/ABI 版本、三类 primitive、R8 sampling、ordered draws/partial uploads 与资源输入上限；SceneResources 在创建资源前检查必需能力，在 begin upload 前检查所需容量/atlas extent。声明上限是输入约束，不保证设备内存分配成功。新组件使用同一 logical scene，无 backend 分支；新 backend 遵循 [renderer 合同](renderer-contract.md) 的适配清单。
 
+107 的共享 ImageStore/不可变 RGBA 像素、内存解码与独立 Image 纹理/record 同样经过共同事务；Image ABI、颜色/方向、输入上限、失败与 epoch 细节见 renderer 合同。Core 解码不做文件或网络 IO，平台服务不得反向进入 Core。
+
 ### 10.1 Primitive
 
 普通 UI 首先映射为少量 Primitive：
@@ -613,3 +615,9 @@ RynUI/
 | 默认字体 | Windows DirectWrite / Linux Fontconfig；显式自定义字体优先 |
 | Skia | 可选插件，不进入核心 |
 | 第一优先级 | 证明最小响应式 GPU 闭环 |
+
+### Native file selection boundary（107）
+
+`NativeFileServices` 是应用/平台宿主提供的 owner-thread 服务；Core 只持有 `NativeFile` 的共享只读快照、opaque locator 和取消 handle，不执行文件/网络 IO。Upload 的 before/transform/request/remove completion 验证 owner、UID/origin、generation 与单次交付。SDL chooser 的外线程回调先复制 SDK 临时路径，再由有界 worker 建立 metadata/图片快照，完成队列以宿主事件唤醒；owner drain 才进入 Core。逻辑取消先使 ticket 失效，再调用应用 cancel，避免重入旧 owner。SDL 的 OS chooser 没有可关闭 request handle，退休后回调只清理。
+
+`PlatformInputEvent` 尾部追加拥有字符串的 `FileDropEvent`，既有 aggregate/variant 索引保持不变。SDK drop.data 属于 SDL 的临时存储；adapter 在事件内复制并检查 window ID，禁止自行释放。Core 按有序事件执行窗口、布局后 clip/命中与 input boundary 检查；文件粘贴通过 NativeFileServices，编辑器保持既有 paste 优先级。该服务不依赖 renderer，SDL 类型留在 platform adapter。

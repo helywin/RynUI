@@ -48,7 +48,8 @@ struct Fixture final : ryn_test::input_component::Fixture {
                                        scene.atlas(),
                                        scene.glyph_scene().instances(),
                                        &buttons.rounded_effects(),
-                                       {1440, 900, 1}}),
+                                       {1440, 900, 1},
+                                       &services.images()}),
                 "Recording upload failed");
         const auto uploaded = Clock::now();
         static_cast<void>(buttons.scene_composer().build_visible_scene(nodes, {0, 0, 1440, 900}, visible));
