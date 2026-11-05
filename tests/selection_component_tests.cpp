@@ -430,10 +430,61 @@ void mixed_window_journey() {
     f.synchronize();
     require(!f.services.next_frame_deadline(), "idle mixed window retained animation deadline");
 }
+
+void passive_label_validation_and_unrelated_controls() {
+    for (int bad = 0; bad < 3; ++bad) {
+        Fixture f;
+        detail::SelectionComponentHost host{f.services};
+        bool rejected = false;
+        try {
+            f.services.mount(Content{[&] {
+                Checkbox(CheckboxProps{}, CheckboxLabel{[&] {
+                             if (bad == 0) {
+                                 Button(ButtonProps{}, ButtonContent{[] { Text(u8"Interactive"); }});
+                             }
+                             if (bad == 1) {
+                                 Input(InputProps{});
+                             }
+                             if (bad == 2) {
+                                 Flex(FlexProps{},
+                                      FlexContent{[] { Flex(FlexProps{}, FlexContent{[] { Input(InputProps{}); }}); }});
+                             }
+                         }});
+            }});
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        f.services.dispose();
+        require(rejected && host.mounted().empty() && f.services.interactions().size() == 0 && f.scene.size() == 0,
+                "interactive Checkbox label was accepted or leaked resources");
+    }
+    Fixture f;
+    detail::SelectionComponentHost host{f.services};
+    f.services.mount(Content{[&] {
+        for (int i = 0; i < 1000; ++i) {
+            Button(ButtonProps{}.wave(false), ButtonContent{[] { Text(u8"Unrelated"); }});
+        }
+        Checkbox(CheckboxProps{}.wave(false));
+        Checkbox(CheckboxProps{}.wave(false), CheckboxLabel{[] {
+                     Flex(FlexProps{}, FlexContent{[] {
+                              Text(u8"Passive");
+                              Icon(IconProps{}.name(IconName::CheckOutlined));
+                          }});
+                 }});
+    }});
+    f.synchronize();
+    require(host.mounted().size() == 2 && f.buttons.mounted_buttons().size() == 1000,
+            "no-label or passive-label Checkbox rejected unrelated interactions");
+    f.services.dispose();
+    require(host.mounted().empty() && f.services.interactions().size() == 0 && f.scene.size() == 0,
+            "Checkbox label validation leaked sibling resources");
+}
+
 } // namespace
 
 int main() {
     try {
+        passive_label_validation_and_unrelated_controls();
         keyboard_and_modes();
         pointer_and_lifecycle();
         invalid_and_self_destroy();

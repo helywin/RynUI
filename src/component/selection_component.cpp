@@ -2492,15 +2492,17 @@ struct CheckboxPropsAccess {
                               host.services_->components().theme_scope(component)->snapshot().checkbox().size);
         host.services_->nodes().require(state.spacer).external_layout.order =
             state.direction == SwitchDirection::RightToLeft ? 1 : 0;
-        for (const auto interaction : host.services_->interactions().declaration_order()) {
-            const auto* record = host.services_->interactions().find(interaction);
-            if (!record || record->component == component) {
-                continue;
-            }
-            for (auto parent = host.services_->components().parent(record->component); parent;
-                 parent = host.services_->components().parent(*parent)) {
-                if (*parent == component) {
-                    throw std::invalid_argument("CheckboxLabel accepts passive content only");
+        if (label) {
+            for (const auto interaction : host.services_->interactions().declaration_order()) {
+                const auto* record = host.services_->interactions().find(interaction);
+                if (!record || record->component == component) {
+                    continue;
+                }
+                for (auto parent = host.services_->components().parent(record->component); parent;
+                     parent = host.services_->components().parent(*parent)) {
+                    if (*parent == component) {
+                        throw std::invalid_argument("CheckboxLabel accepts passive content only");
+                    }
                 }
             }
         }
