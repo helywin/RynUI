@@ -8,6 +8,9 @@ struct SegmentedSnapshot final {
     String value;
     std::optional<std::size_t> selected;
     std::vector<runtime::ComponentId> items;
+    SegmentedValue selected_value{String{}};
+    runtime::Rect pill;
+    float motion{1};
 };
 
 class SegmentedComponentHost final : public WindowComponentParticipant {
@@ -15,6 +18,7 @@ public:
     explicit SegmentedComponentHost(WindowComponentServices&);
     ~SegmentedComponentHost();
     void mount(const SegmentedProps&, const std::vector<SegmentedOption>&);
+    void mount(const SegmentedProps&, const Prop<std::vector<SegmentedOption>>&);
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;
@@ -33,11 +37,15 @@ public:
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;
     void on_window_active(bool) override;
+    void synchronize_auxiliary_motion() override;
     void on_input_boundary_changed() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
     void refresh(runtime::ComponentId, bool geometry);
+    void mount_item(runtime::ComponentId, std::size_t, const std::vector<SegmentedOption>&, bool);
+    void bind_item(runtime::ComponentId, std::size_t);
+    void update(runtime::ComponentId, std::vector<SegmentedOption>);
     void activate(runtime::ComponentId, std::size_t);
     void reconcile_input(runtime::ComponentId);
     runtime::Size measure(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);

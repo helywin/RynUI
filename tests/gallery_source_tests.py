@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 93 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 97 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -47,6 +47,16 @@ void add_next() {}'''
         if row.theme_path.startswith('ThemeConfig.') and row.theme_path.endswith('.tokens'):
             check(bool(row.token_names), f'component token mapping is empty: {row.identity}')
     by_id = {r.identity: r for r in records}
+    for identity in ('gallery.sample.calendar.custom', 'gallery.sample.calendar.schedule'):
+        check('CalendarProps' in by_id[identity].props and 'CalendarCell' in by_id[identity].slots and
+              'CalendarHeader' in by_id[identity].slots and
+              by_id[identity].theme_path == 'ThemeConfig.calendar.tokens',
+              f'Calendar source omitted native slots or its Theme domain: {identity}')
+    for identity in ('gallery.sample.carousel.panels', 'gallery.sample.carousel.controlled'):
+        check('CarouselProps' in by_id[identity].props and 'CarouselContent' in by_id[identity].slots and
+              'CarouselDot' in by_id[identity].slots and
+              by_id[identity].theme_path == 'ThemeConfig.carousel.tokens',
+              f'Carousel source omitted retained slots or its Theme domain: {identity}')
     check('MentionsSource' in by_id['gallery.sample.mentions.editing'].code and
           'MentionsProps' in by_id['gallery.sample.mentions.editing'].code and
           '10000' in by_id['gallery.sample.mentions.editing'].code,

@@ -9,6 +9,7 @@ struct DescriptionsModelItem final {
     String key;
     int span{1};
     bool visible{true};
+    bool filled{};
 };
 
 struct DescriptionsCell final {

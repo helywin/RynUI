@@ -32,6 +32,14 @@ target_compile_definitions(rynui_paint_opacity_integration_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.paint_opacity_integration COMMAND rynui_paint_opacity_integration_tests)
 
+add_executable(rynui_retained_data_display_integration_tests retained_data_display_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_retained_data_display_integration_tests)
+target_link_libraries(rynui_retained_data_display_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_retained_data_display_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.retained_data_display_integration COMMAND rynui_retained_data_display_integration_tests)
+
 add_executable(rynui_calendar_tests calendar_tests.cpp)
 rynui_configure_cpp_target(rynui_calendar_tests)
 target_link_libraries(rynui_calendar_tests PRIVATE rynui_components)
@@ -1036,6 +1044,18 @@ foreach(select_test IN ITEMS select_model select_theme select_public_api select_
 endforeach()
 
 include("${PROJECT_SOURCE_DIR}/cmake/RynUIGalleryTests.cmake")
+
+add_test(NAME rynui.data_display_docs_examples COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_data_display_examples.py")
+
+foreach(display_contract IN ITEMS collapse_contract segmented_contract descriptions_contract timeline_contract)
+    add_executable(rynui_${display_contract}_tests ${display_contract}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${display_contract}_tests)
+    target_link_libraries(rynui_${display_contract}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${display_contract}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${display_contract} COMMAND rynui_${display_contract}_tests)
+endforeach()
 
 if(NOT RYNUI_HAS_SDL_GPU)
     # Reuse existing dependency, batching and reentry contracts in HEADLESS builds.

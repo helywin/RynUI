@@ -27,6 +27,9 @@
 #include "component/popover_component.hpp"
 #include "component/float_button_component.hpp"
 #include "component/collapse_component.hpp"
+#include "component/segmented_component.hpp"
+#include "component/descriptions_component.hpp"
+#include "component/timeline_component.hpp"
 #include "component/grid_component.hpp"
 #include "component/shell_layout_component.hpp"
 #include "component/splitter_component.hpp"
@@ -574,6 +577,12 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 check(app.services().calendar().mounted().empty() && !captured(),
                       "native Calendar page retirement retained roots/capture");
             }
+            if (previous_route.component_identity == "ant.component.collapse" ||
+                previous_route.component_identity == "ant.component.segmented" ||
+                previous_route.component_identity == "ant.component.descriptions" ||
+                previous_route.component_identity == "ant.component.timeline") {
+                check(!captured(), "native retained DataDisplay retirement retained capture");
+            }
             if (previous_session.valid()) {
                 check(!inputs.editors().find(previous_session.owner), "native editor survived page retirement");
                 check(inputs.sessions().active() != previous_session, "native text session survived page retirement");
@@ -612,6 +621,165 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         }
         accept_existing_data_entry(
             route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press});
+        const auto reveal_owned = [&](runtime::ComponentId id) {
+            const auto lane = pages.snapshot().layout.document;
+            const auto r = bounds(id);
+            const bool needed = r.y < lane.y || r.y + std::min(r.height, lane.height - 30) > lane.y + lane.height;
+            if (needed) {
+                reveal(id);
+            }
+        };
+        const bool owned_data_display = route.component_identity == "ant.component.collapse" ||
+                                        route.component_identity == "ant.component.segmented" ||
+                                        route.component_identity == "ant.component.descriptions" ||
+                                        route.component_identity == "ant.component.timeline";
+        const auto enable_owned_motion = [&] {
+            auto theme = pages.theme();
+            theme.seed.motion = true;
+            pages.set_theme(theme);
+            app.services().set_motion_preference(animation::MotionPreference::normal);
+        };
+        if (route.component_identity == "ant.component.collapse") {
+            auto& host = app.services().collapse();
+            const auto owner = pages.target("gallery.collapse.dynamic");
+            reveal_owned(owner);
+            enable_owned_motion();
+            const auto original = host.snapshot(owner);
+            const auto editor = replace_text(original.panels[0].body, u8"native-collapse-draft");
+            activate(pages.target("gallery.collapse.reorder"));
+            render();
+            auto current = host.snapshot(owner);
+            check(current.panels[1].body == original.panels[0].body &&
+                      inputs.editors().require(editor.editor).value() == "native-collapse-draft",
+                  "native Collapse keyed reorder lost draft");
+            reveal_owned(current.panels[1].header);
+            click(current.panels[1].header);
+            check(!host.snapshot(owner).panels[1].expanded && !inputs.sessions().active().valid(),
+                  "native Collapse closing retained input");
+            const auto closing_deadline =
+                std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(2));
+            while (host.snapshot(owner).panels[1].animating && std::chrono::steady_clock::now() < closing_deadline) {
+                render();
+            }
+            check(!host.snapshot(owner).panels[1].animating, "native Collapse closing motion did not settle");
+            click(current.panels[1].header);
+            const auto opening_deadline =
+                std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(2));
+            while (host.snapshot(owner).panels[1].animating && std::chrono::steady_clock::now() < opening_deadline) {
+                render();
+            }
+            check(!host.snapshot(owner).panels[1].animating && host.snapshot(owner).panels[1].motion == 1,
+                  "native Collapse opening motion did not settle");
+            check(inputs.editors().require(editor.editor).value() == "native-collapse-draft",
+                  "native Collapse reopening lost draft");
+            activate(pages.target("gallery.collapse.ghost"));
+            render();
+            reveal_owned(current.panels[1].body);
+            capture_editor(current.panels[1].body);
+            std::cout
+                << "collapse_native=passed keyed_draft=true finite_motion=true ghost=true capture_retirement=armed\n";
+        }
+        if (route.component_identity == "ant.component.segmented") {
+            auto& host = app.services().segmented();
+            const auto owner = pages.target("gallery.segmented.dynamic");
+            reveal_owned(owner);
+            enable_owned_motion();
+            const auto original = host.snapshot(owner);
+            click(original.items[1]);
+            const auto pill_deadline = std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(2));
+            while (host.snapshot(owner).motion < 1 && std::chrono::steady_clock::now() < pill_deadline) {
+                render();
+            }
+            check(host.snapshot(owner).motion == 1, "native Segmented pill did not settle");
+            check(host.snapshot(owner).selected_value == SegmentedValue{2.0}, "native Segmented typed callback failed");
+            activate(pages.target("gallery.segmented.reorder"));
+            render();
+            check(host.snapshot(owner).items[0] == original.items[1],
+                  "native Segmented reorder remounted selected option");
+            activate(pages.target("gallery.segmented.rtl"));
+            render();
+            reveal_owned(owner);
+            click(host.snapshot(owner).items[0]);
+            press(input::Key::right);
+            check(host.snapshot(owner).selected_value == SegmentedValue{1.0},
+                  "native Segmented roving keyboard failed");
+            std::cout
+                << "segmented_native=passed typed_callback=true keyed_identity=true rtl=true keyboard=true pill=true\n";
+        }
+        if (route.component_identity == "ant.component.descriptions") {
+            auto& host = app.services().descriptions();
+            const auto owner = pages.target("gallery.descriptions.dynamic");
+            reveal_owned(owner);
+            enable_owned_motion();
+            const auto original = host.snapshot(owner);
+            const auto editor = replace_text(original.items[0].content, u8"native-descriptions-draft");
+            activate(pages.target("gallery.descriptions.reorder"));
+            render();
+            check(host.snapshot(owner).items[2].content == original.items[0].content &&
+                      inputs.editors().require(editor.editor).value() == "native-descriptions-draft",
+                  "native Descriptions reorder lost draft");
+            activate(pages.target("gallery.descriptions.rtl"));
+            render();
+            resize(500);
+            render();
+            check(host.snapshot(owner).rows.size() == 3, "native Descriptions window breakpoint failed");
+            reveal_owned(host.snapshot(owner).items[2].content);
+            capture_editor(host.snapshot(owner).items[2].content);
+            std::cout
+                << "descriptions_native=passed keyed_draft=true responsive=true rtl=true capture_retirement=armed\n";
+        }
+        if (route.component_identity == "ant.component.timeline") {
+            auto& host = app.services().timeline();
+            const auto owner = pages.target("gallery.timeline.dynamic");
+            reveal_owned(owner);
+            enable_owned_motion();
+            const auto original = host.snapshot(owner);
+            check(original.items[0].tail.width > original.items[0].tail.height,
+                  "native Timeline horizontal rail missing");
+            const auto editor = replace_text(original.items[1].content, u8"native-timeline-draft");
+            activate(pages.target("gallery.timeline.reorder"));
+            render();
+            check(host.snapshot(owner).items[1].content == original.items[1].content &&
+                      inputs.editors().require(editor.editor).value() == "native-timeline-draft",
+                  "native Timeline reorder lost draft");
+            activate(pages.target("gallery.timeline.tone-motion"));
+            render();
+            check(has_text(u8"状态色：红色"), "native Timeline status-color callback missing");
+            const auto color_deadline = std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(2));
+            while (host.snapshot(owner).motion < 1 && std::chrono::steady_clock::now() < color_deadline) {
+                render();
+            }
+            check(host.snapshot(owner).motion == 1, "native Timeline color transition did not settle");
+            activate(pages.target("gallery.timeline.loading-motion"));
+            render();
+            check(app.services().animations().size() > 0, "native Timeline loading has no real motion");
+            activate(pages.target("gallery.timeline.orientation"));
+            render();
+            activate(pages.target("gallery.timeline.title-span"));
+            render();
+            activate(pages.target("gallery.timeline.loading-motion"));
+            render();
+            reveal_owned(host.snapshot(owner).items[1].content);
+            capture_editor(host.snapshot(owner).items[1].content);
+            std::cout << "timeline_native=passed horizontal=true keyed_draft=true loading=true title_span=true "
+                         "capture_retirement=armed\n";
+        }
+        if (owned_data_display) {
+            previous_session = inputs.sessions().active();
+            auto theme = pages.theme();
+            theme.seed.motion = false;
+            pages.set_theme(theme);
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native retained DataDisplay retirement route rejected");
+            pages.process();
+            render();
+            check(!app.components().contains(root) && !captured() && !inputs.sessions().active().valid(),
+                  "native retained DataDisplay navigation leaked root/capture/session");
+            if (previous_session.valid()) {
+                check(!inputs.editors().find(previous_session.owner),
+                      "native retained DataDisplay navigation retained its editor generation");
+            }
+        }
         if (route.component_identity == "ant.component.input") {
             previous_session = inputs.sessions().active();
         }

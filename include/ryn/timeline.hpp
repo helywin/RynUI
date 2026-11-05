@@ -3,12 +3,36 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
 #include <optional>
+#include <cstdint>
+#include <ryn/design_token.hpp>
 #include <vector>
 
 namespace ryn {
 namespace detail {
 class TimelineComponentHost;
 }
+
+enum class TimelineOrientation { Vertical, Horizontal };
+enum class TimelineVariant { Outlined, Filled };
+
+struct TimelineTitleSpan final {
+    float value{0.5F};
+    bool logical{};
+
+    static TimelineTitleSpan fraction(float value) {
+        return {value, false};
+    }
+
+    static TimelineTitleSpan logicalWidth(float value) {
+        return {value, true};
+    }
+
+    static TimelineTitleSpan columns(float value) {
+        return {value / 24.0F, false};
+    }
+
+    friend bool operator==(const TimelineTitleSpan&, const TimelineTitleSpan&) = default;
+};
 
 enum class TimelineMode { Start, Alternate, End };
 enum class TimelinePlacement { Start, End };
@@ -89,9 +113,33 @@ public:
         return *this;
     }
 
+    TimelineItem& color(Prop<Color> value) {
+        color_ = std::move(value);
+        return *this;
+    }
+
+    TimelineItem& titleRevision(std::uint64_t value) {
+        title_revision_ = value;
+        return *this;
+    }
+
+    TimelineItem& contentRevision(std::uint64_t value) {
+        content_revision_ = value;
+        return *this;
+    }
+
+    TimelineItem& iconRevision(std::uint64_t value) {
+        icon_revision_ = value;
+        return *this;
+    }
+
 private:
     friend class detail::TimelineComponentHost;
     String key_;
+    std::optional<Prop<Color>> color_;
+    std::uint64_t title_revision_{};
+    std::uint64_t content_revision_{};
+    std::uint64_t icon_revision_{};
     Prop<String> title_{String{}};
     Prop<String> content_;
     std::optional<TimelineTitle> rich_title_;
@@ -125,8 +173,32 @@ public:
         return *this;
     }
 
+    TimelineProps& orientation(Prop<TimelineOrientation> value) {
+        orientation_ = std::move(value);
+        return *this;
+    }
+
+    TimelineProps& variant(Prop<TimelineVariant> value) {
+        variant_ = std::move(value);
+        return *this;
+    }
+
+    TimelineProps& titleSpan(Prop<TimelineTitleSpan> value) {
+        title_span_ = std::move(value);
+        return *this;
+    }
+
+    TimelineProps& rtl(Prop<bool> value = true) {
+        rtl_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend class detail::TimelineComponentHost;
+    Prop<TimelineOrientation> orientation_{TimelineOrientation::Vertical};
+    Prop<TimelineVariant> variant_{TimelineVariant::Outlined};
+    Prop<TimelineTitleSpan> title_span_{TimelineTitleSpan{}};
+    Prop<bool> rtl_{false};
     Prop<TimelineMode> mode_{TimelineMode::Start};
     Prop<bool> reverse_{false};
     Prop<bool> visible_{true};
@@ -134,4 +206,5 @@ private:
 };
 
 void Timeline(TimelineProps props, std::vector<TimelineItem> items);
+void Timeline(TimelineProps props, Prop<std::vector<TimelineItem>> items);
 } // namespace ryn

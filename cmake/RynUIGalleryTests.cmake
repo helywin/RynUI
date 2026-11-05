@@ -352,3 +352,14 @@ target_compile_definitions(rynui_media_gallery_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.image_gallery COMMAND rynui_media_gallery_tests image)
 add_test(NAME rynui.upload_gallery COMMAND rynui_media_gallery_tests upload)
+
+add_executable(rynui_data_display_gallery_tests data_display_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_data_display_gallery_tests)
+target_include_directories(rynui_data_display_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_data_display_gallery_tests PRIVATE rynui_token_gallery_definition rynui_token_gallery_reference_surface rynui_components)
+target_compile_definitions(rynui_data_display_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(display_page IN ITEMS collapse segmented descriptions timeline)
+    add_test(NAME rynui.${display_page}_gallery COMMAND rynui_data_display_gallery_tests ${display_page})
+endforeach()

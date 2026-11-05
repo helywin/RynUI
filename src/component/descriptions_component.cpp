@@ -1,5 +1,7 @@
 #include "component/descriptions_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
+#include "component/data_display_retained.hpp"
+#include "component/responsive_layout.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
 #include <cmath>
@@ -11,6 +13,8 @@ thread_local DescriptionsComponentHost* active_descriptions{};
 
 struct ItemState final {
     DescriptionsItemSnapshot snapshot;
+    std::optional<DescriptionsItem> definition;
+    std::shared_ptr<Scope> bindings;
     runtime::Rect frame;
     runtime::Rect label;
     runtime::Rect content;
@@ -21,10 +25,19 @@ struct ItemState final {
 
 struct DescriptionsState final {
     runtime::NodeId node;
+    input::InteractionId anchor;
     DescriptionsSnapshot snapshot;
     std::vector<DescriptionsModelItem> model;
     std::vector<ItemState> items;
     int columns{3};
+    int fixed_columns{3};
+    std::optional<Responsive<int>> responsive_columns;
+    Breakpoints breakpoints;
+    bool rtl{};
+    bool visible{true};
+    bool updating{};
+    std::optional<std::vector<DescriptionsItem>> pending;
+    Signal<String> separator{String{u8":"}};
     bool bordered{};
     bool colon{true};
     bool has_title{};
@@ -44,6 +57,30 @@ struct DescriptionsState final {
     runtime::Rect title;
     runtime::Rect extra;
 };
+
+struct DescriptionsFactoryEqual final {
+    template <typename T> bool operator()(const T&, const T&) const {
+        return false;
+    }
+};
+
+using DescriptionsOwner = std::shared_ptr<DescriptionsState>;
+
+DescriptionsOwner descriptions_state(WindowComponentServices& services, runtime::ComponentId id) {
+    const auto* slot = services.components().state<DescriptionsOwner>(id);
+    return slot ? *slot : nullptr;
+}
+
+void validate_columns(const Responsive<int>& value) {
+    if (value.fallback() <= 0) {
+        throw std::invalid_argument("Descriptions column/span must be positive");
+    }
+    for (const auto& entry : value.overrides()) {
+        if (entry && *entry <= 0) {
+            throw std::invalid_argument("Descriptions column/span must be positive");
+        }
+    }
+}
 
 runtime::SemanticForeground foreground(Color c) {
     return {c.red(), c.green(), c.blue(), c.alpha()};
@@ -105,7 +142,7 @@ void DescriptionsComponentHost::on_dispose() noexcept {
 }
 
 DescriptionsSnapshot DescriptionsComponentHost::snapshot(runtime::ComponentId id) const {
-    const auto* state = services_->components().state<DescriptionsState>(id);
+    const auto state = descriptions_state(*services_, id);
     if (!state) {
         throw std::out_of_range("Descriptions component is stale");
     }
@@ -117,50 +154,125 @@ DescriptionsSnapshot DescriptionsComponentHost::snapshot(runtime::ComponentId id
 }
 
 void DescriptionsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
-    auto* s = services_->components().state<DescriptionsState>(id);
-    if (!s || !services_->components().scope(id).active()) {
-        return;
-    }
-    const auto& t = services_->components().theme_scope(id)->snapshot().descriptions();
-    const auto& m = t.metrics;
-    s->label_color.set(foreground(s->bordered ? t.colors.bordered_label : t.colors.label));
-    s->content_color.set(foreground(t.colors.content));
-    s->title_color.set(foreground(t.colors.title));
-    s->extra_color.set(foreground(t.colors.extra));
-    s->font.set({m.font_family, 400, false, m.font_size, m.line_height});
-    s->title_font.set({m.font_family, m.title_font_weight, false, m.title_font_size, m.title_line_height});
-    std::vector<runtime::ComponentId> boundaries;
-    for (std::size_t i = 0; i < s->items.size(); ++i) {
-        auto& item = s->items[i];
-        const bool visible = s->model[i].visible;
-        item.snapshot.visible = visible;
-        if (services_->components().set_branch_active(item.snapshot.viewport, visible)) {
-            geometry = true;
-            services_->mark_scene_structure_dirty();
-        }
-        services_->nodes().require(services_->components().root(item.snapshot.viewport)).out_of_flow = !visible;
-        const bool colon = !s->bordered && s->colon;
-        if (services_->components().set_branch_active(item.snapshot.colon, colon)) {
-            geometry = true;
-            services_->mark_scene_structure_dirty();
-        }
-        boundaries.push_back(item.snapshot.viewport);
-    }
-    services_->dirty().invalidate(s->node, geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
-                                                          runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
-                                                    : runtime::DirtyFlags::Material);
-    // Boundary reconciliation delivers user blur callbacks. Never keep component references across it.
-    for (const auto branch : boundaries) {
-        const auto* current = services_->components().state<DescriptionsState>(id);
-        if (!current) {
+    run_untracked([&] {
+        auto s = descriptions_state(*services_, id);
+        if (!s || !services_->components().scope(id).active()) {
             return;
         }
-        const auto found = std::ranges::find_if(
-            current->items, [branch](const auto& item) { return item.snapshot.viewport == branch; });
-        if (found != current->items.end()) {
-            services_->set_input_blocked(branch, !found->snapshot.visible);
+        if (s->updating) {
+            return;
         }
+        services_->components().set_branch_active(id, s->visible);
+        services_->nodes().require(s->node).out_of_flow = !s->visible;
+        const auto& t = services_->components().theme_scope(id)->snapshot().descriptions();
+        const auto& m = t.metrics;
+        s->label_color.set(foreground(s->bordered ? t.colors.bordered_label : t.colors.label));
+        s->content_color.set(foreground(t.colors.content));
+        s->title_color.set(foreground(t.colors.title));
+        s->extra_color.set(foreground(t.colors.extra));
+        s->font.set({m.font_family, 400, false, m.font_size, m.line_height});
+        s->title_font.set({m.font_family, m.title_font_weight, false, m.title_font_size, m.title_line_height});
+        std::vector<runtime::ComponentId> boundaries;
+        for (std::size_t i = 0; i < s->items.size(); ++i) {
+            auto& item = s->items[i];
+            const bool visible = s->model[i].visible;
+            item.snapshot.visible = visible;
+            if (services_->components().set_branch_active(item.snapshot.viewport, visible)) {
+                geometry = true;
+                services_->mark_scene_structure_dirty();
+            }
+            services_->nodes().require(services_->components().root(item.snapshot.viewport)).out_of_flow = !visible;
+            const bool colon = !s->bordered && s->colon;
+            if (services_->components().set_branch_active(item.snapshot.colon, colon)) {
+                geometry = true;
+                services_->mark_scene_structure_dirty();
+            }
+            boundaries.push_back(item.snapshot.viewport);
+        }
+        services_->dirty().invalidate(s->node, geometry
+                                                   ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                         runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
+                                                   : runtime::DirtyFlags::Material);
+        boundaries.push_back(id);
+        // Boundary reconciliation delivers user blur callbacks. Never keep component references across it.
+        for (const auto branch : boundaries) {
+            const auto current = descriptions_state(*services_, id);
+            if (!current) {
+                return;
+            }
+            if (branch == id) {
+                services_->set_input_blocked(id, !current->visible);
+                continue;
+            }
+            const auto found = std::ranges::find_if(
+                current->items, [branch](const auto& item) { return item.snapshot.viewport == branch; });
+            if (found != current->items.end()) {
+                services_->set_input_blocked(branch, !found->snapshot.visible);
+            }
+        }
+    });
+}
+
+void DescriptionsComponentHost::mount_item(runtime::ComponentId id, std::size_t i,
+                                           const std::vector<DescriptionsItem>& items, bool initial) {
+    auto owner = descriptions_state(*services_, id);
+    if (!owner) {
+        return;
     }
+    auto& s = *owner;
+    auto& services = *services_;
+    const auto content = Content{[&] {
+        auto& context = runtime::require_component_build_context();
+        const auto container = [&](runtime::ComponentId parent, bool clip, bool active = true) {
+            runtime::ComponentId child;
+            context.mount_slot(parent, Content{[&] {
+                                   auto& children = runtime::require_component_build_context();
+                                   child = children.mount_component<int>(0);
+                                   const auto node = context.root(child);
+                                   services.nodes().require(node).clip_content = clip;
+                                   services.components().set_branch_active(child, active);
+                                   services.layout().set_layout(node, layout::LeafLayout{});
+                                   context.on_resource_cleanup(child, [&services, node, child] {
+                                       services.interactions().set_input_blocked(child, false);
+                                       services.layout().remove_layout(node);
+                                   });
+                               }});
+            return child;
+        };
+        const auto region = [&](runtime::ComponentId parent, Content body,
+                                const Signal<runtime::SemanticForeground>& color,
+                                const Signal<runtime::SemanticTypography>& font) {
+            const auto child = container(parent, true);
+            services.nodes().require(context.root(child)).clip_decorations = false;
+            services.layout().set_layout(context.root(child), layout::BoxLayout{});
+            context.mount_slot_with_semantic_text_style(child, body, Prop<runtime::SemanticForeground>{color},
+                                                        Prop<runtime::SemanticTypography>{font});
+            return child;
+        };
+        auto& item = s.items[i];
+        item.definition = items[i];
+        item.snapshot.viewport = container(id, true, s.model[i].visible);
+        item.snapshot.label =
+            region(item.snapshot.viewport, Content{[slot = items[i].label_] { SlotContentAccess::function(slot)(); }},
+                   s.label_color, s.font);
+        item.snapshot.content =
+            region(item.snapshot.viewport, Content{[slot = items[i].content_] { SlotContentAccess::function(slot)(); }},
+                   s.content_color, s.font);
+        item.snapshot.colon =
+            region(item.snapshot.viewport, Content{[separator = s.separator] { Text(TextProps{}.content(separator)); }},
+                   s.label_color, s.font);
+        const auto fragment =
+            context.register_scene_fragment(item.snapshot.viewport, runtime::SceneFragmentPlacement::before_children);
+        item.background = services.surfaces().create_content_range(fragment, {});
+        const auto lines =
+            context.register_scene_fragment(item.snapshot.viewport, runtime::SceneFragmentPlacement::after_children);
+        item.lines = services.surfaces().create_content_range(lines, {});
+        context.on_resource_cleanup(item.snapshot.viewport, [&services, bg = item.background, lines = item.lines] {
+            services.surfaces().destroy_content_range(bg);
+            services.surfaces().destroy_content_range(lines);
+        });
+    }};
+    display_append(services, id, id, content, initial);
 }
 
 void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std::vector<DescriptionsItem>& items) {
@@ -175,16 +287,27 @@ void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std:
     auto rows = pack_descriptions(columns, model);
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
-    const auto id = build.mount_component<DescriptionsState>();
-    auto& s = build.state<DescriptionsState>(id);
+    const auto id = build.mount_component<DescriptionsOwner>(std::make_shared<DescriptionsState>());
+    auto owner = build.state<DescriptionsOwner>(id);
+    auto& s = *owner;
     s.node = build.root(id);
+    s.anchor = display_anchor(services, id);
     s.columns = columns;
+    s.fixed_columns = columns;
+    if (props.responsive_column_) {
+        s.responsive_columns = read_prop(*props.responsive_column_);
+        validate_columns(*s.responsive_columns);
+    }
+    s.breakpoints = read_prop(props.breakpoints_);
+    s.rtl = read_prop(props.rtl_);
+    s.visible = read_prop(props.visible_);
+    s.separator.set(read_prop(props.locale_).separator);
     s.size = size;
     s.placement = placement;
     s.bordered = read_prop(props.bordered_);
     s.colon = read_prop(props.colon_);
-    s.has_title = props.title_.has_value();
-    s.has_extra = props.extra_.has_value();
+    s.has_title = props.title_.has_value() || props.dynamic_title_.has_value();
+    s.has_extra = props.extra_.has_value() || props.dynamic_extra_.has_value();
     s.model = std::move(model);
     s.snapshot.rows = std::move(rows);
     s.items.reserve(items.size());
@@ -196,74 +319,83 @@ void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std:
         services.surfaces().destroy_content_range(border);
         services.layout().remove_layout(node);
     });
-    build.mount_slot(
-        id, Content{[&] {
-            auto& context = runtime::require_component_build_context();
-            const auto container = [&](runtime::ComponentId parent, bool clip, bool active = true) {
-                runtime::ComponentId child;
-                context.mount_slot(parent, Content{[&] {
-                                       auto& children = runtime::require_component_build_context();
-                                       child = children.mount_component<int>(0);
-                                       const auto node = context.root(child);
-                                       services.nodes().require(node).clip_content = clip;
-                                       services.components().set_branch_active(child, active);
-                                       services.layout().set_layout(node, layout::LeafLayout{});
-                                       context.on_resource_cleanup(child, [&services, node, child] {
-                                           services.interactions().set_input_blocked(child, false);
-                                           services.layout().remove_layout(node);
-                                       });
-                                   }});
-                return child;
-            };
-            const auto region = [&](runtime::ComponentId parent, Content body,
-                                    const Signal<runtime::SemanticForeground>& color,
-                                    const Signal<runtime::SemanticTypography>& font) {
-                const auto child = container(parent, true);
-                services.nodes().require(context.root(child)).clip_decorations = false;
-                services.layout().set_layout(context.root(child), layout::BoxLayout{});
-                context.mount_slot_with_semantic_text_style(child, body, Prop<runtime::SemanticForeground>{color},
-                                                            Prop<runtime::SemanticTypography>{font});
-                return child;
-            };
-            s.snapshot.header = container(id, true, s.has_title || s.has_extra);
-            s.snapshot.title = region(s.snapshot.header, Content{[slot = props.title_] {
-                                          if (slot) {
-                                              SlotContentAccess::function (*slot)();
-                                          }
-                                      }},
-                                      s.title_color, s.title_font);
-            s.snapshot.extra = region(s.snapshot.header, Content{[slot = props.extra_] {
-                                          if (slot) {
-                                              SlotContentAccess::function (*slot)();
-                                          }
-                                      }},
-                                      s.extra_color, s.font);
-            for (std::size_t i = 0; i < items.size(); ++i) {
-                s.items.emplace_back();
-                auto& item = s.items.back();
-                item.snapshot.viewport = container(id, true, s.model[i].visible);
-                item.snapshot.label = region(item.snapshot.viewport,
-                                             Content{[slot = items[i].label_] { SlotContentAccess::function(slot)(); }},
-                                             s.label_color, s.font);
-                item.snapshot.content =
-                    region(item.snapshot.viewport,
-                           Content{[slot = items[i].content_] { SlotContentAccess::function(slot)(); }},
-                           s.content_color, s.font);
-                item.snapshot.colon =
-                    region(item.snapshot.viewport, Content{[] { Text(u8":"); }}, s.label_color, s.font);
-                const auto fragment = context.register_scene_fragment(item.snapshot.viewport,
-                                                                      runtime::SceneFragmentPlacement::before_children);
-                item.background = services.surfaces().create_content_range(fragment, {});
-                const auto lines = context.register_scene_fragment(item.snapshot.viewport,
-                                                                   runtime::SceneFragmentPlacement::after_children);
-                item.lines = services.surfaces().create_content_range(lines, {});
-                context.on_resource_cleanup(item.snapshot.viewport,
-                                            [&services, bg = item.background, lines = item.lines] {
-                                                services.surfaces().destroy_content_range(bg);
-                                                services.surfaces().destroy_content_range(lines);
-                                            });
+    build.on_resource_cleanup(id, [weak = std::weak_ptr<DescriptionsState>{owner}] {
+        if (auto s = weak.lock()) {
+            for (auto& item : s->items) {
+                item.bindings.reset();
             }
-        }});
+        }
+    });
+    const auto mounting_headers = std::make_shared<bool>(true);
+    auto title_generation = std::make_shared<std::size_t>(0);
+    std::optional<Memo<DescriptionsTitle, DescriptionsFactoryEqual>> title_source;
+    std::optional<DescriptionsTitle> initial_title = props.title_;
+    if (props.dynamic_title_) {
+        title_source.emplace([prop = *props.dynamic_title_, generation = title_generation] {
+            ++*generation;
+            return read_prop(prop);
+        });
+        initial_title = title_source->get();
+    }
+    const auto mounted_title_generation = *title_generation;
+    auto extra_generation = std::make_shared<std::size_t>(0);
+    std::optional<Memo<DescriptionsExtra, DescriptionsFactoryEqual>> extra_source;
+    std::optional<DescriptionsExtra> initial_extra = props.extra_;
+    if (props.dynamic_extra_) {
+        extra_source.emplace([prop = *props.dynamic_extra_, generation = extra_generation] {
+            ++*generation;
+            return read_prop(prop);
+        });
+        initial_extra = extra_source->get();
+    }
+    const auto mounted_extra_generation = *extra_generation;
+    build.mount_slot(id, Content{[&] {
+                         auto& context = runtime::require_component_build_context();
+                         const auto container = [&](runtime::ComponentId parent, bool clip, bool active = true) {
+                             runtime::ComponentId child;
+                             context.mount_slot(parent, Content{[&] {
+                                                    auto& children = runtime::require_component_build_context();
+                                                    child = children.mount_component<int>(0);
+                                                    const auto node = context.root(child);
+                                                    services.nodes().require(node).clip_content = clip;
+                                                    services.components().set_branch_active(child, active);
+                                                    services.layout().set_layout(node, layout::LeafLayout{});
+                                                    context.on_resource_cleanup(child, [&services, node, child] {
+                                                        services.interactions().set_input_blocked(child, false);
+                                                        services.layout().remove_layout(node);
+                                                    });
+                                                }});
+                             return child;
+                         };
+                         const auto region = [&](runtime::ComponentId parent, Content body,
+                                                 const Signal<runtime::SemanticForeground>& color,
+                                                 const Signal<runtime::SemanticTypography>& font) {
+                             const auto child = container(parent, true);
+                             services.nodes().require(context.root(child)).clip_decorations = false;
+                             services.layout().set_layout(context.root(child), layout::BoxLayout{});
+                             context.mount_slot_with_semantic_text_style(child, body,
+                                                                         Prop<runtime::SemanticForeground>{color},
+                                                                         Prop<runtime::SemanticTypography>{font});
+                             return child;
+                         };
+                         s.snapshot.header = container(id, true, s.has_title || s.has_extra);
+                         s.snapshot.title = region(s.snapshot.header, Content{[slot = initial_title] {
+                                                       if (slot) {
+                                                           SlotContentAccess::function (*slot)();
+                                                       }
+                                                   }},
+                                                   s.title_color, s.title_font);
+                         s.snapshot.extra = region(s.snapshot.header, Content{[slot = initial_extra] {
+                                                       if (slot) {
+                                                           SlotContentAccess::function (*slot)();
+                                                       }
+                                                   }},
+                                                   s.extra_color, s.font);
+                         s.items.resize(items.size());
+                         for (std::size_t i = 0; i < items.size(); ++i) {
+                             mount_item(id, i, items, true);
+                         }
+                     }});
     services.layout().set_layout(
         s.node, layout::ComponentLayout{[this, id](layout::LayoutEngine& engine, runtime::NodeId,
                                                    layout::Constraints limits) { return measure(id, engine, limits); },
@@ -272,57 +404,126 @@ void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std:
     mounted_.push_back(id);
     auto& scope = build.scope(id);
     connect_prop(scope, props.column_, [this, id](int value) {
-        if (auto* s = services_->components().state<DescriptionsState>(id)) {
+        if (auto s = descriptions_state(*services_, id)) {
             auto rows = pack_descriptions(value, s->model);
+            s->fixed_columns = value;
             s->columns = value;
             s->snapshot.rows = std::move(rows);
             refresh(id, true);
         }
     });
     connect_prop(scope, props.size_, [this, id](DescriptionsSize value) {
-        if (auto* s = services_->components().state<DescriptionsState>(id)) {
+        if (auto s = descriptions_state(*services_, id)) {
             validate(value, s->placement);
             s->size = value;
             refresh(id, true);
         }
     });
     connect_prop(scope, props.placement_, [this, id](DescriptionsLabelPlacement value) {
-        if (auto* s = services_->components().state<DescriptionsState>(id)) {
+        if (auto s = descriptions_state(*services_, id)) {
             validate(s->size, value);
             s->placement = value;
             refresh(id, true);
         }
     });
     connect_prop(scope, props.bordered_, [this, id](bool value) {
-        if (auto* s = services_->components().state<DescriptionsState>(id)) {
+        if (auto s = descriptions_state(*services_, id)) {
             s->bordered = value;
             refresh(id, true);
         }
     });
     connect_prop(scope, props.colon_, [this, id](bool value) {
-        if (auto* s = services_->components().state<DescriptionsState>(id)) {
+        if (auto s = descriptions_state(*services_, id)) {
             s->colon = value;
             refresh(id, true);
         }
     });
     for (std::size_t i = 0; i < items.size(); ++i) {
-        connect_prop(scope, items[i].span_, [this, id, i](int value) {
-            if (auto* s = services_->components().state<DescriptionsState>(id)) {
-                if (value <= 0) {
-                    throw std::invalid_argument("Descriptions span must be positive");
+        bind_item(id, i);
+    }
+    if (props.responsive_column_) {
+        connect_prop(scope, *props.responsive_column_, [this, id](Responsive<int> value) {
+            validate_columns(value);
+            if (auto s = descriptions_state(*services_, id)) {
+                s->responsive_columns = std::move(value);
+                repack(id);
+            }
+        });
+    }
+    connect_prop(scope, props.breakpoints_, [this, id](Breakpoints value) {
+        if (auto s = descriptions_state(*services_, id)) {
+            s->breakpoints = value;
+            repack(id);
+        }
+    });
+    connect_prop(scope, Prop<float>{services.responsive_layout().window_width()}, [this, id](float) { repack(id); });
+    connect_prop(scope, props.rtl_, [this, id](bool value) {
+        if (auto s = descriptions_state(*services_, id)) {
+            s->rtl = value;
+            refresh(id, true);
+        }
+    });
+    connect_prop(scope, props.visible_, [this, id](bool value) {
+        if (auto s = descriptions_state(*services_, id)) {
+            s->visible = value;
+            refresh(id, true);
+        }
+    });
+    connect_prop(scope, props.locale_, [this, id](DescriptionsLocale value) {
+        if (auto s = descriptions_state(*services_, id)) {
+            s->separator.set(value.separator);
+            refresh(id, true);
+        }
+    });
+    if (title_source) {
+        connect_prop(
+            scope, Prop<DescriptionsTitle>{bind([source = *title_source] { return source.get(); })},
+            [this, id, generation = title_generation, last = mounted_title_generation,
+             mounting_headers](DescriptionsTitle slot) mutable {
+                if (last == *generation) {
+                    return;
                 }
-                s->model[i].span = value;
-                s->snapshot.rows = pack_descriptions(s->columns, s->model);
-                refresh(id, true);
-            }
-        });
-        connect_prop(scope, items[i].visible_, [this, id, i](bool value) {
-            if (auto* s = services_->components().state<DescriptionsState>(id)) {
-                s->model[i].visible = value;
-                s->snapshot.rows = pack_descriptions(s->columns, s->model);
-                refresh(id, true);
-            }
-        });
+                last = *generation;
+                run_untracked([&] {
+                    if (auto s = descriptions_state(*services_, id)) {
+                        const auto region = s->snapshot.title;
+                        display_clear(*services_, id, region);
+                        if (!services_->components().contains(id)) {
+                            throw std::logic_error("Descriptions owner destroyed during header replacement");
+                        }
+                        display_append_styled(*services_, id, region,
+                                              Content{[slot] { SlotContentAccess::function(slot)(); }}, s->title_color,
+                                              s->title_font, *mounting_headers);
+                        refresh(id, true);
+                    }
+                });
+            },
+            [](const auto&, const auto&) { return false; });
+    }
+    if (extra_source) {
+        connect_prop(
+            scope, Prop<DescriptionsExtra>{bind([source = *extra_source] { return source.get(); })},
+            [this, id, generation = extra_generation, last = mounted_extra_generation,
+             mounting_headers](DescriptionsExtra slot) mutable {
+                if (last == *generation) {
+                    return;
+                }
+                last = *generation;
+                run_untracked([&] {
+                    if (auto s = descriptions_state(*services_, id)) {
+                        const auto region = s->snapshot.extra;
+                        display_clear(*services_, id, region);
+                        if (!services_->components().contains(id)) {
+                            throw std::logic_error("Descriptions owner destroyed during header replacement");
+                        }
+                        display_append_styled(*services_, id, region,
+                                              Content{[slot] { SlotContentAccess::function(slot)(); }}, s->extra_color,
+                                              s->font, *mounting_headers);
+                        refresh(id, true);
+                    }
+                });
+            },
+            [](const auto&, const auto&) { return false; });
     }
     const auto theme = build.theme_scope();
     const std::array accessors{&theme_runtime::ThemeScope::descriptions_colors,
@@ -333,11 +534,170 @@ void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std:
                            [theme, accessor = accessors[i]] { static_cast<void>((theme.get()->*accessor)()); });
     }
     refresh(id, true);
+    *mounting_headers = false;
+}
+
+void DescriptionsComponentHost::repack(runtime::ComponentId id) {
+    run_untracked([&] {
+        auto s = descriptions_state(*services_, id);
+        if (!s || s->updating) {
+            return;
+        }
+        const float width = services_->responsive_layout().window_width().get();
+        const int columns =
+            s->responsive_columns ? s->responsive_columns->resolve(width, s->breakpoints) : s->fixed_columns;
+        auto model = s->model;
+        for (std::size_t i = 0; i < s->items.size(); ++i) {
+            const auto& definition = *s->items[i].definition;
+            const auto span = definition.responsive_span_ ? read_prop(*definition.responsive_span_)
+                                                          : Responsive<int>{read_prop(definition.span_)};
+            validate_columns(span);
+            model[i] = {definition.key_, span.resolve(width, s->breakpoints), read_prop(definition.visible_),
+                        read_prop(definition.fill_)};
+        }
+        auto rows = pack_descriptions(columns, model);
+        const bool changed = s->columns != columns || rows != s->snapshot.rows;
+        s->columns = columns;
+        s->model = std::move(model);
+        s->snapshot.rows = std::move(rows);
+        refresh(id, changed);
+    });
+}
+
+void DescriptionsComponentHost::bind_item(runtime::ComponentId id, std::size_t index) {
+    auto s = descriptions_state(*services_, id);
+    auto& item = s->items[index];
+    item.bindings = std::make_shared<Scope>();
+    const auto bindings = item.bindings;
+    const auto definition = *item.definition;
+    connect_prop(*bindings, definition.span_, [this, id](int value) {
+        if (value <= 0) {
+            throw std::invalid_argument("Descriptions span must be positive");
+        }
+        repack(id);
+    });
+    if (definition.responsive_span_) {
+        connect_prop(*bindings, *definition.responsive_span_, [this, id](Responsive<int> value) {
+            validate_columns(value);
+            repack(id);
+        });
+    }
+    connect_prop(*bindings, definition.visible_, [this, id](bool) { repack(id); });
+    connect_prop(*bindings, definition.fill_, [this, id](bool) { repack(id); });
+}
+
+void DescriptionsComponentHost::update(runtime::ComponentId id, std::vector<DescriptionsItem> definitions) {
+    run_untracked([&] {
+        auto s = descriptions_state(*services_, id);
+        if (!s) {
+            return;
+        }
+        const float width = services_->responsive_layout().window_width().get();
+        std::vector<DescriptionsModelItem> model;
+        for (const auto& item : definitions) {
+            const auto span =
+                item.responsive_span_ ? read_prop(*item.responsive_span_) : Responsive<int>{read_prop(item.span_)};
+            validate_columns(span);
+            model.push_back(
+                {item.key_, span.resolve(width, s->breakpoints), read_prop(item.visible_), read_prop(item.fill_)});
+        }
+        auto rows = pack_descriptions(s->columns, model);
+        if (!services_->components().contains(id)) {
+            return;
+        }
+        if (s->updating) {
+            s->pending = std::move(definitions);
+            return;
+        }
+        s->updating = true;
+        try {
+            auto old = std::move(s->items);
+            s->items.clear();
+            s->items.resize(definitions.size());
+            s->model = std::move(model);
+            s->snapshot.rows = std::move(rows);
+            for (std::size_t i = 0; i < definitions.size(); ++i) {
+                const auto& definition = definitions[i];
+                const auto found = std::ranges::find_if(
+                    old, [&](const auto& item) { return item.definition && item.definition->key_ == definition.key_; });
+                if (found == old.end()) {
+                    mount_item(id, i, definitions, false);
+                } else {
+                    s->items[i] = std::move(*found);
+                    auto& item = s->items[i];
+                    const auto previous = *item.definition;
+                    item.bindings.reset();
+                    item.definition = definition;
+                    const auto replace = [&](runtime::ComponentId region, const Content& content) {
+                        display_clear(*services_, id, region);
+                        if (services_->components().contains(id)) {
+                            display_append_styled(*services_, id, region, content,
+                                                  region == item.snapshot.label ? s->label_color : s->content_color,
+                                                  s->font, false);
+                        }
+                    };
+                    if (previous.label_revision_ != definition.label_revision_) {
+                        replace(item.snapshot.label,
+                                Content{[slot = definition.label_] { SlotContentAccess::function(slot)(); }});
+                    }
+                    if (!services_->components().contains(id)) {
+                        return;
+                    }
+                    if (previous.content_revision_ != definition.content_revision_) {
+                        replace(item.snapshot.content,
+                                Content{[slot = definition.content_] { SlotContentAccess::function(slot)(); }});
+                    }
+                }
+                if (!services_->components().contains(id)) {
+                    return;
+                }
+            }
+            for (auto& item : old) {
+                if (std::ranges::any_of(
+                        s->items, [&](const auto& kept) { return kept.snapshot.viewport == item.snapshot.viewport; })) {
+                    continue;
+                }
+                item.bindings.reset();
+                services_->destroy(item.snapshot.viewport);
+                if (!services_->components().contains(id)) {
+                    return;
+                }
+            }
+            for (std::size_t i = 0; i < s->items.size(); ++i) {
+                bind_item(id, i);
+            }
+            std::vector<runtime::ComponentId> regions{s->snapshot.header};
+            for (const auto& item : s->items) {
+                regions.push_back(item.snapshot.viewport);
+            }
+            display_reorder(*services_, s->anchor, regions);
+            s->updating = false;
+            refresh(id, true);
+            if (s->pending && services_->components().contains(id)) {
+                auto pending = std::move(*s->pending);
+                s->pending.reset();
+                update(id, std::move(pending));
+            }
+        } catch (...) {
+            services_->retire_failed_component(id);
+            throw;
+        }
+    });
+}
+
+void DescriptionsComponentHost::mount(const DescriptionsProps& props,
+                                      const Prop<std::vector<DescriptionsItem>>& items) {
+    mount(props, read_prop(items));
+    const auto id = mounted_.back();
+    connect_prop(
+        services_->components().scope(id), items,
+        [this, id](std::vector<DescriptionsItem> value) { update(id, std::move(value)); },
+        [](const auto&, const auto&) { return false; });
 }
 
 runtime::Size DescriptionsComponentHost::measure(runtime::ComponentId id, layout::LayoutEngine& engine,
                                                  layout::Constraints limits) {
-    auto& s = *services_->components().state<DescriptionsState>(id);
+    auto& s = *descriptions_state(*services_, id);
     const auto& m = services_->components().theme_scope(id)->snapshot().descriptions().metrics;
     const auto node = [&](runtime::ComponentId child) {
         return services_->components().root(child);
@@ -478,10 +838,17 @@ runtime::Size DescriptionsComponentHost::measure(runtime::ComponentId id, layout
 }
 
 void DescriptionsComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& engine, runtime::Rect bounds) {
-    auto& s = *services_->components().state<DescriptionsState>(id);
+    auto& s = *descriptions_state(*services_, id);
     const runtime::Point origin{bounds.x, bounds.y};
+    const auto mirror = [&](runtime::Rect r, float width) {
+        if (s.rtl) {
+            r.x = width - r.x - r.width;
+        }
+        return r;
+    };
     const auto place = [&](runtime::ComponentId child, runtime::Rect r, runtime::Rect clip) {
-        engine.place_child(services_->components().root(child), intersect(offset(r, origin), clip));
+        engine.place_child(services_->components().root(child),
+                           intersect(offset(mirror(r, bounds.width), origin), clip));
     };
     const auto header = intersect(offset(s.header, origin), bounds);
     if (s.has_title || s.has_extra) {
@@ -493,21 +860,22 @@ void DescriptionsComponentHost::place(runtime::ComponentId id, layout::LayoutEng
         if (!item.snapshot.visible) {
             continue;
         }
-        const auto frame = intersect(offset(item.frame, origin), bounds);
+        const auto local_frame = mirror(item.frame, bounds.width);
+        const auto frame = intersect(offset(local_frame, origin), bounds);
         place(item.snapshot.viewport, item.frame, bounds);
-        const runtime::Point cell_origin{bounds.x + item.frame.x, bounds.y + item.frame.y};
+        const runtime::Point cell_origin{bounds.x + local_frame.x, bounds.y + local_frame.y};
         engine.place_child(services_->components().root(item.snapshot.label),
-                           intersect(offset(item.label, cell_origin), frame));
+                           intersect(offset(mirror(item.label, item.frame.width), cell_origin), frame));
         engine.place_child(services_->components().root(item.snapshot.content),
-                           intersect(offset(item.content, cell_origin), frame));
+                           intersect(offset(mirror(item.content, item.frame.width), cell_origin), frame));
         engine.place_child(services_->components().root(item.snapshot.colon),
-                           intersect(offset(item.colon, cell_origin), frame));
+                           intersect(offset(mirror(item.colon, item.frame.width), cell_origin), frame));
     }
 }
 
 void DescriptionsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
     for (auto id : mounted_) {
-        const auto* s = services_->components().state<DescriptionsState>(id);
+        const auto s = descriptions_state(*services_, id);
         if (!s || !services_->components().branch_active(id)) {
             continue;
         }
@@ -529,7 +897,11 @@ void DescriptionsComponentHost::synchronize_auxiliary_geometry(runtime::Size vie
             for (std::size_t c = 0; c < row.size(); ++c) {
                 const auto& item = s->items[row[c].item];
                 const auto& node = services_->nodes().require(services_->components().root(item.snapshot.viewport));
-                const auto label = offset(item.snapshot.label_cell, {node.bounds.x, node.bounds.y});
+                auto label_cell = item.snapshot.label_cell;
+                if (s->rtl) {
+                    label_cell.x = item.frame.width - label_cell.x - label_cell.width;
+                }
+                const auto label = offset(label_cell, {node.bounds.x, node.bounds.y});
                 const bool top = item.frame.y == s->view.y + border;
                 const bool bottom = &row == &s->snapshot.rows.back();
                 const auto bg = graphics::make_corner_fill_effects(
@@ -550,12 +922,13 @@ void DescriptionsComponentHost::synchronize_auxiliary_geometry(runtime::Size vie
                     }
                 };
                 if (s->placement == DescriptionsLabelPlacement::Horizontal) {
-                    line({label.x + label.width, node.bounds.y, border, node.bounds.height});
+                    line({s->rtl ? label.x : label.x + label.width, node.bounds.y, border, node.bounds.height});
                 } else {
                     line({node.bounds.x, label.y + label.height, node.bounds.width, border});
                 }
                 if (c + 1 < row.size()) {
-                    line({node.bounds.x + node.bounds.width - border, node.bounds.y, border, node.bounds.height});
+                    line({s->rtl ? node.bounds.x : node.bounds.x + node.bounds.width - border, node.bounds.y, border,
+                          node.bounds.height});
                 }
                 if (!bottom) {
                     line({node.bounds.x, node.bounds.y + node.bounds.height, node.bounds.width, border});
@@ -568,6 +941,13 @@ void DescriptionsComponentHost::synchronize_auxiliary_geometry(runtime::Size vie
 } // namespace ryn::detail
 
 namespace ryn {
+void Descriptions(DescriptionsProps props, Prop<std::vector<DescriptionsItem>> items) {
+    if (!detail::active_descriptions) {
+        throw std::logic_error("Descriptions requires window component services");
+    }
+    detail::active_descriptions->mount(props, items);
+}
+
 void Descriptions(DescriptionsProps props, std::vector<DescriptionsItem> items) {
     if (!detail::active_descriptions) {
         throw std::logic_error("Descriptions requires window component services");

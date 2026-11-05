@@ -4,12 +4,19 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
 #include <optional>
+#include <cstdint>
+#include <ryn/breakpoints.hpp>
 #include <vector>
 
 namespace ryn {
 namespace detail {
 class DescriptionsComponentHost;
 }
+
+struct DescriptionsLocale final {
+    String separator{u8":"};
+    friend bool operator==(const DescriptionsLocale&, const DescriptionsLocale&) = default;
+};
 
 enum class DescriptionsSize { Default, Middle, Small };
 
@@ -43,12 +50,36 @@ public:
         return *this;
     }
 
+    DescriptionsItem& span(Prop<Responsive<int>> value) {
+        responsive_span_ = std::move(value);
+        return *this;
+    }
+
+    DescriptionsItem& fill(Prop<bool> value = true) {
+        fill_ = std::move(value);
+        return *this;
+    }
+
+    DescriptionsItem& labelRevision(std::uint64_t value) {
+        label_revision_ = value;
+        return *this;
+    }
+
+    DescriptionsItem& contentRevision(std::uint64_t value) {
+        content_revision_ = value;
+        return *this;
+    }
+
 private:
     friend class detail::DescriptionsComponentHost;
     String key_;
     DescriptionsLabel label_;
     DescriptionsContent content_;
     Prop<int> span_{1};
+    std::optional<Prop<Responsive<int>>> responsive_span_;
+    Prop<bool> fill_{false};
+    std::uint64_t label_revision_{};
+    std::uint64_t content_revision_{};
     Prop<bool> visible_{true};
 };
 
@@ -94,9 +125,51 @@ public:
         return *this;
     }
 
+    DescriptionsProps& column(Prop<Responsive<int>> value) {
+        responsive_column_ = std::move(value);
+        return *this;
+    }
+
+    DescriptionsProps& breakpoints(Prop<Breakpoints> value) {
+        breakpoints_ = std::move(value);
+        return *this;
+    }
+
+    DescriptionsProps& locale(Prop<DescriptionsLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
+    DescriptionsProps& rtl(Prop<bool> value = true) {
+        rtl_ = std::move(value);
+        return *this;
+    }
+
+    DescriptionsProps& visible(Prop<bool> value) {
+        visible_ = std::move(value);
+        return *this;
+    }
+
+    DescriptionsProps& titleContent(Prop<DescriptionsTitle> value) {
+        dynamic_title_ = std::move(value);
+        return *this;
+    }
+
+    DescriptionsProps& extraContent(Prop<DescriptionsExtra> value) {
+        dynamic_extra_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend class detail::DescriptionsComponentHost;
     Prop<int> column_{3};
+    std::optional<Prop<Responsive<int>>> responsive_column_;
+    Prop<Breakpoints> breakpoints_{Breakpoints{}};
+    Prop<DescriptionsLocale> locale_{DescriptionsLocale{}};
+    Prop<bool> rtl_{false};
+    Prop<bool> visible_{true};
+    std::optional<Prop<DescriptionsTitle>> dynamic_title_;
+    std::optional<Prop<DescriptionsExtra>> dynamic_extra_;
     Prop<bool> bordered_{false};
     Prop<DescriptionsLabelPlacement> placement_{DescriptionsLabelPlacement::Horizontal};
     Prop<DescriptionsSize> size_{DescriptionsSize::Default};
@@ -107,4 +180,5 @@ private:
 };
 
 void Descriptions(DescriptionsProps props, std::vector<DescriptionsItem> items);
+void Descriptions(DescriptionsProps props, Prop<std::vector<DescriptionsItem>> items);
 } // namespace ryn

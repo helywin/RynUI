@@ -27,6 +27,7 @@ public:
     explicit DescriptionsComponentHost(WindowComponentServices&);
     ~DescriptionsComponentHost();
     void mount(const DescriptionsProps&, const std::vector<DescriptionsItem>&);
+    void mount(const DescriptionsProps&, const Prop<std::vector<DescriptionsItem>>&);
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
@@ -41,6 +42,10 @@ public:
 
 private:
     void refresh(runtime::ComponentId, bool);
+    void mount_item(runtime::ComponentId, std::size_t, const std::vector<DescriptionsItem>&, bool);
+    void bind_item(runtime::ComponentId, std::size_t);
+    void repack(runtime::ComponentId);
+    void update(runtime::ComponentId, std::vector<DescriptionsItem>);
     runtime::Size measure(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     WindowComponentServices* services_;

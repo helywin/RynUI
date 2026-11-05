@@ -26,7 +26,7 @@ DescriptionsRows pack_descriptions(int columns, std::span<const DescriptionsMode
         if (used == 0) {
             result.emplace_back();
         }
-        const int span = std::min(items[i].span, columns - used);
+        const int span = items[i].filled ? columns - used : std::min(items[i].span, columns - used);
         result.back().push_back({i, used, span});
         used += span;
         if (used == columns) {

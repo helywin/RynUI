@@ -1,4 +1,5 @@
 #include "support/paint_opacity_fixture.hpp"
+#include "support/retained_media_fixture.hpp"
 #include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include <SDL3/SDL.h>
@@ -190,6 +191,43 @@ int main(int argc, char** argv) {
         expected(nested_fade.get(), 80, 80, {191, 143, 207});
         resources.retire();
         fade.services.dispose();
+        const auto before_retained = checks;
+        retained_media_test::Scene retained;
+        auto& media = retained.fixture;
+        retained.opacity(.5F);
+        retained.open();
+        const auto media_bounds = retained.image().bounds;
+        const int media_x = int(media_bounds.x + media_bounds.width / 4);
+        const int media_y = int(media_bounds.y + media_bounds.height / 2);
+        auto lazy_half = render(media, "retained-lazy-half.bmp");
+        expected(lazy_half.get(), media_x, media_y, {255, 127, 127});
+        check(retained.input.focus({InputFocusCursor::All}), "GPU rich Form input focus failed");
+        check(
+            bool(media.inputs.dispatch(input::TextCommitted{String{u8"GPU form"}, media.inputs.sessions().active()})) &&
+                retained.field.get() == String{u8"GPU form"},
+            "GPU rich Form automatic binding failed");
+        retained.opacity(0);
+        auto rich_zero = render(media, "retained-zero.bmp");
+        expected(rich_zero.get(), media_x, media_y, {255, 255, 255});
+        retained.opacity(1);
+        auto rich_reset = render(media, "retained-reset.bmp");
+        expected(rich_reset.get(), media_x, media_y, {255, 0, 0});
+        retained.opacity(.5F);
+        retained.revision.set(1);
+        retained.sync();
+        retained.sync();
+        const auto replaced_bounds = retained.image().bounds;
+        auto replaced = render(media, "retained-replaced-half.bmp");
+        expected(replaced.get(), int(replaced_bounds.x + replaced_bounds.width / 4),
+                 int(replaced_bounds.y + replaced_bounds.height / 2), {127, 127, 255});
+        check(retained.field.get() == String{u8"GPU form"}, "GPU local region replacement lost Form authority");
+        resources.retire();
+        media.services.dispose();
+        check(media.services.images().live_count() == 0 && !media.nodes.has_paint_opacity() &&
+                  !media.services.next_frame_deadline(),
+              "GPU retained media composition leaked");
+        std::cout << checks - before_retained
+                  << " additional Vulkan Carousel/Collapse/Descriptions/Image/Form composition checks passed\n";
         std::cout << checks << " Vulkan/SPIR-V native component/Image/glyph/effect opacity pixel checks passed\n";
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

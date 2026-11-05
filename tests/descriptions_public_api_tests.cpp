@@ -4,8 +4,14 @@
 
 static_assert(!std::is_convertible_v<ryn::DescriptionsLabel, ryn::DescriptionsContent>);
 static_assert(!std::is_convertible_v<ryn::DescriptionsTitle, ryn::DescriptionsExtra>);
+static_assert(std::is_same_v<decltype(static_cast<void (*)(ryn::DescriptionsProps, std::vector<ryn::DescriptionsItem>)>(
+                                 &ryn::Descriptions)),
+                             void (*)(ryn::DescriptionsProps, std::vector<ryn::DescriptionsItem>)>);
+
 static_assert(
-    std::is_same_v<decltype(&ryn::Descriptions), void (*)(ryn::DescriptionsProps, std::vector<ryn::DescriptionsItem>)>);
+    std::is_same_v<decltype(static_cast<void (*)(ryn::DescriptionsProps,
+                                                 ryn::Prop<std::vector<ryn::DescriptionsItem>>)>(&ryn::Descriptions)),
+                   void (*)(ryn::DescriptionsProps, ryn::Prop<std::vector<ryn::DescriptionsItem>>)>);
 
 int main() {
     ryn::Signal<int> columns{3};

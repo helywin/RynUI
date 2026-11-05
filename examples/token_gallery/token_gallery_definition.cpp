@@ -4474,6 +4474,165 @@ void add_data_and_selection_samples(const std::shared_ptr<GalleryState>& state) 
     add_input_number_samples(state);
 }
 
+void add_collapse_contract_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<bool> reverse{false};
+    Signal<bool> ghost{false};
+    Signal<bool> lazy{true};
+    Signal<CollapseKeys> active{CollapseKeys{u8"draft"}};
+    Text(u8"动态面板 · 合成示例数据 · 重排保留草稿；懒挂载与关闭后销毁可独立控制");
+    Collapse(CollapseProps{}.activeKeys(active).ghost(ghost).lazy(lazy).onChange(
+                 [active](CollapseKeys keys) { active.set(std::move(keys)); }),
+             bind([reverse] {
+                 std::vector<CollapsePanel> panels{
+                     CollapsePanel{u8"draft", CollapseTitle{[] { Text(u8"保留草稿"); }}, CollapseBody{[] {
+                                       Input(InputProps{}.defaultValue(u8"编辑后重排，草稿仍保留"));
+                                       gallery_target("gallery.collapse.dynamic-draft");
+                                   }}},
+                     CollapsePanel{u8"lazy", CollapseTitle{[] { Text(u8"懒加载正文"); }}, CollapseBody{[] {
+                                       Input(InputProps{}.defaultValue(u8"首次展开才创建；收起后销毁"));
+                                   }}}
+                         .destroyOnHidden(true)};
+                 if (reverse.get()) {
+                     std::reverse(panels.begin(), panels.end());
+                 }
+                 return panels;
+             }));
+    gallery_target("gallery.collapse.dynamic");
+    Space(SpaceProps{}.wrap(true), SpaceContent{[=] {
+              Button(ButtonProps{}.onClick([reverse] { reverse.set(!reverse.get()); }), [] { Text(u8"重排面板"); });
+              gallery_target("gallery.collapse.reorder");
+              Button(ButtonProps{}.onClick([ghost] { ghost.set(!ghost.get()); }), [] { Text(u8"Ghost 外观"); });
+              gallery_target("gallery.collapse.ghost");
+              Button(ButtonProps{}.onClick(
+                         [active] { active.set(active.get().empty() ? CollapseKeys{u8"draft"} : CollapseKeys{}); }),
+                     [] { Text(u8"切换草稿面板"); });
+              gallery_target("gallery.collapse.dynamic-toggle");
+          }});
+    state->telemetry.live_samples += 1;
+}
+
+void add_segmented_contract_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<bool> reverse{false};
+    Signal<bool> rtl{true};
+    Signal<SegmentedValue> selected{SegmentedValue{1.0}};
+    Text(u8"动态数值分段 · 合成示例数据 · RTL / Round / 有限 pill 过渡");
+    Text(TextProps{}.content(bind([selected] {
+        return selected.get() == SegmentedValue{1.0} ? String{u8"回调结果：数值 1"} : String{u8"回调结果：数值 2"};
+    })));
+    Segmented(SegmentedProps{}
+                  .value(selected)
+                  .rtl(rtl)
+                  .shape(SegmentedShape::Round)
+                  .block()
+                  .onValueChange([selected](SegmentedValue value) { selected.set(std::move(value)); }),
+              bind([reverse] {
+                  std::vector<SegmentedOption> options{SegmentedOption{u8"one", u8"数值 1"}.value(1.0),
+                                                       SegmentedOption{u8"two", u8"数值 2"}.value(2.0)};
+                  if (reverse.get()) {
+                      std::reverse(options.begin(), options.end());
+                  }
+                  return options;
+              }));
+    gallery_target("gallery.segmented.dynamic");
+    Space(SpaceProps{}, SpaceContent{[=] {
+              Button(ButtonProps{}.onClick([reverse] { reverse.set(!reverse.get()); }), [] { Text(u8"重排选项"); });
+              gallery_target("gallery.segmented.reorder");
+              Button(ButtonProps{}.onClick([rtl] { rtl.set(!rtl.get()); }), [] { Text(u8"切换 RTL"); });
+              gallery_target("gallery.segmented.rtl");
+          }});
+    state->telemetry.live_samples += 1;
+}
+
+void add_descriptions_contract_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<bool> reverse{false};
+    Signal<bool> rtl{false};
+    Text(u8"动态资料 · 合成示例数据 · 窗口断点 1/2/3 列；重排保留真实编辑草稿");
+    Descriptions(
+        DescriptionsProps{}
+            .column(Responsive<int>{1}.at(Breakpoint::Sm, 2).at(Breakpoint::Lg, 3))
+            .bordered()
+            .rtl(rtl)
+            .title(DescriptionsTitle{[] { Text(u8"响应式详情"); }})
+            .extra(DescriptionsExtra{[reverse] {
+                Button(ButtonProps{}.onClick([reverse] { reverse.set(!reverse.get()); }), [] { Text(u8"重排资料"); });
+                gallery_target("gallery.descriptions.reorder");
+            }}),
+        bind([reverse] {
+            std::vector<DescriptionsItem> items{
+                DescriptionsItem{u8"draft", DescriptionsLabel{[] { Text(u8"可编辑备注"); }}, DescriptionsContent{[] {
+                                     Input(InputProps{}.defaultValue(u8"保留的详情草稿"));
+                                     gallery_target("gallery.descriptions.dynamic-draft");
+                                 }}},
+                DescriptionsItem{u8"state", DescriptionsLabel{[] { Text(u8"状态"); }},
+                                 DescriptionsContent{[] { Text(u8"示例运行中"); }}},
+                DescriptionsItem{u8"fill", DescriptionsLabel{[] { Text(u8"填满行尾"); }},
+                                 DescriptionsContent{[] { Text(u8"随窗口 logical width 重新分配，内容不重挂载"); }}}
+                    .fill()};
+            if (reverse.get()) {
+                std::reverse(items.begin(), items.end());
+            }
+            return items;
+        }));
+    gallery_target("gallery.descriptions.dynamic");
+    Button(ButtonProps{}.onClick([rtl] { rtl.set(!rtl.get()); }), [] { Text(u8"切换详情 RTL"); });
+    gallery_target("gallery.descriptions.rtl");
+    state->telemetry.live_samples += 1;
+}
+
+void add_timeline_contract_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<bool> reverse{false};
+    Signal<bool> loading{false};
+    Signal<TimelineTone> tone{TimelineTone::Green};
+    Signal<TimelineOrientation> orientation{TimelineOrientation::Horizontal};
+    Signal<TimelineTitleSpan> span{TimelineTitleSpan::fraction(.25F)};
+    Text(u8"动态时间轴 · 合成示例数据 · 横纵布局、titleSpan 与真实 loading 图标");
+    Text(TextProps{}.content(bind(
+        [tone] { return tone.get() == TimelineTone::Green ? String{u8"状态色：绿色"} : String{u8"状态色：红色"}; })));
+    Timeline(TimelineProps{}.orientation(orientation).titleSpan(span).variant(TimelineVariant::Filled),
+             bind([reverse, loading, tone] {
+                 std::vector<TimelineItem> items{
+                     TimelineItem{u8"created", u8"创建示例任务"}.title(u8"09:00").tone(tone),
+                     TimelineItem{u8"draft", u8""}.title(u8"09:30").richContent(TimelineContent{[] {
+                         Input(InputProps{}.defaultValue(u8"重排后保留时间轴草稿"));
+                         gallery_target("gallery.timeline.dynamic-draft");
+                     }}),
+                     TimelineItem{u8"pending", u8"等待更新"}.title(u8"10:00").loading(loading)};
+                 if (reverse.get()) {
+                     std::reverse(items.begin(), items.end());
+                 }
+                 return items;
+             }));
+    gallery_target("gallery.timeline.dynamic");
+    Space(
+        SpaceProps{}.wrap(true), SpaceContent{[=] {
+            Button(ButtonProps{}.onClick([reverse] { reverse.set(!reverse.get()); }), [] { Text(u8"重排记录"); });
+            gallery_target("gallery.timeline.reorder");
+            Button(ButtonProps{}.onClick([orientation] {
+                orientation.set(orientation.get() == TimelineOrientation::Horizontal ? TimelineOrientation::Vertical
+                                                                                     : TimelineOrientation::Horizontal);
+            }),
+                   [] { Text(u8"横向 / 纵向"); });
+            gallery_target("gallery.timeline.orientation");
+            Button(ButtonProps{}.onClick([loading] { loading.set(!loading.get()); }), [] { Text(u8"切换加载"); });
+            gallery_target("gallery.timeline.loading-motion");
+            Button(ButtonProps{}.onClick([tone] {
+                tone.set(tone.get() == TimelineTone::Green ? TimelineTone::Red : TimelineTone::Green);
+            }),
+                   [] { Text(u8"切换状态色"); });
+            gallery_target("gallery.timeline.tone-motion");
+            Button(ButtonProps{}.onClick([span] {
+                span.set(span.get().logical ? TimelineTitleSpan::fraction(.25F) : TimelineTitleSpan::logicalWidth(180));
+            }),
+                   [] { Text(u8"标题 25% / 180dp"); });
+            gallery_target("gallery.timeline.title-span");
+        }});
+    state->telemetry.live_samples += 1;
+}
+
 void add_collapse_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(sample_text(u8"gallery.collapse.retained · Collapse · 保留编辑与独立操作"));
@@ -4535,6 +4694,7 @@ void add_collapse_samples(const std::shared_ptr<GalleryState>& state) {
                        }}}
              .disabled(state->collapse_disabled)});
     state->telemetry.live_samples += 1;
+    add_collapse_contract_samples(state);
 }
 
 void add_segmented_samples(const std::shared_ptr<GalleryState>& state) {
@@ -4585,6 +4745,7 @@ void add_segmented_samples(const std::shared_ptr<GalleryState>& state) {
           }});
     state->telemetry.live_samples += 4;
     state->telemetry.live_samples += 3;
+    add_segmented_contract_samples(state);
 }
 
 void add_panel_and_selection_samples(const std::shared_ptr<GalleryState>& state) {
@@ -6774,6 +6935,7 @@ void add_descriptions_samples(const std::shared_ptr<GalleryState>& state) {
                    }});
          }});
     ++state->telemetry.live_samples;
+    add_descriptions_contract_samples(state);
 }
 
 void add_skeleton_samples(const std::shared_ptr<GalleryState>& state) {
@@ -7240,6 +7402,7 @@ void add_timeline_samples(const std::shared_ptr<GalleryState>& state) {
                    }});
          }});
     ++state->telemetry.live_samples;
+    add_timeline_contract_samples(state);
 }
 
 ryn::LayoutStyle member_control_margin() {

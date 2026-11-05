@@ -1246,19 +1246,19 @@
     },
     {
       "identity": "ant.component.collapse",
-      "status": "partial",
-      "summary": "原生 Collapse 已提供固定键控面板、受控多开/accordion、保留编辑与独立 extra；Gallery 提供实际设置组合，动态拓扑、动画和更多外观尚未覆盖，原生平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Collapse 已补齐稳定 keyed 动态面板、局部 slot 替换、lazy/forceRender/destroy 策略、实际有限高度/箭头 motion、ghost/门控/RTL；保留旧 vector 与草稿行为，平台证据独立记录。",
       "supported_scope": [
-        "fixed keyed title/body/extra slots, mounted once with retained editors",
-        "controlled activeKeys and uncontrolled defaults, multiple/accordion and reactive disabled",
-        "pointer/keyboard headers, hidden body focus/input/capture/child-popup cleanup",
-        "Small/Middle/Large bordered panels and typed Theme tokens",
-        "interactive Gallery settings with retained Input/Select and independent extra Button"
+        "stable keyed reactive panel add/remove/reorder and explicit title/body/extra factory revisions",
+        "controlled activeKeys/accordion, uncontrolled defaults and independent rich extra actions",
+        "explicit lazy with eager source compatibility, forceRender precedence and destroyOnHidden at settled boundary",
+        "finite clipped height and rotating arrow motion with reverse, immediate input/popup retirement and idle cancellation",
+        "bordered/borderless/ghost, three sizes, custom expand icon and Start/End placement, Header/Icon/Disabled gates and RTL",
+        "retained FormItem/Input/Select/Popover composition and actual interactive Linux Wayland/Vulkan Gallery sequence"
       ],
       "missing_scope": [
-        "dynamic panel topology, lazy/destroy body policies and expand/collapse animation",
-        "borderless/ghost, custom expand icon/position, RTL and complete Web aliases",
-        "native GPU/system-font/input, Linux and manual visual/IME acceptance remain independent pending"
+        "HTML/DOM/CSS/React compatibility aliases and OS accessibility/screen-reader platform bridges are outside this native component contract",
+        "Windows/MSVC, physical system IME, assistive technology and cross-monitor/manual desktop acceptance are not claimed by Linux HEADLESS/private Wayland evidence"
       ],
       "evidence_identifiers": [
         "source:components/collapse/index.en-US.md",
@@ -1266,24 +1266,32 @@
         "openspec:074-20261024-add-collapse-and-segmented-gallery",
         "test:rynui.collapse_component",
         "test:rynui.collapse_theme",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "api:include/ryn/collapse.hpp",
+        "runtime:src/component/collapse_component.cpp",
+        "test:rynui.collapse_contract",
+        "test:rynui.collapse_gallery",
+        "docs:docs/collapse.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/collapse-linux.md"
       ]
     },
     {
       "identity": "ant.component.descriptions",
-      "status": "partial",
-      "summary": "原生 Descriptions 提供固定键控的多列详情、span、横纵标签、边框和三种尺寸；086 Gallery 可编辑项目资料并调整布局，平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Descriptions 已补齐稳定 keyed 动态条目与富 header、局部工厂替换、窗口断点列/span/fill、locale/RTL；等分列与真实测量提供原生表格布局，平台证据独立记录。",
       "supported_scope": [
-        "typed reactive keyed items, columns and positive spans with retained label/content/title/extra slots",
-        "horizontal/vertical labels, bordered/unbordered variants, three sizes, colon and visibility reflow",
-        "retained native controls, partition content/hit clips and ancestor-clipped focus decorations",
-        "finite and zero-size recovery, Theme inheritance, final metric validation and idle behavior",
-        "086 interactive Gallery: native Input/Select/Switch save flow, responsive columns/span/visibility and retained refs"
+        "stable keyed dynamic items with retained label/content/title/extra and local factory replacement",
+        "responsive columns and spans from shared logical window width, custom Breakpoints, fill-row remainder and wrapping",
+        "whole-update key/span/column/metric validation and failed-factory owner retirement",
+        "horizontal/vertical labels, bordered/unbordered, three sizes, locale separator/colon and RTL geometry",
+        "partition paint/hit/focus clipping, actual retained rich Input/FormItem/Select/Popover and independent header actions",
+        "interactive breakpoint/rich-cell Gallery and Linux Wayland/Vulkan retirement sequence"
       ],
       "missing_scope": [
-        "dynamic item topology, automatic responsive breakpoints and locale/RTL",
-        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
-        "full Ant Design Web/DOM/CSS API and HTML auto-table sizing"
+        "HTML/DOM/CSS/React compatibility aliases and OS accessibility/screen-reader platform bridges are outside this native component contract",
+        "Windows/MSVC, physical system IME, assistive technology and cross-monitor/manual desktop acceptance are not claimed by Linux HEADLESS/private Wayland evidence",
+        "HTML auto-table/CSS sizing is mapped to documented native measured equal columns/span/fill allocation"
       ],
       "evidence_identifiers": [
         "source:components/descriptions/index.en-US.md",
@@ -1296,7 +1304,11 @@
         "openspec:086-20261025-add-descriptions-and-skeleton-gallery",
         "docs:docs/descriptions.md",
         "test:rynui_token_gallery_frame_tests --details-loading-only",
-        "evidence:openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/01-gallery.md"
+        "evidence:openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/01-gallery.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.descriptions_contract",
+        "test:rynui.descriptions_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/descriptions-linux.md"
       ]
     },
     {
@@ -1428,19 +1440,19 @@
     },
     {
       "identity": "ant.component.segmented",
-      "status": "partial",
-      "summary": "原生 Segmented 已提供固定选项单选、横纵向/等宽、图标富标签、三尺寸与键盘；Gallery 提供共享受控值和响应式标签/禁用操作，动画及动态拓扑尚未覆盖，原生平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Segmented 已补齐稳定 key/value 动态选项、String/number typed authority、实际测量 pill 有限过渡、RTL/Round 与独立富子控件；保留旧 String 调用、阴影及焦点主题，平台证据独立记录。",
       "supported_scope": [
-        "fixed keyed controlled/uncontrolled single selection and reactive labels/disabled",
-        "horizontal/vertical, equal-width block and Small/Middle/Large sizes",
-        "retained passive icon/rich-label slots and typed Theme tokens",
-        "pointer and single-Tab-entry keyboard navigation skipping disabled options",
-        "interactive Gallery shared horizontal/vertical selection and uncontrolled rich labels"
+        "stable keyed reactive option topology with strict String/number values and controlled/default authority",
+        "item visibility/disabled, uncontrolled removed-value fallback and controlled refusal with roving keyboard focus",
+        "horizontal/vertical/block, three sizes, Default/Round shape, RTL geometry and keyboard direction",
+        "finite pill motion between measured selected rectangles with reverse, resize/hidden/inactive/reduced-motion cancellation",
+        "local label/icon factory revisions, retained rich controls, selected shadow/focus Theme and pure-color stability",
+        "actual nested FormItem/Input/Select/Popover and interactive Linux Wayland/Vulkan typed RTL Gallery"
       ],
       "missing_scope": [
-        "pill animation, dynamic option topology, RTL and complete Web aliases",
-        "platform accessibility adapter and OS screen-reader integration",
-        "native GPU/system-font/input, Linux and manual visual/IME acceptance remain independent pending"
+        "HTML/DOM/CSS/React compatibility aliases and OS accessibility/screen-reader platform bridges are outside this native component contract",
+        "Windows/MSVC, physical system IME, assistive technology and cross-monitor/manual desktop acceptance are not claimed by Linux HEADLESS/private Wayland evidence"
       ],
       "evidence_identifiers": [
         "source:components/segmented/index.en-US.md",
@@ -1448,7 +1460,14 @@
         "openspec:074-20261024-add-collapse-and-segmented-gallery",
         "test:rynui.segmented_component",
         "test:rynui.segmented_theme",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "api:include/ryn/segmented.hpp",
+        "runtime:src/component/segmented_component.cpp",
+        "test:rynui.segmented_contract",
+        "test:rynui.segmented_gallery",
+        "docs:docs/segmented.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/segmented-linux.md"
       ]
     },
     {
@@ -1509,17 +1528,19 @@
     },
     {
       "identity": "ant.component.timeline",
-      "status": "partial",
-      "summary": "原生竖向 Timeline 提供固定 keyed 富条目、位置与正反序、静态 loading 轨迹；Gallery 可实际编辑记录、切换布局和显隐恢复，平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Timeline 已补齐实际横纵布局、稳定 keyed 动态条目、titleSpan/RTL、富节点与 typed 语义色、真实 loading spin 及有限状态色过渡；保留旧竖向调用与草稿，平台证据独立记录。",
       "supported_scope": [
-        "typed reactive vertical Timeline and fixed keyed TimelineItem slots",
-        "placement, reverse, visibility and retained native Input/Button/Select",
-        "Theme, content/decoration clips and bounded retained loading rails",
-        "interactive Gallery: real record editing/save, mode/reverse/loading/visibility and external ref recovery"
+        "real Horizontal/Vertical Start/End/Alternate placements, reverse, titleSpan fraction/logical/24-column allocation and RTL",
+        "stable keyed reactive item add/remove/reorder with local title/content/icon revisions and retained drafts",
+        "rich dots/titles/content, typed colors/status, Outlined/Filled and clipped/gapped tails without last-item tail",
+        "actual LoadingOutlined spin via existing motion policy and native loading item for upstream pending replacement",
+        "finite retained status/variant/Theme color transition, hidden/inactive/reduced-motion cancellation and idle behavior",
+        "actual nested FormItem/Input/Select/Popover and interactive horizontal/dynamic/titleSpan/loading Linux Wayland/Vulkan Gallery"
       ],
       "missing_scope": [
-        "horizontal, dynamic topology, titleSpan, RTL and animations",
-        "complete component GPU/native/Linux/system IME/AT acceptance"
+        "HTML/DOM/CSS/React compatibility aliases and OS accessibility/screen-reader platform bridges are outside this native component contract",
+        "Windows/MSVC, physical system IME, assistive technology and cross-monitor/manual desktop acceptance are not claimed by Linux HEADLESS/private Wayland evidence"
       ],
       "evidence_identifiers": [
         "source:components/timeline/index.en-US.md",
@@ -1533,7 +1554,11 @@
         "test:rynui.timeline_review_capacity",
         "openspec:091-20261026-add-overlay-and-timeline-gallery",
         "runtime:examples/token_gallery/token_gallery_definition.cpp",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.timeline_contract",
+        "test:rynui.timeline_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/timeline-linux.md"
       ]
     },
     {

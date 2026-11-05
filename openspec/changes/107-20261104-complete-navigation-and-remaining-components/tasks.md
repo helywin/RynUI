@@ -154,13 +154,13 @@
 
 ## 31. 数据展示：Collapse
 
-- [ ] 31.1 按对应 spec 与 design 矩阵实现 Collapse 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 31.2 为 Collapse 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 31.1 按对应 spec 与 design 矩阵实现 Collapse 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 31.2 为 Collapse 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 32. 数据展示：Descriptions
 
-- [ ] 32.1 按对应 spec 与 design 矩阵实现 Descriptions 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 32.2 为 Descriptions 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 32.1 按对应 spec 与 design 矩阵实现 Descriptions 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 32.2 为 Descriptions 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 33. 数据展示：Empty
 
@@ -194,8 +194,8 @@
 
 ## 39. 数据展示：Segmented
 
-- [ ] 39.1 按对应 spec 与 design 矩阵实现 Segmented 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 39.2 为 Segmented 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 39.1 按对应 spec 与 design 矩阵实现 Segmented 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 39.2 为 Segmented 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 40. 数据展示：Statistic
 
@@ -214,8 +214,8 @@
 
 ## 43. 数据展示：Timeline
 
-- [ ] 43.1 按对应 spec 与 design 矩阵实现 Timeline 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 43.2 为 Timeline 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 43.1 按对应 spec 与 design 矩阵实现 Timeline 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 43.2 为 Timeline 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 44. 数据展示：Tooltip
 

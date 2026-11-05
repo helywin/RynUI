@@ -8,11 +8,16 @@
 #include <functional>
 #include <optional>
 #include <vector>
+#include <variant>
+#include <cstdint>
 
 namespace ryn {
 namespace detail {
 class SegmentedComponentHost;
 }
+
+using SegmentedValue = std::variant<String, double>;
+enum class SegmentedShape { Default, Round };
 
 struct SegmentedLabelSlot final {};
 
@@ -49,6 +54,26 @@ public:
         return *this;
     }
 
+    SegmentedOption& value(SegmentedValue value) {
+        value_ = std::move(value);
+        return *this;
+    }
+
+    SegmentedOption& visible(Prop<bool> value) {
+        visible_ = std::move(value);
+        return *this;
+    }
+
+    SegmentedOption& contentRevision(std::uint64_t value) {
+        content_revision_ = value;
+        return *this;
+    }
+
+    SegmentedOption& iconRevision(std::uint64_t value) {
+        icon_revision_ = value;
+        return *this;
+    }
+
 private:
     friend class detail::SegmentedComponentHost;
     String key_;
@@ -56,6 +81,10 @@ private:
     std::optional<SegmentedLabel> content_;
     std::optional<SegmentedIcon> icon_;
     Prop<bool> disabled_{false};
+    Prop<bool> visible_{true};
+    std::optional<SegmentedValue> value_;
+    std::uint64_t content_revision_{};
+    std::uint64_t icon_revision_{};
 };
 
 class SegmentedProps final {
@@ -72,6 +101,10 @@ public:
     SegmentedProps& defaultValue(String value) {
         default_value_ = std::move(value);
         return *this;
+    }
+
+    template <std::size_t N> SegmentedProps& defaultValue(const char8_t (&value)[N]) {
+        return defaultValue(String{value});
     }
 
     SegmentedProps& disabled(Prop<bool> value = true) {
@@ -104,8 +137,59 @@ public:
         return *this;
     }
 
+    SegmentedProps& value(Prop<SegmentedValue> value) {
+        typed_value_ = std::move(value);
+        return *this;
+    }
+
+    SegmentedProps& value(double value) {
+        return this->value(SegmentedValue{value});
+    }
+
+    SegmentedProps& defaultValue(double value) {
+        typed_default_ = SegmentedValue{value};
+        return *this;
+    }
+
+    SegmentedProps& defaultValue(SegmentedValue value) {
+        typed_default_ = std::move(value);
+        return *this;
+    }
+
+    SegmentedProps& onValueChange(std::function<void(SegmentedValue)> value) {
+        on_value_change_ = std::move(value);
+        return *this;
+    }
+
+    SegmentedProps& rtl(Prop<bool> value = true) {
+        rtl_ = std::move(value);
+        return *this;
+    }
+
+    SegmentedProps& visible(Prop<bool> value) {
+        visible_ = std::move(value);
+        return *this;
+    }
+
+    SegmentedProps& shape(Prop<SegmentedShape> value) {
+        shape_ = std::move(value);
+        return *this;
+    }
+
+    SegmentedProps& animated(Prop<bool> value) {
+        animated_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend class detail::SegmentedComponentHost;
+    std::optional<Prop<SegmentedValue>> typed_value_;
+    std::optional<SegmentedValue> typed_default_;
+    std::function<void(SegmentedValue)> on_value_change_;
+    Prop<bool> rtl_{false};
+    Prop<bool> visible_{true};
+    Prop<bool> animated_{true};
+    Prop<SegmentedShape> shape_{SegmentedShape::Default};
     std::optional<Prop<String>> value_;
     std::optional<String> default_value_;
     Prop<bool> disabled_{false};
@@ -117,4 +201,5 @@ private:
 };
 
 void Segmented(SegmentedProps props, std::vector<SegmentedOption> options);
+void Segmented(SegmentedProps props, Prop<std::vector<SegmentedOption>> options);
 } // namespace ryn

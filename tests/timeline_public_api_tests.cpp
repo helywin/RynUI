@@ -3,8 +3,15 @@
 
 static_assert(!std::is_convertible_v<ryn::TimelineTitle, ryn::TimelineContent>);
 static_assert(!std::is_convertible_v<ryn::TimelineIcon, ryn::TimelineTitle>);
-static_assert(std::is_same_v<decltype(&ryn::Timeline), void (*)(ryn::TimelineProps, std::vector<ryn::TimelineItem>)>);
+static_assert(
+    std::is_same_v<decltype(static_cast<void (*)(ryn::TimelineProps, std::vector<ryn::TimelineItem>)>(&ryn::Timeline)),
+                   void (*)(ryn::TimelineProps, std::vector<ryn::TimelineItem>)>);
 static_assert(!std::is_assignable_v<decltype(ryn::TimelineTokenOverride{}.dot_size)&, float>);
+
+static_assert(
+    std::is_same_v<
+        decltype(static_cast<void (*)(ryn::TimelineProps, ryn::Prop<std::vector<ryn::TimelineItem>>)>(&ryn::Timeline)),
+        void (*)(ryn::TimelineProps, ryn::Prop<std::vector<ryn::TimelineItem>>)>);
 
 int main() {
     using namespace ryn;

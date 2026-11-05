@@ -1,6 +1,6 @@
 # Descriptions
 
-`ryn::Descriptions` 是固定拓扑的多列详情面板。具体测试与验收边界见 change 081。
+`ryn::Descriptions` 是保留式多列详情面板。具体测试与验收边界见 change 081。
 
 ```cpp
 #include <ryn/rynui.hpp>
@@ -22,13 +22,13 @@ void AccountDetails() {
 }
 ```
 
-`column` 默认 3；`span` 默认 1，均要求正整数。key 必须非空且唯一，声明顺序和 item 集合在挂载后固定。span 超出行尾剩余列时截断，最后不足一行时末项扩展至行尾。隐藏项不占列；恢复使用原 slot。
+`column` 默认 3；`span` 默认 1，均要求正整数。key 必须非空且唯一，动态 `Prop<vector<DescriptionsItem>>` 按稳定 key 增删、重排，保留同 key 的 label/content 原生实例。span 超出行尾剩余列时截断，最后不足一行时末项扩展至行尾。隐藏项不占列；恢复使用原 slot。
 
 `labelPlacement(Horizontal/Vertical)` 控制标签位置，`bordered` 默认 false，`colon` 默认 true（bordered 不显示）。`DescriptionsSize::Default/Middle/Small` 对应锁定 Ant Design 6.6.5 的 large/medium/small。`layout(LayoutStyle)` 只控制外部布局，组件视觉通过 Theme 配置。
 
-富内容可使用 Text、Button、Input、Select 等原生组件。普通响应式内容应在 slot 内绑定 `Prop<T>`，不要通过重建整个面板更新。没有 locale/RTL、自动响应断点、动态增删/排序、Web DOM/CSS 或 AT API；等分原生列不复制 HTML auto table。真实 GPU/平台验收独立记录。
+富内容可使用 Text、Button、Input、Select 等原生组件。普通响应式内容应在 slot 内绑定 `Prop<T>`，不要通过重建整个面板更新。`rtl` 镜像实际列与 label/content 几何，`locale(DescriptionsLocale)` 提供原生 separator，标签语言由 typed label slot 声明；不复制 Web DOM/CSS、HTML auto-table 或 AT 平台桥。真实 GPU/平台验收独立记录。
 
-Gallery 目录的 Descriptions 直接进入“项目资料”：编辑名称、选择角色、切换启用状态后保存；外部按钮调整单列/多列、名称跨列、资料显隐、横纵标签、边框及三种尺寸。窄视口通过应用层 Binding 使用单列，组件本身不增加自动断点 API。“编辑名称”可恢复隐藏资料并调用原 InputRef，普通草稿保持。086 的 `--details-loading-only` 提供有限视口 Recording 验证，详见该 change evidence；不代表原生窗口/GPU/系统 IME/AT 验收。
+Gallery 目录的 Descriptions 直接进入“项目资料”：编辑名称、选择角色、切换启用状态后保存；外部按钮调整单列/多列、名称跨列、资料显隐、横纵标签、边框及三种尺寸。`column(Prop<Responsive<int>>)` 使用共享窗口 logical width 服务自动选择列数，`breakpoints` 可覆盖断点；嵌套窄容器仍按窗口断点选择。“编辑名称”可恢复隐藏资料并调用原 InputRef，普通草稿保持。086 的 `--details-loading-only` 提供有限视口 Recording 验证，详见该 change evidence；不代表原生窗口/GPU/系统 IME/AT 验收。
 
 列宽以可用宽度等分，span 合并对应列。水平 bordered 标签占一个半列单位，值占 `2 * span - 1` 个半列单位；水平 unbordered 标签最多分配 item 的一半宽度，按内在尺寸为值留下其余空间。垂直布局在每个逻辑行内分别对齐标签和值的最大高度。有限宽度参与真实文字测量与换行，短/零高度会裁剪实际绘制与命中，尺寸恢复不重挂子树。
 
@@ -51,3 +51,18 @@ void DescriptionTheme() {
 ```
 
 `ThemeConfig::descriptions` 支持 `seed`、`algorithm`、`tokens` 和继承。`algorithm=false` 时忽略 component seed，沿用有效父配置；启用后独立派生，不改变其他组件。colors 与 metrics 各自订阅和失效。最终长度必须有限非负，行高正，字体至少 0.5 logical dp 且可转换到文本系统使用的 logical pixel；非法更新及非法后代配置在 snapshot 发布前拒绝。普通 Theme 变化不重设编辑草稿。组件不启动动画或连续帧，更新通过正常 DirtyQueues 唤醒。
+
+## 动态更新与局部工厂
+
+`span` 接受正整数或 `Responsive<int>`，`fill()` 消耗当前行剩余列。断点所有分支的列数/span 必须正数；非法重复 key、span、column 在修改任何 cell 前拒绝，已发布布局不变。`labelRevision` / `contentRevision` 变化才替换对应同 key 工厂；标题和 extra 可用 `titleContent(Prop<DescriptionsTitle>)` / `extraContent(Prop<DescriptionsExtra>)` 显式局部替换。失败工厂退役整个 Descriptions，已挂载的新旧区域、焦点及子 popup 一并清理。
+
+`visible` 适用于整个组件，item.visible 保留隐藏草稿。响应式集合、标题/extra 和标签/body 不依赖 VDOM；普通属性变化只更新相关 props 与几何。列等分、span 合并和真实文字换行构成原生 auto-table 替代合同。所有视觉继续来自原有 Descriptions Theme，未增加 CSS 样式入口。
+
+```cpp
+ryn::Descriptions(
+    ryn::DescriptionsProps{}.column(ryn::Responsive<int>{1}.at(ryn::Breakpoint::Md, 3)).rtl(),
+    {ryn::DescriptionsItem{u8"notes", ryn::DescriptionsLabel{[] { ryn::Text(u8"备注"); }},
+        ryn::DescriptionsContent{[] { ryn::Input(ryn::InputProps{}); }}}.fill()});
+```
+
+107 新增 1/2/3 列窗口断点样例，保留可编辑富 cell、header 重排按钮、fill 行尾与 RTL 操作；数据标明为合成示例。
