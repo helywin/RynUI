@@ -226,8 +226,8 @@ void PointerRouter::cancel_interaction(InteractionId interaction, bool notify) {
     cancel_interaction_internal(interaction, true, notify);
 }
 
-void PointerRouter::cancel_pointer_interaction(InteractionId interaction) {
-    cancel_interaction_internal(interaction, false);
+void PointerRouter::cancel_pointer_interaction(InteractionId interaction, bool notify) {
+    cancel_interaction_internal(interaction, false, notify);
 }
 
 void PointerRouter::cancel_interaction_internal(InteractionId interaction, bool cancel_focus, bool notify) {

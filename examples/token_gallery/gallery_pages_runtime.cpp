@@ -5,6 +5,8 @@
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
 #include "component/image_component.hpp"
+#include "component/calendar_component.hpp"
+#include "component/carousel_component.hpp"
 #include "component/upload_component.hpp"
 #include "component/transfer_component.hpp"
 #include "component/table_component.hpp"
@@ -567,6 +569,10 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             if (previous_route.component_identity == "ant.component.splitter") {
                 check(app.services().splitter().mounted().empty(), "native Splitter survived page retirement");
                 check(!captured(), "native Splitter retirement retained capture");
+            }
+            if (previous_route.component_identity == "ant.component.calendar") {
+                check(app.services().calendar().mounted().empty() && !captured(),
+                      "native Calendar page retirement retained roots/capture");
             }
             if (previous_session.valid()) {
                 check(!inputs.editors().find(previous_session.owner), "native editor survived page retirement");
@@ -1772,6 +1778,180 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             send(input::PointerAction::down, dragged.bounds.x + dragged.bounds.width / 2,
                  dragged.bounds.y + dragged.bounds.height / 2);
             std::cout << "float_button_native=passed anchor=true drag=true capture=true keyboard=true gpu_pixel=true\n";
+        }
+        if (route.component_identity == "ant.component.calendar") {
+            auto& calendars = app.services().calendar();
+            const auto owner = pages.target("gallery.calendar.main");
+            reveal(owner);
+            auto original = calendars.snapshot(owner);
+            check(original.cells.size() == 42, "native Calendar month grid absent");
+            const auto chosen = std::ranges::find_if(
+                original.cells, [](const auto& cell) { return cell.date == CivilDate{2024, 2, 29}; });
+            check(chosen != original.cells.end(), "native Calendar leap day missing");
+            const auto cell = original.components[std::size_t(chosen - original.cells.begin())];
+            reveal(cell);
+            const auto draft = edit_input(cell);
+            const auto stamp = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"候选"}, {}, stamp});
+            reveal(cell);
+            activate(cell);
+            render();
+            check(!inputs.editors().require(stamp.owner).composition().active,
+                  "Calendar date focus handoff retained preedit");
+            press(input::Key::right);
+            press(input::Key::enter);
+            check(calendars.snapshot(owner).value == CivilDate{2024, 3, 1} && app.components().contains(draft.first) &&
+                      inputs.display_snapshot(draft.first).text == draft.second,
+                  "native Calendar keyboard/month overlap lost date or draft");
+            const auto run = [&](std::string_view target) {
+                reveal(pages.target(target));
+                activate(pages.target(target));
+                render();
+            };
+            const auto before_locale = calendars.snapshot(owner).cells.front().date;
+            run("gallery.calendar.locale");
+            check(calendars.snapshot(owner).cells.front().date != before_locale,
+                  "native Calendar locale did not update grid");
+            check(has_text(u8"source="), "native Calendar select callback was not delivered");
+            run("gallery.calendar.range");
+            check(std::ranges::any_of(calendars.snapshot(owner).cells, [](const auto& cell) { return cell.disabled; }),
+                  "native Calendar range did not gate actual dates");
+            const auto height = bounds(owner).height;
+            run("gallery.calendar.mini");
+            check(bounds(owner).height < height, "native Calendar mini metrics did not change layout");
+            const auto header_action = [&](std::string_view label) {
+                const auto header = calendars.snapshot(owner).header;
+                for (const auto& button : app.mounted_buttons()) {
+                    if (!owns(app, button.component, header)) {
+                        continue;
+                    }
+                    for (const auto& text : app.services().text().mounted_texts()) {
+                        if (owns(app, text.component, button.component) &&
+                            app.services().text().scene_service().text_state(text.scene).content().bytes() == label) {
+                            reveal(button.component);
+                            activate(button.component);
+                            render();
+                            return;
+                        }
+                    }
+                }
+                throw std::runtime_error("native Calendar header action missing");
+            };
+            header_action("Year");
+            check(calendars.snapshot(owner).mode == CalendarMode::Year && calendars.snapshot(owner).cells.size() == 12,
+                  "native Calendar Year header did not select actual year grid");
+            header_action("Month");
+            header_action("Today");
+            check(calendars.snapshot(owner).value == CivilDate{2024, 2, 29}, "native Calendar Today callback failed");
+            const auto current = calendars.snapshot(owner);
+            std::vector<runtime::ComponentId> selectors;
+            for (const auto id : app.services().select().mounted()) {
+                if (owns(app, id, current.header)) {
+                    selectors.push_back(id);
+                }
+            }
+            check(selectors.size() == 2, "native Calendar year/month controls absent");
+            reveal(selectors.back());
+            activate(selectors.back());
+            render();
+            press(input::Key::down);
+            press(input::Key::enter);
+            check(calendars.snapshot(owner).value.month() == 3, "native Calendar month Select did not deliver value");
+            check(pages.sample_runs("gallery.sample.calendar.schedule") == 1 &&
+                      pages.sample_runs("gallery.sample.calendar.custom") == 1,
+                  "native Calendar interactions reran sample factories");
+            previous_session = inputs.sessions().active();
+            std::cout << "calendar_native=passed date_keyboard=true header_year_month_today=true locale_range=true "
+                         "mini_metrics=true rich_draft_preedit=true callbacks=true\n";
+        }
+        if (route.component_identity == "ant.component.carousel") {
+            auto& carousels = app.services().carousel();
+            const auto owner = pages.target("gallery.carousel.main");
+            reveal(owner);
+            auto motion = pages.theme();
+            motion.seed.motion = true;
+            pages.set_theme(motion);
+            render();
+            const auto original = carousels.snapshot(owner);
+            const auto draft = edit_input(original.slides[0]);
+            const auto settle = [&] {
+                for (int frame = 0; frame < 60 && carousels.snapshot(owner).transitioning; ++frame) {
+                    render();
+                }
+                check(!carousels.snapshot(owner).transitioning, "native Carousel transition did not settle");
+            };
+            activate(original.arrows[1]);
+            render();
+            const auto middle = carousels.snapshot(owner);
+            check(middle.current == 1 && middle.transitioning && middle.progress > 0 && middle.progress < 1,
+                  "native Carousel arrow missed actual ScrollX midpoint");
+            check(bounds(middle.slides[0]).x < middle.viewport.x && bounds(middle.slides[1]).x > middle.viewport.x &&
+                      !inputs.sessions().active().valid(),
+                  "native ScrollX midpoint paint/input cleanup failed");
+            settle();
+            check(has_text(u8"after 1"), "native Carousel afterChange callback was not delivered");
+            activate(carousels.snapshot(owner).dots[0]);
+            render();
+            settle();
+            check(inputs.display_snapshot(draft.first).text == draft.second &&
+                      carousels.snapshot(owner).slides == original.slides,
+                  "native Carousel roundtrip cloned/lost draft");
+            const auto run = [&](std::string_view target) {
+                reveal(pages.target(target));
+                activate(pages.target(target));
+                render();
+            };
+            run("gallery.carousel.effect");
+            reveal(owner);
+            activate(carousels.snapshot(owner).arrows[1]);
+            render();
+            const auto fade = carousels.snapshot(owner);
+            const auto a = app.nodes().require(app.components().root(fade.slides[0]));
+            const auto b = app.nodes().require(app.components().root(fade.slides[1]));
+            check(fade.transitioning && a.bounds == b.bounds && a.paint_opacity > 0 && a.paint_opacity < 1 &&
+                      b.paint_opacity > 0 && b.paint_opacity < 1,
+                  "native Carousel did not paint real Fade midpoint");
+            settle();
+            reveal(owner);
+            auto viewport = carousels.snapshot(owner).viewport;
+            runtime::Point start{viewport.x + viewport.width * .8F, viewport.y + viewport.height - 4};
+            pointer(input::PointerAction::down, start);
+            pointer(input::PointerAction::move, {start.x - viewport.width / 3, start.y});
+            render();
+            check(captured() && carousels.snapshot(owner).dragging, "native Carousel drag did not capture");
+            pointer(input::PointerAction::cancel, start);
+            render();
+            check(!captured() && !carousels.snapshot(owner).dragging && carousels.snapshot(owner).current == 1,
+                  "native Carousel cancel changed current or retained capture");
+            run("gallery.carousel.autoplay");
+            pointer(input::PointerAction::move, {0, 0});
+            app.focus().clear_focus();
+            render();
+            const auto before_auto = carousels.snapshot(owner).current;
+            for (int frame = 0; frame < 100 && carousels.snapshot(owner).current == before_auto; ++frame) {
+                render();
+            }
+            check(carousels.snapshot(owner).current != before_auto, "native Carousel autoplay deadline did not wake");
+            settle();
+            run("gallery.carousel.pause");
+            check(carousels.snapshot(owner).paused, "native Carousel pause action failed");
+            run("gallery.carousel.play");
+            pointer(input::PointerAction::move, {0, 0});
+            app.focus().clear_focus();
+            render();
+            check(!carousels.snapshot(owner).paused, "native Carousel play did not restore countdown");
+            check(pages.sample_runs("gallery.sample.carousel.panels") == 1 &&
+                      pages.sample_runs("gallery.sample.carousel.controlled") == 1,
+                  "native Carousel actions reran sample factories");
+            motion.seed.motion = false;
+            pages.set_theme(motion);
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "Carousel retirement route failed");
+            pages.process();
+            render();
+            check(carousels.mounted().empty() && !captured(), "native Carousel page retirement leaked capture/root");
+            std::cout
+                << "carousel_native=passed arrows_dots=true scroll_fade_midpoints=true draft=true drag_cancel=true "
+                   "autoplay_pause_wake=true retirement=true\n";
         }
         if (route.component_identity == "ant.component.image") {
             auto& images = app.services().image();

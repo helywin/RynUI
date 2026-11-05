@@ -343,6 +343,19 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       changed, count);
     append_if_changed(before.auto_complete().z_index_popup, after.auto_complete().z_index_popup,
                       TokenIdentity::auto_complete_order, changed, count);
+    append_if_changed(before.carousel().colors, after.carousel().colors, TokenIdentity::carousel_colors, changed,
+                      count);
+    append_if_changed(before.carousel().metrics, after.carousel().metrics, TokenIdentity::carousel_metrics, changed,
+                      count);
+    append_if_changed(std::pair{before.carousel().shadow, before.carousel().disabled_opacity},
+                      std::pair{after.carousel().shadow, after.carousel().disabled_opacity},
+                      TokenIdentity::carousel_effects, changed, count);
+    append_if_changed(before.calendar().colors, after.calendar().colors, TokenIdentity::calendar_colors, changed,
+                      count);
+    append_if_changed(before.calendar().metrics, after.calendar().metrics, TokenIdentity::calendar_metrics, changed,
+                      count);
+    append_if_changed(before.calendar().shadow, after.calendar().shadow, TokenIdentity::calendar_effects, changed,
+                      count);
     append_if_changed(before.mentions().colors, after.mentions().colors, TokenIdentity::mentions_colors, changed,
                       count);
     append_if_changed(before.mentions().metrics, after.mentions().metrics, TokenIdentity::mentions_metrics, changed,
@@ -1952,6 +1965,42 @@ const ResultThemeToken& ThemeScope::result_metrics() const {
     return snapshot_->result();
 }
 
+const CarouselThemeToken& ThemeScope::carousel_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::carousel_colors);
+    return snapshot_->carousel();
+}
+
+const CarouselThemeToken& ThemeScope::carousel_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::carousel_metrics);
+    return snapshot_->carousel();
+}
+
+const CarouselThemeToken& ThemeScope::carousel_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::carousel_effects);
+    return snapshot_->carousel();
+}
+
+const CalendarThemeToken& ThemeScope::calendar_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::calendar_colors);
+    return snapshot_->calendar();
+}
+
+const CalendarThemeToken& ThemeScope::calendar_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::calendar_metrics);
+    return snapshot_->calendar();
+}
+
+const CalendarThemeToken& ThemeScope::calendar_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::calendar_effects);
+    return snapshot_->calendar();
+}
+
 const DatePickerThemeToken& ThemeScope::date_picker_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::date_picker_colors);
@@ -2420,6 +2469,12 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Upload.effects",
         "Upload.order",
 
+        "Calendar.colors",
+        "Calendar.metrics",
+        "Calendar.effects",
+        "Carousel.colors",
+        "Carousel.metrics",
+        "Carousel.effects",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2526,6 +2581,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::avatar_colors:
     case TokenIdentity::rate_colors:
     case TokenIdentity::tree_colors:
+    case TokenIdentity::carousel_colors:
+    case TokenIdentity::calendar_colors:
     case TokenIdentity::mentions_colors:
     case TokenIdentity::auto_complete_colors:
     case TokenIdentity::tree_select_colors:
@@ -2579,6 +2636,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tooltip_shadow:
     case TokenIdentity::dropdown_effects:
     case TokenIdentity::select_effects:
+    case TokenIdentity::carousel_effects:
+    case TokenIdentity::calendar_effects:
     case TokenIdentity::mentions_effects:
     case TokenIdentity::auto_complete_effects:
     case TokenIdentity::tree_select_effects:
@@ -2668,6 +2727,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::menu_metrics:
     case TokenIdentity::dropdown_metrics:
     case TokenIdentity::select_metrics:
+    case TokenIdentity::carousel_metrics:
+    case TokenIdentity::calendar_metrics:
     case TokenIdentity::mentions_metrics:
     case TokenIdentity::auto_complete_metrics:
     case TokenIdentity::tree_select_metrics:

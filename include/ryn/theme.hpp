@@ -11,6 +11,8 @@
 #include <ryn/empty_result_tokens.hpp>
 #include <ryn/segmented_tokens.hpp>
 #include <ryn/date_picker_tokens.hpp>
+#include <ryn/calendar_tokens.hpp>
+#include <ryn/carousel_tokens.hpp>
 #include <ryn/form_tokens.hpp>
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/anchor_tokens.hpp>
@@ -1803,6 +1805,20 @@ struct LayoutThemeConfig final {
     friend bool operator==(const LayoutThemeConfig&, const LayoutThemeConfig&) = default;
 };
 
+struct CalendarThemeConfig final {
+    CalendarTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const CalendarThemeConfig&, const CalendarThemeConfig&) = default;
+};
+
+struct CarouselThemeConfig final {
+    CarouselTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const CarouselThemeConfig&, const CarouselThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     FloatButtonThemeConfig float_button;
     StepsThemeConfig steps;
@@ -1865,6 +1881,9 @@ struct ThemeConfig final {
     SplitterThemeConfig splitter;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
+
+    CalendarThemeConfig calendar;
+    CarouselThemeConfig carousel;
 
     friend bool operator==(const ThemeConfig&, const ThemeConfig&) = default;
 };
@@ -2457,6 +2476,14 @@ public:
         return steps_;
     }
 
+    [[nodiscard]] const CarouselThemeToken& carousel() const noexcept {
+        return carousel_;
+    }
+
+    [[nodiscard]] const CalendarThemeToken& calendar() const noexcept {
+        return calendar_;
+    }
+
     [[nodiscard]] const DatePickerThemeToken& date_picker() const noexcept {
         return date_picker_;
     }
@@ -2597,7 +2624,7 @@ private:
         std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
         std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
         std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
-        ImageThemeToken image, UploadThemeToken upload);
+        ImageThemeToken image, UploadThemeToken upload, CalendarThemeToken calendar, CarouselThemeToken carousel);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2617,6 +2644,8 @@ private:
     TabsThemeToken tabs_;
     SegmentedThemeToken segmented_;
     DatePickerThemeToken date_picker_;
+    CalendarThemeToken calendar_;
+    CarouselThemeToken carousel_;
     FormThemeToken form_;
     BreadcrumbThemeToken breadcrumb_;
     AnchorThemeToken anchor_;

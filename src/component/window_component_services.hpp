@@ -32,6 +32,8 @@ class SelectComponentHost;
 class AutoCompleteComponentHost;
 class MentionsComponentHost;
 class DatePickerComponentHost;
+class CalendarComponentHost;
+class CarouselComponentHost;
 class TimePickerComponentHost;
 class CardComponentHost;
 class TabsComponentHost;
@@ -309,6 +311,14 @@ public:
         return *tree_select_;
     }
 
+    [[nodiscard]] CarouselComponentHost& carousel() noexcept {
+        return *carousel_;
+    }
+
+    [[nodiscard]] CalendarComponentHost& calendar() noexcept {
+        return *calendar_;
+    }
+
     [[nodiscard]] DatePickerComponentHost& date_picker() noexcept {
         return *date_picker_;
     }
@@ -554,6 +564,8 @@ private:
     std::unique_ptr<AutoCompleteComponentHost> auto_complete_;
     std::unique_ptr<MentionsComponentHost> mentions_;
     std::unique_ptr<DatePickerComponentHost> date_picker_;
+    std::unique_ptr<CalendarComponentHost> calendar_;
+    std::unique_ptr<CarouselComponentHost> carousel_;
     std::unique_ptr<TimePickerComponentHost> time_picker_;
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<EmptyResultComponentHost> empty_result_;

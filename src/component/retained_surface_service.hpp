@@ -101,6 +101,7 @@ public:
     bool destroy_content_range(RetainedSurfaceId id);
     std::size_t update_content_effects(RetainedSurfaceId id, std::span<const graphics::RoundedEffectInstance> effects);
     [[nodiscard]] std::size_t update_effects(RetainedSurfaceId id, const RetainedSurfaceEffects& effects);
+    std::size_t synchronize_paint_opacity();
     [[nodiscard]] bool compact_effects(runtime::Rect window_clip, std::optional<runtime::Rect> document_clip = {},
                                        std::optional<float> logical_antialias_guard = {});
 
@@ -129,6 +130,10 @@ private:
         std::vector<graphics::RoundedEffectId> corner_focus_ids;
         std::vector<graphics::RoundedEffectId> clipped_fill_ids;
         bool inherited_effect_clip{};
+        std::array<graphics::QuadInstance, retained_surface_visual_capacity> source_visuals;
+        RetainedSurfaceEffects source_effects;
+        float paint_factor{1};
+        bool paint_pending{};
     };
 
     // A content range is owned by a caller-provided fragment instead of a
@@ -139,6 +144,12 @@ private:
         graphics::QuadInstanceRange range;
         std::vector<graphics::RoundedEffectId> effects;
         std::vector<graphics::RoundedEffectId> clipped_fill_ids;
+        std::vector<graphics::QuadInstance> source_visuals;
+        std::vector<graphics::QuadInstance> painted_visuals;
+        std::vector<graphics::RoundedEffectInstance> source_effects;
+        std::vector<graphics::RoundedEffectInstance> painted_effects;
+        float paint_factor{1};
+        bool paint_pending{};
     };
 
     struct ContentSlot final {
@@ -165,6 +176,7 @@ private:
     [[nodiscard]] ContentRecord* find_content(RetainedSurfaceId id) noexcept;
     [[nodiscard]] ContentRecord& require_content(RetainedSurfaceId id);
     void publish_content(ContentRecord& record);
+    std::span<const graphics::QuadInstance> paint_content(ContentRecord&, std::span<const graphics::QuadInstance>);
     void remap_after_replace(graphics::QuadInstanceRange old_range, std::uint32_t new_count,
                              const graphics::QuadInstanceRange* owner);
     [[nodiscard]] std::size_t republish_range(graphics::QuadInstanceRange& range,
@@ -189,6 +201,7 @@ private:
     std::vector<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
     std::size_t live_records_{0};
+    bool had_paint_opacity_{};
     std::vector<ContentSlot> content_slots_;
     std::vector<std::uint32_t> free_content_slots_;
     RetainedSurfaceDiagnostics diagnostics_;

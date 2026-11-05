@@ -63,6 +63,7 @@ struct InputContainerPresentation {
     Color focus_color;
     float focus_width{};
     bool focus_visible{};
+    float inherited_opacity{1};
     friend bool operator==(const InputContainerPresentation&, const InputContainerPresentation&) = default;
 };
 
@@ -2813,22 +2814,23 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
         const auto& presentation = state->transition->value();
         std::array<Color, input_shadow_layer_capacity> shadow_colors;
         std::copy_n(presentation.colors.begin() + 8, input_shadow_layer_capacity, shadow_colors.begin());
-        const InputContainerPresentation next_container{root_bounds,
-                                                        clip,
-                                                        decoration_clip,
-                                                        radius,
-                                                        border,
-                                                        presentation.colors[0],
-                                                        presentation.colors[1],
-                                                        *visual.shadow,
-                                                        shadow_colors,
-                                                        presentation.shadow_opacity,
-                                                        state->compact ? state->compact->corners
-                                                                       : std::array{true, true, true, true},
-                                                        state->variant,
-                                                        visual.border,
-                                                        tokens.focus_width,
-                                                        state->focus_visible && !state->disabled};
+        const InputContainerPresentation next_container{
+            root_bounds,
+            clip,
+            decoration_clip,
+            radius,
+            border,
+            presentation.colors[0],
+            presentation.colors[1],
+            *visual.shadow,
+            shadow_colors,
+            presentation.shadow_opacity,
+            state->compact ? state->compact->corners : std::array{true, true, true, true},
+            state->variant,
+            visual.border,
+            tokens.focus_width,
+            state->focus_visible && !state->disabled,
+            host_->nodes().content_opacity(mounted.node) * host_->nodes().paint_opacity(mounted.node)};
         if (state->container_presentation != next_container) {
             const std::size_t stride = state->compact ? 4 : 1;
             for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
@@ -2902,6 +2904,7 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                                                   ? 1.0F
                                                   : 0.0F;
                 }
+                effect.material.opacity *= next_container.inherited_opacity;
                 std::array<graphics::RoundedEffectInstance, 4> corners;
                 if (state->compact) {
                     if (outer || inner) {
@@ -3021,6 +3024,13 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                 }
             }
         }
+        const auto inherited_opacity = host_->nodes().content_opacity(mounted.node);
+        for (auto& quad : state->selection_quads) {
+            quad.opacity *= inherited_opacity;
+        }
+        for (auto& quad : state->overlay_quads) {
+            quad.opacity *= inherited_opacity;
+        }
         static_cast<void>(host_->surfaces().update_content_range(state->selection_surface, state->selection_quads));
         static_cast<void>(host_->surfaces().update_content_range(state->overlay_surface, state->overlay_quads));
         static_cast<void>(text_scene.set_coverage_clips(state->selected_scene, state->selected_clips));
@@ -3037,6 +3047,8 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
         const auto scene_started =
             sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         for (const auto id : {state->text_scene, state->selected_scene, state->placeholder_scene}) {
+            static_cast<void>(
+                text_scene.set_content_opacity(id, inherited_opacity * host_->nodes().paint_opacity(mounted.node)));
             const bool visible = id == state->text_scene       ? !display.placeholder
                                  : id == state->selected_scene ? glyph_selection_visible
                                                                : display.placeholder;

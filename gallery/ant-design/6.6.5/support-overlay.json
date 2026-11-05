@@ -1156,16 +1156,34 @@
     },
     {
       "identity": "ant.component.calendar",
-      "status": "planned",
-      "summary": "日历（Calendar）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Calendar：公历日期/月视图、受控值/模式、范围/locale/周编号、保留富单元格和可替换 header、独立 Theme 与输入生命周期。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "CivilDate 年 1..9999；42 日期/12 月份网格、mini/fullscreen、闭区间范围、disabledDate、locale/week year 与 RTL",
+        "受控请求、选择/面板事件、键盘和 owner/thread checked ref；显式 clock/Today",
+        "稳定日期/月 key、响应 cell/full/date/month/header 工厂；真实 Input/Popover 保留与局部替换/失败回滚",
+        "独立 Calendar token、scoped seed/algorithm/inherit；实际 header/日程 Gallery 与公开可编译例子"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "DOM/CSS/React、浏览器 portal 与 OS 辅助技术接口不属于原生 API",
+        "HEADLESS Core/逻辑场景证据不代表 Windows/MSVC、GPU、实际桌面或系统 IME 实测；平台集成由 63.3/64.3 单独记录"
       ],
       "evidence_identifiers": [
-        "source:components/calendar/index.en-US.md"
+        "source:components/calendar/generateCalendar.tsx",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "api:include/ryn/calendar.hpp",
+        "runtime:src/component/calendar_component.cpp",
+        "test:rynui.calendar_dates",
+        "test:rynui.calendar_controlled",
+        "test:rynui.calendar_retained",
+        "test:rynui.calendar_failure",
+        "test:rynui.calendar_geometry",
+        "test:rynui.calendar_nested",
+        "test:rynui.calendar_header",
+        "test:rynui.calendar_keyboard",
+        "test:rynui.calendar_theme",
+        "test:rynui.calendar_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/calendar-linux.md"
       ]
     },
     {
@@ -1192,16 +1210,38 @@
     },
     {
       "identity": "ant.component.carousel",
-      "status": "planned",
-      "summary": "走马灯（Carousel）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Carousel：稳定键保留面板、受控切换、实际 ScrollX/Fade、拖动/键盘/方向、原生控件与有限自动播放。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed Props/slots/Ref；受控拒绝、准确 before/after、动态 key 与局部内容替换/回滚；无限边界不克隆状态子树",
+        "逻辑裁剪内实际平移/透明度、adaptive height、箭头/dot/custom paging、RTL/纵向、背景拖动与原生编辑器输入隔离",
+        "单调时钟 deadline、显式 dot progress、hover/focus/隐藏/失活/reduced motion 暂停；独立 Theme/scoped seed/algorithm/inherit；两个独立 Gallery 样例"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "React/DOM/CSS/nativeElement/innerSlider、浏览器 portal 及 react-slick Web settings 插件不属于单 viewport 原生 API；详见 docs/carousel.md",
+        "HEADLESS/CPU 场景与输入证据不代表 GPU、Windows/MSVC、实际桌面、系统 IME 或 OS 辅助技术实测；63.3/64.3 由父线程单独验收"
       ],
       "evidence_identifiers": [
-        "source:components/carousel/index.en-US.md"
+        "source:components/carousel/index.tsx",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "api:include/ryn/carousel.hpp",
+        "runtime:src/component/carousel_component.cpp",
+        "test:rynui.carousel_effects",
+        "test:rynui.carousel_controlled",
+        "test:rynui.carousel_retained",
+        "test:rynui.carousel_autoplay",
+        "test:rynui.carousel_gesture",
+        "test:rynui.carousel_failure",
+        "test:rynui.carousel_theme",
+        "test:rynui.carousel_interruptions",
+        "test:rynui.carousel_pause_progress",
+        "test:rynui.carousel_nested_lifecycle",
+        "test:rynui.carousel_callbacks",
+        "test:rynui.carousel_rich_controls",
+        "test:rynui.carousel_pixels",
+        "test:rynui.carousel_gallery",
+        "test:rynui.paint_opacity",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/carousel-linux.md"
       ]
     },
     {

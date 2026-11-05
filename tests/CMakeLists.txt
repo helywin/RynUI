@@ -6,6 +6,42 @@ target_compile_definitions(rynui_tree_form_integration_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.tree_form_integration COMMAND rynui_tree_form_integration_tests)
 
+add_executable(rynui_carousel_tests carousel_tests.cpp)
+rynui_configure_cpp_target(rynui_carousel_tests)
+target_link_libraries(rynui_carousel_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_carousel_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS effects controlled retained autoplay gesture failure theme interruptions pause_progress nested_lifecycle callbacks rich_controls pixels)
+    add_test(NAME rynui.carousel_${case} COMMAND rynui_carousel_tests ${case})
+endforeach()
+
+add_executable(rynui_paint_opacity_tests paint_opacity_tests.cpp)
+rynui_configure_cpp_target(rynui_paint_opacity_tests)
+target_link_libraries(rynui_paint_opacity_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_paint_opacity_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.paint_opacity COMMAND rynui_paint_opacity_tests)
+
+add_executable(rynui_paint_opacity_integration_tests paint_opacity_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_paint_opacity_integration_tests)
+target_link_libraries(rynui_paint_opacity_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_paint_opacity_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.paint_opacity_integration COMMAND rynui_paint_opacity_integration_tests)
+
+add_executable(rynui_calendar_tests calendar_tests.cpp)
+rynui_configure_cpp_target(rynui_calendar_tests)
+target_link_libraries(rynui_calendar_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_calendar_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS dates controlled retained failure geometry nested header keyboard theme)
+    add_test(NAME rynui.calendar_${case} COMMAND rynui_calendar_tests ${case})
+endforeach()
+
 add_executable(rynui_form_integration_tests form_integration_tests.cpp)
 rynui_configure_cpp_target(rynui_form_integration_tests)
 target_link_libraries(rynui_form_integration_tests PRIVATE rynui_components)
@@ -140,6 +176,7 @@ endforeach()
 
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+add_test(NAME rynui.calendar_carousel_theme_baseline COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_calendar_carousel_theme_baseline.py")
 add_test(NAME rynui.mentions_theme_baseline COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_mentions_theme_baseline.py")
 
 add_executable(rynui_grid_component_tests grid_component_tests.cpp)
@@ -2914,6 +2951,13 @@ if(TARGET shadercross)
 endif()
 
 if(RYNUI_HAS_SDL_GPU)
+    add_executable(rynui_paint_opacity_gpu_tests paint_opacity_gpu_tests.cpp)
+    rynui_configure_cpp_target(rynui_paint_opacity_gpu_tests)
+    target_link_libraries(rynui_paint_opacity_gpu_tests PRIVATE rynui_components rynui_renderer_sdl rynui_renderer_common SDL3::SDL3)
+    target_compile_definitions(rynui_paint_opacity_gpu_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    rynui_embed_target_shaders(rynui_paint_opacity_gpu_tests)
     add_executable(rynui_image_gpu_tests image_gpu_tests.cpp)
     rynui_configure_cpp_target(rynui_image_gpu_tests)
     target_link_libraries(rynui_image_gpu_tests PRIVATE rynui_renderer_sdl rynui_renderer_common rynui_image SDL3::SDL3)

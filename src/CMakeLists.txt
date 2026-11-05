@@ -8,6 +8,8 @@ add_library(rynui_theme STATIC
     theme/theme_runtime.cpp
     theme/theme_snapshot.cpp
     theme/segmented_theme.cpp
+    theme/carousel_theme.cpp
+    theme/calendar_theme.cpp
     theme/date_picker_theme.cpp
     theme/form_theme.cpp
     theme/transfer_theme.cpp
@@ -226,6 +228,8 @@ rynui_assert_direct_dependencies(rynui_upload_model rynui_string)
 rynui_assert_core_link_closure(rynui_upload_model)
 
 add_library(rynui_components STATIC
+    component/carousel_component.cpp
+    component/calendar_component.cpp
     component/date_picker_model.cpp
     component/date_picker_component.cpp
     component/form_validation.cpp

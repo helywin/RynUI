@@ -259,6 +259,12 @@ enum class TokenIdentity : std::uint16_t {
     upload_typography,
     upload_effects,
     upload_order,
+    calendar_colors,
+    calendar_metrics,
+    calendar_effects,
+    carousel_colors,
+    carousel_metrics,
+    carousel_effects,
     count,
 };
 

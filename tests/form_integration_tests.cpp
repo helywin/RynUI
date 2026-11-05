@@ -9,6 +9,8 @@
 #include <ryn/cascader.hpp>
 #include <ryn/transfer.hpp>
 #include <ryn/color_picker.hpp>
+#include <ryn/calendar.hpp>
+#include <ryn/carousel.hpp>
 
 namespace {
 using namespace mentions_test;
@@ -103,6 +105,8 @@ void other_private_editors_preserve_public_binding() {
         [] { Cascader(CascaderProps{}); },
         [transfer_data] { Transfer(TransferProps{}.dataSource(transfer_data).showSearch(true)); },
         [] { ColorPicker(ColorPickerProps{}); },
+        [] { Calendar(CalendarProps{}.defaultValue({2024, 2, 29}).fullscreen(false)); },
+        [] { Carousel(CarouselProps{}.arrows().slides({{u8"panel", CarouselContent{[] { Text(u8"panel"); }}}})); },
     };
     for (std::size_t control_index = 0; control_index < controls.size(); ++control_index) {
         const auto& control = controls[control_index];
@@ -156,6 +160,63 @@ void other_private_editors_preserve_public_binding() {
                                      " deadline=" + std::to_string(f.services.next_frame_deadline().has_value()));
         }
     }
+}
+
+void calendar_nested_user_items_keep_their_binding_and_reset() {
+    Fixture f;
+    FormRef form;
+    FormField<String> outer{String{u8"outer"}};
+    FormField<String> header{String{u8"header"}};
+    FormField<String> cell{String{u8"cell"}};
+    InputRef public_ref;
+    InputRef header_ref;
+    InputRef cell_ref;
+    int submissions{};
+    f.services.mount(Content{[&] {
+        Form(FormProps{}.ref(form).onFinish([&](FormResult) { ++submissions; }), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(u8"outer", outer), FormItemContent{[&] {
+                              Calendar(
+                                  CalendarProps{}
+                                      .defaultValue({2024, 2, 29})
+                                      .headerRender(CalendarHeaderRenderer{[&](CalendarHeaderContext) {
+                                          return CalendarHeader{[&] {
+                                              Input(InputProps{}.defaultValue(u8"private header"));
+                                              FormItem(FormItemProps{}.field(u8"header", header),
+                                                       FormItemContent{[&] { Input(InputProps{}.ref(header_ref)); }});
+                                          }};
+                                      }})
+                                      .cellRender(CalendarCellRenderer{[&](Binding<CalendarCellInfo> info) {
+                                          return CalendarCell{[&, info] {
+                                              if (info.get().date == CivilDate{2024, 2, 29}) {
+                                                  FormItem(FormItemProps{}.field(u8"cell", cell),
+                                                           FormItemContent{[&] { Input(InputProps{}.ref(cell_ref)); }});
+                                              }
+                                          }};
+                                      }}));
+                              Input(InputProps{}.ref(public_ref));
+                          }});
+             }});
+    }});
+    sync(f, 720, 1000);
+    check(public_ref.focus(), "public Input after Calendar lost focus");
+    edit(f, u8"outer edited");
+    check(outer.get() == String{u8"outer edited"} && header.get() == String{u8"header"} &&
+              cell.get() == String{u8"cell"},
+          "Calendar private header consumed outer binding");
+    check(header_ref.focus(), "explicit header FormItem suppressed by private scope");
+    edit(f, u8"header edited");
+    key(f, Key::enter);
+    check(header.get() == String{u8"header edited"} && submissions == 1, "header Item lost binding or Enter");
+    check(cell_ref.focus(), "explicit cell FormItem lost focus");
+    edit(f, u8"cell edited");
+    check(cell.get() == String{u8"cell edited"}, "cell Item lost typed binding");
+    check(form.reset() && cell_ref.focus(), "Calendar Form reset failed");
+    const auto stamp = f.inputs.sessions().active();
+    check(bool(f.inputs.dispatch(CompositionChanged{String{u8"候选"}, {}, stamp})), "Calendar Form preedit setup");
+    check(form.reset() && !f.inputs.editors().require(stamp.owner).composition().active &&
+              cell.get() == String{u8"cell"},
+          "same-value reset failed to clear cell preedit");
+    clean(f);
 }
 
 void boolean_binding_survives_focus_callbacks() {
@@ -261,6 +322,7 @@ int main() {
         private_editors_leave_automatic_binding_to_public_controls();
         popup_editors_keep_their_own_value_and_enter();
         other_private_editors_preserve_public_binding();
+        calendar_nested_user_items_keep_their_binding_and_reset();
         boolean_binding_survives_focus_callbacks();
         return 0;
     } catch (const std::exception& error) {

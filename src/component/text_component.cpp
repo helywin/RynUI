@@ -749,7 +749,8 @@ bool TextComponentHost::synchronize_icon_layers(runtime::ComponentId component,
         current.translation_pixels = text_scene_->set_phase_preserving_scroll_translation(
             layer.scene, nodes_->require(components_.root(component)).translation);
         static_cast<void>(
-            text_scene_->set_content_opacity(layer.scene, nodes_->content_opacity(components_.root(component))));
+            text_scene_->set_content_opacity(layer.scene, nodes_->content_opacity(components_.root(component)) *
+                                                              nodes_->paint_opacity(components_.root(component))));
         if (!text_scene_->synchronize(layer.scene, current)) {
             return false;
         }
@@ -901,7 +902,8 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                 text_scene_->set_phase_preserving_scroll_translation(mounted.scene, retained.translation);
             const auto sync_started =
                 sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
-            static_cast<void>(text_scene_->set_content_opacity(mounted.scene, nodes_->content_opacity(node)));
+            static_cast<void>(text_scene_->set_content_opacity(mounted.scene, nodes_->content_opacity(node) *
+                                                                                  nodes_->paint_opacity(node)));
             const graphics::GlyphPlacement placement{
                 {retained.bounds.x + insets[0], retained.bounds.y + insets[1]},
                 viewport,

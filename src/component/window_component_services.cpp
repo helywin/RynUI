@@ -16,6 +16,8 @@
 #include "component/time_picker_component.hpp"
 #include "component/card_component.hpp"
 #include "component/tabs_component.hpp"
+#include "component/calendar_component.hpp"
+#include "component/carousel_component.hpp"
 #include "component/collapse_component.hpp"
 #include "component/segmented_component.hpp"
 #include "component/form_component.hpp"
@@ -149,6 +151,9 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     mentions_ = std::make_unique<MentionsComponentHost>(*this);
     focus_.set_observer([this] {
         if (!retiring_failed_component_) {
+            if (carousel_) {
+                carousel_->on_focus_changed();
+            }
             auto_complete_->on_focus_changed();
             mentions_->on_focus_changed();
             if (cascader_) {
@@ -164,6 +169,8 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     });
     card_ = std::make_unique<CardComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
+    calendar_ = std::make_unique<CalendarComponentHost>(*this);
+    carousel_ = std::make_unique<CarouselComponentHost>(*this);
     collapse_ = std::make_unique<CollapseComponentHost>(*this);
     segmented_ = std::make_unique<SegmentedComponentHost>(*this);
     form_ = std::make_unique<FormComponentHost>(*this);
@@ -639,6 +646,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
         } else if (input_runtime_ && !input_runtime_->mounted_inputs().empty()) {
             read_density(input_runtime_->text_scene(input_runtime_->mounted_inputs().front().component));
         }
+        static_cast<void>(surfaces_.synchronize_paint_opacity());
         if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height}, clip, logical_antialias_guard)) {
             scene_structure_dirty_ = true;
         }

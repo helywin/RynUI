@@ -72,3 +72,7 @@ Image 保持 logical scene v3 和既有 packed ABI v2 三类记录不变；新�
 图像像素为左上原点 RGBA8 straight alpha；RGB 保留输入的编码值，无 ICC/gamma 转换，使用已有 source-alpha blending。PNG 的 16-bit 输入归一至 8-bit；JPEG EXIF 方向不自动应用，应用可先规范化元数据/像素。透明像素的 RGB 保留，解码器不预乘。ImagePixels 校验正尺寸、行宽/stride、实际最后一行、溢出与配置上限，拥有源 bytes；decoder 不读取路径或 URL。默认上限为边长 16384、解码 256 MiB、编码 64 MiB。
 
 SceneCpuData 在旧五个 aggregate 成员后增加可选 ImageStore。SceneResources 共同 preflight 在 begin 前校验 Image ABI=2、images/rgba8_sampling、buffer bytes 与 texture extent；无 Image 数据的旧调用保持有效。ImageGpuResources 在共同事务内上传独立 texture/buffer，纹理源只携带 bytes/offset/row stride/width/height。SDL backend 逐行复制、清零 padding（row 256 bytes、batch offset 512），pixels_per_row 按 RGBA pixels 计算；Recording 保留紧凑 RGBA bytes。上传返回成功后拥有所有源数据。附件检查 generation，事务失败失效附件并强制重传；epoch 变化 abandon 旧 device handle，再从同一 CPU Store 重建；显式 retire 仍在 backend/device 存活时释放。无变化不重传，geometry-only 更新只上传 instance。平台 shader/真实颜色验证独立于 Recording 结果。
+
+### Retained subtree paint opacity
+
+Core 内部 Node 的 paint opacity 是祖先相乘的纯绘制包络，与输入可达性独立。RetainedSurfaceService 保留未乘包络的 Quad 与 RoundedEffect 来源；创建、包络变化和 range remap 后从来源重新生成材质，零透明度恢复不会丢失原始值。Text/Icon/Input 的 glyph、选区、光标和直接 effect 使用同一祖先因子。Image 主图、PreviewGroup 与 Upload 缩略图及预览 canvas 发布 ImageInstance 时应用一次 content opacity 与 paint opacity 的乘积；其背景/焦点/遮罩由共同 surface 应用包络，不把已乘值再交给 renderer 全局缩放。该机制不创建下一帧请求；动画宿主仍须分别执行本帧 invalidation 与下一帧 deadline。输入禁用、焦点、capture、preedit 和 popup 的清理由组件的 input boundary 完成。logical CPU scene v3、既有 Quad/Glyph/RoundedEffect packed GPU ABI v2 和 Image 独立 ABI v2/112 bytes 均不变。

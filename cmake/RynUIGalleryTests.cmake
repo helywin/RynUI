@@ -1,3 +1,22 @@
+add_executable(rynui_carousel_gallery_tests carousel_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_carousel_gallery_tests)
+target_include_directories(rynui_carousel_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_carousel_gallery_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_carousel_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.carousel_gallery COMMAND rynui_carousel_gallery_tests)
+
+
+add_executable(rynui_calendar_gallery_tests calendar_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_calendar_gallery_tests)
+target_include_directories(rynui_calendar_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_calendar_gallery_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_calendar_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.calendar_gallery COMMAND rynui_calendar_gallery_tests)
+
 add_executable(rynui_mentions_gallery_tests mentions_gallery_tests.cpp)
 rynui_configure_cpp_target(rynui_mentions_gallery_tests)
 target_include_directories(rynui_mentions_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")

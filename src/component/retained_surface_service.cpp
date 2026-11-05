@@ -57,7 +57,17 @@ RetainedSurfaceId RetainedSurfaceService::create_record(runtime::ComponentId com
     const RetainedSurfaceId id{slot_index, slot.generation};
     graphics::QuadInstanceRange range;
     try {
-        range = instances_.append(visuals);
+        const auto factor = nodes_->paint_opacity(node);
+        had_paint_opacity_ = had_paint_opacity_ || factor != 1;
+        std::array<graphics::QuadInstance, retained_surface_visual_capacity> painted;
+        std::copy(visuals.begin(), visuals.end(), painted.begin());
+        for (auto& visual : std::span{painted}.first(visuals.size())) {
+            visual.opacity *= factor;
+        }
+        auto painted_effects = effects;
+        painted_effects.shadow_opacity *= factor;
+        painted_effects.focus_opacity *= factor;
+        range = instances_.append(std::span{painted}.first(visuals.size()));
         slot.record.emplace(Record{
             id,
             component,
@@ -65,11 +75,14 @@ RetainedSurfaceId RetainedSurfaceService::create_record(runtime::ComponentId com
             fragment,
             interaction,
             range,
-            effects,
+            painted_effects,
             {},
             {},
             {},
         });
+        std::copy(visuals.begin(), visuals.end(), slot.record->source_visuals.begin());
+        slot.record->source_effects = effects;
+        slot.record->paint_factor = factor;
         create_effects(*slot.record);
         bind_fragment(*slot.record);
     } catch (...) {
@@ -140,8 +153,12 @@ std::size_t RetainedSurfaceService::update_surface(RetainedSurfaceId id,
     // API below, which is not on the per-interaction path.
     std::array<graphics::QuadMaterial, retained_surface_visual_capacity> materials;
     std::array<graphics::QuadGeometry, retained_surface_visual_capacity> geometry;
+    const auto factor = nodes_->paint_opacity(record.node);
+    had_paint_opacity_ = had_paint_opacity_ || factor != 1;
+    record.paint_pending = record.paint_pending || factor != record.paint_factor;
     for (std::size_t index = 0; index < visuals.size(); ++index) {
-        materials[index] = {visuals[index].color, visuals[index].opacity};
+        record.source_visuals[index] = visuals[index];
+        materials[index] = {visuals[index].color, visuals[index].opacity * factor};
         geometry[index] = {
             visuals[index].bounds,
             visuals[index].corner_radius,
@@ -186,6 +203,64 @@ RetainedSurfaceService::ContentRecord& RetainedSurfaceService::require_content(R
         throw std::out_of_range("content range id is stale or unknown");
     }
     return *record;
+}
+
+std::span<const graphics::QuadInstance>
+RetainedSurfaceService::paint_content(ContentRecord& record, std::span<const graphics::QuadInstance> visuals) {
+    if (visuals.empty()) {
+        record.source_visuals.clear();
+    } else if (visuals.data() != record.source_visuals.data()) {
+        record.source_visuals.assign(visuals.begin(), visuals.end());
+    }
+    record.painted_visuals = record.source_visuals;
+    const auto factor = nodes_->paint_opacity(components_->root(components_->fragment_component(record.fragment)));
+    had_paint_opacity_ = had_paint_opacity_ || factor != 1;
+    record.paint_pending = record.paint_pending || factor != record.paint_factor;
+    for (auto& visual : record.painted_visuals) {
+        visual.opacity *= factor;
+    }
+    return record.painted_visuals;
+}
+
+std::size_t RetainedSurfaceService::synchronize_paint_opacity() {
+    ensure_owner_thread();
+    const bool active = nodes_->has_paint_opacity();
+    if (!active && !had_paint_opacity_) {
+        return 0;
+    }
+    had_paint_opacity_ = active;
+    std::size_t updates{};
+    for (auto& slot : slots_) {
+        if (!slot.record || !components_->contains(slot.record->component)) {
+            continue;
+        }
+        auto& record = *slot.record;
+        const auto factor = nodes_->paint_opacity(record.node);
+        if (factor == record.paint_factor && !record.paint_pending) {
+            continue;
+        }
+        updates += update_surface(
+            record.id, std::span<const graphics::QuadInstance>{record.source_visuals}.first(record.range.count));
+        const auto source = record.source_effects;
+        updates += update_effects(record.id, source);
+        record.paint_factor = factor;
+        record.paint_pending = false;
+    }
+    for (auto& slot : content_slots_) {
+        if (!slot.record || !components_->contains(slot.record->fragment)) {
+            continue;
+        }
+        auto& record = *slot.record;
+        const auto factor = nodes_->paint_opacity(components_->root(components_->fragment_component(record.fragment)));
+        if (factor == record.paint_factor && !record.paint_pending) {
+            continue;
+        }
+        updates += update_content_range(record.id, record.source_visuals);
+        updates += update_content_effects(record.id, record.source_effects);
+        record.paint_factor = factor;
+        record.paint_pending = false;
+    }
+    return updates;
 }
 
 void RetainedSurfaceService::publish_content(ContentRecord& record) {
@@ -257,7 +332,8 @@ RetainedSurfaceId RetainedSurfaceService::create_content_range(runtime::SceneFra
     auto& slot = content_slots_[slot_index];
     const RetainedSurfaceId id{slot_index, slot.generation, true};
     try {
-        slot.record.emplace(ContentRecord{id, fragment, instances_.append(visuals)});
+        slot.record.emplace(ContentRecord{id, fragment, {}});
+        slot.record->range = instances_.append(paint_content(*slot.record, visuals));
         publish_content(*slot.record);
     } catch (...) {
         if (slot.record) {
@@ -348,7 +424,7 @@ std::size_t RetainedSurfaceService::set_content_range(RetainedSurfaceId id, runt
         static_cast<void>(composer_->remove_fragment(record.fragment));
     }
     record.fragment = fragment;
-    const auto updates = republish_range(record.range, visuals);
+    const auto updates = republish_range(record.range, paint_content(record, visuals));
     publish_content(record);
     return updates;
 }
@@ -359,7 +435,7 @@ std::size_t RetainedSurfaceService::update_content_range(RetainedSurfaceId id,
     auto& record = require_content(id);
     validate_content_visuals(visuals);
     const auto old_range = record.range;
-    const auto updates = republish_range(record.range, visuals);
+    const auto updates = republish_range(record.range, paint_content(record, visuals));
     if (old_range != record.range) {
         publish_content(record);
     }
@@ -370,6 +446,22 @@ std::size_t RetainedSurfaceService::update_content_effects(RetainedSurfaceId id,
                                                            std::span<const graphics::RoundedEffectInstance> effects) {
     ensure_owner_thread();
     auto& record = require_content(id);
+    for (const auto& effect : effects) {
+        graphics::validate_rounded_effect(effect);
+    }
+    if (effects.empty()) {
+        record.source_effects.clear();
+    } else if (effects.data() != record.source_effects.data()) {
+        record.source_effects.assign(effects.begin(), effects.end());
+    }
+    record.painted_effects = record.source_effects;
+    const auto factor = nodes_->paint_opacity(components_->root(components_->fragment_component(record.fragment)));
+    had_paint_opacity_ = had_paint_opacity_ || factor != 1;
+    record.paint_pending = record.paint_pending || factor != record.paint_factor;
+    for (auto& effect : record.painted_effects) {
+        effect.material.opacity *= factor;
+    }
+    effects = std::span<const graphics::RoundedEffectInstance>{record.painted_effects};
     for (const auto& effect : effects) {
         graphics::validate_rounded_effect(effect);
     }
@@ -393,9 +485,19 @@ std::size_t RetainedSurfaceService::update_content_effects(RetainedSurfaceId id,
     return updates;
 }
 
-std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const RetainedSurfaceEffects& effects) {
+std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const RetainedSurfaceEffects& source) {
     ensure_owner_thread();
     auto& record = require(id);
+    if (source.shadow_fill_offset > record.range.count) {
+        throw std::invalid_argument("shadow fill offset exceeds surface visuals");
+    }
+    auto effects = source;
+    record.source_effects = effects;
+    const auto factor = nodes_->paint_opacity(record.node);
+    had_paint_opacity_ = had_paint_opacity_ || factor != 1;
+    record.paint_pending = record.paint_pending || factor != record.paint_factor;
+    effects.shadow_opacity *= factor;
+    effects.focus_opacity *= factor;
     if (effects.shadow_fill_offset > record.range.count) {
         throw std::invalid_argument("shadow fill offset exceeds surface visuals");
     }

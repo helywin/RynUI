@@ -1,9 +1,8 @@
 #include "runtime/node_store.hpp"
 
 #include <algorithm>
-
-#include <algorithm>
 #include <stdexcept>
+#include <cmath>
 
 namespace ryn::runtime {
 
@@ -31,6 +30,36 @@ float NodeStore::content_opacity(NodeId id) const {
         opacity *= require(*current).content_opacity;
     }
     return opacity;
+}
+
+float NodeStore::paint_opacity(NodeId id) const {
+    if (paint_opacity_count_ == 0) {
+        static_cast<void>(require(id));
+        return 1;
+    }
+    float result = 1;
+    for (auto current = std::optional{id}; current; current = require(*current).parent) {
+        result *= require(*current).paint_opacity;
+    }
+    return result;
+}
+
+bool NodeStore::set_paint_opacity(NodeId id, float value) {
+    if (!std::isfinite(value) || value < 0 || value > 1) {
+        throw std::invalid_argument("Node paint opacity must be finite in 0..1");
+    }
+    auto& node = require(id);
+    if (node.paint_opacity == value) {
+        return false;
+    }
+    if (node.paint_opacity == 1 && value != 1) {
+        ++paint_opacity_count_;
+    }
+    if (node.paint_opacity != 1 && value == 1) {
+        --paint_opacity_count_;
+    }
+    node.paint_opacity = value;
+    return true;
 }
 
 NodeId NodeStore::create_root() {
@@ -89,6 +118,9 @@ bool NodeStore::destroy(NodeId id) noexcept {
         }
     }
 
+    if (slot->node.paint_opacity != 1) {
+        --paint_opacity_count_;
+    }
     slot->node = {};
     slot->occupied = false;
     advance_generation(*slot);

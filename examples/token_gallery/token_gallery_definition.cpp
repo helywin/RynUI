@@ -7772,6 +7772,328 @@ void add_mentions_async_samples(const std::shared_ptr<GalleryState>& state) {
     Text(TextProps{}.content(state->mentions_async_feedback));
 }
 
+void add_carousel_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    CarouselRef ref;
+    Signal<bool> autoplay{false};
+    Signal<bool> vertical{false};
+    Signal<TextDirection> direction{TextDirection::LeftToRight};
+    Signal<CarouselEffect> effect{CarouselEffect::ScrollX};
+    Signal<String> feedback{String{u8"箭头、指示器、键盘和背景拖动切换；编辑器的选择与草稿由原生子控件保留。"}};
+    std::vector<CarouselSlide> slides;
+    for (int i = 0; i < 3; ++i) {
+        const auto key = utf8("panel-" + std::to_string(i + 1));
+        slides.emplace_back(
+            key, CarouselContent{[key, feedback] {
+                Flex(
+                    FlexProps{}
+                        .vertical(true)
+                        .align(FlexAlign::Start)
+                        .gap(dp(8))
+                        .layout(LayoutStyle{}.margin_left(dp(48)).margin_right(dp(48)).margin_top(dp(16)).margin_bottom(
+                            dp(44))),
+                    [key, feedback] {
+                        Text(TextProps{}.content(key));
+                        Input(InputProps{}
+                                  .defaultValue(u8"保留面板草稿")
+                                  .onChange([key, feedback](String text) {
+                                      feedback.set(
+                                          utf8(std::string{key.bytes()} + " draft=" + std::string{text.bytes()}));
+                                  })
+                                  .layout(LayoutStyle{}.width(dp(300))));
+                        Popover(
+                            PopoverProps{}, PopoverTrigger{[] { Button(ButtonProps{}, [] { Text(u8"面板详情"); }); }},
+                            PopoverSlots{.content =
+                                             PopoverContent{[] { Input(InputProps{}.defaultValue(u8"子浮层备注")); }}});
+                    });
+            }});
+    }
+    ThemeConfig theme;
+    theme.carousel.tokens.arrow = Color::rgba8(22, 119, 255);
+    theme.carousel.tokens.dot = Color::rgba8(160, 160, 160);
+    theme.carousel.tokens.dot_active = Color::rgba8(22, 119, 255);
+    theme.carousel.tokens.background = Color::rgba8(245, 247, 250);
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         [state, ref, autoplay, vertical, direction, effect, feedback, slides, theme] {
+             Text(TextProps{}.content(feedback));
+             Theme(ThemeProps{}.config(theme), ThemeContent{[=] {
+                       Carousel(
+                           CarouselProps{}
+                               .ref(ref)
+                               .slides(slides)
+                               .effect(effect)
+                               .arrows()
+                               .draggable()
+                               .infinite()
+                               .vertical(vertical)
+                               .direction(direction)
+                               .autoplay(autoplay)
+                               .autoplaySpeed(Duration::milliseconds(1000))
+                               .dotDuration()
+                               .beforeChange([feedback](std::size_t from, std::size_t to) {
+                                   feedback.set(utf8("before " + std::to_string(from) + " → " + std::to_string(to)));
+                               })
+                               .afterChange(
+                                   [feedback](std::size_t to) { feedback.set(utf8("after " + std::to_string(to))); })
+                               .layout(LayoutStyle{}.width(state->document_width)));
+                       remember_target(state, "gallery.carousel.main");
+                   }});
+             Flex(FlexProps{}.wrap(true).gap(dp(8)), [=] {
+                 Button(ButtonProps{}.onClick([ref] { static_cast<void>(ref.prev()); }), [] { Text(u8"Prev"); });
+                 Button(ButtonProps{}.onClick([ref] { static_cast<void>(ref.next()); }), [] { Text(u8"Next"); });
+                 Button(ButtonProps{}.onClick([effect] {
+                     effect.set(effect.get() == CarouselEffect::Fade ? CarouselEffect::ScrollX : CarouselEffect::Fade);
+                 }),
+                        [] { Text(u8"ScrollX / Fade"); });
+                 remember_target(state, "gallery.carousel.effect");
+                 Button(ButtonProps{}.onClick([autoplay] { autoplay.set(!autoplay.get()); }),
+                        [] { Text(u8"Autoplay"); });
+                 remember_target(state, "gallery.carousel.autoplay");
+                 Button(ButtonProps{}.onClick([ref] { static_cast<void>(ref.pause()); }), [] { Text(u8"Pause"); });
+                 remember_target(state, "gallery.carousel.pause");
+                 Button(ButtonProps{}.onClick([ref] { static_cast<void>(ref.play()); }), [] { Text(u8"Play"); });
+                 remember_target(state, "gallery.carousel.play");
+                 Button(ButtonProps{}.onClick([vertical] { vertical.set(!vertical.get()); }),
+                        [] { Text(u8"Vertical"); });
+                 Button(ButtonProps{}.onClick([direction] {
+                     direction.set(direction.get() == TextDirection::LeftToRight ? TextDirection::RightToLeft
+                                                                                 : TextDirection::LeftToRight);
+                 }),
+                        [] { Text(u8"RTL"); });
+             });
+             Text(u8"自动播放按单调 deadline；hover、focus、窗口失活、隐藏和 reduced motion "
+                  u8"暂停。背景可拖动，Input/Popover 的选择和捕获独立处理。");
+         });
+}
+
+void add_carousel_controlled_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    CarouselRef ref;
+    Signal<std::size_t> current{0};
+    Signal<bool> accept{false};
+    Signal<String> feedback{String{u8"默认拒绝受控请求；打开接受后再使用自定义 dot 或 Ref。"}};
+    std::vector<CarouselSlide> original;
+    for (int i = 0; i < 3; ++i) {
+        auto key = utf8("key-" + std::to_string(i));
+        original.emplace_back(
+            key, CarouselContent{[key] {
+                Flex(FlexProps{}.vertical(true).gap(dp(8)).layout(
+                         LayoutStyle{}.margin_left(dp(48)).margin_right(dp(48)).margin_top(dp(16)).margin_bottom(
+                             dp(60))),
+                     [key] {
+                         Text(TextProps{}.content(key));
+                         TextArea(TextAreaProps{}
+                                      .defaultValue(u8"动态重排保留草稿")
+                                      .rows(2)
+                                      .layout(LayoutStyle{}.width(dp(300))));
+                     });
+            }});
+    }
+    Signal<std::vector<CarouselSlide>> slides{original};
+    Flex(
+        FlexProps{}
+            .vertical(true)
+            .align(FlexAlign::Start)
+            .gap(dp(8))
+            .layout(LayoutStyle{}.width(state->document_width)),
+        [state, ref, current, accept, feedback, slides, original] {
+            Text(TextProps{}.content(feedback));
+            Carousel(CarouselProps{}
+                         .ref(ref)
+                         .slides(slides)
+                         .current(current)
+                         .arrows()
+                         .draggable()
+                         .infinite(false)
+                         .adaptiveHeight()
+                         .onCurrentChange([current, accept, feedback](std::size_t target, CarouselChangeSource source) {
+                             feedback.set(utf8(std::string{accept.get() ? "接受" : "拒绝"} + " index=" +
+                                               std::to_string(target) + " source=" + std::to_string(int(source))));
+                             if (accept.get()) {
+                                 current.set(target);
+                             }
+                         })
+                         .customPaging([](Binding<CarouselDotInfo> info, std::function<void()> activate) {
+                             return CarouselDot{[info, activate] {
+                                 Flex(FlexProps{}.gap(dp(4)), [info, activate] {
+                                     Button(ButtonProps{}.onClick(activate), [info] {
+                                         Text(TextProps{}.content(bind([info] {
+                                             auto value = info.get();
+                                             return utf8(std::string{value.active ? "● " : "○ "} +
+                                                         std::string{value.key.bytes()});
+                                         })));
+                                     });
+                                     Input(InputProps{}.defaultValue(u8"dot 草稿").layout(LayoutStyle{}.width(dp(72))));
+                                 });
+                             }};
+                         })
+                         .layout(LayoutStyle{}.width(state->document_width)));
+            remember_target(state, "gallery.carousel.controlled");
+            Flex(FlexProps{}.wrap(true).gap(dp(8)), [=] {
+                Button(ButtonProps{}.onClick([accept] { accept.set(!accept.get()); }), [] { Text(u8"接受 / 拒绝"); });
+                Button(ButtonProps{}.onClick([ref] { static_cast<void>(ref.next()); }), [] { Text(u8"Ref next"); });
+                Button(ButtonProps{}.onClick([slides] {
+                    auto values = slides.get();
+                    std::reverse(values.begin(), values.end());
+                    slides.set(std::move(values));
+                }),
+                       [] { Text(u8"按 key 重排"); });
+                Button(ButtonProps{}.onClick([slides] {
+                    auto values = slides.get();
+                    if (!values.empty()) {
+                        values.pop_back();
+                        slides.set(std::move(values));
+                    }
+                }),
+                       [] { Text(u8"删除末项"); });
+                Button(ButtonProps{}.onClick([slides, original] { slides.set(original); }), [] { Text(u8"恢复原项"); });
+            });
+        });
+}
+
+void add_calendar_custom_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<CivilDate> value{CivilDate{2024, 2, 29}};
+    Signal<String> event{String{u8"自定义 header 与 fullCell；Details 内的备注由日期 key 保留。"}};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         [state, value, event] {
+             Text(TextProps{}.content(event));
+             Calendar(
+                 CalendarProps{}
+                     .value(value)
+                     .showWeek()
+                     .validRange(CalendarRange{{2024, 1, 1}, {2025, 12, 31}})
+                     .headerRender([event](CalendarHeaderContext context) {
+                         return CalendarHeader{[context, event] {
+                             Flex(FlexProps{}.wrap(true).gap(dp(8)), [context, event] {
+                                 Text(TextProps{}.content(
+                                     bind([context] { return format_iso_date(context.info.get().value); })));
+                                 Button(ButtonProps{}.onClick(
+                                            [context] { static_cast<void>(context.calendar.select({2024, 12, 31})); }),
+                                        [] { Text(u8"2024-12-31"); });
+                                 Button(ButtonProps{}.onClick([context] {
+                                     static_cast<void>(context.calendar.changeMode(CalendarMode::Year));
+                                 }),
+                                        [] { Text(u8"Year"); });
+                                 Button(ButtonProps{}.onClick([context] {
+                                     static_cast<void>(context.calendar.changeMode(CalendarMode::Month));
+                                 }),
+                                        [] { Text(u8"Month"); });
+                                 Input(InputProps{}
+                                           .defaultValue(u8"保留 header 草稿")
+                                           .layout(LayoutStyle{}.width(dp(180))));
+                             });
+                         }};
+                     })
+                     .fullCellRender(CalendarCellRenderer{[](Binding<CalendarCellInfo> info) {
+                         return CalendarCell{[info] {
+                             Flex(FlexProps{}.vertical(true).gap(dp(4)), [info] {
+                                 Text(TextProps{}.content(bind([info] {
+                                     const auto cell = info.get();
+                                     return cell.mode == CalendarMode::Month ? utf8(std::to_string(cell.date.day()))
+                                                                             : utf8(std::to_string(cell.date.month()));
+                                 })));
+                                 Popover(PopoverProps{}, PopoverTrigger{[] {
+                                             Button(ButtonProps{}.size(ControlSize::Small), [] { Text(u8"Details"); });
+                                         }},
+                                         PopoverSlots{.content = PopoverContent{[info] {
+                                                          Text(TextProps{}.content(bind(
+                                                              [info] { return format_iso_date(info.get().date); })));
+                                                          Input(InputProps{}.defaultValue(u8"保留日期备注"));
+                                                      }}});
+                             });
+                         }};
+                     }})
+                     .onChange([value](CivilDate date) { value.set(date); })
+                     .onPanelChange([event](CivilDate date, CalendarMode mode) {
+                         event.set(utf8("自定义面板：" + std::string{format_iso_date(date).bytes()} +
+                                        " mode=" + std::to_string(int(mode))));
+                     })
+                     .onSelect([event](CivilDate date, CalendarSelectInfo info) {
+                         event.set(utf8("自定义选择：" + std::string{format_iso_date(date).bytes()} +
+                                        " source=" + std::to_string(int(info.source))));
+                     })
+                     .layout(LayoutStyle{}.width(state->document_width)));
+             remember_target(state, "gallery.calendar.custom");
+         });
+}
+
+void add_calendar_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<CivilDate> value{CivilDate{2024, 2, 29}};
+    Signal<String> feedback{String{u8"选择日期或通过年月 header 切换；单元格备注保留到日期离开网格。"}};
+    Signal<bool> mini{false};
+    Signal<PickerLocale> locale{PickerLocale{}};
+    Signal<std::optional<CalendarRange>> range{std::optional<CalendarRange>{}};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         [state, value, feedback, mini, locale, range] {
+             Text(TextProps{}.content(feedback));
+             Calendar(CalendarProps{}
+                          .value(value)
+                          .fullscreen(bind([mini] { return !mini.get(); }))
+                          .locale(locale)
+                          .validRange(range)
+                          .showWeek()
+                          .clock([] { return CivilDate{2024, 2, 29}; })
+                          .showToday()
+                          .onChange([value, feedback](CivilDate date) {
+                              value.set(date);
+                              feedback.set(format_iso_date(date));
+                          })
+                          .onPanelChange([feedback](CivilDate date, CalendarMode mode) {
+                              feedback.set(utf8("面板：" + std::string{format_iso_date(date).bytes()} +
+                                                (mode == CalendarMode::Month ? " 月" : " 年")));
+                          })
+                          .onSelect([feedback](CivilDate date, CalendarSelectInfo info) {
+                              feedback.set(utf8("选择：" + std::string{format_iso_date(date).bytes()} +
+                                                " source=" + std::to_string(int(info.source))));
+                          })
+                          .cellRender(CalendarCellRenderer{[feedback](Binding<CalendarCellInfo> info) {
+                              return CalendarCell{[info, feedback] {
+                                  Input(InputProps{}
+                                            .defaultValue(u8"日程备注")
+                                            .placeholder(bind([info] {
+                                                return info.get().today ? String{u8"Today"} : String{u8"保留草稿"};
+                                            }))
+                                            .onChange([info, feedback](String draft) {
+                                                feedback.set(utf8(
+                                                    "日程 " + std::string{format_iso_date(info.get().date).bytes()} +
+                                                    "：" + std::string{draft.bytes()}));
+                                            }));
+                              }};
+                          }})
+                          .layout(LayoutStyle{}.width(state->document_width)));
+             remember_target(state, "gallery.calendar.main");
+             Button(ButtonProps{}.onClick([mini] { mini.set(!mini.get()); }), [] { Text(u8"切换 mini/fullscreen"); });
+             remember_target(state, "gallery.calendar.mini");
+             Button(ButtonProps{}.onClick([locale] {
+                 auto next = locale.get();
+                 next.first_day = next.first_day == 0 ? 1 : 0;
+                 locale.set(std::move(next));
+             }),
+                    [] { Text(u8"切换周首日"); });
+             remember_target(state, "gallery.calendar.locale");
+             Button(ButtonProps{}.onClick([range] {
+                 range.set(range.get() ? std::optional<CalendarRange>{}
+                                       : std::optional{CalendarRange{{2024, 2, 10}, {2024, 3, 15}}});
+             }),
+                    [] { Text(u8"切换有效日期范围"); });
+             remember_target(state, "gallery.calendar.range");
+         });
+}
+
 void add_mentions_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Flex(FlexProps{}
@@ -8973,6 +9295,34 @@ void add_time_range_samples(const std::shared_ptr<GalleryState>& state) {
 }
 
 constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
+    {{"gallery.sample.carousel.panels",
+      "ant.component.carousel",
+      {},
+      "保留面板、拖动、效果与自动播放",
+      "add_carousel_samples",
+      "include/ryn/carousel.hpp"},
+     add_carousel_samples},
+    {{"gallery.sample.carousel.controlled",
+      "ant.component.carousel",
+      {},
+      "受控拒绝、自定义指示器与动态 key",
+      "add_carousel_controlled_samples",
+      "include/ryn/carousel.hpp"},
+     add_carousel_controlled_samples},
+    {{"gallery.sample.calendar.custom",
+      "ant.component.calendar",
+      {},
+      "自定义 header、fullCell 与保留浮层",
+      "add_calendar_custom_samples",
+      "include/ryn/calendar.hpp"},
+     add_calendar_custom_samples},
+    {{"gallery.sample.calendar.schedule",
+      "ant.component.calendar",
+      {},
+      "公历、年月选择与保留日程",
+      "add_calendar_samples",
+      "include/ryn/calendar.hpp"},
+     add_calendar_samples},
     {{"gallery.sample.float-button.actions",
       "ant.component.float-button",
       {},

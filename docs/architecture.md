@@ -377,6 +377,8 @@ GPU 资源和 pipeline 必须在所属 renderer/binding 销毁前 retire；bindi
 
 107 的共享 ImageStore/不可变 RGBA 像素、内存解码与独立 Image 纹理/record 同样经过共同事务；Image ABI、颜色/方向、输入上限、失败与 epoch 细节见 renderer 合同。Core 解码不做文件或网络 IO，平台服务不得反向进入 Core。
 
+保留子树的绘制透明度由 Core Node 的独立 paint opacity 表达，沿祖先相乘，与 branch/input boundary 分离。共同 retained surface 保存未乘包络的 Quad/RoundedEffect 来源；Text/Icon/Input 与 Image/预览实例在发布 logical scene 时各应用一次包络。组件的已有 content opacity 保持独立，不在 renderer 再乘全局 alpha；创建、范围迁移、替换、归零恢复均从未缩放来源生成，动画调度仍由宿主的有限 deadline 负责。
+
 ### 10.1 Primitive
 
 普通 UI 首先映射为少量 Primitive：

@@ -100,7 +100,7 @@ public:
     void set_observer(Observer observer);
     void cancel_all();
     void cancel_interaction(InteractionId interaction, bool notify = true);
-    void cancel_pointer_interaction(InteractionId interaction);
+    void cancel_pointer_interaction(InteractionId interaction, bool notify = true);
 
     [[nodiscard]] std::optional<PointerStateSnapshot> state(PointerIdentity pointer) const;
     [[nodiscard]] std::size_t pointer_count() const;

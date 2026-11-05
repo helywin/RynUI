@@ -1404,7 +1404,7 @@ void ImageComponentHost::publish(runtime::ComponentId id, runtime::Size viewport
             const auto pixels = s->pixels;
             const auto r = fit_image(bounds, {float(pixels->width()), float(pixels->height())}, s->fit);
             graphics::ImageInstance instance{pixels, r, clip, {r.x + r.width / 2, r.y + r.height / 2}};
-            instance.opacity = services_->nodes().content_opacity(s->node);
+            instance.opacity = services_->nodes().content_opacity(s->node) * services_->nodes().paint_opacity(s->node);
             if (s->shape == ImageShape::Circle && bounds.width > 0 && bounds.height > 0) {
                 instance.circle_clip = visual;
             }
@@ -1442,7 +1442,7 @@ void ImageComponentHost::publish(runtime::ComponentId id, runtime::Size viewport
                 r,
                 {r.x + r.width / 2 + transform.x, r.y + r.height / 2 + transform.y},
                 transform.rotate,
-                services_->nodes().content_opacity(n),
+                services_->nodes().content_opacity(n) * services_->nodes().paint_opacity(n),
                 transform.flip_x,
                 transform.flip_y};
             if (!s->preview_image) {

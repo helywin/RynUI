@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""Preserve all 64 pre-Calendar/Carousel top-level fields and token ordinals."""
+from pathlib import Path
+import json
+import re
+import subprocess
+ROOT=Path(__file__).resolve().parents[1]
+BASE='135ba70b74673bc6d7b34d1d83aa414fd0db3607'
+def original(path): return subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT,text=True)
+def main():
+    paths=sorted((ROOT/'design-tokens/ant-design/6.6.5/golden').glob('*.json'))
+    assert len(paths)==5
+    for path in paths:
+        before=json.loads(original(path.relative_to(ROOT)))
+        after=json.loads(path.read_text())
+        assert len(before)==64
+        assert set(before)|{'calendar','carousel'} == set(after)
+        assert len(after)==66
+        for field,value in before.items():
+            if field!='identity': assert after[field]==value,(path.name,field)
+        assert after['identity']!=before['identity']
+    path='src/theme/theme_runtime_types.hpp'
+    def identities(text): return re.findall(r'^\s+(\w+),',text.split('enum class TokenIdentity')[1].split('};')[0],re.M)
+    before=identities(original(path)); after=identities((ROOT/path).read_text())
+    assert after[:len(before)-1]==before[:-1]
+    assert after[-1]=='count' and len(set(after))==len(after)
+    assert after[len(before)-1:len(before)+2]==['calendar_colors','calendar_metrics','calendar_effects']
+    assert after[len(before)+2:len(before)+5]==['carousel_colors','carousel_metrics','carousel_effects']
+    path='include/ryn/theme.hpp'
+    def config_fields(text): return re.findall(r'^    (.+);$',text.split('struct ThemeConfig final {')[1].split('friend bool')[0],re.M)
+    assert config_fields((ROOT/path).read_text()) == config_fields(original(path))+['CalendarThemeConfig calendar','CarouselThemeConfig carousel']
+    runtime=(ROOT/'src/theme/theme_runtime.cpp').read_text()
+    for name in ['Calendar.colors','Calendar.metrics','Calendar.effects','Carousel.colors','Carousel.metrics','Carousel.effects']: assert '"'+name+'"' in runtime
+    print('Calendar/Carousel baseline: 5 full goldens, 64 old fields protected, old TokenIdentity names/order unchanged')
+if __name__=='__main__': main()

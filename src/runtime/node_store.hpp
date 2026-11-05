@@ -83,6 +83,8 @@ struct Node {
     // Retained window-layer owners do not consume parent Box/Flex space or gaps.
     bool out_of_flow{};
     float content_opacity{1.0F};
+    // Independent retained presentation envelope, consumed once by shared paint stores.
+    float paint_opacity{1.0F};
     std::uint64_t measure_count{0};
     std::uint64_t place_count{0};
     std::uint64_t measure_generation{0};
@@ -102,6 +104,12 @@ public:
     [[nodiscard]] const Node& require(NodeId id) const;
     [[nodiscard]] Rect content_clip(NodeId id, Rect window_clip, ClipPurpose purpose = ClipPurpose::content) const;
     [[nodiscard]] float content_opacity(NodeId id) const;
+    [[nodiscard]] float paint_opacity(NodeId id) const;
+    bool set_paint_opacity(NodeId id, float value);
+
+    [[nodiscard]] bool has_paint_opacity() const noexcept {
+        return paint_opacity_count_ != 0;
+    }
 
     bool destroy(NodeId id) noexcept;
 
@@ -124,6 +132,7 @@ private:
     std::deque<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
     std::size_t live_nodes_{0};
+    std::size_t paint_opacity_count_{};
     std::uint64_t topology_revision_{0};
 };
 

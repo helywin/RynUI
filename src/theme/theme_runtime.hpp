@@ -113,6 +113,12 @@ public:
     [[nodiscard]] const SegmentedThemeToken& segmented_colors() const;
     [[nodiscard]] const SegmentedThemeToken& segmented_metrics() const;
     [[nodiscard]] const SegmentedThemeToken& segmented_effects() const;
+    [[nodiscard]] const CarouselThemeToken& carousel_colors() const;
+    [[nodiscard]] const CarouselThemeToken& carousel_metrics() const;
+    [[nodiscard]] const CarouselThemeToken& carousel_effects() const;
+    [[nodiscard]] const CalendarThemeToken& calendar_colors() const;
+    [[nodiscard]] const CalendarThemeToken& calendar_metrics() const;
+    [[nodiscard]] const CalendarThemeToken& calendar_effects() const;
     [[nodiscard]] const DatePickerThemeToken& date_picker_colors() const;
     [[nodiscard]] const DatePickerThemeToken& date_picker_metrics() const;
     [[nodiscard]] const DatePickerThemeToken& date_picker_effects() const;
