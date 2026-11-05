@@ -98,3 +98,17 @@
 ## Migration Plan
 
 保持旧调用编译，新增 overload 和 typed 属性；不兼容变更须单独说明。按组件提交支持小步 git revert，避免回退用户工作。平台证据分别提交；未验证 Windows 保持未勾选。人工体验仅可选说明，不建立 checkbox 或实施前置门槛。
+
+## Form typed API 映射
+
+固定对照 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e723cdd` 的 Form/API、FormItem/FormList/context/useForm 类型和 basic、dynamic-form-items、complex-form-control、validate-trigger、form-dependencies demo。源码副本仅在忽略的 out。
+
+旧 String 字段名继续是平面字面身份；显式 FormNamePath 组合字符串/数组下标。FormValue 增加 SelectValues 与 optional<Decimal>，保留旧 variant 入口及结果成员。NamePath/structuredValues、FormList 稳定 key/局部 append-destroy、FormProvider 隔离及 FormPresentation 原生布局用于对应上游原生合同。
+
+FormItem 的首个兼容 typed 内置控件可自动绑定；显式已有 value/onChange 保留并占用该位置。自定义复合控件通过 FormControlAdapter<T> 声明 value/event/status/gate/ref/geometry，不使用 runtime reflection、React clone 或向无关后代注入 props。Web valuePropName/getValueFromEvent/normalize 对应此 typed adapter。FormRef/watch/useFormStatus 和 retained slots 对应 instance/hook/shouldUpdate 能力；不引入 VDOM。
+
+同步规则保持旧 validate/submit 合同；异步规则增加 validateAsync/submitAsync、owner-thread posting/cancellation、每字段及每 Form 代际、快照和有界超时。FormScrollTarget 是显式原生服务，使用捕获 control 的实际几何，reveal acknowledgement 后等下一次几何同步再检查焦点资格。平台分类验收仍由 63.2/64.2 独立追踪，不用 HEADLESS 代替。
+
+Form 富 label/help/extra/feedback 使用 typed slots，默认反馈是实际 Icon。watch/useWatch 和 useFormStatus 返回可读取 Binding，支持 Prop 与细粒度订阅；FormRef 挂载前订阅及重绑保留有效观察。getFieldInstance 映射为带注册代际的 FormControlTarget；getFieldsError 与 Provider.changed_fields 保留 typed meta。Form/Item.preserve 与 clearOnDestroy 对应内部 store 保留语义。异步工厂、取消回调、受控 getter/setter 和元数据观察者均可重入；所有变更后检查注册与事务权威，无法安全继续的应用批次退役完整 Form UI，行 renderer 失败退役完整 List，保持其他组件存活。
+
+结构化 store 同时保留尚未挂载的 typed 路径；getFieldsValue(true)、watch、后续挂载和部分/完整 reset 使用该 store。List 自身是注册的数组值，未挂载子路径随稳定行 move/remove/reset 迁移。删除只有异步规则而没有叶字段的 List 也立即取消 Form 事务，不能依赖之后的结果或超时清理 pending。

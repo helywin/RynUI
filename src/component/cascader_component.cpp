@@ -1,4 +1,5 @@
 #include "component/cascader_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/input_component.hpp"
 #include "component/popover_component.hpp"
 #include "input/text_boundary.hpp"
@@ -1164,6 +1165,7 @@ void CascaderComponentHost::load(runtime::ComponentId id, String key) {
 }
 
 void CascaderComponentHost::mount(const CascaderProps& p, bool embedded) {
+    FormPrivateEditorScope private_editor;
     if ((p.query_ && p.default_query_) || (p.value_ && p.default_value_) || (p.open_ && p.default_open_) ||
         (p.expanded_ && p.default_expanded_)) {
         throw std::invalid_argument("Cascader controlled/default conflict");

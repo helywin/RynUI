@@ -1,4 +1,5 @@
 #include "component/auto_complete_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/auto_complete_model.hpp"
 #include "component/option_list_support.hpp"
 #include "component/input_component.hpp"
@@ -1076,6 +1077,7 @@ void AutoCompleteComponentHost::mount_editor(runtime::ComponentId id) {
     const auto prefix = s.prefix;
     const auto suffix = s.suffix;
     Theme(ThemeProps{}.config(s.input_theme), ThemeContent{[&] {
+              FormPrivateEditorScope private_editor;
               std::optional<InputPrefix> input_prefix;
               if (prefix) {
                   input_prefix = InputPrefix{[&] {

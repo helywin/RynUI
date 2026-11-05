@@ -178,10 +178,62 @@ void error_observer_invalidates_publication() {
     check(focus_model->submit() && failures == 1 && text->error.get().empty(),
           "focus callback invalidated validation but left stale errors published");
 }
+
+void deep_values_and_exact_numbers() {
+    auto model = std::make_shared<FormModel>();
+    auto literal = make_form_field(String{u8"flat"});
+    auto deep = make_form_field(String{u8"nested"});
+    auto exact = make_form_field(std::optional<Decimal>{Decimal{u8"9007199254740993.0000000000001"}});
+    auto multiple = make_form_field(SelectValues{SelectValue{u8"a"}, SelectValue{std::int64_t{2}}});
+    model->add(String{u8"user.name"}, literal);
+    model->add(FormNamePath{u8"users", 0, u8"name"}, deep);
+    model->add(FormNamePath{u8"users", 0, u8"amount"}, exact);
+    model->add(FormNamePath{u8"roles"}, multiple);
+    auto result = model->validate();
+    check(result && result->valid(), "deep values validation failed");
+    const auto structured = result->structuredValues();
+    check(structured.at(FormNamePath{u8"user.name"}) && !structured.at(FormNamePath{u8"user", u8"name"}),
+          "literal flat identity was parsed as a path");
+    check(std::get<FormValue>(structured.at(FormNamePath{u8"users", 0, u8"amount"})->value) == read_form_field(exact),
+          "exact decimal lost precision in structured snapshot");
+    int watched{};
+    Scope scope;
+    auto observer = effect(scope, [&] {
+        static_cast<void>(model->get(FormNamePath{u8"users", 0, u8"name"}));
+        ++watched;
+    });
+    write_form_field(literal, String{u8"other"});
+    check(watched == 1, "unrelated field reran fine-grained watcher");
+    FormData update;
+    update.set(FormNamePath{u8"users", 0, u8"name"}, FormData{FormValue{String{u8"updated"}}});
+    check(model->set_values(update) && watched == 2, "structured update did not notify field watcher");
+    FormData wrong;
+    wrong.set(FormNamePath{u8"users", 0, u8"name"}, FormData{FormValue{true}});
+    bool rejected{};
+    try {
+        model->set_values(wrong);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && std::get<String>(read_form_field(deep)) == String{u8"updated"},
+          "invalid update changed authority");
+    auto stale = form_change_handler(deep);
+    model->relocate({{FormNamePath{u8"users", 0}, FormNamePath{u8"users", 1}}});
+    stale(String{u8"same row"});
+    check(model->get(FormNamePath{u8"users", 1, u8"name"}) == FormValue{String{u8"same row"}},
+          "move lost row authority");
+    model->remove(deep, deep->generation);
+    stale(String{u8"late"});
+    check(std::get<String>(read_form_field(deep)) == String{u8"same row"},
+          "removed row callback remained authoritative");
+    check(model->get_values(true).at(FormNamePath{u8"users", 1, u8"name"}), "preserved field value missing");
+    scope.dispose();
+}
 } // namespace
 
 int main() {
     try {
+        deep_values_and_exact_numbers();
         values_validation_reset();
         registration_and_focus();
         controlled_and_reentrancy();

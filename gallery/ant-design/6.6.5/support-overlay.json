@@ -671,33 +671,41 @@
     },
     {
       "identity": "ant.component.form",
-      "status": "partial",
-      "summary": "原生 Form/FormItem 首版支持纵向布局、typed 字段与显式控件绑定、同步校验、提交/重置、保留错误反馈和真实 ref 失败焦点；Gallery 提供目录直达的真实四字段录入流程，异步、动态列表及嵌套字段后续扩展。",
+      "status": "implemented",
+      "summary": "原生 Form/Item/List/Provider 提供真实三布局与响应式列、深路径和结构化 store、稳定键控嵌套列表、typed 自动/自定义绑定、同步/可取消异步规则和细粒度状态、Enter 提交与原生滚动焦点；保留旧绑定、结果和同值 reset，Gallery 提供三个独立完整流程。",
       "supported_scope": [
-        "typed String, optional number, bool and SelectSelection fields with flat names",
-        "explicit Input/InputNumber/Select/Checkbox bindings and retained control slots",
-        "synchronous required/custom validation, values/errors snapshots and controlled authority",
-        "FormRef validate/submit/reset, first visible eligible invalid ref focus and same-value numeric draft reset",
-        "reactive labels/help/errors, disabled/readOnly and Modal/Spin/hidden gates",
-        "component Theme inheritance, local algorithms, overrides and prepublication font validation",
-        "interactive four-field Gallery with real input/selection, submit results, reset and disabled/readOnly actions",
-        "Gallery catalog navigation and retained drafts/identity with finite glyph clips across Default/Dark/Compact and 1200/560 widths"
+        "typed String, optional<double>, bool, SelectSelection, SelectValues and optional<Decimal> with exact decimal authority",
+        "literal legacy String identities, explicit string/index NamePath, structured mounted/unmounted values, initial/set/reset APIs and fine-grained watch",
+        "retained keyed nested FormList add/remove/move, rich drafts/preedit/focus, shifted unmounted child values and generation-bound callback authority",
+        "actual horizontal/inline/vertical layout, responsive label/wrapper columns, alignment/wrap/colon/required marks, RTL/locale/size/variant and independent nested scopes",
+        "Item noStyle/hidden/help/extra/status/real feedback icons/tooltips, retained rich label/help/extra/feedback slots and native Theme tokens",
+        "first compatible typed built-in automatic binding, preserved explicit bindings and explicit FormControlAdapter for arbitrary custom controls",
+        "synchronous rich rules/warnings/exact ranges, cross-field snapshots/dependencies, triggers/debounce, owner-thread async cancellation/timeouts and stale submit protection",
+        "FormRef submit/validate/reset/setFields/getFields/error/meta/typed native instance APIs, FormProvider events and readable watch/status Bindings",
+        "native single-line Enter with TextArea/IME/nested scope isolation, real control geometry scroll reveal/focus and disabled/hidden/zero/inactive gates",
+        "atomic invalid list operations or deliberate complete Form/List retirement on unsafe user failures, preserving unrelated controls",
+        "legacy four-field Gallery plus independent layout/exact/scroll, deep-list and async/dependency examples with actual submitted values"
       ],
       "missing_scope": [
-        "horizontal/inline layouts, nested Form, Form.List, deep field paths and automatic arbitrary-control binding",
-        "async validation, dependencies, automatic Enter submission and automatic scrolling",
-        "native GPU/Linux/system IME and assistive technology acceptance remain independent",
-        "complete Ant Design Web/DOM/CSS API"
+        "Web DOM/CSS/HTML/React aliases are excluded from the native API; arbitrary custom controls require the explicit typed adapter",
+        "native GPU/window, physical system IME candidate UI, assistive technology and Windows/MSVC evidence remain independent"
       ],
       "evidence_identifiers": [
         "source:components/form/index.en-US.md",
         "openspec:075-20261024-add-native-form",
+        "openspec:079-20261025-add-form-and-picker-gallery",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
         "test:rynui.form_model",
         "test:rynui.form_public_api",
         "test:rynui.form_component",
         "test:rynui.form_theme",
-        "openspec:079-20261025-add-form-and-picker-gallery",
-        "test:tests/token_gallery_frame_tests.cpp#test_form_gallery_after_document_scroll"
+        "test:rynui.form_advanced",
+        "test:rynui.form_async",
+        "test:rynui.form_interaction",
+        "test:rynui.form_lifecycle",
+        "test:rynui.form_documentation",
+        "test:rynui.gallery_sample_page",
+        "test:rynui.gallery_sample_source_contract"
       ]
     },
     {

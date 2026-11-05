@@ -1,4 +1,5 @@
 #include "component/select_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/select_model.hpp"
 #include "component/option_list_support.hpp"
 #include "input/text_boundary.hpp"
@@ -1701,6 +1702,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
     build.mount_slot(
         id, Content{[&] {
             Theme(ThemeProps{}.config(s.selector_theme), ThemeContent{[&] {
+                      FormPrivateEditorScope private_editor;
                       const std::optional<InputPrefix> input_prefix = InputPrefix{[&] {
                           const auto prefix_root = select_group(services);
                           layout::FlexLayout prefix_layout;
@@ -2785,6 +2787,10 @@ void Select(SelectProps props, std::optional<SelectPrefix> prefix, std::optional
     if (!detail::active_selects) {
         throw std::logic_error("Select requires window component services");
     }
+    const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::active_selects->mount(props, prefix, suffix);
+    if (attach) {
+        attach();
+    }
 }
 } // namespace ryn

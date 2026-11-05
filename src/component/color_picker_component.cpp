@@ -1,4 +1,5 @@
 #include "component/color_picker_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "graphics/color_field.hpp"
 #include "runtime/prop_connection.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -343,6 +344,7 @@ void ColorPickerComponentHost::move_stop(runtime::ComponentId id, double percent
 }
 
 void ColorPickerComponentHost::mount_picker(runtime::ComponentId id) {
+    FormPrivateEditorScope private_editor;
     auto& h = *services_;
     auto& build = runtime::require_component_build_context();
     auto& s = *h.components().state<PickerState>(id);

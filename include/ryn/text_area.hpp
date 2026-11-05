@@ -22,6 +22,7 @@ struct TextAreaSize final {
 using TextAreaRef = InputRef;
 
 namespace detail {
+struct FormAutoControlAccess;
 struct TextAreaPropsAccess;
 
 struct TextAreaPropsData final {
@@ -65,6 +66,7 @@ public:
     }
 
 private:
+    friend struct detail::FormAutoControlAccess;
     friend struct detail::TextAreaPropsAccess;
     detail::TextAreaPropsData textarea_;
 };

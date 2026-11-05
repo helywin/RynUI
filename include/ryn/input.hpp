@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/component.hpp>
+#include <ryn/form_geometry.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/input_types.hpp>
 #include <ryn/icon.hpp>
@@ -19,8 +20,10 @@ namespace ryn {
 class InputRef;
 
 namespace detail {
+struct FormAutoControlAccess;
 struct FormFocusContext;
 std::pair<std::function<bool(const FormFocusContext&)>, std::function<void()>> capture_form_input(const InputRef&);
+std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> capture_form_input_geometry(const InputRef&);
 struct InputPropsAccess;
 struct PasswordPropsAccess;
 struct SearchPropsAccess;
@@ -82,6 +85,9 @@ private:
     template <class> friend class InputPropsBase;
     friend std::pair<std::function<bool(const detail::FormFocusContext&)>, std::function<void()>>
     detail::capture_form_input(const InputRef&);
+    friend std::function<std::optional<FormControlGeometry>(const detail::FormFocusContext&)>
+    detail::capture_form_input_geometry(const InputRef&);
+    friend struct detail::FormAutoControlAccess;
     std::shared_ptr<detail::InputRefState> state_;
 };
 
@@ -246,6 +252,7 @@ public:
     }
 
 protected:
+    friend struct detail::FormAutoControlAccess;
     friend class detail::AutoCompleteComponentHost;
     friend struct detail::InputPropsAccess;
     friend struct detail::PasswordPropsAccess;

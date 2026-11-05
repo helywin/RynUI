@@ -1,5 +1,6 @@
 #include "component/selection_component.hpp"
 #include "component/form_focus_context.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/space_compact.hpp"
 
 #include "runtime/layout_style_adapter.hpp"
@@ -18,6 +19,9 @@
 namespace ryn::detail {
 
 struct SwitchRefState final {
+    std::uint64_t generation{};
+    std::function<bool(const FormFocusContext&)> form_focus;
+    std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> form_geometry;
     std::thread::id owner{std::this_thread::get_id()};
     bool binding{};
     std::function<bool()> focus;
@@ -31,6 +35,7 @@ struct SwitchRefState final {
 };
 
 struct CheckboxRefState final {
+    std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> form_geometry;
     std::thread::id owner{std::this_thread::get_id()};
     bool binding{};
     std::uint64_t generation{};
@@ -606,12 +611,15 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
     if (state.ref) {
         state.ref->binding = false;
         state.ref->focus = {};
+        state.ref->form_focus = {};
+        state.ref->form_geometry = {};
         state.ref->blur = {};
     }
     if (state.checkbox_ref) {
         state.checkbox_ref->binding = false;
         state.checkbox_ref->focus = {};
         state.checkbox_ref->form_focus = {};
+        state.checkbox_ref->form_geometry = {};
         state.checkbox_ref->blur = {};
     }
     if (state.radio_ref) {
@@ -2202,6 +2210,7 @@ struct SwitchPropsAccess {
         });
         if (reference) {
             reference->binding = true;
+            ++reference->generation;
         }
         host.update_layout(state);
         runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
@@ -2313,6 +2322,19 @@ struct SwitchPropsAccess {
         };
         if (reference) {
             reference->focus = focus;
+            reference->form_focus = [&host, component, focus](const FormFocusContext& context) {
+                const auto* state = host.find(component);
+                return state && !state->loading && context.visible(*host.services_, component) && focus();
+            };
+            reference->form_geometry = [&host, component](const FormFocusContext& context) {
+                auto result = context.geometry(*host.services_, component);
+                const auto* state = host.find(component);
+                if (result) {
+                    result->eligible &= state && !state->disabled && !state->loading;
+                }
+                return result;
+            };
+
             reference->blur = [&host, component] {
                 const auto* state = host.find(component);
                 if (!state || host.services_->focus().state().focused != state->interaction) {
@@ -2474,6 +2496,15 @@ struct CheckboxPropsAccess {
         };
         if (reference) {
             reference->focus = focus;
+            reference->form_geometry = [&host, component](const FormFocusContext& context) {
+                auto result = context.geometry(*host.services_, component);
+                const auto* state = host.find(component);
+                if (result) {
+                    result->eligible &= state && !state->disabled;
+                }
+                return result;
+            };
+
             reference->form_focus = [&host, component, focus](const FormFocusContext& context) {
                 return context.visible(*host.services_, component) && focus();
             };
@@ -3166,15 +3197,68 @@ std::function<bool(const FormFocusContext&)> capture_form_checkbox(const Checkbo
     };
 }
 
+std::function<std::optional<FormControlGeometry>(const FormFocusContext&)>
+capture_form_checkbox_geometry(const CheckboxRef& reference) {
+    if (!reference.state_ || !reference.state_->binding) {
+        return {};
+    }
+    reference.state_->ensure_owner();
+    return [weak = std::weak_ptr{reference.state_}, generation = reference.state_->generation](
+               const FormFocusContext& context) -> std::optional<FormControlGeometry> {
+        const auto state = weak.lock();
+        if (!state || !state->binding || state->generation != generation) {
+            return {};
+        }
+        state->ensure_owner();
+        return state->form_geometry ? state->form_geometry(context) : std::nullopt;
+    };
+}
+
+std::pair<std::function<bool(const FormFocusContext&)>,
+          std::function<std::optional<FormControlGeometry>(const FormFocusContext&)>>
+capture_form_switch(const SwitchRef& reference) {
+    if (!reference.state_ || !reference.state_->binding) {
+        return {};
+    }
+    reference.state_->ensure_owner();
+    const auto generation = reference.state_->generation;
+    const auto weak = std::weak_ptr{reference.state_};
+    return {[weak, generation](const FormFocusContext& context) {
+                const auto state = weak.lock();
+                if (!state || !state->binding || state->generation != generation) {
+                    return false;
+                }
+                state->ensure_owner();
+                const auto focus = state->form_focus;
+                return focus && focus(context);
+            },
+            [weak, generation](const FormFocusContext& context) -> std::optional<FormControlGeometry> {
+                const auto state = weak.lock();
+                if (!state || !state->binding || state->generation != generation) {
+                    return {};
+                }
+                state->ensure_owner();
+                return state->form_geometry ? state->form_geometry(context) : std::nullopt;
+            }};
+}
+
 } // namespace ryn::detail
 
 namespace ryn {
 void Switch(SwitchProps props) {
+    const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::SwitchPropsAccess::mount(props, {});
+    if (attach) {
+        attach();
+    }
 }
 
 void Switch(SwitchProps props, SwitchSlots slots) {
+    const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::SwitchPropsAccess::mount(props, slots);
+    if (attach) {
+        attach();
+    }
 }
 
 SwitchRef::SwitchRef() : state_(std::make_shared<detail::SwitchRefState>()) {}
@@ -3206,7 +3290,11 @@ bool SwitchRef::blur() const {
 }
 
 void Checkbox(CheckboxProps props, std::optional<CheckboxLabel> label) {
+    const auto attach = detail::FormAutoControlAccess::bind(props);
     static_cast<void>(detail::CheckboxPropsAccess::mount(props, label));
+    if (attach) {
+        attach();
+    }
 }
 
 CheckboxRef::CheckboxRef() : state_(std::make_shared<detail::CheckboxRefState>()) {}

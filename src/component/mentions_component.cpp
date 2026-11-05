@@ -1,4 +1,5 @@
 #include "component/mentions_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/mentions_model.hpp"
 #include "component/option_list_support.hpp"
 #include "component/input_component.hpp"
@@ -1277,6 +1278,7 @@ void MentionsComponentHost::mount_editor(runtime::ComponentId id) {
     }
     const auto config = s->input_theme;
     Theme(ThemeProps{}.config(config), ThemeContent{[&, id] {
+              FormPrivateEditorScope private_editor;
               auto* state = checked(services, id);
               if (!state) {
                   return;

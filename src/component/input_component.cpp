@@ -1,5 +1,7 @@
 #include "component/input_component.hpp"
 #include "component/form_focus_context.hpp"
+#include <ryn/form.hpp>
+#include "component/form_control_binding.hpp"
 #include "component/input_affix_action.hpp"
 #include "component/input_material_transition.hpp"
 #include "component/input_caret_blink.hpp"
@@ -28,6 +30,7 @@ struct InputRefState final {
     std::uint64_t generation{};
     std::function<bool(InputFocusOptions)> focus;
     std::function<bool(const FormFocusContext&)> form_focus;
+    std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> form_geometry;
     std::function<bool()> blur;
     std::function<bool(std::size_t, std::size_t)> select;
     std::function<bool()> reset_form_draft;
@@ -224,6 +227,7 @@ struct InputState {
     String placeholder;
     std::function<void(String)> on_change;
     std::function<void(String)> on_submit;
+    std::function<void()> on_form_submit;
     std::function<void()> on_focus;
     std::function<void()> on_blur;
     runtime::NodeId viewport;
@@ -582,6 +586,9 @@ struct InputPropsAccess {
         state.password_lifetime = props.password_lifetime_;
         state.on_change = props.common_.on_change_;
         state.on_submit = props.common_.on_submit_;
+        if (!state.textarea && !props.common_.on_submit_) {
+            state.on_form_submit = form_enter_handler();
+        }
         state.on_focus = props.common_.on_focus_;
         state.on_blur = props.common_.on_blur_;
         state.purpose = purpose;
@@ -596,6 +603,7 @@ struct InputPropsAccess {
                     reference->binding.reset();
                     reference->focus = {};
                     reference->form_focus = {};
+                    reference->form_geometry = {};
                     reference->blur = {};
                     reference->select = {};
                     reference->reset_form_draft = {};
@@ -1184,6 +1192,14 @@ struct InputPropsAccess {
             };
             state.reference->form_focus = [&owner, component](const FormFocusContext& context) {
                 return context.visible(*owner.host_, component) && owner.focus(component, {});
+            };
+            state.reference->form_geometry = [&owner, component](const FormFocusContext& context) {
+                auto geometry = context.geometry(*owner.host_, component);
+                const auto* state = owner.host_->components().state<InputState>(component);
+                if (geometry) {
+                    geometry->eligible &= state && state->active && !state->disabled && !state->read_only;
+                }
+                return geometry;
             };
             state.reference->blur = [&owner, component] {
                 return owner.blur(component);
@@ -3295,6 +3311,24 @@ capture_form_input(const InputRef& reference) {
             }};
 }
 
+std::function<std::optional<FormControlGeometry>(const FormFocusContext&)>
+capture_form_input_geometry(const InputRef& reference) {
+    if (!reference.state_ || !reference.state_->binding) {
+        return {};
+    }
+    reference.state_->ensure_owner();
+    return [weak = std::weak_ptr{reference.state_}, binding = reference.state_->binding,
+            generation =
+                reference.state_->generation](const FormFocusContext& context) -> std::optional<FormControlGeometry> {
+        const auto state = weak.lock();
+        if (!state || state->binding != binding || state->generation != generation) {
+            return {};
+        }
+        state->ensure_owner();
+        return state->form_geometry ? state->form_geometry(context) : std::nullopt;
+    };
+}
+
 void InputComponentHost::finish_number(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);
     if (!state || !state->number || !host_->components().scope(component).active()) {
@@ -3559,6 +3593,7 @@ void InputComponentHost::submit(runtime::ComponentId component) {
         return;
     }
     editor.break_history_merge();
+    const auto form_submit = state->on_form_submit;
     if (state->number) {
         finish_number(component);
         state = host_->components().state<InputState>(component);
@@ -3576,12 +3611,18 @@ void InputComponentHost::submit(runtime::ComponentId component) {
                 number_callback(cleanup, [&] { exact_callback(*v); });
             }
         }
+        if (host_->components().contains(component) && form_submit) {
+            form_submit();
+        }
         return;
     }
     auto callback = state->on_internal_commit ? state->on_internal_commit : state->on_submit;
     if (callback) {
         auto value = String::from_utf8(editor.value()).value();
         callback(std::move(value));
+    }
+    if (host_->components().contains(component) && form_submit) {
+        form_submit();
     }
 }
 } // namespace ryn::detail
@@ -3628,15 +3669,27 @@ void Input(InputProps props, std::optional<InputPrefix> prefix, std::optional<In
     if (!detail::active_input_host) {
         throw std::logic_error("Input requires an active InputComponentHost");
     }
+    const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::InputPropsAccess::mount(*detail::active_input_host, props, prefix, suffix);
+    if (attach) {
+        attach();
+    }
 }
 
 void InputNumber(InputNumberProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {
+    const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::InputNumberPropsAccess::mount(std::move(props), std::move(prefix), std::move(suffix));
+    if (attach) {
+        attach();
+    }
 }
 
 void TextArea(TextAreaProps props) {
+    const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::TextAreaPropsAccess::mount(std::move(props));
+    if (attach) {
+        attach();
+    }
 }
 
 void Password(PasswordProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {

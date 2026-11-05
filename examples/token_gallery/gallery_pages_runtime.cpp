@@ -5,6 +5,7 @@
 #include "component/table_component.hpp"
 #include "component/auto_complete_component.hpp"
 #include "component/mentions_component.hpp"
+#include "component/form_component.hpp"
 #include "component/color_picker_component.hpp"
 #include "component/cascader_component.hpp"
 #include "component/date_picker_component.hpp"
@@ -2052,6 +2053,153 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             std::cout << "input_number_native=passed exact_beyond_2pow53=true exact_wheel=true "
                          "formatter_parser_callback=true "
                          "hold_repeat_release=true wheel_input_first=true preedit_blur=true hold_retired=true\n";
+        }
+        if (route.component_identity == "ant.component.form") {
+            auto& forms = app.services().form();
+            const auto action = [&](std::string_view target) {
+                const auto id = pages.target(target);
+                reveal(id);
+                activate(id);
+                render();
+            };
+            check(forms.mounted().size() == 4, "native Form workflows missing");
+            action("gallery.form.layouts.submit");
+            check(has_text(u8"校验失败：1 项"), "native Form required validation did not run");
+            action("gallery.form.layouts.reveal");
+            const auto name = focus_editor(pages.target("gallery.form.layouts.name"));
+            check(app.focus().state().focused == name.interaction,
+                  "native Form scroll acknowledgement failed to focus visible field");
+            const auto item =
+                std::ranges::find_if(forms.items(), [&](auto id) { return owns(app, name.component, id); });
+            check(item != forms.items().end(), "native Form automatic control has no Item");
+            const auto regions = forms.snapshot(*item);
+            check(std::abs(bounds(regions.control).y - bounds(regions.label).y) < 1,
+                  "native Form Horizontal geometry is not horizontal");
+            action("gallery.form.layouts.toggle");
+            check(bounds(regions.control).y > bounds(regions.label).y, "native Form Vertical geometry did not update");
+            action("gallery.form.layouts.toggle");
+            action("gallery.form.layouts.toggle");
+            action("gallery.form.layouts.rtl");
+            check(bounds(regions.label).x > bounds(regions.control).x, "native Form RTL columns were not mirrored");
+            action("gallery.form.layouts.rtl");
+            action("gallery.form.layouts.reveal");
+            replace_text(name.component, u8"Native user");
+            const auto amount = pages.target("gallery.form.layouts.amount");
+            action("gallery.form.layouts.reveal-amount");
+            reveal(amount);
+            replace_text(amount, u8"9007199254740993.0002");
+            press(input::Key::enter);
+            check(has_text(u8"name=Native user amount=9007199254740993.0002"),
+                  "native Form automatic exact Decimal submit rounded or lost typed values");
+            const auto custom = pages.target("gallery.form.layouts.custom");
+            action("gallery.form.layouts.reveal-custom");
+            reveal(custom);
+            replace_text(custom, u8"native custom adapter");
+            press(input::Key::enter);
+            check(has_text(u8"custom=native custom adapter submitCount=2"),
+                  "native Form custom typed adapter did not submit actual input");
+            action("gallery.form.layouts.reveal");
+            focus_editor(name.component);
+            const auto composing = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"候选"}, {}, composing});
+            render();
+            press(input::Key::enter);
+            check(inputs.editors().require(name.editor).composition().active && has_text(u8"submitCount=2") &&
+                      !has_text(u8"submitCount=3"),
+                  "native Form composition Enter submitted a snapshot");
+            action("gallery.form.layouts.reset");
+            const auto reset_display = inputs.display_snapshot(name.component);
+            check(inputs.editors().require(name.editor).value().empty() && reset_display.placeholder &&
+                      reset_display.text == "填写名称" && !inputs.editors().require(name.editor).composition().active,
+                  "native Form reset retained typed input/preedit or failed to show its placeholder");
+            const auto first = pages.target("gallery.form.list.name.1");
+            const auto second = pages.target("gallery.form.list.name.2");
+            check(app.components().contains(first) && app.components().contains(second),
+                  "native Form initial stable List targets missing");
+            reveal(first);
+            const auto first_editor = replace_text(first, u8"Ada");
+            reveal(second);
+            replace_text(second, u8"Grace");
+            const auto note = pages.target("gallery.form.list.note.1");
+            reveal(note);
+            const auto note_editor = replace_text(note, u8"saved\nnote");
+            press(input::Key::enter);
+            check(inputs.display_snapshot(note).text == "saved\nnote\n",
+                  "native Form multiline Enter submitted instead of inserting a newline");
+            action("gallery.form.list.add");
+            const auto third = pages.target("gallery.form.list.name.3");
+            reveal(third);
+            replace_text(third, u8"Lin");
+            action("gallery.form.list.move.2");
+            check(inputs.editors().find(first_editor.editor) && inputs.editors().find(note_editor.editor) &&
+                      inputs.display_snapshot(first).text == "Ada" &&
+                      inputs.display_snapshot(note).text == "saved\nnote\n",
+                  "native Form List move remounted retained drafts");
+            action("gallery.form.list.submit");
+            check(has_text(u8"people/0/name/Grace") && has_text(u8"people/1/notes/0/text/saved\nnote"),
+                  "native Form deep List submitted wrong paths or values");
+            const auto retired = focus_editor(second);
+            action("gallery.form.list.remove.2");
+            check(!app.components().contains(second) && !inputs.editors().find(retired.editor) &&
+                      inputs.editors().find(note_editor.editor),
+                  "native Form List remove retained stale editor or removed another draft");
+            action("gallery.form.list.reset");
+            check(inputs.display_snapshot(first).text.empty(), "native Form List reset did not restore initial values");
+            const auto async_name = pages.target("gallery.form.async.name");
+            const auto confirmation = pages.target("gallery.form.async.confirmation");
+            reveal(async_name);
+            replace_text(async_name, u8"taken");
+            reveal(confirmation);
+            replace_text(confirmation, u8"taken");
+            action("gallery.form.async.submit");
+            check(has_text(u8"正在校验当前快照"), "native Form async submit did not become pending");
+            reveal(async_name);
+            replace_text(async_name, u8"latest");
+            check(has_text(u8"旧快照已取消"), "native Form changed value did not cancel old submit");
+            reveal(confirmation);
+            replace_text(confirmation, u8"latest");
+            action("gallery.form.async.submit");
+            action("gallery.form.async.deliver");
+            check(has_text(u8"实际异步提交 name=latest confirmation=latest") && !has_text(u8"校验错误"),
+                  "native Form stale async result replaced latest typed submission");
+            reveal(async_name);
+            replace_text(async_name, u8"cancel");
+            reveal(confirmation);
+            replace_text(confirmation, u8"cancel");
+            action("gallery.form.async.submit");
+            action("gallery.form.async.reset");
+            action("gallery.form.async.deliver");
+            check(!has_text(u8"正在校验当前快照") && !has_text(u8"实际异步提交 name=cancel"),
+                  "native Form reset published cancelled async work");
+            reveal(async_name);
+            replace_text(async_name, u8"retired");
+            reveal(confirmation);
+            replace_text(confirmation, u8"retired");
+            action("gallery.form.async.submit");
+            reveal(async_name);
+            capture_editor(async_name);
+            // Revealing a different field may intentionally cancel the old eligibility snapshot.
+            // Enter starts the current async submission without moving focus or releasing capture.
+            press(input::Key::enter);
+            previous_session = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"离页候选"}, {}, previous_session});
+            render();
+            std::cout << "form_retirement_setup capture=" << captured()
+                      << " preedit=" << inputs.editors().require(previous_session.owner).composition().active
+                      << " pending=" << has_text(u8"正在校验当前快照") << '\n';
+            check(captured() && inputs.editors().require(previous_session.owner).composition().active &&
+                      has_text(u8"正在校验当前快照"),
+                  "native Form retirement setup lost pending validation, preedit or capture");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "native Form retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(forms.mounted().empty() && !inputs.sessions().active().valid() && !captured() &&
+                      !inputs.editors().find(previous_session.owner),
+                  "native Form retirement retained pending editor, preedit, capture or session");
+            std::cout
+                << "form_native=passed layouts=true typed_binding=true custom_adapter=true exact_decimal=true "
+                   "deep_list_add_move_remove=true retained_drafts=true actual_values=true multiline_enter=true "
+                   "core_preedit=true reset=true async_latest_cancel_submit=true scroll_focus=true retired=true\n";
         }
         if (route.component_identity == "ant.component.mentions") {
             auto& mentions = app.services().mentions();

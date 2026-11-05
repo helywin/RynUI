@@ -4349,6 +4349,270 @@ void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples = before + 6; // Historical combined fixture counter.
 }
 
+void add_form_layout_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    FormRef form;
+    FormField<String> name;
+    FormField<String> custom{String{u8"custom initial"}};
+    Signal<std::size_t> submissions{0};
+    FormField<InputNumberStringValue> amount{Decimal{"9007199254740993.0001"}};
+    name.required();
+    FormPresentation initial;
+    initial.layout = FormLayout::Horizontal;
+    Signal<FormPresentation> presentation{initial};
+    Signal<String> result{String{u8"尚未提交"}};
+    Signal<float> offset{0};
+    Text(u8"真实布局 / 自动 typed 控件绑定 / 精确数字 / 原生滚动目标");
+    Text(TextProps{}.content(result));
+    Form(FormProps{}
+             .ref(form)
+             .presentation(presentation)
+             .scrollToFirstError()
+             .scrollTarget([offset](FormScrollRequest request, auto complete) {
+                 offset.set(std::max(0.0F, offset.get() + request.control.bounds.y - request.control.clip.y - 8));
+                 complete(true); // Form waits for the next synchronized native geometry before focusing.
+             })
+             .onFinish([result, submissions](FormResult submitted) {
+                 submissions.set(submissions.get() + 1);
+                 const auto name = std::get<String>(submitted.values[0].value);
+                 const auto amount = std::get<InputNumberStringValue>(submitted.values[1].value);
+                 result.set(utf8("已提交 name=" + std::string{name.bytes()} +
+                                 " amount=" + (amount ? std::string{amount->text().bytes()} : "empty") +
+                                 " custom=" + std::string{std::get<String>(submitted.values[2].value).bytes()} +
+                                 " submitCount=" + std::to_string(submissions.get())));
+             })
+             .onFinishFailed([result](FormResult submitted) {
+                 result.set(utf8("校验失败：" + std::to_string(submitted.errors.size()) + " 项"));
+             }),
+         FormContent{[=] {
+             ReferenceScrollViewport(
+                 offset, state->cell_width, 180, ReferenceSurfaceContent{[=] {
+                     Text(TextProps{}.content(u8"滚动目标前的保留内容").layout(LayoutStyle{}.height(dp(200))));
+                     FormItem(FormItemProps{}
+                                  .field(String{u8"name"}, name)
+                                  .label(String{u8"名称"})
+                                  .tooltip(String{u8"首个兼容控件自动绑定字段"})
+                                  .extra(String{u8"Enter 提交；IME 先处理候选"})
+                                  .hasFeedback(),
+                              FormItemContent{[=] {
+                                  Input(InputProps{}.placeholder(u8"填写名称"));
+                                  remember_target(state, "gallery.form.layouts.name");
+                              }});
+                     FormItem(FormItemProps{}.field(String{u8"amount"}, amount).label(String{u8"精确金额"}),
+                              FormItemContent{[=] {
+                                  InputNumber(InputNumberProps{});
+                                  remember_target(state, "gallery.form.layouts.amount");
+                              }});
+                     FormItem(FormItemProps{}.field(String{u8"custom"}, custom).label(String{u8"Typed adapter"}),
+                              FormItemContent{[=] {
+                                  FormControl(FormControlAdapter<String>{[=](FormControlBinding<String> binding) {
+                                      InputRef ref;
+                                      Input(InputProps{}
+                                                .value(binding.value())
+                                                .onChange(binding.onChange())
+                                                .disabled(binding.disabled())
+                                                .readOnly(binding.readOnly())
+                                                .status(binding.status())
+                                                .onBlur(binding.onBlur())
+                                                .ref(ref));
+                                      binding.control(ref);
+                                      remember_target(state, "gallery.form.layouts.custom");
+                                  }});
+                              }});
+                 }});
+         }});
+    Button(ButtonProps{}.onClick([=] {
+        auto next = presentation.get();
+        next.layout = next.layout == FormLayout::Horizontal ? FormLayout::Vertical
+                      : next.layout == FormLayout::Vertical ? FormLayout::Inline
+                                                            : FormLayout::Horizontal;
+        presentation.set(next);
+    }),
+           ButtonContent{[] { Text(u8"切换横向 / 纵向 / Inline"); }});
+    remember_target(state, "gallery.form.layouts.toggle");
+    Button(ButtonProps{}.onClick([=] {
+        auto next = presentation.get();
+        next.direction =
+            next.direction == TextDirection::RightToLeft ? TextDirection::LeftToRight : TextDirection::RightToLeft;
+        presentation.set(next);
+    }),
+           ButtonContent{[] { Text(u8"切换 RTL"); }});
+    remember_target(state, "gallery.form.layouts.rtl");
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.submit()); }),
+           ButtonContent{[] { Text(u8"校验并滚动到错误"); }});
+    remember_target(state, "gallery.form.layouts.submit");
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.scrollToField(FormNamePath{u8"name"})); }),
+           ButtonContent{[] { Text(u8"显示并聚焦名称"); }});
+    remember_target(state, "gallery.form.layouts.reveal");
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.scrollToField(FormNamePath{u8"amount"})); }),
+           ButtonContent{[] { Text(u8"显示并聚焦精确金额"); }});
+    remember_target(state, "gallery.form.layouts.reveal-amount");
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.scrollToField(FormNamePath{u8"custom"})); }),
+           ButtonContent{[] { Text(u8"显示并聚焦自定义控件"); }});
+    remember_target(state, "gallery.form.layouts.reveal-custom");
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.reset()); }),
+           ButtonContent{[] { Text(u8"重置 typed 控件与草稿"); }});
+    remember_target(state, "gallery.form.layouts.reset");
+    ++state->telemetry.live_samples;
+}
+
+void add_form_list_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    FormRef form;
+    FormListRef people;
+    Signal<String> result{String{u8"每行保持独立 Input 身份与草稿"}};
+    Text(u8"深路径 / 稳定列表 / 嵌套列表 / 实际提交值");
+    Text(TextProps{}.content(result));
+    Form(FormProps{}
+             .ref(form)
+             .onFinish([result](FormResult submitted) {
+                 std::string text = "已提交：";
+                 for (const auto& value : submitted.values) {
+                     for (const auto& segment : value.path.segments()) {
+                         std::visit(
+                             [&](const auto& part) {
+                                 if constexpr (std::same_as<std::decay_t<decltype(part)>, String>) {
+                                     text += part.bytes();
+                                 } else {
+                                     text += std::to_string(part);
+                                 }
+                                 text += '/';
+                             },
+                             segment.value());
+                     }
+                     if (const auto* string = std::get_if<String>(&value.value)) {
+                         text += string->bytes();
+                     }
+                     text += "；";
+                 }
+                 result.set(utf8(text));
+             })
+             .onFinishFailed([result](FormResult submitted) {
+                 result.set(utf8("列表校验失败：" + std::to_string(submitted.errors.size())));
+             }),
+         FormContent{[=] {
+             FormList(
+                 FormListProps{}
+                     .name(FormNamePath{u8"people"})
+                     .ref(people)
+                     .initialValue({{}, {}})
+                     .rules({[](const FormData::Array& rows, const FormValidationContext&) {
+                         if (rows.empty()) {
+                             return std::vector<FormIssue>{{String{u8"至少保留一位成员"}, false}};
+                         }
+                         return std::vector<FormIssue>{};
+                     }}),
+                 [=](FormListField row) {
+                     FormField<String> name;
+                     FormItem(FormItemProps{}.field(FormNamePath{u8"name"}, name).label(bind([row] {
+                         return utf8("成员 " + std::to_string(row.index() + 1));
+                     })),
+                              FormItemContent{[=] {
+                                  Input(InputProps{});
+                                  remember_target(state, "gallery.form.list.name." + std::to_string(row.key()), true);
+                              }});
+                     FormList(FormListProps{}.name(FormNamePath{u8"notes"}).initialValue({{}}), [=](FormListField) {
+                         FormField<String> note;
+                         FormItem(FormItemProps{}.field(FormNamePath{u8"text"}, note).noStyle(), FormItemContent{[=] {
+                                      TextArea(TextAreaProps{}.rows(std::size_t{1}).placeholder(u8"保留多行备注"));
+                                      remember_target(state, "gallery.form.list.note." + std::to_string(row.key()),
+                                                      true);
+                                  }});
+                     });
+                     Button(ButtonProps{}.onClick([=] {
+                         if (row.index() > 0) {
+                             static_cast<void>(people.move(row.index(), row.index() - 1));
+                         }
+                     }),
+                            ButtonContent{[] { Text(u8"上移本行"); }});
+                     remember_target(state, "gallery.form.list.move." + std::to_string(row.key()), true);
+                     Button(ButtonProps{}.onClick([=] { static_cast<void>(people.remove({row.index()})); }),
+                            ButtonContent{[] { Text(u8"删除本行"); }});
+                     remember_target(state, "gallery.form.list.remove." + std::to_string(row.key()), true);
+                 });
+             FormErrorList(FormErrorListProps{}.errors(bind([people] { return people.meta().errors; })));
+         }});
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(people.add()); }), ButtonContent{[] { Text(u8"新增成员"); }});
+    remember_target(state, "gallery.form.list.add");
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.submit()); }),
+           ButtonContent{[] { Text(u8"提交深列表"); }});
+    remember_target(state, "gallery.form.list.submit");
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.reset()); }),
+           ButtonContent{[] { Text(u8"重置初始列表"); }});
+    remember_target(state, "gallery.form.list.reset");
+    ++state->telemetry.live_samples;
+}
+
+void add_form_async_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    FormRef form;
+    FormField<String> name;
+    FormField<String> confirmation;
+    Signal<String> result{String{u8"合成异步校验：提交后点击交付，不访问网络"}};
+    const auto posts = std::make_shared<std::vector<std::function<void()>>>();
+    name.required().asyncValidator(
+        [](String value, FormValidationContext, FormValidationComplete complete) {
+            std::vector<FormIssue> issues;
+            if (value == String{u8"taken"}) {
+                issues.push_back({String{u8"合成规则：taken 已被占用"}, false});
+            }
+            complete(std::move(issues));
+            return AsyncOptionsCancel{};
+        },
+        [posts](auto callback) { posts->push_back(std::move(callback)); });
+    FormRule matches;
+    matches.validator = [](const FormValue& value, const FormValidationContext& context) {
+        if (context.get(FormNamePath{u8"name"}) != value) {
+            return std::vector<FormIssue>{{String{u8"两次名称不一致"}, false}};
+        }
+        return std::vector<FormIssue>{};
+    };
+    confirmation.rules({matches}).validation(FormValidateTrigger::Change, 150, {FormNamePath{u8"name"}});
+    Text(u8"异步取消 / 依赖字段 / Debounce / owner-thread 交付");
+    Text(TextProps{}.content(result));
+    Text(TextProps{}.content(
+        bind([name] { return name.meta().validating ? String{u8"正在校验当前快照"} : String{u8"校验空闲"}; })));
+    Form(FormProps{}
+             .ref(form)
+             .onFinish([result](FormResult submitted) {
+                 result.set(
+                     utf8("实际异步提交 name=" + std::string{std::get<String>(submitted.values[0].value).bytes()} +
+                          " confirmation=" + std::string{std::get<String>(submitted.values[1].value).bytes()}));
+             })
+             .onFinishFailed([result](FormResult submitted) {
+                 result.set(submitted.out_of_date ? String{u8"旧快照已取消"}
+                                                  : utf8("校验错误 " + std::to_string(submitted.errors.size())));
+             }),
+         FormContent{[=] {
+             FormItem(
+                 FormItemProps{}.field(String{u8"name"}, name).label(String{u8"名称（taken 模拟占用）"}).hasFeedback(),
+                 FormItemContent{[=] {
+                     Input(InputProps{});
+                     remember_target(state, "gallery.form.async.name");
+                 }});
+             FormItem(FormItemProps{}.field(String{u8"confirmation"}, confirmation).label(String{u8"再次输入"}),
+                      FormItemContent{[=] {
+                          Input(InputProps{});
+                          remember_target(state, "gallery.form.async.confirmation");
+                      }});
+         }});
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.submitAsync()); }),
+           ButtonContent{[] { Text(u8"提交当前快照"); }});
+    remember_target(state, "gallery.form.async.submit");
+    Button(ButtonProps{}.onClick([posts] {
+        auto pending = std::exchange(*posts, {});
+        for (auto& callback : pending) {
+            callback();
+        }
+    }),
+           ButtonContent{[] { Text(u8"交付合成异步结果"); }});
+    remember_target(state, "gallery.form.async.deliver");
+    Button(ButtonProps{}.onClick([=] { static_cast<void>(form.reset()); }),
+           ButtonContent{[] { Text(u8"重置并取消 pending"); }});
+    remember_target(state, "gallery.form.async.reset");
+    ++state->telemetry.live_samples;
+}
+
 void add_form_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     const auto form_width = bind([state] { return dp(state->document_width.get().value() - 2); });
@@ -4391,8 +4655,22 @@ void add_form_samples(const std::shared_ptr<GalleryState>& state) {
                                  }
                              } else if constexpr (std::same_as<T, bool>) {
                                  values += value ? "true" : "false";
-                             } else if (value) {
-                                 values += std::get<String>(value->storage()).bytes();
+                             } else if constexpr (std::same_as<T, SelectSelection>) {
+                                 if (value) {
+                                     std::visit(
+                                         [&values](const auto& selected) {
+                                             if constexpr (std::same_as<std::decay_t<decltype(selected)>, String>) {
+                                                 values += selected.bytes();
+                                             } else {
+                                                 values += std::to_string(selected);
+                                             }
+                                         },
+                                         value->storage());
+                                 }
+                             } else if constexpr (std::same_as<T, InputNumberStringValue>) {
+                                 values += value ? std::string{value->text().bytes()} : "empty";
+                             } else if constexpr (std::same_as<T, SelectValues>) {
+                                 values += std::to_string(value.size()) + " selections";
                              }
                          },
                          field.value);
@@ -8485,6 +8763,27 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_form_samples",
       "include/ryn/form.hpp"},
      add_form_samples},
+    {{"gallery.sample.form.layouts",
+      "ant.component.form",
+      {},
+      "布局、自动绑定与滚动",
+      "add_form_layout_samples",
+      "include/ryn/form.hpp"},
+     add_form_layout_samples},
+    {{"gallery.sample.form.lists",
+      "ant.component.form",
+      {},
+      "深路径与稳定嵌套列表",
+      "add_form_list_samples",
+      "include/ryn/form.hpp"},
+     add_form_list_samples},
+    {{"gallery.sample.form.async",
+      "ant.component.form",
+      {},
+      "异步、依赖与取消",
+      "add_form_async_samples",
+      "include/ryn/form.hpp"},
+     add_form_async_samples},
     {{"gallery.sample.date-picker.dates",
       "ant.component.date-picker",
       {},

@@ -45,8 +45,9 @@ struct InputNumberStepInfo final {
 };
 
 namespace detail {
+struct FormAutoControlAccess;
 struct InputNumberPropsAccess;
-}
+} // namespace detail
 
 class InputNumberProps final {
 public:
@@ -300,6 +301,7 @@ public:
     }
 
 private:
+    friend struct detail::FormAutoControlAccess;
     friend struct detail::InputNumberPropsAccess;
     Prop<InputNumberMode> mode_{InputNumberMode::Input};
     Prop<String> separator_{String{u8"."}};

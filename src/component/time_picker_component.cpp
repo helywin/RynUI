@@ -1,4 +1,5 @@
 #include "component/time_picker_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/popover_component.hpp"
 #include "component/input_component.hpp"
 #include "component/input_affix_action.hpp"
@@ -666,6 +667,7 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
     build.mount_slot(
         id, Content{[&] {
             Theme(ThemeProps{}.config(s.input_theme), ThemeContent{[&] {
+                      FormPrivateEditorScope private_editor;
                       Input(InputProps{}
                                 .value(s.display)
                                 .placeholder(props.placeholder_)

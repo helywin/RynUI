@@ -48,6 +48,7 @@ struct Fixture final : ryn_test::input_component::Fixture {
     std::unique_ptr<GalleryPageController> pages;
     Signal<ThemeConfig> theme{ThemeConfig{}};
     bool readable{};
+    std::optional<std::span<const GallerySampleDescriptor>> registry;
     std::size_t footer_calls{};
 
     explicit Fixture(bool readable_labels = false) : readable(readable_labels) {
@@ -61,6 +62,7 @@ struct Fixture final : ryn_test::input_component::Fixture {
             surfaces, model, frames, holder, [this](const GalleryPageRoute& route, const GalleryPageDraft& draft) {
                 GallerySamplePageOptions options;
                 options.readable_labels = readable;
+                options.registry = registry;
                 if (readable) {
                     options.footer = [this](const GallerySampleDescriptor&, Signal<LogicalLength> width) {
                         ++footer_calls;
@@ -883,6 +885,73 @@ void test_cascader_transfer_pages() {
 
 } // namespace
 
+void test_complete_form_examples() {
+    const auto select = [](Fixture& f, std::string_view identity) {
+        const auto all = gallery_samples();
+        const auto it = std::ranges::find(all, identity, &GallerySampleDescriptor::identity);
+        require(it != all.end(), "Form sample descriptor missing");
+        f.registry = std::span<const GallerySampleDescriptor>{&*it, 1};
+        f.show("ant.component.form");
+    };
+    const auto has_text = [](Fixture& f, std::string_view expected) {
+        for (const auto& text : f.services.text().mounted_texts()) {
+            if (f.scene.text_state(text.scene).content().bytes().find(expected) != std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    {
+        Fixture f;
+        select(f, "gallery.sample.form.layouts");
+        f.action("gallery.sample.form.layouts", "gallery.form.layouts.reveal");
+        const auto name = f.editor("gallery.sample.form.layouts", "gallery.form.layouts.name");
+        require(f.services.focus().state().focused == name.interaction,
+                "Form Gallery native reveal did not focus actual input");
+        f.replace(name, String{u8"Native"});
+        f.action("gallery.sample.form.layouts", "gallery.form.layouts.submit");
+        require(has_text(f, "name=Native amount=9007199254740993.0001"),
+                "Form Gallery submitted fabricated or rounded values");
+        const auto runs = f.active.sample_runs("gallery.sample.form.layouts");
+        f.action("gallery.sample.form.layouts", "gallery.form.layouts.toggle");
+        require(f.active.sample_runs("gallery.sample.form.layouts") == runs, "Form layout update rebuilt the sample");
+    }
+    {
+        Fixture f;
+        select(f, "gallery.sample.form.lists");
+        const auto first = f.inputs.mounted_inputs().front();
+        f.replace(first, String{u8"Member"});
+        const auto count = f.inputs.mounted_inputs().size();
+        f.action("gallery.sample.form.lists", "gallery.form.list.add");
+        require(f.inputs.mounted_inputs().size() == count + 2 && f.services.components().contains(first.component),
+                "Form Gallery add remounted rich rows");
+        f.action("gallery.sample.form.lists", "gallery.form.list.submit");
+        require(has_text(f, "people/0/name/Member"), "Form Gallery list result omitted actual deep values");
+        f.action("gallery.sample.form.lists", "gallery.form.list.reset");
+        require(f.inputs.mounted_inputs().size() == count && f.inputs.editors().require(first.editor).value().empty(),
+                "Form Gallery list reset failed");
+    }
+    {
+        Fixture f;
+        select(f, "gallery.sample.form.async");
+        const auto name = f.editor("gallery.sample.form.async", "gallery.form.async.name");
+        const auto confirmation = f.editor("gallery.sample.form.async", "gallery.form.async.confirmation");
+        f.replace(name, String{u8"Ada"});
+        f.replace(confirmation, String{u8"Ada"});
+        f.action("gallery.sample.form.async", "gallery.form.async.submit");
+        require(has_text(f, "正在校验当前快照"), "Form Gallery async submit did not remain pending");
+        f.action("gallery.sample.form.async", "gallery.form.async.deliver");
+        require(has_text(f, "name=Ada confirmation=Ada"),
+                "Form Gallery async result did not use actual submitted values");
+        f.action("gallery.sample.form.async", "gallery.form.async.submit");
+        f.replace(name, String{u8"Grace"});
+        f.action("gallery.sample.form.async", "gallery.form.async.deliver");
+        require(has_text(f, "旧快照已取消"), "Form Gallery published stale async success");
+        f.show("ant.component.button");
+        require(f.services.form().mounted().empty(), "leaving Form Gallery retained Form scope");
+    }
+}
+
 int main() {
     try {
         test_compiled_source_metadata();
@@ -896,6 +965,7 @@ int main() {
         test_button_search_and_otp_contracts();
         test_layout_and_navigation_pages();
         test_remaining_workflows_and_drafts();
+        test_complete_form_examples();
         test_readable_labels_and_sample_footers();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

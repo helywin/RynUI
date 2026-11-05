@@ -1,8 +1,12 @@
-# Form 与 FormItem
+# Form、FormItem、FormList 与 FormProvider
 
-原生首版提供纵向表单：typed 字段、显式控件绑定、同步校验、错误反馈，以及 FormRef 提交/重置。视觉参考固定为 Ant Design 6.6.5；不依赖 Web 表单或 React。
+设计合同固定为 [Ant Design 6.6.5 Form](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/form/index.en-US.md)。RynUI 使用 typed Props、slots、reactive Prop 与原生输入/布局/焦点服务；不引入 React、DOM、CSS 或 HTML form 属性。
 
-下面的函数在正常 RynUI 窗口 content 中调用。窗口需要已配置既有 Input 与 Selection host；不需要额外创建 Form host。
+旧 String / optional<double> / bool / SelectSelection 的 field、value/onChange/control(ref)、同步结果形状及同值 reset 继续兼容。新增 SelectValues 与 optional<Decimal>；精确数字从编辑、规则到结果均不转换为 double。
+
+## 兼容旧调用
+
+下面的显式绑定仍可编译。onChange 必须在对应 FormItem content 中取得，回调捕获当前注册代际。
 
 ```cpp
 #include <ryn/rynui.hpp>
@@ -60,45 +64,106 @@ void DeviceForm(std::function<void(ryn::FormResult)> save) {
 }
 ```
 
-`field(name, handle)` 负责注册；`.value()` / `.onChange()` 负责真实采值。Checkbox 用 `.checked()`。FormItem 不改写任意 slot 的 props；未显式绑定的控件不会加入结果，也不会自动继承 disabled/readOnly/status。`onChange()` 必须在 FormItem 的 content 中取得，它绑定当前注册代际；卸载后旧回调失效。
+## 原生自动绑定与自定义 adapter
 
-`control(ref)` 捕获本次挂载的真实 ref，用于失败焦点及 Input reset；控件重新绑定同一个 ref 后，旧 FormItem 不会操作新控件。失败聚焦检查捕获代际对应控件在同一窗口中的实际 bounds、祖先 clip 与输入资格；全裁剪或零尺寸控件不会因 FormItem 的全宽 wrapper 可见而获得焦点，部分可见仍可聚焦。替换控件时应同时重新挂载 FormItem。也可用 `.focus(function<bool()>)` 接入自定义控件；返回 false 会继续尝试后续无效字段。自定义 focus 回调须自行检查真实目标的资格及可见性，Form 只能检查其 control region；未提供 control 时 reset 只恢复 typed 值。
+命名 FormItem 的 control slot 中，首个兼容的 Input、TextArea、InputNumber、Select、Checkbox 或 Switch 自动接入 typed value/change、disabled/readOnly、status、ref 与表单上下文。InputNumber 根据 field 类型选择 double 或 exact decimal；SelectValues 对应 Multiple/Tags。已有显式 value/onChange 接线保持其权威，并占用首控件位置；后续兄弟控件不自动接线。Mentions、AutoComplete、日期时间、Cascader、Transfer 与 ColorPicker 的私有输入/选择控件不占用外层 Item 的自动位置或 Enter；popup 内建立的独立 FormItem 保留自己的绑定作用域。嵌套 FormItem 建立自己的控件位置；嵌套 Form 建立新的表单作用域。
 
-## 值、验证与命令
+```cpp
+void AutomaticForm() {
+    using namespace ryn;
+    FormRef form;
+    FormField<String> name;
+    FormField<InputNumberStringValue> amount{Decimal{"9007199254740993.0001"}};
+    name.required();
+    Form(FormProps{}.ref(form).layout(FormLayout::Horizontal), FormContent{[=] {
+        FormItem(FormItemProps{}.field(String{u8"name"}, name).label(String{u8"Name"}),
+                 FormItemContent{[] { Input(InputProps{}); }});
+        FormItem(FormItemProps{}.field(String{u8"amount"}, amount).label(String{u8"Amount"}),
+                 FormItemContent{[] { InputNumber(InputNumberProps{}); }});
+    }});
+}
+```
 
-- `FormField<T>` 支持 `String`、`std::optional<double>`（即 InputNumberValue）、`bool` 和 `SelectSelection`。复制 handle 保留字段身份；字符串 name 为唯一平面标识，不解析点号或深路径。数字必须有限。
-- 初值在创建 field 时固定。`get()` 读当前 authority，`set(value)` 程序写入；`.required(message)` 和 `.validator(function<String(T)>)` 在注册前配置。空错误字符串代表通过。
-- required 检查空串、空 optional，bool 要求 true；空 SelectSelection 无效。不自动 trim，不增加 whitespace、range、异步或跨字段依赖规则。
-- `validate()` 返回 `optional<FormResult>`，更新错误但不触发提交回调或改变焦点。值改变只清除自身错误；不自动重新验证。custom validator 异常向调用者传播，不发布部分错误。
-- `submit()` 同步校验后进入 `onFinish(FormResult)` 或 `onFinishFailed(FormResult)`。返回 true 表示命令被接受，包含验证失败；拒绝或执行中销毁返回 false。结果拥有 values/errors 快照，按当前注册顺序排列；`valid()` 同时检查 errors 和 `out_of_date`。
-- 验证期间改值、增删字段、切换输入边界会使事务过期；不发布旧成功结果。错误发布或聚焦回调中的改值也会清除本事务已发布的错误。仍存活的过期事务进入失败回调。validate/submit/reset 的递归调用被拒绝。
-- `reset()` 清除错误并恢复初值，不重建控件。InputNumber 即使数值未变，也会通过 `control(ref)` 丢弃未完成草稿并格式化为当前 authority；Input/TextArea 的 preedit 会取消。普通 validate、help、error、Theme 更新保留草稿与 preedit。真实失焦仍遵守既有控件的格式化行为。
-- 移除 FormItem 后结果不含该字段、错误清除；handle 保留值，再注册取得新代际。Form 销毁后 held FormRef 的命令无操作，`bound()` 为 false。
+`FormControl(Props)` 明确声明该 slot 的控件所有权。自定义复合控件使用 `FormControl(FormControlAdapter<T>{mount})`，mount 接收 `FormControlBinding<T>`，从其 value/onChange/status/disabled/readOnly/presentation/onBlur 取得 typed 接线，挂载后用 `binding.control(ref)` 或 `FormControlTarget` 注册真实焦点、reset 和 geometry。adapter 仅能接入本 FormItem。没有适配器的任意自定义控件不会通过运行时反射或属性注入自动工作。
 
-受控 field 使用 `FormField<T>{reset_initial, Prop<T>, onChange}`。例如 `FormField<String>{String{}, external_signal, [=](String value) { external_signal.set(value); }}`。用户编辑和 reset 都发请求，应用是否回写决定最终值；拒绝回写时不伪造新 authority，reset 的数字显示也服从外部值。外部值变化不再次调用 onChange。
+## 布局、呈现和上下文
 
-## 交互与布局
+Form 保持兼容的 Vertical 默认值；`layout(FormLayout::Horizontal/Inline/Vertical)` 控制真实布局，`layout(LayoutStyle)` 继续仅控制外部尺寸、margin 和 flex。Horizontal 使用 24 列 label/wrapper span/offset，Inline 使用原生换行 Flex。`labelCol`、`wrapperCol` 接受 `Responsive<FormColumn>`，断点按窗口宽度解析。`labelAlign`、`labelWrap`、`colon`、requiredMark、direction 控制实际文字、对齐、换行、标记及 RTL 几何。
 
-Form/FormItem 的 `disabled(Prop<bool>)` 和 `readOnly(Prop<bool>)` 通过 field 适配属性显式连接。Input/InputNumber 使用 disabled 与 readOnly；Select/Checkbox 没有 readOnly，使用 `uneditable()` 连接 disabled。disabled 的 Form 拒绝 validate/submit；readOnly 允许提交。程序 set/reset 不受编辑 gate 限制。
+`FormPresentation` 汇集布局、ControlSize、InputVariant、TextDirection 和 FormLocale。`presentation(Prop<FormPresentation>)` 支持运行中更新，传播到 retained Item 和自动控件，普通更新不重新执行 slot。Item 可以覆盖布局/列/标签配置，或提供自己的 presentation。嵌套 Form 的字段、布局和命令独立；Provider 只协调其作用域内具名表单，不合并字段。
 
-Form 被 Modal 排除、Spin 阻止或祖先隐藏时，validate/submit 不执行。已注册但隐藏/禁用的字段保留值并参与校验，提交失败只尝试 branch/input boundary 允许且控件区域实际可见的无效字段。首版不自动滚动；可用 `.focusFirstInvalid(false)` 关闭失败聚焦。没有窗口 Enter filter，不将 TextArea 换行或 IME Enter 解释为提交；程序和原生 Button 都调用同一 FormRef。
+FormItem 支持无字段的布局包装、noStyle、hidden、extra、help、validateStatus、hasFeedback、tooltip 与视觉 required。labelContent/helpContent/extraContent/feedbackIcon 提供独立 typed 富内容 slots，保留子控件草稿与身份。hidden 字段保留采值/校验，但不参与布局或输入；noStyle 不绘制标签/反馈间距。错误优先于兼容 help；extra 独立呈现。Text、Tooltip、错误和额外信息都使用保留组件。ThemeConfig.form 控制表单视觉；控件继续使用自身 Theme token。
 
-标签、必填标记、帮助及错误使用 retained Text，错误优先于 help。空 label/help/error 不占布局流；宽度与祖先 clip 使用实际节点约束。Form token 只影响表单标签/反馈及间距，既有控件继续使用自己的 Theme token。外部尺寸、margin、flex 等使用 LayoutStyle。
+## 深路径、结构化值和稳定列表
 
-`ThemeConfig::form` 支持 colors（label、required、help、error）及 metrics（item_margin_bottom、label_gap、required_gap、font_size、line_height、font_family）typed override；支持继承、inherit=false 与独立 component algorithm/seed。最终派生的 font_size 必须有限且至少为 0.5 logical dp，保证 Text 在 DPI 换算前取整后仍可表示；非法值在 Theme 发布前拒绝。纯颜色更新只失效 material，metrics 更新相应文字/测量/布局，均不重执行控件 slot。
+`FormNamePath{u8"people", 0, u8"name"}` 显式表示字符串/数组下标路径。旧 `field(String{u8"people.0.name"}, field)` 永远是字面平面键。重复、父子冲突、非法下标与不匹配的类型在发布前拒绝。`FormResult.values/errors` 保留旧成员并附带 path，warnings 与 structure 是附加信息；`structuredValues()` 返回拥有数据的对象/数组快照，包括空列表。
 
-`form.algorithm=false` 时局部 `form.seed` 不生效，也不阻断父级 Form token 覆盖；子级显式 token override 仍叠加在继承值上。开启组件算法才使用局部 seed，关闭后恢复正常继承。
+`FormRef` 提供 getFieldValue/getFieldsValue、setFieldValue/setFieldsValue、resetFields、getFields/setFields、getFieldsError 和 watch。getFieldInstance 返回可选的 typed FormControlTarget（focus/reset/geometry），捕获注册代际，不暴露 DOM 或无类型对象。未挂载的 typed 路径也保存在 store，getFieldValue/getFieldsValue(true) 可读取，watch 可订阅，后续挂载采用已存值；默认 getFieldsValue 只返回已注册字段和 List。批量结构化更新先检查已注册叶类型；数组更新通过列表操作同步形状并保留未变行。应用回调可能产生外部副作用；回调或自定义行 renderer 抛异常时，无法安全继续的完整 Form UI/List 会退役，避免发布部分事务，其他组件继续可用。
 
-首版不含嵌套 Form、横向/inline/Grid label 布局、Form.List/数组、JSON schema、深路径、自动任意控件采值、async/debounce/dependencies、自动 Enter/滚动、Web DOM/CSS/HTML required、完整上游 API 或平台无障碍 adapter。本次 headless 验证不代表 Windows/Linux 原生 GPU、系统 IME、系统字体或人工视觉已验收。实现证据见 [075](../openspec/changes/075-20261024-add-native-form/evidence/platform-generic.md)。
+```cpp
+void PeopleForm() {
+    using namespace ryn;
+    FormRef form;
+    FormListRef people;
+    Form(FormProps{}.ref(form), FormContent{[=] {
+        FormList(FormListProps{}.name(FormNamePath{u8"people"}).ref(people)
+                     .initialValue({FormData{}, FormData{}}),
+                 [](FormListField row) {
+            FormField<String> name;
+            FormItem(FormItemProps{}.field(FormNamePath{u8"name"}, name)
+                         .label(bind([row] {
+                             return String::from_utf8("Person " + std::to_string(row.index() + 1)).value();
+                         })),
+                     FormItemContent{[] { Input(InputProps{}); }});
+        });
+        Button(ButtonProps{}.onClick([=] { static_cast<void>(people.add()); }),
+               ButtonContent{[] { Text(u8"Add person"); }});
+    }});
+}
+```
 
-## Gallery 录入流程
+列表内显式路径相对当前行；嵌套列表自动组合，旧 String overload 仍为根级平面身份。row.key 稳定，index/position 随移动更新。add/remove/move 只挂载新增行、销毁删除行；保留其他行的 Input、草稿、preedit、焦点和 callback 身份。删除后旧注册回调及 ref/editor/session 失效；重复 remove 下标和越界操作整体拒绝。FormList 支持同步 rules 和可取消 asyncValidator；`list.meta()` 提供 errors/warnings/validating，`FormErrorList` 用于原生反馈呈现。
 
-Gallery 目录的 **Form** 直接进入 Empty/Result 之后的真实样例。`name` 使用必填 String + Input，`role` 使用必填 SelectSelection + Select，`count` 使用初值 1 的 InputNumberValue + InputNumber（必填且至少为 1），`consent` 使用必填 bool + Checkbox。每个 FormItem 的 `control(ref)` 连接对应控件，失败提交聚焦首个可见且可编辑的无效控件；本例不自动滚动。
+初值优先级为 Form.initialValues、Item.initialValue、field 构造初值；列表自身 initialValue 提供行默认值。reset 恢复初始列表形状和字段，清除错误、touched 和 pending，不重建保留的普通控件。Form/Item.preserve(false) 在字段移除时放弃内部值；Form.clearOnDestroy(true) 清除销毁时保留的内部值。受控 FormField 的 source 是最终 authority；用户编辑和 reset 发请求，拒绝回写不会伪造值。`control(ref)` 的同值 reset 继续取消 preedit、清理未完成数字/Select/Date/Time 草稿。
 
-通过保存、校验、重置、切换禁用、切换只读和更新帮助按钮操作同一份表单。成功文字来自 `onFinish` 的实际 `FormResult.values`。操作按钮位于 Form 外，禁用后仍可重新启用；只读时可校验/提交，但不能修改字段。重置恢复空名称、空角色、数量 1 和未确认，并清除错误与未完成的数字显示，例如 authority 同为 1 的 `1.` 草稿。
+## 规则、异步和状态
 
-`rynui_token_gallery_frame_tests --forms-only` 提供聚焦 Recording 回归，也包含在完整 frame 入口中；覆盖真实目录请求、输入/选项/勾选事件、结果、失败焦点、重置、编辑 gate、保留身份，以及 Default/Dark/Compact × 1200×900 / 560×900 的实际文字和 glyph clip。额外直接调用同一原生按钮命令检查无失焦时的草稿/preedit 保留及同值重置，避免失焦格式化掩盖问题。该阶段未集成日期/时间字段，也不替代原生 GPU、人工视觉、系统 IME、Linux 或辅助技术验收；详见 [079 Form 阶段证据](../openspec/changes/079-20261025-add-form-and-picker-gallery/evidence/stage1-form-msvc-recording.md)。
+FormRule 支持 required、Unicode whitespace/长度、String/Number/Boolean/Array 类型、枚举、pattern、transform、精确 Decimal 范围、自定义跨字段 validator 与 warning-only。规则可以汇总，也可 validate-first。`FormValidationContext.values/get(path)` 是事务快照，跨字段读取不会混用新旧值。
 
-后续 DatePicker 样例使用独立的 String Form；它通过公开 `parse_iso_date` / `format_iso_date` 显式适配，Form 支持的四类 typed 值保持不变。回调须在该 FormItem content 内捕获注册代际，`control(date_ref)` 连接实际 InputRef alias。Form 只读映射到 `field.uneditable()` 以阻止整个选择器编辑，不能仅设置 `inputReadOnly`。完整接线与日期范围见 [DatePicker](date-picker.md#gallery-与-form-string-适配)。
+`field.validation(trigger, debounce_ms, dependencies)` 支持 Change/Blur/ChangeAndBlur；旧字段默认 Manual，保持同步调用时机。onBlur 同 onChange 一样捕获注册代际。依赖路径是当前 Form 内的显式完整路径。Debounce 使用宿主单调时钟与下一截止时间，空闲时不持续请求帧。
 
-TimePicker 使用第三个独立 String Form，固定秒精度与初值 `08:00:00`。`parse_time_of_day` / `format_time_of_day` 显式适配，`control(time_ref)` 连接实际 picker；只读/禁用同样使用 `field.uneditable()` gate 整个选择器。未确认草稿不进入字段，reset 即使 authority 相同也恢复 accepted/pending/显示并取消 preedit。完整接线与范围见 [TimePicker](time-picker.md#gallery-与-form-string-适配)。
+`asyncValidator(FormAsyncValidator<T>, OwnerThreadPost)` 接受应用服务及 owner-thread dispatcher；Core 不进行网络调用。请求提供 snapshot/generation/cancelled；worker 只调用 completion，由 dispatcher 投递到创建线程。旧、重复及错误线程结果不能写 Signal。应用 dispatcher 应无异常地接受任务并唤醒 owner event loop；不返回/错误投递的服务有 30 秒有界取消，避免永久 validating。
+
+`validateAsync(callback, options)` 支持名称、recursive、dirty 和 validate-only；`submitAsync()` 提交当前快照。只有同步规则时，旧 validate/submit 的结果和异常传播继续有效；存在 async rule 时 submit 非阻塞发起事务，旧 validate 返回空 optional，应使用 async 命令。cancelValidation、改值、移除、reset、隐藏/输入边界变化和销毁撤销旧发布权。存活的过期提交进入 onFinishFailed 且 out_of_date=true，销毁后不回调。
+
+meta/getFields/setFields 暴露 touched/validating/errors/warnings/out_of_date；getFieldError/getFieldWarning、isField(s)Touched/isField(s)Validating 查询状态。useFormInstance 取得当前 FormRef，useWatch(path, form)/watch(path) 返回可读取的 Binding<optional<FormValue>>，精确追踪对应字段，并跟随 FormRef 挂载/解绑；useFormStatus 返回 Binding<FormItemStatus>，包含当前 Item status/errors/warnings。两者均可直接传给 Prop，或在 reactive effect 中调用 get()。无关字段更新不重新执行观察者或组件 slot。
+
+## Enter、滚动和 Provider
+
+首个单行原生编辑器的普通 Enter 提交其所属 Form；TextArea 保留换行，IME composition 先消费 Enter。嵌套表单提交最接近的作用域；隐藏、disabled、zero-bounds、阻挡及非活动窗口不获得原生提交资格。显式控件 onSubmit 可保留自己的提交行为。
+
+`scrollTarget(FormScrollTarget)` 注入原生滚动服务。scrollToField/scrollToFirstError 传递捕获 ref 对应控件的真实 bounds/clip，服务 reveal 后 acknowledge；Form 在下次同步几何后检查存活/代际/事务、输入资格和实际可见性，再聚焦。部分裁剪可聚焦，完全裁剪、隐藏、阻挡和零尺寸不聚焦。reset/移动/删除后旧 acknowledge 不能作用到其他字段。scrollToFirstError(true) 可用于失败提交。
+
+`FormProvider` 提供具名 onFormChange/onFormFinish 与同作用域 forms/ref 快照；change 事件的 changed_fields 包含 typed 值与 meta，result.structure 保留完整值快照；重复具名注册拒绝。嵌套 Provider 隔离注册和事件。用户编辑触发 onValuesChange/onFieldsChange，程序 set/reset 保持显式命令行为。
+
+## 上游 API 的原生映射与验证范围
+
+| 上游概念 | RynUI 原生 API |
+| --- | --- |
+| Form/useForm/useFormInstance | FormProps、可复制 FormRef、useFormInstance |
+| Item/NamePath/FieldData | FormItemProps、FormNamePath、FormFieldData |
+| List 操作与 meta | FormListProps/FormListRef、FormListField 稳定 key/index、FormFieldMeta |
+| rules/validateFields/Promise | FormRule、typed asyncValidator、validateAsync + FormValidateOptions |
+| watch/useStatus | watch/useWatch、useFormStatus、细粒度 Signal |
+| 自定义 valuePropName/getValueFromEvent/normalize | typed FormControlAdapter<T>；显式 C++ 值/事件转换 |
+| shouldUpdate/render props | typed slots、Prop/Signal；不重跑无关组件 |
+| label/wrapper Col | Responsive<FormColumn>，真实原生布局 |
+| scrollToField | 显式 FormScrollTarget 与捕获控件几何 |
+| Provider/ErrorList | FormProviderProps/事件、FormErrorListProps |
+| DOM/CSS/HTML/React 专用接口 | 不提供同名无效别名；由原生 typed API 表达相关语义 |
+
+Gallery 保留旧流程，新增布局/自动绑定/精确数字/滚动、深嵌套列表、合成异步/依赖三个独立实际示例。提交文字来自实际 FormResult。合成异步交付不是服务器或网络证据。
+
+HEADLESS/Recording 合同与 Gallery 测试不代表实际 GPU、系统 IME candidate UI、辅助技术或 Windows/MSVC 验收。Linux 原生分类验收和 Windows 平台任务由父线程独立收口；13.* 只有完整受影响自动检查通过后才勾选。证据见 change107 的 form-linux.md。
+
+主线组合与 Linux 私有 Wayland 的实际结果见 [Form 集成验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/form-integration.md)。

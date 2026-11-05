@@ -1,4 +1,5 @@
 #include "component/date_picker_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/date_picker_model.hpp"
 #include "component/input_component.hpp"
 #include "component/input_affix_action.hpp"
@@ -1000,6 +1001,7 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
     build.mount_slot(
         id, Content{[&] {
             Theme(ThemeProps{}.config(s.input_theme), ThemeContent{[&] {
+                      FormPrivateEditorScope private_editor;
                       Input(InputProps{}
                                 .value(s.display)
                                 .placeholder(props.placeholder_)

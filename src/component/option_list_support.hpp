@@ -42,14 +42,19 @@ public:
         cancel();
     }
 
-    void cancel() noexcept {
+    // Invalidate all members of a compound operation before invoking application cancellation code.
+    [[nodiscard]] AsyncOptionsCancel detach_cancel() noexcept {
         const auto control = control_;
         ++control->generation;
         if (control->ticket) {
             control->ticket->cancelled->store(true);
             control->ticket.reset();
         }
-        auto cancel = std::move(control->cancel);
+        return std::move(control->cancel);
+    }
+
+    void cancel() noexcept {
+        auto cancel = detach_cancel();
         if (cancel) {
             try {
                 cancel();

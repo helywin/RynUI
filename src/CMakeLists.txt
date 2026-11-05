@@ -212,6 +212,8 @@ target_link_libraries(rynui_text_scene PRIVATE
 add_library(rynui_components STATIC
     component/date_picker_model.cpp
     component/date_picker_component.cpp
+    component/form_validation.cpp
+    component/form_values.cpp
     component/form_model.cpp
     component/descriptions_model.cpp
     component/descriptions_component.cpp

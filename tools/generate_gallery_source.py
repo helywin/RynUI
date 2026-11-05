@@ -88,6 +88,10 @@ def api_header(root: Path, relative: str) -> str:
     if not path.is_file() or not path.resolve().is_relative_to((root / 'include/ryn').resolve()):
         raise ValueError(f'public header is absent or outside include/ryn: {relative}')
     text = path.read_text(encoding='utf-8')
+    if relative == 'include/ryn/form.hpp':
+        # Form's public typed family is split into focused headers, all re-exported by form.hpp.
+        for sibling in sorted(path.parent.glob('form_*.hpp')):
+            text += '\n' + sibling.read_text(encoding='utf-8')
     # message.hpp/notification.hpp are honest forwarding headers. Do not collect
     # unrelated Props from every transitive dependency of a normal component.
     if not re.search(r'\b(?:class|struct)\s+\w+Props\b', text):

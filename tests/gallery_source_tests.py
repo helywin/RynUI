@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 88 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 91 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -59,6 +59,12 @@ void add_next() {}'''
           'AutoCompleteEditor' in by_id['gallery.sample.auto-complete.contacts'].code and
           'AutoCompleteOptionGroup' in by_id['gallery.sample.auto-complete.contacts'].code,
           'AutoComplete source omitted grouped/custom editor or synthetic async example')
+    check('FormListProps' in by_id['gallery.sample.form.lists'].props and
+          'FormItemLabel' in by_id['gallery.sample.form.layouts'].slots and
+          'FormList' in by_id['gallery.sample.form.lists'].code and
+          'asyncValidator' in by_id['gallery.sample.form.async'].code and
+          'scrollTarget' in by_id['gallery.sample.form.layouts'].code,
+          'Form independent native examples omitted a required contract')
     check('ColorPickerProps' in by_id['gallery.sample.color-picker.controls'].props and
           by_id['gallery.sample.color-picker.controls'].theme_path == 'ThemeConfig.color_picker.tokens',
           'ColorPicker source or component tokens missing')

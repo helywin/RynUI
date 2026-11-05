@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/component.hpp>
+#include <ryn/form_geometry.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 
@@ -10,7 +11,14 @@
 #include <utility>
 
 namespace ryn {
+class SwitchRef;
+
 namespace detail {
+struct FormFocusContext;
+std::pair<std::function<bool(const FormFocusContext&)>,
+          std::function<std::optional<FormControlGeometry>(const FormFocusContext&)>>
+capture_form_switch(const SwitchRef&);
+struct FormAutoControlAccess;
 struct SwitchPropsAccess;
 struct SwitchRefState;
 } // namespace detail
@@ -28,6 +36,9 @@ public:
 
 private:
     friend struct detail::SwitchPropsAccess;
+    friend std::pair<std::function<bool(const detail::FormFocusContext&)>,
+                     std::function<std::optional<FormControlGeometry>(const detail::FormFocusContext&)>>
+    detail::capture_form_switch(const SwitchRef&);
     std::shared_ptr<detail::SwitchRefState> state_;
 };
 
@@ -94,6 +105,7 @@ public:
     }
 
 private:
+    friend struct detail::FormAutoControlAccess;
     friend struct detail::SwitchPropsAccess;
     std::optional<Prop<bool>> checked_;
     std::optional<bool> default_checked_;

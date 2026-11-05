@@ -1,3 +1,11 @@
+add_executable(rynui_form_integration_tests form_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_form_integration_tests)
+target_link_libraries(rynui_form_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_form_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.form_integration COMMAND rynui_form_integration_tests)
+
 add_executable(rynui_transfer_theme_tests transfer_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_transfer_theme_tests)
 target_include_directories(rynui_transfer_theme_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
@@ -581,14 +589,19 @@ foreach(date_test IN ITEMS date_picker_component date_picker_theme date_picker_r
     endif()
 endforeach()
 
-foreach(form_test IN ITEMS form_model form_public_api descriptions_model descriptions_public_api)
+add_test(NAME rynui.form_documentation
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/form_documentation_tests.py"
+        --compiler "${CMAKE_CXX_COMPILER}" --root "${PROJECT_SOURCE_DIR}"
+        --output "${CMAKE_BINARY_DIR}/contract-tests/form-documentation")
+
+foreach(form_test IN ITEMS form_model form_async form_public_api descriptions_model descriptions_public_api)
     add_executable(rynui_${form_test}_tests ${form_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${form_test}_tests)
     target_link_libraries(rynui_${form_test}_tests PRIVATE rynui_components)
     add_test(NAME rynui.${form_test} COMMAND rynui_${form_test}_tests)
 endforeach()
 
-foreach(form_integration IN ITEMS form_component form_theme descriptions_component descriptions_theme)
+foreach(form_integration IN ITEMS form_component form_theme form_advanced form_interaction form_lifecycle descriptions_component descriptions_theme)
     add_executable(rynui_${form_integration}_tests ${form_integration}_tests.cpp)
     rynui_configure_cpp_target(rynui_${form_integration}_tests)
     target_link_libraries(rynui_${form_integration}_tests PRIVATE rynui_components)

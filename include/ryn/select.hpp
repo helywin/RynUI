@@ -12,6 +12,7 @@
 
 namespace ryn {
 namespace detail {
+struct FormAutoControlAccess;
 struct SelectPropsAccess;
 class SelectComponentHost;
 } // namespace detail
@@ -595,6 +596,7 @@ public:
     }
 
 private:
+    friend struct detail::FormAutoControlAccess;
     friend struct detail::SelectPropsAccess;
     friend class detail::SelectComponentHost;
     Prop<IconSource> clear_icon_{IconSource{IconName::CloseCircleFilled}};

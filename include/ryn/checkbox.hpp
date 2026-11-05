@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/component.hpp>
+#include <ryn/form_geometry.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
@@ -16,8 +17,11 @@ namespace ryn {
 class CheckboxRef;
 
 namespace detail {
+struct FormAutoControlAccess;
 struct FormFocusContext;
 std::function<bool(const FormFocusContext&)> capture_form_checkbox(const CheckboxRef&);
+std::function<std::optional<FormControlGeometry>(const FormFocusContext&)>
+capture_form_checkbox_geometry(const CheckboxRef&);
 struct CheckboxPropsAccess;
 struct CheckboxGroupPropsAccess;
 struct CheckboxRefState;
@@ -48,6 +52,8 @@ public:
 private:
     friend struct detail::CheckboxPropsAccess;
     friend std::function<bool(const detail::FormFocusContext&)> detail::capture_form_checkbox(const CheckboxRef&);
+    friend std::function<std::optional<FormControlGeometry>(const detail::FormFocusContext&)>
+    detail::capture_form_checkbox_geometry(const CheckboxRef&);
     std::shared_ptr<detail::CheckboxRefState> state_;
 };
 
@@ -119,6 +125,7 @@ public:
     }
 
 private:
+    friend struct detail::FormAutoControlAccess;
     friend struct detail::CheckboxPropsAccess;
     std::optional<Prop<bool>> checked_;
     std::optional<bool> default_checked_;

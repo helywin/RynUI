@@ -1,4 +1,5 @@
 #include "component/transfer_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/input_component.hpp"
 #include "component/selection_component.hpp"
 #include "component/pagination_component.hpp"
@@ -359,6 +360,7 @@ void TransferComponentHost::reconcile(runtime::ComponentId id, const std::vector
                     b.on_resource_cleanup(r->component, [this, node] { services_->layout().remove_layout(node); });
                     b.mount_slot(r->component, Content{[&] {
                                      Theme(ThemeProps{}.config(r->theme), ThemeContent{[&] {
+                                               FormPrivateEditorScope private_editor;
                                                Checkbox(CheckboxProps{}
                                                             .checked(r->checked)
                                                             .direction(bind([direction = r->direction] {
@@ -401,6 +403,12 @@ void TransferComponentHost::reconcile(runtime::ComponentId id, const std::vector
                                                r->remove = services_->components().children(r->component).back();
                                            }});
                                  }});
+                    b.on_resource_cleanup(r->component, [this, component = r->component, checkbox = r->checkbox,
+                                                         plain = r->plain, remove = r->remove] {
+                        for (const auto owned : {component, checkbox, plain, remove}) {
+                            services_->interactions().set_input_blocked(owned, false);
+                        }
+                    });
                     services_->layout().set_layout(
                         node,
                         layout::ComponentLayout{
@@ -465,13 +473,6 @@ void TransferComponentHost::reconcile(runtime::ComponentId id, const std::vector
         }
         throw;
     }
-    for (const auto& r : old) {
-        if (r->component.valid() &&
-            std::ranges::none_of(next, [&](const auto& n) { return n->component == r->component; })) {
-            services_->destroy(r->component);
-        }
-    }
-    s->rows = std::move(next);
     if (!s->props.selected_) {
         std::erase_if(s->selected, [&](const auto& k) { return !has(keys, k); });
     }
@@ -481,6 +482,17 @@ void TransferComponentHost::reconcile(runtime::ComponentId id, const std::vector
     for (const auto& requested : {s->target, s->selected}) {
         if (std::ranges::any_of(requested, [&](const auto& key) { return !has(keys, key); })) {
             throw std::invalid_argument("Transfer requested key is absent from dataSource");
+        }
+    }
+    // Publish the complete row/key authority before child cleanup can reconcile input boundaries.
+    s->rows = std::move(next);
+    for (const auto& r : old) {
+        if (r->component.valid() &&
+            std::ranges::none_of(s->rows, [&](const auto& n) { return n->component == r->component; })) {
+            services_->destroy(r->component);
+            if (!s->alive) {
+                return;
+            }
         }
     }
     refresh(id);
@@ -1123,6 +1135,7 @@ void TransferComponentHost::move_keys(runtime::ComponentId id, TransferDirection
 }
 
 void TransferComponentHost::mount(const TransferProps& input) {
+    FormPrivateEditorScope private_editor;
     TransferProps props = input;
     if ((props.target_ && props.default_target_) || (props.selected_ && props.default_selected_)) {
         throw std::invalid_argument("Transfer controlled/default conflict");
@@ -1156,7 +1169,8 @@ void TransferComponentHost::mount(const TransferProps& input) {
         }
     } transaction{*services_, id};
 
-    b.on_resource_cleanup(id, [this, s] {
+    b.on_resource_cleanup(id, [this, s, id] {
+        services_->interactions().set_input_blocked(id, false);
         s->alive = false;
         s->bindings.dispose();
         services_->layout().remove_layout(s->node);
@@ -1352,7 +1366,11 @@ void TransferComponentHost::mount(const TransferProps& input) {
                             const auto child = [&](auto fn) {
                                 const auto before = services_->components().children(s->body).size();
                                 fn();
-                                return services_->components().children(s->body).at(before);
+                                const auto component = services_->components().children(s->body).at(before);
+                                build.on_resource_cleanup(component, [this, component] {
+                                    services_->interactions().set_input_blocked(component, false);
+                                });
+                                return component;
                             };
                             const auto wrapper = [&](auto slot, bool fill = true) {
                                 auto& build = runtime::require_component_build_context();
@@ -1360,8 +1378,10 @@ void TransferComponentHost::mount(const TransferProps& input) {
                                 const auto node = build.root(component);
                                 services_->layout().set_layout(node, layout::BoxLayout{{}, fill});
                                 services_->nodes().require(node).clip_content = true;
-                                build.on_resource_cleanup(component,
-                                                          [this, node] { services_->layout().remove_layout(node); });
+                                build.on_resource_cleanup(component, [this, node, component] {
+                                    services_->interactions().set_input_blocked(component, false);
+                                    services_->layout().remove_layout(node);
+                                });
                                 build.mount_slot(component, slot);
                                 return component;
                             };
@@ -1425,6 +1445,7 @@ void TransferComponentHost::mount(const TransferProps& input) {
                                         ButtonContent{[label = p.clear_text] { Text(TextProps{}.content(label)); }});
                                 });
                                 p.search = child([&] {
+                                    FormPrivateEditorScope private_editor;
                                     Input(InputProps{}
                                               .disabled(s->disabled)
                                               .status(props.status_)
