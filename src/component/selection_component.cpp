@@ -148,6 +148,9 @@ void translate_content(runtime::NodeStore& nodes, runtime::NodeId id, runtime::P
     auto& node = nodes.require(id);
     node.translation.x += delta.x;
     node.translation.y += delta.y;
+    if (node.owns_child_translation) {
+        return;
+    }
     for (const auto child : node.children) {
         translate_content(nodes, child, delta);
     }

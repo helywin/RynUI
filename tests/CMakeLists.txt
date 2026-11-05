@@ -931,6 +931,13 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_dependency_lock.cmake"
 )
 
+add_executable(rynui_translation_ownership_tests translation_ownership_tests.cpp
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_scroll_region.cpp")
+rynui_configure_cpp_target(rynui_translation_ownership_tests)
+target_include_directories(rynui_translation_ownership_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_translation_ownership_tests PRIVATE rynui_runtime)
+add_test(NAME rynui.translation_ownership COMMAND rynui_translation_ownership_tests)
+
 foreach(name IN ITEMS pagination_component table_component table_theme table_public_api)
     add_executable(rynui_${name}_tests ${name}_tests.cpp)
     rynui_configure_cpp_target(rynui_${name}_tests)
@@ -1058,6 +1065,16 @@ foreach(display_contract IN ITEMS collapse_contract segmented_contract descripti
 endforeach()
 
 if(NOT RYNUI_HAS_SDL_GPU)
+    # Reuse affected interaction and container contracts in HEADLESS builds.
+    foreach(retained_boundary_contract IN ITEMS selection_component modal_component input_component)
+        add_executable(rynui_${retained_boundary_contract}_tests "${retained_boundary_contract}_tests.cpp")
+        rynui_configure_cpp_target(rynui_${retained_boundary_contract}_tests)
+        target_link_libraries(rynui_${retained_boundary_contract}_tests PRIVATE rynui_components rynui_text_input_session)
+        target_compile_definitions(rynui_${retained_boundary_contract}_tests PRIVATE
+            "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+            "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+        add_test(NAME rynui.${retained_boundary_contract} COMMAND rynui_${retained_boundary_contract}_tests)
+    endforeach()
     # Reuse existing dependency, batching and reentry contracts in HEADLESS builds.
     foreach(reactive_contract IN ITEMS signal memo batch scope_effect)
         add_executable(rynui_${reactive_contract}_tests "${reactive_contract}_tests.cpp")

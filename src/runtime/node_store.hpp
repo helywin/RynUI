@@ -80,6 +80,9 @@ struct Node {
     bool clip_decorations{true};
     // Window layers retain component ancestry but start a separate clip chain.
     bool clip_boundary{};
+    // The owner positions descendants after receiving its inherited translation.
+    // Ancestor subtree writers update this node, then stop at this boundary.
+    bool owns_child_translation{};
     // Retained window-layer owners do not consume parent Box/Flex space or gaps.
     bool out_of_flow{};
     float content_opacity{1.0F};

@@ -148,6 +148,9 @@ void translate(runtime::NodeId node, runtime::Point offset, WindowComponentServi
     }
     runtime::NodePropertyWriter writer{services.nodes(), services.dirty()};
     writer.set_translation(node, offset);
+    if (services.nodes().require(node).owns_child_translation) {
+        return;
+    }
     for (auto child : services.nodes().require(node).children) {
         translate(child, offset, services);
     }

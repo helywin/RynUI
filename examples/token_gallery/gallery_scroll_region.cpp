@@ -15,6 +15,9 @@ std::size_t translate_subtree(ryn::runtime::NodeId root, ryn::runtime::Point tra
     const auto& children = nodes.require(root).children;
     static_cast<void>(writer.set_translation(root, translation));
     std::size_t translated = 1;
+    if (nodes.require(root).owns_child_translation) {
+        return translated;
+    }
     for (const auto child : children) {
         translated += translate_subtree(child, translation, nodes, writer);
     }

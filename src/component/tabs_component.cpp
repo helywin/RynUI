@@ -200,6 +200,9 @@ void translate_subtree(runtime::NodeId node, runtime::Point value, WindowCompone
     }
     runtime::NodePropertyWriter writer{services.nodes(), services.dirty()};
     writer.set_translation(node, value);
+    if (services.nodes().require(node).owns_child_translation) {
+        return;
+    }
     for (auto child : services.nodes().require(node).children) {
         translate_subtree(child, value, services);
     }
