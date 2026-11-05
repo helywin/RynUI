@@ -76,3 +76,5 @@ SceneCpuData 在旧五个 aggregate 成员后增加可选 ImageStore。SceneReso
 ### Retained subtree paint opacity
 
 Core 内部 Node 的 paint opacity 是祖先相乘的纯绘制包络，与输入可达性独立。RetainedSurfaceService 保留未乘包络的 Quad 与 RoundedEffect 来源；创建、包络变化和 range remap 后从来源重新生成材质，零透明度恢复不会丢失原始值。Text/Icon/Input 的 glyph、选区、光标和直接 effect 使用同一祖先因子。Image 主图、PreviewGroup 与 Upload 缩略图及预览 canvas 发布 ImageInstance 时应用一次 content opacity 与 paint opacity 的乘积；其背景/焦点/遮罩由共同 surface 应用包络，不把已乘值再交给 renderer 全局缩放。该机制不创建下一帧请求；动画宿主仍须分别执行本帧 invalidation 与下一帧 deadline。输入禁用、焦点、capture、preedit 和 popup 的清理由组件的 input boundary 完成。logical CPU scene v3、既有 Quad/Glyph/RoundedEffect packed GPU ABI v2 和 Image 独立 ABI v2/112 bytes 均不变。
+
+圆角 Image 的 logical 分片具有互不重叠的实际 bounds 和相对于完整原图的 `source_uv`，所有片段保留同一个 pivot；packer 将 UV 子范围写入已有 `uv_rect` 并在原图坐标中翻转。圆角 coverage 仍使用已有 circle clip；矩形邻接处依靠共享边的三角形光栅化规则，不以 epsilon 裁剪制造缝隙。共同 ImageGpuResources 的 texture lease 仅在自身 device/owner/epoch 内按同一不可变 ImagePixels 身份共享；source 变更、upload retry、retire 与 abandon_device 保持独立代际和事务资格。该扩展不改变 logical scene v3 或任何 packed ABI。

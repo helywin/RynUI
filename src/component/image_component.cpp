@@ -92,6 +92,7 @@ struct ImageState final {
     ImageCancel cancel;
     std::shared_ptr<const ImagePixels> pixels;
     std::optional<graphics::ImageId> preview_image;
+    std::vector<graphics::ImageId> rounded_parts;
     std::optional<input::PointerIdentity> drag;
     runtime::Point last_pointer;
     runtime::Rect base_preview;
@@ -99,6 +100,8 @@ struct ImageState final {
     runtime::SceneFragmentId fragment;
     runtime::SceneFragmentId preview_fragment;
     component::RetainedSurfaceId background;
+    runtime::SceneFragmentId cover_background_fragment;
+    component::RetainedSurfaceId cover_background;
     component::RetainedSurfaceId mask;
     runtime::ComponentId placeholder;
     runtime::ComponentId error;
@@ -240,6 +243,7 @@ void ImageComponentHost::on_destroy() noexcept {
 
 void ImageComponentHost::on_dispose() noexcept {
     mounted_.clear();
+    cover_policies_.clear();
 }
 
 ImageSnapshot ImageComponentHost::snapshot(runtime::ComponentId id) const {
@@ -394,6 +398,10 @@ void ImageComponentHost::load(runtime::ComponentId id, ImageSource source, bool 
         services_->images().destroy(*s->view.image);
         s->view.image.reset();
     }
+    for (auto part : s->rounded_parts) {
+        services_->images().destroy(part);
+    }
+    s->rounded_parts.clear();
     if (s->preview_image) {
         services_->images().destroy(*s->preview_image);
         s->preview_image.reset();
@@ -628,7 +636,8 @@ bool ImageComponentHost::request_open(runtime::ComponentId id, bool open) {
         !services_->components().branch_active(id)) {
         return false;
     }
-    if (open && !s->pixels) {
+    if (open && (!s->pixels || !services_->components().contains(s->view.modal) ||
+                 !services_->components().contains(s->view.canvas))) {
         return false;
     }
     const auto callback = s->on_open;
@@ -703,6 +712,10 @@ void ImageComponentHost::replace_actions(runtime::ComponentId id,
                                          std::shared_ptr<const ImageActionsRenderer> renderer) {
     auto* s = services_->components().state<ImageState>(id);
     if (!s || (s->renderer == renderer && s->view.actions.valid())) {
+        return;
+    }
+    if (!services_->components().contains(s->view.modal)) {
+        s->renderer = std::move(renderer);
         return;
     }
     const auto old = s->view.actions;
@@ -812,6 +825,9 @@ void ImageComponentHost::replace_actions(runtime::ComponentId id,
 void ImageComponentHost::mount_preview(runtime::ComponentId id) {
     auto& b = runtime::require_component_build_context();
     auto& s = b.state<ImageState>(id);
+    if (!s.options.enabled || services_->components().contains(s.view.modal)) {
+        return;
+    }
     b.mount_slot(
         id, Content{[&] {
             Theme(ThemeProps{}.config(s.preview_theme), ThemeContent{[&] {
@@ -897,6 +913,7 @@ void ImageComponentHost::mount(const ImageProps& p, const ImageSlots& slots) {
     const auto background = b.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     const graphics::QuadInstance initial{{}, {}, 0};
     s.background = services_->surfaces().create_surface(id, s.node, background, std::span{&initial, 1});
+    s.cover_background_fragment = b.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     s.fragment = b.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     const auto mask = b.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     s.mask = services_->surfaces().create_content_range(mask, {});
@@ -943,8 +960,14 @@ void ImageComponentHost::mount(const ImageProps& p, const ImageSlots& slots) {
             cancel_preview(id);
             auto* state = services_->components().state<ImageState>(id);
             if (state) {
+                if (state->cover_background.valid()) {
+                    services_->surfaces().destroy_content_range(state->cover_background);
+                }
                 if (state->view.image) {
                     services_->images().destroy(*state->view.image);
+                }
+                for (auto part : state->rounded_parts) {
+                    services_->images().destroy(part);
                 }
                 if (state->preview_image) {
                     services_->images().destroy(*state->preview_image);
@@ -1055,7 +1078,7 @@ void ImageComponentHost::mount(const ImageProps& p, const ImageSlots& slots) {
         }
     });
     connect_prop(scope, p.shape_, [this, id](ImageShape v) {
-        if (v < ImageShape::Rectangle || v > ImageShape::Circle) {
+        if (v < ImageShape::Rectangle || v > ImageShape::RoundedRectangle) {
             throw std::invalid_argument("Invalid Image shape");
         }
         if (auto* s = services_->components().state<ImageState>(id)) {
@@ -1083,6 +1106,14 @@ void ImageComponentHost::mount(const ImageProps& p, const ImageSlots& slots) {
         validate_image_preview(v);
         if (auto* s = services_->components().state<ImageState>(id)) {
             s->options = v;
+            if (v.enabled && !services_->components().contains(s->view.modal)) {
+                try {
+                    append(*services_, s->mounting, id, Content{[this, id] { mount_preview(id); }});
+                } catch (...) {
+                    services_->retire_failed_component(id);
+                    throw;
+                }
+            }
             refresh(id);
         }
     });
@@ -1251,7 +1282,8 @@ bool ImageComponentHost::on_keyboard_input(const input::KeyboardInputEvent& even
         if (!s || !s->view.open || !s->options.keyboard) {
             continue;
         }
-        if (!services_->interactions().component_active(s->view.canvas) ||
+        if (!services_->components().contains(s->view.modal) || !services_->components().contains(s->view.canvas) ||
+            !services_->interactions().component_active(s->view.canvas) ||
             !services_->modal().snapshot(s->view.modal).topmost) {
             continue;
         }
@@ -1293,7 +1325,9 @@ bool ImageComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
     for (auto it = mounted_.rbegin(); it != mounted_.rend(); ++it) {
         const auto* s = services_->components().state<ImageState>(*it);
         if (s && s->view.open && s->options.wheel && inside(s->view.canvas_bounds, event.x, event.y) &&
-            event.delta_y != 0 && services_->interactions().component_active(s->view.canvas) &&
+            event.delta_y != 0 && services_->components().contains(s->view.modal) &&
+            services_->components().contains(s->view.canvas) &&
+            services_->interactions().component_active(s->view.canvas) &&
             services_->modal().snapshot(s->view.modal).topmost &&
             services_->hit_test().hit_test({event.x, event.y}) == s->view.canvas_interaction) {
             return action(*it, event.delta_y > 0 ? ImageAction::ZoomIn : ImageAction::ZoomOut);
@@ -1333,6 +1367,17 @@ void ImageComponentHost::on_input_boundary_changed() {
     }
 }
 
+void ImageComponentHost::set_cover_rounding(runtime::ComponentId cover, float radius) {
+    std::erase_if(cover_policies_,
+                  [this](const auto& policy) { return !services_->components().contains(policy.first); });
+    auto found = std::ranges::find_if(cover_policies_, [cover](const auto& policy) { return policy.first == cover; });
+    if (found == cover_policies_.end()) {
+        cover_policies_.push_back({cover, radius});
+    } else {
+        found->second = radius;
+    }
+}
+
 void ImageComponentHost::publish(runtime::ComponentId id, runtime::Size viewport, runtime::Rect document_clip) {
     auto* s = services_->components().state<ImageState>(id);
     if (!s) {
@@ -1360,16 +1405,35 @@ void ImageComponentHost::publish(runtime::ComponentId id, runtime::Size viewport
             const auto side = std::min(bounds.width, bounds.height);
             visual = {bounds.x + (bounds.width - side) / 2, bounds.y + (bounds.height - side) / 2, side, side};
         }
-        const float radius = s->shape == ImageShape::Circle
-                                 ? visual.width / 2
-                                 : std::min(t.metrics.radius, std::min(visual.width, visual.height) / 2);
+        std::optional<float> cover_radius;
+        const auto parent = services_->components().parent(id);
+        if (s->shape == ImageShape::Rectangle && parent) {
+            for (const auto& policy : cover_policies_) {
+                if (policy.first == *parent) {
+                    cover_radius = policy.second;
+                    break;
+                }
+            }
+        }
+        const float radius = s->shape == ImageShape::Circle ? visual.width / 2
+                                                            : std::min(cover_radius.value_or(t.metrics.radius),
+                                                                       std::min(visual.width, visual.height) / 2);
         const auto opacity = services_->nodes().content_opacity(s->node);
         const graphics::QuadInstance bg{{visual.x, visual.y, visual.width, visual.height},
                                         std::array{t.colors.background.red(), t.colors.background.green(),
                                                    t.colors.background.blue(), t.colors.background.alpha()},
-                                        shown ? opacity : 0.F,
+                                        shown && !cover_radius ? opacity : 0.F,
                                         radius};
         static_cast<void>(services_->surfaces().update_surface(s->background, std::span{&bg, 1}));
+        if (cover_radius && !s->cover_background.valid()) {
+            s->cover_background = services_->surfaces().create_content_range(s->cover_background_fragment, {});
+        }
+        if (s->cover_background.valid()) {
+            const auto fills = graphics::make_corner_fill_effects(
+                {visual, radius}, {true, true, false, false}, t.colors.background,
+                shown && cover_radius ? opacity : 0.F, {}, graphics::EffectClip{1, clip});
+            services_->surfaces().update_content_effects(s->cover_background, fills);
+        }
         component::RetainedSurfaceEffects fx;
         fx.shape = {visual, radius};
         fx.focus_width = t.effects.focus_width;
@@ -1379,7 +1443,8 @@ void ImageComponentHost::publish(runtime::ComponentId id, runtime::Size viewport
         fx.ancestor_clip = graphics::EffectClip{1, clip};
         static_cast<void>(services_->surfaces().update_effects(s->background, fx));
         std::vector<graphics::QuadInstance> mask;
-        if (ready && (s->hovering || s->focused) && s->options.enabled && !s->disabled) {
+        const bool show_mask = ready && (s->hovering || s->focused) && s->options.enabled && !s->disabled;
+        if (show_mask && !cover_radius) {
             mask.push_back({{visual.x, visual.y, visual.width, visual.height},
                             std::array{t.colors.cover.red(), t.colors.cover.green(), t.colors.cover.blue(),
                                        t.colors.cover.alpha()},
@@ -1388,15 +1453,21 @@ void ImageComponentHost::publish(runtime::ComponentId id, runtime::Size viewport
         }
         static_cast<void>(services_->surfaces().update_content_range(s->mask, mask));
         std::vector<graphics::RoundedEffectInstance> border;
+        if (show_mask && cover_radius) {
+            const auto fills =
+                graphics::make_corner_fill_effects({visual, radius}, {true, true, false, false}, t.colors.cover,
+                                                   opacity, {}, graphics::EffectClip{1, clip});
+            border.insert(border.end(), fills.begin(), fills.end());
+        }
         if (shown && visual.width > 0 && visual.height > 0 && t.metrics.border_width > 0) {
             const auto color = s->disabled                            ? t.colors.disabled
                                : s->view.status == ImageStatus::Error ? t.colors.error
                                : s->hovering                          ? t.colors.hover
                                                                       : t.colors.border;
-            const auto outlines = graphics::make_corner_outline_effects({visual, radius}, {true, true, true, true},
-                                                                        t.metrics.border_width, 0, color, opacity, {},
-                                                                        graphics::EffectClip{1, clip});
-            border.assign(outlines.begin(), outlines.end());
+            const auto outlines = graphics::make_corner_outline_effects(
+                {visual, radius}, {true, true, !cover_radius, !cover_radius}, t.metrics.border_width, 0, color, opacity,
+                {}, graphics::EffectClip{1, clip});
+            border.insert(border.end(), outlines.begin(), outlines.end());
         }
         services_->surfaces().update_content_effects(s->mask, border);
         std::vector<graphics::SceneDrawCommand> commands;
@@ -1408,12 +1479,38 @@ void ImageComponentHost::publish(runtime::ComponentId id, runtime::Size viewport
             if (s->shape == ImageShape::Circle && bounds.width > 0 && bounds.height > 0) {
                 instance.circle_clip = visual;
             }
-            if (!s->view.image) {
-                s->view.image = services_->images().create(instance);
-            } else {
-                services_->images().update(*s->view.image, instance);
+            const auto pieces = (cover_radius || s->shape == ImageShape::RoundedRectangle)
+                                    ? graphics::decompose_rounded_image(instance, visual, cover_radius.value_or(radius),
+                                                                        cover_radius.has_value())
+                                    : std::vector{instance};
+            if (!pieces.empty()) {
+                if (!s->view.image) {
+                    s->view.image = services_->images().create(pieces[0]);
+                } else {
+                    services_->images().update(*s->view.image, pieces[0]);
+                }
+                commands.push_back(
+                    {graphics::SceneDrawKind::image, s->view.image->index, 1, s->view.image->generation});
             }
-            commands.push_back({graphics::SceneDrawKind::image, s->view.image->index, 1, s->view.image->generation});
+            while (s->rounded_parts.size() > (pieces.empty() ? 0 : pieces.size() - 1)) {
+                services_->images().destroy(s->rounded_parts.back());
+                s->rounded_parts.pop_back();
+            }
+            for (std::size_t i = 1; i < pieces.size(); ++i) {
+                if (i - 1 >= s->rounded_parts.size()) {
+                    s->rounded_parts.push_back(services_->images().create(pieces[i]));
+                } else {
+                    services_->images().update(s->rounded_parts[i - 1], pieces[i]);
+                }
+                const auto part = s->rounded_parts[i - 1];
+                commands.push_back({graphics::SceneDrawKind::image, part.index, 1, part.generation});
+            }
+        }
+        if (!ready) {
+            for (auto part : s->rounded_parts) {
+                services_->images().destroy(part);
+            }
+            s->rounded_parts.clear();
         }
         if (!ready && s->view.image) {
             services_->images().destroy(*s->view.image);
@@ -1421,7 +1518,7 @@ void ImageComponentHost::publish(runtime::ComponentId id, runtime::Size viewport
         }
         services_->scene_composer().set_fragment(s->fragment, commands, s->view.interaction, clip);
     }
-    if (s->view.canvas.valid()) {
+    if (services_->components().contains(s->view.canvas)) {
         const auto n = services_->components().root(s->view.canvas);
         const auto r = translated(services_->nodes().require(n));
         s->view.canvas_bounds = r;

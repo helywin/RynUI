@@ -11,8 +11,10 @@ ImageGpuInstance pack_image_instance(const graphics::ImageInstance& image, Scene
     const auto c = image.clip;
     logical.position_size = {b.x, b.y, b.width, b.height};
     logical.clip_bounds = {c.x, c.y, c.x + c.width, c.y + c.height};
-    logical.uv_rect = {image.flip_x ? 1.F : 0.F, image.flip_y ? 1.F : 0.F, image.flip_x ? 0.F : 1.F,
-                       image.flip_y ? 0.F : 1.F};
+    const auto uv = image.source_uv;
+    logical.uv_rect = {image.flip_x ? 1.F - uv.x : uv.x, image.flip_y ? 1.F - uv.y : uv.y,
+                       image.flip_x ? 1.F - uv.x - uv.width : uv.x + uv.width,
+                       image.flip_y ? 1.F - uv.y - uv.height : uv.y + uv.height};
     logical.translation_opacity[2] = image.opacity;
     logical.transform = {image.pivot, image.angle_degrees};
     const auto p = pack_glyph_instance(logical, metrics);
@@ -39,17 +41,19 @@ ImageGpuResources::~ImageGpuResources() {
     if (buffer_) {
         api_->release_image_buffer(buffer_);
     }
-    for (auto& e : entries_) {
-        if (e.texture) {
-            api_->release_image_texture(e.texture);
-        }
-    }
+    entries_.clear();
 }
 
 void ImageGpuResources::abandon_device() noexcept {
     buffer_ = nullptr;
     capacity_ = 0;
+    for (auto& weak : leases_) {
+        if (auto lease = weak.lock()) {
+            lease->texture = nullptr;
+        }
+    }
     entries_.clear();
+    leases_.clear();
     metrics_.reset();
     retry_ = true;
 }
@@ -86,36 +90,54 @@ void ImageGpuResources::synchronize(const graphics::ImageStore* store, SceneDevi
         metrics_.reset();
     }
     entries_.resize(std::max(entries_.size(), slots.size()));
+    if (textures_invalid_) {
+        for (auto& weak : leases_) {
+            if (auto lease = weak.lock()) {
+                lease->uploaded = false;
+            }
+        }
+        textures_invalid_ = false;
+    }
     for (std::size_t i = 0; i < entries_.size(); ++i) {
         auto& e = entries_[i];
         if (i >= slots.size() || !slots[i].live) {
-            if (e.texture) {
-                api_->release_image_texture(e.texture);
-            }
             e = {};
             continue;
         }
         const auto& slot = slots[i];
         const auto& pixels = slot.instance.pixels;
-        const bool texture_changed = !e.texture || e.pixels != pixels || e.generation != slot.generation;
-        if (texture_changed) {
-            auto* next = api_->create_image_texture(pixels->width(), pixels->height());
-            if (!next) {
-                throw std::runtime_error("Image texture allocation failed");
+        if (!e.lease || e.lease->pixels != pixels) {
+            std::shared_ptr<TextureLease> lease;
+            for (auto& weak : leases_) {
+                auto candidate = weak.lock();
+                if (candidate && candidate->pixels == pixels) {
+                    lease = std::move(candidate);
+                    break;
+                }
             }
-            if (e.texture) {
-                api_->release_image_texture(e.texture);
+            if (!lease) {
+                lease = std::make_shared<TextureLease>();
+                lease->api = api_;
+                lease->pixels = pixels;
+                lease->texture = api_->create_image_texture(pixels->width(), pixels->height());
+                if (!lease->texture) {
+                    throw std::runtime_error("Image texture allocation failed");
+                }
+                leases_.push_back(lease);
             }
-            e.texture = next;
-            e.pixels = pixels;
+            e.lease = std::move(lease);
+            e.revision = 0;
+        }
+        if (e.generation != slot.generation) {
             e.generation = slot.generation;
             e.revision = 0;
         }
-        if (texture_changed || full) {
+        if (!e.lease->uploaded) {
             if (!api_->upload_image_texture(
-                    e.texture, {pixels->bytes(), 0, pixels->row_stride(), pixels->width(), pixels->height()})) {
+                    e.lease->texture, {pixels->bytes(), 0, pixels->row_stride(), pixels->width(), pixels->height()})) {
                 throw std::runtime_error("Image texture upload failed");
             }
+            e.lease->uploaded = true;
         }
         if (full || !metrics_ || e.revision != slot.revision) {
             const auto packed = pack_image_instance(slot.instance, metrics);
@@ -125,15 +147,17 @@ void ImageGpuResources::synchronize(const graphics::ImageStore* store, SceneDevi
         }
         e.revision = slot.revision;
     }
+    std::erase_if(leases_, [](const auto& lease) { return lease.expired(); });
     metrics_ = metrics;
     retry_ = false;
 }
 
 void* ImageGpuResources::texture(std::uint32_t index) const noexcept {
-    return index < entries_.size() ? entries_[index].texture : nullptr;
+    return index < entries_.size() && entries_[index].lease ? entries_[index].lease->texture : nullptr;
 }
 
 bool ImageGpuResources::drawable(std::uint32_t index, std::uint32_t generation) const noexcept {
-    return buffer_ && index < entries_.size() && entries_[index].texture && entries_[index].generation == generation;
+    return !retry_ && buffer_ && index < entries_.size() && entries_[index].lease && entries_[index].lease->uploaded &&
+           entries_[index].generation == generation;
 }
 } // namespace ryn::detail

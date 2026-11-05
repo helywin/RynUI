@@ -1,3 +1,18 @@
+add_executable(rynui_image_rounding_tests image_rounding_tests.cpp)
+rynui_configure_cpp_target(rynui_image_rounding_tests)
+target_link_libraries(rynui_image_rounding_tests PRIVATE rynui_image rynui_renderer_common)
+add_test(NAME rynui.image_rounding COMMAND rynui_image_rounding_tests)
+
+foreach(native_display_test IN ITEMS image_lazy_preview)
+    add_executable(rynui_${native_display_test}_tests ${native_display_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${native_display_test}_tests)
+    target_link_libraries(rynui_${native_display_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${native_display_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${native_display_test} COMMAND rynui_${native_display_test}_tests)
+endforeach()
+
 add_executable(rynui_tree_form_integration_tests tree_form_integration_tests.cpp)
 rynui_configure_cpp_target(rynui_tree_form_integration_tests)
 target_link_libraries(rynui_tree_form_integration_tests PRIVATE rynui_components)
@@ -2988,6 +3003,22 @@ if(TARGET shadercross)
 endif()
 
 if(RYNUI_HAS_SDL_GPU)
+    add_executable(rynui_image_rounding_gpu_tests image_rounding_gpu_tests.cpp)
+    rynui_configure_cpp_target(rynui_image_rounding_gpu_tests)
+    target_link_libraries(rynui_image_rounding_gpu_tests PRIVATE rynui_components rynui_renderer_sdl rynui_renderer_common rynui_image SDL3::SDL3)
+    target_compile_definitions(rynui_image_rounding_gpu_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    rynui_embed_target_shaders(rynui_image_rounding_gpu_tests)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME rynui.image_rounding_vulkan_private
+            COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_background_wayland.py"
+                --log-dir "${PROJECT_SOURCE_DIR}/out/image-rounding/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/wayland"
+                --timeout 60 -- "$<TARGET_FILE:rynui_image_rounding_gpu_tests>"
+                "${PROJECT_SOURCE_DIR}/out/image-rounding/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/readback")
+        set_tests_properties(rynui.image_rounding_vulkan_private PROPERTIES
+            LABELS "linux;gpu;private-wayland" TIMEOUT 80 RUN_SERIAL TRUE)
+    endif()
     add_executable(rynui_paint_opacity_gpu_tests paint_opacity_gpu_tests.cpp)
     rynui_configure_cpp_target(rynui_paint_opacity_gpu_tests)
     target_link_libraries(rynui_paint_opacity_gpu_tests PRIVATE rynui_components rynui_renderer_sdl rynui_renderer_common SDL3::SDL3)

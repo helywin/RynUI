@@ -30,6 +30,7 @@ public:
     ~ImageComponentHost();
     void mount(const ImageProps&, const ImageSlots&);
     void mount(const PreviewGroupProps&);
+    void set_cover_rounding(runtime::ComponentId cover, float radius);
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
@@ -69,5 +70,6 @@ private:
     std::shared_ptr<Lifetime> lifetime_;
     std::vector<runtime::ComponentId> mounted_;
     bool active_{true};
+    std::vector<std::pair<runtime::ComponentId, float>> cover_policies_;
 };
 } // namespace ryn::detail

@@ -35,7 +35,7 @@ struct ImageSource final {
 
     friend bool operator==(const ImageSource&, const ImageSource&) = default;
 };
-enum class ImageShape { Rectangle, Circle };
+enum class ImageShape { Rectangle, Circle, RoundedRectangle };
 enum class ImageFit { Contain, Cover, Fill, None, ScaleDown };
 enum class ImageStatus { Empty, Loading, Ready, Error, Fallback };
 enum class ImageAction { ZoomIn, ZoomOut, RotateLeft, RotateRight, FlipX, FlipY, Reset, Previous, Next, Drag, Close };

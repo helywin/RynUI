@@ -24,6 +24,7 @@ struct ImageInstance final {
     bool flip_x{};
     bool flip_y{};
     std::optional<runtime::Rect> circle_clip;
+    runtime::Rect source_uv{0, 0, 1, 1};
     friend bool operator==(const ImageInstance&, const ImageInstance&) = default;
 };
 
@@ -53,6 +54,9 @@ private:
     std::thread::id owner_{std::this_thread::get_id()};
     std::vector<ImageSlot> slots_;
 };
+
+[[nodiscard]] std::vector<ImageInstance> decompose_rounded_image(const ImageInstance&, runtime::Rect canvas,
+                                                                 float radius, bool top_only = false);
 
 void validate_image_instance(const ImageInstance& instance);
 } // namespace ryn::graphics

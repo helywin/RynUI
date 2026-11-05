@@ -56,6 +56,7 @@ public:
 
     void invalidate_upload() noexcept {
         retry_ = true;
+        textures_invalid_ = true;
     }
 
     [[nodiscard]] void* buffer() const noexcept {
@@ -66,12 +67,27 @@ public:
     [[nodiscard]] bool drawable(std::uint32_t index, std::uint32_t generation) const noexcept;
 
 private:
-    struct Entry final {
+    struct TextureLease final {
+        ImageGpuApi* api{};
         void* texture{};
         std::shared_ptr<const ImagePixels> pixels;
+        bool uploaded{};
+
+        ~TextureLease() {
+            if (texture) {
+                api->release_image_texture(texture);
+            }
+        }
+    };
+
+    struct Entry final {
+        std::shared_ptr<TextureLease> lease;
         std::uint32_t generation{};
         std::uint64_t revision{};
     };
+
+    std::vector<std::weak_ptr<TextureLease>> leases_;
+    bool textures_invalid_{};
 
     ImageGpuApi* api_;
     void* buffer_{};
