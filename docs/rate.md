@@ -18,13 +18,14 @@ count/allowHalf 变化重新规范化原始权威输入，不触发 onChange；�
 受控 onChange 提供候选，只有应用回写 value 才改变权威显示，拒绝回写不留下提交后的 hover 假象。
 
 `onHoverChange(std::optional<float>)` 表示鼠标预览，离开/提交/取消/输入阻断发送 `nullopt`。
-Left/Right 每次增减一级（allowHalf 时 .5），Home 到 0，End 到 count；Enter/Space 提交当前位置并应用 allowClear。
+LTR 的 Left/Right 每次减/增一级（allowHalf 时 .5），RTL 交换左右方向，Home 到 0，End 到 count；Enter/Space 提交当前位置并应用 allowClear。
 每个 Rate 只有一个 Tab 入口。disabled/readOnly 禁止自身编辑；readOnly 不建立后代输入封锁。
 visible=false 和 count=0 不保留布局 flow/gap。隐藏、窗口失活或 Modal/Spin gate 会取消临时输入状态。
 宽或高归零也会关闭 Tooltip、注销后代输入 session/preedit；恢复尺寸后保留子内容身份与草稿。Tooltip 提供 100ms 可取消的离开宽限供鼠标跨越间隙进入浮层；没有鼠标停留时，后代 Tab 焦点离开会关闭浮层。评分导航键会切换为 keyboard modality 并显示 focus outline 与 emphasis。
 
 `character(RateCharacter{u8"好"})`、`character(RateCharacter{IconName::HeartFilled})` 或纯值 index 函数可定制字符。
-全局 character 支持 `Prop<RateCharacter>`；index 函数在该项首次创建时调用，已建项不会因普通值/布局/主题更新而重新调用该函数。
+全局 character 支持 `Prop<RateCharacter>`；`.character(index函数)` 在该项首次创建时生成固定绘制值。
+`.characterFor(std::function<Prop<RateCharacter>(std::size_t)>)` 在每项创建时绑定独立的响应绘制值；已建项不会因普通值/布局/主题更新重新调用 factory，count 缩减再恢复保留绑定和身份。两种 factory 互斥；全局 character 是未指定 factory 时的来源。factory/初次绑定失败会回滚新增项，保留旧数量及已建项；后续合法更新可以恢复。
 RateCharacter 只接受可复制的绘制值（String/IconSource），不会重复挂载原生子控件。逐项 Tooltip 使用已有原生 Tooltip。
 `tooltips` 接受 `RateTooltip` 列表；条目可由文本/`Prop<String>` 构造，或用 `RateTooltip{TooltipTitle{...}}` 提供 typed 富标题 slot。
 每个富标题只挂载一次，count/隐藏/主题变化保留其原生控件、编辑草稿和 ref；readOnly 仅关闭评分自身编辑，仍可操作标题中的原生控件。
@@ -33,6 +34,17 @@ RateCharacter 只接受可复制的绘制值（String/IconSource），不会重�
 所有最终字体至少 .5 logical dp，主题发布前验证独立 seed、继承与祖先组合，失败不发布部分快照。
 三种尺寸的 normal 与 hover 字号按实际 float 乘积和 Text 的取整方式校验，量化后的 logical pixels 不得超过 FontRuntime 的 `INT_MAX / 64` 上限。
 
-验证范围与精确命令见 change `090-20261026-add-native-rate` 的 evidence。HEADLESS 逻辑场景和合成原生事件不代表真实 GPU/原生窗口、Linux、系统 IME 或 AT 已验收。
+090 历史验证范围与精确命令见 change `090-20261026-add-native-rate` 的 evidence。HEADLESS 逻辑场景和合成原生事件不代表真实 GPU/原生窗口、Linux、系统 IME 或 AT 已验收。
 
-Gallery 目录选择 **Rate**，直接进入服务评分。点击星项左右半部评分，重复点击清空；方向键、Home/End、Enter/Space 使用公开原生操作。接受/拒绝开关决定是否回写候选，反馈始终显示实际已接受值；disabled/readOnly/显隐后的外部恢复按钮保持可用。第五颗星的富 Tooltip 包含真实 Input 和保存按钮，支持跨间隙指针进入与 Tab 编辑，关闭/恢复保留草稿和身份。定向入口为 `rynui_token_gallery_frame_tests --members-metrics-only`，不扩大现有原生窗口、GPU、Linux、系统 IME 或 AT 的证据范围。
+Gallery 目录选择 **Rate**，直接进入服务评分。点击星项左右半部评分，重复点击清空；方向键、Home/End、Enter/Space 使用公开原生操作。接受/拒绝开关决定是否回写候选，反馈始终显示实际已接受值；disabled/readOnly/显隐后的外部恢复按钮保持可用。第五颗星的富 Tooltip 包含真实 Input 和保存按钮，支持跨间隙指针进入与 Tab 编辑，关闭/恢复保留草稿和身份。093 的 Recording 定向入口为 `rynui_token_gallery_frame_tests --members-metrics-only`；107 新增的 Linux 原生窗口/GPU 输入见下方精简证据，物理 IME/AT 与跨显示器仍独立。
+
+`direction(Prop<RateDirection>)` 提供 LeftToRight（默认）与 RightToLeft。RTL 同时镜像项目排列、前景半星裁剪、半星指针取值和左右键；方向变更取消旧 press/capture/hover，保留已接受值、焦点及富 Tooltip 内容。非法枚举在发布前拒绝。
+
+`RateRef` 的 bound/focus/blur 只能在创建线程使用，绑定重复或跨线程操作明确拒绝；卸载解绑，可再次使用。`autoFocus()` 只在挂载时尝试一次；disabled/readOnly、keyboard=false、count=0、隐藏和输入边界阻止根焦点。富 Tooltip 中的 Input 继续使用自己的 ref。
+`onFocus`/`onBlur` 只报告根实际焦点转换。`onKeyDown(RateKeyEvent)` 观察根的 key down（含 repeat/修饰键及未处理键），在内置评分命令之前调用；回调后重新检查 owner、焦点和门禁，异常或同步销毁不提交旧命令。RateKey 的 Other 表示未单独列出的原生键，不导出 DOM/SDL 事件。
+
+原生 character 的范围是 String/IconSource 纯绘制值，支持两层裁剪；不会复制两个有状态 Component、ref 或输入 session。逐项响应绘制不等于任意 ReactNode/characterRender 克隆兼容。Tooltip 继续使用已有文本/响应标题/单次挂载富标题的原生映射，Rate 管理 hover/focus 开合与离开宽限；Web TooltipProps、DOM 触发事件和 Provider 别名不透传。全局 ConfigProvider 的上下文传播属于独立能力，本轮只提供显式 typed 属性。
+
+change 107 定向 Linux 证据见 [数据录入验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md)。
+
+107 与新 Form、Tree/Mentions 的主线组合结果见[集成验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-integration.md)。

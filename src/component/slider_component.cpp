@@ -103,6 +103,8 @@ struct SliderState final {
     SliderHintOptions hint;
     std::function<String(double)> hint_formatter;
     std::shared_ptr<SliderRefState> ref;
+    std::function<void()> on_focus;
+    std::function<void()> on_blur;
     bool range{};
     bool multiple{};
     bool reconciling{};
@@ -345,11 +347,17 @@ void SliderComponentHost::mount_thumb(runtime::ComponentId id, SliderThumb& thum
                     if (!state || !index) {
                         return;
                     }
+                    const bool changed = state->handles[*index]->focus.focused != value.focused;
+                    const auto callback =
+                        changed ? (value.focused ? state->on_focus : state->on_blur) : std::function<void()>{};
                     state->handles[*index]->focus = value;
                     if (value.focused) {
                         state->active = *index;
                     }
                     update(id, false);
+                    if (callback) {
+                        callback();
+                    }
                 };
                 focus.text_edit = [this, id, component](const input::KeyboardInputEvent& event) {
                     const auto index = thumb_index(id, component);
@@ -1240,6 +1248,8 @@ struct SliderPropsAccess {
         };
         s.on_change = callback(props.on_change_);
         s.on_complete = callback(props.on_complete_);
+        s.on_focus = props.on_focus_;
+        s.on_blur = props.on_blur_;
         build.on_resource_cleanup(id, [&host, id] {
             if (auto* state = host.find(id)) {
                 host.release(*state);

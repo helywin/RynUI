@@ -7,6 +7,7 @@
 #include <ryn/string.hpp>
 #include <ryn/tooltip.hpp>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <variant>
 #include <vector>
@@ -14,7 +15,33 @@
 namespace ryn {
 namespace detail {
 class RateComponentHost;
-}
+struct RateRefState;
+} // namespace detail
+
+enum class RateDirection { LeftToRight, RightToLeft };
+
+enum class RateKey { Other, Tab, Enter, Space, Left, Right, Home, End, Escape, Up, Down };
+
+struct RateKeyEvent final {
+    RateKey key{RateKey::Other};
+    bool repeat{};
+    bool shift{};
+    bool control{};
+    bool alt{};
+    bool meta{};
+};
+
+class RateRef final {
+public:
+    RateRef();
+    [[nodiscard]] bool bound() const;
+    [[nodiscard]] bool focus() const;
+    [[nodiscard]] bool blur() const;
+
+private:
+    friend class detail::RateComponentHost;
+    std::shared_ptr<detail::RateRefState> state_;
+};
 
 // Pure paint content. Unlike a Component slot, it can safely be painted in two clipped layers.
 class RateCharacter final {
@@ -121,6 +148,41 @@ public:
         return *this;
     }
 
+    RateProps& characterFor(std::function<Prop<RateCharacter>(std::size_t)> value) {
+        reactive_character_for_ = std::move(value);
+        return *this;
+    }
+
+    RateProps& direction(Prop<RateDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
+    RateProps& ref(RateRef value) {
+        ref_ = std::move(value);
+        return *this;
+    }
+
+    RateProps& autoFocus(bool value = true) {
+        auto_focus_ = value;
+        return *this;
+    }
+
+    RateProps& onFocus(std::function<void()> value) {
+        on_focus_ = std::move(value);
+        return *this;
+    }
+
+    RateProps& onBlur(std::function<void()> value) {
+        on_blur_ = std::move(value);
+        return *this;
+    }
+
+    RateProps& onKeyDown(std::function<void(RateKeyEvent)> value) {
+        on_key_ = std::move(value);
+        return *this;
+    }
+
     RateProps& tooltips(std::vector<RateTooltip> value) {
         tooltips_ = std::move(value);
         return *this;
@@ -155,6 +217,13 @@ private:
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<RateCharacter> character_{RateCharacter{}};
     std::function<RateCharacter(std::size_t)> character_for_;
+    std::function<Prop<RateCharacter>(std::size_t)> reactive_character_for_;
+    Prop<RateDirection> direction_{RateDirection::LeftToRight};
+    std::optional<RateRef> ref_;
+    bool auto_focus_{};
+    std::function<void()> on_focus_;
+    std::function<void()> on_blur_;
+    std::function<void(RateKeyEvent)> on_key_;
     std::vector<RateTooltip> tooltips_;
     std::function<void(float)> on_change_;
     std::function<void(std::optional<float>)> on_hover_;

@@ -50,4 +50,8 @@ ThemeConfig.radio 支持 tokens/seed/algorithm，继承方式与其他组件相�
 
 按钮背景与边界使用共同 logical rounded effects 的四个分区，保持 renderer packed GPU ABI。背景完整覆盖 border box，异色边框叠在背景之上；同色背景/边框仅绘制一次外缘，防止内部 AA 叠加露出浅色框。选中项拥有共享边，后项绘制裁到该边之外，避免覆盖后用另一层 AA 补回产生浅线。实现与平台证据以 [048 tasks](../openspec/changes/048-20261002-complete-native-radio-features/tasks.md) 与 [056补充修正](../openspec/changes/056-20261003-fix-rounded-antialiasing-and-button-wave/tasks.md) 为准。Web DOM/form/name/required/CSS/React 事件不移植。
 
-056的Windows补充矩阵实际检查浅/深、LTR/RTL、横/竖Solid填充80个样本的曲面与内部像素，详见 [Windows填充证据](../openspec/changes/056-20261003-fix-rounded-antialiasing-and-button-wave/evidence/windows-feedback/README.md)；Linux原生项独立待完成。
+056的Windows补充矩阵实际检查浅/深、LTR/RTL、横/竖Solid填充80个样本的曲面与内部像素，详见 [Windows填充证据](../openspec/changes/056-20261003-fix-rounded-antialiasing-and-button-wave/evidence/windows-feedback/README.md)；本轮 Linux 后台原生输入与离页清理见 change 107 精简证据，不扩大该历史像素矩阵的覆盖范围。
+
+`onFocus([] {})` / `onBlur([] {})` 报告实际焦点进入/离开；按压、键盘 modality 和 focus-visible 更新不会重复通知。禁用、离页清理遵循共同焦点服务，回调可请求其他 ref 焦点或同步销毁组件。
+
+change 107 的定向 Linux Gallery/GPU 输入结果及平台边界见 [本轮数据录入验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md)。

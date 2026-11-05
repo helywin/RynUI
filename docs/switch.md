@@ -25,6 +25,10 @@ Switch Theme token 支持四种 inner margin（普通/Small 的 min/max）、han
 
 设计来源：[锁定 Ant Design 6.6.5 Switch](https://raw.githubusercontent.com/ant-design/ant-design/6.6.5/components/switch/index.tsx)、[手柄官方样式](https://github.com/ant-design/ant-design/blob/6.6.5/components/switch/style/index.ts)。官方样式使用字面量 CSS ease-in-out，区别于 Ant motionEaseInOut token。DOM/HTML/CSS、React ref 与 Web value/defaultValue 兼容别名不移植。046 的任务与证据分别记录原生功能、共同合同和各平台验收；056补充手柄按压/释放连续性回归。
 
-共同合同已通过 Windows MSVC headless Debug/Release；Windows 真窗口 D3D12/DXIL 十次缩放运行与 200 张 readback 见 [Windows 证据](../openspec/changes/046-20261002-complete-native-switch-features/evidence/windows/README.md)。Linux 原生验收独立待完成。
+共同合同已通过 Windows MSVC headless Debug/Release；Windows 真窗口 D3D12/DXIL 十次缩放运行与 200 张 readback 见 [Windows 证据](../openspec/changes/046-20261002-complete-native-switch-features/evidence/windows/README.md)。本轮 Linux 后台原生输入与离页清理已定向验证，见 change 107 精简证据；不扩大历史像素/DPI 矩阵的覆盖范围。
 
 056补充修正已通过Windows MSVC headless Debug/Release各99/99及10组D3D12缩放矩阵，560个手柄帧验证释放几何连续与CSS曲线，见 [手柄连续性证据](../openspec/changes/056-20261003-fix-rounded-antialiasing-and-button-wave/evidence/windows-feedback/README.md)。
+
+`onFocus([] {})` / `onBlur([] {})` 报告实际焦点进入/离开；按压、键盘 modality 和 focus-visible 更新不会重复通知。禁用、离页清理遵循共同焦点服务，回调可请求其他 ref 焦点或同步销毁组件。
+
+change 107 的定向 Linux Gallery/GPU 输入结果及平台边界见 [本轮数据录入验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md)。

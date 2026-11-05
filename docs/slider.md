@@ -40,3 +40,7 @@ MultiSlider 的 `editable=true` 启用轨道/label 插入：新合法值不在�
 `SliderRef` 是共享的安全引用，`.ref(ref)` 绑定一个组件，`ref.focus()` 聚焦首个启用端点，`ref.blur()` 只清除自身端点焦点；返回是否请求操作。未绑定/销毁/空列表/全禁用返回 false，owner thread 外调用抛 logic_error，同时绑定第二个组件明确拒绝，解绑后可复用。键盘回调中操作使用 deferred focus。`.autoFocus(true)` 只在挂载完成后执行一次。
 
 `SliderHintOptions::placement` 为 optional，默认横向 Top、纵向 Right；显式指定优先。`auto_adjust_overflow` 默认 true，可以关闭翻转/移动。Gallery 提供整段、编辑与逐端点禁用示例，Slider 的原生功能范围已实现；平台验收结果单独记录。Web DOM/CSS/portal 和兼容别名不移植。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)、[041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 和 [042 清单](../openspec/changes/042-20261002-complete-slider-range-editing/tasks.md)。
+
+`onFocus([] {})` / `onBlur([] {})` 只报告实际焦点转换，pointer/keyboard modality、按压与 focus-visible 更新不会重复通知。回调可请求其他 ref 焦点或同步销毁当前组件；事件使用副本，后续输入重新核对 owner。Slider 在端点之间转移焦点时依次通知离开与进入。
+
+change 107 的定向 Linux Gallery/GPU 输入结果及平台边界见 [本轮数据录入验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md)。

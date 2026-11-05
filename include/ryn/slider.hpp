@@ -164,6 +164,16 @@ public:
         return self();
     }
 
+    Derived& onFocus(std::function<void()> callback) {
+        on_focus_ = std::move(callback);
+        return self();
+    }
+
+    Derived& onBlur(std::function<void()> callback) {
+        on_blur_ = std::move(callback);
+        return self();
+    }
+
     Derived& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return self();
@@ -197,6 +207,8 @@ private:
     bool auto_focus_{};
     std::function<void(Value)> on_change_;
     std::function<void(Value)> on_complete_;
+    std::function<void()> on_focus_;
+    std::function<void()> on_blur_;
     LayoutStyle layout_;
 };
 

@@ -1,4 +1,5 @@
 #include "support/mentions_fixture.hpp"
+#include "component/form_component.hpp"
 #include "component/selection_component.hpp"
 #include "component/transfer_component.hpp"
 #include <ryn/auto_complete.hpp>
@@ -157,6 +158,102 @@ void other_private_editors_preserve_public_binding() {
     }
 }
 
+void boolean_binding_survives_focus_callbacks() {
+    for (int kind = 0; kind < 2; ++kind) {
+        for (int mode = 0; mode < 5; ++mode) {
+            Fixture f;
+            detail::SelectionComponentHost selection{f.services};
+            FormRef form;
+            FormField<bool> field;
+            CheckboxRef checkbox;
+            SwitchRef toggle;
+            Signal<bool> disabled{false};
+            runtime::ComponentId root;
+            int focuses{};
+            int blurs{};
+            const auto on_focus = [&] {
+                ++focuses;
+                if (mode == 1) {
+                    check(f.services.destroy(root), "Form focus callback destruction failed");
+                }
+                if (mode == 4) {
+                    throw std::runtime_error("Form focus callback");
+                }
+            };
+            const auto on_blur = [&] {
+                ++blurs;
+                if (mode == 2) {
+                    check(f.services.destroy(root), "Form blur callback destruction failed");
+                }
+                if (mode == 3) {
+                    throw std::runtime_error("Form blur callback");
+                }
+            };
+            f.services.mount(Content{[&] {
+                Form(FormProps{}.ref(form), FormContent{[&] {
+                         FormItem(FormItemProps{}.field(u8"enabled", field), FormItemContent{[&] {
+                                      if (kind == 0) {
+                                          Checkbox(
+                                              CheckboxProps{}.ref(checkbox).disabled(disabled).onFocus(on_focus).onBlur(
+                                                  on_blur));
+                                      } else {
+                                          Switch(SwitchProps{}.ref(toggle).disabled(disabled).onFocus(on_focus).onBlur(
+                                              on_blur));
+                                      }
+                                  }});
+                     }});
+            }});
+            sync(f, 720, 600);
+            root = f.services.form().mounted().front();
+            const auto target = form.getFieldInstance(FormNamePath{u8"enabled"});
+            check(target && target->geometry() && target->geometry()->bounds.width > 0,
+                  "automatic boolean control lost actual Form geometry");
+            const auto stale = field.onChange();
+            bool threw{};
+            try {
+                static_cast<void>(target->focus());
+            } catch (const std::runtime_error& error) {
+                check(std::string_view{error.what()} == "Form focus callback", "unexpected Form focus exception");
+                threw = true;
+            }
+            check(threw == (mode == 4) && focuses == 1, "Form focus callback propagation/transition mismatch");
+            if (mode != 1 && mode != 4) {
+                key(f, Key::space);
+                check(field.get() && field.meta().touched, "focus callbacks displaced automatic boolean binding");
+                if (mode == 0) {
+                    check(form.reset() && !field.get(), "automatic boolean reset lost authority");
+                    disabled.set(true);
+                    check(blurs == 1 && !target->focus(), "Form boolean disabled gate lost blur/focus eligibility");
+                    disabled.set(false);
+                    check(target->focus() && focuses == 2, "Form boolean refocus failed");
+                }
+                const auto row = selection.mounted().front();
+                const auto area = bounds(f, row.component);
+                f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::down, PointerButton::primary,
+                                               area.x + area.width / 2, area.y + area.height / 2});
+                const auto captured = f.services.pointer().state(PointerIdentity::mouse());
+                check(captured && captured->capture, "Form boolean retirement fixture lacks capture");
+                if (mode == 2) {
+                    static_cast<void>(kind == 0 ? checkbox.blur() : toggle.blur());
+                } else {
+                    check(f.services.destroy(root), "Form boolean captured retirement failed");
+                }
+            } else if (mode == 4) {
+                check(f.services.destroy(root), "throwing Form focus callback prevented retirement");
+            }
+            const bool accepted = field.get();
+            stale(!accepted);
+            check(field.get() == accepted && !checkbox.bound() && !toggle.bound() && !target->focus() &&
+                      !target->geometry() && selection.mounted().empty() && f.services.form().mounted().empty(),
+                  "Form boolean retirement retained value/ref/generation authority");
+            const auto pointer = f.services.pointer().state(PointerIdentity::mouse());
+            check((!pointer || !pointer->capture) && !f.services.focus().state().focused,
+                  "Form boolean callback retirement retained capture/focus");
+            clean(f);
+        }
+    }
+}
+
 } // namespace
 
 int main() {
@@ -164,6 +261,7 @@ int main() {
         private_editors_leave_automatic_binding_to_public_controls();
         popup_editors_keep_their_own_value_and_enter();
         other_private_editors_preserve_public_binding();
+        boolean_binding_survives_focus_callbacks();
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

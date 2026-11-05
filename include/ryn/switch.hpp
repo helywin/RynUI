@@ -99,6 +99,16 @@ public:
         return *this;
     }
 
+    SwitchProps& onFocus(std::function<void()> callback) {
+        on_focus_ = std::move(callback);
+        return *this;
+    }
+
+    SwitchProps& onBlur(std::function<void()> callback) {
+        on_blur_ = std::move(callback);
+        return *this;
+    }
+
     SwitchProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -114,6 +124,8 @@ private:
     Prop<SwitchSize> size_{SwitchSize::Middle};
     std::function<void(bool)> on_change_;
     std::function<void(bool)> on_click_;
+    std::function<void()> on_focus_;
+    std::function<void()> on_blur_;
     Prop<SwitchDirection> direction_{SwitchDirection::LeftToRight};
     Prop<bool> wave_{true};
     std::optional<SwitchRef> ref_;

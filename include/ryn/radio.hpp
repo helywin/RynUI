@@ -95,6 +95,16 @@ public:
         return *this;
     }
 
+    RadioProps& onFocus(std::function<void()> callback) {
+        on_focus_ = std::move(callback);
+        return *this;
+    }
+
+    RadioProps& onBlur(std::function<void()> callback) {
+        on_blur_ = std::move(callback);
+        return *this;
+    }
+
     RadioProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -111,6 +121,8 @@ private:
     std::optional<RadioRef> ref_;
     bool auto_focus_{};
     std::function<void(bool)> on_click_;
+    std::function<void()> on_focus_;
+    std::function<void()> on_blur_;
     Prop<bool> wave_{true};
     LayoutStyle layout_;
 };

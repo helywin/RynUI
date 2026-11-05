@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <exception>
 #include <numbers>
 #include <stdexcept>
 #include <thread>
@@ -288,6 +289,8 @@ struct SelectionState final {
     input::FocusPresentation focus;
     std::function<void(bool)> on_change;
     std::function<void(bool)> on_click;
+    std::function<void()> on_focus;
+    std::function<void()> on_blur;
     Signal<runtime::SemanticForeground> label_foreground{{0.0F, 0.0F, 0.0F, 1.0F}};
     Signal<runtime::SemanticTypography> label_typography{runtime::SemanticTypography{}};
     theme_runtime::Subscription theme_subscription;
@@ -629,8 +632,13 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
     }
     state.disabled = true;
     stop_wave(state);
-    services_->pointer().cancel_interaction(state.interaction);
-    services_->focus().cancel_interaction(state.interaction);
+    services_->pointer().cancel_pointer_interaction(state.interaction);
+    std::exception_ptr focus_error;
+    try {
+        services_->focus().cancel_interaction(state.interaction);
+    } catch (...) {
+        focus_error = std::current_exception();
+    }
     if (state.animation_scope.valid()) {
         static_cast<void>(services_->animations().dispose_scope(state.animation_scope));
     }
@@ -645,6 +653,9 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
     static_cast<void>(services_->interactions().remove(state.interaction));
     static_cast<void>(services_->surfaces().destroy(state.surface));
     static_cast<void>(services_->layout().remove_layout(state.node));
+    if (focus_error) {
+        std::rethrow_exception(focus_error);
+    }
 }
 
 bool SelectionComponentHost::activation_allowed(runtime::ComponentId id) const noexcept {
@@ -1610,6 +1621,8 @@ void SelectionComponentHost::apply_focus(runtime::ComponentId id, input::FocusPr
     if (!state || state->focus == value) {
         return;
     }
+    const bool changed = state->focus.focused != value.focused;
+    const auto callback = changed ? (value.focused ? state->on_focus : state->on_blur) : std::function<void()>{};
     state->focus = value;
     if (state->radio && state->group.valid()) {
         if (auto* group = services_->components().state<RadioGroupState>(state->group)) {
@@ -1624,6 +1637,9 @@ void SelectionComponentHost::apply_focus(runtime::ComponentId id, input::FocusPr
         }
     }
     update_visuals(*state);
+    if (callback) {
+        callback();
+    }
 }
 
 void SelectionComponentHost::update_layout(SelectionState& state) {
@@ -2203,6 +2219,8 @@ struct SwitchPropsAccess {
         state.visuals.resize(switch_layer_count);
         state.on_change = props.on_change_;
         state.on_click = props.on_click_;
+        state.on_focus = props.on_focus_;
+        state.on_blur = props.on_blur_;
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.find(component)) {
                 host.release_selection(*current);
@@ -2405,6 +2423,8 @@ struct CheckboxPropsAccess {
         state.disabled = state.own_disabled || (group && group->disabled);
         state.on_change = props.on_change_;
         state.on_click = props.on_click_;
+        state.on_focus = props.on_focus_;
+        state.on_blur = props.on_blur_;
         state.checkbox_ref = reference;
         state.own_direction = props.direction_.has_value();
         const auto direction = props.direction_ ? read_prop(*props.direction_)
@@ -2782,6 +2802,8 @@ struct RadioPropsAccess {
         state.disabled = state.own_disabled || (group && group->disabled);
         state.on_change = props.on_change_;
         state.on_click = props.on_click_;
+        state.on_focus = props.on_focus_;
+        state.on_blur = props.on_blur_;
         state.direction = direction;
         state.own_direction = props.direction_.has_value();
         state.radio_ref = reference;

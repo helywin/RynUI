@@ -4,9 +4,24 @@
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <stdexcept>
+#include <thread>
 
 namespace ryn::detail {
+struct RateRefState final {
+    std::thread::id owner{std::this_thread::get_id()};
+    bool binding{};
+    std::function<bool()> focus;
+    std::function<bool()> blur;
+
+    void ensure_owner() const {
+        if (owner != std::this_thread::get_id()) {
+            throw std::logic_error("RateRef requires its owner thread");
+        }
+    }
+};
+
 namespace {
 thread_local RateComponentHost* active_rate{};
 
@@ -21,6 +36,7 @@ struct RateItemState final {
     Signal<runtime::SemanticForeground> foreground{{1, 1, 0, 1}};
     Signal<runtime::SemanticTypography> font{runtime::SemanticTypography{}};
     float paint_side{20};
+    bool rtl{};
 };
 
 struct RateState final {
@@ -38,6 +54,12 @@ struct RateState final {
     bool keyboard{true};
     bool visible{true};
     bool geometry_active{true};
+    bool focused{};
+    RateDirection direction{RateDirection::LeftToRight};
+    std::shared_ptr<RateRefState> ref;
+    std::function<void()> on_focus;
+    std::function<void()> on_blur;
+    std::function<void(RateKeyEvent)> on_key;
     bool empty_reconciled{};
     ControlSize size{ControlSize::Middle};
     std::optional<float> hover;
@@ -48,6 +70,7 @@ struct RateState final {
     std::optional<input::Key> pending_key;
     RateCharacter character;
     std::function<RateCharacter(std::size_t)> character_for;
+    std::function<Prop<RateCharacter>(std::size_t)> reactive_character_for;
     std::vector<RateTooltip> tooltips;
     std::vector<runtime::ComponentId> items;
     std::array<theme_runtime::Subscription, 2> subscriptions;
@@ -55,6 +78,43 @@ struct RateState final {
     std::function<void(std::optional<float>)> on_hover;
     runtime::Rect clip;
 };
+
+void validate_direction(RateDirection value) {
+    if (value != RateDirection::LeftToRight && value != RateDirection::RightToLeft) {
+        throw std::invalid_argument("Rate direction is invalid");
+    }
+}
+
+RateKey public_key(input::Key key) {
+    switch (key) {
+    case input::Key::tab:
+        return RateKey::Tab;
+    case input::Key::enter:
+        return RateKey::Enter;
+    case input::Key::space:
+        return RateKey::Space;
+    case input::Key::left:
+        return RateKey::Left;
+    case input::Key::right:
+        return RateKey::Right;
+    case input::Key::home:
+        return RateKey::Home;
+    case input::Key::end:
+        return RateKey::End;
+    case input::Key::escape:
+        return RateKey::Escape;
+    case input::Key::up:
+        return RateKey::Up;
+    case input::Key::down:
+        return RateKey::Down;
+    default:
+        return RateKey::Other;
+    }
+}
+
+float fraction(const RateState& s, float value) {
+    return s.direction == RateDirection::RightToLeft ? 1 - value : value;
+}
 
 float star_size(const RateState& s, const RateMetricToken& m) {
     return s.size == ControlSize::Small   ? m.star_size_small
@@ -204,6 +264,7 @@ void RateComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         const bool emphasized =
             editable(*s) && ((s->hover && static_cast<std::size_t>(std::ceil(*s->hover) - 1) == i) ||
                              (focus.focused == s->focus && focus.focus_visible && focus_index == i));
+        row.rtl = s->direction == RateDirection::RightToLeft;
         row.paint_side = star_size(*s, t.metrics) * (emphasized ? t.metrics.hover_scale : 1);
         row.font.set({t.metrics.font_family, 400, false, row.paint_side, row.paint_side});
         bool focused_content = false;
@@ -284,7 +345,9 @@ void RateComponentHost::mount_item(runtime::ComponentId id, std::size_t index) {
     if (!s) {
         return;
     }
-    const auto character = s->character_for ? s->character_for(index) : s->character;
+    const auto character = s->reactive_character_for ? s->reactive_character_for(index)
+                           : s->character_for        ? Prop<RateCharacter>{s->character_for(index)}
+                                                     : Prop<RateCharacter>{s->character};
     s = services.components().state<RateState>(id);
     if (!s) {
         return;
@@ -293,12 +356,19 @@ void RateComponentHost::mount_item(runtime::ComponentId id, std::size_t index) {
     auto& row = build.state<RateItemState>(item);
     row.view.component = item;
     row.view.node = build.root(item);
-    s->items.push_back(item);
-    assign_character(row, character);
-    services.layout().set_layout(row.view.node, layout::BoxLayout{});
-    build.on_resource_cleanup(item, [&services, item, node = row.view.node] {
+    build.on_resource_cleanup(item, [&services, id, item, node = row.view.node] {
+        if (auto* owner = services.components().state<RateState>(id)) {
+            std::erase(owner->items, item);
+        }
         services.interactions().set_input_blocked(item, false);
         services.layout().remove_layout(node);
+    });
+    s->items.push_back(item);
+    services.layout().set_layout(row.view.node, layout::BoxLayout{});
+    connect_prop(build.scope(item), character, [this, item](RateCharacter value) {
+        if (auto* row = services_->components().state<RateItemState>(item)) {
+            assign_character(*row, value);
+        }
     });
     build.mount_slot(
         item, Content{[&, id, item, index] {
@@ -353,8 +423,8 @@ void RateComponentHost::mount_item(runtime::ComponentId id, std::size_t index) {
                         const bool hit =
                             state->pressed == index && event.press_origin() == interaction &&
                             inside(graphics::intersect_effect_bounds(r, clip), event.event().x, event.event().y);
-                        const float candidate =
-                            rate_pointer_value(index, r.width > 0 ? (event.event().x - r.x) / r.width : 1, state->half);
+                        const float candidate = rate_pointer_value(
+                            index, r.width > 0 ? fraction(*state, (event.event().x - r.x) / r.width) : 1, state->half);
                         state->pressed.reset();
                         static_cast<void>(event.release_pointer_capture());
                         event.stop_propagation();
@@ -387,7 +457,8 @@ void RateComponentHost::mount_item(runtime::ComponentId id, std::size_t index) {
                                 const auto node = front ? row.view.foreground : row.view.background;
                                 const float width = front ? side * fill : side;
                                 static_cast<void>(engine.measure_child(node, layout::Constraints::fixed(width, side)));
-                                engine.place_child(node, {x, y, width, side}, true, true);
+                                engine.place_child(node, {x + (front && row.rtl ? side - width : 0), y, width, side},
+                                                   true, true);
                             }
                         }});
                 children.mount_slot(
@@ -412,12 +483,14 @@ void RateComponentHost::mount_item(runtime::ComponentId id, std::size_t index) {
                                         }
                                         return limits.constrain({side, side});
                                     },
-                                    [this, item](layout::LayoutEngine& engine, runtime::NodeId node,
-                                                 runtime::Rect bounds) {
+                                    [this, item, front](layout::LayoutEngine& engine, runtime::NodeId node,
+                                                        runtime::Rect bounds) {
                                         const float side =
                                             services_->components().state<RateItemState>(item)->paint_side;
                                         for (auto child : services_->nodes().require(node).children) {
-                                            engine.place_child(child, {bounds.x, bounds.y, side, side}, true, true);
+                                            const auto* row = services_->components().state<RateItemState>(item);
+                                            const float x = bounds.x - (front && row->rtl ? side - bounds.width : 0);
+                                            engine.place_child(child, {x, bounds.y, side, side}, true, true);
                                         }
                                     }});
                             layer_build.on_resource_cleanup(
@@ -492,6 +565,17 @@ void RateComponentHost::mount(const RateProps& props) {
     const float authority = props.value_ ? read_prop(*props.value_) : props.default_value_.value_or(0);
     const float value = normalize_rate_value(authority, count, half);
     validate_rate_size(read_prop(props.size_));
+    validate_direction(read_prop(props.direction_));
+    const auto reference = props.ref_ ? props.ref_->state_ : nullptr;
+    if (reference) {
+        reference->ensure_owner();
+        if (reference->binding) {
+            throw std::invalid_argument("RateRef is already bound");
+        }
+    }
+    if (props.character_for_ && props.reactive_character_for_) {
+        throw std::invalid_argument("Rate character and characterFor factories are mutually exclusive");
+    }
     if (props.value_ && props.default_value_) {
         throw std::invalid_argument("Rate value and defaultValue are mutually exclusive");
     }
@@ -513,6 +597,12 @@ void RateComponentHost::mount(const RateProps& props) {
     s.size = read_prop(props.size_);
     s.character = read_prop(props.character_);
     s.character_for = props.character_for_;
+    s.reactive_character_for = props.reactive_character_for_;
+    s.direction = read_prop(props.direction_);
+    s.ref = reference;
+    s.on_focus = props.on_focus_;
+    s.on_blur = props.on_blur_;
+    s.on_key = props.on_key_;
     s.tooltips = props.tooltips_;
     s.on_change = props.on_change_;
     s.on_hover = props.on_hover_;
@@ -524,22 +614,46 @@ void RateComponentHost::mount(const RateProps& props) {
     const auto fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::after_children);
     s.decoration = services.surfaces().create_content_range(fragment, {});
     build.on_resource_cleanup(id, [&services, id, node = s.node, focus = s.focus, decoration = s.decoration, hit] {
+        if (auto* state = services.components().state<RateState>(id); state && state->ref) {
+            state->ref->binding = false;
+            state->ref->focus = {};
+            state->ref->blur = {};
+        }
         services.interactions().set_input_blocked(id, false);
-        services.pointer().cancel_interaction(focus);
-        services.focus().cancel_interaction(focus);
+        services.pointer().cancel_pointer_interaction(focus);
+        std::exception_ptr focus_error;
+        try {
+            services.focus().cancel_interaction(focus);
+        } catch (...) {
+            focus_error = std::current_exception();
+        }
         services.interactions().remove(focus);
         services.scene_composer().remove_fragment(hit);
         services.surfaces().destroy_content_range(decoration);
         services.layout().remove_layout(node);
+        if (focus_error) {
+            std::rethrow_exception(focus_error);
+        }
     });
+    if (reference) {
+        reference->binding = true;
+    }
     input::FocusHandlers focus;
     focus.state_changed = [this, id](input::FocusPresentation state) {
+        auto* s = services_->components().state<RateState>(id);
+        if (!s) {
+            return;
+        }
+        const bool changed = s->focused != state.focused;
+        const auto callback = changed ? (state.focused ? s->on_focus : s->on_blur) : std::function<void()>{};
+        s->focused = state.focused;
         if (!state.focused) {
-            if (auto* s = services_->components().state<RateState>(id)) {
-                s->pending_key.reset();
-            }
+            s->pending_key.reset();
         }
         refresh(id, true);
+        if (callback) {
+            callback();
+        }
         // refresh can close a rich Tooltip and invoke native blur/unmount/ref-rebind callbacks.
         apply_keyboard(id);
     };
@@ -609,13 +723,30 @@ void RateComponentHost::mount(const RateProps& props) {
     connect_prop(scope, props.character_, [this, id](RateCharacter value) {
         if (auto* s = services_->components().state<RateState>(id)) {
             s->character = value;
-            if (!s->character_for) {
+            if (!s->character_for && !s->reactive_character_for) {
                 for (auto item : s->items) {
                     assign_character(*services_->components().state<RateItemState>(item), value);
                 }
             }
             refresh(id, true);
         }
+    });
+    connect_prop(scope, props.direction_, [this, id](RateDirection direction) {
+        validate_direction(direction);
+        auto* s = services_->components().state<RateState>(id);
+        if (!s || s->direction == direction) {
+            return;
+        }
+        s->direction = direction;
+        s->pressed.reset();
+        const auto items = s->items;
+        for (auto item : items) {
+            if (const auto* row = services_->components().state<RateItemState>(item)) {
+                services_->pointer().cancel_interaction(row->view.interaction);
+            }
+        }
+        set_hover(id, std::nullopt);
+        refresh(id, true);
     });
     const auto theme = build.theme_scope();
     const std::array accessors{&theme_runtime::ThemeScope::rate_colors, &theme_runtime::ThemeScope::rate_metrics};
@@ -626,6 +757,29 @@ void RateComponentHost::mount(const RateProps& props) {
     }
     refresh(id, true);
     services.set_input_blocked(id, !s.visible || s.count == 0 || s.disabled || !s.geometry_active);
+    const auto request_focus = [this, id] {
+        const auto* state = services_->components().state<RateState>(id);
+        if (!state || !editable(*state) || !state->keyboard || !services_->focus().state().window_active ||
+            !services_->interactions().branch_active(state->focus)) {
+            return false;
+        }
+        services_->focus().defer_focus(state->focus, input::FocusModality::keyboard);
+        return true;
+    };
+    if (reference) {
+        reference->focus = request_focus;
+        reference->blur = [this, id] {
+            const auto* state = services_->components().state<RateState>(id);
+            if (!state || services_->focus().state().focused != state->focus) {
+                return false;
+            }
+            services_->focus().defer_focus({}, input::FocusModality::keyboard);
+            return true;
+        };
+    }
+    if (props.auto_focus_) {
+        static_cast<void>(request_focus());
+    }
 }
 
 runtime::Size RateComponentHost::measure(runtime::ComponentId id, layout::LayoutEngine& engine,
@@ -649,7 +803,9 @@ void RateComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& eng
     for (int i = 0; i < s.count; ++i) {
         const auto node = services_->components().state<RateItemState>(s.items[i])->view.node;
         static_cast<void>(engine.measure_child(node, layout::Constraints::fixed(side, side)));
-        engine.place_child(node, {bounds.x + i * (side + m.gap), bounds.y, side, side}, true, true);
+        const float x = s.direction == RateDirection::RightToLeft ? bounds.x + bounds.width - side - i * (side + m.gap)
+                                                                  : bounds.x + i * (side + m.gap);
+        engine.place_child(node, {x, bounds.y, side, side}, true, true);
     }
 }
 
@@ -664,8 +820,9 @@ void RateComponentHost::apply_keyboard(runtime::ComponentId id) {
     s->pending_key.reset();
     const bool activation = key == input::Key::enter || key == input::Key::space;
     const float step = s->half ? .5F : 1;
-    const float next = key == input::Key::left    ? s->value - step
-                       : key == input::Key::right ? s->value + step
+    const float delta = s->direction == RateDirection::RightToLeft ? -step : step;
+    const float next = key == input::Key::left    ? s->value - delta
+                       : key == input::Key::right ? s->value + delta
                        : key == input::Key::home  ? 0
                        : key == input::Key::end   ? static_cast<float>(s->count)
                                                   : s->value;
@@ -676,9 +833,25 @@ bool RateComponentHost::on_keyboard_input(const input::KeyboardInputEvent& event
     const auto ids = mounted_;
     for (auto id : ids) {
         auto* s = services_->components().state<RateState>(id);
-        if (!s || !s->keyboard || !editable(*s) || !window_active_ || services_->focus().state().focused != s->focus ||
+        if (!s || !editable(*s) || !window_active_ || services_->focus().state().focused != s->focus ||
             !services_->interactions().branch_active(s->focus)) {
             continue;
+        }
+        if (event.action == input::KeyAction::down && s->on_key) {
+            const auto callback = s->on_key;
+            callback({public_key(event.key), event.repeat,
+                      input::has_modifier(event.modifiers, input::KeyModifier::shift),
+                      input::has_modifier(event.modifiers, input::KeyModifier::control),
+                      input::has_modifier(event.modifiers, input::KeyModifier::alt),
+                      input::has_modifier(event.modifiers, input::KeyModifier::meta)});
+            s = services_->components().state<RateState>(id);
+            if (!s || !editable(*s) || !window_active_ || services_->focus().state().focused != s->focus ||
+                !services_->interactions().branch_active(s->focus)) {
+                return true;
+            }
+        }
+        if (!s->keyboard) {
+            return false;
         }
         const bool activation = event.key == input::Key::enter || event.key == input::Key::space;
         const bool navigation = event.key == input::Key::left || event.key == input::Key::right ||
@@ -753,8 +926,8 @@ void RateComponentHost::on_pointer_input(const input::PointerInputEvent& event, 
                 const auto& row = *services_->components().state<RateItemState>(s->items[i]);
                 if (hit == row.view.interaction) {
                     const auto r = translated(services_->nodes().require(row.paint));
-                    hover = rate_pointer_value(static_cast<std::size_t>(i), r.width > 0 ? (event.x - r.x) / r.width : 1,
-                                               s->half);
+                    hover = rate_pointer_value(static_cast<std::size_t>(i),
+                                               r.width > 0 ? fraction(*s, (event.x - r.x) / r.width) : 1, s->half);
                     break;
                 }
             }
@@ -860,6 +1033,34 @@ void RateComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
 } // namespace ryn::detail
 
 namespace ryn {
+RateRef::RateRef() : state_(std::make_shared<detail::RateRefState>()) {}
+
+bool RateRef::bound() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    return state_->binding;
+}
+
+bool RateRef::focus() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->focus;
+    return callback && callback();
+}
+
+bool RateRef::blur() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->blur;
+    return callback && callback();
+}
+
 void Rate(RateProps props) {
     if (!detail::active_rate) {
         throw std::logic_error("Rate requires window component services");

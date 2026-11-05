@@ -29,4 +29,8 @@ Checkbox 与 Group 的 `direction(Prop<CheckboxDirection>)` 支持 LeftToRight/R
 
 `wave(Prop<bool>)` 默认启用，只有有效用户激活产生有限反馈；外部状态更新不会触发。重复激活复用保留 range，结束、禁用、wave=false、窗口失活、motion=false、reduced motion 或销毁后清理效果，稳态没有下一帧 deadline。
 
-共同实现与完整 headless Debug/Release 各 48/48 已通过；Windows 真窗口十次缩放运行与 210 张 GPU readback 见 [Windows 证据](../openspec/changes/047-20261002-complete-native-checkbox-group/evidence/windows/README.md)。Linux 原生验收独立待完成。
+共同实现与完整 headless Debug/Release 各 48/48 已通过；Windows 真窗口十次缩放运行与 210 张 GPU readback 见 [Windows 证据](../openspec/changes/047-20261002-complete-native-checkbox-group/evidence/windows/README.md)。本轮 Linux 后台原生输入与离页清理已定向验证，见 change 107 精简证据；不扩大历史像素/DPI 矩阵的覆盖范围。
+
+`onFocus([] {})` / `onBlur([] {})` 报告实际焦点进入/离开；按压、键盘 modality 和 focus-visible 更新不会重复通知。禁用、离页清理遵循共同焦点服务，回调可请求其他 ref 焦点或同步销毁组件。
+
+change 107 的定向 Linux Gallery/GPU 输入结果及平台边界见 [本轮数据录入验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md)。

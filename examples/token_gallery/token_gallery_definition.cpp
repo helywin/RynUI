@@ -100,6 +100,7 @@ struct GalleryState final {
     ryn::Signal<bool> clear_disabled{false};
     ryn::Signal<bool> switch_checked{false};
     ryn::SwitchRef switch_ref;
+    ryn::Signal<ryn::String> selection_focus{ryn::String{u8"焦点回调：等待交互"}};
     ryn::Signal<bool> checkbox_checked{false};
     ryn::CheckboxRef checkbox_ref;
     ryn::Signal<ryn::CheckboxValues> checkbox_values{ryn::CheckboxValues{ryn::String{u8"desktop"}}};
@@ -305,6 +306,10 @@ struct GalleryState final {
     ryn::Signal<ryn::String> metric_note{ryn::String{u8"核对本期指标"}};
     ryn::Signal<ryn::String> metric_feedback{ryn::String{u8"尚未保存备注"}};
     ryn::InputRef metric_ref;
+    ryn::RateRef rating_control_ref;
+    ryn::Signal<ryn::RateDirection> rating_direction{ryn::RateDirection::LeftToRight};
+    ryn::Signal<bool> rating_hearts{false};
+    ryn::Signal<ryn::String> rating_events{ryn::String{u8"焦点与按键事件：等待交互"}};
     ryn::Signal<float> rating{2.5F};
     ryn::Signal<bool> rating_accept{true};
     ryn::Signal<bool> rating_disabled{false};
@@ -676,6 +681,8 @@ template <typename Visitor> void visit_gallery_draft_fields(GalleryState& state,
     }
     if (state.page_component == "ant.component.rate") {
         visit("state/rating", state.rating);
+        visit("state/rating_direction", state.rating_direction);
+        visit("state/rating_hearts", state.rating_hearts);
         visit("state/rating_accept", state.rating_accept);
         visit("state/rating_disabled", state.rating_disabled);
         visit("state/rating_read_only", state.rating_read_only);
@@ -1856,6 +1863,7 @@ void add_radio_base_samples(const std::shared_ptr<GalleryState>& state) {
                                        .onChange([state](const ryn::String& value) {
                                            state->radio_selected.set(std::optional<ryn::String>{value});
                                        }));
+                   gallery_target("gallery.radio.controlled");
                    state->telemetry.live_samples += 3;
                });
 }
@@ -1990,13 +1998,17 @@ void add_tooltip_samples(const std::shared_ptr<GalleryState>& state) {
 }
 
 void add_slider_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(ryn::TextProps{}.content(state->selection_focus));
     ryn::Text(u8"Slider · marks / dots / 离散范围 / 值提示 / 反向 / 纵向 / 整段拖动 / 编辑 / 逐端点禁用");
     ryn::Slider(ryn::SliderProps{}
                     .value(state->slider_value)
+                    .onFocus([state] { state->selection_focus.set(u8"Slider focus"); })
+                    .onBlur([state] { state->selection_focus.set(u8"Slider blur"); })
                     .marks(ryn::SliderMarks{
                         {0, ryn::String{u8"低 Low"}}, {50, ryn::String{u8"中"}}, {100, ryn::String{u8"高 High"}}})
                     .onChange([state](double value) { state->slider_value.set(value); })
                     .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    gallery_target("gallery.slider.controlled");
     ryn::RangeSlider(
         ryn::RangeSliderProps{}
             .value(state->slider_range)
@@ -2178,17 +2190,21 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
 }
 
 void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(ryn::TextProps{}.content(state->selection_focus));
     ryn::Text(u8"Switch · retained 内容、图标、RTL、ref 与组件主题");
     ryn::Space(
         ryn::SpaceProps{}.align(ryn::SpaceAlign::Start).wrap(true).align(ryn::SpaceAlign::Center).size(ryn::dp(12)),
         [state] {
             ryn::Text(sample_text(u8"gallery.switch.content-ref"));
-            ryn::Switch(
-                ryn::SwitchProps{}.checked(state->switch_checked).ref(state->switch_ref).onChange([state](bool value) {
-                    state->switch_checked.set(value);
-                }),
-                ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"开启"); }},
-                                 ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关闭"); }}});
+            ryn::Switch(ryn::SwitchProps{}
+                            .checked(state->switch_checked)
+                            .ref(state->switch_ref)
+                            .onFocus([state] { state->selection_focus.set(u8"Switch focus"); })
+                            .onBlur([state] { state->selection_focus.set(u8"Switch blur"); })
+                            .onChange([state](bool value) { state->switch_checked.set(value); }),
+                        ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"开启"); }},
+                                         ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关闭"); }}});
+            gallery_target("gallery.switch.controlled");
             ryn::Text(sample_text(u8"gallery.switch.small-icon-rtl"));
             ryn::Switch(ryn::SwitchProps{}
                             .size(ryn::SwitchSize::Small)
@@ -2227,6 +2243,7 @@ void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
 }
 
 void add_checkbox_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(ryn::TextProps{}.content(state->selection_focus));
     ryn::Text(u8"Checkbox · 多选、动态保留选项、RTL、ref 与独立主题");
     ryn::Text(sample_text(u8"gallery.checkbox.group-controlled · 三类值"));
     ryn::CheckboxGroup(
@@ -2236,12 +2253,14 @@ void add_checkbox_samples(const std::shared_ptr<GalleryState>& state) {
                                                       {true, ryn::String{u8"禁用布尔"}, true}})
             .value(state->checkbox_values)
             .onChange([state](const ryn::CheckboxValues& values) { state->checkbox_values.set(values); }));
+    gallery_target("gallery.checkbox.controlled");
     ryn::Text(sample_text(u8"gallery.checkbox.group-dynamic · 按 value 保留 identity"));
     ryn::CheckboxGroup(ryn::CheckboxGroupProps{}
                            .options(state->checkbox_options)
                            .defaultValue(gallery_initial_value<ryn::CheckboxValues>(
                                "gallery.checkbox.group-dynamic", ryn::CheckboxValues{ryn::String{u8"a"}}))
                            .onChange(gallery_value_changed<ryn::CheckboxValues>("gallery.checkbox.group-dynamic")));
+    gallery_target("gallery.checkbox.dynamic");
     ryn::Button(ryn::ButtonProps{}.onClick([state] {
         state->checkbox_options_expanded = !state->checkbox_options_expanded;
         if (state->checkbox_options_expanded) {
@@ -2258,6 +2277,8 @@ void add_checkbox_samples(const std::shared_ptr<GalleryState>& state) {
     gallery_target("gallery.checkbox.options-update");
     ryn::Checkbox(ryn::CheckboxProps{}
                       .ref(state->checkbox_ref)
+                      .onFocus([state] { state->selection_focus.set(u8"Checkbox focus"); })
+                      .onBlur([state] { state->selection_focus.set(u8"Checkbox blur"); })
                       .indeterminate(true)
                       .direction(ryn::CheckboxDirection::RightToLeft)
                       .defaultChecked(gallery_initial_value<bool>("gallery.checkbox.rich-rtl-ref", false))
@@ -2300,13 +2321,16 @@ void add_radio_themed_sample(const std::shared_ptr<GalleryState>& state) {
                    ryn::RadioButton(ryn::RadioProps{}
                                         .defaultChecked(gallery_initial_value<bool>("gallery.radio.ref", true))
                                         .onChange(gallery_value_changed<bool>("gallery.radio.ref"))
-                                        .ref(state->radio_ref),
+                                        .ref(state->radio_ref)
+                                        .onFocus([state] { state->selection_focus.set(u8"Radio focus"); })
+                                        .onBlur([state] { state->selection_focus.set(u8"Radio blur"); }),
                                     ryn::RadioLabel{[] { ryn::Text(u8"独立紫色 / 富标签 / ref"); }});
                    gallery_target("gallery.radio.ref");
                }});
 }
 
 void add_radio_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(ryn::TextProps{}.content(state->selection_focus));
     ryn::Text(u8"Radio · 动态选项、键盘组导航、按钮连接边、三尺寸、block、RTL、ref 与独立主题");
     ryn::Text(sample_text(u8"gallery.radio.dynamic-outline · 按 value 保留 identity"));
     ryn::RadioGroup(ryn::RadioGroupProps{}
@@ -7191,7 +7215,21 @@ void add_service_rate_samples(const std::shared_ptr<GalleryState>& state) {
                                           std::string{state->rating_feedback.get().bytes()}));
                       }))
                       .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}.content(state->rating_events));
              Rate(RateProps{}
+                      .ref(state->rating_control_ref)
+                      .direction(state->rating_direction)
+                      .characterFor([state](std::size_t index) -> Prop<RateCharacter> {
+                          return index == 4
+                                     ? Prop<RateCharacter>{RateCharacter{u8"好"}}
+                                     : Prop<RateCharacter>{bind([state] {
+                                           return RateCharacter{state->rating_hearts.get() ? IconName::HeartFilled
+                                                                                           : IconName::StarFilled};
+                                       })};
+                      })
+                      .onFocus([state] { state->rating_events.set(u8"Rate focus"); })
+                      .onBlur([state] { state->rating_events.set(u8"Rate blur"); })
+                      .onKeyDown([state](RateKeyEvent) { state->rating_events.set(u8"Rate keydown"); })
                       .value(state->rating)
                       .allowHalf()
                       .allowClear()
@@ -7229,8 +7267,22 @@ void add_service_rate_samples(const std::shared_ptr<GalleryState>& state) {
                                     }});
                            }}}})
                       .layout(member_control_margin()));
+             gallery_target("gallery.rate.control");
              Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
                    SpaceContent{[state] {
+                       Button(ButtonProps{}.onClick([state] {
+                           state->rating_direction.set(state->rating_direction.get() == RateDirection::LeftToRight
+                                                           ? RateDirection::RightToLeft
+                                                           : RateDirection::LeftToRight);
+                       }),
+                              [] { Text(u8"切换评分方向"); });
+                       gallery_target("gallery.rate.direction");
+                       Button(ButtonProps{}.onClick([state] { state->rating_hearts.set(!state->rating_hearts.get()); }),
+                              [] { Text(u8"切换逐项绘制字符"); });
+                       gallery_target("gallery.rate.character");
+                       Button(ButtonProps{}.onClick([state] { static_cast<void>(state->rating_control_ref.focus()); }),
+                              [] { Text(u8"聚焦评分"); });
+                       gallery_target("gallery.rate.focus");
                        Button(ButtonProps{}
                                   .onClick([state] { state->rating_accept.set(!state->rating_accept.get()); })
                                   .layout(member_control_margin()),

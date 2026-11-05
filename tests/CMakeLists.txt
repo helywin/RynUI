@@ -326,6 +326,14 @@ foreach(avatar_case IN ITEMS text group overflow clips retention gates lifecycle
     add_test(NAME rynui.avatar_${avatar_case} COMMAND rynui_avatar_component_tests ${avatar_case})
 endforeach()
 
+add_executable(rynui_existing_data_entry_completion_tests existing_data_entry_completion_tests.cpp)
+rynui_configure_cpp_target(rynui_existing_data_entry_completion_tests)
+target_link_libraries(rynui_existing_data_entry_completion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_existing_data_entry_completion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.existing_data_entry_completion COMMAND rynui_existing_data_entry_completion_tests)
+
 foreach(rate_test IN ITEMS rate_model rate_theme rate_public_api)
     add_executable(rynui_${rate_test}_tests ${rate_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${rate_test}_tests)

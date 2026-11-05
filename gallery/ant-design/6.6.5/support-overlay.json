@@ -588,11 +588,12 @@
         "retained dynamic options, deletion/capture cleanup and layout/Tab ordering",
         "nearest Group, skipGroup, disabled composition and callback destruction safety",
         "CheckboxRef, autoFocus, ordered onClick and inherited reactive RTL",
-        "isolated component Theme algorithm, indicator/label/focus tokens and finite wave lifecycle"
+        "isolated component Theme algorithm, indicator/label/focus tokens and finite wave lifecycle",
+        "native onFocus/onBlur actual focus transitions with callback retirement safety"
       ],
       "missing_scope": [
         "DOM/HTML/CSS, form name/required and React-specific interfaces",
-        "Linux native acceptance remains an independent platform task"
+        "Linux 后台原生结果按 change 107 精简证据独立记录；本轮新增行为的 Windows/MSVC、物理 IME 候选 UI、OS 辅助技术与跨显示器实测不由 HEADLESS 代替"
       ],
       "evidence_identifiers": [
         "source:components/checkbox/index.en-US.md",
@@ -600,7 +601,10 @@
         "openspec:047-20261002-complete-native-checkbox-group",
         "test:rynui.selection_component",
         "test:rynui.checkbox_group",
-        "test:rynui.checkbox_public_api"
+        "test:rynui.checkbox_public_api",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.existing_data_entry_completion",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md"
       ]
     },
     {
@@ -733,11 +737,12 @@
         "OTP clipboard paste, custom mask, indexed separator and RTL group navigation",
         "retained OTP dynamic length, focus refs and IME owner retirement",
         "Unicode 17 bidi Arabic/Hebrew, visual navigation and disjoint selection/preedit",
-        "reactive TextDirection Auto/LTR/RTL with retained editor/ref/scene identity"
+        "reactive TextDirection Auto/LTR/RTL with retained editor/ref/scene identity",
+        "canonical Gallery routes for Input / Search / Password / TextArea / OTP retain the existing native editing contracts"
       ],
       "missing_scope": [
-        "Linux native/Wayland acceptance remains an independent pending task; OS IME candidate UI is platform dependent",
-        "DOM/CSS/React refs/events and HTML autofill APIs are outside native scope"
+        "DOM/CSS/React refs/events and HTML autofill APIs are outside native scope",
+        "Linux 后台原生结果按 change 107 精简证据独立记录；本轮新增行为的 Windows/MSVC、物理 IME 候选 UI、OS 辅助技术与跨显示器实测不由 HEADLESS 代替"
       ],
       "evidence_identifiers": [
         "openspec:010-20260831-build-text-input-foundation#8.1",
@@ -773,7 +778,9 @@
         "openspec:053-20261003-add-native-text-area",
         "api:include/ryn/text_area.hpp",
         "test:rynui.text_area",
-        "evidence:openspec/changes/053-20261003-add-native-text-area/evidence/common/interaction.md"
+        "evidence:openspec/changes/053-20261003-add-native-text-area/evidence/common/interaction.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md"
       ]
     },
     {
@@ -844,34 +851,47 @@
       "supported_scope": [
         "受控/非受控三类值、最近 typed Group、reactive options、稳定身份与动态清理",
         "单一 Tab 入口、方向键、ref/autoFocus/onClick 与有限 wave",
-        "RadioButton、outline/solid、三尺寸、block、水平/垂直/RTL 相邻边界与独立 Theme"
+        "RadioButton、outline/solid、三尺寸、block、水平/垂直/RTL 相邻边界与独立 Theme",
+        "native onFocus/onBlur actual focus transitions with callback retirement safety"
       ],
       "missing_scope": [
-        "Web 专用 DOM/form/name/required、React 事件和 CSS 入口不移植；Linux 原生验收独立待完成"
+        "Web 专用 DOM/form/name/required、React 事件和 CSS 入口不移植",
+        "Linux 后台原生结果按 change 107 精简证据独立记录；本轮新增行为的 Windows/MSVC、物理 IME 候选 UI、OS 辅助技术与跨显示器实测不由 HEADLESS 代替"
       ],
       "evidence_identifiers": [
         "source:components/radio/index.en-US.md",
         "openspec:048-20261002-complete-native-radio-features",
         "test:tests/radio_features_tests.cpp",
-        "test:tests/radio_public_api_tests.cpp"
+        "test:tests/radio_public_api_tests.cpp",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.existing_data_entry_completion",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md"
       ]
     },
     {
       "identity": "ant.component.rate",
-      "status": "partial",
-      "summary": "原生 Rate 服务评分：半星、清空、受控回写和富提示编辑。",
+      "status": "implemented",
+      "summary": "原生 Rate：半星/清空/受控回写、动态数量、响应逐项纯绘制字符、显式 RTL、ref/焦点按键事件及保留富 Tooltip；平台结果独立记录。",
       "supported_scope": [
         "公开 typed Props、原生星项、方向键/Home/End/Enter/Space、disabled/readOnly",
-        "Gallery 目录直达服务评分、接受/拒绝反馈、富 Tooltip Input 与保留草稿"
+        "Gallery 目录直达服务评分、接受/拒绝反馈、富 Tooltip Input 与保留草稿",
+        "native onFocus/onBlur actual focus transitions with callback retirement safety",
+        "reactive RateDirection mirrors item geometry, actual half-glyph clipping, pointer fractions and keyboard direction",
+        "owner-thread RateRef focus/blur, mount-only autoFocus and typed RateKeyEvent observation",
+        "characterFor binds per-index Prop<RateCharacter> once, preserving retained identity and rolling back failed growth"
       ],
       "missing_scope": [
-        "GPU/原生窗口与人工视觉、Linux、系统 IME 和 AT 验收"
+        "Linux 后台原生结果按 change 107 精简证据独立记录；本轮新增行为的 Windows/MSVC、物理 IME 候选 UI、OS 辅助技术与跨显示器实测不由 HEADLESS 代替",
+        "character 为 String/IconSource 纯绘制映射；任意有状态 Component/ReactNode 的双份克隆、Web TooltipProps/DOM/CSS/React 别名不透传；全局 ConfigProvider 属于独立能力"
       ],
       "evidence_identifiers": [
         "source:components/rate/index.en-US.md",
         "openspec:090-20261026-add-native-rate",
         "openspec:093-20261026-add-member-and-rating-gallery",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.existing_data_entry_completion",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md"
       ]
     },
     {
@@ -920,10 +940,12 @@
         "persistent thumb Tooltip: Auto / Always / Hidden, formatter and placement",
         "MultiSlider retained topology, draggable track, editable min/max count and per-handle disabled",
         "native SliderRef focus/blur, autoFocus, vertical hint default and overflow control",
-        "Theme Slider tokens and retained logical scene"
+        "Theme Slider tokens and retained logical scene",
+        "native onFocus/onBlur actual focus transitions with callback retirement safety"
       ],
       "missing_scope": [
-        "Web-only DOM/CSS/portal and compatibility aliases are excluded from native scope"
+        "Web-only DOM/CSS/portal and compatibility aliases are excluded from native scope",
+        "Linux 后台原生结果按 change 107 精简证据独立记录；本轮新增行为的 Windows/MSVC、物理 IME 候选 UI、OS 辅助技术与跨显示器实测不由 HEADLESS 代替"
       ],
       "evidence_identifiers": [
         "source:components/slider/index.en-US.md",
@@ -932,7 +954,10 @@
         "openspec:042-20261002-complete-slider-range-editing#5.1",
         "test:rynui.slider_component",
         "runtime:src/component/slider_component.cpp",
-        "api:include/ryn/slider.hpp"
+        "api:include/ryn/slider.hpp",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.existing_data_entry_completion",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md"
       ]
     },
     {
@@ -947,19 +972,23 @@
         "retained checked/unchecked Text/Icon slots and clipping",
         "RTL, SwitchRef, autoFocus and ordered onClick candidate",
         "Theme inner margins, handle shadow, component algorithm and opacityLoading",
-        "pressed handle extension, finite wave and cancellation/idle lifecycle"
+        "pressed handle extension, finite wave and cancellation/idle lifecycle",
+        "native onFocus/onBlur actual focus transitions with callback retirement safety"
       ],
       "missing_scope": [
         "DOM/HTML/CSS and React ref",
         "Web value/defaultValue aliases",
-        "Linux native acceptance remains an independent platform task"
+        "Linux 后台原生结果按 change 107 精简证据独立记录；本轮新增行为的 Windows/MSVC、物理 IME 候选 UI、OS 辅助技术与跨显示器实测不由 HEADLESS 代替"
       ],
       "evidence_identifiers": [
         "source:components/switch/index.en-US.md",
         "openspec:011-20260922-build-switch-and-checkbox-on-shared-control-runtime",
         "openspec:046-20261002-complete-native-switch-features",
         "test:rynui.switch_features",
-        "test:rynui.switch_public_api"
+        "test:rynui.switch_public_api",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.existing_data_entry_completion",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/existing-data-entry-linux.md"
       ]
     },
     {

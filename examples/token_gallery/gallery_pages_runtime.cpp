@@ -1,4 +1,5 @@
 #include "gallery_pages_runtime.hpp"
+#include "gallery_existing_data_entry_acceptance.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
@@ -281,9 +282,9 @@ bool owns(ryn::detail::ButtonComponentHost& app, runtime::ComponentId child, run
 
 void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanceResult& result,
                          GalleryPageEvents& events, GalleryPagesHost& pages, ryn::detail::ButtonComponentHost& app,
-                         ryn::detail::InputComponentHost& inputs, ryn::detail::SdlSceneRenderer& renderer,
-                         GalleryPageSubmitter& submitter, runtime::OnDemandFrameLoop& loop,
-                         runtime::FrameRequestState& frames) {
+                         ryn::detail::InputComponentHost& inputs, ryn::detail::SelectionComponentHost& selections,
+                         ryn::detail::SdlSceneRenderer& renderer, GalleryPageSubmitter& submitter,
+                         runtime::OnDemandFrameLoop& loop, runtime::FrameRequestState& frames) {
     write_gallery_page_acceptance(options.output, result);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(options.timeout_seconds);
     const auto check = [&result](bool condition, const char* message) {
@@ -527,6 +528,17 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                                         route.family != previous_route.family);
         if (replaced) {
             check(!app.components().contains(previous_root), "native page owner survived navigation");
+            if (previous_route.component_identity == "ant.component.checkbox" ||
+                previous_route.component_identity == "ant.component.radio" ||
+                previous_route.component_identity == "ant.component.switch" ||
+                previous_route.component_identity == "ant.component.slider" ||
+                previous_route.component_identity == "ant.component.rate" ||
+                previous_route.component_identity == "ant.component.input") {
+                check(!captured(), "native existing DataEntry retirement retained capture");
+                check(!app.focus().state().focused ||
+                          !owns(app, app.interactions().require(*app.focus().state().focused).component, previous_root),
+                      "native existing DataEntry retirement retained focus");
+            }
             if (previous_route.component_identity == "ant.component.typography") {
                 check(app.services().typography().mounted().empty(), "native Typography survived page retirement");
             }
@@ -586,6 +598,11 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 check(inputs.sessions().active() == previous_session, "native composition lost its owner");
                 break;
             }
+        }
+        accept_existing_data_entry(
+            route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press});
+        if (route.component_identity == "ant.component.input") {
+            previous_session = inputs.sessions().active();
         }
         if (route.component_identity == "ant.component.typography") {
             const auto rich = pages.target("gallery.typography.rich-content");
@@ -2953,7 +2970,8 @@ int run_gallery_pages(int argc, char** argv) {
             submitter.trace = true;
             result.backend = renderer.gpu_driver();
             result.shader = renderer.shader_format();
-            run_page_acceptance(options, result, events, pages, app, inputs, renderer, submitter, loop, frames);
+            run_page_acceptance(options, result, events, pages, app, inputs, selections, renderer, submitter, loop,
+                                frames);
             return 0;
         }
         while (!events.quit) {

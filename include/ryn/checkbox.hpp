@@ -119,6 +119,16 @@ public:
         return *this;
     }
 
+    CheckboxProps& onFocus(std::function<void()> callback) {
+        on_focus_ = std::move(callback);
+        return *this;
+    }
+
+    CheckboxProps& onBlur(std::function<void()> callback) {
+        on_blur_ = std::move(callback);
+        return *this;
+    }
+
     CheckboxProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -139,6 +149,8 @@ private:
     std::optional<CheckboxRef> ref_;
     bool auto_focus_{};
     std::function<void(bool)> on_click_;
+    std::function<void()> on_focus_;
+    std::function<void()> on_blur_;
     LayoutStyle layout_;
 };
 
