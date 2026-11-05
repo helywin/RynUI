@@ -8023,7 +8023,8 @@ void test_tree_select_gallery_after_document_scroll() {
     const auto target = page.target("gallery.tree-select.selector");
     const auto field = page.target("gallery.tree-select.form-selector");
     const std::array selectors{target, field};
-    require(s.tree_select().mounted().size() == selectors.size(), "Expected only destination and Form TreeSelect");
+    require(s.tree_select().mounted().size() == selectors.size() + 4,
+            "Expected legacy destination/Form and two completion TreeSelect examples");
     const auto original_target = s.tree_select().snapshot(target);
     const auto original_field = s.tree_select().snapshot(field);
     const auto target_editor = editor(original_target.selector);

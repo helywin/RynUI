@@ -79,6 +79,8 @@ struct PlatformEvents {
     input::PlatformInputBatch input;
     // Seeded before pumping; keyboard events then update this in queue order.
     std::optional<bool> pointer_shift;
+    std::optional<bool> pointer_control;
+    std::optional<bool> pointer_meta;
 
     void clear() noexcept {
         text_session = {};
@@ -91,6 +93,8 @@ struct PlatformEvents {
         rejected_text_events = 0;
         input.clear();
         pointer_shift.reset();
+        pointer_control.reset();
+        pointer_meta.reset();
     }
 };
 

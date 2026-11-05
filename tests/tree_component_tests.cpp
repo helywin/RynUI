@@ -600,7 +600,7 @@ void validation() {
                     Tree(TreeProps{}.expandedKeys(TreeKeys{}).defaultExpandedKeys({}), {});
                 } else if (mode == 2) {
                     std::vector<TreeItem> items;
-                    for (int i = 0; i < 1025; ++i) {
+                    for (int i = 0; i < 100001; ++i) {
                         items.emplace_back(String::from_utf8(std::to_string(i)).value(), String{u8"A"});
                     }
                     Tree({}, items);

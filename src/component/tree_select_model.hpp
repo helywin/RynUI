@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdexcept>
 #include <vector>
+#include <unordered_set>
 
 namespace ryn::detail {
 inline constexpr std::size_t tree_select_no_parent = std::numeric_limits<std::size_t>::max();
@@ -15,6 +16,8 @@ struct TreeSelectNode final {
     std::size_t parent{tree_select_no_parent};
     bool disabled{};
     bool visible{true};
+    bool check_disabled{};
+    bool checkable{true};
 };
 
 class TreeSelectModel final {
@@ -23,9 +26,10 @@ public:
                              bool open = false, bool controlled_open = false)
         : nodes_(std::move(nodes)), value_(std::move(value)), controlled_value_(controlled_value), open_(open),
           controlled_open_(controlled_open) {
-        if (nodes_.size() > 1024) {
-            throw std::invalid_argument("TreeSelect supports at most 1024 nodes");
+        if (nodes_.size() > 100000) {
+            throw std::invalid_argument("TreeSelect supports at most 100000 nodes");
         }
+        std::unordered_set<std::string_view> keys;
         std::vector<std::size_t> depths;
         depths.reserve(nodes_.size());
         for (std::size_t i = 0; i < nodes_.size(); ++i) {
@@ -33,10 +37,8 @@ public:
             if (node.key.empty() || (node.parent != tree_select_no_parent && node.parent >= i)) {
                 throw std::invalid_argument("TreeSelect keys and parent order are invalid");
             }
-            for (std::size_t j = 0; j < i; ++j) {
-                if (nodes_[j].key == node.key) {
-                    throw std::invalid_argument("TreeSelect keys must be unique");
-                }
+            if (!keys.insert(node.key.bytes()).second) {
+                throw std::invalid_argument("TreeSelect keys must be unique");
             }
             const auto depth = node.parent == tree_select_no_parent ? 0 : depths[node.parent] + 1;
             if (depth >= 64) {
@@ -44,6 +46,11 @@ public:
             }
             depths.push_back(depth);
         }
+    }
+
+    void topology(std::vector<TreeSelectNode> nodes) {
+        TreeSelectModel validated{std::move(nodes)};
+        nodes_ = std::move(validated.nodes_);
     }
 
     [[nodiscard]] const std::vector<TreeSelectNode>& nodes() const noexcept {

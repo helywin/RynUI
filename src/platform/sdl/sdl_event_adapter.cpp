@@ -298,6 +298,10 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
                                     PointerButton::none,
                                     to_logical_coordinate(event.motion.x, metrics),
                                     to_logical_coordinate(event.motion.y, metrics),
+                                    0,
+                                    result.pointer_shift.value_or(false),
+                                    result.pointer_control.value_or(false),
+                                    result.pointer_meta.value_or(false),
                                 });
         return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -312,7 +316,9 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
                             to_logical_coordinate(event.button.x, metrics),
                             to_logical_coordinate(event.button.y, metrics),
                             event.button.clicks,
-                            result.pointer_shift.value_or((SDL_GetModState() & SDL_KMOD_SHIFT) != 0),
+                            result.pointer_shift.value_or(false),
+                            result.pointer_control.value_or(false),
+                            result.pointer_meta.value_or(false),
                         });
         }
         return;
@@ -335,6 +341,8 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP: {
         result.pointer_shift = (event.key.mod & SDL_KMOD_SHIFT) != 0;
+        result.pointer_control = (event.key.mod & SDL_KMOD_CTRL) != 0;
+        result.pointer_meta = (event.key.mod & SDL_KMOD_GUI) != 0;
         const auto key = map_key(event.key.key);
         if (key.has_value()) {
             append_if_valid(result, KeyboardInputEvent{
@@ -356,6 +364,8 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
         return;
     case SDL_EVENT_WINDOW_FOCUS_LOST:
         result.pointer_shift = false;
+        result.pointer_control = false;
+        result.pointer_meta = false;
         append_if_valid(result, WindowInputEvent{WindowInputAction::focus_lost, 0, 0});
         return;
     case SDL_EVENT_WINDOW_RESIZED:

@@ -13,6 +13,10 @@ struct TreeModelNode final {
     std::size_t end{};
     bool disabled{};
     bool visible{true};
+    bool selectable{true};
+    bool checkable{true};
+    bool check_disabled{};
+    bool leaf{};
 };
 
 struct TreeChecks final {
@@ -28,6 +32,14 @@ struct TreeModel final {
     bool disabled{};
     bool visible{true};
     bool checkable{};
+    bool multiple{};
+    bool selectable{true};
+    bool strict{};
+    bool loadable{};
+    bool auto_expand{};
+    TreeKeys half;
+    TreeKeys matches;
+    bool filtering{};
     bool controlled_expanded{};
     bool controlled_selected{};
     bool controlled_checked{};
@@ -37,8 +49,9 @@ struct TreeModel final {
     [[nodiscard]] std::vector<std::size_t> shown() const;
     [[nodiscard]] bool eligible(std::size_t) const;
     [[nodiscard]] bool open(std::size_t) const;
+    [[nodiscard]] std::vector<bool> opened() const;
     [[nodiscard]] TreeKeys expand(std::size_t) const;
-    [[nodiscard]] TreeKeys select(std::size_t) const;
+    [[nodiscard]] TreeKeys select(std::size_t, bool additive = false, std::optional<std::size_t> anchor = {}) const;
     [[nodiscard]] TreeChecks checks(const TreeKeys&) const;
     [[nodiscard]] TreeChecks toggle_check(std::size_t) const;
 };

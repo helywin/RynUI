@@ -393,13 +393,17 @@ void test_sensitive_and_tree_select_workflow() {
     const auto password = f.editor("gallery.sample.password.features", "gallery.password.controlled-toggle");
     f.replace(password, String{u8"secret"});
     f.show("ant.component.tree-select");
-    require(f.services.tree_select().mounted().size() == 2 && f.inputs.mounted_inputs().size() == 3,
+    require(f.services.tree_select().mounted().size() == 6 && f.inputs.mounted_inputs().size() == 7,
             "TreeSelect selector/note/Form workflow was lost");
     runtime::ComponentId target;
     runtime::ComponentId field;
     const auto form = f.services.form().mounted().front();
     for (const auto id : f.services.tree_select().mounted()) {
-        (f.within(id, form) ? field : target) = id;
+        if (f.within(id, form)) {
+            field = id;
+        } else if (!target.valid()) {
+            target = id;
+        }
     }
     require(target.valid() && field.valid() && f.services.tree_select().snapshot(target).value == String{u8"guide"},
             "TreeSelect initial selection or Form owner changed");

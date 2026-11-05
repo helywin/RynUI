@@ -12,6 +12,9 @@ struct TreeSelectSnapshot final {
     String value;
     String label;
     bool open{};
+    TreeKeys values;
+    String search;
+    std::vector<runtime::ComponentId> tags;
 };
 
 class TreeSelectComponentHost final : public WindowComponentParticipant {
@@ -35,7 +38,9 @@ public:
     bool on_keyboard_input(const input::KeyboardInputEvent&) override;
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;
+    void prepare_auxiliary_layout() override;
     void position_window_layers(runtime::Size, runtime::Rect) override;
+    void synchronize_auxiliary_motion() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
@@ -46,6 +51,9 @@ private:
     void notify_open(runtime::ComponentId, bool);
     void choose(runtime::ComponentId, String);
     void update_theme(runtime::ComponentId);
+    void query(runtime::ComponentId, String);
+    void choose_values(runtime::ComponentId, TreeKeys, TreeKeys half = {});
+    void tags(runtime::ComponentId);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     bool window_active_{true};

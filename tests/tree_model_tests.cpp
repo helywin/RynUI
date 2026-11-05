@@ -18,6 +18,10 @@ void run() {
                {u8"disabled", 0, 1, 5, true},    {u8"independent", 3, 2, 5}, {u8"last", 0, 1, 6}};
     m.validate();
     check(m.shown() == std::vector<std::size_t>{0}, "collapsed descendants visible");
+    m.auto_expand = true;
+    m.expanded = {u8"disabled"};
+    check(m.shown().size() == 6 && m.open(0), "autoExpandParent did not reveal expanded descendant");
+    m.auto_expand = false;
     m.expanded = {u8"root", u8"disabled"};
     check(m.shown().size() == 6, "preorder expansion lost disabled branch children");
     m.nodes[3].visible = false;
@@ -71,6 +75,10 @@ void run() {
         max.nodes.push_back({String::from_utf8(std::to_string(i)).value(), tree_no_parent, 0, i + 1});
     }
     max.validate();
+    max.multiple = true;
+    max.selected = {u8"1000"};
+    check(max.select(1000, true, 0).size() == 1001,
+          "Control+Shift range duplicated a preselected short key after growth");
     check(max.shown().size() == 1024, "maximum valid nodes were truncated");
     TreeModel deep;
     for (std::size_t i = 0; i < 64; ++i) {

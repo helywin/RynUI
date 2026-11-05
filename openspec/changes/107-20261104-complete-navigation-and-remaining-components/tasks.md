@@ -1,6 +1,6 @@
 # Tasks
 
-按导航、数据录入、数据展示、反馈和其他分类推进；同分类中无依赖组件可并行。有依赖的组合组件须等待共享组件集成。只勾选已实际实现和通过验证的项目；已实现组件保留既有功能证据，本轮仅验证新增范围及受影响集成。
+按导航、数据录入、数据展示、反馈和其他分类推进；同分类中无依赖组件可并行。有依赖的组合组件须等待共享组件集成。TreeSelect（24）依赖 Tree（46），因此先完成 46.1/46.2，再完成 24.1/24.2；分类标题顺序不改变此依赖。只勾选已实际实现和通过验证的项目；已实现组件保留既有功能证据，本轮仅验证新增范围及受影响集成。
 
 ## 1. 导航：Anchor
 
@@ -119,8 +119,8 @@
 
 ## 24. 数据录入：TreeSelect
 
-- [ ] 24.1 按对应 spec 与 design 矩阵实现 TreeSelect 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 24.2 为 TreeSelect 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 24.1 按对应 spec 与 design 矩阵实现 TreeSelect 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 24.2 为 TreeSelect 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 25. 数据录入：Upload
 
@@ -229,8 +229,8 @@
 
 ## 46. 数据展示：Tree
 
-- [ ] 46.1 按对应 spec 与 design 矩阵实现 Tree 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 46.2 为 Tree 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 46.1 按对应 spec 与 design 矩阵实现 Tree 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 46.2 为 Tree 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 47. 反馈：Alert
 

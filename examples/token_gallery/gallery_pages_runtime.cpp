@@ -1,6 +1,8 @@
 #include "gallery_pages_runtime.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
+#include "component/tree_component.hpp"
+#include "component/tree_select_component.hpp"
 #include "component/transfer_component.hpp"
 #include "component/table_component.hpp"
 #include "component/auto_complete_component.hpp"
@@ -2512,6 +2514,210 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             std::cout << "select_native=passed grouped_multiple_callback=true tag_removal=true utf8_tokens=true "
                          "controlled_refusal=true interactive_affix=true popup_draft=true virtual_end_wheel=true "
                          "synthetic_latest_callback=true retired=true\n";
+        }
+        if (route.component_identity == "ant.component.tree") {
+            auto& trees = app.services().tree();
+            const auto owner = pages.target("gallery.tree.complete");
+            reveal(owner);
+            auto tree = trees.snapshot(owner);
+            key(tree.rows[0].interaction, input::Key::enter);
+            check(trees.snapshot(owner).selected == TreeKeys{u8"native-a"}, "native Tree selection callback failed");
+            key(tree.rows[0].interaction, input::Key::space);
+            check(trees.snapshot(owner).checked == TreeKeys{u8"native-a"}, "native Tree checkbox callback failed");
+            reveal(pages.target("gallery.tree.reorder"));
+            activate(pages.target("gallery.tree.reorder"));
+            render();
+            check(trees.snapshot(owner).rows.back().component == tree.rows.front().component,
+                  "native Tree reorder lost identity");
+            reveal(owner);
+            auto reordered = trees.snapshot(owner);
+            const auto drag_source = bounds(reordered.rows[0].title);
+            const auto drag_target = bounds(reordered.rows[1].component);
+            pointer(input::PointerAction::down,
+                    {drag_source.x + drag_source.width / 2, drag_source.y + drag_source.height / 2});
+            render();
+            check(captured(), "native Tree drag did not capture");
+            pointer(input::PointerAction::move,
+                    {drag_source.x + drag_source.width / 2, drag_target.y + drag_target.height - 1});
+            render();
+            pointer(input::PointerAction::up,
+                    {drag_source.x + drag_source.width / 2, drag_target.y + drag_target.height - 1});
+            render();
+            check(!captured() && trees.snapshot(owner).rows.front().key == TreeKeys{u8"native-b"}.front(),
+                  "native Tree drop callback did not publish application order");
+
+            const auto virtual_tree = pages.target("gallery.tree.virtual");
+            reveal(virtual_tree);
+            auto virtual_before = trees.snapshot(virtual_tree);
+            check(virtual_before.rows.size() == 10000 &&
+                      std::ranges::count(virtual_before.rows, true, &ryn::detail::TreeRowSnapshot::realized) <= 10,
+                  "native Tree virtual row bound failed");
+            reveal(pages.target("gallery.tree.scroll-end"));
+            activate(pages.target("gallery.tree.scroll-end"));
+            render();
+            check(trees.snapshot(virtual_tree).rows.back().realized, "native Tree scrollTo failed");
+            const auto async = pages.target("gallery.tree.async");
+            reveal(async);
+            auto async_before = trees.snapshot(async);
+            key(async_before.rows[0].interaction, input::Key::right);
+            key(async_before.rows[1].interaction, input::Key::right);
+            reveal(pages.target("gallery.tree.deliver"));
+            activate(pages.target("gallery.tree.deliver"));
+            render();
+            check(trees.snapshot(async).rows.size() == 4, "native synthetic Tree loads lost an independent request");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "native Tree retirement rejected");
+            pages.process();
+            render();
+            check(trees.mounted().empty() && !captured() && !inputs.sessions().active().valid(),
+                  "native Tree retirement leaked input");
+            std::cout << "tree_native=passed keyed_reorder=true selection_callback=true checkbox_callback=true "
+                         "virtual_10k=true synthetic_async=true retired=true\n";
+        }
+        if (route.component_identity == "ant.component.tree-select") {
+            auto& selectors = app.services().tree_select();
+            auto& trees = app.services().tree();
+            const auto owner = pages.target("gallery.tree-select.multiple");
+            reveal(owner);
+            auto selector = selectors.snapshot(owner);
+            const auto feedback_seen = [&](String text) {
+                return std::ranges::any_of(app.services().text().mounted_texts(), [&](const auto& item) {
+                    return app.services().text().scene_service().text_state(item.scene).content().bytes() ==
+                           text.bytes();
+                });
+            };
+            activate(pages.target("gallery.tree-select.affix"));
+            render();
+            check(feedback_seen(u8"已执行 TreeSelect 前缀") && !selectors.snapshot(owner).open,
+                  "native TreeSelect affix lost its callback or toggled popup");
+
+            activate(selector.selector);
+            render();
+            check(selectors.snapshot(owner).open, "native TreeSelect multiple did not open");
+            activate(pages.target("gallery.tree-select.footer"));
+            render();
+            check(feedback_seen(u8"已执行 TreeSelect popup footer") && selectors.snapshot(owner).open,
+                  "native TreeSelect rich popup action lost ownership");
+
+            auto rows = trees.snapshot(selector.tree).rows;
+            key(rows[1].interaction, input::Key::enter);
+            check(selectors.snapshot(owner).values == TreeKeys{u8"target-a"} && selectors.snapshot(owner).open,
+                  "native TreeSelect multiple callback failed");
+            const auto selected_tags = selectors.snapshot(owner).tags;
+            check(!selected_tags.empty(), "native TreeSelect removable tag absent");
+            activate(selected_tags.front());
+            render();
+            check(selectors.snapshot(owner).values.empty(), "native TreeSelect tag remove callback failed");
+
+            replace_text(selector.selector, u8"Beta");
+            render();
+            auto filtered = trees.snapshot(selector.tree);
+            check(!filtered.rows[1].shown && filtered.rows[2].shown, "native TreeSelect search failed");
+            press(input::Key::escape);
+            const auto strict = pages.target("gallery.tree-select.strict");
+            reveal(strict);
+            selector = selectors.snapshot(strict);
+            activate(selector.selector);
+            render();
+            rows = trees.snapshot(selector.tree).rows;
+            key(rows[1].interaction, input::Key::space);
+            check(selectors.snapshot(strict).values == TreeKeys{u8"strict-a"},
+                  "native TreeSelect strict check conducted incorrectly");
+            press(input::Key::escape);
+            const auto virtual_selector = pages.target("gallery.tree-select.virtual");
+            reveal(virtual_selector);
+            selector = selectors.snapshot(virtual_selector);
+            activate(selector.selector);
+            render();
+            auto window = trees.snapshot(selector.tree);
+            check(window.rows.size() == 10000 &&
+                      std::ranges::count(window.rows, true, &ryn::detail::TreeRowSnapshot::realized) <= 20,
+                  "native TreeSelect virtual row bound failed");
+            activate(pages.target("gallery.tree-select.virtual-scroll"));
+            render();
+            window = trees.snapshot(selector.tree);
+            check(window.rows.back().realized && window.scroll > 0, "native TreeSelect virtual scrollTo failed");
+            key(window.rows.back().interaction, input::Key::enter);
+            check(selectors.snapshot(virtual_selector).value == String{u8"choice-9999"} &&
+                      feedback_seen(u8"virtual onChange=choice-9999"),
+                  "native TreeSelect virtual selection callback failed");
+            activate(selector.selector);
+            render();
+            activate(pages.target("gallery.tree-select.virtual-reverse"));
+            render();
+            check(trees.snapshot(selector.tree).rows.front().key == String{u8"choice-9999"} &&
+                      selectors.snapshot(virtual_selector).value == String{u8"choice-9999"},
+                  "native TreeSelect dynamic topology lost accepted value");
+            press(input::Key::escape);
+            const auto async = pages.target("gallery.tree-select.async");
+            reveal(async);
+            selector = selectors.snapshot(async);
+            activate(selector.selector);
+            render();
+            key(trees.snapshot(selector.tree).rows[0].interaction, input::Key::right);
+            check(trees.snapshot(selector.tree).rows[0].loading, "native synthetic TreeSelect loader did not start");
+            activate(pages.target("gallery.tree-select.async-deliver"));
+            render();
+            rows = trees.snapshot(selector.tree).rows;
+            check(rows.size() == 2 && feedback_seen(u8"loaded=1"), "native synthetic TreeSelect load callback failed");
+            key(rows[1].interaction, input::Key::enter);
+            check(selectors.snapshot(async).value == String{u8"async-choice-child"} &&
+                      selectors.snapshot(async).label == String{u8"Synthetic target"} &&
+                      feedback_seen(u8"async onChange=async-choice-child"),
+                  "native TreeSelect async child label/value callback failed");
+            const auto form_selector = pages.target("gallery.tree-select.form-selector");
+            reveal(form_selector);
+            const auto form_before = selectors.snapshot(form_selector);
+            const auto native_field = std::ranges::find_if(
+                inputs.mounted_inputs(), [&](const auto& input) { return input.component == form_before.selector; });
+            check(native_field != inputs.mounted_inputs().end(), "native readonly Form selector editor missing");
+            const auto form_editor = *native_field;
+            check(app.focus().state().focused == form_editor.interaction ||
+                      app.focus().request_focus(form_editor.interaction, input::FocusModality::keyboard),
+                  "native readonly Form selector focus failed");
+            const auto field_area = inputs.layout_snapshot(form_editor.component).viewport;
+            pointer(input::PointerAction::down, {field_area.x + 4, field_area.y + field_area.height / 2});
+            render();
+            check(captured() && !inputs.sessions().active().valid(),
+                  "native readonly Form reset setup lost selection capture or started an editor session");
+            auto& forms = app.services().form();
+            const auto form_owner =
+                std::ranges::find_if(forms.mounted(), [&](auto id) { return owns(app, form_selector, id); });
+            check(form_owner != forms.mounted().end(), "native TreeSelect Form owner missing");
+            const auto control = forms.field_control(*form_owner, FormNamePath{u8"destination"});
+            check(control && bool(control->reset), "native typed Form field instance has no reset");
+            control->reset();
+            render();
+            check(selectors.snapshot(form_selector).selector == form_before.selector &&
+                      selectors.snapshot(form_selector).value == form_before.value &&
+                      selectors.snapshot(form_selector).search.empty() && !selectors.snapshot(form_selector).open &&
+                      !captured() && !inputs.editors().require(form_editor.editor).composition().active &&
+                      app.focus().state().focused == form_editor.interaction,
+                  "native Form field-instance reset lost TreeSelect authority/focus or retained input");
+            check(!inputs.sessions().active().valid(), "native readonly Form reset started a text session");
+            reveal(pages.target("gallery.tree-select.reset"));
+            activate(pages.target("gallery.tree-select.reset"));
+            render();
+            check(selectors.snapshot(form_selector).value == form_before.value &&
+                      app.focus().state().focused == form_editor.interaction && has_text(u8"已重置目标"),
+                  "native full same-value Form reset lost accepted TreeSelect value or selector focus");
+            reveal(async);
+            capture_editor(async);
+            previous_session = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"退休候选"}, {}, previous_session});
+            render();
+            check(captured() && inputs.editors().require(previous_session.owner).composition().active,
+                  "native TreeSelect retirement lacks capture/preedit");
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
+                  "native TreeSelect retirement rejected");
+            pages.process();
+            render();
+            check(selectors.mounted().empty() && trees.mounted().empty() && forms.mounted().empty() && !captured() &&
+                      !inputs.sessions().active().valid() && !inputs.editors().find(previous_session.owner),
+                  "native TreeSelect retirement leaked input");
+            std::cout << "tree_select_native=passed multiple_callback=true affix_popup_callback=true "
+                         "tag_remove_callback=true controlled_search=true strict_checkbox=true "
+                         "rtl=true virtual_10k=true dynamic_topology=true synthetic_async=true typed_form_reset=true "
+                         "same_value_form_reset=true selector_focus=true preedit_capture_retired=true retired=true\n";
         }
         if (route.component_identity == "ant.component.space") {
             auto header_route = route;

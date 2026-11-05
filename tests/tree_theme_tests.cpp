@@ -26,8 +26,8 @@ template <class F> void invalid(F f) {
 }
 
 void run() {
-    static_assert(static_cast<int>(TokenIdentity::tree_colors) == 202);
-    static_assert(static_cast<int>(TokenIdentity::tree_metrics) == 203);
+    static_assert(static_cast<int>(TokenIdentity::tree_colors) == 209);
+    static_assert(static_cast<int>(TokenIdentity::tree_metrics) == 210);
     static_assert(static_cast<int>(TokenIdentity::tree_colors) ==
                   static_cast<int>(TokenIdentity::statistic_metrics) + 1);
     auto base = std::make_unique<ThemeSnapshot>(resolve_theme());

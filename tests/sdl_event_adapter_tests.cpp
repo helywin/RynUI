@@ -341,6 +341,8 @@ void test_pointer_shift_follows_event_order() {
     SdlWindowMetrics metrics{640, 480};
     const auto saved = SDL_GetModState();
     result.pointer_shift = false;
+    result.pointer_control = false;
+    result.pointer_meta = false;
     // SDL may already report the final state of a pumped queue.
     SDL_SetModState(SDL_KMOD_SHIFT);
     SdlEventAdapter::merge(result, mouse_button(SDL_EVENT_MOUSE_BUTTON_DOWN, 1, SDL_BUTTON_LEFT), metrics);
@@ -361,17 +363,29 @@ void test_pointer_shift_follows_event_order() {
                 std::get<PointerInputEvent>(result.input.events()[1]).shift &&
                 !std::get<PointerInputEvent>(result.input.events()[2]).shift,
             "pointer Shift used the final pump state instead of event order");
+    SDL_Event modifier{};
+    modifier.type = SDL_EVENT_KEY_DOWN;
+    modifier.key.key = SDLK_LCTRL;
+    modifier.key.mod = SDL_KMOD_CTRL | SDL_KMOD_GUI;
+    SdlEventAdapter::merge(result, modifier, metrics);
+    SdlEventAdapter::merge(result, mouse_button(SDL_EVENT_MOUSE_BUTTON_DOWN, 3, SDL_BUTTON_LEFT), metrics);
+    require(std::get<PointerInputEvent>(result.input.events().back()).control &&
+                std::get<PointerInputEvent>(result.input.events().back()).meta,
+            "pointer Control/Meta did not follow batch order");
     result.pointer_shift = true;
     SDL_Event lost{};
     lost.type = SDL_EVENT_WINDOW_FOCUS_LOST;
     SdlEventAdapter::merge(result, lost, metrics);
     SdlEventAdapter::merge(result, mouse_button(SDL_EVENT_MOUSE_BUTTON_DOWN, 1, SDL_BUTTON_LEFT), metrics);
-    require(!std::get<PointerInputEvent>(result.input.events().back()).shift,
-            "focus loss retained pointer Shift metadata");
+    const auto& after_focus_loss = std::get<PointerInputEvent>(result.input.events().back());
+    require(!after_focus_loss.shift && !after_focus_loss.control && !after_focus_loss.meta,
+            "focus loss retained pointer modifier metadata");
     result.clear();
-    require(!result.pointer_shift.has_value(), "batch clear retained pointer Shift state");
+    require(!result.pointer_shift.has_value() && !result.pointer_control.has_value() &&
+                !result.pointer_meta.has_value(),
+            "batch clear retained pointer Shift state");
     const PointerInputEvent legacy{PointerIdentity::mouse(), PointerAction::down, PointerButton::primary, 1, 2, 1};
-    require(!legacy.shift, "legacy pointer aggregate acquired Shift");
+    require(!legacy.shift && !legacy.control && !legacy.meta, "legacy pointer aggregate acquired modifiers");
 }
 
 void test_expose_redraw_survives_a_mixed_input_batch() {

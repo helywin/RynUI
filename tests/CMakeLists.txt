@@ -1,3 +1,11 @@
+add_executable(rynui_tree_form_integration_tests tree_form_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_form_integration_tests)
+target_link_libraries(rynui_tree_form_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tree_form_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.tree_form_integration COMMAND rynui_tree_form_integration_tests)
+
 add_executable(rynui_form_integration_tests form_integration_tests.cpp)
 rynui_configure_cpp_target(rynui_form_integration_tests)
 target_link_libraries(rynui_form_integration_tests PRIVATE rynui_components)
@@ -186,6 +194,27 @@ target_compile_definitions(rynui_tree_select_integration_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 foreach(tree_select_case IN ITEMS form lifecycle rollback positioning matrix)
     add_test(NAME rynui.tree_select_${tree_select_case} COMMAND rynui_tree_select_integration_tests ${tree_select_case})
+endforeach()
+
+
+add_executable(rynui_tree_select_completion_tests tree_select_completion_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_select_completion_tests)
+target_link_libraries(rynui_tree_select_completion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tree_select_completion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(tree_select_completion IN ITEMS multiple dynamic_search checkbox form_reset_search responsive_idle callback_failure rich_slots)
+    add_test(NAME rynui.tree_select_completion_${tree_select_completion} COMMAND rynui_tree_select_completion_tests ${tree_select_completion})
+endforeach()
+
+add_executable(rynui_tree_completion_tests tree_completion_tests.cpp)
+rynui_configure_cpp_target(rynui_tree_completion_tests)
+target_link_libraries(rynui_tree_completion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tree_completion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(tree_completion IN ITEMS topology strict_range virtual async drag async_lifecycle drag_cancel async_failures virtual_drag large_checks)
+    add_test(NAME rynui.tree_completion_${tree_completion} COMMAND rynui_tree_completion_tests ${tree_completion})
 endforeach()
 
 add_executable(rynui_tree_model_tests tree_model_tests.cpp)

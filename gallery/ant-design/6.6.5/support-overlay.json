@@ -1035,28 +1035,29 @@
     },
     {
       "identity": "ant.component.tree-select",
-      "status": "partial",
-      "summary": "原生单值 TreeSelect 已提供固定层级、受控值/开合/展开、清空、键盘与有限列表、Form String 和独立 Theme；098 Gallery 展示目标选择与表单流程，验收状态见 tasks/evidence。",
+      "status": "implemented",
+      "summary": "原生 TreeSelect 已完成兼容单值与 typed 多值/checkbox/标签、搜索、动态富节点、自定义 popup、异步/虚拟树、RTL/有限 motion 和同值 Form reset；保留真实 Input/Popover/Tree 组合。",
       "supported_scope": [
-        "固定 String key 层级、单选、受控值/开合/展开、清空与响应式节点标题/禁用",
-        "原生 retained Input/Popover/Tree、键盘/有限滚动、独立 Theme 与 Form String reset",
-        "Gallery 目标/备注与表单提交、受控拒绝和门禁恢复；平台通用验证按 098 tasks/evidence 记录"
+        "兼容 String 与 typed TreeKeys/labeled values、strict/级联 checkbox、showCheckedStrategy、保留标签",
+        "真实可移除/自定义 Tag、固定/响应式 maxTagCount、Unicode 文本长度、交互式 prefix/suffix/popup",
+        "受控 value/search/open/expanded/loaded 请求、稳定 key 动态富节点与每节点独立异步 Tree",
+        "实际虚拟行、键盘/scrollTo、composition/内层 Escape/Tab、弹层归属与多实例并存",
+        "真实 Input/Popover/Tree、独立 Theme、size/status/variant/placement/RTL 和有限 motion",
+        "同值 Form String reset 取消查询/异步/待聚焦/弹层而保留编辑器；失败清理和旧拒绝重试合同",
+        "独立 Gallery 多选/标签/搜索/strict/RTL/富 popup 回调；Linux 私有 Wayland/Vulkan"
       ],
       "missing_scope": [
-        "多选/checkbox、搜索、动态拓扑、异步、富节点/自定义 popup 与虚拟化",
-        "动画、RTL/Web/辅助技术以及组件 native/GPU/Linux/系统 IME 分平台验收"
+        "Windows MSVC/D3D12、物理系统 IME 候选窗、跨实际显示器和 OS 辅助技术平台证据独立验证",
+        "DOM/CSS/React/portal、浏览器 DataTransfer 与外部 OS DND 不属于原生接口"
       ],
       "evidence_identifiers": [
         "source:components/tree-select/index.en-US.md",
-        "openspec:097-20261028-add-native-tree-select",
         "api:include/ryn/tree_select.hpp",
-        "runtime:src/component/tree_select_component.cpp",
-        "test:rynui.tree_select_model",
-        "test:rynui.tree_select_keyboard",
-        "test:rynui.tree_select_form",
-        "gallery.tree-select.destination",
-        "gallery.tree-select.form",
-        "openspec:098-20261028-add-tree-select-gallery"
+        "test:rynui.tree_select_completion_rich_slots",
+        "test:rynui.tree_select_completion_form_reset_search",
+        "gallery.tree-select.multiple",
+        "gallery.tree-select.strict",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {
@@ -1479,22 +1480,30 @@
     },
     {
       "identity": "ant.component.tree",
-      "status": "partial",
-      "summary": "原生固定层级项目树，支持展开、单选、级联勾选、有限滚动与保留富标题；提供项目备注交互 Gallery。",
+      "status": "implemented",
+      "summary": "原生 Tree/DirectoryTree 已完成稳定键动态拓扑、多选/strict 勾选、独立异步加载、真实虚拟行、窗口内拖放、向量连接线/图标、RTL 和有限 motion；平台边界独立记录。",
       "supported_scope": [
-        "固定 keyed 拓扑、reactive 状态、受控展开/单选/级联勾选与禁用隔离",
-        "roving 键盘、有限滚动、富标题与输入生命周期、Theme",
-        "项目目录操作、勾选与半选反馈、富备注保存、显隐禁用恢复及真实目录入口"
+        "100000 节点/64 层整体验证；稳定 key 增删/重排/移动与版本化富工厂、草稿保留和失败退役",
+        "受控 expanded/selected/checked/half/loaded、默认展开、Ctrl/Meta/Shift 多选与键盘范围、禁用勾选隔离",
+        "每节点取消/generation/owner-thread dispatcher、loading/error/retry、独立异步完成及过期拒绝",
+        "实际有界普通虚拟行、可变行高、scrollTo/焦点显露、过滤强调、rich 缓存输入/IME/子浮层清理",
+        "真实 PointerRouter capture 拖放、before/inside/after、循环/disabled 拒绝、edge autoscroll 和应用回写",
+        "独立 Tree Theme、真实线段/向量 icons/switcher、blockNode/RTL、DirectoryTree 与有限/减弱动画",
+        "独立 Gallery 动态回调、10000 行、合成异步；Linux 私有 Wayland/Vulkan 和完整旧回归"
       ],
       "missing_scope": [
-        "动态拓扑、多选、strict checking、异步、虚拟化、拖放、连接线、DirectoryTree、RTL 与动画",
-        "完整 Gallery/native/GPU、Linux、系统 IME 与辅助技术验收"
+        "Windows MSVC/D3D12、物理系统 IME 候选窗、跨实际显示器和 OS 辅助技术平台证据独立验证",
+        "DOM/CSS/React/portal、浏览器 DataTransfer 与外部 OS DND 不属于原生接口"
       ],
       "evidence_identifiers": [
         "source:components/tree/index.en-US.md",
-        "openspec:094-20261026-add-native-tree",
-        "openspec:096-20261028-add-tree-and-autocomplete-gallery",
-        "test:rynui.token_gallery_frame"
+        "source:components/tree/Tree.tsx",
+        "api:include/ryn/tree.hpp",
+        "test:rynui.tree_completion_virtual_drag",
+        "test:rynui.tree_completion_async_failures",
+        "gallery.tree.complete",
+        "gallery.tree.virtual",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {

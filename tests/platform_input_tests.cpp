@@ -44,6 +44,8 @@ void test_pointer_identity_and_logical_values() {
     };
     require(ryn::input::is_valid(mouse_down), "valid mouse down was rejected");
     require(ryn::input::is_valid(touch_move), "valid touch move was rejected");
+    require(!mouse_down.shift && !mouse_down.control && !mouse_down.meta,
+            "legacy pointer aggregate acquired modifier metadata");
     require(ryn::input::is_valid(PointerInputEvent{
                 mouse,
                 PointerAction::down,
@@ -90,12 +92,15 @@ void test_batch_reuses_capacity_and_respects_move_boundaries() {
 
     require(batch.append(PointerInputEvent{mouse, PointerAction::move, PointerButton::none, 1.0F, 2.0F}),
             "first mouse move was not appended");
-    require(!batch.append(PointerInputEvent{mouse, PointerAction::move, PointerButton::none, 3.0F, 4.0F}),
+    require(!batch.append(
+                PointerInputEvent{mouse, PointerAction::move, PointerButton::none, 3.0F, 4.0F, 0, true, true, true}),
             "consecutive mouse move was not coalesced");
     require(batch.size() == 1, "coalesced move grew the batch");
     require(batch.coalesced_move_count() == 1, "move coalescing was not diagnosed");
     require(std::get<PointerInputEvent>(batch.events().front()).x == 3.0F,
             "coalescing did not keep the latest logical position");
+    const auto& moved = std::get<PointerInputEvent>(batch.events().front());
+    require(moved.shift && moved.control && moved.meta, "coalescing lost ordered pointer modifier metadata");
 
     require(batch.append(KeyboardInputEvent{Key::space, KeyAction::down, KeyModifier::none, false}),
             "key boundary was not appended");

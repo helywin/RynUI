@@ -1507,7 +1507,7 @@ FormPrivateEditorScope::~FormPrivateEditorScope() {
 std::function<void()> form_enter_handler() {
     auto& build = runtime::require_component_build_context();
     auto* item = build.nearest_state<FormItemState>(true);
-    auto* form = build.nearest_state<FormState>(true);
+    auto* form = build.nearest_state<FormState>();
     if (!item || !form || item->form != form->id ||
         (private_editor_host == &build.host() && private_editor_item == item->id) || item->native_enter_claimed ||
         !build.has_ancestor(item->regions.control)) {
@@ -1803,7 +1803,7 @@ namespace {
 bool automatic_candidate(bool explicit_binding) {
     auto& build = runtime::require_component_build_context();
     auto* item = build.nearest_state<FormItemState>(true);
-    const auto* form = build.nearest_state<FormState>(true);
+    const auto* form = build.nearest_state<FormState>();
     if (!item || !form || item->form != form->id ||
         (private_editor_host == &build.host() && private_editor_item == item->id) || !item->field->registered ||
         item->control_claimed || !build.has_ancestor(item->regions.control)) {

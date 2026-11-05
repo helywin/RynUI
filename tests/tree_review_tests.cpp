@@ -188,6 +188,22 @@ void zero_area() {
     const auto foreign = f.buttons.mounted_buttons().back().component;
     f.services.set_input_blocked(foreign, true);
     const auto count = f.services.components().component_count();
+    // A closed nested Select owns blocked window-layer rows. Keep those gates;
+    // Tree must restore its own branch and preserve the exact foreign block.
+    const auto restored_blocks = [&] {
+        auto blocks = blocked_roots(f.services.interactions());
+        std::erase_if(blocks, [&](runtime::ComponentId blocked) {
+            for (auto p = std::optional{blocked}; p && *p != popup; p = f.services.components().parent(*p)) {
+                if (f.services.components().is_window_layer_root(*p) && descendant(f, *p, popup)) {
+                    check(!f.services.select().snapshot(popup).visible,
+                          "restored Tree unexpectedly reopened nested Select");
+                    return true;
+                }
+            }
+            return false;
+        });
+        return blocks;
+    };
     for (int cycle = 0; cycle < 2; ++cycle) {
         const auto zero = [&] {
             (cycle ? width : height).set(dp(0));
@@ -245,7 +261,7 @@ void zero_area() {
                   f.inputs.editors().require(editor.editor).value() == "Saved draft" &&
                   f.services.components().component_count() == count &&
                   f.services.tree().snapshot(owner).rows[1].title == first.rows[1].title &&
-                  blocked_roots(f.services.interactions()) == std::vector{foreign},
+                  restored_blocks() == std::vector{foreign},
               "zero-area restoration lost identity/draft/admission or changed foreign blocks");
     }
     height.set(dp(0));

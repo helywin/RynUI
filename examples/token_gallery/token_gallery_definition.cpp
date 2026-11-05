@@ -7742,6 +7742,253 @@ std::pair<ryn::TreeKeys, ryn::TreeKeys> gallery_project_checks(const ryn::TreeKe
     return {std::move(checked), std::move(half)};
 }
 
+void add_tree_completion_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<std::vector<TreeItem>> nodes{std::vector<TreeItem>{
+        TreeItem{u8"native-a", u8"Alpha"}, TreeItem{u8"native-b", u8"Beta"}, TreeItem{u8"native-c", u8"Gamma"}}};
+    Signal<TreeKeys> selected{TreeKeys{}};
+    Signal<String> feedback{String{u8"Ctrl/Shift 多选；拖动行后由应用回写顺序"}};
+    Signal<String> search{String{}};
+    Input(InputProps{}
+              .placeholder(u8"过滤原生树")
+              .value(search)
+              .onChange([search](String value) mutable { search.set(value); })
+              .layout(member_control_margin().width(dp(280))));
+    Text(TextProps{}.content(feedback));
+    Tree(TreeProps{}
+             .items(nodes)
+             .multiple()
+             .selectedKeys(selected)
+             .checkable()
+             .showLine()
+             .blockNode()
+             .searchValue(search)
+             .draggable()
+             .onSelect([selected, feedback](TreeSelectInfo value) mutable {
+                 selected.set(value.selected_keys);
+                 feedback.set(utf8("selected=" + std::to_string(value.selected_keys.size())));
+             })
+             .onCheck([feedback](TreeCheckInfo value) mutable {
+                 feedback.set(utf8("checked=" + std::to_string(value.checked_keys.size()) +
+                                   ", half=" + std::to_string(value.half_checked_keys.size())));
+             })
+             .onDrop([nodes, feedback](TreeDragInfo drop) mutable {
+                 auto next = nodes.get();
+                 auto source = std::ranges::find(next, drop.key, &TreeItem::key);
+                 auto target = std::ranges::find(next, drop.target_key, &TreeItem::key);
+                 if (source == next.end() || target == next.end() || drop.position == TreeDropPosition::Inside) {
+                     feedback.set(u8"此示例只接受行前/行后移动");
+                     return;
+                 }
+                 auto moved = *source;
+                 next.erase(source);
+                 target = std::ranges::find(next, drop.target_key, &TreeItem::key);
+                 if (drop.position == TreeDropPosition::After) {
+                     ++target;
+                 }
+                 next.insert(target, moved);
+                 nodes.set(next);
+                 feedback.set(u8"onDrop：应用已回写拓扑");
+             })
+             .allowDrop([](const TreeDragInfo& drop) { return drop.position != TreeDropPosition::Inside; })
+             .layout(member_control_margin().width(dp(320)).height(dp(112))));
+    remember_target(state, "gallery.tree.complete");
+    Button(ButtonProps{}.onClick([nodes]() mutable {
+        auto next = nodes.get();
+        std::reverse(next.begin(), next.end());
+        nodes.set(next);
+    }),
+           [] { Text(u8"动态反转稳定 key"); });
+    remember_target(state, "gallery.tree.reorder");
+    DirectoryTree(TreeProps{}.defaultExpandAll().rtl().layout(member_control_margin().width(dp(320)).height(dp(96))),
+                  {TreeItem{u8"folder", u8"RTL DirectoryTree", {TreeItem{u8"file", u8"File"}.isLeaf()}}});
+    std::vector<TreeItem> large;
+    for (int i = 0; i < 10000; ++i) {
+        large.emplace_back(utf8("virtual-" + std::to_string(i)), utf8("Virtual node " + std::to_string(i)));
+    }
+    TreeRef reference;
+    Tree(TreeProps{}.virtualized().ref(reference).layout(member_control_margin().width(dp(320)).height(dp(120))),
+         std::move(large));
+    remember_target(state, "gallery.tree.virtual");
+    Button(ButtonProps{}.onClick([reference] { static_cast<void>(reference.scrollTo({u8"virtual-9999"})); }),
+           [] { Text(u8"scrollTo 第 10000 行"); });
+    remember_target(state, "gallery.tree.scroll-end");
+    auto deliveries = std::make_shared<std::vector<std::function<void()>>>();
+    TreeLoader loader{
+        [deliveries](AsyncOptionsRequest request, TreeLoader::Complete done) {
+            deliveries->push_back([request, done] {
+                if (!request.cancelled->load()) {
+                    done({{TreeItem{utf8(std::string{request.query.bytes()} + "-child"), u8"Synthetic child"}.isLeaf()},
+                          {}});
+                }
+            });
+            return AsyncOptionsCancel{};
+        },
+        [](auto apply) { apply(); }};
+    Text(u8"合成异步源：展开两个节点后，点击交付；不访问网络");
+    Tree(TreeProps{}.loadData(loader).layout(member_control_margin().width(dp(320)).height(dp(96))),
+         {TreeItem{u8"async-a", u8"Load A"}, TreeItem{u8"async-b", u8"Load B"}});
+    remember_target(state, "gallery.tree.async");
+    Button(ButtonProps{}.onClick([deliveries] {
+        auto next = std::move(*deliveries);
+        deliveries->clear();
+        for (auto it = next.rbegin(); it != next.rend(); ++it) {
+            (*it)();
+        }
+    }),
+           [] { Text(u8"逆序交付合成加载"); });
+    remember_target(state, "gallery.tree.deliver");
+    static_cast<void>(state);
+}
+
+void add_tree_select_completion_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<TreeKeys> values{TreeKeys{}};
+    Signal<String> feedback{String{u8"多选 / 标签 / 搜索 / 富 popup"}};
+    Text(TextProps{}.content(feedback));
+    TreeSelect(
+        TreeSelectProps{}
+            .multiple()
+            .value(values)
+            .showSearch()
+            .allowClear()
+            .maxTagCount(TreeSelectMaxTagCount{TreeSelectTagCount::Responsive})
+            .maxTagTextLength(12)
+            .treeDefaultExpandedKeys({u8"targets"})
+            .onValuesChange([values, feedback](TreeKeys next) mutable {
+                values.set(next);
+                feedback.set(utf8("onValuesChange=" + std::to_string(next.size())));
+            })
+            .tagRender([](TreeSelectTagInfo info) {
+                return TreeSelectTag{[info] {
+                    Tag(TagProps{}.closable().visible(true).disabled(info.disabled).onClose(info.onClose),
+                        TagContent{[label = info.label] { Text(TextProps{}.content(label)); }});
+                }};
+            })
+            .prefix(TreeSelectAffix{[feedback, state] {
+                Button(ButtonProps{}.wave(false).onClick(
+                           [feedback]() mutable { feedback.set(u8"已执行 TreeSelect 前缀"); }),
+                       [] { Text(u8"Affix"); });
+                remember_target(state, "gallery.tree-select.affix");
+            }})
+            .popupRender([feedback, state](std::function<void()> original) {
+                return TreeSelectPopup{[original, feedback, state] {
+                    Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[original, feedback, state] {
+                             Text(u8"原生自定义 popup：保留 Tree 键盘合同");
+                             original();
+                             Button(ButtonProps{}.onClick(
+                                        [feedback]() mutable { feedback.set(u8"已执行 TreeSelect popup footer"); }),
+                                    [] { Text(u8"原生 popup 操作"); });
+                             remember_target(state, "gallery.tree-select.footer");
+                         }});
+                }};
+            })
+            .layout(member_control_margin().width(dp(320))),
+        {TreeSelectItem{u8"targets",
+                        u8"Targets",
+                        {TreeSelectItem{u8"target-a", u8"Alpha target"}, TreeSelectItem{u8"target-b", u8"Beta target"},
+                         TreeSelectItem{u8"target-c", u8"Gamma target"}}}});
+    remember_target(state, "gallery.tree-select.multiple");
+    TreeSelect(TreeSelectProps{}
+                   .treeCheckable()
+                   .treeCheckStrictly()
+                   .showSearch()
+                   .rtl()
+                   .allowClear()
+                   .treeDefaultExpandedKeys({u8"strict"})
+                   .onLabelChange([feedback](TreeSelectLabelValues values) mutable {
+                       feedback.set(utf8("strict labeled values=" + std::to_string(values.size())));
+                   })
+                   .layout(member_control_margin().width(dp(320))),
+               {TreeSelectItem{u8"strict",
+                               u8"Strict RTL",
+                               {TreeSelectItem{u8"strict-a", u8"Alpha"},
+                                TreeSelectItem{u8"strict-b", u8"Beta"}.disableCheckbox()}}});
+    remember_target(state, "gallery.tree-select.strict");
+    std::vector<TreeSelectItem> choices;
+    for (int i = 0; i < 10000; ++i) {
+        choices.emplace_back(utf8("choice-" + std::to_string(i)), utf8("Virtual choice " + std::to_string(i)));
+    }
+    Signal<std::vector<TreeSelectItem>> topology{std::move(choices)};
+    Signal<String> virtual_value{String{}};
+    TreeRef virtual_ref;
+    Text(u8"TreeSelect：10000 个可搜索虚拟选项与动态顺序");
+    TreeSelect(TreeSelectProps{}
+                   .items(topology)
+                   .virtualized()
+                   .treeRef(virtual_ref)
+                   .showSearch()
+                   .allowClear()
+                   .value(virtual_value)
+                   .onChange([virtual_value, feedback](String value) mutable {
+                       virtual_value.set(value);
+                       feedback.set(utf8("virtual onChange=" + std::string{value.bytes()}));
+                   })
+                   .popupRender([virtual_ref, topology, feedback, state](std::function<void()> original) {
+                       return TreeSelectPopup{[original, virtual_ref, topology, feedback, state] {
+                           Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[=] {
+                                    original();
+                                    Button(ButtonProps{}.onClick([virtual_ref] {
+                                        static_cast<void>(virtual_ref.scrollTo({u8"choice-9999"}));
+                                    }),
+                                           [] { Text(u8"scrollTo 第 10000 个选项"); });
+                                    remember_target(state, "gallery.tree-select.virtual-scroll");
+                                    Button(ButtonProps{}.onClick([topology, feedback]() mutable {
+                                        auto next = topology.get();
+                                        std::reverse(next.begin(), next.end());
+                                        topology.set(next);
+                                        feedback.set(u8"TreeSelect：已反转动态拓扑");
+                                    }),
+                                           [] { Text(u8"反转稳定 key 顺序"); });
+                                    remember_target(state, "gallery.tree-select.virtual-reverse");
+                                }});
+                       }};
+                   })
+                   .layout(member_control_margin().width(dp(320))));
+    remember_target(state, "gallery.tree-select.virtual");
+    auto deliveries = std::make_shared<std::vector<std::function<void()>>>();
+    TreeLoader loader{[deliveries](AsyncOptionsRequest request, TreeLoader::Complete done) {
+                          deliveries->push_back([request, done] {
+                              if (!request.cancelled->load()) {
+                                  done({{TreeItem{u8"async-choice-child", u8"Synthetic target"}.isLeaf()}, {}});
+                              }
+                          });
+                          return AsyncOptionsCancel{};
+                      },
+                      [](auto apply) { apply(); }};
+    Text(u8"TreeSelect 合成异步源：展开后点击交付；不访问网络");
+    TreeSelect(TreeSelectProps{}
+                   .loadData(loader)
+                   .showSearch()
+                   .listHeight(120)
+                   .onChange([feedback](String value) mutable {
+                       feedback.set(utf8("async onChange=" + std::string{value.bytes()}));
+                   })
+                   .onTreeLoad([feedback](TreeLoadInfo info) mutable {
+                       feedback.set(utf8("loaded=" + std::to_string(info.loaded_keys.size())));
+                   })
+                   .popupRender([deliveries, state](std::function<void()> original) {
+                       return TreeSelectPopup{[original, deliveries, state] {
+                           Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[=] {
+                                    original();
+                                    Button(ButtonProps{}.onClick([deliveries] {
+                                        auto pending = std::move(*deliveries);
+                                        deliveries->clear();
+                                        for (auto& deliver : pending) {
+                                            deliver();
+                                        }
+                                    }),
+                                           [] { Text(u8"交付合成 TreeSelect 加载"); });
+                                    remember_target(state, "gallery.tree-select.async-deliver");
+                                }});
+                       }};
+                   })
+                   .layout(member_control_margin().width(dp(320))),
+               {TreeSelectItem{u8"async-choice", u8"Expand synthetic target"}});
+    remember_target(state, "gallery.tree-select.async");
+    static_cast<void>(state);
+}
+
 void add_project_tree_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Flex(FlexProps{}
@@ -7846,6 +8093,7 @@ void add_project_tree_samples(const std::shared_ptr<GalleryState>& state) {
                        gallery_target("gallery.tree.restore");
                    }});
          }});
+    add_tree_completion_samples(state);
     ++state->telemetry.live_samples;
 }
 
@@ -8059,6 +8307,7 @@ void add_tree_select_destination_samples(const std::shared_ptr<GalleryState>& st
                             }});
                   }});
          }});
+    add_tree_select_completion_samples(state);
     state->telemetry.live_samples += 2;
 }
 } // namespace

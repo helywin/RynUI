@@ -25,7 +25,7 @@ template <class F> void rejects(F f) {
 }
 
 void run() {
-    static_assert(static_cast<int>(TokenIdentity::tree_select_colors) == 209);
+    static_assert(static_cast<int>(TokenIdentity::tree_select_colors) == 216);
     auto base = std::make_unique<ThemeSnapshot>(resolve_theme());
     check(base->tree_select().tree == base->tree() &&
               base->tree_select().selector.popup_background == base->select().colors.popup_background,
