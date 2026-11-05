@@ -2607,6 +2607,11 @@ void InputComponentHost::set_horizontal_scroll(runtime::ComponentId component, f
 }
 
 void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, runtime::Rect document_clip) {
+    synchronize_input_geometry(window, document_clip, {});
+}
+
+void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtime::Rect document_clip,
+                                                    std::optional<runtime::ComponentId> only) {
     struct ResizeNotification {
         runtime::ComponentId component;
         TextAreaSize size;
@@ -2614,7 +2619,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
     };
 
     std::optional<std::vector<ResizeNotification>> resize_notifications;
-    if (!auto_focus_requests_.empty()) {
+    if (!only && !auto_focus_requests_.empty()) {
         const auto autofocus = std::exchange(auto_focus_requests_, {});
         for (const auto component : autofocus) {
             static_cast<void>(focus(component, {}));
@@ -2630,6 +2635,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         }
     };
     for (const auto& mounted : mounted_) {
+        if (only && mounted.component != *only) {
+            continue;
+        }
         if (sync_profiling_enabled_) {
             ++sync_profile_.mounted_visited;
         }
@@ -3172,6 +3180,29 @@ void InputComponentHost::publish_number(runtime::ComponentId component, NumberVa
     } else if (exact_callback) {
         number_callback(cleanup, [&] { exact_callback(std::get<InputNumberStringValue>(candidate)); });
     }
+}
+
+input::TextEditResult InputComponentHost::replace_range(runtime::ComponentId component, input::TextSelection range,
+                                                        StringView text) {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state || !state->active || !host_->interactions().component_active(component)) {
+        return {input::TextEditError::stale_owner};
+    }
+    const auto owner = state->mounted.editor;
+    const auto result = editors_.require(owner).replace_range(range, text.bytes());
+    if (result && editors_.find(owner)) {
+        update_caret(component, true);
+        update_text(component, false);
+        if (result.value_changed) {
+            notify_change(owner);
+        }
+    }
+    return result;
+}
+
+void InputComponentHost::synchronize_editor_geometry(runtime::ComponentId component, runtime::Size window,
+                                                     runtime::Rect clip) {
+    synchronize_input_geometry(window, clip, component);
 }
 
 void InputComponentHost::configure_form_reset(runtime::ComponentId component, std::function<void()> callback) {

@@ -79,8 +79,8 @@
 
 ## 16. 数据录入：Mentions
 
-- [ ] 16.1 按对应 spec 与 design 矩阵实现 Mentions 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 16.2 为 Mentions 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 16.1 按对应 spec 与 design 矩阵实现 Mentions 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 16.2 为 Mentions 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 17. 数据录入：Radio
 

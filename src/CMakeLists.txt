@@ -244,6 +244,8 @@ add_library(rynui_components STATIC
     component/select_model.cpp
     component/auto_complete_model.cpp
     component/auto_complete_component.cpp
+    component/mentions_model.cpp
+    component/mentions_component.cpp
     component/select_component.cpp
     component/picker_format.cpp
     component/time_picker_model.cpp

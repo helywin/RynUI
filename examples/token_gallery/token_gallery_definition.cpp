@@ -320,6 +320,19 @@ struct GalleryState final {
     std::vector<std::function<void()>> completion_jobs;
     std::vector<std::function<void()>> owner_posts;
     ryn::Signal<ryn::String> async_feedback{ryn::String{u8"合成数据；输入后点击交付以模拟异步完成"}};
+    ryn::FormRef mentions_form;
+    ryn::FormField<ryn::String> mentions_field{ryn::String{u8"在这里输入 @ 或 #\n"}};
+    ryn::MentionsRef mentions_ref;
+    ryn::Signal<ryn::String> mentions_prefix{ryn::String{u8"@"}};
+    ryn::Signal<ryn::String> mentions_note{ryn::String{u8"可编辑富建议草稿"}};
+    ryn::Signal<ryn::String> mentions_feedback{ryn::String{u8"尚未选择建议"}};
+    ryn::Signal<ryn::String> mentions_async_feedback{ryn::String{u8"合成异步源就绪"}};
+    ryn::Signal<bool> mentions_accept{true};
+    ryn::Signal<bool> mentions_disabled{false};
+    ryn::Signal<bool> mentions_read_only{false};
+    ryn::Signal<bool> mentions_visible{true};
+    ryn::Signal<bool> mentions_rtl{false};
+    ryn::Signal<bool> mentions_top{false};
     ryn::Signal<ryn::String> contact_value{ryn::String{}};
     ryn::Signal<ryn::String> contact_request{ryn::String{u8"尚未选择联系人"}};
     ryn::Signal<bool> contact_accept{true};
@@ -668,6 +681,16 @@ template <typename Visitor> void visit_gallery_draft_fields(GalleryState& state,
         visit("state/rating_read_only", state.rating_read_only);
         visit("state/rating_visible", state.rating_visible);
         visit("state/rating_note", state.rating_note);
+    }
+    if (state.page_component == "ant.component.mentions") {
+        visit("state/mentions_field", state.mentions_field);
+        visit("state/mentions_note", state.mentions_note);
+        visit("state/mentions_accept", state.mentions_accept);
+        visit("state/mentions_disabled", state.mentions_disabled);
+        visit("state/mentions_read_only", state.mentions_read_only);
+        visit("state/mentions_visible", state.mentions_visible);
+        visit("state/mentions_rtl", state.mentions_rtl);
+        visit("state/mentions_top", state.mentions_top);
     }
     if (state.page_component == "ant.component.auto-complete") {
         visit("state/contact_value", state.contact_value);
@@ -7051,6 +7074,197 @@ void add_complete_autocomplete_samples(const std::shared_ptr<GalleryState>& stat
     state->telemetry.live_samples += 3;
 }
 
+void add_mentions_async_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"合成异步建议：输入 @query 后点击交付；此示例不访问外部网络。");
+    const auto weak = std::weak_ptr{state};
+    MentionsSource source{[weak](AsyncOptionsRequest request, MentionsSource::Complete complete) {
+                              if (auto state = weak.lock()) {
+                                  state->completion_jobs.push_back([request, complete = std::move(complete)] {
+                                      const auto value = utf8(std::string{request.query.bytes()} + "-synthetic");
+                                      complete({{{u8"synthetic", value, value}}, {}});
+                                  });
+                              }
+                              return AsyncOptionsCancel{};
+                          },
+                          [weak](std::function<void()> apply) {
+                              if (auto state = weak.lock()) {
+                                  state->owner_posts.push_back(std::move(apply));
+                              }
+                          }};
+    Mentions(MentionsProps{}
+                 .source(source)
+                 .rows(std::size_t{2})
+                 .placeholder(u8"@query · 应用显式交付合成结果")
+                 .onSearch([state](String text, String prefix) {
+                     state->mentions_async_feedback.set(
+                         utf8("等待合成建议：" + std::string{prefix.bytes()} + std::string{text.bytes()}));
+                 })
+                 .onSelect([state](MentionsOption option, String prefix) {
+                     state->mentions_async_feedback.set(
+                         utf8("已选择：" + std::string{prefix.bytes()} + std::string{option.value.bytes()}));
+                 })
+                 .onLoadError([state](String error) { state->mentions_async_feedback.set(std::move(error)); })
+                 .popupRender(MentionsPopupRenderer{[state](std::function<void()> origin) {
+                     Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[state, origin] {
+                              origin();
+                              Button(ButtonProps{}.onClick([state] {
+                                  auto jobs = std::move(state->completion_jobs);
+                                  state->completion_jobs.clear();
+                                  for (auto& job : jobs) {
+                                      job();
+                                  }
+                                  auto posts = std::move(state->owner_posts);
+                                  state->owner_posts.clear();
+                                  for (auto& post : posts) {
+                                      post();
+                                  }
+                              }),
+                                     ButtonContent{[] { Text(u8"交付合成异步建议"); }});
+                              gallery_target("gallery.mentions.deliver");
+                          }});
+                 }})
+                 .layout(LayoutStyle{}.width(state->cell_width)));
+    remember_target(state, "gallery.mentions.async");
+    Text(TextProps{}.content(state->mentions_async_feedback));
+}
+
+void add_mentions_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(10))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(u8"Mentions · 多行编辑与 caret 建议。@ / @@ 提及联系人，# 提及标签，提及 使用 Unicode 前缀。");
+             Text(TextProps{}.content(bind([state] {
+                 return utf8("接受值：" + std::string{state->mentions_field.get().bytes()} + "\n" +
+                             std::string{state->mentions_feedback.get().bytes()});
+             })));
+             const MentionsRichLabel rich{MentionsOptionLabel{[state] {
+                 Flex(FlexProps{}.align(FlexAlign::Center).gap(dp(6)), FlexContent{[state] {
+                          Text(u8"Ada");
+                          Input(InputProps{}
+                                    .value(state->mentions_note)
+                                    .size(ControlSize::Small)
+                                    .layout(LayoutStyle{}.width(dp(150)))
+                                    .onChange([state](String value) { state->mentions_note.set(std::move(value)); }));
+                          remember_target(state, "gallery.mentions.note");
+                      }});
+             }}};
+             Form(FormProps{}.ref(state->mentions_form), FormContent{[state, rich] {
+                      FormItem(FormItemProps{}.field(u8"text", state->mentions_field).control(state->mentions_ref),
+                               FormItemContent{[state, rich] {
+                                   const auto change = state->mentions_field.onChange();
+                                   Mentions(MentionsProps{}
+                                                .ref(state->mentions_ref)
+                                                .value(state->mentions_field.value())
+                                                .onChange([state, change](String value) {
+                                                    if (state->mentions_accept.get()) {
+                                                        change(value);
+                                                    } else {
+                                                        state->mentions_feedback.set(u8"本次编辑请求被应用拒绝");
+                                                    }
+                                                })
+                                                .prefix({u8"@", u8"@@", u8"#", u8"提及"})
+                                                .onSearch([state](String text, String prefix) {
+                                                    state->mentions_prefix.set(prefix);
+                                                    state->mentions_feedback.set(
+                                                        utf8("搜索：prefix=" + std::string{prefix.bytes()} +
+                                                             " query=" + std::string{text.bytes()}));
+                                                })
+                                                .onSelect([state](MentionsOption option, String prefix) {
+                                                    state->mentions_feedback.set(
+                                                        utf8("选择：" + std::string{prefix.bytes()} +
+                                                             std::string{option.value.bytes()}));
+                                                })
+                                                .options(bind([state, rich] {
+                                                    if (state->mentions_prefix.get() == String{u8"#"}) {
+                                                        return std::vector<MentionsOption>{
+                                                            {u8"native", u8"native", u8"原生组件"},
+                                                            {u8"unicode", u8"Unicode", u8"Unicode 编辑"}};
+                                                    }
+                                                    return std::vector<MentionsOption>{
+                                                        {u8"ada", u8"Ada", u8"Ada", false, rich},
+                                                        {u8"disabled", u8"Alan", u8"禁用联系人", true},
+                                                        {u8"grace", u8"Grace", u8"Grace"},
+                                                        {u8"ming", u8"阿明", u8"阿明"}};
+                                                }))
+                                                .disabled(state->mentions_disabled)
+                                                .readOnly(state->mentions_read_only)
+                                                .visible(state->mentions_visible)
+                                                .direction(bind([state] {
+                                                    return state->mentions_rtl.get() ? TextDirection::RightToLeft
+                                                                                     : TextDirection::Auto;
+                                                }))
+                                                .placement(bind([state] {
+                                                    return state->mentions_top.get() ? MentionsPlacement::Top
+                                                                                     : MentionsPlacement::Bottom;
+                                                }))
+                                                .autoSize(TextAreaAutoSize{true, 2, 5})
+                                                .maxLength(std::size_t{500})
+                                                .allowClear()
+                                                .motion()
+                                                .placeholder(u8"输入 @A 或 #U，支持多行、选区、撤销和剪贴板")
+                                                .popupWidth(320.0F)
+                                                .layout(LayoutStyle{}.width(state->cell_width)));
+                                   remember_target(state, "gallery.mentions.editor");
+                               }});
+                  }});
+             Flex(FlexProps{}.gap(dp(6)).wrap(true), FlexContent{[state] {
+                      Button(
+                          ButtonProps{}.onClick([state] { state->mentions_accept.set(!state->mentions_accept.get()); }),
+                          ButtonContent{[] { Text(u8"接受/拒绝编辑"); }});
+                      remember_target(state, "gallery.mentions.accept");
+                      Button(ButtonProps{}.onClick(
+                                 [state] { state->mentions_disabled.set(!state->mentions_disabled.get()); }),
+                             ButtonContent{[] { Text(u8"禁用/恢复"); }});
+                      remember_target(state, "gallery.mentions.disabled");
+                      Button(ButtonProps{}.onClick(
+                                 [state] { state->mentions_read_only.set(!state->mentions_read_only.get()); }),
+                             ButtonContent{[] { Text(u8"只读/恢复"); }});
+                      remember_target(state, "gallery.mentions.readonly");
+                      Button(ButtonProps{}.onClick(
+                                 [state] { state->mentions_visible.set(!state->mentions_visible.get()); }),
+                             ButtonContent{[] { Text(u8"隐藏/恢复编辑器"); }});
+                      remember_target(state, "gallery.mentions.visible");
+                      Button(ButtonProps{}.onClick([state] { state->mentions_rtl.set(!state->mentions_rtl.get()); }),
+                             ButtonContent{[] { Text(u8"RTL/自动方向"); }});
+                      remember_target(state, "gallery.mentions.rtl");
+                      Button(ButtonProps{}.onClick([state] { state->mentions_top.set(!state->mentions_top.get()); }),
+                             ButtonContent{[] { Text(u8"上方/下方建议"); }});
+                      remember_target(state, "gallery.mentions.placement");
+                      Button(ButtonProps{}.onClick([state] {
+                          (void)state->mentions_form.reset();
+                          state->mentions_feedback.set(u8"Form 已重置；同值 reset 也取消 preedit、查询和异步建议");
+                      }),
+                             ButtonContent{[] { Text(u8"重置 Form"); }});
+                      remember_target(state, "gallery.mentions.reset");
+                  }});
+             Text(u8"长建议列表：10,000 个普通建议按可见窗口实现；富建议离屏时保存草稿并释放焦点。");
+             std::vector<MentionsOption> many;
+             many.reserve(10000);
+             for (int index = 0; index < 10000; ++index) {
+                 const auto key = utf8("person-" + std::to_string(index));
+                 many.push_back({key, key, key});
+             }
+             Mentions(MentionsProps{}
+                          .options(std::move(many))
+                          .filterOption(false)
+                          .listHeight(128.0F)
+                          .placeholder(u8"输入 @，使用上下键或滚轮浏览长建议")
+                          .onSelect([state](MentionsOption option, String prefix) {
+                              state->mentions_feedback.set(utf8("长列表选择：" + std::string{prefix.bytes()} +
+                                                                std::string{option.value.bytes()}));
+                          })
+                          .layout(LayoutStyle{}.width(state->cell_width)));
+             remember_target(state, "gallery.mentions.long");
+             add_mentions_async_samples(state);
+             state->telemetry.live_samples += 3;
+         }});
+}
+
 void add_contact_autocomplete_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Flex(FlexProps{}
@@ -8355,6 +8569,13 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_service_rate_samples",
       "include/ryn/rate.hpp"},
      add_service_rate_samples},
+    {{"gallery.sample.mentions.editing",
+      "ant.component.mentions",
+      {},
+      "多行提及、长建议和可取消异步",
+      "add_mentions_samples",
+      "include/ryn/mentions.hpp"},
+     add_mentions_samples},
     {{"gallery.sample.auto-complete.contacts",
       "ant.component.auto-complete",
       {},

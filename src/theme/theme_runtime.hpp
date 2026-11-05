@@ -131,6 +131,12 @@ public:
     [[nodiscard]] const StatisticThemeToken& statistic_metrics() const;
     [[nodiscard]] const TreeThemeToken& tree_colors() const;
     [[nodiscard]] const TreeThemeToken& tree_metrics() const;
+    [[nodiscard]] const MentionsThemeToken& mentions_colors() const;
+    [[nodiscard]] const MentionsThemeToken& mentions_metrics() const;
+    [[nodiscard]] const MentionsThemeToken& mentions_typography() const;
+    [[nodiscard]] const MentionsThemeToken& mentions_effects() const;
+    [[nodiscard]] const MentionsThemeToken& mentions_order() const;
+    [[nodiscard]] const MentionsThemeToken& mentions_input() const;
     [[nodiscard]] const AutoCompleteThemeToken& auto_complete_colors() const;
     [[nodiscard]] const AutoCompleteThemeToken& auto_complete_metrics() const;
     [[nodiscard]] const AutoCompleteThemeToken& auto_complete_typography() const;

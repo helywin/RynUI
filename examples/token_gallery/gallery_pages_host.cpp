@@ -318,6 +318,28 @@ std::string component_values(const ThemeSnapshot& snapshot, std::string_view ide
     if (identity == "ant.component.tree") {
         return resolved_component_values(snapshot.tree());
     }
+    if (identity == "ant.component.mentions") {
+        const auto& token = snapshot.mentions();
+        std::ostringstream out;
+        out << "input.font_size · " << token.input.input_font_size->value() << '\n'
+            << "input.line_height · " << token.input.input_line_height->value() << '\n'
+            << "input.padding_inline · " << token.input.padding_inline->value() << '\n'
+            << "suggestions.option_height · " << token.metrics.option_height << '\n'
+            << "suggestions.font_size · " << token.typography.font_size << '\n'
+            << "suggestions.line_height · " << token.typography.line_height << '\n'
+            << "suggestions.shadow_layers · " << token.shadow.size() << '\n'
+            << "suggestions.z_index_popup · " << token.z_index_popup << '\n';
+        const auto color = [&out](std::string_view name, Color value) {
+            out << name << " · rgba(" << value.red() << ", " << value.green() << ", " << value.blue() << ", "
+                << value.alpha() << ")\n";
+        };
+        color("input.background", *token.input.background);
+        color("input.text", *token.input.color);
+        color("suggestions.background", token.colors.popup_background);
+        color("suggestions.option", token.colors.option_color);
+        color("suggestions.active", token.colors.option_active_background);
+        return out.str();
+    }
     if (identity == "ant.component.auto-complete") {
         return resolved_component_values(snapshot.auto_complete());
     }

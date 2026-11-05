@@ -11,6 +11,7 @@
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
 #include "component/auto_complete_component.hpp"
+#include "component/mentions_component.hpp"
 #include "component/date_picker_component.hpp"
 #include "component/time_picker_component.hpp"
 #include "component/card_component.hpp"
@@ -143,9 +144,11 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);
     auto_complete_ = std::make_unique<AutoCompleteComponentHost>(*this);
+    mentions_ = std::make_unique<MentionsComponentHost>(*this);
     focus_.set_observer([this] {
         if (!retiring_failed_component_) {
             auto_complete_->on_focus_changed();
+            mentions_->on_focus_changed();
             if (cascader_) {
                 cascader_->on_focus_changed();
             }
@@ -529,6 +532,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     // A later Input count/formatter callback can retire an earlier compound's private Input.
     // Retire damaged AutoComplete owners before LayoutEngine starts walking their nodes.
     auto_complete_->validate_private_regions();
+    mentions_->validate_private_regions();
 
     struct SceneBatch {
         TextSceneService& scene;

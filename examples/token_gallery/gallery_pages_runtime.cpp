@@ -4,6 +4,7 @@
 #include "component/transfer_component.hpp"
 #include "component/table_component.hpp"
 #include "component/auto_complete_component.hpp"
+#include "component/mentions_component.hpp"
 #include "component/color_picker_component.hpp"
 #include "component/cascader_component.hpp"
 #include "component/date_picker_component.hpp"
@@ -2051,6 +2052,97 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             std::cout << "input_number_native=passed exact_beyond_2pow53=true exact_wheel=true "
                          "formatter_parser_callback=true "
                          "hold_repeat_release=true wheel_input_first=true preedit_blur=true hold_retired=true\n";
+        }
+        if (route.component_identity == "ant.component.mentions") {
+            auto& mentions = app.services().mentions();
+            const auto main = pages.target("gallery.mentions.editor");
+            reveal(main);
+            const auto native = replace_text(main, u8"消息\n@Ad");
+            auto measured = mentions.snapshot(main);
+            const auto caret = inputs.layout_snapshot(native.component).caret;
+            check(measured.visible && measured.query == String{u8"Ad"} && measured.prefix == String{u8"@"} &&
+                      measured.bounds.y >= caret.y,
+                  "native Mentions caret query/placement failed");
+            const auto note = replace_text(pages.target("gallery.mentions.note"), u8"saved rich note");
+            focus_editor(main);
+            press(input::Key::escape);
+            replace_text(main, u8"消息\n@A");
+            check(pages.target("gallery.mentions.note") == note.component &&
+                      inputs.display_snapshot(note.component).text == "saved rich note",
+                  "native Mentions rich suggestion draft remounted or lost text");
+            press(input::Key::enter);
+            check(mentions.snapshot(main).value == String{u8"消息\n@Ada "}, "native Mentions inserted text failed");
+            const auto authority = pages.target("gallery.mentions.accept");
+            reveal(authority);
+            activate(authority);
+            render();
+            reveal(main);
+            replace_text(main, u8"@Grace");
+            check(mentions.snapshot(main).value == String{u8"消息\n@Ada "},
+                  "native Mentions controlled refusal failed");
+            reveal(authority);
+            activate(authority);
+            render();
+            reveal(main);
+            replace_text(main, u8"@G");
+            const auto stamp = inputs.sessions().active();
+            pages.dispatch(input::CompositionChanged{String{u8"组合"}, {}, stamp});
+            render();
+            const auto accepted = mentions.snapshot(main).value;
+            press(input::Key::enter);
+            check(inputs.editors().require(native.editor).composition().active &&
+                      mentions.snapshot(main).value == accepted,
+                  "native Mentions composition Enter selected a suggestion");
+            pages.dispatch(input::CompositionChanged{String{}, {}, stamp});
+            render();
+            const auto reset = pages.target("gallery.mentions.reset");
+            reveal(reset);
+            activate(reset);
+            render();
+            check(mentions.snapshot(main).value == String{u8"在这里输入 @ 或 #\n"} && !mentions.snapshot(main).visible,
+                  "native Mentions Form reset failed");
+            const auto long_list = pages.target("gallery.mentions.long");
+            reveal(long_list);
+            replace_text(long_list, u8"@");
+            for (int step = 0; step < 12; ++step) {
+                press(input::Key::down);
+            }
+            const auto window = mentions.snapshot(long_list);
+            check(window.visible && window.total_rows == 10000 && window.rows.size() <= 10 && window.scroll > 0,
+                  "native Mentions long list realization failed");
+            const auto offset = pages.snapshot().document.offset;
+            events.inject_scroll_at(window.clip.x + 4, window.clip.y + 4, -2);
+            render();
+            check(mentions.snapshot(long_list).scroll > window.scroll && pages.snapshot().document.offset == offset,
+                  "native Mentions wheel escaped to document");
+            press(input::Key::escape);
+            const auto async = pages.target("gallery.mentions.async");
+            reveal(async);
+            replace_text(async, u8"@old");
+            replace_text(async, u8"@latest");
+            check(mentions.snapshot(async).pending, "native Mentions async request missing");
+            click(pages.target("gallery.mentions.deliver"));
+            const auto delivered = mentions.snapshot(async);
+            check(!delivered.pending && delivered.query == String{u8"latest"} && delivered.total_rows == 1 &&
+                      has_text(u8"latest-synthetic") && !has_text(u8"old-synthetic"),
+                  "native Mentions stale result applied");
+            click(delivered.rows.front());
+            check(mentions.snapshot(async).value == String{u8"@latest-synthetic "},
+                  "native Mentions async choice failed");
+            replace_text(async, u8"@retired");
+            capture_editor(async);
+            previous_session = inputs.sessions().active();
+            check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "Mentions retirement rejected");
+            static_cast<void>(pages.process());
+            render();
+            check(mentions.mounted().empty() && !inputs.sessions().active().valid() && !captured() &&
+                      !inputs.editors().find(previous_session.owner),
+                  "native Mentions retained retired editor/capture/ticket");
+            std::cout
+                << "mentions_native=passed multiline=true caret_popup=true native_replace=true controlled_refusal=true "
+                   "core_composition_enter=true form_reset=true rich_draft=true long_window=true "
+                   "input_first_wheel=true "
+                   "synthetic_latest=true retired=true\n";
         }
         if (route.component_identity == "ant.component.auto-complete") {
             auto& complete = app.services().auto_complete();

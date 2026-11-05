@@ -645,6 +645,32 @@ struct AutoCompleteThemeConfig final {
     friend bool operator==(const AutoCompleteThemeConfig&, const AutoCompleteThemeConfig&) = default;
 };
 
+// Independent editor and suggestion recipes. No Input/Select configuration is mutated.
+struct MentionsThemeToken final {
+    SelectColorToken colors;
+    SelectMetricToken metrics;
+    SelectTypographyToken typography;
+    ShadowList shadow;
+    std::int32_t z_index_popup{1050};
+    InputTokenOverride input;
+    SeedTokenOverride input_seed;
+    AliasTokenOverride input_alias;
+    friend bool operator==(const MentionsThemeToken&, const MentionsThemeToken&) = default;
+};
+
+struct MentionsTokenOverride final {
+    SelectTokenOverride suggestions;
+    InputTokenOverride input;
+    friend bool operator==(const MentionsTokenOverride&, const MentionsTokenOverride&) = default;
+};
+
+struct MentionsThemeConfig final {
+    MentionsTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const MentionsThemeConfig&, const MentionsThemeConfig&) = default;
+};
+
 struct CardColorToken final {
     Color background;
     Color header_background;
@@ -1816,6 +1842,7 @@ struct ThemeConfig final {
     StatisticThemeConfig statistic;
     TreeThemeConfig tree;
     AutoCompleteThemeConfig auto_complete;
+    MentionsThemeConfig mentions;
     TreeSelectThemeConfig tree_select;
     LayoutThemeConfig layout;
     SplitterThemeConfig splitter;
@@ -2500,6 +2527,10 @@ public:
         return *tree_;
     }
 
+    [[nodiscard]] const MentionsThemeToken& mentions() const noexcept {
+        return *mentions_;
+    }
+
     [[nodiscard]] const AutoCompleteThemeToken& auto_complete() const noexcept {
         return *auto_complete_;
     }
@@ -2540,7 +2571,7 @@ private:
         std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
         std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
         std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
-        std::shared_ptr<const SplitterThemeToken> splitter);
+        std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2578,6 +2609,7 @@ private:
     std::shared_ptr<const TreeSelectThemeToken> tree_select_;
     std::shared_ptr<const LayoutThemeToken> layout_;
     std::shared_ptr<const SplitterThemeToken> splitter_;
+    std::shared_ptr<const MentionsThemeToken> mentions_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;

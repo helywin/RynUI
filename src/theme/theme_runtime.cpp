@@ -343,6 +343,20 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       changed, count);
     append_if_changed(before.auto_complete().z_index_popup, after.auto_complete().z_index_popup,
                       TokenIdentity::auto_complete_order, changed, count);
+    append_if_changed(before.mentions().colors, after.mentions().colors, TokenIdentity::mentions_colors, changed,
+                      count);
+    append_if_changed(before.mentions().metrics, after.mentions().metrics, TokenIdentity::mentions_metrics, changed,
+                      count);
+    append_if_changed(before.mentions().typography, after.mentions().typography, TokenIdentity::mentions_typography,
+                      changed, count);
+    append_if_changed(before.mentions().shadow, after.mentions().shadow, TokenIdentity::mentions_effects, changed,
+                      count);
+    append_if_changed(before.mentions().z_index_popup, after.mentions().z_index_popup, TokenIdentity::mentions_order,
+                      changed, count);
+    append_if_changed(before.mentions().input == after.mentions().input &&
+                          before.mentions().input_seed == after.mentions().input_seed &&
+                          before.mentions().input_alias == after.mentions().input_alias,
+                      true, TokenIdentity::mentions_input, changed, count);
     append_if_changed(before.tree_select().selector.colors(), after.tree_select().selector.colors(),
                       TokenIdentity::tree_select_colors, changed, count);
     append_if_changed(before.tree_select().selector.metrics(), after.tree_select().selector.metrics(),
@@ -1728,6 +1742,42 @@ const AutoCompleteThemeToken& ThemeScope::auto_complete_order() const {
     return snapshot_->auto_complete();
 }
 
+const MentionsThemeToken& ThemeScope::mentions_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::mentions_colors);
+    return snapshot_->mentions();
+}
+
+const MentionsThemeToken& ThemeScope::mentions_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::mentions_metrics);
+    return snapshot_->mentions();
+}
+
+const MentionsThemeToken& ThemeScope::mentions_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::mentions_typography);
+    return snapshot_->mentions();
+}
+
+const MentionsThemeToken& ThemeScope::mentions_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::mentions_effects);
+    return snapshot_->mentions();
+}
+
+const MentionsThemeToken& ThemeScope::mentions_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::mentions_order);
+    return snapshot_->mentions();
+}
+
+const MentionsThemeToken& ThemeScope::mentions_input() const {
+    ensure_owner_thread();
+    record(TokenIdentity::mentions_input);
+    return snapshot_->mentions();
+}
+
 const TreeSelectThemeToken& ThemeScope::tree_select_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::tree_select_colors);
@@ -2281,6 +2331,12 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Transfer.typography",
         "Transfer.effects",
         "Transfer.order",
+        "Mentions.colors",
+        "Mentions.metrics",
+        "Mentions.typography",
+        "Mentions.effects",
+        "Mentions.order",
+        "Mentions.input",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2289,6 +2345,9 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
 
 DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     switch (identity) {
+    case TokenIdentity::mentions_input:
+        return DirtyPhase::paint_material | DirtyPhase::geometry | DirtyPhase::measure_layout | DirtyPhase::text |
+               DirtyPhase::hit_test;
     case TokenIdentity::float_button:
         return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::paint_material | DirtyPhase::hit_test;
     case TokenIdentity::statistic_colors:
@@ -2384,6 +2443,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::avatar_colors:
     case TokenIdentity::rate_colors:
     case TokenIdentity::tree_colors:
+    case TokenIdentity::mentions_colors:
     case TokenIdentity::auto_complete_colors:
     case TokenIdentity::tree_select_colors:
     case TokenIdentity::tree_select_tree_colors:
@@ -2432,6 +2492,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tooltip_shadow:
     case TokenIdentity::dropdown_effects:
     case TokenIdentity::select_effects:
+    case TokenIdentity::mentions_effects:
     case TokenIdentity::auto_complete_effects:
     case TokenIdentity::tree_select_effects:
     case TokenIdentity::card_effects:
@@ -2485,6 +2546,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::avatar_metrics:
     case TokenIdentity::rate_metrics:
     case TokenIdentity::tree_metrics:
+    case TokenIdentity::mentions_typography:
     case TokenIdentity::auto_complete_typography:
     case TokenIdentity::tree_select_tree_metrics:
     case TokenIdentity::color_picker_metrics:
@@ -2513,6 +2575,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::menu_metrics:
     case TokenIdentity::dropdown_metrics:
     case TokenIdentity::select_metrics:
+    case TokenIdentity::mentions_metrics:
     case TokenIdentity::auto_complete_metrics:
     case TokenIdentity::tree_select_metrics:
     case TokenIdentity::card_metrics:
@@ -2544,6 +2607,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_motion_enabled:
         return DirtyPhase::animation;
     case TokenIdentity::modal_order:
+    case TokenIdentity::mentions_order:
     case TokenIdentity::auto_complete_order:
     case TokenIdentity::tree_select_order:
     case TokenIdentity::drawer_order:

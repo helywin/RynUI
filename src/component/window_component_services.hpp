@@ -28,6 +28,7 @@ class TooltipComponentHost;
 class OTPComponentHost;
 class SelectComponentHost;
 class AutoCompleteComponentHost;
+class MentionsComponentHost;
 class DatePickerComponentHost;
 class TimePickerComponentHost;
 class CardComponentHost;
@@ -263,6 +264,10 @@ public:
 
     [[nodiscard]] SelectComponentHost& select() noexcept {
         return *select_;
+    }
+
+    [[nodiscard]] MentionsComponentHost& mentions() noexcept {
+        return *mentions_;
     }
 
     [[nodiscard]] AutoCompleteComponentHost& auto_complete() noexcept {
@@ -512,6 +517,7 @@ private:
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;
     std::unique_ptr<AutoCompleteComponentHost> auto_complete_;
+    std::unique_ptr<MentionsComponentHost> mentions_;
     std::unique_ptr<DatePickerComponentHost> date_picker_;
     std::unique_ptr<TimePickerComponentHost> time_picker_;
     std::unique_ptr<CardComponentHost> card_;

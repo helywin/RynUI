@@ -11,6 +11,26 @@ target_compile_definitions(rynui_transfer_complete_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.transfer_complete COMMAND rynui_transfer_complete_tests)
+add_executable(rynui_mentions_public_api_tests mentions_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_mentions_public_api_tests)
+target_link_libraries(rynui_mentions_public_api_tests PRIVATE rynui_components)
+add_test(NAME rynui.mentions_public_api COMMAND rynui_mentions_public_api_tests)
+
+add_executable(rynui_mentions_theme_tests mentions_theme_tests.cpp)
+rynui_configure_cpp_target(rynui_mentions_theme_tests)
+target_link_libraries(rynui_mentions_theme_tests PRIVATE rynui_components)
+add_test(NAME rynui.mentions_theme COMMAND rynui_mentions_theme_tests)
+
+
+add_executable(rynui_mentions_tests mentions_tests.cpp)
+rynui_configure_cpp_target(rynui_mentions_tests)
+target_link_libraries(rynui_mentions_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_mentions_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS parsing editing caret controlled clipboard composition geometry async form window focus failures idle configuration zero nested)
+    add_test(NAME rynui.mentions_${case} COMMAND rynui_mentions_tests ${case})
+endforeach()
 
 add_executable(rynui_color_picker_component_tests color_picker_component_tests.cpp)
 rynui_configure_cpp_target(rynui_color_picker_component_tests)
@@ -61,6 +81,7 @@ endforeach()
 
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+add_test(NAME rynui.mentions_theme_baseline COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_mentions_theme_baseline.py")
 
 add_executable(rynui_grid_component_tests grid_component_tests.cpp)
 rynui_configure_cpp_target(rynui_grid_component_tests)

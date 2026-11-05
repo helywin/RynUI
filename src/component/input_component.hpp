@@ -99,6 +99,10 @@ public:
     [[nodiscard]] input::TextEditResult dispatch(const input::CandidatesChanged&);
     [[nodiscard]] bool dispatch(const input::ScrollInputEvent&);
     void submit(runtime::ComponentId);
+    [[nodiscard]] input::TextEditResult replace_range(runtime::ComponentId, input::TextSelection, StringView);
+    // Refresh caret/scroll geometry before a caret-anchored compound window layer is positioned.
+    void synchronize_editor_geometry(runtime::ComponentId, runtime::Size, runtime::Rect);
+
     void configure_typography_editor(runtime::ComponentId, Prop<runtime::SemanticTypography>, Prop<bool> active,
                                      std::function<void(String)> commit, std::function<void()> cancel,
                                      std::function<void(String)> blur);
@@ -166,6 +170,7 @@ private:
     }
 
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
+    void synchronize_input_geometry(runtime::Size, runtime::Rect, std::optional<runtime::ComponentId>);
     bool synchronize_auxiliary_fragments() override;
     WindowComponentServices* host_;
     WindowTextEditServices* edit_services_;

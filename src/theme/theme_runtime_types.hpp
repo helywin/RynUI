@@ -243,6 +243,12 @@ enum class TokenIdentity : std::uint8_t {
     transfer_typography,
     transfer_effects,
     transfer_order,
+    mentions_colors,
+    mentions_metrics,
+    mentions_typography,
+    mentions_effects,
+    mentions_order,
+    mentions_input,
     count,
 };
 

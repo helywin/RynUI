@@ -1,3 +1,12 @@
+add_executable(rynui_mentions_gallery_tests mentions_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_mentions_gallery_tests)
+target_include_directories(rynui_mentions_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_mentions_gallery_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_mentions_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.mentions_gallery COMMAND rynui_mentions_gallery_tests)
+
 add_executable(rynui_navigation_completion_gallery_tests navigation_completion_gallery_tests.cpp)
 rynui_configure_cpp_target(rynui_navigation_completion_gallery_tests)
 target_include_directories(rynui_navigation_completion_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
@@ -261,12 +270,16 @@ add_test(NAME rynui.gallery_page_acceptance_options COMMAND rynui_gallery_page_a
 add_test(NAME rynui.gallery_page_acceptance_runner COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/gallery_page_acceptance_runner_tests.py" "$<TARGET_FILE:rynui_gallery_page_acceptance_tests>")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET rynui_token_gallery)
-    foreach(native_sequence IN ITEMS general_layout masonry_compact shell_splitter select_autocomplete color_number)
+    foreach(native_sequence IN ITEMS general_layout masonry_compact shell_splitter select_autocomplete color_number mentions)
         set(native_timeout 60)
         if(native_sequence STREQUAL "select_autocomplete")
             set(native_timeout 120)
             set(native_pages --page ant.component.auto-complete --page ant.component.select
                 --page ant.component.pagination --page ant.component.tabs --page ant.component.button)
+        elseif(native_sequence STREQUAL "mentions")
+            set(native_timeout 120)
+            set(native_pages --page ant.component.mentions --page ant.component.auto-complete
+                --page ant.component.transfer --page ant.component.button)
         elseif(native_sequence STREQUAL "color_number")
             set(native_timeout 120)
             set(native_pages --page ant.component.color-picker --page ant.component.input-number --page ant.component.button)

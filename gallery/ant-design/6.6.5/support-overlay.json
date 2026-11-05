@@ -797,16 +797,36 @@
     },
     {
       "identity": "ant.component.mentions",
-      "status": "planned",
-      "summary": "提及（Mentions）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Mentions 已实现保留多行编辑、实际 caret 建议、Unicode 替换、稳定富行、可取消异步、独立主题与 Form reset；平台结果独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive Props and stable native TextArea value/ref/selection; Unicode, bidi, clipboard, composition and maxLength",
+        "multiple and overlapping Unicode prefixes; actual caret query, validated search, exact grapheme-safe replacement and pure getMentions",
+        "caret-anchored window-layer popup following wrapping, scrolling, resize and flat ancestor translation; bounded placement",
+        "keyboard/pointer selection, disabled skipping, parent/child popup ownership, bounded ordinary rows and retained rich drafts",
+        "application-owned cancellable async source with owner-thread post/wakeup, generation, lifetime and duplicate-result authority",
+        "independent Mentions input/suggestion Theme, scoped seed/algorithm/inherit, snapshot/hash/invalidation and finite motion",
+        "explicit Form String/ref binding and same-value reset; independent editing, long-list and synthetic async Gallery samples",
+        "Linux private Wayland/Vulkan/SPIR-V/system-font Mentions to Button acceptance: 2 cases, 185 checks, native input-area/cursor services and editor/capture retirement"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Windows/MSVC, physical system IME candidate UI, assistive technology and cross-monitor acceptance remain independent",
+        "Web DOM/CSS/React/HTML and browser portal/transport APIs are outside native scope"
       ],
       "evidence_identifiers": [
-        "source:components/mentions/index.en-US.md"
+        "source:components/mentions/index.en-US.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.mentions_public_api",
+        "test:rynui.mentions_editing",
+        "test:rynui.mentions_geometry",
+        "test:rynui.mentions_async",
+        "test:rynui.mentions_form",
+        "test:rynui.mentions_gallery",
+        "test:rynui.mentions_theme",
+        "test:rynui.mentions_window",
+        "test:rynui.mentions_failures",
+        "test:rynui.gallery_native_mentions",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/mentions-linux.md"
       ]
     },
     {

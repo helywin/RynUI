@@ -550,6 +550,70 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
     return input;
 }
 
+// InputTokenOverride covers the public editor recipe. These five resolved
+// defaults cover the native Input fields without public override setters.
+// Motion and unrelated seed/alias values continue to inherit normally.
+SeedTokenOverride mentions_input_seed(const AntDesignDefaultSeed& value) {
+    SeedTokenOverride result;
+    result.color_error = value.color_error;
+    result.color_warning = value.color_warning;
+    result.line_width = dp(value.line_width);
+    return result;
+}
+
+AliasTokenOverride mentions_input_alias(const ThemeAliasToken& value) {
+    AliasTokenOverride result;
+    result.color_text_disabled = value.color_text_disabled;
+    result.color_border = value.color_border;
+    return result;
+}
+
+InputTokenOverride mentions_input_override(const detail::InputTokenSet& input) {
+    InputTokenOverride result;
+    result.input_line_height_small = dp(input.sizes[0].line_height);
+    result.input_line_height = dp(input.sizes[1].line_height);
+    result.input_line_height_large = dp(input.sizes[2].line_height);
+    result.disabled_background = input.colors.disabled_background;
+    result.control_height_small = dp(input.sizes[0].control_height);
+    result.control_height = dp(input.sizes[1].control_height);
+    result.control_height_large = dp(input.sizes[2].control_height);
+    result.color = input.colors.foreground;
+    result.placeholder_color = input.colors.placeholder;
+    result.background = input.colors.background;
+    result.border_color = input.colors.border;
+    result.hover_border_color = input.colors.hover_border;
+    result.active_border_color = input.colors.active_border;
+    result.hover_background = input.colors.hover_background;
+    result.active_background = input.colors.active_background;
+    result.filled_background = input.colors.filled_background;
+    result.filled_hover_background = input.colors.filled_hover_background;
+    result.error_background = input.colors.error_background;
+    result.error_hover_background = input.colors.error_hover_background;
+    result.warning_background = input.colors.warning_background;
+    result.warning_hover_background = input.colors.warning_hover_background;
+    result.error_color = input.colors.error_foreground;
+    result.warning_color = input.colors.warning_foreground;
+    result.focus_width = dp(input.focus_width);
+    result.selection_background = input.colors.selection_background;
+    result.selection_color = input.colors.selection_foreground;
+    result.caret_color = input.colors.caret;
+    result.active_shadow = input.active_shadow;
+    result.error_active_shadow = input.error_active_shadow;
+    result.warning_active_shadow = input.warning_active_shadow;
+    result.input_font_size = dp(input.sizes[1].font_size);
+    result.input_font_size_small = dp(input.sizes[0].font_size);
+    result.input_font_size_large = dp(input.sizes[2].font_size);
+    result.padding_inline = dp(input.sizes[1].padding_inline);
+    result.padding_inline_small = dp(input.sizes[0].padding_inline);
+    result.padding_inline_large = dp(input.sizes[2].padding_inline);
+    result.padding_block = dp(input.sizes[1].padding_block);
+    result.padding_block_small = dp(input.sizes[0].padding_block);
+    result.padding_block_large = dp(input.sizes[2].padding_block);
+    result.border_radius = dp(input.sizes[1].border_radius);
+    result.affix_padding = dp(input.affix_padding);
+    return result;
+}
+
 InputNumberThemeToken derive_input_number(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
                                           const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
     // Ant Design 6.6.5 components/input-number/style/token.ts.
@@ -4168,7 +4232,7 @@ ThemeSnapshot::ThemeSnapshot(
     std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
     std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
     std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
-    std::shared_ptr<const SplitterThemeToken> splitter)
+    std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), float_button_(std::move(float_button)),
@@ -4180,13 +4244,14 @@ ThemeSnapshot::ThemeSnapshot(
       skeleton_(std::move(skeleton)), timeline_(std::move(timeline)), avatar_(std::move(avatar)),
       rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
       auto_complete_(std::move(auto_complete)), tree_select_(std::move(tree_select)), layout_(std::move(layout)),
-      splitter_(std::move(splitter)), descriptions_(std::move(descriptions)), popover_(std::move(popover)),
-      message_(std::move(message)), notification_(std::move(notification)), modal_(std::move(modal)),
-      tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
-      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
-      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
-      table_(std::move(table)), collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      splitter_(std::move(splitter)), mentions_(std::move(mentions)), descriptions_(std::move(descriptions)),
+      popover_(std::move(popover)), message_(std::move(message)), notification_(std::move(notification)),
+      modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)),
+      popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
+      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
+      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
+      collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4785,6 +4850,139 @@ ThemeSnapshot::ThemeSnapshot(
         status_json << ']';
     }
     status_json << "]}";
+    status_json << ",\"mentions\":{\"colors\":[";
+    first = true;
+    for (const auto value : mentions_->colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (const auto value : mentions_->metrics.values()) {
+        metric(value);
+    }
+    metric(mentions_->typography.font_size);
+    metric(mentions_->typography.line_height);
+    hash_integer(identity_, mentions_->typography.font_family);
+    hash_integer(identity_, mentions_->typography.font_weight);
+    hash_integer(identity_, mentions_->typography.selected_font_weight);
+    hash_integer(identity_, mentions_->z_index_popup);
+    hash_shadow(identity_, mentions_->shadow);
+    status_json << "],\"fontFamily\":" << static_cast<int>(mentions_->typography.font_family)
+                << ",\"fontWeight\":" << mentions_->typography.font_weight
+                << ",\"selectedFontWeight\":" << mentions_->typography.selected_font_weight
+                << ",\"zIndexPopup\":" << mentions_->z_index_popup << ",\"shadow\":[";
+    for (std::size_t i = 0; i < mentions_->shadow.size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& shadow = mentions_->shadow[i];
+        status_json << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                    << shadow.blur << ',' << shadow.spread << ',';
+        append_color(status_json, shadow.color);
+        status_json << ']';
+    }
+    status_json << "],\"input\":[";
+    first = true;
+    metric(mentions_->input.input_line_height_small->value());
+    metric(mentions_->input.input_line_height->value());
+    metric(mentions_->input.input_line_height_large->value());
+    color(*mentions_->input.disabled_background);
+    metric(mentions_->input.control_height_small->value());
+    metric(mentions_->input.control_height->value());
+    metric(mentions_->input.control_height_large->value());
+    color(*mentions_->input.color);
+    color(*mentions_->input.placeholder_color);
+    color(*mentions_->input.background);
+    color(*mentions_->input.border_color);
+    color(*mentions_->input.hover_border_color);
+    color(*mentions_->input.active_border_color);
+    color(*mentions_->input.hover_background);
+    color(*mentions_->input.active_background);
+    color(*mentions_->input.filled_background);
+    color(*mentions_->input.filled_hover_background);
+    color(*mentions_->input.error_background);
+    color(*mentions_->input.error_hover_background);
+    color(*mentions_->input.warning_background);
+    color(*mentions_->input.warning_hover_background);
+    color(*mentions_->input.error_color);
+    color(*mentions_->input.warning_color);
+    metric(mentions_->input.focus_width->value());
+    color(*mentions_->input.selection_background);
+    color(*mentions_->input.selection_color);
+    color(*mentions_->input.caret_color);
+    if (!first) {
+        status_json << ',';
+    }
+    first = false;
+    hash_shadow(identity_, *mentions_->input.active_shadow);
+    status_json << '[';
+    for (std::size_t i = 0; i < mentions_->input.active_shadow->size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& layer = (*mentions_->input.active_shadow)[i];
+        status_json << '[' << static_cast<int>(layer.kind) << ',' << layer.offset.x << ',' << layer.offset.y << ','
+                    << layer.blur << ',' << layer.spread << ',';
+        append_color(status_json, layer.color);
+        status_json << ']';
+    }
+    status_json << ']';
+    if (!first) {
+        status_json << ',';
+    }
+    first = false;
+    hash_shadow(identity_, *mentions_->input.error_active_shadow);
+    status_json << '[';
+    for (std::size_t i = 0; i < mentions_->input.error_active_shadow->size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& layer = (*mentions_->input.error_active_shadow)[i];
+        status_json << '[' << static_cast<int>(layer.kind) << ',' << layer.offset.x << ',' << layer.offset.y << ','
+                    << layer.blur << ',' << layer.spread << ',';
+        append_color(status_json, layer.color);
+        status_json << ']';
+    }
+    status_json << ']';
+    if (!first) {
+        status_json << ',';
+    }
+    first = false;
+    hash_shadow(identity_, *mentions_->input.warning_active_shadow);
+    status_json << '[';
+    for (std::size_t i = 0; i < mentions_->input.warning_active_shadow->size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& layer = (*mentions_->input.warning_active_shadow)[i];
+        status_json << '[' << static_cast<int>(layer.kind) << ',' << layer.offset.x << ',' << layer.offset.y << ','
+                    << layer.blur << ',' << layer.spread << ',';
+        append_color(status_json, layer.color);
+        status_json << ']';
+    }
+    status_json << ']';
+    metric(mentions_->input.input_font_size->value());
+    metric(mentions_->input.input_font_size_small->value());
+    metric(mentions_->input.input_font_size_large->value());
+    metric(mentions_->input.padding_inline->value());
+    metric(mentions_->input.padding_inline_small->value());
+    metric(mentions_->input.padding_inline_large->value());
+    metric(mentions_->input.padding_block->value());
+    metric(mentions_->input.padding_block_small->value());
+    metric(mentions_->input.padding_block_large->value());
+    metric(mentions_->input.border_radius->value());
+    metric(mentions_->input.affix_padding->value());
+    status_json << "]";
+    status_json << ",\"input_seed\":[";
+    first = true;
+    color(*mentions_->input_seed.color_error);
+    color(*mentions_->input_seed.color_warning);
+    metric(mentions_->input_seed.line_width->value());
+    status_json << "],\"input_alias\":[";
+    first = true;
+    color(*mentions_->input_alias.color_text_disabled);
+    color(*mentions_->input_alias.color_border);
+    status_json << "]}";
     status_json << ",\"treeSelect\":{\"colors\":[";
     first = true;
     for (const auto value : tree_select_->selector.colors()) {
@@ -4985,7 +5183,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            *left.avatar_ == *right.avatar_ && *left.rate_ == *right.rate_ && *left.statistic_ == *right.statistic_ &&
            *left.tree_ == *right.tree_ && *left.auto_complete_ == *right.auto_complete_ &&
            *left.tree_select_ == *right.tree_select_ && *left.layout_ == *right.layout_ &&
-           *left.splitter_ == *right.splitter_;
+           *left.splitter_ == *right.splitter_ && *left.mentions_ == *right.mentions_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -6415,6 +6613,72 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         }
         return token;
     }();
+    auto mentions = [&] {
+        auto token = std::make_shared<MentionsThemeToken>();
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.mentions.algorithm;
+        SelectThemeToken suggestions;
+        detail::InputTokenSet editor;
+        if (inherit) {
+            *token = parent->mentions();
+            suggestions = {token->colors, token->metrics, token->typography, token->shadow, token->z_index_popup};
+            auto component_seed = seed;
+            apply_seed_override(component_seed, token->input_seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            auto component_alias = derive_alias(component_seed, component_map, algorithms);
+            apply_alias_override(component_alias, token->input_alias);
+            editor = derive_input_theme(component_seed, component_map, component_alias, algorithms);
+            detail::apply_input_override(editor, token->input);
+        } else {
+            auto component_seed = seed;
+            if (config.mentions.algorithm) {
+                apply_seed_override(component_seed, config.mentions.seed);
+            }
+            const auto component_map = config.mentions.algorithm ? derive_map(component_seed, algorithms) : map;
+            const auto component_alias =
+                config.mentions.algorithm ? derive_alias(component_seed, component_map, algorithms) : alias;
+            suggestions = derive_select(component_seed, component_map, component_alias, algorithms);
+            // Locked Mentions uses ordinary text/hover, never Select's selected palette or bold weight.
+            suggestions.colors.option_selected_color = suggestions.colors.option_color;
+            suggestions.colors.option_selected_background = suggestions.colors.option_active_background;
+            suggestions.typography.selected_font_weight = suggestions.typography.font_weight;
+            editor = derive_input_theme(component_seed, component_map, component_alias, algorithms);
+            token->input_seed = mentions_input_seed(component_seed);
+            token->input_alias = mentions_input_alias(component_alias);
+        }
+        apply_select_override(suggestions, config.mentions.tokens.suggestions);
+        detail::apply_input_override(editor, config.mentions.tokens.input);
+        token->colors = suggestions.colors;
+        token->metrics = suggestions.metrics;
+        token->typography = suggestions.typography;
+        token->shadow = suggestions.shadow;
+        token->z_index_popup = suggestions.z_index_popup;
+        token->input = mentions_input_override(editor);
+        double extent = suggestions.typography.line_height;
+        for (const auto metric : suggestions.metrics.values()) {
+            extent += static_cast<double>(metric) * 4096;
+        }
+        const auto renderable_font = [](float size) {
+            const double pixels = std::round(static_cast<double>(size));
+            return std::isfinite(pixels) && pixels >= 1 && pixels <= std::numeric_limits<int>::max() / 64;
+        };
+        for (const auto& size : editor.sizes) {
+            if (!renderable_font(size.font_size) || !std::isfinite(size.line_height)) {
+                throw std::invalid_argument("Mentions editor font is not renderable");
+            }
+            extent +=
+                static_cast<double>(size.line_height + size.padding_inline + size.padding_block + size.control_height) *
+                4096;
+        }
+        if (!renderable_font(suggestions.typography.font_size) || !std::isfinite(extent) ||
+            extent > std::numeric_limits<float>::max() ||
+            (suggestions.typography.font_family != SystemFontFamily::ui_sans &&
+             suggestions.typography.font_family != SystemFontFamily::ui_monospace)) {
+            throw std::invalid_argument("Mentions final font or combined extent is not renderable");
+        }
+        return token;
+    }();
     return ThemeSnapshot(
         std::move(float_button), std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
         std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography), std::move(divider),
@@ -6427,7 +6691,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         std::move(transfer), std::move(color_picker), std::move(cascader), std::move(steps), std::move(time_picker),
         std::move(skeleton), std::move(descriptions), std::move(popover), std::move(message), std::move(notification),
         std::move(timeline), std::move(avatar), std::move(rate), std::move(statistic), std::move(tree),
-        std::move(auto_complete), std::move(tree_select), std::move(layout), std::move(splitter));
+        std::move(auto_complete), std::move(tree_select), std::move(layout), std::move(splitter), std::move(mentions));
 }
 
 } // namespace ryn
