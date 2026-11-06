@@ -1628,50 +1628,54 @@ void add_input_base_samples(const std::shared_ptr<GalleryState>& state) {
                [state] {
                    ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
                                   ++state->telemetry.theme_content_runs;
-                                  ryn::Text(sample_text(u8"gallery.input.controlled · 受控输入"));
-                                  ryn::Input(ryn::InputProps{}
-                                                 .value(state->input_value)
-                                                 .placeholder(u8"受控：输入中文 / Latin / emoji")
-                                                 .maxLength(32)
-                                                 .status(ryn::bind([value = state->input_value] {
-                                                     return value.get().empty() ? ryn::InputStatus::Default
-                                                                                : ryn::InputStatus::Warning;
-                                                 }))
-                                                 .onChange([state](ryn::String next) {
-                                                     ++state->telemetry.input_changes;
-                                                     state->input_value.set(std::move(next));
-                                                 })
-                                                 .onSubmit([state](ryn::String next) {
-                                                     ++state->telemetry.input_submits;
-                                                     state->input_feedback.set(std::move(next));
-                                                 })
-                                                 .layout(ryn::LayoutStyle{}.width(state->cell_width)),
-                                             ryn::InputPrefix{[] { ryn::Text(u8"前"); }},
-                                             ryn::InputSuffix{[] { ryn::Text(u8"32"); }});
-                                  remember_target(state, "gallery.input.controlled");
-                                  ++state->telemetry.live_samples;
+                                  ryn::Flex(ryn::FlexProps{}.vertical(true).gap(ryn::dp(8)), [state] {
+                                      ryn::Text(sample_text(u8"gallery.input.controlled · 受控输入"));
+                                      ryn::Input(ryn::InputProps{}
+                                                     .value(state->input_value)
+                                                     .placeholder(u8"受控：输入中文 / Latin / emoji")
+                                                     .maxLength(32)
+                                                     .status(ryn::bind([value = state->input_value] {
+                                                         return value.get().empty() ? ryn::InputStatus::Default
+                                                                                    : ryn::InputStatus::Warning;
+                                                     }))
+                                                     .onChange([state](ryn::String next) {
+                                                         ++state->telemetry.input_changes;
+                                                         state->input_value.set(std::move(next));
+                                                     })
+                                                     .onSubmit([state](ryn::String next) {
+                                                         ++state->telemetry.input_submits;
+                                                         state->input_feedback.set(std::move(next));
+                                                     })
+                                                     .layout(ryn::LayoutStyle{}.width(state->cell_width)),
+                                                 ryn::InputPrefix{[] { ryn::Text(u8"前"); }},
+                                                 ryn::InputSuffix{[] { ryn::Text(u8"32"); }});
+                                      remember_target(state, "gallery.input.controlled");
+                                      ++state->telemetry.live_samples;
+                                  });
                               }});
                    ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
                                   ++state->telemetry.theme_content_runs;
-                                  ryn::Text(sample_text(u8"gallery.input.uncontrolled · 非受控输入"));
-                                  ryn::Input(ryn::InputProps{}
-                                                 .defaultValue(state->initial("gallery.input.uncontrolled",
-                                                                              ryn::String{u8"非受控 / Input"}))
-                                                 .placeholder(u8"清空后显示 placeholder")
-                                                 .allowClear(true)
-                                                 .disabled(state->clear_disabled)
-                                                 .onChange([state](ryn::String next) {
-                                                     state->remember("gallery.input.uncontrolled", next);
-                                                     ++state->telemetry.input_changes;
-                                                     state->input_feedback.set(std::move(next));
-                                                 })
-                                                 .onSubmit([state](ryn::String next) {
-                                                     ++state->telemetry.input_submits;
-                                                     state->input_feedback.set(std::move(next));
-                                                 })
-                                                 .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-                                  remember_target(state, "gallery.input.uncontrolled");
-                                  ++state->telemetry.live_samples;
+                                  ryn::Flex(ryn::FlexProps{}.vertical(true).gap(ryn::dp(8)), [state] {
+                                      ryn::Text(sample_text(u8"gallery.input.uncontrolled · 非受控输入"));
+                                      ryn::Input(ryn::InputProps{}
+                                                     .defaultValue(state->initial("gallery.input.uncontrolled",
+                                                                                  ryn::String{u8"非受控 / Input"}))
+                                                     .placeholder(u8"清空后显示 placeholder")
+                                                     .allowClear(true)
+                                                     .disabled(state->clear_disabled)
+                                                     .onChange([state](ryn::String next) {
+                                                         state->remember("gallery.input.uncontrolled", next);
+                                                         ++state->telemetry.input_changes;
+                                                         state->input_feedback.set(std::move(next));
+                                                     })
+                                                     .onSubmit([state](ryn::String next) {
+                                                         ++state->telemetry.input_submits;
+                                                         state->input_feedback.set(std::move(next));
+                                                     })
+                                                     .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+                                      remember_target(state, "gallery.input.uncontrolled");
+                                      ++state->telemetry.live_samples;
+                                  });
                               }});
                });
     ryn::Text(ryn::TextProps{}.content(state->input_feedback));
@@ -2515,8 +2519,11 @@ void add_masonry_samples(const std::shared_ptr<GalleryState>& state) {
         cards.push_back(MasonryItem<>{index}.children(MasonryContent{[index] {
             Card(CardProps{}.title(String::from_utf8("Card " + std::to_string(index + 1)).value()),
                  CardContent{[index] {
-                     Text(index % 2 == 0 ? String{u8"短卡片"} : String{u8"较高卡片\n真实内容高度\n保持每项的编辑状态"});
-                     Input(InputProps{}.defaultValue(u8"缩放后保留草稿"));
+                     Flex(FlexProps{}.vertical(true).gap(SpaceSize::Small), [index] {
+                         Text(index % 2 == 0 ? String{u8"短卡片"}
+                                             : String{u8"较高卡片\n真实内容高度\n保持每项的编辑状态"});
+                         Input(InputProps{}.defaultValue(u8"缩放后保留草稿"));
+                     });
                  }});
         }}));
     }
@@ -3459,7 +3466,8 @@ void add_spin_samples(const std::shared_ptr<GalleryState>& state) {
            [] { Text(sample_text(u8"gallery.spin.toggle · 切换加载")); });
     gallery_target("gallery.spin.toggle");
     Spin(SpinProps{}.spinning(state->feedback_loading).description(u8"正在读取"), SpinContent{[state] {
-             Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+             // Keep a clear loading region between the retained editor and action.
+             Flex(FlexProps{}.vertical(true).gap(dp(64)), FlexContent{[state] {
                       Input(InputProps{}
                                 .defaultValue(gallery_initial_text("gallery.spin.draft",
                                                                    u8"gallery.spin.draft · 加载前后保留内容"))
@@ -5749,25 +5757,31 @@ void add_search_features(const std::shared_ptr<GalleryState>& state) {
               dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
               Theme(ThemeProps{}.config(dark), ThemeContent{[state] {
                         ++state->telemetry.theme_content_runs;
-                        Text(sample_text(u8"gallery.search.filled-vector · Dark Compact / Clear 来源"));
-                        Search(SearchProps{}
-                                   .variant(InputVariant::Filled)
-                                   .size(ControlSize::Small)
-                                   .defaultValue(state->initial("gallery.search.filled-vector", ryn::String{u8"RynUI"}))
-                                   .searchIcon(icon_vector_sample())
-                                   .allowClear(true)
-                                   .showCount()
-                                   .onSearch([state](String value, SearchSource source) {
-                                       ++state->telemetry.search_submits;
-                                       state->search_feedback.set(source == SearchSource::Clear ? String{u8"Clear"}
-                                                                                                : std::move(value));
-                                   })
+                        Card(CardProps{}.size(CardSize::Small).layout(LayoutStyle{}.width(state->cell_width)),
+                             CardContent{[state] {
+                                 Flex(FlexProps{}.vertical(true).gap(SpaceSize::Small), [state] {
+                                     Text(sample_text(u8"gallery.search.filled-vector · Dark Compact / Clear 来源"));
+                                     Search(SearchProps{}
+                                                .variant(InputVariant::Filled)
+                                                .size(ControlSize::Small)
+                                                .defaultValue(state->initial("gallery.search.filled-vector",
+                                                                             ryn::String{u8"RynUI"}))
+                                                .searchIcon(icon_vector_sample())
+                                                .allowClear(true)
+                                                .showCount()
+                                                .onSearch([state](String value, SearchSource source) {
+                                                    ++state->telemetry.search_submits;
+                                                    state->search_feedback.set(source == SearchSource::Clear
+                                                                                   ? String{u8"Clear"}
+                                                                                   : std::move(value));
+                                                })
 
-                                   .onChange([state](ryn::String value) {
-                                       state->remember("gallery.search.filled-vector", value);
-                                   })
-                                   .layout(LayoutStyle{}.width(state->cell_width)));
-                        remember_target(state, "gallery.search.filled-vector");
+                                                .onChange([state](ryn::String value) {
+                                                    state->remember("gallery.search.filled-vector", value);
+                                                }));
+                                     remember_target(state, "gallery.search.filled-vector");
+                                 });
+                             }});
                     }});
               Text(sample_text(u8"gallery.search.underlined-small · 连接高度 / typed content"));
               Search(SearchProps{}
@@ -8187,7 +8201,6 @@ void add_carousel_samples(const std::shared_ptr<GalleryState>& state) {
     theme.carousel.tokens.arrow = Color::rgba8(22, 119, 255);
     theme.carousel.tokens.dot = Color::rgba8(160, 160, 160);
     theme.carousel.tokens.dot_active = Color::rgba8(22, 119, 255);
-    theme.carousel.tokens.background = Color::rgba8(245, 247, 250);
     Flex(FlexProps{}
              .vertical(true)
              .align(FlexAlign::Start)
@@ -8330,10 +8343,23 @@ void add_carousel_controlled_samples(const std::shared_ptr<GalleryState>& state)
         });
 }
 
+const ryn::ThemeConfig& calendar_cell_theme(bool narrow) {
+    static const ryn::ThemeConfig regular;
+    static const ryn::ThemeConfig compact = [] {
+        ryn::ThemeConfig theme;
+        theme.calendar.tokens.cell_padding = ryn::dp(2);
+        theme.button.tokens.padding_inline_small = ryn::dp(2);
+        theme.input.tokens.padding_inline = ryn::dp(2);
+        theme.input.tokens.padding_inline_small = ryn::dp(2);
+        return theme;
+    }();
+    return narrow ? compact : regular;
+}
+
 void add_calendar_custom_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Signal<CivilDate> value{CivilDate{2024, 2, 29}};
-    Signal<String> event{String{u8"自定义 header 与 fullCell；Details 内的备注由日期 key 保留。"}};
+    Signal<String> event{String{u8"自定义 header 与 fullCell；详情内的备注由日期 key 保留。"}};
     Flex(FlexProps{}
              .vertical(true)
              .align(FlexAlign::Start)
@@ -8341,62 +8367,69 @@ void add_calendar_custom_samples(const std::shared_ptr<GalleryState>& state) {
              .layout(LayoutStyle{}.width(state->document_width)),
          [state, value, event] {
              Text(TextProps{}.content(event));
-             Calendar(
-                 CalendarProps{}
-                     .value(value)
-                     .showWeek()
-                     .validRange(CalendarRange{{2024, 1, 1}, {2025, 12, 31}})
-                     .headerRender([event](CalendarHeaderContext context) {
-                         return CalendarHeader{[context, event] {
-                             Flex(FlexProps{}.wrap(true).gap(dp(8)), [context, event] {
-                                 Text(TextProps{}.content(
-                                     bind([context] { return format_iso_date(context.info.get().value); })));
-                                 Button(ButtonProps{}.onClick(
-                                            [context] { static_cast<void>(context.calendar.select({2024, 12, 31})); }),
-                                        [] { Text(u8"2024-12-31"); });
-                                 Button(ButtonProps{}.onClick([context] {
-                                     static_cast<void>(context.calendar.changeMode(CalendarMode::Year));
-                                 }),
-                                        [] { Text(u8"Year"); });
-                                 Button(ButtonProps{}.onClick([context] {
-                                     static_cast<void>(context.calendar.changeMode(CalendarMode::Month));
-                                 }),
-                                        [] { Text(u8"Month"); });
-                                 Input(InputProps{}
-                                           .defaultValue(u8"保留 header 草稿")
-                                           .layout(LayoutStyle{}.width(dp(180))));
-                             });
-                         }};
-                     })
-                     .fullCellRender(CalendarCellRenderer{[](Binding<CalendarCellInfo> info) {
-                         return CalendarCell{[info] {
-                             Flex(FlexProps{}.vertical(true).gap(dp(4)), [info] {
-                                 Text(TextProps{}.content(bind([info] {
-                                     const auto cell = info.get();
-                                     return cell.mode == CalendarMode::Month ? utf8(std::to_string(cell.date.day()))
-                                                                             : utf8(std::to_string(cell.date.month()));
-                                 })));
-                                 Popover(PopoverProps{}, PopoverTrigger{[] {
-                                             Button(ButtonProps{}.size(ControlSize::Small), [] { Text(u8"Details"); });
-                                         }},
-                                         PopoverSlots{.content = PopoverContent{[info] {
-                                                          Text(TextProps{}.content(bind(
-                                                              [info] { return format_iso_date(info.get().date); })));
-                                                          Input(InputProps{}.defaultValue(u8"保留日期备注"));
-                                                      }}});
-                             });
-                         }};
-                     }})
-                     .onChange([value](CivilDate date) { value.set(date); })
-                     .onPanelChange([event](CivilDate date, CalendarMode mode) {
-                         event.set(utf8("自定义面板：" + std::string{format_iso_date(date).bytes()} +
-                                        " mode=" + std::to_string(int(mode))));
-                     })
-                     .onSelect([event](CivilDate date, CalendarSelectInfo info) {
-                         event.set(utf8("自定义选择：" + std::string{format_iso_date(date).bytes()} +
-                                        " source=" + std::to_string(int(info.source))));
-                     })
-                     .layout(LayoutStyle{}.width(state->document_width)));
+             Theme(ThemeProps{}.config(bind([state] { return calendar_cell_theme(state->narrow_layout.get()); })),
+                   ThemeContent{[state, value, event] {
+                       Calendar(
+                           CalendarProps{}
+                               .value(value)
+                               .showWeek()
+                               .validRange(CalendarRange{{2024, 1, 1}, {2025, 12, 31}})
+                               .headerRender([event](CalendarHeaderContext context) {
+                                   return CalendarHeader{[context, event] {
+                                       Flex(FlexProps{}.wrap(true).gap(dp(8)), [context, event] {
+                                           Text(TextProps{}.content(
+                                               bind([context] { return format_iso_date(context.info.get().value); })));
+                                           Button(ButtonProps{}.onClick([context] {
+                                               static_cast<void>(context.calendar.select({2024, 12, 31}));
+                                           }),
+                                                  [] { Text(u8"2024-12-31"); });
+                                           Button(ButtonProps{}.onClick([context] {
+                                               static_cast<void>(context.calendar.changeMode(CalendarMode::Year));
+                                           }),
+                                                  [] { Text(u8"Year"); });
+                                           Button(ButtonProps{}.onClick([context] {
+                                               static_cast<void>(context.calendar.changeMode(CalendarMode::Month));
+                                           }),
+                                                  [] { Text(u8"Month"); });
+                                           Input(InputProps{}
+                                                     .defaultValue(u8"保留 header 草稿")
+                                                     .layout(LayoutStyle{}.width(dp(180))));
+                                       });
+                                   }};
+                               })
+                               .fullCellRender(CalendarCellRenderer{[](Binding<CalendarCellInfo> info) {
+                                   return CalendarCell{[info] {
+                                       Flex(FlexProps{}.vertical(true).gap(dp(4)), [info] {
+                                           Text(TextProps{}.content(bind([info] {
+                                               const auto cell = info.get();
+                                               return cell.mode == CalendarMode::Month
+                                                          ? utf8(std::to_string(cell.date.day()))
+                                                          : utf8(std::to_string(cell.date.month()));
+                                           })));
+                                           Popover(PopoverProps{}, PopoverTrigger{[] {
+                                                       Button(ButtonProps{}.size(ControlSize::Small),
+                                                              [] { Text(u8"详情"); });
+                                                   }},
+                                                   PopoverSlots{.content = PopoverContent{[info] {
+                                                                    Text(TextProps{}.content(bind([info] {
+                                                                        return format_iso_date(info.get().date);
+                                                                    })));
+                                                                    Input(InputProps{}.defaultValue(u8"保留日期备注"));
+                                                                }}});
+                                       });
+                                   }};
+                               }})
+                               .onChange([value](CivilDate date) { value.set(date); })
+                               .onPanelChange([event](CivilDate date, CalendarMode mode) {
+                                   event.set(utf8("自定义面板：" + std::string{format_iso_date(date).bytes()} +
+                                                  " mode=" + std::to_string(int(mode))));
+                               })
+                               .onSelect([event](CivilDate date, CalendarSelectInfo info) {
+                                   event.set(utf8("自定义选择：" + std::string{format_iso_date(date).bytes()} +
+                                                  " source=" + std::to_string(int(info.source))));
+                               })
+                               .layout(LayoutStyle{}.width(state->document_width)));
+                   }});
              remember_target(state, "gallery.calendar.custom");
          });
 }
@@ -8415,41 +8448,46 @@ void add_calendar_samples(const std::shared_ptr<GalleryState>& state) {
              .layout(LayoutStyle{}.width(state->document_width)),
          [state, value, feedback, mini, locale, range] {
              Text(TextProps{}.content(feedback));
-             Calendar(CalendarProps{}
-                          .value(value)
-                          .fullscreen(bind([mini] { return !mini.get(); }))
-                          .locale(locale)
-                          .validRange(range)
-                          .showWeek()
-                          .clock([] { return CivilDate{2024, 2, 29}; })
-                          .showToday()
-                          .onChange([value, feedback](CivilDate date) {
-                              value.set(date);
-                              feedback.set(format_iso_date(date));
-                          })
-                          .onPanelChange([feedback](CivilDate date, CalendarMode mode) {
-                              feedback.set(utf8("面板：" + std::string{format_iso_date(date).bytes()} +
-                                                (mode == CalendarMode::Month ? " 月" : " 年")));
-                          })
-                          .onSelect([feedback](CivilDate date, CalendarSelectInfo info) {
-                              feedback.set(utf8("选择：" + std::string{format_iso_date(date).bytes()} +
-                                                " source=" + std::to_string(int(info.source))));
-                          })
-                          .cellRender(CalendarCellRenderer{[feedback](Binding<CalendarCellInfo> info) {
-                              return CalendarCell{[info, feedback] {
-                                  Input(InputProps{}
-                                            .defaultValue(u8"日程备注")
-                                            .placeholder(bind([info] {
-                                                return info.get().today ? String{u8"Today"} : String{u8"保留草稿"};
-                                            }))
-                                            .onChange([info, feedback](String draft) {
-                                                feedback.set(utf8(
-                                                    "日程 " + std::string{format_iso_date(info.get().date).bytes()} +
-                                                    "：" + std::string{draft.bytes()}));
-                                            }));
-                              }};
-                          }})
-                          .layout(LayoutStyle{}.width(state->document_width)));
+             Theme(ThemeProps{}.config(bind([state] { return calendar_cell_theme(state->narrow_layout.get()); })),
+                   ThemeContent{[state, value, feedback, mini, locale, range] {
+                       Calendar(CalendarProps{}
+                                    .value(value)
+                                    .fullscreen(bind([mini] { return !mini.get(); }))
+                                    .locale(locale)
+                                    .validRange(range)
+                                    .showWeek()
+                                    .clock([] { return CivilDate{2024, 2, 29}; })
+                                    .showToday()
+                                    .onChange([value, feedback](CivilDate date) {
+                                        value.set(date);
+                                        feedback.set(format_iso_date(date));
+                                    })
+                                    .onPanelChange([feedback](CivilDate date, CalendarMode mode) {
+                                        feedback.set(utf8("面板：" + std::string{format_iso_date(date).bytes()} +
+                                                          (mode == CalendarMode::Month ? " 月" : " 年")));
+                                    })
+                                    .onSelect([feedback](CivilDate date, CalendarSelectInfo info) {
+                                        feedback.set(utf8("选择：" + std::string{format_iso_date(date).bytes()} +
+                                                          " source=" + std::to_string(int(info.source))));
+                                    })
+                                    .cellRender(CalendarCellRenderer{[feedback](Binding<CalendarCellInfo> info) {
+                                        return CalendarCell{[info, feedback] {
+                                            Input(InputProps{}
+                                                      .defaultValue(u8"日程备注")
+                                                      .placeholder(bind([info] {
+                                                          return info.get().today ? String{u8"Today"}
+                                                                                  : String{u8"保留草稿"};
+                                                      }))
+                                                      .onChange([info, feedback](String draft) {
+                                                          feedback.set(utf8(
+                                                              "日程 " +
+                                                              std::string{format_iso_date(info.get().date).bytes()} +
+                                                              "：" + std::string{draft.bytes()}));
+                                                      }));
+                                        }};
+                                    }})
+                                    .layout(LayoutStyle{}.width(state->document_width)));
+                   }});
              remember_target(state, "gallery.calendar.main");
              Button(ButtonProps{}.onClick([mini] { mini.set(!mini.get()); }), [] { Text(u8"切换 mini/fullscreen"); });
              remember_target(state, "gallery.calendar.mini");

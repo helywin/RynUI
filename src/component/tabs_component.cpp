@@ -76,6 +76,9 @@ struct TabsState final {
     std::unique_ptr<NavigationTransition> motion;
     std::optional<String> motion_key;
     std::vector<String> more_keys;
+    Signal<std::vector<MenuItem>,
+           decltype([](const std::vector<MenuItem>&, const std::vector<MenuItem>&) { return false; })>
+        more_items{std::vector<MenuItem>{}};
     std::vector<std::size_t> pending_hidden;
     std::function<void(String, TabsEditAction)> on_edit;
     bool overflow{};
@@ -567,7 +570,8 @@ void TabsComponentHost::mount_header(runtime::ComponentId id, std::size_t index,
                                                 .wave(false)
                                                 .layout(LayoutStyle{}.width(dp(24)).height(dp(24)))
                                                 .onClick([this, id, key] { edit(id, key, TabsEditAction::Remove); }),
-                                            [] { Icon(IconProps{}.name(IconName::CloseOutlined)); });
+                                            ButtonSlots{.icon = ButtonIcon{
+                                                            [] { Icon(IconProps{}.name(IconName::CloseOutlined)); }}});
                                  }});
             }});
         s.headers[index] = component;
@@ -652,32 +656,7 @@ void TabsComponentHost::rebuild_more(runtime::ComponentId id, const std::vector<
         return;
     }
     s->more_keys = keys;
-    const auto owner = s->more;
-    const auto children = services_->components().children(owner);
-    const std::vector<runtime::ComponentId> owned(children.begin(), children.end());
-    for (auto child : owned) {
-        services_->destroy(child);
-    }
-    if (!services_->components().contains(owner)) {
-        return;
-    }
-    services_->append_slot(
-        owner, Content{[this, id, menu = std::move(menu)] {
-            Dropdown(
-                DropdownProps{}.menu(MenuProps{}.items(menu).selectable(false).onClick([this, id](MenuClickInfo info) {
-                    if (auto* s = services_->components().state<TabsState>(id)) {
-                        const auto index = item_index(*s, info.key);
-                        if (index < s->headers.size()) {
-                            activate(id, index);
-                        }
-                    }
-                })),
-                DropdownTrigger{[] {
-                    Button(ButtonProps{}.wave(false), [] { Icon(IconProps{}.name(IconName::EllipsisOutlined)); });
-                }});
-        }});
-    services_->dirty().invalidate(services_->components().root(owner),
-                                  runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout);
+    s->more_items.set(std::move(menu));
 }
 
 void TabsComponentHost::edit(runtime::ComponentId id, String key, TabsEditAction action) {
@@ -950,23 +929,22 @@ void TabsComponentHost::mount(const TabsProps& props, const std::vector<TabItem>
             }});
             s.add = auxiliary(Content{[this, id] {
                 Button(ButtonProps{}.wave(false).onClick([this, id] { edit(id, {}, TabsEditAction::Add); }),
-                       [] { Icon(IconProps{}.name(IconName::PlusOutlined)); });
+                       ButtonSlots{.icon = ButtonIcon{[] { Icon(IconProps{}.name(IconName::PlusOutlined)); }}});
             }});
             s.more = auxiliary(Content{[this, id, &s] {
-                Dropdown(DropdownProps{}.menu(MenuProps{}
-                                                  .items(std::vector<MenuItem>{})
-                                                  .selectable(false)
-                                                  .onClick([this, id](MenuClickInfo info) {
-                                                      if (auto* s = services_->components().state<TabsState>(id)) {
-                                                          const auto index = item_index(*s, info.key);
-                                                          if (index < s->headers.size()) {
-                                                              activate(id, index);
-                                                          }
-                                                      }
-                                                  })),
+                Dropdown(DropdownProps{}.menu(
+                             MenuProps{}.items(s.more_items).selectable(false).onClick([this, id](MenuClickInfo info) {
+                                 if (auto* s = services_->components().state<TabsState>(id)) {
+                                     const auto index = item_index(*s, info.key);
+                                     if (index < s->headers.size()) {
+                                         activate(id, index);
+                                     }
+                                 }
+                             })),
                          DropdownTrigger{[] {
                              Button(ButtonProps{}.wave(false),
-                                    [] { Icon(IconProps{}.name(IconName::EllipsisOutlined)); });
+                                    ButtonSlots{.icon = ButtonIcon{
+                                                    [] { Icon(IconProps{}.name(IconName::EllipsisOutlined)); }}});
                          }});
             }});
         }});

@@ -587,7 +587,11 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     const auto gather = [&](auto& host, auto trigger) {
                         for (const auto id : host.mounted()) {
                             if (owns(app, id, root)) {
-                                targets.push_back(trigger(id, host.snapshot(id)));
+                                const auto target = trigger(id, host.snapshot(id));
+                                // Embedded controls have no popup selector.
+                                if (target.valid()) {
+                                    targets.push_back(target);
+                                }
                             }
                         }
                     };

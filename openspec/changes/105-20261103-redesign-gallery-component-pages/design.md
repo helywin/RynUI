@@ -227,3 +227,5 @@ Windows 原生用 `windows-msvc` Release/MSVC/实际 D3D12 跑新建的 `--page-
 布局修复沿真实 measure/place 和父子约束追踪。普通文字/图标、富 slot、局部 Theme、popup 和内嵌输入均必须取得足够尺寸；保留 retained identity、真实 ancestor clip、输入命中和键盘顺序。不用全局 baseline 偏移、硬编码像素补丁、隐藏文字或关闭裁剪来消除截图症状。ColorPicker 连续色面保持既有 logical stores/renderer ABI 与统一 AA 合同，不能添加组件私有 GPU 上传。
 
 验证先运行受影响平台通用回归，再以标准 Windows/MSVC Release、默认栈、隐藏窗口复跑原失败入口及全部现有目录。截图实际确认外观，自动状态与几何断言负责防回归；离屏回读不外推为 Linux、OS IME/AT 或高刷体验通过。
+
+Button 已解析的 Small/Large padding 原本没有对应的 typed override，导致分页等内部主题只能清除默认尺寸 padding。本阶段兼容性补充 `ButtonTokenOverride.padding_inline_small/large` 两个可选字段，默认值与既有调用均保持，不增加组件入口；以三种尺寸的独立解析和主题身份回归验证。

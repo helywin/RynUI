@@ -2484,9 +2484,11 @@ bool SelectComponentHost::on_scroll_input(const input::ScrollInputEvent& event) 
     }
     for (auto it = mounted_.rbegin(); it != mounted_.rend(); ++it) {
         auto* s = services_->components().state<SelectState>(*it);
-        if (!s || !s->visible || s->popup != *layer || !services_->interactions().component_active(s->popup) ||
-            !inside(services_->nodes().require(services_->components().root(s->list)).bounds, event.x, event.y)) {
+        if (!s || !s->visible || s->popup != *layer || !services_->interactions().component_active(s->popup)) {
             continue;
+        }
+        if (!inside(services_->nodes().require(services_->components().root(s->list)).bounds, event.x, event.y)) {
+            return true;
         }
         const auto& token = services_->components().theme_scope(*it)->snapshot().select();
         const float height = token.metrics.option_height;

@@ -435,7 +435,9 @@ void ShellLayoutComponentHost::refresh(runtime::ComponentId id) {
                                                      zero && shown ? std::optional{1} : std::nullopt)) {
             services_->mark_scene_structure_dirty();
         }
-        services_->nodes().require(services_->components().root(s->snapshot.trigger)).clip_boundary = zero && shown;
+        // The trigger escapes the zero-width Sider, which does not clip. It
+        // still belongs to the surrounding document's scroll and clip domain.
+        services_->nodes().require(services_->components().root(s->snapshot.trigger)).clip_boundary = false;
     }
     services_->dirty().invalidate(s->snapshot.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                         runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Material |

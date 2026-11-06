@@ -2883,7 +2883,18 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                         effect.geometry.shape.rect.height = std::max(0.0F, root_bounds.height - border);
                     }
                 }
-                if (layer == input_border_layer && state->variant == InputVariant::Underlined) {
+                if (layer == input_border_layer && state->variant == InputVariant::Outlined) {
+                    // A translucent background cannot erase a solid border fill.
+                    // Draw the border as an actual ring around the inset surface.
+                    effect.geometry.shape = {
+                        {root_bounds.x + border, root_bounds.y + border, root_bounds.width - 2 * border,
+                         root_bounds.height - 2 * border},
+                        std::clamp(radius - border, 0.0F,
+                                   .5F * std::min(root_bounds.width - 2 * border, root_bounds.height - 2 * border))};
+                    effect.geometry.kind = graphics::RoundedEffectKind::outline;
+                    effect.geometry.outline_width = std::max(0.001F, border);
+                    effect.material.opacity = border > 0 ? 1.0F : 0.0F;
+                } else if (layer == input_border_layer && state->variant == InputVariant::Underlined) {
                     effect.geometry.shape = {
                         {root_bounds.x, root_bounds.y + root_bounds.height - border, root_bounds.width, border}, 0};
                 } else if (layer == input_border_layer && state->variant == InputVariant::Filled) {

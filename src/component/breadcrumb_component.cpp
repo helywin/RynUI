@@ -3,6 +3,7 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
+#include <exception>
 #include <limits>
 
 namespace ryn::detail {
@@ -462,6 +463,7 @@ void BreadcrumbComponentHost::update_items(runtime::ComponentId id, runtime::Com
     const auto hovered = s->hovered && *s->hovered < s->rows.size() ? s->rows[*s->hovered].descriptor->key_ : String{};
     const auto pressed = s->pressed && *s->pressed < s->rows.size() ? s->rows[*s->pressed].descriptor->key_ : String{};
     std::vector<std::size_t> order;
+    bool published{};
     try {
         for (const auto& item : pending) {
             s = services_->components().state<BreadcrumbState>(id);
@@ -517,21 +519,38 @@ void BreadcrumbComponentHost::update_items(runtime::ComponentId id, runtime::Com
         }
         s->dirty_items = s->items_revision != items_revision;
         s->updating = false;
+        published = true;
+        std::exception_ptr retirement_error;
         for (const auto& row : removed) {
             row.bindings->dispose();
+            try {
+                services_->set_input_blocked(row.component, true);
+            } catch (...) {
+                if (!retirement_error) {
+                    retirement_error = std::current_exception();
+                }
+            }
+            if (!services_->components().contains(id)) {
+                break;
+            }
             services_->destroy(row.component);
             if (!services_->components().contains(id)) {
-                return;
+                break;
             }
             services_->destroy(row.separator);
             if (!services_->components().contains(id)) {
-                return;
+                break;
             }
         }
-        refresh(id, true);
+        if (services_->components().contains(id)) {
+            refresh(id, true);
+        }
+        if (retirement_error) {
+            std::rethrow_exception(retirement_error);
+        }
     } catch (...) {
         s = services_->components().state<BreadcrumbState>(id);
-        if (s) {
+        if (s && !published) {
             for (std::size_t i = original_count; i < s->rows.size(); ++i) {
                 services_->retire_failed_component(s->rows[i].component);
                 services_->retire_failed_component(s->rows[i].separator);
@@ -569,9 +588,14 @@ runtime::Size BreadcrumbComponentHost::measure_item(runtime::ComponentId id, std
     row.title_size = engine.measure_child(
         row.title_node, {0, std::max(0.0F, available - row.icon_size.width - gap - row.menu_icon_size.width - menu_gap),
                          0, c.max_height});
-    return c.constrain(
+    const auto measured = c.constrain(
         {m.padding * 2 + row.icon_size.width + gap + row.title_size.width + row.menu_icon_size.width + menu_gap,
          std::max({m.line_height, row.icon_size.height, row.title_size.height, row.menu_icon_size.height})});
+    const auto baseline = services_->nodes().require(row.title_node).first_baseline;
+    services_->nodes().require(row.content_node).first_baseline =
+        baseline ? std::optional{std::max(0.0F, measured.height - row.title_size.height) / 2 + *baseline}
+                 : std::nullopt;
+    return measured;
 }
 
 void BreadcrumbComponentHost::place_item(runtime::ComponentId id, std::size_t i, layout::LayoutEngine& engine,
@@ -616,7 +640,8 @@ runtime::Size BreadcrumbComponentHost::measure(runtime::ComponentId id, layout::
     float width{};
     float height{};
     float line_width{};
-    float line_height{};
+    float line_ascent{};
+    float line_descent{};
     for (std::size_t i = 0; i < s.rows.size(); ++i) {
         if (!s.model.items[i].visible) {
             continue;
@@ -631,17 +656,25 @@ runtime::Size BreadcrumbComponentHost::measure(runtime::ComponentId id, layout::
             row.node, {0, s.wrap ? std::max(0.0F, c.max_width - separator) : std::numeric_limits<float>::infinity(), 0,
                        c.max_height});
         const float w = row.natural.width + separator;
-        const float h = std::max(row.natural.height, row.separator_size.height);
+        const float baseline = services_->nodes().require(row.node).first_baseline.value_or(row.natural.height / 2);
+        const auto separator_node = services_->components().root(row.separator);
+        const float separator_baseline =
+            row.separator_size.height > 0
+                ? services_->nodes().require(separator_node).first_baseline.value_or(row.separator_size.height / 2)
+                : 0;
         if (s.wrap && line_width > 0 && line_width + w > c.max_width) {
             width = std::max(width, line_width);
-            height += line_height;
+            height += line_ascent + line_descent;
             line_width = 0;
-            line_height = 0;
+            line_ascent = 0;
+            line_descent = 0;
         }
         line_width += w;
-        line_height = std::max(line_height, h);
+        line_ascent = std::max({line_ascent, baseline, separator_baseline});
+        line_descent =
+            std::max({line_descent, row.natural.height - baseline, row.separator_size.height - separator_baseline});
     }
-    return c.constrain({std::max(width, line_width), height + line_height});
+    return c.constrain({std::max(width, line_width), height + line_ascent + line_descent});
 }
 
 void BreadcrumbComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& engine, runtime::Rect b) {
@@ -652,7 +685,6 @@ void BreadcrumbComponentHost::place(runtime::ComponentId id, layout::LayoutEngin
         std::size_t index;
         float width;
         float separator;
-        float height;
     };
 
     std::vector<std::vector<Entry>> lines(1);
@@ -668,34 +700,50 @@ void BreadcrumbComponentHost::place(runtime::ComponentId id, layout::LayoutEngin
             lines.emplace_back();
             total = 0;
         }
-        lines.back().push_back(
-            {i, row.natural.width, separator, std::max(row.natural.height, row.separator_size.height)});
+        lines.back().push_back({i, row.natural.width, separator});
         total += width;
     }
     float y = b.y;
     for (const auto& line : lines) {
         float natural_width{};
-        float natural_height{};
+        float ascent{};
+        float descent{};
         for (const auto& entry : line) {
             natural_width += entry.width + entry.separator;
-            natural_height = std::max(natural_height, entry.height);
+            const auto& row = s.rows[entry.index];
+            const float baseline = services_->nodes().require(row.node).first_baseline.value_or(row.natural.height / 2);
+            const auto separator_node = services_->components().root(row.separator);
+            const float separator_baseline =
+                row.separator_size.height > 0
+                    ? services_->nodes().require(separator_node).first_baseline.value_or(row.separator_size.height / 2)
+                    : 0;
+            ascent = std::max({ascent, baseline, separator_baseline});
+            descent =
+                std::max({descent, row.natural.height - baseline, row.separator_size.height - separator_baseline});
         }
         const float scale = natural_width > b.width && natural_width > 0 ? b.width / natural_width : 1;
-        const float height = std::min(natural_height, std::max(0.0F, b.y + b.height - y));
+        const float height = std::min(ascent + descent, std::max(0.0F, b.y + b.height - y));
         float cursor{};
         for (const auto& entry : line) {
             auto& row = s.rows[entry.index];
             const float w = entry.width * scale;
             const float x = s.rtl ? b.x + b.width - cursor - w : b.x + cursor;
-            static_cast<void>(engine.measure_child(row.node, layout::Constraints::fixed(w, height)));
-            engine.place_child(row.node, {x, y, w, height}, true, true);
+            const float rh = std::min(height, row.natural.height);
+            const float baseline = services_->nodes().require(row.node).first_baseline.value_or(rh / 2);
+            const float ry = y + std::min(std::max(0.0F, height - rh), std::max(0.0F, ascent - baseline));
+            static_cast<void>(engine.measure_child(row.node, layout::Constraints::fixed(w, rh)));
+            engine.place_child(row.node, {x, ry, w, rh}, true, true);
             cursor += w;
             if (entry.separator > 0) {
                 const float sw = row.separator_size.width * scale;
                 cursor += margin * scale;
                 const float sx = s.rtl ? b.x + b.width - cursor - sw : b.x + cursor;
                 const float sh = std::min(height, row.separator_size.height);
-                engine.place_child(services_->components().root(row.separator), {sx, y + (height - sh) / 2, sw, sh});
+                const auto separator_node = services_->components().root(row.separator);
+                const float separator_baseline =
+                    services_->nodes().require(separator_node).first_baseline.value_or(sh / 2);
+                const float sy = y + std::min(std::max(0.0F, height - sh), std::max(0.0F, ascent - separator_baseline));
+                engine.place_child(separator_node, {sx, sy, sw, sh});
                 cursor += sw + margin * scale;
             }
         }

@@ -10,6 +10,7 @@
 #include <ryn/flex.hpp>
 #include <ryn/icon.hpp>
 #include <ryn/progress.hpp>
+#include <ryn/tooltip.hpp>
 #include <algorithm>
 #include <cmath>
 #include <thread>
@@ -37,6 +38,21 @@ struct UploadComponentHost::Lifetime final {
 namespace {
 thread_local UploadComponentHost* active_upload{};
 constexpr float infinity = std::numeric_limits<float>::infinity();
+
+String action_label(const UploadLocale& locale, std::size_t index) {
+    switch (index) {
+    case 0:
+        return locale.preview;
+    case 1:
+        return locale.download;
+    case 2:
+        return locale.remove;
+    case 3:
+        return locale.retry;
+    default:
+        return locale.cancel;
+    }
+}
 
 struct SelectionTicket final {
     std::thread::id owner{std::this_thread::get_id()};
@@ -578,7 +594,17 @@ void UploadComponentHost::replace_content(runtime::ComponentId id, const UploadU
             b.mount_slot_with_semantic_text_style(
                 replacement, Content{[&, r, renderer, icon_renderer, slots] {
                     Theme(
-                        ThemeProps{}.config(r->theme), ThemeContent{[&, r, renderer, icon_renderer, slots] {
+                        ThemeProps{}.config(bind([base = r->theme, card = r->card] {
+                            auto config = base.get();
+                            if (card.get()) {
+                                config.button.tokens.padding_inline = dp(0);
+                                config.button.tokens.padding_inline_small = dp(0);
+                                config.button.tokens.padding_inline_large = dp(0);
+                                config.button.tokens.icon_gap = dp(0);
+                            }
+                            return config;
+                        })),
+                        ThemeContent{[&, r, renderer, icon_renderer, slots] {
                             if (renderer && renderer->render) {
                                 renderer->render(r->file, actions);
                                 return;
@@ -633,36 +659,41 @@ void UploadComponentHost::replace_content(runtime::ComponentId id, const UploadU
                                                       part, Content{[&, r, index] {
                                                           const auto before =
                                                               services_->interactions().declaration_order().size();
-                                                          Button(ButtonProps{}
-                                                                     .type(ButtonType::Text)
-                                                                     .size(r->size)
-                                                                     .disabled(index < 2 ? r->disabled : r->readonly)
-                                                                     .onClick(callbacks[index]),
-                                                                 ButtonContent{[r, index] {
-                                                                     Text(TextProps{}.content(
-                                                                         bind([locale = r->locale, index] {
-                                                                             const auto l = locale.get();
-                                                                             switch (index) {
-                                                                             case 0:
-                                                                                 return l.preview;
-                                                                             case 1:
-                                                                                 return l.download;
-                                                                             case 2:
-                                                                                 return l.remove;
-                                                                             case 3:
-                                                                                 return l.retry;
-                                                                             default:
-                                                                                 return l.cancel;
+                                                          Tooltip(
+                                                              TooltipProps{}
+                                                                  .title(bind([locale = r->locale, index] {
+                                                                      return action_label(locale.get(), index);
+                                                                  }))
+                                                                  .disabled(
+                                                                      bind([card = r->card] { return !card.get(); })),
+                                                              TooltipTrigger{[&, r, index] {
+                                                                  Button(ButtonProps{}
+                                                                             .type(ButtonType::Text)
+                                                                             .size(r->size)
+                                                                             .layout(LayoutStyle{}.min_width(dp(24)))
+                                                                             .disabled(index < 2 ? r->disabled
+                                                                                                 : r->readonly)
+                                                                             .onClick(callbacks[index]),
+                                                                         ButtonContent{[r, index] {
+                                                                             Text(TextProps{}.content(
+                                                                                 bind([locale = r->locale,
+                                                                                       card = r->card, index] {
+                                                                                     return card.get()
+                                                                                                ? String{}
+                                                                                                : action_label(
+                                                                                                      locale.get(),
+                                                                                                      index);
+                                                                                 })));
+                                                                         }},
+                                                                         ButtonIcon{[&, index] {
+                                                                             if (custom[index]) {
+                                                                                 SlotContentAccess::function (
+                                                                                     *custom[index])();
+                                                                             } else {
+                                                                                 Icon(IconProps{}.name(icons[index]));
                                                                              }
-                                                                         })));
-                                                                 }},
-                                                                 ButtonIcon{[&, index] {
-                                                                     if (custom[index]) {
-                                                                         SlotContentAccess::function (*custom[index])();
-                                                                     } else {
-                                                                         Icon(IconProps{}.name(icons[index]));
-                                                                     }
-                                                                 }});
+                                                                         }});
+                                                              }});
                                                           const auto entries =
                                                               services_->interactions().declaration_order();
                                                           for (std::size_t next = before; next < entries.size();

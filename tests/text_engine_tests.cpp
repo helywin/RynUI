@@ -195,6 +195,31 @@ void test_compact_line_boxes_center_font_metrics() {
     }
 }
 
+void test_cjk_sentence_stop_prefers_the_previous_character() {
+    Fixture fixture;
+    const auto prefix = fixture.shape(String{u8"甲乙"});
+    const auto shaped = fixture.shape(String{u8"甲乙。"});
+    require(prefix && shaped, "CJK sentence-stop fixture shaping failed");
+    const auto natural = fixture.engine.measure(prefix.text, {20, std::numeric_limits<float>::infinity()});
+    const auto wrapped = fixture.engine.measure(shaped.text, {20, natural.measurement.width + .01F});
+    require(wrapped && wrapped.measurement.lines.size() == 2 &&
+                wrapped.measurement.lines.front().byte_end == String{u8"甲"}.size_bytes() &&
+                wrapped.measurement.lines.back().byte_end == String{u8"甲乙。"}.size_bytes(),
+            "CJK sentence stop was orphaned despite a legal preceding break");
+    for (const auto width : {0.0F, natural.measurement.width / 8}) {
+        const auto tiny = fixture.engine.measure(shaped.text, {20, width});
+        require(tiny && tiny.measurement.visual_glyphs.size() == shaped.text.glyphs.size(),
+                "sentence-stop preference lost emergency-wrap glyphs");
+    }
+    const auto combining = fixture.shape(String{u8"a\u0301。"});
+    const auto cluster = fixture.shape(String{u8"a\u0301"});
+    require(combining && cluster, "combining punctuation fixture shaping failed");
+    const auto cluster_size = fixture.engine.measure(cluster.text, {20, std::numeric_limits<float>::infinity()});
+    const auto combined = fixture.engine.measure(combining.text, {20, cluster_size.measurement.width + .01F});
+    require(combined && combined.measurement.lines.front().byte_end == String{u8"a\u0301"}.size_bytes(),
+            "punctuation preference split a combining cluster");
+}
+
 void test_wrapping_respects_cluster_boundaries() {
     Fixture fixture;
     constexpr float line_height = 20.0F;
@@ -264,6 +289,7 @@ int main() {
         test_measurement_uses_shaped_metrics();
         test_compact_line_boxes_center_font_metrics();
         test_wrapping_respects_cluster_boundaries();
+        test_cjk_sentence_stop_prefers_the_previous_character();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

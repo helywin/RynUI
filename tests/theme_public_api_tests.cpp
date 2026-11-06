@@ -14,6 +14,8 @@ static_assert(ThemeConfigValue<ryn::Signal<ryn::ThemeConfig>>);
 static_assert(!ThemeConfigValue<const char*>);
 static_assert(!ThemeConfigValue<int>);
 static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.padding_inline)&, float>);
+static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.button.tokens.padding_inline_small)&, float>);
+static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.button.tokens.padding_inline_large)&, float>);
 static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.input_font_size)&, const char*>);
 static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.color_picker.tokens.panel_width)&, float>);
 static_assert(std::same_as<decltype(ryn::resolve_theme().color_picker()), const ryn::ColorPickerThemeToken&>);
@@ -35,6 +37,15 @@ int main() {
     static_cast<void>(props);
     static_cast<void>(content);
     const auto baseline = ryn::resolve_theme();
+    ryn::ThemeConfig button;
+    button.button.tokens.padding_inline_small = ryn::dp(0);
+    button.button.tokens.padding_inline_large = ryn::dp(3);
+    const auto padded = ryn::resolve_theme(button);
+    if (padded.button().padding_inline_small != 0 || padded.button().padding_inline_large != 3 ||
+        padded.button().padding_inline != baseline.button().padding_inline ||
+        padded.identity() == baseline.identity()) {
+        return 1;
+    }
     ryn::ThemeConfig picker;
     picker.color_picker.tokens.panel_width = ryn::dp(300);
     const auto metrics = ryn::resolve_theme(picker);

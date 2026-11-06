@@ -387,3 +387,15 @@ target_compile_definitions(rynui_data_display_gallery_tests PRIVATE
 foreach(display_page IN ITEMS collapse segmented descriptions timeline)
     add_test(NAME rynui.${display_page}_gallery COMMAND rynui_data_display_gallery_tests ${display_page})
 endforeach()
+
+add_executable(rynui_gallery_visual_regression_tests "${PROJECT_SOURCE_DIR}/tests/gallery_visual_regression_tests.cpp")
+rynui_configure_cpp_target(rynui_gallery_visual_regression_tests)
+target_include_directories(rynui_gallery_visual_regression_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_gallery_visual_regression_tests PRIVATE
+    rynui_gallery_pages_host rynui_components rynui_renderer_common)
+target_compile_definitions(rynui_gallery_visual_regression_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(visual_case IN ITEMS field layout pagination tabs popup flow input)
+    add_test(NAME rynui.gallery_visual_${visual_case} COMMAND rynui_gallery_visual_regression_tests ${visual_case})
+endforeach()

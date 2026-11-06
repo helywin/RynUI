@@ -9,6 +9,7 @@
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace ryn::detail {
 namespace {
@@ -478,17 +479,29 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
                         const float padding = std::min(t.padding, std::min(limits.max_width, limits.max_height) / 2);
                         const float width = std::max(0.0F, limits.max_width - 2 * padding);
                         const float height = std::max(0.0F, limits.max_height - 2 * padding);
+                        const auto natural_title =
+                            has_title(*state)
+                                ? engine.measure_child(services_->components().root(state->view.title),
+                                                       {0, std::numeric_limits<float>::infinity(), 0, height})
+                                : runtime::Size{};
+                        const auto natural_content =
+                            has_content(*state)
+                                ? engine.measure_child(services_->components().root(state->view.content),
+                                                       {0, std::numeric_limits<float>::infinity(), 0, height})
+                                : runtime::Size{};
+                        const float minimum = has_title(*state) ? std::min(t.title_min_width, width) : 0;
+                        const float content_width =
+                            std::min(width, std::max({natural_title.width, natural_content.width, minimum}));
                         const auto title = has_title(*state)
                                                ? engine.measure_child(services_->components().root(state->view.title),
-                                                                      {0, width, 0, height})
+                                                                      {0, content_width, 0, height})
                                                : runtime::Size{};
                         const auto content =
                             has_content(*state)
                                 ? engine.measure_child(services_->components().root(state->view.content),
-                                                       {0, width, 0, height})
+                                                       {0, content_width, 0, height})
                                 : runtime::Size{};
-                        const float minimum = has_title(*state) ? std::min(t.title_min_width, width) : 0;
-                        return limits.constrain({std::max({title.width, content.width, minimum}) + 2 * padding,
+                        return limits.constrain({content_width + 2 * padding,
                                                  title.height + content.height +
                                                      (has_title(*state) && has_content(*state) ? t.title_gap : 0) +
                                                      2 * padding});

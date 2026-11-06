@@ -344,6 +344,30 @@ void initial_formatter_and_explicit_focus() {
           "clipboard callback self-unmount leaked OTP owner");
     f.services.dispose();
 }
+
+void throwing_shrink_blur_finishes_retirement() {
+    Fixture f;
+    Signal<std::size_t> length{3};
+    f.inputs.mount(Content{[&] {
+        OTP(OTPProps{}.length(length).defaultValue(u8"123").onBlur(
+            [](std::size_t) { throw std::runtime_error("expected shrink blur"); }));
+    }});
+    f.synchronize();
+    const auto group = f.services.otp().mounted().front().component;
+    const auto ids = f.services.otp().cell_components(group);
+    f.services.focus().defer_focus(cell(f, ids.back()).interaction, input::FocusModality::keyboard);
+    bool threw{};
+    try {
+        length.set(2);
+    } catch (const std::runtime_error& error) {
+        threw = std::string_view{error.what()} == "expected shrink blur";
+    }
+    f.synchronize();
+    check(threw && f.services.otp().cell_components(group).size() == 2 && !f.inputs.sessions().active().valid(),
+          "throwing shrink blur left an active retired OTP cell");
+    f.services.focus().defer_focus(cell(f, ids.front()).interaction, input::FocusModality::keyboard);
+    check(f.inputs.sessions().active().valid(), "throwing shrink blur left the OTP resize guard active");
+}
 } // namespace
 
 int main() {
@@ -352,6 +376,7 @@ int main() {
         clipboard_and_eligibility();
         callback_and_formatter_reentry();
         initial_formatter_and_explicit_focus();
+        throwing_shrink_blur_finishes_retirement();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

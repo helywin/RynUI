@@ -5,6 +5,7 @@
 #include "runtime/prop_connection.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -410,9 +411,23 @@ void OTPComponentHost::set_length(runtime::ComponentId id, std::size_t length) {
         return;
     }
     state->model->set_length(length);
+    std::exception_ptr retirement_error;
     while (state->cells.size() > length) {
         const auto cell = state->cells.back();
         state->cells.pop_back();
+        try {
+            static_cast<void>(cell->reference.blur());
+        } catch (...) {
+            if (!retirement_error) {
+                retirement_error = std::current_exception();
+            }
+        }
+        if (!find(id)) {
+            if (retirement_error) {
+                std::rethrow_exception(retirement_error);
+            }
+            return;
+        }
         services_->destroy(cell->component);
         if (cell->separator) {
             services_->destroy(*cell->separator);
@@ -425,6 +440,9 @@ void OTPComponentHost::set_length(runtime::ComponentId id, std::size_t length) {
     state->resizing = false;
     project(id);
     update_layout(id);
+    if (retirement_error) {
+        std::rethrow_exception(retirement_error);
+    }
     if (transfer && !services_->focus().state().focused) {
         static_cast<void>(focus(id, length - 1));
     }

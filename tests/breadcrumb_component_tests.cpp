@@ -337,6 +337,52 @@ void dynamic_validation_replacement_and_blur_destroy() {
               g.services.interactions().size() == 0,
           "Breadcrumb dynamic blur self-destruction leaked");
 }
+
+void throwing_retired_editor_preserves_published_rows() {
+    Fixture f;
+    Signal<std::vector<BreadcrumbItem>> entries{std::vector<BreadcrumbItem>{
+        BreadcrumbItem{u8"edit", u8"Edit"}.richTitle(BreadcrumbTitle{
+            [] { Input(InputProps{}.onBlur([] { throw std::runtime_error("expected retirement blur"); })); }}),
+        {u8"end", u8"End"}}};
+    f.services.mount(Content{[&] { Breadcrumb(BreadcrumbProps{}.items(entries)); }});
+    sync(f);
+    const auto owner = f.services.breadcrumb().mounted().front();
+    click(f, f.inputs.mounted_inputs().front().component);
+    entries.set({{u8"end", u8"End"}});
+    bool threw{};
+    try {
+        sync(f);
+    } catch (const std::runtime_error& error) {
+        threw = std::string_view{error.what()} == "expected retirement blur";
+    }
+    sync(f);
+    check(threw && f.services.breadcrumb().snapshot(owner).items.size() == 1 && f.inputs.mounted_inputs().empty() &&
+              !f.inputs.sessions().active().valid(),
+          "throwing editor retirement corrupted the published Breadcrumb topology");
+}
+
+void rich_title_uses_first_text_baseline() {
+    Fixture f;
+    f.services.mount(Content{[] {
+        Breadcrumb(BreadcrumbProps{},
+                   {{u8"home", u8"Home"}, BreadcrumbItem{u8"editor", u8"Editor"}.richTitle(BreadcrumbTitle{[] {
+                        Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[] {
+                                 Input(InputProps{}.defaultValue(u8"Draft").layout(LayoutStyle{}.width(dp(200))));
+                                 Button(ButtonProps{}, [] { Text(u8"Apply"); });
+                             }});
+                    }})});
+    }});
+    sync(f);
+    const auto s = f.services.breadcrumb().snapshot(f.services.breadcrumb().mounted().front());
+    const auto baseline = [&](runtime::ComponentId id) {
+        const auto& node = f.nodes.require(f.services.components().root(id));
+        check(node.first_baseline.has_value(), "Breadcrumb lost its first text baseline");
+        return bounds(f, id).y + *node.first_baseline;
+    };
+    check(std::abs(baseline(s.items[0]) - baseline(s.separators[0])) < .01F &&
+              std::abs(baseline(s.items[0]) - baseline(f.inputs.mounted_inputs().front().component)) < .01F,
+          "rich Breadcrumb item and separator do not share the editor's first baseline");
+}
 } // namespace
 
 int main() {
@@ -344,6 +390,8 @@ int main() {
         dynamic_topology_menu_and_rtl();
         dynamic_validation_replacement_and_blur_destroy();
         reactive_navigation_and_flow();
+        rich_title_uses_first_text_baseline();
+        throwing_retired_editor_preserves_published_rows();
         clipping_theme_and_children();
         validation_and_callback_lifetime();
         hidden_input_cleanup();

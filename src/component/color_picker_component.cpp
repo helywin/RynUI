@@ -8,10 +8,35 @@
 #include <ryn/text.hpp>
 #include <algorithm>
 #include <cmath>
+#include <charconv>
 
 namespace ryn::detail {
 namespace {
 thread_local ColorPickerComponentHost* active_picker{};
+
+String display_label(const ColorPickerValue& value, ColorFormat format) {
+    if (format != ColorFormat::Hsb || !value.solid()) {
+        return value.format(format);
+    }
+    const auto number = [](double value) {
+        std::array<char, 64> buffer;
+        const auto result =
+            std::to_chars(buffer.data(), buffer.data() + buffer.size(), value, std::chars_format::fixed, 2);
+        std::string text(buffer.data(), result.ptr);
+        while (text.back() == '0') {
+            text.pop_back();
+        }
+        if (text.back() == '.') {
+            text.pop_back();
+        }
+        return text;
+    };
+    const auto hsb = value.solid()->hsb();
+    const bool alpha = hsb.a < 1;
+    return String::from_utf8(std::string{alpha ? "hsba(" : "hsb("} + number(hsb.h) + ", " + number(hsb.s * 100) +
+                             "%, " + number(hsb.b * 100) + "%" + (alpha ? ", " + number(hsb.a) : "") + ")")
+        .value();
+}
 
 struct Field final {
     runtime::ComponentId component;
@@ -449,13 +474,15 @@ void ColorPickerComponentHost::mount_picker(runtime::ComponentId id) {
                                     .max(max)
                                     .step(i == 3 ? .1 : 1)
                                     .precision(2)
+                                    .size(ControlSize::Small)
+                                    .controls(false)
                                     .disabled(i == 3 ? s.alpha_input_disabled : s.controls_disabled)
                                     .onChange([this, id, i](InputNumberValue v) {
                                         if (v) {
                                             channel(id, i, *v, true);
                                         }
                                     })
-                                    .layout(LayoutStyle{}.width(dp(52))));
+                                    .layout(LayoutStyle{}.width(dp(72))));
                 });
             }
         });
@@ -778,7 +805,7 @@ void ColorPickerComponentHost::mount(const ColorPickerProps& p, ColorPickerSlots
                                                    Prop<ColorFormat>{s.format}});
                             } else {
                                 Text(TextProps{}.content(bind([value = s.value, show = s.show_text, format = s.format] {
-                                    return show.get() ? value.get().format(format.get()) : String{u8"Color"};
+                                    return show.get() ? display_label(value.get(), format.get()) : String{u8"Color"};
                                 })));
                             }
                             // Retained preview surface: the trigger displays alpha and gradients.
@@ -813,17 +840,17 @@ void ColorPickerComponentHost::mount(const ColorPickerProps& p, ColorPickerSlots
                                              mount_presets(id);
                                          }
                                      }}};
-                                 if (slots.panel_render) {
-                                     slots.panel_render(parts);
-                                 } else {
-                                     Flex(FlexProps{}.vertical(true).gap(SpaceSize::Small), [parts] {
+                                 Flex(FlexProps{}.vertical(true).gap(SpaceSize::Small), [parts, slots] {
+                                     if (slots.panel_render) {
+                                         slots.panel_render(parts);
+                                     } else {
                                          parts.renderPicker();
                                          parts.renderPresets();
-                                     });
-                                 }
-                                 if (slots.extra) {
-                                     SlotContentAccess::function (*slots.extra)();
-                                 }
+                                     }
+                                     if (slots.extra) {
+                                         SlotContentAccess::function (*slots.extra)();
+                                     }
+                                 });
                              }}});
         }});
     // Preview is kept outside the indexed interactive fields.
@@ -1037,7 +1064,7 @@ bool ColorPickerComponentHost::keyboard(runtime::ComponentId id, std::size_t ind
     return true;
 }
 
-void ColorPickerComponentHost::paint(runtime::ComponentId id, runtime::Rect clip) {
+void ColorPickerComponentHost::paint(runtime::ComponentId id, runtime::Size viewport, runtime::Rect document_clip) {
     auto* s = services_->components().state<PickerState>(id);
     if (!s) {
         return;
@@ -1056,6 +1083,9 @@ void ColorPickerComponentHost::paint(runtime::ComponentId id, runtime::Rect clip
     for (std::size_t i = 0; i < paint_fields.size(); ++i) {
         const auto& f = paint_fields[i];
         const auto& node = services_->nodes().require(f.node);
+        const auto clip = graphics::EffectClip{
+            1,
+            services_->nodes().content_clip(f.node, services_->component_clip(f.component, viewport, document_clip))};
         const bool preview = f.component == s->swatch;
         const auto b = preview ? node.bounds : f.bounds;
         const auto sample = [&](float u, float v) {
@@ -1079,28 +1109,26 @@ void ColorPickerComponentHost::paint(runtime::ComponentId id, runtime::Rect clip
             c.a = u;
             return composite(PickerColor{c}.color(), background);
         };
-        auto quads = graphics::sampled_color_field(b, node.translation, preview ? 32 : 64,
-                                                   preview  ? 4
-                                                   : i == 0 ? 32
-                                                            : 4,
-                                                   sample);
+        auto effects = graphics::sampled_color_field(b, node.translation, preview ? 32 : 64,
+                                                     preview  ? 4
+                                                     : i == 0 ? 32
+                                                              : 4,
+                                                     sample, clip);
         const bool visible = services_->components().branch_active(f.component) && (preview || s->open.get()) &&
                              (i != 2 || !s->alpha_disabled.get());
-        for (auto& q : quads) {
-            q.opacity = visible ? node.opacity : 0;
+        for (auto& effect : effects) {
+            effect.material.opacity = visible ? node.opacity : 0;
         }
         if (!preview) {
             auto marker = [&](float u, float v, Color color, float size) {
                 if (s->rtl) {
                     u = 1 - u;
                 }
-                graphics::QuadInstance q;
-                q.bounds = {b.x + u * b.width - size / 2, b.y + v * b.height - size / 2, size, size};
-                q.color = {color.red(), color.green(), color.blue(), color.alpha()};
-                q.corner_radius = size / 2;
-                q.translation = {node.translation.x, node.translation.y};
-                q.opacity = visible ? node.opacity : 0;
-                quads.push_back(q);
+                auto effect = graphics::make_shadow_effect(
+                    {{b.x + u * b.width - size / 2, b.y + v * b.height - size / 2, size, size}, size / 2},
+                    ShadowLayer{ShadowKind::outer, {}, 0, 0, color}, node.translation, clip);
+                effect.material.opacity = visible ? node.opacity : 0;
+                effects.push_back(effect);
             };
             if (i < 3) {
                 const auto u = static_cast<float>(i == 0 ? hsb.s : i == 1 ? hsb.h / 360 : hsb.a);
@@ -1122,19 +1150,18 @@ void ColorPickerComponentHost::paint(runtime::ComponentId id, runtime::Rect clip
             const std::array hit_quads{hit_quad};
             static_cast<void>(services_->surfaces().update(f.hit_surface, hit_quads));
         }
-        static_cast<void>(services_->surfaces().update_content_range(f.surface, quads));
+        static_cast<void>(services_->surfaces().update_content_effects(f.surface, effects));
     }
-    (void)clip;
 }
 
-void ColorPickerComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect clip) {
+void ColorPickerComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
     const auto ids = mounted_;
     for (auto id : ids) {
         if (auto* s = services_->components().state<PickerState>(id)) {
             if (!available(*services_, id, *s)) {
                 cancel(id);
             }
-            paint(id, clip);
+            paint(id, viewport, clip);
         }
     }
 }

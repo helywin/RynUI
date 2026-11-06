@@ -118,6 +118,16 @@ void make_cluster_units(const ShapedText& text, const ShapedParagraph& paragraph
         });
     }
     std::ranges::sort(units, {}, &ClusterUnit::byte_start);
+    // A small preferred-break rule, not a complete UAX #14 implementation.
+    // Keep sentence stops with the preceding CJK text whenever another legal
+    // boundary fits. Emergency grapheme wrapping remains available for tiny widths.
+    for (std::size_t i = 1; i < units.size(); ++i) {
+        const auto* scalar = scalar_at_cluster(text, units[i].byte_start);
+        if (scalar && scalar->value == U'。') {
+            units[i - 1].legal_break_after = false;
+            units[i].legal_break_after = units[i].grapheme_break_after;
+        }
+    }
 }
 
 bool append_line_geometry(const ShapedText& text, const ShapedParagraph& paragraph, std::span<const ClusterUnit> units,

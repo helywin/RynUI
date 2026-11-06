@@ -261,6 +261,8 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         b.border_radius = dp(token.metrics.border_radius);
         b.default_shadow = ShadowList{};
         b.padding_inline = dp(0);
+        b.padding_inline_small = dp(0);
+        b.padding_inline_large = dp(0);
         b.icon_gap = dp(0);
         item.theme.set(std::move(config));
         if (services_->components().set_branch_active(item.component, item.shown && !s->hidden)) {

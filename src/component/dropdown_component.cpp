@@ -7,6 +7,7 @@
 #include <ryn/space.hpp>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 
 namespace ryn::detail {
 namespace {
@@ -804,8 +805,11 @@ void DropdownComponentHost::position_window_layers(runtime::Size viewport, runti
         if (measure) {
             const float padding = std::min(token.metrics.padding, std::min(clip.width, clip.height) / 2);
             engine.set_layout(popup, layout::BoxLayout{{padding, padding, padding, padding}});
-            s->popup_size = engine.measure_child(popup, {std::min(token.metrics.min_width, clip.width), clip.width, 0,
-                                                         std::min(token.metrics.max_height, clip.height)});
+            const float minimum = std::min(token.metrics.min_width, clip.width);
+            const float height = std::min(token.metrics.max_height, clip.height);
+            const auto natural =
+                engine.measure_child(popup, {minimum, std::numeric_limits<float>::infinity(), 0, height});
+            s->popup_size = engine.measure_child(popup, {minimum, std::min(natural.width, clip.width), 0, height});
             // BoxLayout discovers the natural popup size, but does not stretch
             // its child when the popup minimum width exceeds the Menu's width.
             static_cast<void>(

@@ -349,6 +349,29 @@ void removal_focus_and_callback_destruction() {
           "validator destruction emitted callback or left held refs active");
 }
 
+void vertical_label_starts_with_control() {
+    Fixture f;
+    FormField<String> field;
+    f.services.mount(Content{[&] {
+        Form(FormProps{}.layout(FormLayout::Vertical), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(String{u8"name"}, field).label(String{u8"Name"}),
+                          FormItemContent{[] { Input(InputProps{}); }});
+             }});
+    }});
+    sync(f);
+    const auto parts = f.services.form().snapshot(f.services.form().items().front());
+    bool found{};
+    for (const auto& text : f.services.text().mounted_texts()) {
+        if (f.services.components().parent(text.component) == parts.label) {
+            found = true;
+            check(std::abs(bounds(f, text.component).x - bounds(f, parts.control).x) < .01F &&
+                      bounds(f, text.component).y < bounds(f, parts.control).y,
+                  "vertical Form label does not start above its control");
+        }
+    }
+    check(found, "vertical Form label was not exercised");
+}
+
 void feedback_flow_and_actual_glyph_clip() {
     Fixture f;
     FormRef form;
@@ -951,6 +974,7 @@ int main() {
         multiline_and_input_boundaries();
         removal_focus_and_callback_destruction();
         feedback_flow_and_actual_glyph_clip();
+        vertical_label_starts_with_control();
         live_theme_and_clipped_focus();
         callbacks_and_control_generation();
         controlled_authority_and_checkbox_generation();

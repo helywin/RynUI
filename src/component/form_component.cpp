@@ -1002,8 +1002,10 @@ void FormComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                                state->presentation.layout != FormLayout::Inline,
                                false,
                                state->presentation.label_wrap ? layout::FlexWrap::wrap : layout::FlexWrap::no_wrap,
-                               state->presentation.label_align == FormLabelAlign::Right ? layout::FlexJustify::end
-                                                                                        : layout::FlexJustify::start,
+                               state->presentation.layout != FormLayout::Vertical &&
+                                       state->presentation.label_align == FormLabelAlign::Right
+                                   ? layout::FlexJustify::end
+                                   : layout::FlexJustify::start,
                                layout::FlexAlign::start,
                                0,
                                layout::FlexItemPolicy::sequential,

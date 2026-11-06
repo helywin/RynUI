@@ -157,6 +157,9 @@ struct ButtonTokenOverride final {
     std::optional<LogicalLength> wave_width;
     std::optional<float> wave_opacity;
 
+    std::optional<LogicalLength> padding_inline_small;
+    std::optional<LogicalLength> padding_inline_large;
+
     friend bool operator==(const ButtonTokenOverride&, const ButtonTokenOverride&) = default;
 };
 

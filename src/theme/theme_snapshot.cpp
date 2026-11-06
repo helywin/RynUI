@@ -2711,6 +2711,10 @@ void apply_button_override(ButtonThemeToken& button, const ButtonTokenOverride& 
     }
     button.padding_inline = fixed_length(override.padding_inline, button.padding_inline,
                                          "Button padding must be a non-negative fixed logical length");
+    button.padding_inline_small = fixed_length(override.padding_inline_small, button.padding_inline_small,
+                                               "Button small padding must be a non-negative fixed logical length");
+    button.padding_inline_large = fixed_length(override.padding_inline_large, button.padding_inline_large,
+                                               "Button large padding must be a non-negative fixed logical length");
     button.icon_gap =
         fixed_length(override.icon_gap, button.icon_gap, "Button icon gap must be a non-negative fixed logical length");
     button.border_radius = fixed_length(override.border_radius, button.border_radius,

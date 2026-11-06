@@ -46,7 +46,7 @@ private:
     void mount_presets(runtime::ComponentId);
     void reconcile_presets(runtime::ComponentId);
     void mount_preset_group(runtime::ComponentId, ColorPreset);
-    void paint(runtime::ComponentId, runtime::Rect);
+    void paint(runtime::ComponentId, runtime::Size, runtime::Rect);
     void pointer(runtime::ComponentId, std::size_t, input::PointerDispatchContext&);
     bool keyboard(runtime::ComponentId, std::size_t, const input::KeyboardInputEvent&);
     void channel(runtime::ComponentId, std::size_t, double, bool);

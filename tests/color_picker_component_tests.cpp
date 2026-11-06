@@ -162,6 +162,25 @@ void retained_text_renderer() {
     check(found, "typed text renderer did not receive reactive formatted text");
 }
 
+void compact_default_hsb_label() {
+    Fixture f;
+    const ColorPickerValue value{PickerColor{ColorRgb{22, 119, 255, 1}}};
+    f.inputs.mount(
+        Content{[&] { ColorPicker(ColorPickerProps{}.value(value).format(ColorFormat::Hsb).showText(true)); }});
+    sync(f);
+    bool found{};
+    for (const auto& text : f.services.text().mounted_texts()) {
+        const auto label = f.scene.text_state(text.scene).content().bytes();
+        if (label.starts_with("hsb(")) {
+            found = true;
+            check(label.size() < 32 && label.find("38.823529") == std::string_view::npos,
+                  "default HSB trigger exposes an unbounded decimal expansion");
+        }
+    }
+    check(found && f.services.color_picker().snapshot(f.services.color_picker().mounted().front()).value == value,
+          "compact HSB presentation changed the exact color model");
+}
+
 void panel_actions_and_presets() {
     Fixture f;
     Signal<std::vector<ColorPreset>> presets{std::vector<ColorPreset>{
@@ -268,12 +287,16 @@ void theme_contract() {
 std::vector<std::array<float, 4>> field_colors(Fixture& f, const detail::ColorPickerSnapshot& s, std::size_t i) {
     const auto bounds = f.nodes.require(f.services.components().root(s.fields[i])).bounds;
     std::vector<std::array<float, 4>> result;
-    for (const auto& q : f.services.surfaces().instances().instances()) {
-        if (q.opacity > 0 && q.bounds[0] >= bounds.x && q.bounds[1] >= bounds.y &&
-            q.bounds[0] + q.bounds[2] <= bounds.x + bounds.width + .01F &&
-            q.bounds[1] + q.bounds[3] <= bounds.y + bounds.height + .01F && q.bounds[2] < bounds.width / 10 &&
-            q.bounds[3] < bounds.height / 2) {
-            result.push_back(q.color);
+    for (const auto& effect : f.services.surfaces().effects().packed_instances()) {
+        const auto& shape = effect.geometry.shape.rect;
+        if (effect.material.visible && effect.material.opacity > 0 && shape == bounds &&
+            effect.geometry.ancestor_clip) {
+            const auto clip = graphics::intersect_effect_bounds(bounds, effect.geometry.ancestor_clip->bounds);
+            if (clip.width > 0 && clip.width < bounds.width / 10 && clip.height > 0 &&
+                clip.height < bounds.height / 2) {
+                const auto color = effect.material.color;
+                result.push_back({color.red(), color.green(), color.blue(), color.alpha()});
+            }
         }
     }
     return result;
@@ -524,6 +547,7 @@ int main() {
         mode_cache();
         controlled_format_and_css();
         retained_text_renderer();
+        compact_default_hsb_label();
         panel_actions_and_presets();
         interactive();
         controlled_and_gradient();
