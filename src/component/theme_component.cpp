@@ -18,8 +18,12 @@ struct ThemePropsAccess final {
 
 namespace ryn {
 
-void Theme(ThemeProps props, ThemeContent content) {
-    auto& build = runtime::require_component_build_context();
+namespace {
+
+// Finish the large configuration work before mounting nested content. Otherwise
+// each transparent Theme retains its configuration temporaries on the stack.
+std::shared_ptr<theme_runtime::ThemeScope> initialize_scope(runtime::ComponentBuildContext& build,
+                                                            const ThemeProps& props) {
     const auto scope = theme_runtime::ThemeScope::create(build.theme_scope(),
                                                          detail::read_prop(detail::ThemePropsAccess::config(props)));
     const std::weak_ptr<theme_runtime::ThemeScope> weak_scope = scope;
@@ -39,6 +43,14 @@ void Theme(ThemeProps props, ThemeContent content) {
                 }
             }));
     }
+    return scope;
+}
+
+} // namespace
+
+void Theme(ThemeProps props, ThemeContent content) {
+    auto& build = runtime::require_component_build_context();
+    const auto scope = initialize_scope(build, props);
     build.mount_slot_with_theme_scope(content, scope);
 }
 

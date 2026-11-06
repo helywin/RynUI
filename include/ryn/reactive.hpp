@@ -15,7 +15,7 @@ namespace detail {
 
 template <typename T, typename Equal> class SignalCell final : public ReactiveSource {
 public:
-    SignalCell(T initial_value, Equal equal)
+    SignalCell(T&& initial_value, Equal equal)
         : value_(std::move(initial_value)), equal_(std::move(equal)), owner_thread_(std::this_thread::get_id()) {}
 
     [[nodiscard]] const T& get() {
@@ -24,7 +24,7 @@ public:
         return value_;
     }
 
-    bool set(T value) {
+    bool set(T&& value) {
         ensure_owner_thread();
         if (equal_(value_, value)) {
             return false;

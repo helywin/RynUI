@@ -64,6 +64,7 @@ public:
 private:
     void reconcile(runtime::ComponentId, const std::vector<TransferItem>&);
     void refresh(runtime::ComponentId);
+    void refresh_content(runtime::ComponentId);
     void select_keys(runtime::ComponentId, TransferKeys, bool);
     void move(runtime::ComponentId, TransferDirection, std::optional<TransferKey> key = {});
     bool editable(runtime::ComponentId) const;

@@ -507,6 +507,12 @@ void TransferComponentHost::refresh(runtime::ComponentId id) {
         s->again = true;
         return;
     }
+    refresh_content(id);
+}
+
+void TransferComponentHost::refresh_content(runtime::ComponentId id) {
+    // Keep the reentry check outside the frame holding complete child themes.
+    auto s = state(*services_, id);
     FailureGuard failure{services_, id};
     s->refreshing = true;
 

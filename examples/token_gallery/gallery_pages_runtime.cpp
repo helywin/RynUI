@@ -302,6 +302,12 @@ bool owns(ryn::detail::ButtonComponentHost& app, runtime::ComponentId child, run
     return false;
 }
 
+void update_acceptance_theme(GalleryPagesHost& pages, const std::function<void(ThemeConfig&)>& update) {
+    auto config = pages.theme();
+    update(config);
+    pages.set_theme(config);
+}
+
 void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanceResult& result,
                          GalleryPageEvents& events, GalleryPagesHost& pages, ryn::detail::ButtonComponentHost& app,
                          ryn::detail::InputComponentHost& inputs, ryn::detail::SelectionComponentHost& selections,
@@ -541,23 +547,33 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         const int width = options.width ? options.width : widths[i % widths.size()];
         std::cout << "page_acceptance_stage=" << i << " page=" << route.component_identity << " width=" << width << '\n'
                   << std::flush;
+        if (options.visual) {
+            std::cout << "visual_phase=resize_begin\n" << std::flush;
+        }
         resize(width);
+        if (options.visual) {
+            std::cout << "visual_phase=resize_complete\n" << std::flush;
+        }
         if (options.visual && i > 0) {
             pages.request({});
             pages.process();
             render();
         }
-        auto config = pages.theme();
-        config.algorithms = i % 3 == 0   ? std::vector{ThemeAlgorithm::Default}
-                            : i % 3 == 1 ? std::vector{ThemeAlgorithm::Dark}
-                                         : std::vector{ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
-        if (options.visual && route.component_identity == "ant.component.switch") {
-            config.seed.motion = true;
+        update_acceptance_theme(pages, [&](ThemeConfig& config) {
+            config.algorithms = i % 3 == 0   ? std::vector{ThemeAlgorithm::Default}
+                                : i % 3 == 1 ? std::vector{ThemeAlgorithm::Dark}
+                                             : std::vector{ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
+            if (options.visual && route.component_identity == "ant.component.switch") {
+                config.seed.motion = true;
+            }
+        });
+        if (options.visual) {
+            std::cout << "visual_phase=theme_complete\n" << std::flush;
         }
-        pages.set_theme(config);
         check(pages.request(route), "finite page route rejected");
         static_cast<void>(pages.process());
         if (options.visual) {
+            std::cout << "visual_phase=mount_complete\n" << std::flush;
             render();
             capture_gallery_visuals(
                 route, i, app, pages, events.viewport, events.scale, options.output.parent_path(), render,
@@ -814,9 +830,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                         route.component_identity == "ant.component.descriptions" ||
                                         route.component_identity == "ant.component.timeline";
         const auto enable_owned_motion = [&] {
-            auto theme = pages.theme();
-            theme.seed.motion = true;
-            pages.set_theme(theme);
+            update_acceptance_theme(pages, [](ThemeConfig& config) { config.seed.motion = true; });
             app.services().set_motion_preference(animation::MotionPreference::normal);
         };
         if (route.component_identity == "ant.component.collapse") {
@@ -946,9 +960,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         }
         if (owned_data_display) {
             previous_session = inputs.sessions().active();
-            auto theme = pages.theme();
-            theme.seed.motion = false;
-            pages.set_theme(theme);
+            update_acceptance_theme(pages, [](ThemeConfig& config) { config.seed.motion = false; });
             check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}),
                   "native retained DataDisplay retirement route rejected");
             pages.process();
@@ -2216,9 +2228,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             auto& carousels = app.services().carousel();
             const auto owner = pages.target("gallery.carousel.main");
             reveal(owner);
-            auto motion = pages.theme();
-            motion.seed.motion = true;
-            pages.set_theme(motion);
+            update_acceptance_theme(pages, [](ThemeConfig& config) { config.seed.motion = true; });
             render();
             const auto original = carousels.snapshot(owner);
             const auto draft = edit_input(original.slides[0]);
@@ -2291,8 +2301,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             check(pages.sample_runs("gallery.sample.carousel.panels") == 1 &&
                       pages.sample_runs("gallery.sample.carousel.controlled") == 1,
                   "native Carousel actions reran sample factories");
-            motion.seed.motion = false;
-            pages.set_theme(motion);
+            update_acceptance_theme(pages, [](ThemeConfig& config) { config.seed.motion = false; });
             check(pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "Carousel retirement route failed");
             pages.process();
             render();

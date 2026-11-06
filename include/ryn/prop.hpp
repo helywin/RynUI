@@ -42,7 +42,7 @@ private:
     friend struct detail::FormPropBridge;
     friend struct detail::MasonryPropBridge;
 
-    static StaticValue store_value(T value) {
+    static StaticValue store_value(T&& value) {
         if constexpr (indirect_static_value) {
             return std::make_shared<const T>(std::move(value));
         } else {

@@ -3,6 +3,7 @@
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <limits>
 
 namespace ryn::detail {
@@ -125,7 +126,8 @@ AnchorSnapshot AnchorComponentHost::snapshot(runtime::ComponentId id) const {
 
 void AnchorComponentHost::validate_items(const std::vector<AnchorItem>& items) const {
     std::vector<String> keys;
-    const auto visit = [&](auto&& self, const auto& values, std::size_t depth) -> void {
+    std::function<void(const std::vector<AnchorItem>&, std::size_t)> visit;
+    visit = [&](const std::vector<AnchorItem>& values, std::size_t depth) {
         if (depth > 128) {
             throw std::invalid_argument("Anchor hierarchy exceeds 128 levels");
         }
@@ -138,10 +140,10 @@ void AnchorComponentHost::validate_items(const std::vector<AnchorItem>& items) c
             if (item.target_offset_) {
                 offset_value(read_prop(*item.target_offset_));
             }
-            self(self, item.children_, depth + 1);
+            visit(item.children_, depth + 1);
         }
     };
-    visit(visit, items, 0);
+    visit(items, 0);
 }
 
 void AnchorComponentHost::mount(const AnchorProps& props) {
@@ -303,7 +305,8 @@ void AnchorComponentHost::reconcile(runtime::ComponentId id, runtime::ComponentB
     };
 
     std::vector<Entry> entries;
-    const auto flatten = [&](auto&& self, const auto& items, std::size_t depth, bool visible, bool disabled) -> void {
+    std::function<void(const std::vector<AnchorItem>&, std::size_t, bool, bool)> flatten;
+    flatten = [&](const std::vector<AnchorItem>& items, std::size_t depth, bool visible, bool disabled) {
         if (depth > 128) {
             throw std::invalid_argument("Anchor hierarchy exceeds 128 levels");
         }
@@ -317,11 +320,11 @@ void AnchorComponentHost::reconcile(runtime::ComponentId id, runtime::ComponentB
                 offset_value(read_prop(*item.target_offset_));
             }
             entries.push_back({item, depth, visible, disabled});
-            self(self, item.children_, depth + 1, visible && read_prop(item.visible_),
-                 disabled || read_prop(item.disabled_));
+            flatten(item.children_, depth + 1, visible && read_prop(item.visible_),
+                    disabled || read_prop(item.disabled_));
         }
     };
-    flatten(flatten, s->pending, 0, true, false);
+    flatten(s->pending, 0, true, false);
     const auto items_revision = s->items_revision;
     s->reconciling = true;
     const auto old = s->rows;

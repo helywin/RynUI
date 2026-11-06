@@ -1,6 +1,7 @@
 #include "component/anchor_component.hpp"
 #include "support/navigation_fixture.hpp"
 #include <iostream>
+#include <limits>
 
 namespace {
 using namespace ryn_test::navigation;
@@ -297,6 +298,68 @@ void overflow_and_affix_geometry() {
     check(std::abs(bounds(f, view.items[0]).y - 212) < .01F, "Anchor ignored explicit nested scroll viewport origin");
     check(glyphs_inside(f, id, {0, 200, 640, 300}) > 0, "affixed Anchor lost its visible glyphs");
 }
+
+std::vector<AnchorItem> hierarchy(std::size_t count) {
+    std::vector<AnchorItem> items;
+    while (count) {
+        const auto key = String::from_utf8(std::to_string(--count)).value();
+        auto item = AnchorItem{key, key, static_cast<float>(count)};
+        item.children(std::move(items));
+        items = {std::move(item)};
+    }
+    return items;
+}
+
+void hierarchy_validation_and_order() {
+    Fixture f;
+    Signal<bool> visible{true};
+    f.services.mount(Content{[&] {
+        Anchor(
+            AnchorProps{}
+                .onScrollTo([](float) {})
+                .items(std::vector<AnchorItem>{
+                    AnchorItem{u8"a", u8"A", 0}.visible(visible).children({{u8"b", u8"B", 10}}), {u8"c", u8"C", 20}}));
+    }});
+    sync(f);
+    const auto id = f.services.anchor().mounted()[0];
+    const auto before = f.services.anchor().snapshot(id);
+    check(before.keys == std::vector<String>{u8"a", u8"b", u8"c"}, "Anchor hierarchy lost preorder");
+    visible.set(false);
+    sync(f);
+    check(!f.services.components().branch_active(before.items[1]) &&
+              f.services.components().branch_active(before.items[2]),
+          "Anchor ancestor visibility did not propagate independently of siblings");
+    visible.set(true);
+    sync(f);
+    check(f.services.anchor().snapshot(id).items == before.items &&
+              f.services.components().branch_active(before.items[1]),
+          "Anchor hierarchy visibility remounted retained children");
+
+    Fixture limit;
+    limit.services.mount(Content{[] { Anchor(AnchorProps{}.onScrollTo([](float) {}).items(hierarchy(128))); }});
+    sync(limit);
+    check(limit.services.anchor().snapshot(limit.services.anchor().mounted()[0]).keys.size() == 128,
+          "Anchor rejected its existing valid hierarchy boundary");
+    for (int invalid = 0; invalid != 4; ++invalid) {
+        Fixture rejected;
+        bool threw{};
+        try {
+            rejected.services.mount(Content{[&] {
+                auto items = invalid == 3 ? hierarchy(129)
+                                          : std::vector<AnchorItem>{AnchorItem{u8"a", u8"A", 0}.children(
+                                                {{invalid == 0 ? u8"a" : u8"b", u8"B",
+                                                  invalid == 1   ? -1.0F
+                                                  : invalid == 2 ? std::numeric_limits<float>::quiet_NaN()
+                                                                 : 1.0F}})};
+                Anchor(AnchorProps{}.onScrollTo([](float) {}).items(std::move(items)));
+            }});
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        check(threw && rejected.services.anchor().mounted().empty(),
+              "Anchor accepted an invalid nested key/value/depth or leaked partial state");
+    }
+}
 } // namespace
 
 int main() {
@@ -306,7 +369,8 @@ int main() {
         topology_and_retention();
         cancellation_and_failures();
         theme_and_controlled();
-        std::cout << "Anchor component contracts passed (5 groups)\n";
+        hierarchy_validation_and_order();
+        std::cout << "Anchor component contracts passed (6 groups)\n";
         return 0;
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

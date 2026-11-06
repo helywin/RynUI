@@ -158,6 +158,30 @@ void test_cross_thread_and_disposal() {
     require(scope->generation() == generation, "disposed Host retained an active Theme Prop observer");
 }
 
+void test_nested_themes_release_configuration_frames_before_content() {
+    ryn::runtime::NodeStore nodes;
+    ryn::runtime::ComponentHost host(nodes);
+    const auto props = ryn::ThemeProps{}.config(primary_config(ryn::Color::rgba8(12, 34, 56)));
+    ryn::runtime::ComponentId leaf;
+    std::function<void(int)> nested;
+    nested = [&](int depth) {
+        ryn::Theme(props, ryn::ThemeContent{[&, depth] {
+                       if (depth) {
+                           nested(depth - 1);
+                       } else {
+                           leaf = mount_dummy();
+                       }
+                   }});
+    };
+    host.mount(ryn::Content{[&] { nested(24); }});
+    require(host.component_count() == 1 && nodes.size() == 1,
+            "deep transparent themes introduced retained wrapper components");
+    require(host.theme_scope(leaf)->snapshot().seed().color_primary == ryn::Color::rgba8(12, 34, 56),
+            "nested scope initialization lost inherited configuration");
+    host.dispose();
+    require(nodes.size() == 0, "deep Theme content survived host disposal");
+}
+
 } // namespace
 
 int main() {
@@ -166,6 +190,7 @@ int main() {
         test_reactive_theme_does_not_rerun_content();
         test_exception_destroy_reuse_and_scope_lifetime();
         test_cross_thread_and_disposal();
+        test_nested_themes_release_configuration_frames_before_content();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
