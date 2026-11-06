@@ -684,10 +684,11 @@ struct CardColorToken final {
     Color border;
     Color separator;
     Color placeholder;
+    Color meta_description;
 
     [[nodiscard]] auto values() const {
-        return std::array{background, header_background, actions_background, text, header_text, extra,
-                          border,     separator,         placeholder};
+        return std::array{background, header_background, actions_background, text, header_text, extra, border,
+                          separator,  placeholder,       meta_description};
     }
 
     friend bool operator==(const CardColorToken&, const CardColorToken&) = default;
@@ -706,11 +707,14 @@ struct CardMetricToken final {
     float loading_line_height{16};
     float loading_gap{12};
     float header_gap{16};
+    float meta_gap{8};
+    float meta_margin_block{4};
 
     [[nodiscard]] auto values() const {
         return std::array{header_height,  header_height_small,  body_padding,    body_padding_small,
                           header_padding, header_padding_small, actions_padding, border_width,
-                          border_radius,  loading_line_height,  loading_gap,     header_gap};
+                          border_radius,  loading_line_height,  loading_gap,     header_gap,
+                          meta_gap,       meta_margin_block};
     }
 
     friend bool operator==(const CardMetricToken&, const CardMetricToken&) = default;
@@ -776,6 +780,9 @@ struct CardTokenOverride final {
     std::optional<std::uint32_t> header_font_weight;
     std::optional<ShadowList> shadow;
     std::optional<ShadowList> hover_shadow;
+    std::optional<LogicalLength> meta_gap;
+    std::optional<LogicalLength> meta_margin_block;
+    std::optional<Color> meta_description;
     friend bool operator==(const CardTokenOverride&, const CardTokenOverride&) = default;
 };
 

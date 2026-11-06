@@ -1775,6 +1775,12 @@ EmptyThemeToken derive_empty(const AntDesignDefaultSeed& seed, const ThemeMapTok
                     Color{alias.color_text_disabled.red(), alias.color_text_disabled.green(),
                           alias.color_text_disabled.blue(), alias.color_text_disabled.alpha() * seed.opacity_image},
                     alias.color_text};
+    token.colors.illustration_shadow = mix(alias.color_background_container, map.color_text_base, .06F);
+    token.colors.illustration_border = mix(alias.color_background_container, map.color_text_base, .25F);
+    token.colors.illustration_panel = mix(alias.color_background_container, map.color_text_base, .04F);
+    token.colors.illustration_detail = mix(alias.color_background_container, map.color_text_base, .15F);
+    token.colors.illustration_icon = alias.color_background_container;
+    token.colors.illustration_content = mix(alias.color_background_container, map.color_text_base, .02F);
     token.metrics.padding_inline = map.size_xs;
     token.metrics.compact_padding_block = map.size_xs;
     token.metrics.image_size = map.control_height_large * 2.5F;
@@ -1816,6 +1822,24 @@ ResultThemeToken derive_result(const AntDesignDefaultSeed& seed, const ThemeMapT
 }
 
 void apply_empty_override(EmptyThemeToken& token, const EmptyTokenOverride& o) {
+    if (o.illustration_shadow) {
+        token.colors.illustration_shadow = *o.illustration_shadow;
+    }
+    if (o.illustration_border) {
+        token.colors.illustration_border = *o.illustration_border;
+    }
+    if (o.illustration_panel) {
+        token.colors.illustration_panel = *o.illustration_panel;
+    }
+    if (o.illustration_detail) {
+        token.colors.illustration_detail = *o.illustration_detail;
+    }
+    if (o.illustration_icon) {
+        token.colors.illustration_icon = *o.illustration_icon;
+    }
+    if (o.illustration_content) {
+        token.colors.illustration_content = *o.illustration_content;
+    }
     if (o.description) {
         token.colors.description = *o.description;
     }
@@ -2065,6 +2089,7 @@ CardThemeToken derive_card(const AntDesignDefaultSeed& seed, const ThemeMapToken
                     alias.color_border_secondary,
                     alias.color_border_secondary,
                     Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.06F)};
+    token.colors.meta_description = alias.color_text_secondary;
     token.typography = {seed.font_family,
                         map.font_size,
                         map.font_size * map.line_height,
@@ -2086,6 +2111,8 @@ CardThemeToken derive_card(const AntDesignDefaultSeed& seed, const ThemeMapToken
                      map.size,
                      map.size_small,
                      map.size};
+    token.metrics.meta_gap = map.size_xs;
+    token.metrics.meta_margin_block = seed.size_unit;
     token.effects = {alias.box_shadow_tertiary, ant_design_default_shadows().card};
     return token;
 }
@@ -2142,6 +2169,12 @@ void apply_card_override(CardThemeToken& token, const CardTokenOverride& o) {
         fixed_length(o.loading_gap, token.metrics.loading_gap, "Card loading_gap must be non-negative");
     token.metrics.header_gap =
         fixed_length(o.header_gap, token.metrics.header_gap, "Card header_gap must be non-negative");
+    token.metrics.meta_gap = fixed_length(o.meta_gap, token.metrics.meta_gap, "Card meta_gap must be non-negative");
+    token.metrics.meta_margin_block =
+        fixed_length(o.meta_margin_block, token.metrics.meta_margin_block, "Card meta margin must be non-negative");
+    if (o.meta_description) {
+        token.colors.meta_description = *o.meta_description;
+    }
     if (o.font_family) {
         token.typography.font_family = *o.font_family;
     }

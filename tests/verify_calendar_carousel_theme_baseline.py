@@ -7,6 +7,16 @@ import subprocess
 ROOT=Path(__file__).resolve().parents[1]
 BASE='135ba70b74673bc6d7b34d1d83aa414fd0db3607'
 def original(path): return subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT,text=True)
+def verify_appended_tokens(before, after, appended, context):
+    assert list(after) == list(before), (context, 'component field order changed')
+    for key, value in before.items():
+        extra = appended.get(key, 0)
+        if extra:
+            assert len(after[key]) == len(value) + extra, (context, key, 'unexpected appended length')
+            assert after[key][:len(value)] == value, (context, key, 'old values changed')
+        else:
+            assert after[key] == value, (context, key, 'unowned value changed')
+
 def main():
     paths=sorted((ROOT/'design-tokens/ant-design/6.6.5/golden').glob('*.json'))
     assert len(paths)==5
@@ -14,10 +24,19 @@ def main():
         before=json.loads(original(path.relative_to(ROOT)))
         after=json.loads(path.read_text())
         assert len(before)==64
-        assert set(before)|{'calendar','carousel'} == set(after)
+        assert list(after) == list(before) + ['calendar', 'carousel']
         assert len(after)==66
         for field,value in before.items():
-            if field!='identity': assert after[field]==value,(path.name,field)
+            if field == 'identity':
+                continue
+            # Later authorized Card/Empty additions retain every pre-107 value.
+            # Check exact append sizes and old prefixes instead of exempting domains.
+            if field == 'card':
+                verify_appended_tokens(value, after[field], {'colors': 1, 'metrics': 2}, (path.name, field))
+            elif field == 'empty':
+                verify_appended_tokens(value, after[field], {'colors': 6}, (path.name, field))
+            else:
+                assert after[field] == value, (path.name, field)
         assert after['identity']!=before['identity']
     path='src/theme/theme_runtime_types.hpp'
     def identities(text): return re.findall(r'^\s+(\w+),',text.split('enum class TokenIdentity')[1].split('};')[0],re.M)
@@ -31,5 +50,5 @@ def main():
     assert config_fields((ROOT/path).read_text()) == config_fields(original(path))+['CalendarThemeConfig calendar','CarouselThemeConfig carousel']
     runtime=(ROOT/'src/theme/theme_runtime.cpp').read_text()
     for name in ['Calendar.colors','Calendar.metrics','Calendar.effects','Carousel.colors','Carousel.metrics','Carousel.effects']: assert '"'+name+'"' in runtime
-    print('Calendar/Carousel baseline: 5 full goldens, 64 old fields protected, old TokenIdentity names/order unchanged')
+    print('Calendar/Carousel baseline: 5 full goldens, all 64 old fields/prefixes protected; exact Card/Empty appends; old TokenIdentity names/order unchanged')
 if __name__=='__main__': main()

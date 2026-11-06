@@ -29,6 +29,9 @@ void defaults_and_inheritance() {
               card.effects.shadow == base.alias().box_shadow_tertiary &&
               card.effects.hover_shadow == ant_design_default_shadows().card,
           "locked Card presentation defaults drifted");
+    check(card.metrics.meta_gap == 8 && card.metrics.meta_margin_block == 4 &&
+              card.colors.meta_description == base.alias().color_text_secondary,
+          "locked Meta spacing/color defaults drifted");
     ThemeConfig custom;
     custom.card.tokens.background = Color::rgba8(15, 30, 90);
     custom.card.tokens.body_padding = dp(30);

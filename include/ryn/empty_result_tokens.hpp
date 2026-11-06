@@ -9,9 +9,23 @@ struct EmptyColorToken final {
     Color description;
     Color image;
     Color extra;
+    Color illustration_shadow;
+    Color illustration_border;
+    Color illustration_panel;
+    Color illustration_detail;
+    Color illustration_icon;
+    Color illustration_content;
 
     [[nodiscard]] auto values() const {
-        return std::array{description, image, extra};
+        return std::array{description,
+                          image,
+                          extra,
+                          illustration_shadow,
+                          illustration_border,
+                          illustration_panel,
+                          illustration_detail,
+                          illustration_icon,
+                          illustration_content};
     }
 
     friend bool operator==(const EmptyColorToken&, const EmptyColorToken&) = default;
@@ -61,6 +75,13 @@ struct EmptyTokenOverride final {
     std::optional<LogicalLength> decoration_padding;
     std::optional<LogicalLength> font_size;
     std::optional<LogicalLength> line_height;
+    std::optional<Color> illustration_shadow;
+    std::optional<Color> illustration_border;
+    std::optional<Color> illustration_panel;
+    std::optional<Color> illustration_detail;
+    std::optional<Color> illustration_icon;
+    std::optional<Color> illustration_content;
+
     friend bool operator==(const EmptyTokenOverride&, const EmptyTokenOverride&) = default;
 };
 
