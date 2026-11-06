@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/component_locales.hpp>
 #include <ryn/component.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
@@ -26,13 +27,6 @@ struct PaginationItemContext final {
     Binding<PaginationItemType> type;
     Binding<String> label;
     Binding<bool> active;
-};
-
-struct PaginationLocale final {
-    String items_per_page{u8" / page"};
-    String page_separator{u8"/ "};
-    String jump_placeholder{u8"Go to"};
-    friend bool operator==(const PaginationLocale&, const PaginationLocale&) = default;
 };
 
 class PaginationProps final {

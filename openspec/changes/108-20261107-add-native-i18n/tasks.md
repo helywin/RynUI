@@ -4,10 +4,10 @@
 
 ## 1. i18n 数据与唯一配置基础
 
-- [ ] 1.1 实现 immutable LocaleId/Pack/Catalog、完整 zh-CN/en-US、fallback/alias/诊断与 typed 应用消息/参数/整数复数；新增并运行 `rynui.i18n_catalog`，覆盖缺 key、schema、转义、非法重复输入与语义相等，并更新数据/API 文档。
-- [ ] 1.2 实现窗口隔离 ConfigScope 与唯一 ConfigProvider 的 locale/formatLocale/messages/direction/size/disabled/theme 来源和嵌套继承，覆盖所有 slot/append/透明路径；运行 `rynui.i18n_context` 验证窗口隔离、作用域生命周期、重入、24 层与等值零额外帧，文档说明覆盖优先级。
-- [ ] 1.3 实现公开 `useI18n`、纯 lookup/format 入口与响应式文本绑定，支持过期 handle 的明确失败；运行 `rynui.i18n_public_api` 的独立公开头/应用编译及文本身份回归，完成公开 API 使用说明。
-- [ ] 1.4 在正式 HEADLESS Debug/Release 构建运行阶段 1 新入口及受影响 Prop/reactive/Theme/scope/10k 等值分配回归，保留原五套 Theme golden；运行格式、doctor、strict、diff，记录实际数量与边界后提交。
+- [x] 1.1 实现 immutable LocaleId/Pack/Catalog、完整 zh-CN/en-US、fallback/alias/诊断与 typed 应用消息/参数/整数复数；新增并运行 `rynui.i18n_catalog`，覆盖缺 key、schema、转义、非法重复输入与语义相等，并更新数据/API 文档。
+- [x] 1.2 实现窗口隔离 ConfigScope 与唯一 ConfigProvider 的 locale/formatLocale/messages/direction/size/disabled/theme 来源和嵌套继承，覆盖所有 slot/append/透明路径；运行 `rynui.i18n_context` 验证窗口隔离、作用域生命周期、重入、24 层与等值零额外帧，文档说明覆盖优先级。
+- [x] 1.3 实现公开 `useI18n`、纯 lookup/format 入口与响应式文本绑定，支持过期 handle 的明确失败；运行 `rynui.i18n_public_api` 的独立公开头/应用编译及文本身份回归，完成公开 API 使用说明。
+- [x] 1.4 在正式 HEADLESS Debug/Release 构建运行阶段 1 新入口及受影响 Prop/reactive/Theme/scope/10k 等值分配回归，保留原五套 Theme golden；运行格式、doctor、strict、diff，记录实际数量与边界后提交。
 
 ## 2. 组件文案、格式与编辑保留
 

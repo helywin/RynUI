@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/component_locales.hpp>
 #include <ryn/component.hpp>
 #include <ryn/image.hpp>
 #include <ryn/qrcode_data.hpp>
@@ -17,13 +18,6 @@ struct QRCodeIconSize final {
     friend bool operator==(QRCodeIconSize, QRCodeIconSize) = default;
 };
 
-struct QRCodeLocale final {
-    String expired{u8"QR code expired"};
-    String refresh{u8"Refresh"};
-    String loading{u8"Loading"};
-    String scanned{u8"Scanned"};
-    friend bool operator==(const QRCodeLocale&, const QRCodeLocale&) = default;
-};
 enum class QRCodeErrorCode { Encoding, Paint, Logo };
 
 struct QRCodeError final {

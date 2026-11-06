@@ -561,13 +561,18 @@ void WindowComponentServices::mount(const Content& content) {
 }
 
 void WindowComponentServices::append_slot(runtime::ComponentId parent, const Content& content) {
+    append_slot(parent, content, components().capture_context(parent));
+}
+
+void WindowComponentServices::append_slot(runtime::ComponentId parent, const Content& content,
+                                          const runtime::CapturedComponentContext& context) {
     std::vector<std::pair<WindowComponentParticipant*, void*>> active;
     active.reserve(participants_.size());
     try {
         for (auto* participant : participants_) {
             active.emplace_back(participant, participant->begin_mount());
         }
-        text_.append_slot(parent, content);
+        text_.append_slot(parent, content, context);
         scene_structure_dirty_ = true;
     } catch (...) {
         for (auto* participant : participants_) {

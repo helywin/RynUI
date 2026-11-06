@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/component_locales.hpp>
 #include <ryn/component.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/file_service.hpp>
@@ -85,23 +86,6 @@ using UploadRemoveCompletion = std::function<bool(bool)>;
 using UploadRemove = std::function<UploadCancel(const UploadFile&, UploadRemoveCompletion)>;
 enum class UploadListType { Text, Picture, PictureCard, PictureCircle };
 enum class UploadType { Select, Drag };
-
-struct UploadLocale final {
-    String select{u8"Select files"};
-    String drop{u8"Click or drop files here"};
-    String ready{u8"Ready"};
-    String uploading{u8"Uploading"};
-    String done{u8"Done"};
-    String error{u8"Upload failed"};
-    String cancelled{u8"Cancelled"};
-    String preview{u8"Preview"};
-    String download{u8"Download"};
-    String remove{u8"Remove"};
-    String retry{u8"Retry"};
-    String cancel{u8"Cancel"};
-    ImageLocale image_preview;
-    friend bool operator==(const UploadLocale&, const UploadLocale&) = default;
-};
 
 struct UploadItemActions final {
     std::function<void()> preview;

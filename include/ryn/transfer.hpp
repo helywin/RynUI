@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/component_locales.hpp>
 #include <ryn/checkbox.hpp>
 #include <ryn/input.hpp>
 #include <ryn/pagination.hpp>
@@ -57,26 +58,6 @@ struct TransferPagination final {
     std::vector<std::size_t> page_size_options{10, 20, 50, 100};
     bool controlled_page_size{};
     friend bool operator==(const TransferPagination&, const TransferPagination&) = default;
-};
-
-struct TransferLocale final {
-    std::array<String, 2> titles{String{u8"Source"}, String{u8"Target"}};
-    std::array<String, 2> empty{String{u8"No data"}, String{u8"No data"}};
-    String search_placeholder{u8"Search here"};
-    String item_unit{u8"item"};
-    String items_unit{u8"items"};
-    String loading{u8"Loading…"};
-    String select_all{u8"Select all"};
-    String deselect_all{u8"Deselect all"};
-    String select_current{u8"Select current page"};
-    String select_invert{u8"Invert selection"};
-    String clear{u8"Clear selection"};
-    String remove{u8"Remove"};
-    String remove_all{u8"Remove all"};
-    String remove_current{u8"Remove current page"};
-    std::array<String, 2> actions{String{u8"Move to target"}, String{u8"Move to source"}};
-    PaginationLocale pagination;
-    friend bool operator==(const TransferLocale&, const TransferLocale&) = default;
 };
 
 struct TransferSearchOptions final {

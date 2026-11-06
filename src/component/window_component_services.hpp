@@ -171,6 +171,8 @@ public:
     // Unwind cleanup: release one exact generation without delivering new boundary callbacks.
     bool retire_failed_component(runtime::ComponentId id) noexcept;
     void append_slot(runtime::ComponentId parent, const Content& content);
+    void append_slot(runtime::ComponentId parent, const Content& content,
+                     const runtime::CapturedComponentContext& context);
     // Called only by the retained-translation collection phase; applied in actual owner ancestry order.
     void enqueue_retained_translation(runtime::ComponentId owner, std::function<void()> compose);
     void dispose() noexcept;

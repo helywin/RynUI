@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/component_locales.hpp>
 #include <ryn/component.hpp>
 #include <ryn/image_source.hpp>
 #include <ryn/layout_style.hpp>
@@ -61,23 +62,6 @@ struct ImagePreviewOptions final {
     float max_scale{50};
     float scale_step{.5F};
     friend bool operator==(ImagePreviewOptions, ImagePreviewOptions) = default;
-};
-
-struct ImageLocale final {
-    String loading{u8"Loading image"};
-    String error{u8"Image unavailable"};
-    String preview{u8"Preview"};
-    String zoom_in{u8"Zoom in"};
-    String zoom_out{u8"Zoom out"};
-    String rotate_left{u8"Rotate left"};
-    String rotate_right{u8"Rotate right"};
-    String flip_x{u8"Flip horizontally"};
-    String flip_y{u8"Flip vertically"};
-    String reset{u8"Reset"};
-    String previous{u8"Previous image"};
-    String next{u8"Next image"};
-    String close{u8"Close preview"};
-    friend bool operator==(const ImageLocale&, const ImageLocale&) = default;
 };
 
 struct ImagePreviewActions final {

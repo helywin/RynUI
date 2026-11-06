@@ -2,6 +2,18 @@ add_library(rynui_string STATIC
     text/string.cpp
 )
 
+# Exact base-ten values and message/locale data remain usable without Components,
+# WindowServices, a renderer, or platform services.
+add_library(rynui_decimal STATIC component/exact_decimal.cpp)
+rynui_configure_cpp_target(rynui_decimal)
+target_include_directories(rynui_decimal PUBLIC "${PROJECT_SOURCE_DIR}/include" PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(rynui_decimal PUBLIC rynui_string)
+
+add_library(rynui_i18n STATIC i18n/locales.cpp i18n/messages.cpp)
+rynui_configure_cpp_target(rynui_i18n)
+target_include_directories(rynui_i18n PUBLIC "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(rynui_i18n PUBLIC rynui_string rynui_decimal)
+
 add_library(rynui_theme STATIC
     theme/design_token.cpp
     theme/input_tokens.cpp
@@ -140,6 +152,7 @@ rynui_assert_direct_dependencies(rynui_text_clipboard_commands rynui_text_editor
 
 add_library(rynui_runtime STATIC
     runtime/component_host.cpp
+    runtime/config_context.cpp
     runtime/component_mount.cpp
     runtime/frame_scheduler.cpp
     runtime/callback_frame_pump.cpp
@@ -152,7 +165,7 @@ rynui_configure_cpp_target(rynui_runtime)
 target_include_directories(rynui_runtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_runtime
     PUBLIC rynui_theme
-    PRIVATE rynui_animation rynui_reactive
+    PRIVATE rynui_animation rynui_reactive rynui_i18n
 )
 
 add_library(rynui_motion STATIC
@@ -239,6 +252,8 @@ rynui_assert_direct_dependencies(rynui_upload_model rynui_string)
 rynui_assert_core_link_closure(rynui_upload_model)
 
 add_library(rynui_components STATIC
+    component/config_provider_component.cpp
+    component/i18n_context.cpp
     component/carousel_component.cpp
     component/qrcode_component.cpp
     component/calendar_component.cpp
@@ -271,7 +286,6 @@ add_library(rynui_components STATIC
     component/window_component_services.cpp
     component/input_component.cpp
     component/input_number_value.cpp
-    component/exact_decimal.cpp
     component/input_number_model.cpp
     component/input_number_actions.cpp
     component/input_affix_action.cpp
@@ -360,6 +374,8 @@ target_link_libraries(rynui_components PRIVATE
     rynui_runtime
     rynui_text_scene
     rynui_theme
+    rynui_i18n
+    rynui_decimal
 )
 
 add_library(rynui_renderer_common STATIC
@@ -446,6 +462,8 @@ target_link_libraries(
 )
 
 rynui_assert_direct_dependencies(rynui_string)
+rynui_assert_direct_dependencies(rynui_decimal rynui_string)
+rynui_assert_direct_dependencies(rynui_i18n rynui_string rynui_decimal)
 rynui_assert_direct_dependencies(rynui_theme)
 rynui_assert_direct_dependencies(rynui_animation)
 rynui_assert_direct_dependencies(rynui_font RynUI::FreeType RynUI::HarfBuzz)
@@ -457,7 +475,7 @@ rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string rynui_text_b
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_input rynui_string)
 rynui_assert_direct_dependencies(
-    rynui_runtime rynui_animation rynui_reactive rynui_theme)
+    rynui_runtime rynui_animation rynui_reactive rynui_theme rynui_i18n)
 rynui_assert_direct_dependencies(
     rynui_motion rynui_animation rynui_runtime rynui_theme)
 rynui_assert_direct_dependencies(rynui_interaction rynui_input rynui_runtime)
@@ -471,6 +489,8 @@ rynui_assert_direct_dependencies(
 )
 rynui_assert_direct_dependencies(
     rynui_components
+    rynui_i18n
+    rynui_decimal
     rynui_text_boundary
     rynui_text_input_session
     rynui_text_clipboard_commands
@@ -519,7 +539,7 @@ rynui_assert_direct_dependencies(
     rynui_theme
 )
 
-foreach(core_target IN ITEMS rynui rynui_string rynui_theme rynui_animation rynui_font
+foreach(core_target IN ITEMS rynui rynui_string rynui_decimal rynui_i18n rynui_theme rynui_animation rynui_font
         rynui_text rynui_reactive rynui_input rynui_text_boundary rynui_text_editor
         rynui_text_input_session rynui_text_clipboard_commands rynui_runtime rynui_motion
         rynui_interaction rynui_layout rynui_graphics rynui_text_scene rynui_components)

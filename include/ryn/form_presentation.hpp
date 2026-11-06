@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/component_locales.hpp>
 #include <ryn/form_validation.hpp>
 #include <ryn/form_geometry.hpp>
 #include <ryn/breakpoints.hpp>
@@ -15,13 +16,6 @@ struct FormColumn final {
     int span{6};
     int offset{};
     friend bool operator==(const FormColumn&, const FormColumn&) = default;
-};
-
-struct FormLocale final {
-    String optional{u8"(optional)"};
-    String validating{u8"Validating"};
-    String required{u8"This field is required"};
-    friend bool operator==(const FormLocale&, const FormLocale&) = default;
 };
 
 struct FormPresentation final {

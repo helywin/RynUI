@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/component_locales.hpp>
 
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -12,11 +13,6 @@ namespace ryn {
 namespace detail {
 class DescriptionsComponentHost;
 }
-
-struct DescriptionsLocale final {
-    String separator{u8":"};
-    friend bool operator==(const DescriptionsLocale&, const DescriptionsLocale&) = default;
-};
 
 enum class DescriptionsSize { Default, Middle, Small };
 

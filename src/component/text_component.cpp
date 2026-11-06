@@ -773,11 +773,16 @@ void TextComponentHost::mount(const Content& content) {
 }
 
 void TextComponentHost::append_slot(runtime::ComponentId parent, const Content& content) {
+    append_slot(parent, content, components_.capture_context(parent));
+}
+
+void TextComponentHost::append_slot(runtime::ComponentId parent, const Content& content,
+                                    const runtime::CapturedComponentContext& context) {
     ActiveTextHostGuard guard(*this);
     LayoutComponentServices services{*nodes_, *layout_, *dirty_};
     ActiveLayoutComponentServices layout_services_guard(services);
     try {
-        components_.append_slot(parent, content);
+        components_.append_slot(parent, content, context);
     } catch (...) {
         std::erase_if(mounted_texts_, [this](const auto& text) { return !components_.contains(text.component); });
         layout_snapshot_valid_ = false;

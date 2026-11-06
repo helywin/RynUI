@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/component_locales.hpp>
 
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>

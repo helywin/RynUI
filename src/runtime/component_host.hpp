@@ -1,6 +1,7 @@
 #pragma once
 
 #include "runtime/node_store.hpp"
+#include "runtime/config_context.hpp"
 #include "theme/theme_runtime.hpp"
 
 #include <ryn/component.hpp>
@@ -87,6 +88,15 @@ struct SceneFragmentPaintEntry final {
 
 class ComponentBuildContext;
 
+struct ComponentContextOwner final {};
+
+struct CapturedComponentContext final {
+    std::weak_ptr<const ComponentContextOwner> owner;
+    std::shared_ptr<theme_runtime::ThemeScope> theme;
+    std::shared_ptr<ConfigScope> config;
+    std::optional<ComponentId> component_owner;
+};
+
 class ComponentHost final {
 public:
     explicit ComponentHost(NodeStore& nodes);
@@ -98,6 +108,8 @@ public:
 
     void mount(const Content& content);
     void append_slot(ComponentId parent, const Content& content);
+    void append_slot(ComponentId parent, const Content& content, const CapturedComponentContext& context);
+    [[nodiscard]] CapturedComponentContext capture_context(ComponentId id) const;
     bool destroy(ComponentId id) noexcept;
     void dispose() noexcept;
 
@@ -124,6 +136,7 @@ public:
     [[nodiscard]] std::size_t declaration_order(ComponentId id) const;
     [[nodiscard]] Scope& scope(ComponentId id);
     [[nodiscard]] const std::shared_ptr<theme_runtime::ThemeScope>& theme_scope(ComponentId id) const;
+    [[nodiscard]] const std::shared_ptr<ConfigScope>& config_scope(ComponentId id) const;
     bool remove_scene_fragment(SceneFragmentId id);
     // Retained decorations may acquire a component-owned fragment after mount.
     [[nodiscard]] SceneFragmentId register_scene_fragment(ComponentId component, SceneFragmentPlacement placement);
@@ -157,11 +170,13 @@ private:
     void mount_slot(ComponentId parent, const std::function<void()>& content,
                     std::optional<Prop<SemanticForeground>> semantic_foreground,
                     std::optional<Prop<SemanticTypography>> semantic_typography,
-                    std::shared_ptr<theme_runtime::ThemeScope> theme_scope, std::function<void()> before_child = {});
+                    std::shared_ptr<theme_runtime::ThemeScope> theme_scope, std::shared_ptr<ConfigScope> config_scope,
+                    std::function<void()> before_child = {});
     void mount_transparent_slot(std::optional<ComponentId> parent, const std::function<void()>& content,
                                 std::optional<Prop<SemanticForeground>> semantic_foreground,
                                 std::optional<Prop<SemanticTypography>> semantic_typography,
-                                std::shared_ptr<theme_runtime::ThemeScope> theme_scope);
+                                std::shared_ptr<theme_runtime::ThemeScope> theme_scope,
+                                std::shared_ptr<ConfigScope> config_scope);
     void ensure_owner_thread() const;
     [[nodiscard]] Record* find_record(ComponentId id) noexcept;
     [[nodiscard]] const Record* find_record(ComponentId id) const noexcept;
@@ -184,6 +199,8 @@ private:
     std::thread::id owner_thread_;
     Scope host_scope_;
     std::shared_ptr<theme_runtime::ThemeScope> default_theme_scope_;
+    std::shared_ptr<ConfigScope> default_config_scope_;
+    std::shared_ptr<const ComponentContextOwner> context_owner_{std::make_shared<ComponentContextOwner>()};
     std::vector<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
     std::vector<ComponentId> root_components_;
@@ -209,14 +226,14 @@ public:
 
     template <typename SlotTag> void mount_slot(ComponentId parent, const SlotContent<SlotTag>& content) {
         host_->mount_slot(parent, detail::SlotContentAccess::function(content), semantic_foreground_,
-                          semantic_typography_, theme_scope_);
+                          semantic_typography_, theme_scope_, config_scope_);
     }
 
     template <typename SlotTag>
     void mount_slot_with_before_child(ComponentId parent, const SlotContent<SlotTag>& content,
                                       std::function<void()> before_child) {
         host_->mount_slot(parent, detail::SlotContentAccess::function(content), semantic_foreground_,
-                          semantic_typography_, theme_scope_, std::move(before_child));
+                          semantic_typography_, theme_scope_, config_scope_, std::move(before_child));
     }
 
     [[nodiscard]] ComponentHost& host() const noexcept {
@@ -236,22 +253,31 @@ public:
     void mount_slot_with_semantic_foreground(ComponentId parent, const SlotContent<SlotTag>& content,
                                              Prop<SemanticForeground> foreground) {
         host_->mount_slot(parent, detail::SlotContentAccess::function(content), std::move(foreground),
-                          semantic_typography_, theme_scope_);
+                          semantic_typography_, theme_scope_, config_scope_);
     }
 
     template <typename SlotTag>
     void mount_slot_with_semantic_text_style(ComponentId parent, const SlotContent<SlotTag>& content,
                                              Prop<SemanticForeground> foreground, Prop<SemanticTypography> typography) {
         host_->mount_slot(parent, detail::SlotContentAccess::function(content), std::move(foreground),
-                          std::move(typography), theme_scope_);
+                          std::move(typography), theme_scope_, config_scope_);
     }
 
     template <typename SlotTag>
     void mount_slot_with_theme_scope(const SlotContent<SlotTag>& content,
                                      std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
         host_->mount_transparent_slot(parent_, detail::SlotContentAccess::function(content), semantic_foreground_,
-                                      semantic_typography_, std::move(theme_scope));
+                                      semantic_typography_, std::move(theme_scope), config_scope_);
     }
+
+    template <typename SlotTag>
+    void mount_slot_with_config_scope(const SlotContent<SlotTag>& content, std::shared_ptr<ConfigScope> config_scope) {
+        host_->mount_transparent_slot(parent_, detail::SlotContentAccess::function(content), semantic_foreground_,
+                                      semantic_typography_, theme_scope_, std::move(config_scope));
+    }
+
+    [[nodiscard]] const std::shared_ptr<ConfigScope>& config_scope() const noexcept;
+    [[nodiscard]] CapturedComponentContext capture_context() const;
 
     void on_resource_cleanup(ComponentId id, std::function<void()> cleanup);
     [[nodiscard]] SceneFragmentId register_scene_fragment(ComponentId id, SceneFragmentPlacement placement);
@@ -295,13 +321,15 @@ private:
     ComponentBuildContext(ComponentHost& host, std::optional<ComponentId> parent,
                           std::optional<Prop<SemanticForeground>> semantic_foreground,
                           std::optional<Prop<SemanticTypography>> semantic_typography,
-                          std::shared_ptr<theme_runtime::ThemeScope> theme_scope) noexcept;
+                          std::shared_ptr<theme_runtime::ThemeScope> theme_scope,
+                          std::shared_ptr<ConfigScope> config_scope) noexcept;
 
     ComponentHost* host_;
     std::optional<ComponentId> parent_;
     std::optional<Prop<SemanticForeground>> semantic_foreground_;
     std::optional<Prop<SemanticTypography>> semantic_typography_;
     std::shared_ptr<theme_runtime::ThemeScope> theme_scope_;
+    std::shared_ptr<ConfigScope> config_scope_;
     std::shared_ptr<ChildMountHook> child_mount_hook_;
 };
 

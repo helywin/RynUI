@@ -1,3 +1,24 @@
+add_executable(rynui_i18n_catalog_tests i18n_catalog_tests.cpp)
+rynui_configure_cpp_target(rynui_i18n_catalog_tests)
+target_link_libraries(rynui_i18n_catalog_tests PRIVATE rynui_i18n)
+add_test(NAME rynui.i18n_catalog COMMAND rynui_i18n_catalog_tests)
+
+add_executable(rynui_i18n_context_tests i18n_context_tests.cpp)
+rynui_configure_cpp_target(rynui_i18n_context_tests)
+target_link_libraries(rynui_i18n_context_tests PRIVATE rynui_components)
+add_test(NAME rynui.i18n_context COMMAND rynui_i18n_context_tests)
+
+# The application definition has only public RynUI includes; the second TU is
+# the real CPU host/retained-text/editor test driver.
+add_executable(rynui_i18n_public_api_tests i18n_public_api_tests.cpp
+    "${PROJECT_SOURCE_DIR}/examples/i18n_app/i18n_app.cpp")
+rynui_configure_cpp_target(rynui_i18n_public_api_tests)
+target_link_libraries(rynui_i18n_public_api_tests PRIVATE RynUI::RynUI)
+target_compile_definitions(rynui_i18n_public_api_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_public_api COMMAND rynui_i18n_public_api_tests)
+
 add_executable(rynui_overlay_descendant_maintenance_tests overlay_descendant_maintenance_tests.cpp)
 rynui_configure_cpp_target(rynui_overlay_descendant_maintenance_tests)
 target_link_libraries(rynui_overlay_descendant_maintenance_tests PRIVATE rynui_components)

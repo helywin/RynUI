@@ -4,24 +4,6 @@
 #include <set>
 
 namespace ryn {
-void PickerLocale::validate() const {
-    if (first_day > 6 || first_week_contains < 1 || first_week_contains > 7 || year_offset < -9998 ||
-        year_offset > 9998 || am.empty() || pm.empty() || am == pm ||
-        std::ranges::any_of(months, [](const auto& s) { return s.empty(); }) ||
-        std::ranges::any_of(short_months, [](const auto& s) { return s.empty(); }) ||
-        std::ranges::any_of(weekdays, [](const auto& s) { return s.empty(); })) {
-        throw std::invalid_argument("Invalid Gregorian picker locale");
-    }
-    for (const auto* names : {&months, &short_months}) {
-        std::set<std::string> unique;
-        for (const auto& name : *names) {
-            if (!unique.insert(std::string{name.bytes()}).second) {
-                throw std::invalid_argument("Picker locale month names must be unambiguous");
-            }
-        }
-    }
-}
-
 void validate_time_format(std::string_view format) {
     const auto parts = detail::tokenize_picker_format(format, "HhmsSaA");
     std::set<char> fields;
