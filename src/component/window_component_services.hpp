@@ -36,6 +36,7 @@ class CalendarComponentHost;
 class CarouselComponentHost;
 class TimePickerComponentHost;
 class CardComponentHost;
+class ListyComponentHost;
 class TabsComponentHost;
 class SegmentedComponentHost;
 class ModalComponentHost;
@@ -346,6 +347,10 @@ public:
         return *card_;
     }
 
+    [[nodiscard]] ListyComponentHost& listy() noexcept {
+        return *listy_;
+    }
+
     [[nodiscard]] TabsComponentHost& tabs() noexcept {
         return *tabs_;
     }
@@ -594,6 +599,7 @@ private:
     std::unique_ptr<CarouselComponentHost> carousel_;
     std::unique_ptr<TimePickerComponentHost> time_picker_;
     std::unique_ptr<CardComponentHost> card_;
+    std::unique_ptr<ListyComponentHost> listy_;
     std::unique_ptr<EmptyResultComponentHost> empty_result_;
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<CollapseComponentHost> collapse_;

@@ -6388,6 +6388,186 @@ void add_float_button_samples(const std::shared_ptr<GalleryState>& state) {
                     }));
 }
 
+void add_listy_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    std::vector<ListyItem<String>> initial;
+    for (int i = 0; i < 12; ++i) {
+        initial.emplace_back(String::from_utf8("item-" + std::to_string(i + 1)).value(),
+                             String::from_utf8("Account " + std::to_string(i + 1)).value());
+    }
+    Signal<std::vector<ListyItem<String>>> items{initial};
+    Signal<std::size_t> columns{1};
+    Signal<bool> paginated{true};
+    Signal<bool> disabled{false};
+    Signal<ListyDirection> direction{ListyDirection::Vertical};
+    ListyRef ref;
+    Space(SpaceProps{}.wrap(true), SpaceContent{[=] {
+              Button(ButtonProps{}.onClick([=] {
+                  auto next = items.get();
+                  std::reverse(next.begin(), next.end());
+                  items.set(std::move(next));
+              }),
+                     [] { Text(u8"反转 key 顺序"); });
+              remember_target(state, "gallery.listy.reorder");
+              Button(ButtonProps{}.onClick([=] { columns.set(columns.get() == 1 ? 2 : 1); }),
+                     [] { Text(u8"列表 / 两列网格"); });
+              remember_target(state, "gallery.listy.grid");
+              Button(ButtonProps{}.onClick(
+                         [=] { items.set(items.get().empty() ? initial : std::vector<ListyItem<String>>{}); }),
+                     [] { Text(u8"清空 / 恢复"); });
+              remember_target(state, "gallery.listy.empty");
+              Button(ButtonProps{}.onClick([=] { disabled.set(!disabled.get()); }), [] { Text(u8"禁用 / 恢复"); });
+              remember_target(state, "gallery.listy.disable");
+              Button(ButtonProps{}.onClick([=] { paginated.set(!paginated.get()); }),
+                     [] { Text(u8"分页 / 连续滚动"); });
+              remember_target(state, "gallery.listy.pagination");
+              Button(ButtonProps{}.onClick([=] {
+                  direction.set(direction.get() == ListyDirection::Vertical ? ListyDirection::Horizontal
+                                                                            : ListyDirection::Vertical);
+              }),
+                     [] { Text(u8"切换方向"); });
+              remember_target(state, "gallery.listy.direction");
+              Button(ButtonProps{}.onClick([=] { (void)ref.scrollTo(100000.0F); }), [] { Text(u8"滚动到末尾"); });
+              remember_target(state, "gallery.listy.scroll-end");
+          }});
+    Text(u8"编辑草稿后重排、切页或切换网格；滚轮和末尾按钮控制真实视口。");
+    Listy(ListyProps<String>{}
+              .items(items)
+              .columns(columns)
+              .pagination(paginated)
+              .pageSize(4)
+              .height(220.0F)
+              .direction(direction)
+              .disabled(disabled)
+              .ref(ref)
+              .layout(LayoutStyle{}.width(state->document_width))
+              .header(ListyContent{[] { Text(u8"账户列表 · 稳定 key 保留草稿"); }})
+              .emptyContent(ListyEmpty{[] { Empty(EmptyProps{}.description(u8"没有账户，点击恢复继续")); }})
+              .onChange([=](auto, auto) { ++state->telemetry.activations; })
+              .itemRender([](ListyItemView<String> view) {
+                  Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[=] {
+                           Text(TextProps{}.content(view.data()));
+                           Input(InputProps{}.defaultValue(view.key).layout(LayoutStyle{}.width(dp(140))));
+                       }});
+              }));
+    remember_target(state, "gallery.listy.retained");
+    ++state->telemetry.live_samples;
+}
+
+void add_empty_completion_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+
+    struct Pending final {
+        ImageCompletion done;
+    };
+
+    const auto pending = std::make_shared<Pending>();
+    auto loader = std::make_shared<ImageLoader>();
+    loader->start = [pending](ImageCompletion done) {
+        pending->done = std::move(done);
+        return [pending] {
+            pending->done = {};
+        };
+    };
+    Signal<ImageSource> source{ImageSource{loader}};
+    EmptyDynamicContent initial;
+    initial.description =
+        std::make_shared<const EmptyDescription>([] { Text(u8"富说明 · 空数据也能保留真实操作控件"); });
+    initial.extra = std::make_shared<const EmptyExtra>([] { Input(InputProps{}.defaultValue(u8"填写创建内容")); });
+    Signal<EmptyDynamicContent> dynamic{initial};
+    Text(u8"Empty · 应用图片加载服务与局部动态 slots");
+    Space(SpaceProps{}.wrap(true), SpaceContent{[=] {
+              Button(ButtonProps{}.onClick([=] {
+                  if (pending->done) {
+                      (void)pending->done(decode_image(*media_fixture_source()));
+                  }
+              }),
+                     [] { Text(u8"完成图片加载"); });
+              remember_target(state, "gallery.empty.complete-image");
+              Button(ButtonProps{}.onClick([=] {
+                  if (pending->done) {
+                      (void)pending->done({{}, {ImageErrorCode::loader_failure, "Application rejected image"}});
+                  }
+              }),
+                     [] { Text(u8"图片加载失败"); });
+              remember_target(state, "gallery.empty.fail-image");
+              Button(ButtonProps{}.onClick([=] { source.set(ImageSource{std::make_shared<ImageLoader>(*loader)}); }),
+                     [] { Text(u8"重新加载"); });
+              remember_target(state, "gallery.empty.retry-image");
+              Button(ButtonProps{}.onClick([=] {
+                  auto next = dynamic.get();
+                  next.description = next.description ? nullptr : initial.description;
+                  dynamic.set(next);
+              }),
+                     [] { Text(u8"富说明 / 文本说明"); });
+              remember_target(state, "gallery.empty.dynamic-description");
+              Button(ButtonProps{}.onClick([=] {
+                  auto next = dynamic.get();
+                  next.extra = next.extra ? nullptr : initial.extra;
+                  dynamic.set(next);
+              }),
+                     [] { Text(u8"移除 / 恢复操作区"); });
+              remember_target(state, "gallery.empty.dynamic-extra");
+          }});
+    Empty(EmptyProps{}.source(source).description(u8"文本说明，图片与操作区身份保持").dynamicContent(dynamic));
+    remember_target(state, "gallery.empty.dynamic");
+    Empty(EmptyProps{}.illustration().description(u8"锁定上游路径的原生矢量插画"));
+    ++state->telemetry.live_samples;
+}
+
+void add_card_completion_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<std::size_t> columns{2};
+    Signal<String> active{String{u8"overview"}};
+    auto overview = TabItem{u8"overview", u8"概览", TabContent{[] { Text(u8"账户概览"); }}};
+    auto draft =
+        TabItem{u8"draft", u8"草稿", TabContent{[] { Input(InputProps{}.defaultValue(u8"保留的 tab 草稿")); }}};
+    Signal<std::vector<TabItem>> tabs{std::vector{overview, draft}};
+    Text(u8"Card · Grid / Meta / keyed Tabs / 原生 Image cover");
+    Space(SpaceProps{}, SpaceContent{[=] {
+              Button(ButtonProps{}.onClick([=] { columns.set(columns.get() == 2 ? 1 : 2); }),
+                     [] { Text(u8"两列 / 单列"); });
+              remember_target(state, "gallery.card.grid-columns");
+              Button(ButtonProps{}.onClick([=] {
+                  auto next = tabs.get();
+                  std::reverse(next.begin(), next.end());
+                  tabs.set(std::move(next));
+              }),
+                     [] { Text(u8"重排 tab keys"); });
+              remember_target(state, "gallery.card.tabs-reorder");
+          }});
+    Card(CardProps{}
+             .title(u8"团队")
+             .tabList(tabs)
+             .activeTabKey(active)
+             .onTabChange([=](String key) { active.set(std::move(key)); })
+             .gridColumns(columns)
+             .layout(LayoutStyle{}.width(state->document_width)),
+         CardContent{[] {
+             for (int i = 0; i < 3; ++i) {
+                 CardGrid(
+                     CardGridProps{}.hoverable(i != 1), CardGridContent{[i] {
+                         Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[i] {
+                                  CardMeta(CardMetaProps{}
+                                               .title(String::from_utf8("Member " + std::to_string(i + 1)).value())
+                                               .description(u8"Meta 描述与原生交互"),
+                                           {.avatar = CardMetaAvatar{[] { Text(u8"R"); }}});
+                                  Input(InputProps{}.defaultValue(u8"Grid 草稿").layout(LayoutStyle{}.width(dp(120))));
+                              }});
+                     }});
+             }
+         }},
+         {.cover = CardCover{[] {
+              Image(ImageProps{}
+                        .source(ImageSource{media_fixture_source()})
+                        .preview(false)
+                        .shape(ImageShape::RoundedRectangle)
+                        .layout(LayoutStyle{}.width(dp(160)).height(dp(80))));
+          }}});
+    remember_target(state, "gallery.card.completion");
+    ++state->telemetry.live_samples;
+}
+
 void add_card_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Card · 标题 / 区域组合 / 保留编辑状态 / 加载");
@@ -6427,7 +6607,7 @@ void add_card_samples(const std::shared_ptr<GalleryState>& state) {
              Button(ButtonProps{}.onClick([state] { ++state->telemetry.activations; }),
                     [] { Text(u8"Nested action"); });
          }});
-    Text(sample_text(u8"gallery.card.loading · 静态占位"));
+    Text(sample_text(u8"gallery.card.loading · 原生加载占位"));
     Card(props().title(u8"Loading / 加载").loading(), CardContent{[] { Text(u8"Data remains mounted"); }});
     ThemeConfig custom;
     custom.card.tokens.background = Color::rgba8(238, 246, 255);
@@ -10308,6 +10488,27 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_select_samples",
       "include/ryn/select.hpp"},
      add_select_samples},
+    {{"gallery.sample.card.completion",
+      "ant.component.card",
+      {},
+      "Grid、Meta、保留 Tabs 与图片封面",
+      "add_card_completion_samples",
+      "include/ryn/card.hpp"},
+     add_card_completion_samples},
+    {{"gallery.sample.empty.dynamic",
+      "ant.component.empty",
+      {},
+      "图片服务与动态富内容",
+      "add_empty_completion_samples",
+      "include/ryn/empty.hpp"},
+     add_empty_completion_samples},
+    {{"gallery.sample.listy.retained",
+      "ant.component.listy",
+      {},
+      "稳定 key、网格、分页与滚动",
+      "add_listy_samples",
+      "include/ryn/listy.hpp"},
+     add_listy_samples},
     {{"gallery.sample.card.content",
       "ant.component.card",
       {},

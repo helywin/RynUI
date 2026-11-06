@@ -40,12 +40,13 @@ public:
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
     void on_dispose() noexcept override;
+    void prepare_auxiliary_layout() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
     runtime::ComponentId mount(bool result, String label, String subtitle, EmptyImage image, ResultStatus status,
                                const LayoutStyle&, std::optional<Content> visual, std::optional<Content> extra,
-                               std::optional<Content> content);
+                               std::optional<Content> content, std::optional<Content> description = {});
     void refresh(runtime::ComponentId, bool geometry);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> empties_;

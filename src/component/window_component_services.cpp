@@ -15,6 +15,7 @@
 #include "component/date_picker_component.hpp"
 #include "component/time_picker_component.hpp"
 #include "component/card_component.hpp"
+#include "component/listy_component.hpp"
 #include "component/tabs_component.hpp"
 #include "component/calendar_component.hpp"
 #include "component/carousel_component.hpp"
@@ -181,6 +182,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
         }
     });
     card_ = std::make_unique<CardComponentHost>(*this);
+    listy_ = std::make_unique<ListyComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
     calendar_ = std::make_unique<CalendarComponentHost>(*this);
     carousel_ = std::make_unique<CarouselComponentHost>(*this);

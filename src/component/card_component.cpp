@@ -1,6 +1,7 @@
 #include "component/card_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
+#include <ryn/flex.hpp>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -22,6 +23,14 @@ struct CardState final {
     bool extra_slot{};
     bool cover_slot{};
     bool actions_slot{};
+    bool grid{};
+    bool animated{true};
+    std::size_t columns{3};
+    std::vector<runtime::ComponentId> grid_children;
+    std::vector<runtime::Size> grid_sizes;
+    std::optional<animation::AnimationTime> last;
+    runtime::Rect clip;
+    float pulse{1};
     Signal<String> title{String{}};
     Signal<runtime::SemanticForeground> body_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> title_color{{0, 0, 0, 1}};
@@ -31,7 +40,24 @@ struct CardState final {
     std::array<theme_runtime::Subscription, 4> subscriptions;
     runtime::Size title_size;
     runtime::Size extra_size;
-    std::array<runtime::Size, 4> region_sizes;
+    std::array<runtime::Size, 5> region_sizes;
+};
+
+struct MetaState final {
+    runtime::NodeId node;
+    runtime::ComponentId avatar;
+    runtime::ComponentId section;
+    runtime::ComponentId title;
+    runtime::ComponentId description;
+    bool rich_title{};
+    bool rich_description{};
+    Signal<String> title_text{String{}};
+    Signal<String> description_text{String{}};
+    Signal<runtime::SemanticForeground> title_color{{0, 0, 0, 1}};
+    Signal<runtime::SemanticForeground> description_color{{0, 0, 0, 1}};
+    Signal<runtime::SemanticTypography> font{runtime::SemanticTypography{}};
+    Signal<runtime::SemanticTypography> title_font{runtime::SemanticTypography{}};
+    std::array<theme_runtime::Subscription, 3> subscriptions;
 };
 
 runtime::SemanticForeground foreground(Color color) {
@@ -117,8 +143,10 @@ void CardComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     }
     if (geometry) {
         const auto padding = small ? token.metrics.body_padding_small : token.metrics.body_padding;
-        services_->layout().set_layout(services_->components().root(s->snapshot.body),
-                                       layout::BoxLayout{{padding, padding, padding, padding}, true});
+        if (s->grid_children.empty()) {
+            services_->layout().set_layout(services_->components().root(s->snapshot.body),
+                                           layout::BoxLayout{{padding, padding, padding, padding}, true});
+        }
         services_->layout().set_layout(
             services_->components().root(s->snapshot.actions),
             layout::FlexLayout{layout::FlexDirection::horizontal,
@@ -139,9 +167,12 @@ void CardComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                                                     : runtime::DirtyFlags::Material);
 }
 
-void CardComponentHost::mount(const CardProps& props, const CardContent& content, const CardSlots& slots) {
+void CardComponentHost::mount(const CardProps& props, const CardContent& content, const CardSlots& slots, bool grid) {
     validate(read_prop(props.size_));
     validate(read_prop(props.variant_));
+    if (read_prop(props.grid_columns_) == 0) {
+        throw std::invalid_argument("Card gridColumns must be positive");
+    }
     auto& build = runtime::require_component_build_context();
     auto& services = *services_;
     const auto id = build.mount_component<CardState>();
@@ -150,6 +181,9 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
     s.size = read_prop(props.size_);
     s.variant = read_prop(props.variant_);
     s.hoverable = read_prop(props.hoverable_);
+    s.grid = grid;
+    s.columns = read_prop(props.grid_columns_);
+    s.animated = read_prop(props.animated_);
     s.snapshot.loading = read_prop(props.loading_);
     s.title.set(read_prop(props.title_));
     s.title_slot = slots.title.has_value();
@@ -270,6 +304,28 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
                                                 s.extra_size.height});
                         }
                     }});
+            s.snapshot.tabs =
+                region(id, Content{[&props] {
+                           if (props.tabs_) {
+                               auto options = props.tab_props_.value_or(TabsProps{}.size(bind([size = props.size_] {
+                                   return read_prop(size) == CardSize::Small ? ControlSize::Small : ControlSize::Large;
+                               })));
+                               if (props.tab_extra_) {
+                                   options.extraEnd(*props.tab_extra_);
+                               }
+                               if (props.active_tab_) {
+                                   options.activeKey(*props.active_tab_);
+                               }
+                               if (props.default_tab_) {
+                                   options.defaultActiveKey(*props.default_tab_);
+                               }
+                               if (props.on_tab_change_) {
+                                   options.onChange(props.on_tab_change_);
+                               }
+                               Tabs(std::move(options), *props.tabs_);
+                           }
+                       }},
+                       s.body_color, s.body_font);
             s.snapshot.cover = region(id, Content{[cover = slots.cover] {
                                           if (cover) {
                                               SlotContentAccess::function (*cover)();
@@ -290,11 +346,63 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
                                         }},
                                         s.body_color, s.body_font);
         }});
+    for (auto child : services.components().children(s.snapshot.body)) {
+        if (const auto* cell = services.components().state<CardState>(child); cell && cell->grid) {
+            s.grid_children.push_back(child);
+        }
+    }
+    if (!s.grid_children.empty()) {
+        s.grid_children = services.components().children(s.snapshot.body);
+        s.grid_sizes.resize(s.grid_children.size());
+        services.layout().set_layout(
+            services.components().root(s.snapshot.body),
+            layout::ComponentLayout{
+                [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                    auto& s = *services_->components().state<CardState>(id);
+                    const float width = std::isfinite(limits.max_width)
+                                            ? limits.max_width / static_cast<float>(s.columns)
+                                            : std::numeric_limits<float>::infinity();
+                    float height{};
+                    float row_height{};
+                    float measured_width{};
+                    for (std::size_t i = 0; i < s.grid_children.size(); ++i) {
+                        s.grid_sizes[i] = engine.measure_child(services_->components().root(s.grid_children[i]),
+                                                               {0, width, 0, limits.max_height});
+                        measured_width =
+                            std::max(measured_width, s.grid_sizes[i].width * static_cast<float>(s.columns));
+                        row_height = std::max(row_height, s.grid_sizes[i].height);
+                        if ((i + 1) % s.columns == 0) {
+                            height += row_height;
+                            row_height = 0;
+                        }
+                    }
+                    return limits.constrain(
+                        {std::isfinite(limits.max_width) ? limits.max_width : measured_width, height + row_height});
+                },
+                [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
+                    auto& s = *services_->components().state<CardState>(id);
+                    const float width = bounds.width / static_cast<float>(s.columns);
+                    float y = bounds.y;
+                    for (std::size_t i = 0; i < s.grid_children.size();) {
+                        const auto end = std::min(s.grid_children.size(), i + s.columns);
+                        float height{};
+                        for (auto j = i; j < end; ++j) {
+                            height = std::max(height, s.grid_sizes[j].height);
+                        }
+                        for (auto j = i; j < end; ++j) {
+                            engine.place_child(services_->components().root(s.grid_children[j]),
+                                               {bounds.x + static_cast<float>(j - i) * width, y, width, height});
+                        }
+                        y += height;
+                        i = end;
+                    }
+                }});
+    }
     services.layout().set_layout(
         s.node, layout::ComponentLayout{
                     [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
                         auto& s = *services_->components().state<CardState>(id);
-                        const std::array regions{s.snapshot.header, s.snapshot.cover,
+                        const std::array regions{s.snapshot.header, s.snapshot.tabs, s.snapshot.cover,
                                                  s.snapshot.loading ? s.snapshot.placeholder : s.snapshot.body,
                                                  s.snapshot.actions};
                         float height = 0;
@@ -313,7 +421,7 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
                     },
                     [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
                         auto& s = *services_->components().state<CardState>(id);
-                        const std::array regions{s.snapshot.header, s.snapshot.cover,
+                        const std::array regions{s.snapshot.header, s.snapshot.tabs, s.snapshot.cover,
                                                  s.snapshot.loading ? s.snapshot.placeholder : s.snapshot.body,
                                                  s.snapshot.actions};
                         float y = bounds.y;
@@ -357,6 +465,21 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
     connect_prop(scope, props.loading_, [this, id](bool loading) {
         if (auto* s = services_->components().state<CardState>(id)) {
             s->snapshot.loading = loading;
+            refresh(id, true);
+        }
+    });
+    connect_prop(scope, props.animated_, [this, id](bool value) {
+        if (auto* s = services_->components().state<CardState>(id)) {
+            s->animated = value;
+            refresh(id, false);
+        }
+    });
+    connect_prop(scope, props.grid_columns_, [this, id](std::size_t value) {
+        if (value == 0) {
+            throw std::invalid_argument("Card gridColumns must be positive");
+        }
+        if (auto* s = services_->components().state<CardState>(id)) {
+            s->columns = value;
             refresh(id, true);
         }
     });
@@ -409,15 +532,25 @@ void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
         const auto clip = services_->component_clip(id, viewport, document_clip);
         const auto& node = services_->nodes().require(s->node);
         const auto bounds = node.bounds;
+        s->clip = graphics::intersect_effect_bounds(
+            {bounds.x + node.translation.x, bounds.y + node.translation.y, bounds.width, bounds.height}, clip);
         const auto& token = services_->components().theme_scope(id)->snapshot().card();
         const auto& m = token.metrics;
         const auto region = [&](runtime::ComponentId component) {
             return services_->nodes().require(services_->components().root(component)).bounds;
         };
         s->snapshot.header_bounds = s->snapshot.has_header ? region(s->snapshot.header) : runtime::Rect{};
+        const auto tabs = region(s->snapshot.tabs);
+        if (tabs.height > 0) {
+            if (!s->snapshot.has_header) {
+                s->snapshot.header_bounds = tabs;
+            } else {
+                s->snapshot.header_bounds.height += tabs.height;
+            }
+        }
         s->snapshot.body_bounds = region(s->snapshot.loading ? s->snapshot.placeholder : s->snapshot.body);
         s->snapshot.actions_bounds = s->actions_slot ? region(s->snapshot.actions) : runtime::Rect{};
-        const float radius = std::min(m.border_radius, std::min(bounds.width, bounds.height) / 2);
+        const float radius = s->grid ? 0 : std::min(m.border_radius, std::min(bounds.width, bounds.height) / 2);
         const auto header = s->snapshot.header_bounds;
         const auto actions = s->snapshot.actions_bounds;
         const auto effective_clip = services_->nodes().content_clip(s->node, clip);
@@ -433,11 +566,12 @@ void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
             }
         };
         fill(bounds, token.colors.background, radius, {true, true, true, true});
-        fill(header, token.colors.header_background, radius, {true, true, false, false}, s->snapshot.has_header);
+        const bool has_header = s->snapshot.has_header || tabs.height > 0;
+        fill(header, token.colors.header_background, radius, {true, true, false, false}, has_header);
         fill(actions, token.colors.actions_background, radius, {false, false, true, true}, s->actions_slot);
         fill({header.x, header.y + std::max(0.0F, header.height - m.border_width), header.width,
-              s->snapshot.has_header ? std::min(m.border_width, header.height) : 0},
-             token.colors.separator, 0, {false, false, false, false}, s->snapshot.has_header);
+              has_header ? std::min(m.border_width, header.height) : 0},
+             token.colors.separator, 0, {false, false, false, false}, has_header);
         fill({actions.x, actions.y, actions.width, s->actions_slot ? std::min(m.border_width, actions.height) : 0},
              token.colors.separator, 0, {false, false, false, false}, s->actions_slot);
         const auto body = s->snapshot.body_bounds;
@@ -448,11 +582,14 @@ void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
                 std::min(m.loading_line_height,
                          std::max(0.0F, body.height - padding * 2 -
                                             static_cast<float>(index) * (m.loading_line_height + m.loading_gap)));
+            const auto placeholder = token.colors.placeholder;
+            const auto animated_color =
+                Color(placeholder.red(), placeholder.green(), placeholder.blue(), placeholder.alpha() * s->pulse);
             fill({body.x + padding,
                   body.y + padding + static_cast<float>(index) * (m.loading_line_height + m.loading_gap),
                   std::max(0.0F, body.width - padding * 2) * (index == 2 ? 0.6F : 1.0F),
                   s->snapshot.loading ? height : 0},
-                 token.colors.placeholder, 4, {true, true, true, true}, s->snapshot.loading);
+                 animated_color, 4, {true, true, true, true}, s->snapshot.loading);
         }
         const bool hovered = s->hoverable && s->snapshot.hovered;
         const float border = std::min(m.border_width, std::min(bounds.width, bounds.height) / 2);
@@ -476,9 +613,194 @@ void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
         static_cast<void>(services_->surfaces().update_effects(s->surface, effects));
     }
 }
+
+std::size_t CardComponentHost::tick_auxiliary(animation::AnimationTime time) {
+    std::size_t count{};
+    for (auto id : mounted_) {
+        auto* s = services_->components().state<CardState>(id);
+        if (!s) {
+            continue;
+        }
+        s->last = s->last ? std::max(*s->last, time) : time;
+        float pulse = 1;
+        const auto bounds = services_->nodes().require(s->node).bounds;
+        const bool enabled = s->snapshot.loading && s->animated && services_->focus().state().window_active &&
+                             services_->interactions().component_active(id) && s->clip.width > 0 &&
+                             s->clip.height > 0 &&
+                             services_->motion_preference() != animation::MotionPreference::reduced &&
+                             services_->components().theme_scope(id)->snapshot().map().motion;
+        if (enabled && bounds.width > 0 && bounds.height > 0) {
+            const auto micros = s->last->count_microseconds();
+            pulse = 0.7F + 0.3F * std::cos(static_cast<float>(micros % 1400000) / 1400000.0F * 6.2831853F);
+        }
+        if (s->pulse != pulse) {
+            s->pulse = pulse;
+            services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
+            ++count;
+        }
+    }
+    return count;
+}
+
+std::optional<animation::AnimationTime> CardComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> result;
+    for (auto id : mounted_) {
+        const auto* s = services_->components().state<CardState>(id);
+        if (!s || !s->last || !s->snapshot.loading || !s->animated || !services_->focus().state().window_active ||
+            !services_->interactions().component_active(id) || s->clip.width <= 0 || s->clip.height <= 0 ||
+            services_->motion_preference() == animation::MotionPreference::reduced ||
+            !services_->components().theme_scope(id)->snapshot().map().motion) {
+            continue;
+        }
+        const auto deadline = *s->last + animation::AnimationDuration::microseconds(16667);
+        if (!result || deadline < *result) {
+            result = deadline;
+        }
+    }
+    return result;
+}
+
+void CardComponentHost::mount(const CardGridProps& props, const CardGridContent& content) {
+    mount(CardProps{}.hoverable(props.hoverable_).layout(props.layout_),
+          CardContent{[content] { SlotContentAccess::function(content)(); }}, {}, true);
+}
+
+void CardComponentHost::mount(const CardMetaProps& props, const CardMetaSlots& slots) {
+    auto& services = *services_;
+    auto& build = runtime::require_component_build_context();
+    const auto id = build.mount_component<MetaState>();
+    auto& s = build.state<MetaState>(id);
+    s.node = build.root(id);
+    s.title_text.set(read_prop(props.title_));
+    s.description_text.set(read_prop(props.description_));
+    s.rich_title = slots.title.has_value();
+    s.rich_description = slots.description.has_value();
+    runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
+    build.on_resource_cleanup(id, [&services, node = s.node] { services.layout().remove_layout(node); });
+    build.mount_slot(
+        id, Content{[&] {
+            auto& context = runtime::require_component_build_context();
+            const auto region = [&](runtime::ComponentId parent, Content content, auto color, auto font) {
+                runtime::ComponentId result;
+                context.mount_slot(
+                    parent, Content{[&] {
+                        auto& child = runtime::require_component_build_context();
+                        result = child.mount_component<int>(0);
+                        const auto node = child.root(result);
+                        services.layout().set_layout(node, layout::BoxLayout{});
+                        child.on_resource_cleanup(result, [&services, node] { services.layout().remove_layout(node); });
+                        child.mount_slot_with_semantic_text_style(result, content,
+                                                                  Prop<runtime::SemanticForeground>{color},
+                                                                  Prop<runtime::SemanticTypography>{font});
+                    }});
+                return result;
+            };
+            s.avatar = region(id, Content{[avatar = slots.avatar] {
+                                  if (avatar) {
+                                      SlotContentAccess::function (*avatar)();
+                                  }
+                              }},
+                              s.title_color, s.font);
+            services.components().set_branch_active(s.avatar, slots.avatar.has_value());
+            s.section = context.mount_component<int>(0);
+            const auto section_node = context.root(s.section);
+            context.on_resource_cleanup(s.section,
+                                        [&services, section_node] { services.layout().remove_layout(section_node); });
+            s.title = region(s.section, Content{[slot = slots.title, title = s.title_text] {
+                                 if (slot) {
+                                     SlotContentAccess::function (*slot)();
+                                 } else {
+                                     Text(TextProps{}.content(title));
+                                 }
+                             }},
+                             s.title_color, s.title_font);
+            s.description = region(s.section, Content{[slot = slots.description, text = s.description_text] {
+                                       if (slot) {
+                                           SlotContentAccess::function (*slot)();
+                                       } else {
+                                           Text(TextProps{}.content(text));
+                                       }
+                                   }},
+                                   s.description_color, s.font);
+        }});
+    const auto refresh_meta = [this, id](bool geometry) {
+        auto* s = services_->components().state<MetaState>(id);
+        if (!s) {
+            return;
+        }
+        const auto& token = services_->components().theme_scope(id)->snapshot().card();
+        const auto& type = token.typography;
+        s->title_color.set(foreground(token.colors.header_text));
+        s->description_color.set(foreground(token.colors.meta_description));
+        s->font.set({type.font_family, type.font_weight, false, type.font_size, type.line_height});
+        s->title_font.set(
+            {type.font_family, type.header_font_weight, false, type.header_font_size, type.header_line_height});
+        const bool title = s->rich_title || !s->title_text.get().empty();
+        const bool description = s->rich_description || !s->description_text.get().empty();
+        for (const auto& [part, active] : {std::pair{s->title, title}, std::pair{s->description, description},
+                                           std::pair{s->section, title || description}}) {
+            if (services_->components().set_branch_active(part, active)) {
+                services_->mark_scene_structure_dirty();
+            }
+        }
+        if (geometry) {
+            const auto& m = token.metrics;
+            services_->layout().set_layout(s->node, layout::FlexLayout{layout::FlexDirection::horizontal,
+                                                                       m.header_gap,
+                                                                       {0, m.meta_margin_block, 0, m.meta_margin_block},
+                                                                       true,
+                                                                       false,
+                                                                       layout::FlexWrap::no_wrap,
+                                                                       layout::FlexJustify::start,
+                                                                       layout::FlexAlign::start});
+            services_->layout().set_layout(
+                services_->components().root(s->section),
+                layout::FlexLayout{layout::FlexDirection::vertical, m.meta_gap, {}, true, false});
+        }
+        services_->dirty().invalidate(s->node, geometry
+                                                   ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                         runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
+                                                   : runtime::DirtyFlags::Material);
+    };
+    auto& scope = build.scope(id);
+    connect_prop(scope, props.title_, [this, id, refresh_meta](String text) {
+        if (auto* s = services_->components().state<MetaState>(id)) {
+            s->title_text.set(std::move(text));
+            refresh_meta(true);
+        }
+    });
+    connect_prop(scope, props.description_, [this, id, refresh_meta](String text) {
+        if (auto* s = services_->components().state<MetaState>(id)) {
+            s->description_text.set(std::move(text));
+            refresh_meta(true);
+        }
+    });
+    const auto theme = build.theme_scope();
+    const std::array accessors{&theme_runtime::ThemeScope::card_colors, &theme_runtime::ThemeScope::card_metrics,
+                               &theme_runtime::ThemeScope::card_typography};
+    for (std::size_t i = 0; i < accessors.size(); ++i) {
+        s.subscriptions[i] = theme->capture([refresh_meta, geometry = i != 0](auto) { refresh_meta(geometry); },
+                                            [theme, accessor = accessors[i]] { (void)(theme.get()->*accessor)(); });
+    }
+    refresh_meta(true);
+}
 } // namespace ryn::detail
 
 namespace ryn {
+void CardGrid(CardGridProps props, CardGridContent content) {
+    if (!detail::active_cards) {
+        throw std::logic_error("CardGrid requires window component services");
+    }
+    detail::active_cards->mount(props, content);
+}
+
+void CardMeta(CardMetaProps props, CardMetaSlots slots) {
+    if (!detail::active_cards) {
+        throw std::logic_error("CardMeta requires window component services");
+    }
+    detail::active_cards->mount(props, slots);
+}
+
 void Card(CardProps props, CardContent content, CardSlots slots) {
     if (!detail::active_cards) {
         throw std::logic_error("Card requires window component services");

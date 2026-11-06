@@ -58,6 +58,7 @@
 #include <ryn/mentions.hpp>
 #include <ryn/time_picker.hpp>
 #include <ryn/card.hpp>
+#include <ryn/listy.hpp>
 #include <ryn/tabs.hpp>
 #include <ryn/pagination.hpp>
 #include <ryn/table.hpp>

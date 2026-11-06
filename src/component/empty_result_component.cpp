@@ -9,6 +9,7 @@
 namespace ryn::detail {
 namespace {
 thread_local EmptyResultComponentHost* active_presentations{};
+#include "icons/empty_illustration.inc"
 
 struct PresentationState final {
     runtime::NodeId node;
@@ -17,6 +18,14 @@ struct PresentationState final {
     bool custom_visual{};
     bool has_extra{};
     bool has_content{};
+    bool custom_description{};
+    bool built_in_visual{};
+    std::optional<EmptyDynamicContent> dynamic_pending;
+    EmptyDynamicContent dynamic_current;
+    bool dynamic_updating{};
+    std::uint64_t dynamic_revision{};
+    std::uint64_t dynamic_committed{};
+    std::optional<Content> default_visual;
     std::array<bool, 5> shown{};
     std::array<runtime::Size, 5> sizes{};
     std::array<float, 5> gaps{};
@@ -206,7 +215,7 @@ void EmptyResultComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         s->icon_font.set({m.font_family, 400, false, font_size, font_size});
         s->gaps = {0, m.image_gap, 0, m.extra_gap, 0};
         s->shown = {s->snapshot.empty_image != EmptyImage::None && (s->custom_visual || size > 0),
-                    !s->label.get().empty(), false, s->has_extra, false};
+                    s->custom_description || !s->label.get().empty(), false, s->has_extra, false};
         action_gap = m.action_gap;
         decoration = m.decoration_padding;
     }
@@ -236,7 +245,7 @@ void EmptyResultComponentHost::refresh(runtime::ComponentId id, bool geometry) {
 runtime::ComponentId EmptyResultComponentHost::mount(bool result, String label, String subtitle, EmptyImage image,
                                                      ResultStatus status, const LayoutStyle& style,
                                                      std::optional<Content> visual, std::optional<Content> extra,
-                                                     std::optional<Content> body) {
+                                                     std::optional<Content> body, std::optional<Content> description) {
     auto& build = runtime::require_component_build_context();
     auto& services = *services_;
     const auto id = build.mount_component<PresentationState>();
@@ -250,6 +259,8 @@ runtime::ComponentId EmptyResultComponentHost::mount(bool result, String label, 
     s.custom_visual = visual.has_value();
     s.has_extra = extra.has_value();
     s.has_content = body.has_value();
+    s.custom_description = description.has_value();
+    s.default_visual = visual;
     runtime::connect_layout_style(build.scope(id), style, s.node, services.nodes(), services.dirty());
     build.on_resource_cleanup(id, [&services, node = s.node] { services.layout().remove_layout(node); });
     if (result) {
@@ -303,8 +314,14 @@ runtime::ComponentId EmptyResultComponentHost::mount(bool result, String label, 
                            }
                        }},
                        s.visual_color, s.icon_font);
-            s.snapshot.label =
-                region(Content{[label = s.label] { Text(TextProps{}.content(label)); }}, s.label_color, s.title_font);
+            s.snapshot.label = region(Content{[label = s.label, description] {
+                                          if (description) {
+                                              SlotContentAccess::function (*description)();
+                                          } else {
+                                              Text(TextProps{}.content(label));
+                                          }
+                                      }},
+                                      s.label_color, s.title_font);
             s.snapshot.subtitle =
                 region(Content{[label = s.subtitle] { Text(TextProps{}.content(label)); }}, s.subtitle_color, s.font);
             s.snapshot.extra = region(Content{[extra] {
@@ -397,8 +414,79 @@ runtime::ComponentId EmptyResultComponentHost::mount(bool result, String label, 
 
 void EmptyResultComponentHost::mount(const EmptyProps& props, const EmptySlots& slots) {
     validate(read_prop(props.image_));
+    auto visual = content(slots.image);
+    const bool built_in_illustration = !visual && !props.source_ && props.illustration_.has_value();
+    if (built_in_illustration) {
+        visual = Content{[enabled = *props.illustration_, mode = props.image_] {
+            const auto theme = runtime::require_component_build_context().theme_scope();
+            static const auto sources = empty_illustration_sources();
+            const auto size = bind([theme, mode] {
+                const auto& m = theme->empty_metrics().metrics;
+                return dp(read_prop(mode) == EmptyImage::Compact ? m.compact_image_size : m.image_size);
+            });
+            for (std::size_t i = 0; i < sources.size(); ++i) {
+                const auto color = bind([theme, i] {
+                    const auto base = theme->empty_colors().colors.image;
+                    const auto bg = theme->alias().color_background_container;
+                    const auto text = theme->map().color_text_base;
+                    const bool dark = text.red() + text.green() + text.blue() > 1.5F;
+                    const std::array opacity =
+                        dark ? std::array{0.48F, 1.0F, 0.32F, 0.72F, 0.0F} : std::array{0.24F, 1.0F, 0.16F, 0.6F, 0.0F};
+                    const float alpha = base.alpha() * opacity[i];
+                    return IconTwoToneColor{Color(base.red() * alpha + bg.red() * (1 - alpha),
+                                                  base.green() * alpha + bg.green() * (1 - alpha),
+                                                  base.blue() * alpha + bg.blue() * (1 - alpha), 1),
+                                            {}};
+                });
+                Icon(IconProps{}
+                         .source(sources[i])
+                         .twoToneColor(color)
+                         .visible(enabled)
+                         .layout(LayoutStyle{}.width(size).height(size)));
+            }
+            Icon(IconProps{}
+                     .name(IconName::InboxOutlined)
+                     .visible(bind([enabled] { return !read_prop(enabled); }))
+                     .layout(LayoutStyle{}.width(size).height(size)));
+        }};
+    }
+    if (!visual && props.source_) {
+        visual = Content{[source = *props.source_, label = props.description_] {
+            const auto theme = runtime::require_component_build_context().theme_scope();
+            Image(ImageProps{}.source(source).alt(label).preview(false).layout(
+                LayoutStyle{}
+                    .width(bind([theme] { return dp(theme->empty_metrics().metrics.image_size); }))
+                    .height(bind([theme] { return dp(theme->empty_metrics().metrics.image_size); }))));
+        }};
+    }
+    const auto fallback_visual = visual;
+    auto extra = content(slots.extra);
+    auto description = content(slots.description);
+    const auto initial_dynamic = props.dynamic_ ? std::optional{read_prop(*props.dynamic_)} : std::nullopt;
+    if (initial_dynamic) {
+        if (initial_dynamic->image) {
+            visual = Content{[slot = initial_dynamic->image] { SlotContentAccess::function (*slot)(); }};
+        }
+        extra = initial_dynamic->extra
+                    ? std::optional{Content{[slot = initial_dynamic->extra] { SlotContentAccess::function (*slot)(); }}}
+                    : std::nullopt;
+        description = initial_dynamic->description ? std::optional{Content{[slot = initial_dynamic->description] {
+            SlotContentAccess::function (*slot)();
+        }}}
+                                                   : std::nullopt;
+    }
     const auto id = mount(false, read_prop(props.description_), {}, read_prop(props.image_), Status::Default,
-                          props.layout_, content(slots.image), content(slots.extra), {});
+                          props.layout_, visual, extra, {}, description);
+    if (auto* state = services_->components().state<PresentationState>(id)) {
+        state->built_in_visual = built_in_illustration;
+        if (built_in_illustration && (!initial_dynamic || !initial_dynamic->image)) {
+            state->custom_visual = false;
+        }
+        if (initial_dynamic) {
+            state->default_visual = fallback_visual;
+            state->dynamic_current = *initial_dynamic;
+        }
+    }
     auto& scope = services_->components().scope(id);
     connect_prop(scope, props.description_, [this, id](String label) {
         if (auto* s = services_->components().state<PresentationState>(id)) {
@@ -413,6 +501,108 @@ void EmptyResultComponentHost::mount(const EmptyProps& props, const EmptySlots& 
             refresh(id, true);
         }
     });
+    if (props.dynamic_) {
+        connect_prop(scope, *props.dynamic_, [this, id](EmptyDynamicContent value) {
+            if (auto* s = services_->components().state<PresentationState>(id)) {
+                s->dynamic_pending = std::move(value);
+                ++s->dynamic_revision;
+                services_->dirty().invalidate(s->node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                           runtime::DirtyFlags::Geometry |
+                                                           runtime::DirtyFlags::HitTest);
+            }
+        });
+        auto* state = services_->components().state<PresentationState>(id);
+        if (state && state->dynamic_pending && *state->dynamic_pending == state->dynamic_current) {
+            state->dynamic_committed = state->dynamic_revision;
+        }
+    }
+}
+
+void EmptyResultComponentHost::prepare_auxiliary_layout() {
+    const auto ids = empties_;
+    auto& services = *services_;
+    for (auto id : ids) {
+        auto* s = services.components().state<PresentationState>(id);
+        if (!s || !s->dynamic_pending || s->dynamic_updating || s->dynamic_revision == s->dynamic_committed) {
+            continue;
+        }
+        s->dynamic_updating = true;
+        const auto next = *s->dynamic_pending;
+        const auto previous = s->dynamic_current;
+        const auto revision = s->dynamic_revision;
+        const std::array parts{s->snapshot.image, s->snapshot.label, s->snapshot.extra};
+        const auto label = s->label;
+        const auto icon = s->icon;
+        const auto size = s->visual_size;
+        const auto fallback = s->default_visual;
+        try {
+            for (std::size_t i = 0; i < parts.size(); ++i) {
+                const bool changed = i == 0   ? next.image != previous.image
+                                     : i == 1 ? next.description != previous.description
+                                              : next.extra != previous.extra;
+                if (!changed) {
+                    continue;
+                }
+                const auto children = services.components().children(parts[i]);
+                for (auto child : children) {
+                    services.destroy(child);
+                    if (!services.components().contains(id)) {
+                        break;
+                    }
+                }
+                if (!services.components().contains(id)) {
+                    break;
+                }
+                s = services.components().state<PresentationState>(id);
+                const auto color = i == 0 ? s->visual_color : i == 1 ? s->label_color : s->extra_color;
+                const auto font = i == 0 ? s->icon_font : i == 1 ? s->title_font : s->font;
+                services.append_slot(parts[i], Content{[&, i] {
+                                         auto& build = runtime::require_component_build_context();
+                                         build.mount_slot_with_semantic_text_style(
+                                             parts[i], Content{[=] {
+                                                 if (i == 0) {
+                                                     if (next.image) {
+                                                         SlotContentAccess::function (*next.image)();
+                                                     } else if (fallback) {
+                                                         SlotContentAccess::function (*fallback)();
+                                                     } else {
+                                                         const auto dimension = bind([size] { return dp(size.get()); });
+                                                         Icon(IconProps{}.name(icon).layout(
+                                                             LayoutStyle{}.width(dimension).height(dimension)));
+                                                     }
+                                                 } else if (i == 1) {
+                                                     if (next.description) {
+                                                         SlotContentAccess::function (*next.description)();
+                                                     } else {
+                                                         Text(TextProps{}.content(label));
+                                                     }
+                                                 } else if (next.extra) {
+                                                     SlotContentAccess::function (*next.extra)();
+                                                 }
+                                             }},
+                                             Prop<runtime::SemanticForeground>{color},
+                                             Prop<runtime::SemanticTypography>{font});
+                                     }});
+                if (!services.components().contains(id)) {
+                    break;
+                }
+            }
+            s = services.components().state<PresentationState>(id);
+            if (!s) {
+                continue;
+            }
+            s->custom_visual = bool(next.image) || (s->default_visual.has_value() && !s->built_in_visual);
+            s->custom_description = bool(next.description);
+            s->has_extra = bool(next.extra);
+            s->dynamic_current = next;
+            s->dynamic_committed = revision;
+            s->dynamic_updating = false;
+            refresh(id, true);
+        } catch (...) {
+            services.retire_failed_component(id);
+            throw;
+        }
+    }
 }
 
 void EmptyResultComponentHost::mount(const ResultProps& props, const ResultSlots& slots) {

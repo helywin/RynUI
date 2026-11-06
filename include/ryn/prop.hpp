@@ -15,6 +15,7 @@ struct PropAccess;
 struct TablePropBridge;
 struct FormPropBridge;
 struct MasonryPropBridge;
+struct ListyPropBridge;
 
 } // namespace detail
 
@@ -41,6 +42,7 @@ private:
     friend struct detail::TablePropBridge;
     friend struct detail::FormPropBridge;
     friend struct detail::MasonryPropBridge;
+    friend struct detail::ListyPropBridge;
 
     static StaticValue store_value(T&& value) {
         if constexpr (indirect_static_value) {

@@ -11,6 +11,7 @@ struct CardSnapshot final {
     runtime::ComponentId body;
     runtime::ComponentId placeholder;
     runtime::ComponentId actions;
+    runtime::ComponentId tabs;
     runtime::Rect header_bounds;
     runtime::Rect body_bounds;
     runtime::Rect actions_bounds;
@@ -23,7 +24,9 @@ class CardComponentHost final : public WindowComponentParticipant {
 public:
     explicit CardComponentHost(WindowComponentServices& services);
     ~CardComponentHost();
-    void mount(const CardProps&, const CardContent&, const CardSlots&);
+    void mount(const CardProps&, const CardContent&, const CardSlots&, bool grid = false);
+    void mount(const CardGridProps&, const CardGridContent&);
+    void mount(const CardMetaProps&, const CardMetaSlots&);
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;
@@ -42,6 +45,8 @@ public:
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
 private:
     void refresh(runtime::ComponentId id, bool geometry);

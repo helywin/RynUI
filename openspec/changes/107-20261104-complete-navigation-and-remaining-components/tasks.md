@@ -164,8 +164,8 @@
 
 ## 33. 数据展示：Empty
 
-- [ ] 33.1 按对应 spec 与 design 矩阵实现 Empty 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 33.2 为 Empty 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 33.1 按对应 spec 与 design 矩阵实现 Empty 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 33.2 为 Empty 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 34. 数据展示：Image
 
@@ -174,13 +174,13 @@
 
 ## 35. 数据展示：List
 
-- [ ] 35.1 核对 List 的锁定上游公开原生适用范围，更新说明/替代路径并以目录合同验证；不生成无功能空壳。
-- [ ] 35.2 更新 List 独立页和精简证据，运行目录生成校验、OpenSpec doctor、strict 与 diff 检查后提交。
+- [x] 35.1 核对 List 的锁定上游公开原生适用范围，更新说明/替代路径并以目录合同验证；不生成无功能空壳。
+- [x] 35.2 更新 List 独立页和精简证据，运行目录生成校验、OpenSpec doctor、strict 与 diff 检查后提交。
 
 ## 36. 数据展示：Listy
 
-- [ ] 36.1 按对应 spec 与 design 矩阵实现 Listy 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 36.2 为 Listy 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 36.1 按对应 spec 与 design 矩阵实现 Listy 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 36.2 为 Listy 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 37. 数据展示：Popover
 
@@ -309,8 +309,8 @@
 
 ## 62. 其他：Util
 
-- [ ] 62.1 核对 Util 的锁定上游公开原生适用范围，更新说明/替代路径并以目录合同验证；不生成无功能空壳。
-- [ ] 62.2 更新 Util 独立页和精简证据，运行目录生成校验、OpenSpec doctor、strict 与 diff 检查后提交。
+- [x] 62.1 核对 Util 的锁定上游公开原生适用范围，更新说明/替代路径并以目录合同验证；不生成无功能空壳。
+- [x] 62.2 更新 Util 独立页和精简证据，运行目录生成校验、OpenSpec doctor、strict 与 diff 检查后提交。
 
 ## 63. Linux 自动平台集成
 

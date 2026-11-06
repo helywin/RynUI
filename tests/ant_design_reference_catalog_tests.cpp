@@ -97,8 +97,9 @@ void test_categories_and_entries() {
     const auto* listy = find_ant_design_reference_entry("ant.component.listy");
     require(list != nullptr && list->support_status == GallerySupportStatus::deprecated && listy != nullptr &&
                 listy->category == AntDesignGalleryCategory::data_display &&
-                listy->support_status == GallerySupportStatus::planned,
-            "6.6.5 List/Listy reference status drifted");
+                listy->support_status == GallerySupportStatus::partial &&
+                listy->evidence_identifiers.find("test:rynui.portable.listy_component") != std::string_view::npos,
+            "List deprecation or verified Listy partial scope drifted");
 }
 
 void require_partial(std::string_view identity) {

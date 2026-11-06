@@ -1209,23 +1209,25 @@
     {
       "identity": "ant.component.card",
       "status": "partial",
-      "summary": "RynUI 已提供原生 Card：标题/extra/cover/正文/actions、两尺寸/两变体、hover 与保留正文状态的 loading；Grid/Meta/内置 Tabs 等扩展尚未覆盖，原生平台证据独立记录。",
+      "summary": "Card Grid、Meta、保留 Tabs、Image cover 与 loading 已通过 MSVC HEADLESS Debug/Release 和 Windows hidden D3D12 定向检查；任意后代圆角遮罩仍未完成，状态保持 partial。",
       "supported_scope": [
         "typed reactive Props and body/title/extra/cover/actions slots",
         "default/small, outlined/borderless and hover across nested controls",
         "retained loading placeholder with body focus/input/popup cleanup and editor state restoration",
-        "Card Component Token, precise invalidation, logical translation/clipping and idle cleanup"
+      "Card Component Token, precise invalidation, logical translation/clipping and idle cleanup",
+      "107 Grid/Meta/keyed Tabs, Image cover composition and bounded loading pulse; MSVC CPU and Windows hidden GPU checks"
       ],
       "missing_scope": [
-        "Card.Grid/Card.Meta and built-in Tabs/tabList",
-        "asynchronous image loading, animated skeleton and arbitrary descendant rounded mask",
+        "arbitrary descendant rounded mask requires a shared Core/renderer contract",
         "complete Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
         "source:components/card/index.en-US.md",
         "openspec:059-20261023-add-native-card",
         "test:rynui.card_theme",
-        "test:rynui.card_component"
+        "test:rynui.card_component",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.portable.card_empty_completion"
       ]
     },
     {
@@ -1334,17 +1336,17 @@
     {
       "identity": "ant.component.empty",
       "status": "partial",
-      "summary": "RynUI 已提供原生 Empty：默认/紧凑/隐藏图示、响应式说明、保留 image/extra slots 与 Theme；076 追加可操作 Gallery，运行验收单独记录，内置 Icon 不等同上游大型 SVG 插画。",
+      "summary": "Empty 的可选原生矢量插画、共同 ImageSource 与区域级动态 slots 已通过 MSVC HEADLESS Debug/Release 和 Windows hidden D3D12 定向检查；其他平台及 Web 边界独立记录。",
       "supported_scope": [
         "typed EmptyProps, reactive description/image and retained image/extra slots",
         "Default/Compact/None native Icon presentation, empty-description collapse and finite glyph clipping",
         "Theme component colors/metrics, zero/subpixel built-in image sizes and custom visual margins",
         "retained native Button/Input identities across presentation and Theme updates",
-        "076 Gallery source: default create action, image hide/recovery, Compact and custom 100 dp Icon with 50 dp side margins"
+        "076 Gallery source: default create action, image hide/recovery, Compact and custom 100 dp Icon with 50 dp side margins",
+        "107 native illustration, shared ImageSource completion/failure/retry and retained dynamic regional slots"
       ],
       "missing_scope": [
-        "upstream large SVG illustration parity, image URLs/raster assets and network loading",
-        "animation, network/state services and dynamic slot topology",
+        "browser pixel-exact SVG/URL behavior and automatic network/state services; upstream Empty has no standalone animation API",
         "Web DOM/CSS/React aliases and screen-reader semantic bridge",
         "076 Gallery runtime acceptance, component GPU/manual visual, Linux and system IME evidence are recorded independently"
       ],
@@ -1356,7 +1358,9 @@
         "test:rynui.empty_result_public_api",
         "test:rynui.empty_result_theme",
         "test:rynui.empty_result_component",
-        "test:tests/token_gallery_frame_tests.cpp#test_empty_and_result_gallery_after_document_scroll"
+        "test:tests/token_gallery_frame_tests.cpp#test_empty_and_result_gallery_after_document_scroll",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.portable.card_empty_completion"
       ]
     },
     {
@@ -1389,12 +1393,12 @@
     {
       "identity": "ant.component.list",
       "status": "deprecated",
-      "summary": "Ant Design 6.6.5 已标记 List deprecated 并推荐 Listy；RynUI 尚未提供对应的稳定公开组件。",
+      "summary": "List 保持 deprecated；107 新增独立迁移说明页，指向 Listy 的 typed keys、item slots、网格、分页及滚动，不复活旧 List 控件。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "锁定版本离线元数据与 docs/list-migration.md 的原生替代路径；独立说明页已通过目录与页面合同"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "不提供新的 List 控件；原生替代范围见 Listy 独立页"
       ],
       "evidence_identifiers": [
         "source:components/list/index.en-US.md"
@@ -1402,16 +1406,22 @@
     },
     {
       "identity": "ant.component.listy",
-      "status": "planned",
-      "summary": "高性能列表（Listy）自 Ant Design 6.6.0 加入；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "Listy 的稳定 key、保留行、方向/网格、分页、滚动及空状态已通过 MSVC HEADLESS Debug/Release 和 Windows hidden D3D12 定向检查；其他平台独立待验。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed owned data、稳定 key 与 retained item slots",
+        "纵横方向、RTL、等宽网格、真实分页、有限视口滚动和空状态",
+        "Windows MSVC HEADLESS Debug/Release 的保留编辑、数据重排、禁用、受控分页、失败清理合同",
+        "Windows hidden D3D12 四配置的保留草稿、重排、网格、方向、滚动及空态捕获"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Linux 原生 GPU/窗口、系统 IME 与 AT 证据独立待验",
+        "group/sticky/virtual、Web DOM/CSS/React compatibility 未提供"
       ],
       "evidence_identifiers": [
-        "source:components/listy/index.en-US.md"
+        "source:components/listy/index.en-US.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.portable.listy_component"
       ]
     },
     {
@@ -1991,16 +2001,21 @@
     },
     {
       "identity": "ant.component.util",
-      "status": "planned",
-      "summary": "工具类（Util）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "web-only",
+      "summary": "锁定上游 Util 是 GetRef、GetProps、GetProp 三种 TypeScript 编译期类型工具，没有独立视觉组件；RynUI 使用公开 typed Props、ref、值类型及 C++ 类型推导。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "独立说明页保留锁定版本的公开类型工具来源，不注册无功能控件样例",
+        "公开 SelectProps/InputProps、SelectRef/InputRef 和 SelectOption/SelectValue 直接表达相应原生类型",
+        "局部表达式使用 decltype；已有可调用对象的返回类型使用 std::invoke_result_t"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "TypeScript GetRef/GetProps/GetProp、React Context 类型提取与 NonNullable 不属于 C++ 原生 API；不提供同名运行时组件"
       ],
       "evidence_identifiers": [
-        "source:components/_util/index.en-US.md"
+        "source:components/_util/index.en-US.md",
+        "api:include/ryn/select.hpp",
+        "api:include/ryn/input.hpp",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     }
   ]

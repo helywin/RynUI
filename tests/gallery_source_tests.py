@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 101 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 104 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -47,6 +47,10 @@ void add_next() {}'''
         if row.theme_path.startswith('ThemeConfig.') and row.theme_path.endswith('.tokens'):
             check(bool(row.token_names), f'component token mapping is empty: {row.identity}')
     by_id = {r.identity: r for r in records}
+    check({'gallery.sample.card.completion', 'gallery.sample.empty.dynamic', 'gallery.sample.listy.retained'} <= by_id.keys(),
+          'new display samples are missing from the compiled source inventory')
+    check('gallery.sample.list.migration' not in by_id,
+          'deprecated List must remain documentation rather than a live component sample')
     check('QRCodeProps' in by_id['gallery.sample.qr-code.native'].props and
           by_id['gallery.sample.qr-code.native'].theme_path == 'ThemeConfig.qrcode.tokens',
           'QRCode source omitted typed Props or owned Theme domain')

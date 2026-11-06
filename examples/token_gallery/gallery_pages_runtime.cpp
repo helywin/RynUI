@@ -44,6 +44,8 @@
 #include "token_gallery_definition.hpp"
 
 #include "component/input_component.hpp"
+#include "component/card_component.hpp"
+#include "component/listy_component.hpp"
 #include "component/selection_component.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
@@ -575,6 +577,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         if (options.visual) {
             std::cout << "visual_phase=mount_complete\n" << std::flush;
             render();
+            std::optional<ryn::detail::MountedInputComponent> retained_listy_editor;
             capture_gallery_visuals(
                 route, i, app, pages, events.viewport, events.scale, options.output.parent_path(), render,
                 [&](float delta) {
@@ -639,7 +642,39 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                 targets.push_back(id);
                             }
                         };
-                        if (name == "ant.component.modal") {
+                        if (name == "ant.component.card") {
+                            const auto card = pages.target("gallery.card.completion");
+                            const auto tabs_region = app.services().card().snapshot(card).tabs;
+                            const auto mounted_tabs = app.services().tabs().mounted();
+                            const auto tabs = std::ranges::find_if(
+                                mounted_tabs, [&](auto item) { return owns(app, item, tabs_region); });
+                            check(tabs != mounted_tabs.end(), "native Card completion Tabs instance missing");
+                            const auto headers = app.services().tabs().snapshot(*tabs).headers;
+                            check(headers.size() == 2, "native Card completion Tabs headers missing");
+                            targets.push_back(headers[1]);
+                            add("gallery.card.tabs-reorder");
+                            targets.push_back(headers[0]);
+                            targets.push_back(headers[1]);
+                            add("gallery.card.grid-columns");
+                            add("gallery.card.grid-columns");
+                            add("gallery.card.toggle-loading");
+                            add("gallery.card.toggle-loading");
+                        } else if (name == "ant.component.empty") {
+                            for (const auto id :
+                                 {"gallery.empty.fail-image", "gallery.empty.retry-image",
+                                  "gallery.empty.complete-image", "gallery.empty.retry-image",
+                                  "gallery.empty.dynamic-description", "gallery.empty.dynamic-description",
+                                  "gallery.empty.dynamic-extra", "gallery.empty.dynamic-extra"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.listy") {
+                            for (const auto id :
+                                 {"gallery.listy.grid", "gallery.listy.reorder", "gallery.listy.pagination",
+                                  "gallery.listy.scroll-end", "gallery.listy.direction", "gallery.listy.scroll-end",
+                                  "gallery.listy.empty", "gallery.listy.empty"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.modal") {
                             for (const auto id : {"gallery.modal.basic", "gallery.modal.confirm-loading",
                                                   "gallery.modal.centered", "gallery.modal.long-body"}) {
                                 add(id);
@@ -694,6 +729,15 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     return targets;
                 },
                 [&](runtime::ComponentId id) {
+                    const bool listy = route.component_identity == "ant.component.listy";
+                    const auto listy_owner = listy ? pages.target("gallery.listy.retained") : runtime::ComponentId{};
+                    if (listy && !retained_listy_editor) {
+                        const auto snapshot = app.services().listy().snapshot(listy_owner);
+                        if (!snapshot.items.empty()) {
+                            retained_listy_editor =
+                                replace_text(snapshot.items.front().component, u8"native retained Listy draft");
+                        }
+                    }
                     if (route.component_identity == "ant.component.color-picker") {
                         const auto order = app.interactions().declaration_order();
                         const bool eligible = std::ranges::any_of(order, [&](auto interaction) {
@@ -709,6 +753,23 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     const auto rect = bounds(id);
                     pointer(input::PointerAction::move, {rect.x + rect.width / 2, rect.y + rect.height / 2});
                     click(id);
+                    if (listy && retained_listy_editor) {
+                        const auto& editor = *retained_listy_editor;
+                        const auto snapshot = app.services().listy().snapshot(listy_owner);
+                        if (snapshot.items.empty()) {
+                            check(!inputs.editors().find(editor.editor), "native Listy empty retained a stale editor");
+                            retained_listy_editor.reset();
+                        } else {
+                            check(app.components().contains(editor.component) &&
+                                      inputs.editors().require(editor.editor).value() ==
+                                          String{u8"native retained Listy draft"}.bytes(),
+                                  "native Listy mutation lost retained row draft");
+                            if (id == pages.target("gallery.listy.scroll-end")) {
+                                check(std::abs(snapshot.offset - snapshot.maximum) < 1,
+                                      "native Listy scroll-to-end did not reach viewport extent");
+                            }
+                        }
+                    }
                     if (route.component_identity == "ant.component.mentions" && inputs.sessions().active().valid()) {
                         pages.dispatch(input::TextCommitted{String{u8" @a"}, inputs.sessions().active()});
                     }

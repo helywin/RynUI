@@ -288,6 +288,7 @@ add_library(rynui_components STATIC
     component/menu_component.cpp
     component/dropdown_component.cpp
     component/card_component.cpp
+    component/listy_component.cpp
     component/empty_result_component.cpp
     component/skeleton_model.cpp
     component/skeleton_component.cpp
