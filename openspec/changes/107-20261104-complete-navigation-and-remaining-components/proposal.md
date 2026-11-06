@@ -28,4 +28,4 @@
 
 ## Impact
 
-涉及 include/ryn、Core 组件及共享服务、Theme、逻辑 CPU scene、必要的平台适配、Gallery、测试和组件文档。renderer ABI 与 Core 依赖边界保持现有合同；新增资源能力必须走共同资源事务。DOM/CSS/React/URL 路由与浏览器安全策略不移植，已废弃 List 不复活，以 Listy 为目标。风险集中在动态 keyed 内容、浮层/捕获/焦点清理、受控请求、异步取消和媒体资源；依靠分阶段合同与后台 GPU 验证。
+涉及 include/ryn、Core 组件及共享服务、Theme、逻辑 CPU scene、必要的平台适配、Gallery、测试和组件文档。基础 scene ABI v2、112-byte Effect 与 Core 依赖边界保持；Progress 连续渐变与新端帽增加显式 Effect Paint ABI v1，按独立共同逻辑、资源事务、真实 GPU 和组件消费阶段实施，未实现的能力不由研究报告背书。新增资源能力必须走共同资源事务。DOM/CSS/React/URL 路由与浏览器安全策略不移植，已废弃 List 不复活，以 Listy 为目标。风险集中在动态 keyed 内容、浮层/捕获/焦点清理、受控请求、异步取消和媒体资源；依靠分阶段合同与后台 GPU 验证。

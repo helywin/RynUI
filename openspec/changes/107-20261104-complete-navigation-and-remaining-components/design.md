@@ -77,7 +77,7 @@
 | 反馈 | Modal | partial | static confirm/Promise services, lazy/destroyOnHidden and activation animation；drag/resize, mask blur, RTL, responsive breakpoint widths and native accessibility bridge；Web/DOM/CSS compatibility aliases |
 | 反馈 | Notification | partial | animations, pauseOnHover, progress, collapsed stack and global/promise APIs；native GPU/manual visual/Linux/system IME and assistive technology acceptance；full Ant Design Web/DOM/CSS API |
 | 反馈 | Popconfirm | partial | Promise/static service, hover/contextMenu triggers and arbitrary ButtonProps forwarding；activation animation, RTL and native accessibility bridge |
-| 反馈 | Progress | partial | active shimmer, steps/gradient/success segment and arbitrary gap；exact vector arc, translucent sample overlap and dashboard rail endpoint refinements；native GPU/DPI visual and accessibility acceptance |
+| 反馈 | Progress | partial | active shimmer、steps/连续渐变/success segment、任意 gap 与 typed cap；保留现有解析 arc，增加共同 paint、精确 alpha/cap 及独立 GPU 验证，不再以过期 192-sample 描述推导实现。 |
 | 反馈 | Result | partial | upstream large exception SVG illustration parity and image URL/raster/network APIs；animation, network/state services and dynamic slot topology；Web DOM/CSS/React aliases and screen-reader semantic bridge；076 Gallery runtime acceptance, component GPU/manual visual, Linux and system IME evidence are recorded independently |
 | 反馈 | Skeleton | partial | active/shimmer animation, SkeletonImage and SkeletonNode；native GPU/manual visual/Linux/system IME and assistive technology acceptance；network loading and full Ant Design Web/DOM/CSS API |
 | 反馈 | Spin | partial | fullscreen, delay and automatic percent；complete Web/DOM compatibility and native accessibility bridge |
@@ -87,6 +87,23 @@
 | 其他 | BorderBeam | planned | 沿边框运动的主题化效果、时长/方向/颜色和 reduced motion。 |
 | 其他 | ConfigProvider | partial | 原生 locale/direction/size/disabled/theme 上下文、嵌套覆盖和动态传播。 |
 | 其他 | Util | planned | 说明上游内部工具与原生公共能力的对应关系；无独立公开 UI 合同的工具不得伪造空组件或虚构 implemented。 |
+
+## Progress 共同 paint 与端帽依赖
+
+该节固定已批准的实施路线，不代表共同能力已实现。AntD 固定为 6.6.5 / `4a39f54842eade4e565ab336ef6097cd7e723cdd`。其 package.json 声明 `@rc-component/progress ~1.0.3`，不是 exact lock；本 change 另将研究输入固定为 rc 1.0.3、gitHead `2f59aea058f27098fd1e73a2cca985faf520e3d2`、官方 tgz SHA256 `883f9b5fd2e2685a10af10335cd3664a80f95e774e771971a038c4890e9f51a2`。不新增 npm 运行依赖；研究模型不是生产测试或浏览器像素证据。
+
+- Core graphics 拥有经验证、复制所有权且不可变的 gradient ramp、Linear/Conic domain、可选 underlay 与默认 Round 的 typed ArcCap。材质比较使用规范化值；旧 solid/default-round 调用和 aggregate 前缀保留。旧解析 round 距离场不重写，Butt/Square 使用弧/线段暴露联合外边界，覆盖厚描边、近整圈和帽相交，单次 coverage，不生成重叠分片。
+- Line 使用当前 percent track box 的 linear field；默认方向随 RTL，显式 typed 方向覆盖。Line Butt/Square 都是直角 fill。Circle/Dashboard 的 conic over linear underlay 固定在完整 circle box；gap placement 仅旋转 mask，RTL 仅映射 start/end。Circle stop 按输入顺序做 rc floor 与 CSS 向前 fixup，Line 在组件层稳定排序；gradient 圆环 effective cap 为 Butt。旧默认调用保留原 start/sweep，新显式入口采用 pinned percent/cap 补偿。
+- native 颜色在既有 Color 编码数值域内做 premultiplied RGBA 插值；两场在同一 fragment source-over，再统一乘 coverage、material 与祖先 opacity，最后输出 straight RGBA。它是明确的 native 合同，不声称浏览器跨版本一致。真实 rail/foreground/success 层仍保留有序 source-over。
+- steps 与 gradient 共用同一 paint domain，只对 coverage 留 step gap，不在每段重启场，也不复制 rc circle-steps 缺少 gradient 定义的缺陷或静默退回纯色。重复 stop 右连续、域外 stop 端点保持；至少两个有限 stop，不设置任意固定少量上限。零面积发布空 coverage，不创建退化 field。
+- renderer 保留基础 scene ABI v2 与 112-byte Effect，新增独立 Effect Paint ABI v1 的 link/field/stop 三表；布局、storage、capability、limits 与事务详见 `docs/renderer-contract.md`。旧全 solid 场景保持旧 pipeline/零新增资源；任何新 paint 或 cap 在 begin 前验证实际支持范围，不能被旧 pack 静默丢弃。Quad/Glyph/Image、输入、Registry、WindowServices、Modal、Form 与其他组件不扩展。
+
+53.1/53.2 下的独立本地阶段按依赖顺序推进，各阶段只运行对应自动检查；不新增人工门槛，不提前勾选原任务：
+
+1. A：logical immutable paint、cap 数学/验证、旧路径兼容、共同接口与 unsupported preflight；Linux GCC HEADLESS Debug/Release 的 gradient/math/store/拒绝合同。
+2. B1：三表 pack 与独立 packed reference、共同资源事务及 Recording 实际 bytes/order/owner/epoch/失败重试；只有已实现的 Recording opt in。
+3. B2：SDL 双实例流、两个 PS storage、共同 HLSL source closure、锁与反射；私有 Wayland 上真实 Vulkan 数值 readback，覆盖 alpha/caps/DPI/clip/nonzero first。生成 DXIL 不计为 Windows/D3D12 实跑。
+4. C：Progress typed Props/slots、active、steps、success、gap、Theme、reactivity、生命周期、实际 Gallery 与支持说明。仅在共同 A/B 可用后消费；静态渐变零新增 deadline，hidden/reduced motion/window inactive/off-page 停止 active。
 
 ## Risks / Trade-offs
 

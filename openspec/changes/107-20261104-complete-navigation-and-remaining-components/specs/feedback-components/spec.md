@@ -75,6 +75,24 @@
 ### Requirement: Progress 原生合同
 系统 SHALL 为 Progress 提供 typed Props、响应属性、Theme 视觉和可操作 Gallery。保留已实现的原生合同，并补齐设计矩阵所列原生缺口；与该组件相关的 Web 专用接口和平台实测边界分开说明。
 
+系统 SHALL 保留现有解析 arc/默认 round/solid 合同，并通过共同 immutable logical paint、typed Round/Butt/Square cap 和显式 Effect Paint ABI v1 完成连续 linear/conic 渐变。基础 scene ABI v2、112-byte Effect 与 Quad/Glyph/Image 保持。native 使用既有 Color 数值域的 premultiplied 插值和单 fragment 双场 source-over；不声明未锁定浏览器的像素一致性。
+
+#### Scenario: 不同类型的渐变坐标与步骤组合
+- **WHEN** 应用改变 percent、RTL、gap placement、stops 或 steps
+- **THEN** Line 的 field 跟随当前 percent track box；Circle 的 conic/linear 双场保持完整 circle box，gap placement 仅旋转 mask，按固定 rc 1.0.3 的 floor/顺序 fixup 映射 stop；steps 仅改变 coverage gap，不重启 field 或回退纯色。
+
+#### Scenario: 精确端帽与透明度
+- **WHEN** 应用使用新显式 cap、任意合法 gap、厚描边、近整圈或半透明 stops
+- **THEN** cap 的解析联合外边界只计算一次 coverage；内部重叠不重复 blend，两场 source-over 后统一应用 opacity；旧默认 round 调用不被强行套用新的组件 percent 补偿。
+
+#### Scenario: 不支持能力、非法输入与共同上传失败
+- **WHEN** live scene 要求 backend 不支持的新 paint/cap、资源超限、非法 stop/domain，或共同资源上传/commit 失败
+- **THEN** 语义/资源 preflight 在 begin 前拒绝不支持或超限输入；任何事务失败使附件失效并保留原子重试数据，不静默丢弃渐变或提交旧画面；owner/epoch/retire/abandon 与 source ownership 保持 renderer 合同。
+
+#### Scenario: 静态渐变与 active 生命周期
+- **WHEN** 静态渐变闲置，或 active Progress 被隐藏、离页、窗口失活或进入 reduced motion
+- **THEN** 静态 field 不申请后续帧，active 停止 deadline 并保留正确的静态 field/percent；普通属性更新保留无关组件与富内容身份。
+
 #### Scenario: Progress 正常交互及状态更新
 - **WHEN** 应用挂载 Progress 并通过其公开输入或响应属性更新状态
 - **THEN** 实际布局、画面和事件符合锁定设计合同；受控请求不擅自覆盖应用状态，未改变的保留内容不重建。

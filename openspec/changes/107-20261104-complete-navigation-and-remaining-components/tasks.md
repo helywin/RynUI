@@ -264,8 +264,8 @@
 
 ## 53. 反馈：Progress
 
-- [ ] 53.1 按对应 spec 与 design 矩阵实现 Progress 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 53.2 为 Progress 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [ ] 53.1 按 design 的 A→B1→B2→C 独立阶段实现共同 paint/cap、unsupported preflight、三表/Recording 事务、SDL/HLSL 与真实 Vulkan readback，再完成 Progress typed API、active/steps/gradient/success/gap、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [ ] 53.2 为 Progress 接入实际 Gallery 示例并更新 API/支持范围与 rc 独立固定身份；构建相关 HEADLESS target、运行受影响 Debug/Release 测试、所属私有 Wayland 消费验收与目录校验，记录精简结果和未验证 Windows 边界并本地提交。
 
 ## 54. 反馈：Result
 
