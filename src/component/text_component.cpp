@@ -836,13 +836,14 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
             const auto remaining_width = std::max(0.0F, viewport.width - origin.x);
             const auto remaining_height = unbounded_root_height ? std::numeric_limits<float>::infinity()
                                                                 : std::max(0.0F, viewport.height - cursor_y);
+            const layout::Constraints limits{0.0F, remaining_width, 0.0F, remaining_height};
             runtime::Size outer;
             if (!configuration_changed && dirty_->layout_roots().empty() &&
-                nodes_->require(node).measure_generation != 0) {
+                layout_->measurement_matches(node, limits)) {
                 outer = nodes_->require(node).layout_size;
                 layout_->place_retained_child(node, {origin.x, cursor_y, outer.width, outer.height});
             } else {
-                outer = layout_->layout(node, {0.0F, remaining_width, 0.0F, remaining_height}, {origin.x, cursor_y});
+                outer = layout_->layout(node, limits, {origin.x, cursor_y});
             }
             cursor_y += outer.height + gap;
         }

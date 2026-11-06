@@ -299,6 +299,27 @@ void test_reactive_content_tone_and_margin_are_minimal() {
             "margin update reshaped/remeasured Text or missed Node placement");
 }
 
+void test_margin_reentry_restores_constrained_height() {
+    Fixture fixture;
+    ryn::Signal<ryn::LogicalLength> margin{ryn::dp(0)};
+    fixture.host->mount(ryn::Content{
+        [&] { ryn::Text(ryn::TextProps{}.content(u8"Retained text").layout(ryn::LayoutStyle{}.margin_top(margin))); }});
+    require(fixture.layout_texts(), "initial margin fixture did not synchronize");
+    const auto mounted = fixture.host->mounted_texts().front();
+    const auto node = fixture.scene.node(mounted.scene);
+    const auto initial_height = fixture.nodes.require(node).bounds.height;
+    const auto initial_shapes = fixture.scene.text_state(mounted.scene).counters().shape_count;
+    require(initial_height > 0, "initial text has no height");
+    margin.set(ryn::dp(900));
+    require(fixture.layout_texts() && fixture.nodes.require(node).bounds.height == 0,
+            "large margin did not exercise the constrained zero-height state");
+    margin.set(ryn::dp(0));
+    require(fixture.layout_texts() && near(fixture.nodes.require(node).bounds.height, initial_height) &&
+                fixture.host->mounted_texts().front().component == mounted.component &&
+                fixture.scene.text_state(mounted.scene).counters().shape_count == initial_shapes,
+            "margin reentry reused the zero-height measurement or remounted/reshaped Text");
+}
+
 void test_shaped_measurement_wrap_resize_and_translation() {
     Fixture fixture;
     ryn::Signal<ryn::LogicalLength> width{ryn::auto_length};
@@ -704,6 +725,7 @@ int main() {
         test_mount_owner_thread_and_dispose_lifecycle();
         test_font_resolver_refresh_keeps_scene_identity_and_updates_density();
         test_reactive_content_tone_and_margin_are_minimal();
+        test_margin_reentry_restores_constrained_height();
         test_shaped_measurement_wrap_resize_and_translation();
         test_semantic_foreground_context_is_nested_reactive_and_scoped();
         test_semantic_foreground_context_restores_after_exception();

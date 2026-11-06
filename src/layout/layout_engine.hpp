@@ -174,6 +174,7 @@ public:
     bool set_intrinsic_revision(runtime::NodeId id, std::uint64_t revision);
     bool remove_intrinsic_measure(runtime::NodeId id) noexcept;
     [[nodiscard]] runtime::Size measure(runtime::NodeId root, Constraints constraints);
+    [[nodiscard]] bool measurement_matches(runtime::NodeId root, Constraints constraints) const;
 
     [[nodiscard]] runtime::Size measure_child(runtime::NodeId child, Constraints constraints,
                                               std::optional<float> forced_outer_width = {},
@@ -231,6 +232,7 @@ private:
         LayoutModel model{LeafLayout{}};
         std::optional<HorizontalContentGeometry> horizontal_content_geometry;
         FlexScratch flex_scratch;
+        std::optional<Constraints> measured_constraints;
     };
 
     struct IntrinsicCache final {

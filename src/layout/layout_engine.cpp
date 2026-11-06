@@ -402,6 +402,17 @@ runtime::Size LayoutEngine::measure(runtime::NodeId root, Constraints constraint
     return measure_node(root, constraints);
 }
 
+bool LayoutEngine::measurement_matches(runtime::NodeId root, Constraints constraints) const {
+    const auto* node = nodes_->find(root);
+    if (!node || node->measure_generation == 0 || root.index >= layouts_.size()) {
+        return false;
+    }
+    const auto& slot = layouts_[root.index];
+    return slot.generation == root.generation &&
+           slot.measured_constraints ==
+               external_content_constraints(constraints, node->external_layout, std::nullopt, std::nullopt);
+}
+
 void LayoutEngine::place(runtime::NodeId root, runtime::Point origin) {
     auto& node = nodes_->require(root);
     if (node.measure_generation != generation_ || generation_ == 0) {
@@ -926,6 +937,7 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
     node.layout_size = outer_size(measured, node.external_layout.margin);
     ++node.measure_count;
     node.measure_generation = generation_;
+    layouts_[id.index].measured_constraints = content_constraint;
     return node.layout_size;
 }
 
