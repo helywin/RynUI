@@ -46,6 +46,7 @@ public:
     std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
 private:
+    bool maintenance_allowed(runtime::ComponentId) const;
     void request_open(runtime::ComponentId id, bool open);
     void observe(runtime::ComponentId id, animation::AnimationTime time);
     void update_theme(runtime::ComponentId id, bool geometry);

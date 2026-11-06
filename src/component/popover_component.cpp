@@ -185,13 +185,29 @@ PopoverSnapshot PopoverComponentHost::snapshot(runtime::ComponentId id) const {
     return s->view;
 }
 
+bool PopoverComponentHost::maintenance_allowed(runtime::ComponentId id) const {
+    const auto* s = services_->components().state<PopoverState>(id);
+    if (!s || !s->model.open() || s->disabled || !window_active_ || (!has_title(*s) && !has_content(*s)) ||
+        !services_->interactions().component_lifetime_active(id) || !services_->components().branch_active(id)) {
+        return false;
+    }
+    if (services_->interactions().component_active(id)) {
+        return true;
+    }
+    if (!s->view.geometry.visible || !services_->components().branch_active(s->view.popup)) {
+        return false;
+    }
+    const auto visible = graphics::intersect_effect_bounds(s->view.geometry.bounds, s->clip);
+    return visible.width > 0 && visible.height > 0 &&
+           services_->interactions().subtree_intersects_input_domain(s->view.popup);
+}
+
 void PopoverComponentHost::refresh(runtime::ComponentId id) {
     auto* s = services_->components().state<PopoverState>(id);
     if (!s || !services_->components().scope(id).active()) {
         return;
     }
-    const bool visible = s->model.open() && !s->disabled && (has_title(*s) || has_content(*s)) && window_active_ &&
-                         services_->interactions().component_active(id);
+    const bool visible = maintenance_allowed(id);
     const bool changed = visible != s->view.geometry.visible;
     s->view.geometry.visible = visible;
     const auto popup = s->view.popup;
@@ -291,7 +307,20 @@ void PopoverComponentHost::observe(runtime::ComponentId id, animation::Animation
     if (!s || !services_->components().scope(id).active()) {
         return;
     }
-    if (!window_active_ || s->disabled || !services_->interactions().component_active(id)) {
+    if (!services_->interactions().component_active(id)) {
+        if (maintenance_allowed(id)) {
+            // Suspend entry-only intent without synthesizing hover leave or closing a valid popup.
+            s->hovered = false;
+            s->click_open = false;
+            s->press_open.reset();
+            s->model.reset_observation();
+            refresh(id);
+        } else {
+            suppress(id);
+        }
+        return;
+    }
+    if (!window_active_ || s->disabled) {
         suppress(id);
         return;
     }
@@ -625,7 +654,17 @@ void PopoverComponentHost::on_input_boundary_changed() {
     const auto ids = mounted_;
     for (auto id : ids) {
         if (!services_->interactions().component_active(id)) {
-            suppress(id);
+            if (maintenance_allowed(id)) {
+                if (auto* s = services_->components().state<PopoverState>(id)) {
+                    s->hovered = false;
+                    s->click_open = false;
+                    s->press_open.reset();
+                    s->model.reset_observation();
+                }
+                refresh(id);
+            } else {
+                suppress(id);
+            }
         } else {
             refresh(id);
         }

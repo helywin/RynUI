@@ -45,6 +45,7 @@ public:
     std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
 private:
+    bool maintenance_allowed(runtime::ComponentId) const;
     void refresh(runtime::ComponentId);
     void request_open(runtime::ComponentId, bool, bool restore = true, bool keyboard = false);
     void suppress(runtime::ComponentId);

@@ -1,3 +1,21 @@
+add_executable(rynui_overlay_descendant_maintenance_tests overlay_descendant_maintenance_tests.cpp)
+rynui_configure_cpp_target(rynui_overlay_descendant_maintenance_tests)
+target_link_libraries(rynui_overlay_descendant_maintenance_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_overlay_descendant_maintenance_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.overlay_descendant_maintenance COMMAND rynui_overlay_descendant_maintenance_tests)
+
+if(NOT RYNUI_HAS_SDL_GPU)
+    add_executable(rynui_tooltip_component_tests tooltip_component_tests.cpp)
+    rynui_configure_cpp_target(rynui_tooltip_component_tests)
+    target_link_libraries(rynui_tooltip_component_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_tooltip_component_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.tooltip_component COMMAND rynui_tooltip_component_tests)
+endif()
+
 add_executable(rynui_carousel_target_admission_tests carousel_target_admission_tests.cpp)
 rynui_configure_cpp_target(rynui_carousel_target_admission_tests)
 target_link_libraries(rynui_carousel_target_admission_tests PRIVATE rynui_components)

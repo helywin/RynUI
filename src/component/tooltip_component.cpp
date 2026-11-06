@@ -204,13 +204,30 @@ TooltipSnapshot TooltipComponentHost::snapshot(runtime::ComponentId id) const {
     return state->geometry;
 }
 
+bool TooltipComponentHost::maintenance_allowed(runtime::ComponentId id) const {
+    const auto* s = services_->components().state<TooltipState>(id);
+    if (!s || !s->open || s->boundary_suppressed || s->disabled || !has_title(*s) || !window_active_ ||
+        !services_->interactions().component_lifetime_active(id) || !services_->components().branch_active(id)) {
+        return false;
+    }
+    if (services_->interactions().component_active(id)) {
+        return true;
+    }
+    if (!s->geometry.visible || !services_->components().branch_active(s->popup)) {
+        return false;
+    }
+    const auto clip = services_->component_clip(s->popup, s->viewport, {0, 0, s->viewport.width, s->viewport.height});
+    const auto visible = graphics::intersect_effect_bounds(s->geometry.bounds, clip);
+    return visible.width > 0 && visible.height > 0 &&
+           services_->interactions().subtree_intersects_input_domain(s->popup);
+}
+
 void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
     auto* state = services_->components().state<TooltipState>(id);
     if (!state) {
         return;
     }
-    const bool visible = state->open && !state->boundary_suppressed && !state->disabled && has_title(*state) &&
-                         window_active_ && services_->interactions().component_active(id);
+    const bool visible = maintenance_allowed(id);
     const bool closed = state->geometry.visible && !visible;
     if (state->geometry.visible != visible) {
         state->geometry.visible = visible;
@@ -273,6 +290,15 @@ void TooltipComponentHost::request_open(runtime::ComponentId id, bool open) {
 void TooltipComponentHost::observe(runtime::ComponentId id, animation::AnimationTime time) {
     auto* state = services_->components().state<TooltipState>(id);
     if (!state) {
+        return;
+    }
+    if (!services_->interactions().component_active(id) && maintenance_allowed(id)) {
+        state->hovered = false;
+        state->observed = false;
+        state->action_open = false;
+        state->deadline.reset();
+        state->context_anchor.reset();
+        synchronize_visibility(id);
         return;
     }
     if (!services_->interactions().component_active(id)) {
