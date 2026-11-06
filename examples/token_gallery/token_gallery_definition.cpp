@@ -3058,6 +3058,218 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
           }});
 }
 
+void add_avatar_image_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    const std::array<std::byte, 16> rgba{std::byte{255}, std::byte{60},  std::byte{30},  std::byte{255},
+                                         std::byte{30},  std::byte{200}, std::byte{80},  std::byte{255},
+                                         std::byte{40},  std::byte{90},  std::byte{255}, std::byte{255},
+                                         std::byte{255}, std::byte{220}, std::byte{40},  std::byte{255}};
+    const auto pixels = ImagePixels::copy(2, 2, 8, rgba);
+
+    struct Request {
+        ImageCompletion complete;
+    };
+
+    const auto request = std::make_shared<Request>();
+    const auto loader = std::make_shared<ImageLoader>();
+    loader->start = [request](ImageCompletion complete) {
+        request->complete = std::move(complete);
+        return [request] {
+            request->complete = {};
+        };
+    };
+    Signal<ImageSource> source{ImageSource{loader}};
+    Signal<AvatarShape> image_shape{AvatarShape::Circle};
+    Signal<String> feedback{String{u8"显式模拟加载服务：使用按钮完成或拒绝本次请求"}};
+    Signal<std::vector<AvatarGroupItem>> members{std::vector{AvatarGroupItem{u8"a", u8"A"}.source(ImageSource{pixels}),
+                                                             AvatarGroupItem{u8"b", u8"B"},
+                                                             AvatarGroupItem{u8"c", u8"C"}}};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"RGBA 图像 / 可取消加载 / 失败回退 / 窗口断点 / 稳定键分组");
+             Text(TextProps{}.content(feedback));
+             Avatar(AvatarProps{}
+                        .source(source)
+                        .text(u8"回退")
+                        .shape(image_shape)
+                        .size(Responsive<float>{32}.at(Breakpoint::Md, 56).at(Breakpoint::Lg, 80))
+                        .onLoad(
+                            [feedback] { feedback.set(u8"真实 ImagePixels 已加载，四个彩色像素由共享 RGBA 路径呈现"); })
+                        .onError([feedback](const ImageError& error) {
+                            feedback.set(utf8("加载失败：" + error.message));
+                            return true;
+                        }));
+             Button(ButtonProps{}.onClick([=] {
+                 const auto complete = request->complete;
+                 if (complete) {
+                     complete({pixels, {}});
+                 }
+             }),
+                    [] { Text(u8"完成模拟图像请求"); });
+             remember_target(state, "gallery.avatar.image-success");
+             Button(ButtonProps{}.onClick([=] {
+                 image_shape.set(image_shape.get() == AvatarShape::Circle ? AvatarShape::Square : AvatarShape::Circle);
+             }),
+                    [] { Text(u8"切换 Circle / Square 图像"); });
+             remember_target(state, "gallery.avatar.image-shape");
+             Button(ButtonProps{}.onClick([=] {
+                 const auto complete = request->complete;
+                 if (complete) {
+                     complete({{}, {ImageErrorCode::loader_failure, "显式模拟失败"}});
+                 }
+             }),
+                    [] { Text(u8"模拟加载失败"); });
+             remember_target(state, "gallery.avatar.image-error");
+             Button(ButtonProps{}.onClick([=] {
+                 source.set(ImageSource{});
+                 source.set(ImageSource{loader});
+                 feedback.set(u8"已取消旧请求并重试");
+             }),
+                    [] { Text(u8"取消并重试"); });
+             remember_target(state, "gallery.avatar.image-retry");
+             AvatarGroup(AvatarGroupProps{}
+                             .items(members)
+                             .size(Responsive<float>{24}.at(Breakpoint::Md, 40))
+                             .max(AvatarGroupMax{1, PopoverTriggerMode::Click, PopoverPlacement::Bottom}));
+             Button(ButtonProps{}.onClick([=] {
+                 auto next = members.get();
+                 std::rotate(next.begin(), next.begin() + 1, next.end());
+                 members.set(next);
+                 feedback.set(u8"已按稳定键重排，打开 +N 查看溢出成员");
+             }),
+                    [] { Text(u8"重排分组"); });
+             remember_target(state, "gallery.avatar.keyed-reorder");
+         }});
+    ++state->telemetry.live_samples;
+}
+
+void add_badge_native_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<int> count{8};
+    Signal<bool> processing{true};
+    Signal<BadgeCountValue> arbitrary{BadgeCountValue{String{u8"NEW"}}};
+    Signal<String> feedback{String{u8"点击按钮检查真实回调与数字滚动；Processing 仅在可见和活动时请求帧"}};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"数字滚动 / 任意文本与 typed 富计数 / Processing / Ribbon");
+             Text(TextProps{}.content(feedback));
+             Badge(BadgeProps{}.count(count).showZero(), BadgeContent{[=] {
+                       Button(ButtonProps{}.onClick([=] { feedback.set(u8"独立子按钮回调已执行"); }),
+                              [] { Text(u8"收件箱"); });
+                   }});
+             Button(ButtonProps{}.onClick([=] {
+                 count.set(count.get() + 1);
+                 feedback.set(utf8("计数更新为 " + std::to_string(count.get())));
+             }),
+                    [] { Text(u8"数字 +1"); });
+             remember_target(state, "gallery.badge.native-increment");
+             Button(ButtonProps{}.onClick([=] { count.set(std::max(0, count.get() - 3)); }), [] { Text(u8"数字 -3"); });
+             remember_target(state, "gallery.badge.native-decrement");
+             Badge(BadgeProps{}.status(Status::Processing).visible(processing).text(u8"显式演示处理状态"));
+             Button(ButtonProps{}.onClick([=] { processing.set(!processing.get()); }),
+                    [] { Text(u8"暂停/恢复 Processing"); });
+             remember_target(state, "gallery.badge.processing-toggle");
+             Badge(BadgeProps{}.countValue(arbitrary));
+             const auto rich_count = std::make_shared<BadgeRenderer>();
+             rich_count->render = [] {
+                 Icon(IconProps{}.name(IconName::ClockCircleOutlined));
+             };
+             Badge(BadgeProps{}.countValue(BadgeCountValue{std::shared_ptr<const BadgeRenderer>{rich_count}}));
+             Input(InputProps{}.defaultValue(u8"NEW").onChange(
+                 [=](String value) { arbitrary.set(BadgeCountValue{value}); }));
+             remember_target(state, "gallery.badge.arbitrary-input");
+             BadgeRibbon(RibbonProps{}.text(u8"原生 Ribbon"), BadgeContent{[=] {
+                             Button(ButtonProps{}.layout(LayoutStyle{}.width(dp(220)).height(dp(70))).onClick([=] {
+                                 feedback.set(u8"Ribbon 内部独立按钮回调已执行");
+                             }),
+                                    [] { Text(u8"保留内容与独立操作"); });
+                         }});
+         }});
+    ++state->telemetry.live_samples;
+}
+
+void add_tag_native_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<bool> allow_close{false};
+    Signal<bool> allow_reorder{false};
+    Signal<bool> checked{false};
+    Signal<String> feedback{String{u8"关闭默认被取消，重排默认拒绝；通过按钮允许后重试"}};
+    const auto rich = std::make_shared<TagItemRenderer>();
+    rich->render = [] {
+        Input(InputProps{}.defaultValue(u8"重排保留的草稿").layout(LayoutStyle{}.width(dp(160))));
+    };
+    Signal<std::vector<TagGroupItem>> items{
+        std::vector{TagGroupItem{u8"draft", u8"草稿", TagColor{PresetColor::Blue}, false, false, rich},
+                    TagGroupItem{u8"b", u8"Beta"}, TagGroupItem{u8"c", u8"Gamma"}}};
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"可取消关闭 / 有限进退场 / 受控选择 / 原生拖排手柄（也可用左右键）");
+             Text(TextProps{}.content(feedback));
+             Tag(TagProps{}.closable().onClose(std::function<void(TagCloseEvent&)>{[=](TagCloseEvent& event) {
+                 if (!allow_close.get()) {
+                     event.preventDefault();
+                     feedback.set(u8"关闭被应用取消");
+                 } else {
+                     feedback.set(u8"关闭已接受，输入立即屏蔽，动画结束后隐藏");
+                 }
+             }}),
+                 TagContent{[] { Text(u8"可取消的关闭"); }});
+             Button(ButtonProps{}.onClick([=] {
+                 allow_close.set(true);
+                 feedback.set(u8"允许关闭，请再次点击标签关闭按钮");
+             }),
+                    [] { Text(u8"允许关闭"); });
+             remember_target(state, "gallery.tag.allow-close");
+             CheckableTag(CheckableTagProps{}.checked(checked).onChange([=](bool next) {
+                 checked.set(next);
+                 feedback.set(next ? String{u8"已选中"} : String{u8"已取消选择"});
+             }),
+                          TagContent{[] { Text(u8"受控 CheckableTag"); }});
+             CheckableTagGroup(
+                 TagGroupProps{}
+                     .items(std::vector{TagGroupItem{u8"one", u8"选项一"}, TagGroupItem{u8"two", u8"选项二"}})
+                     .defaultValue({String{u8"one"}})
+                     .onChange(
+                         [=](TagValues value) { feedback.set(utf8("组选择数量：" + std::to_string(value.size()))); }));
+             TagGroup(TagGroupProps{}.items(items).draggable().onReorder([=](TagValues order) {
+                 if (!allow_reorder.get()) {
+                     feedback.set(u8"受控重排请求被拒绝，已接受顺序保持");
+                     return;
+                 }
+                 std::vector<TagGroupItem> next;
+                 for (const auto& key : order) {
+                     for (const auto& row : items.get()) {
+                         if (row.key == key) {
+                             next.push_back(row);
+                             break;
+                         }
+                     }
+                 }
+                 items.set(next);
+                 feedback.set(u8"已接受稳定键重排，草稿和选择保留");
+             }));
+             Button(ButtonProps{}.onClick([=] {
+                 allow_reorder.set(!allow_reorder.get());
+                 feedback.set(allow_reorder.get() ? String{u8"允许重排"} : String{u8"拒绝重排"});
+             }),
+                    [] { Text(u8"允许/拒绝重排"); });
+             remember_target(state, "gallery.tag.allow-reorder");
+         }});
+    ++state->telemetry.live_samples;
+}
+
 void add_tag_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Tag / Badge · 状态、选择与计数");
@@ -9799,6 +10011,27 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_modal_samples",
       "include/ryn/modal.hpp"},
      add_modal_samples},
+    {{"gallery.sample.avatar.images",
+      "ant.component.avatar",
+      {},
+      "图片请求、响应式与动态分组",
+      "add_avatar_image_samples",
+      "include/ryn/avatar.hpp"},
+     add_avatar_image_samples},
+    {{"gallery.sample.badge.native",
+      "ant.component.badge",
+      {},
+      "数字动画、富计数与 Ribbon",
+      "add_badge_native_samples",
+      "include/ryn/badge.hpp"},
+     add_badge_native_samples},
+    {{"gallery.sample.tag.native",
+      "ant.component.tag",
+      {},
+      "取消、受控选择与保留草稿拖排",
+      "add_tag_native_samples",
+      "include/ryn/tag.hpp"},
+     add_tag_native_samples},
     {{"gallery.sample.tag.states",
       "ant.component.tag",
       {},

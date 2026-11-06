@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 97 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 100 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -120,6 +120,11 @@ void add_next() {}'''
           'Splitter source omitted its native lazy/lifecycle API')
     check('add_bidi_input(' in by_id['gallery.sample.input.bidi'].code, 'wrapper excerpt omitted its actual sample')
     check(MODULE.render(records) == MODULE.render(MODULE.generate(ROOT)), 'generation is nondeterministic')
+    native = {r.identity: r.code for r in records}
+    check(all(key in native for key in ('gallery.sample.avatar.images', 'gallery.sample.badge.native', 'gallery.sample.tag.native')), 'native status samples missing')
+    check('ImagePixels::copy' in native['gallery.sample.avatar.images'] and 'ImageLoader' in native['gallery.sample.avatar.images'], 'Avatar source sample omitted real shared image loading')
+    check('BadgeRibbon' in native['gallery.sample.badge.native'] and 'Status::Processing' in native['gallery.sample.badge.native'], 'Badge sample omitted Ribbon or processing')
+    check('onReorder' in native['gallery.sample.tag.native'] and 'preventDefault' in native['gallery.sample.tag.native'], 'Tag sample omitted controlled reorder or cancellation')
     print(f'Gallery source/API/token contracts: {len(records)} samples passed')
 
 

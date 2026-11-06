@@ -414,6 +414,29 @@ foreach(auto_complete_case IN ITEMS teardown blur_throw restore)
     add_test(NAME rynui.auto_complete_r3_${auto_complete_case} COMMAND rynui_auto_complete_r3_tests ${auto_complete_case})
 endforeach()
 
+
+add_executable(rynui_avatar_native_contract_tests avatar_native_contract_tests.cpp)
+rynui_configure_cpp_target(rynui_avatar_native_contract_tests)
+target_link_libraries(rynui_avatar_native_contract_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_avatar_native_contract_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.avatar_native_contract COMMAND rynui_avatar_native_contract_tests)
+
+add_library(rynui_avatar_badge_tag_public_api_compile OBJECT avatar_badge_tag_public_api_compile.cpp)
+rynui_configure_cpp_target(rynui_avatar_badge_tag_public_api_compile)
+target_link_libraries(rynui_avatar_badge_tag_public_api_compile PRIVATE rynui_components)
+
+foreach(status_native IN ITEMS badge tag)
+    add_executable(rynui_${status_native}_native_contract_tests ${status_native}_native_contract_tests.cpp)
+    rynui_configure_cpp_target(rynui_${status_native}_native_contract_tests)
+    target_link_libraries(rynui_${status_native}_native_contract_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${status_native}_native_contract_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${status_native}_native_contract COMMAND rynui_${status_native}_native_contract_tests)
+endforeach()
+
 add_executable(rynui_avatar_theme_tests avatar_theme_tests.cpp)
 rynui_configure_cpp_target(rynui_avatar_theme_tests)
 target_link_libraries(rynui_avatar_theme_tests PRIVATE rynui_components)

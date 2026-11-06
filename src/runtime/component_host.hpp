@@ -110,6 +110,8 @@ public:
     [[nodiscard]] std::optional<ComponentId> parent(ComponentId id) const;
     [[nodiscard]] const std::vector<ComponentId>& children(ComponentId id) const;
     [[nodiscard]] std::span<const ComponentId> root_components() const noexcept;
+    // Reorder a complete set of direct retained children without changing their identity or ancestry.
+    void reorder_children(ComponentId parent, std::span<const ComponentId> order);
     bool set_branch_active(ComponentId id, bool active);
     [[nodiscard]] bool branch_active(ComponentId id) const;
     bool set_window_layer(ComponentId id, std::optional<int> priority);
@@ -128,6 +130,10 @@ public:
     [[nodiscard]] bool contains(SceneFragmentId id) const noexcept;
     [[nodiscard]] ComponentId fragment_component(SceneFragmentId id) const;
     [[nodiscard]] std::span<const SceneFragmentPaintEntry> paint_traversal();
+
+    template <typename State> [[nodiscard]] std::shared_ptr<State> retain_state(ComponentId id) noexcept {
+        return std::static_pointer_cast<State>(retain_state_storage(id, std::type_index(typeid(State))));
+    }
 
     template <typename State> [[nodiscard]] State* state(ComponentId id) noexcept {
         return static_cast<State*>(find_state(id, std::type_index(typeid(State))));
@@ -161,6 +167,7 @@ private:
     [[nodiscard]] const Record* find_record(ComponentId id) const noexcept;
     [[nodiscard]] Record& require_record(ComponentId id);
     [[nodiscard]] const Record& require_record(ComponentId id) const;
+    [[nodiscard]] std::shared_ptr<void> retain_state_storage(ComponentId id, std::type_index type) noexcept;
     [[nodiscard]] void* find_state(ComponentId id, std::type_index type) noexcept;
     [[nodiscard]] const void* find_state(ComponentId id, std::type_index type) const noexcept;
     [[nodiscard]] std::uint32_t acquire_slot();

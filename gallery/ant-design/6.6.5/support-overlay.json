@@ -1119,39 +1119,59 @@
     },
     {
       "identity": "ant.component.avatar",
-      "status": "partial",
-      "summary": "原生 Avatar/AvatarGroup 成员展示：文字测量、自适应与可滚动溢出。",
+      "status": "implemented",
+      "summary": "原生 Avatar/AvatarGroup 已补齐共享 Image、显式可取消异步、响应式逻辑断点、稳定键动态分组与保留溢出内容；平台验收独立记录。",
       "supported_scope": [
-        "公开文字/图标头像、形状/尺寸、max.count 与原生 Popover",
-        "Gallery 目录直达成员编辑、有限窗口全部溢出成员访问及显隐草稿恢复"
+        "保留旧文字/图标/shape/gap/真实 auto-fit 与 vector Group API",
+        "共享 ImageSource/ImagePixels/EncodedImage/显式 ImageLoader、成功/错误/取消/重试及 onError(false) 回退控制",
+        "真实 circle/rounded-square 图像形状与 Avatar Theme 圆角映射；预览关闭不抢输入",
+        "窗口逻辑宽度 Breakpoints 尺寸、零/窄空间恢复、RTL、Theme 字体几何",
+        "稳定 key add/remove/reorder、继承与逐项覆盖、overlap/绘制顺序、max.count",
+        "原生 Popover 溢出、保留自定义富内容和实际开合通知、Form 私有绑定范围",
+        "独立实际 Gallery 图像成功/失败/取消重试、响应分组及溢出操作"
       ],
       "missing_scope": [
-        "图片加载、响应式断点尺寸；GPU/原生窗口与人工视觉、Linux、系统 IME 和 AT 验收"
+        "DOM/CSS/React/portal、Web ref/href/target 等浏览器接口不属于原生合同",
+        "GPU/真实窗口、Windows/MSVC/D3D12、系统 IME/AT 与实际跨显示器结果独立记录，不以 HEADLESS/Recording 代替"
       ],
       "evidence_identifiers": [
         "source:components/avatar/index.en-US.md",
         "openspec:088-20261026-add-native-avatar",
         "openspec:093-20261026-add-member-and-rating-gallery",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "api:include/ryn/avatar.hpp",
+        "test:rynui.avatar_native_contract",
+        "test:rynui.avatar_native_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/avatar-linux.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {
       "identity": "ant.component.badge",
-      "status": "partial",
-      "summary": "已实现原生计数、溢出、零值、圆点与状态 Badge，可包裹保留内容；Gallery 展示响应式通知计数，原生平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Badge 已补齐任意 String/typed 富计数、实际数字滚动、活动可见 Processing 与 retained Ribbon；锁定上游无 BadgeGroup。",
       "supported_scope": [
-        "integer count/overflowCount/showZero, dot/status/text and two sizes",
-        "retained optional BadgeContent, logical offset and Badge Component Token"
+        "兼容原 int count/overflowCount/showZero/dot/status/offset/size/独立与包裹模式",
+        "任意 String、有限 double 与 retained typed 富 count，RTL 与局部工厂替换",
+        "数字前后两行的有限有方向中间几何，反向/新目标/零范围恢复",
+        "Processing 实际相位绘制，仅可见活动分支请求帧；reduced motion/隐藏/失活/退役停止",
+        "BadgeRibbon 的文本/富文本/Start-End/RTL/真实折角和独立保留子操作",
+        "真实 Gallery 数字操作、任意/富计数、Processing 开关、Ribbon 与回调结果"
       ],
       "missing_scope": [
-        "Ribbon/group, number and processing animations",
-        "arbitrary text count and complete Web/DOM compatibility"
+        "DOM/CSS/React/portal、Web ref/href/target 等浏览器接口不属于原生合同",
+        "GPU/真实窗口、Windows/MSVC/D3D12、系统 IME/AT 与实际跨显示器结果独立记录，不以 HEADLESS/Recording 代替"
       ],
       "evidence_identifiers": [
         "source:components/badge/index.en-US.md",
         "openspec:063-20261023-add-native-tag-and-badge",
         "test:tag_badge_component/tag_badge_theme/tag_badge_public_api/token_gallery_frame",
-        "docs:docs/tag-and-badge.md"
+        "docs:docs/tag-and-badge.md",
+        "api:include/ryn/badge.hpp",
+        "test:rynui.badge_native_contract",
+        "test:rynui.badge_native_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/badge-linux.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {
@@ -1509,21 +1529,32 @@
     },
     {
       "identity": "ant.component.tag",
-      "status": "partial",
-      "summary": "已实现 Tag/CheckableTag 的保留内容、状态色、受控关闭与选择；Gallery 可操作关闭、恢复和选择，原生平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Tag/CheckableTag 已补齐有限进退场、可取消关闭、受控/默认选择及稳定键拖排组；真实富编辑器在重排时保留。",
       "supported_scope": [
-        "typed Tag/CheckableTag, preset/status/custom colors, borders and decorative icon slot",
-        "controlled visible/closable/checked, disabled and retained content with sibling reflow"
+        "兼容原颜色/边框/icon/disabled API；typed Outlined/Filled/Solid、RTL 与 close slot",
+        "有限 enter/exit 与 reduced motion，close 立即屏蔽焦点/捕获/输入会话/owned popup，按保留或 destroyOnClose 边界清理",
+        "可取消、重入、自销毁和抛异常关闭回调；显式 visible/checked 受控拒绝保持已接受值",
+        "CheckableTagGroup 真实上游对应；TagGroup 映射 draggable demo，无 Web 组件别名",
+        "稳定 key 动态 items、保留富 Input 草稿/选择/ref，删除或工厂 revision 只影响自有 key",
+        "独立手柄捕获/5dp 阈值/精确可见几何/取消与失活清理、左右键重排及 roving focus",
+        "受控 onReorder 只发候选顺序，数据写回后接受；Form 私有范围和显式嵌套绑定",
+        "真实 Gallery 关闭取消、受控选择、拖排接受/拒绝和富草稿"
       ],
       "missing_scope": [
-        "close/enter animations and drag/reorder groups",
-        "complete Web/DOM compatibility and native accessibility bridge"
+        "DOM/CSS/React/portal、Web ref/href/target 等浏览器接口不属于原生合同",
+        "GPU/真实窗口、Windows/MSVC/D3D12、系统 IME/AT 与实际跨显示器结果独立记录，不以 HEADLESS/Recording 代替"
       ],
       "evidence_identifiers": [
         "source:components/tag/index.en-US.md",
         "openspec:063-20261023-add-native-tag-and-badge",
         "test:tag_badge_component/tag_badge_theme/tag_badge_public_api/token_gallery_frame",
-        "docs:docs/tag-and-badge.md"
+        "docs:docs/tag-and-badge.md",
+        "api:include/ryn/tag.hpp",
+        "test:rynui.tag_native_contract",
+        "test:rynui.tag_native_gallery",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/tag-linux.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {

@@ -1,5 +1,6 @@
 #include "gallery_pages_runtime.hpp"
 #include "gallery_existing_data_entry_acceptance.hpp"
+#include "gallery_status_acceptance.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
@@ -543,7 +544,10 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 previous_route.component_identity == "ant.component.switch" ||
                 previous_route.component_identity == "ant.component.slider" ||
                 previous_route.component_identity == "ant.component.rate" ||
-                previous_route.component_identity == "ant.component.input") {
+                previous_route.component_identity == "ant.component.input" ||
+                previous_route.component_identity == "ant.component.avatar" ||
+                previous_route.component_identity == "ant.component.badge" ||
+                previous_route.component_identity == "ant.component.tag") {
                 check(!captured(), "native existing DataEntry retirement retained capture");
                 check(!app.focus().state().focused ||
                           !owns(app, app.interactions().require(*app.focus().state().focused).component, previous_root),
@@ -621,6 +625,11 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         }
         accept_existing_data_entry(
             route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press});
+        accept_status_data_display(
+            route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press}, resize);
+        if (route.component_identity == "ant.component.tag") {
+            previous_session = inputs.sessions().active();
+        }
         const auto reveal_owned = [&](runtime::ComponentId id) {
             const auto lane = pages.snapshot().layout.document;
             const auto r = bounds(id);

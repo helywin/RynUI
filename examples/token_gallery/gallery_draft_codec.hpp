@@ -93,6 +93,11 @@ template <typename T> void gallery_draft_write(GalleryPageDraft& draft, const st
         for (std::size_t i = 0; i < value.size(); ++i) {
             gallery_draft_write(draft, key + "/" + std::to_string(i), value[i]);
         }
+    } else if constexpr (std::same_as<T, ryn::Responsive<float>>) {
+        gallery_draft_write(draft, key + "/fallback", value.fallback());
+        for (std::size_t index = 0; index < value.overrides().size(); ++index) {
+            gallery_draft_write(draft, key + "/breakpoint/" + std::to_string(index), value.overrides()[index]);
+        }
     } else if constexpr (draft_detail::Variant<T>::value) {
         draft.values[key + "/index"] = static_cast<std::int64_t>(value.index());
         std::visit([&](const auto& item) { gallery_draft_write(draft, key + "/value", item); }, value);
@@ -168,6 +173,16 @@ template <typename T> T gallery_draft_read(const GalleryPageDraft& draft, const 
         using Value = typename draft_detail::Vector<T>::Value;
         for (std::size_t i = 0; i < size; ++i) {
             result.push_back(gallery_draft_read(draft, key + "/" + std::to_string(i), Value{}));
+        }
+        return result;
+    } else if constexpr (std::same_as<T, ryn::Responsive<float>>) {
+        T result{gallery_draft_read(draft, key + "/fallback", fallback.fallback())};
+        for (std::size_t index = 0; index < fallback.overrides().size(); ++index) {
+            const auto value =
+                gallery_draft_read(draft, key + "/breakpoint/" + std::to_string(index), fallback.overrides()[index]);
+            if (value) {
+                result.at(static_cast<ryn::Breakpoint>(index), *value);
+            }
         }
         return result;
     } else if constexpr (draft_detail::Variant<T>::value) {

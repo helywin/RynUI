@@ -218,6 +218,27 @@ std::optional<ComponentId> ComponentHost::parent(ComponentId id) const {
     return require_record(id).parent;
 }
 
+void ComponentHost::reorder_children(ComponentId parent, std::span<const ComponentId> order) {
+    ensure_owner_thread();
+    auto& record = require_record(parent);
+    if (order.size() != record.children.size()) {
+        throw std::invalid_argument("Retained child order must be complete");
+    }
+    std::vector<ComponentId> next(order.begin(), order.end());
+    std::vector<NodeId> nodes;
+    nodes.reserve(next.size());
+    for (std::size_t i = 0; i < next.size(); ++i) {
+        if (require_record(next[i]).parent != parent ||
+            std::find(next.begin(), next.begin() + i, next[i]) != next.begin() + i) {
+            throw std::invalid_argument("Retained child order contains a foreign or duplicate identity");
+        }
+        nodes.push_back(root(next[i]));
+    }
+    record.children = std::move(next);
+    nodes_->require(record.root).children = std::move(nodes);
+    paint_traversal_dirty_ = true;
+}
+
 const std::vector<ComponentId>& ComponentHost::children(ComponentId id) const {
     return require_record(id).children;
 }
@@ -513,6 +534,11 @@ const ComponentHost::Record& ComponentHost::require_record(ComponentId id) const
         return *record;
     }
     throw std::out_of_range("ComponentId is stale or invalid");
+}
+
+std::shared_ptr<void> ComponentHost::retain_state_storage(ComponentId id, std::type_index type) noexcept {
+    const auto* record = find_record(id);
+    return record && record->state_type == type ? record->state : nullptr;
 }
 
 void* ComponentHost::find_state(ComponentId id, std::type_index type) noexcept {

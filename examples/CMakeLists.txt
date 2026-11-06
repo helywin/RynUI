@@ -53,6 +53,7 @@ add_executable(
     token_gallery/main.cpp
     token_gallery/gallery_pages_runtime.cpp
     token_gallery/gallery_existing_data_entry_acceptance.cpp
+    token_gallery/gallery_status_acceptance.cpp
     token_gallery/token_gallery_runtime.cpp
     token_gallery/typography_acceptance.cpp
     token_gallery/select_acceptance.cpp

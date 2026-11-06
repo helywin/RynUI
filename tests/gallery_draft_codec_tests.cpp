@@ -35,6 +35,7 @@ void test_values_and_authority() {
     round_trip(StatisticValue{std::numeric_limits<std::uint64_t>::max()});
     round_trip(ResultStatus{ResultException::NotFound});
     round_trip(AvatarSizeValue{42.5F});
+    round_trip(AvatarSizeValue{Responsive<float>{24}.at(Breakpoint::Sm, 32).at(Breakpoint::Lg, 64)});
     round_trip(SliderRange{25.5, 80});
     round_trip(TableSort{String{u8"quantity"}, TableSortOrder::Descend});
     round_trip(std::vector<SelectOption>{{SelectValue{u8"desktop"}, String{u8"桌面"}, false},

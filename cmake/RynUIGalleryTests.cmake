@@ -1,3 +1,14 @@
+add_executable(rynui_status_gallery_tests status_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_status_gallery_tests)
+target_include_directories(rynui_status_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_status_gallery_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_status_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(status_page IN ITEMS avatar badge tag)
+    add_test(NAME rynui.${status_page}_native_gallery COMMAND rynui_status_gallery_tests ${status_page})
+endforeach()
+
 add_executable(rynui_carousel_gallery_tests carousel_gallery_tests.cpp)
 rynui_configure_cpp_target(rynui_carousel_gallery_tests)
 target_include_directories(rynui_carousel_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
@@ -289,12 +300,16 @@ add_test(NAME rynui.gallery_page_acceptance_options COMMAND rynui_gallery_page_a
 add_test(NAME rynui.gallery_page_acceptance_runner COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/gallery_page_acceptance_runner_tests.py" "$<TARGET_FILE:rynui_gallery_page_acceptance_tests>")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET rynui_token_gallery)
-    foreach(native_sequence IN ITEMS general_layout masonry_compact shell_splitter select_autocomplete color_number mentions form tree_tree_select)
+    foreach(native_sequence IN ITEMS general_layout masonry_compact shell_splitter select_autocomplete color_number mentions form tree_tree_select avatar_badge_tag)
         set(native_timeout 60)
         if(native_sequence STREQUAL "select_autocomplete")
             set(native_timeout 120)
             set(native_pages --page ant.component.auto-complete --page ant.component.select
                 --page ant.component.pagination --page ant.component.tabs --page ant.component.button)
+        elseif(native_sequence STREQUAL "avatar_badge_tag")
+            set(native_timeout 120)
+            set(native_pages --page ant.component.avatar --page ant.component.badge
+                --page ant.component.tag --page ant.component.button)
         elseif(native_sequence STREQUAL "tree_tree_select")
             set(native_timeout 120)
             set(native_pages --page ant.component.tree --page ant.component.tree-select

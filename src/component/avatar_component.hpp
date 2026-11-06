@@ -4,6 +4,8 @@
 
 namespace ryn::detail {
 struct AvatarSnapshot final {
+    runtime::ComponentId image;
+    bool image_visible{};
     runtime::ComponentId icon;
     runtime::ComponentId content;
     component::RetainedSurfaceId surface;
@@ -56,7 +58,10 @@ private:
     runtime::ComponentId mount_avatar(const AvatarProps&, const AvatarSlots&, bool grouped,
                                       std::optional<Prop<bool>> icon_visible = {});
     void refresh(runtime::ComponentId, bool);
+    void ensure_image(runtime::ComponentId);
     void refresh_group(runtime::ComponentId);
+    void reconcile(runtime::ComponentId, const std::vector<AvatarGroupItem>&);
+    void replace_popover(runtime::ComponentId, std::shared_ptr<const AvatarGroupPopoverRenderer>);
     runtime::Size measure(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     runtime::Size measure_group(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints, bool popup);
