@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/rounded_effect.hpp"
 #include "renderer/common/scene_packing.hpp"
 
 #include <cstddef>
@@ -24,6 +25,13 @@ struct SceneBackendCapabilities final {
     std::uint32_t image_abi_version{};
     bool images{};
     bool rgba8_sampling{};
+    // Optional capabilities; baseline/SDL remain off. Recording opts in explicitly.
+    bool effect_paints{};
+    bool effect_arc_caps{};
+    std::uint32_t effect_paint_abi_version{};
+    bool effect_linear_fields{};
+    bool effect_conic_fields{};
+    bool effect_underlays{};
 };
 
 [[nodiscard]] constexpr SceneBackendCapabilities baseline_scene_capabilities() noexcept {
@@ -45,6 +53,8 @@ struct SceneBackendCapabilities final {
 }
 
 void validate_scene_capabilities(const SceneBackendCapabilities& capabilities);
+void validate_scene_effect_requirements(const SceneBackendCapabilities& capabilities,
+                                        graphics::RoundedEffectRequirements requirements);
 void validate_scene_buffer_requirement(const SceneBackendCapabilities& capabilities, std::size_t count,
                                        std::size_t stride, bool power_of_two_growth);
 

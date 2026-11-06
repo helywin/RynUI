@@ -35,7 +35,7 @@ rynui_portable_test(theme_scope_component "theme_scope_component_tests.cpp")
 foreach(name IN ITEMS prop glyph_texture_upload texture_upload_batch_layout logical_scene_packing quad_primitive binding_quad_integration button_scene_service
         font_runtime text_engine text_state text_scene_service
         text_render_integration glyph_atlas glyph_scene glyph_gpu_resources icon_catalog icon_component icon_vector
-        rounded_effect_math rounded_effect_store rounded_effect_scene rounded_effect_gpu
+        rounded_effect_math rounded_effect_store rounded_effect_scene rounded_effect_gpu effect_paint arc_cap effect_paint_packing
         rounded_effect_gpu_resources input_component input_variant input_count input_actions input_gpu input_caret_blink input_public_api password_component search_component search_public_api text_component
         button_component selection_component selection_controls_public_api switch_features switch_public_api checkbox_group checkbox_public_api theme_algorithm theme_runtime slider_component radio_component radio_features radio_public_api focus_order focus_state focus_lifecycle typography_component
         typography_interaction divider_component divider_public_api text_component_frame frame_scheduler window_overlay tooltip_component interaction_registry pointer_route text_input_session
@@ -57,6 +57,10 @@ rynui_portable_test(input_scene_allocation "input_scene_allocation_benchmark.cpp
 rynui_portable_test(text_editor_allocation "text_editor_allocation_benchmark.cpp")
 
 if(TARGET rynui_renderer_recording)
+    rynui_portable_test(effect_preflight "effect_preflight_tests.cpp")
+    target_link_libraries(rynui_portable_effect_preflight PRIVATE rynui_renderer_recording)
+    rynui_portable_test(effect_paint_resources "effect_paint_resources_tests.cpp")
+    target_link_libraries(rynui_portable_effect_paint_resources PRIVATE rynui_renderer_recording)
     rynui_portable_test(scene_backend "scene_backend_tests.cpp")
     target_link_libraries(rynui_portable_scene_backend PRIVATE rynui_renderer_recording)
 endif()

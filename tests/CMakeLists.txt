@@ -2667,12 +2667,19 @@ function(add_rynui_rounded_effect_test test_name source_name)
 endfunction()
 
 add_rynui_rounded_effect_test(math rounded_effect_math_tests.cpp)
+add_rynui_rounded_effect_test(paint effect_paint_tests.cpp)
+add_rynui_rounded_effect_test(cap arc_cap_tests.cpp)
 add_rynui_rounded_effect_test(store rounded_effect_store_tests.cpp)
 add_rynui_rounded_effect_test(scene rounded_effect_scene_tests.cpp)
 add_rynui_rounded_effect_test(
     allocation_benchmark rounded_effect_allocation_benchmark.cpp)
 add_rynui_rounded_effect_test(gpu rounded_effect_gpu_tests.cpp)
 target_link_libraries(rynui_rounded_effect_gpu_tests PRIVATE rynui_renderer_common)
+
+add_executable(rynui_effect_paint_packing_tests effect_paint_packing_tests.cpp)
+rynui_configure_cpp_target(rynui_effect_paint_packing_tests)
+target_link_libraries(rynui_effect_paint_packing_tests PRIVATE rynui_renderer_common)
+add_test(NAME rynui.effect_paint_packing COMMAND rynui_effect_paint_packing_tests)
 
 add_executable(
     rynui_rounded_effect_gpu_resources_tests
@@ -2687,6 +2694,18 @@ add_test(
     NAME rynui.rounded_effect_gpu_resources
     COMMAND rynui_rounded_effect_gpu_resources_tests
 )
+
+if(TARGET rynui_renderer_recording)
+    add_executable(rynui_effect_preflight_tests effect_preflight_tests.cpp)
+    rynui_configure_cpp_target(rynui_effect_preflight_tests)
+    target_link_libraries(rynui_effect_preflight_tests PRIVATE rynui_renderer_common rynui_renderer_recording)
+    add_test(NAME rynui.effect_preflight COMMAND rynui_effect_preflight_tests)
+
+    add_executable(rynui_effect_paint_resources_tests effect_paint_resources_tests.cpp)
+    rynui_configure_cpp_target(rynui_effect_paint_resources_tests)
+    target_link_libraries(rynui_effect_paint_resources_tests PRIVATE rynui_renderer_common rynui_renderer_recording)
+    add_test(NAME rynui.effect_paint_resources COMMAND rynui_effect_paint_resources_tests)
+endif()
 
 add_executable(rynui_binding_quad_integration_tests binding_quad_integration_tests.cpp)
 rynui_configure_cpp_target(rynui_binding_quad_integration_tests)

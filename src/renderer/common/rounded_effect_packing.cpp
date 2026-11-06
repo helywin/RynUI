@@ -97,6 +97,19 @@ namespace {
 RoundedEffectGpuInstance pack_rounded_effect_instance(const RoundedEffectInstance& instance,
                                                       SceneDeviceMetrics metrics) {
     validate_rounded_effect(instance);
+    if (instance.material.paint) {
+        throw std::invalid_argument("Legacy 112-byte Effect pack cannot encode paint");
+    }
+    if (const auto* arc = std::get_if<graphics::RoundedArcPath>(&instance.geometry.path);
+        arc && arc->cap != graphics::ArcCap::Round) {
+        throw std::invalid_argument("Legacy 112-byte Effect pack cannot encode non-round arc caps");
+    }
+    return pack_effect_paint_base_instance(instance, metrics);
+}
+
+RoundedEffectGpuInstance pack_effect_paint_base_instance(const RoundedEffectInstance& instance,
+                                                         SceneDeviceMetrics metrics) {
+    validate_rounded_effect(instance);
     const auto viewport = scene_logical_viewport(metrics);
     const float scale = metrics.display_scale;
     const auto logical_bounds = intersect_effect_bounds(rounded_effect_bounds(instance, 1.0F / scale), viewport);

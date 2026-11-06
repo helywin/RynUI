@@ -37,6 +37,10 @@ inline constexpr std::uint32_t rounded_effect_vertex_count = 6;
 [[nodiscard]] RoundedEffectGpuInstance pack_rounded_effect_instance(const graphics::RoundedEffectInstance& instance,
                                                                     SceneDeviceMetrics metrics);
 
+// Transport base only: callers must also provide the Effect Paint ABI link.
+[[nodiscard]] RoundedEffectGpuInstance pack_effect_paint_base_instance(const graphics::RoundedEffectInstance& instance,
+                                                                       SceneDeviceMetrics metrics);
+
 [[nodiscard]] float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels,
                                                           const RoundedEffectGpuInstance& instance);
 

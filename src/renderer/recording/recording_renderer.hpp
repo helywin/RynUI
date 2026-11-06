@@ -9,13 +9,31 @@
 
 namespace ryn::detail {
 
-enum class RecordingFailure { none, begin, create, upload, commit, upload_exception };
+enum class RecordingFailure { none, begin, create, upload, commit, upload_exception, create_exception };
+
+[[nodiscard]] constexpr SceneBackendCapabilities recording_scene_capabilities() noexcept {
+    auto value = baseline_scene_capabilities();
+    value.effect_paints = true;
+    value.effect_arc_caps = true;
+    value.effect_paint_abi_version = effect_paint_abi_version;
+    value.effect_linear_fields = true;
+    value.effect_conic_fields = true;
+    value.effect_underlays = true;
+    return value;
+}
 
 struct RecordedDraw final {
     graphics::SceneDrawCommand command;
     std::vector<std::byte> instance_bytes;
     GlyphGpuTextureHandle texture{};
     std::uint64_t epoch{};
+    RoundedEffectDrawBinding effect_binding;
+    std::vector<std::byte> effect_link_bytes;
+    // Unique referenced records in first-use order, paired with their global table indices.
+    std::vector<std::uint32_t> effect_field_indices;
+    std::vector<std::byte> effect_field_bytes;
+    std::vector<std::uint32_t> effect_stop_indices;
+    std::vector<std::byte> effect_stop_bytes;
 };
 
 struct RecordingCounters final {
@@ -31,7 +49,7 @@ struct RecordingCounters final {
 // This is a data/ordering backend, not a rasterizer or a GPU performance model.
 class RecordingRenderer final : public SceneBackend {
 public:
-    explicit RecordingRenderer(SceneBackendCapabilities capabilities = baseline_scene_capabilities())
+    explicit RecordingRenderer(SceneBackendCapabilities capabilities = recording_scene_capabilities())
         : capabilities_(capabilities) {}
 
     ~RecordingRenderer() override;
@@ -88,6 +106,10 @@ public:
     void* create_effect_buffer(std::size_t size) override;
     bool upload_effect_buffer(void* handle, std::size_t offset, std::span<const std::byte> bytes) override;
     void release_effect_buffer(void* handle) noexcept override;
+    void* create_effect_paint_buffer(EffectPaintBufferKind kind, std::size_t size) override;
+    bool upload_effect_paint_buffer(EffectPaintBufferKind kind, void* handle, std::size_t offset,
+                                    std::span<const std::byte> bytes) override;
+    void release_effect_paint_buffer(EffectPaintBufferKind kind, void* handle) noexcept override;
 
     [[nodiscard]] const char* last_error() const noexcept override {
         return error_.c_str();
@@ -107,7 +129,19 @@ public:
     runtime::FrameSubmissionResult submit_frame(animation::AnimationTime time) override;
 
 private:
-    enum class Kind { quad, glyph, effect, texture, sampler, image_texture, image_buffer };
+    enum class Kind {
+        quad,
+        glyph,
+        effect,
+        texture,
+        sampler,
+        image_texture,
+        image_buffer,
+        effect_link,
+        effect_field,
+        effect_stop
+    };
+    [[nodiscard]] static Kind paint_kind(EffectPaintBufferKind kind) noexcept;
 
     struct Resource final {
         Kind kind;

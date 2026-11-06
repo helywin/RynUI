@@ -118,6 +118,9 @@ void* RecordingRenderer::create(Kind kind, std::size_t size, std::uint32_t width
     if (inject(RecordingFailure::create)) {
         return nullptr;
     }
+    if (inject(RecordingFailure::create_exception)) {
+        throw std::runtime_error("Injected create exception");
+    }
     auto resource = std::make_unique<Resource>();
     resource->kind = kind;
     resource->epoch = epoch_;
@@ -198,6 +201,35 @@ void* RecordingRenderer::create_glyph_buffer(std::size_t size) {
 
 void* RecordingRenderer::create_effect_buffer(std::size_t size) {
     return create(Kind::effect, size);
+}
+
+RecordingRenderer::Kind RecordingRenderer::paint_kind(EffectPaintBufferKind kind) noexcept {
+    switch (kind) {
+    case EffectPaintBufferKind::link:
+        return Kind::effect_link;
+    case EffectPaintBufferKind::field:
+        return Kind::effect_field;
+    case EffectPaintBufferKind::stop:
+        return Kind::effect_stop;
+    }
+    return Kind::effect_link;
+}
+
+void* RecordingRenderer::create_effect_paint_buffer(EffectPaintBufferKind kind, std::size_t size) {
+    if (capabilities_.effect_paint_abi_version != effect_paint_abi_version) {
+        error_ = "Recording Effect paint ABI unsupported";
+        return nullptr;
+    }
+    return create(paint_kind(kind), size);
+}
+
+bool RecordingRenderer::upload_effect_paint_buffer(EffectPaintBufferKind kind, void* handle, std::size_t offset,
+                                                   std::span<const std::byte> bytes) {
+    return upload_buffer(handle, paint_kind(kind), offset, bytes);
+}
+
+void RecordingRenderer::release_effect_paint_buffer(EffectPaintBufferKind kind, void* handle) noexcept {
+    release(handle, paint_kind(kind));
 }
 
 void* RecordingRenderer::create_glyph_sampler() {
@@ -311,7 +343,13 @@ void RecordingRenderer::record(graphics::SceneDrawKind kind, void* handle, Kind 
     draws_.push_back({{kind, first, count, page},
                       {resource.bytes.begin() + offset, resource.bytes.begin() + offset + bytes},
                       texture,
-                      epoch_});
+                      epoch_,
+                      {},
+                      {},
+                      {},
+                      {},
+                      {},
+                      {}});
 }
 
 void RecordingRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
@@ -338,6 +376,51 @@ void RecordingRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t c
     }
     record(graphics::SceneDrawKind::rounded_effect, effects->buffer(), Kind::effect, first, count,
            effects->instance_count(), sizeof(detail::RoundedEffectGpuInstance));
+    auto& draw = draws_.back();
+    draw.effect_binding = effects->draw_binding(first, count);
+    const auto binding = draw.effect_binding;
+    if (!binding.link) {
+        return;
+    }
+    const auto& links = require(binding.link, Kind::effect_link).bytes;
+    const auto& fields = require(binding.field, Kind::effect_field).bytes;
+    const auto& stops = require(binding.stop, Kind::effect_stop).bytes;
+    const auto link_size = std::size_t(count) * sizeof(EffectPaintGpuLink);
+    if (!binding.field_count || !binding.stop_count || binding.link_byte_offset > links.size() ||
+        link_size > links.size() - binding.link_byte_offset ||
+        std::size_t(binding.field_count) > fields.size() / sizeof(EffectPaintGpuField) ||
+        std::size_t(binding.stop_count) > stops.size() / sizeof(EffectPaintGpuStop)) {
+        throw std::out_of_range("Recording Effect paint binding exceeds table bytes");
+    }
+    draw.effect_link_bytes.assign(links.begin() + binding.link_byte_offset,
+                                  links.begin() + binding.link_byte_offset + link_size);
+    std::vector<EffectPaintGpuField> packed_fields(binding.field_count);
+    std::vector<EffectPaintGpuStop> packed_stops(binding.stop_count);
+    std::memcpy(packed_fields.data(), fields.data(), packed_fields.size() * sizeof(EffectPaintGpuField));
+    std::memcpy(packed_stops.data(), stops.data(), packed_stops.size() * sizeof(EffectPaintGpuStop));
+    const auto consume = [](std::uint32_t index, std::size_t stride, const auto& source, auto& indices, auto& bytes) {
+        if (std::ranges::find(indices, index) == indices.end()) {
+            indices.push_back(index);
+            const auto offset = std::size_t(index) * stride;
+            bytes.insert(bytes.end(), source.begin() + offset, source.begin() + offset + stride);
+        }
+    };
+    for (std::uint32_t index = 0; index < count; ++index) {
+        EffectPaintGpuLink link;
+        std::memcpy(&link, draw.effect_link_bytes.data() + std::size_t(index) * sizeof(link), sizeof(link));
+        validate_effect_paint_link(link, packed_fields, packed_stops);
+        for (const auto field : {link.foreground_field, link.underlay_field}) {
+            if (field == effect_paint_no_field) {
+                continue;
+            }
+            consume(field, sizeof(EffectPaintGpuField), fields, draw.effect_field_indices, draw.effect_field_bytes);
+            const auto& packed = packed_fields[field];
+            for (std::uint32_t stop = 0; stop < packed.stop_count; ++stop) {
+                consume(packed.first_stop + stop, sizeof(EffectPaintGpuStop), stops, draw.effect_stop_indices,
+                        draw.effect_stop_bytes);
+            }
+        }
+    }
 }
 
 runtime::FrameSubmissionResult RecordingRenderer::submit_frame(animation::AnimationTime) {

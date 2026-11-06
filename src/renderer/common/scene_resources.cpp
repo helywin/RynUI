@@ -140,6 +140,8 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         validate_scene_device_metrics(data.metrics);
         const auto capabilities = backend_->capabilities();
         validate_scene_capabilities(capabilities);
+        RoundedEffectGpuResources::preflight(data.effects, data.metrics, capabilities,
+                                             state_->epoch == backend_->device_epoch() ? effects_.get() : nullptr);
         if (data.images && data.images->live_count() &&
             (!capabilities.images || !capabilities.rgba8_sampling ||
              capabilities.image_abi_version != image_packed_abi_version)) {
@@ -156,8 +158,6 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         validate_scene_buffer_requirement(
             capabilities, glyph_buffer_capacity(data.glyphs.size(), glyph_capacity, capabilities.maximum_buffer_bytes),
             sizeof(GlyphGpuInstance), false);
-        validate_scene_buffer_requirement(capabilities, data.effects ? data.effects->live_count() : 0,
-                                          sizeof(RoundedEffectGpuInstance), true);
         if (data.atlas.page_count() && (data.atlas.config().page_width > capabilities.maximum_texture_width ||
                                         data.atlas.config().page_height > capabilities.maximum_texture_height)) {
             throw std::length_error("Scene atlas extent exceeds renderer input limit");
@@ -203,7 +203,8 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
             timing->glyphs = std::chrono::steady_clock::now();
         }
         if (data.effects) {
-            effects_->synchronize(*data.effects, data.metrics);
+            effects_->synchronize(*data.effects, data.metrics,
+                                  capabilities.effect_paint_abi_version == effect_paint_abi_version);
         }
         if (timing) {
             timing->effects = std::chrono::steady_clock::now();

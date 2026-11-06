@@ -1,4 +1,5 @@
 #include "graphics/rounded_effect.hpp"
+#include "graphics/arc_cap.hpp"
 
 #include <algorithm>
 #include <array>
@@ -242,6 +243,16 @@ RoundedEffectInstance make_arc_effect(runtime::Point center, float radius, float
     return instance;
 }
 
+RoundedEffectInstance make_arc_effect(runtime::Point center, float radius, float width, float start_degrees,
+                                      float sweep_degrees, ArcCap cap, Color color, float opacity,
+                                      runtime::Point translation, std::optional<EffectClip> ancestor_clip) {
+    auto instance = make_arc_effect(center, radius, width, start_degrees, sweep_degrees, color, opacity, translation,
+                                    std::move(ancestor_clip));
+    std::get<RoundedArcPath>(instance.geometry.path).cap = cap;
+    validate_rounded_effect(instance);
+    return instance;
+}
+
 RoundedEffectInstance make_dashed_outline_effect(LogicalRoundedRect shape, float width, RoundedDashPath pattern,
                                                  Color color, float opacity, runtime::Point translation,
                                                  std::optional<EffectClip> ancestor_clip) {
@@ -299,7 +310,7 @@ void validate_rounded_effect(const RoundedEffectInstance& instance) {
     case RoundedEffectKind::arc: {
         const auto* arc = std::get_if<RoundedArcPath>(&geometry.path);
         if (!arc || !finite(arc->start_radians) || std::abs(arc->start_radians) > pi || !finite(arc->sweep_radians) ||
-            arc->sweep_radians < 0 || arc->sweep_radians > turn ||
+            arc->sweep_radians < 0 || arc->sweep_radians > turn || arc->cap > ArcCap::Square ||
             geometry.shape.rect.width != geometry.shape.rect.height ||
             geometry.shape.radius != geometry.shape.rect.width / 2 || geometry.outline_offset != 0 ||
             geometry.offset != LogicalOffset{} || geometry.blur != 0 || geometry.spread != 0) {
@@ -390,6 +401,9 @@ RoundedPathSample rounded_rect_path_sample(runtime::Point point, LogicalRoundedR
 
 float arc_signed_distance(runtime::Point point, LogicalRoundedRect centerline, float width,
                           RoundedArcPath arc) noexcept {
+    if (arc.cap != ArcCap::Round) {
+        return nonround_arc_signed_distance(point, centerline, width, arc);
+    }
     if (arc.sweep_radians <= 0 || width <= 0) {
         return std::numeric_limits<float>::infinity();
     }
@@ -520,6 +534,29 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
     return 0.0F;
 }
 
+Color rounded_effect_fragment_reference(runtime::Point point, const RoundedEffectInstance& instance,
+                                        float antialias_width, float ancestor_opacity) {
+    if (!finite(ancestor_opacity) || ancestor_opacity < 0 || ancestor_opacity > 1 || !finite(point.x) ||
+        !finite(point.y)) {
+        throw std::invalid_argument("Rounded effect sample point/ancestor opacity is invalid");
+    }
+    auto coverage = rounded_effect_coverage(point, instance, antialias_width);
+    const auto& clip = instance.geometry.ancestor_clip;
+    if (!instance.material.visible ||
+        (clip && (point.x < clip->bounds.x || point.y < clip->bounds.y ||
+                  point.x >= clip->bounds.x + clip->bounds.width || point.y >= clip->bounds.y + clip->bounds.height))) {
+        coverage = 0;
+    }
+    const auto opacity = instance.material.opacity * ancestor_opacity;
+    if (instance.material.paint) {
+        const runtime::Point local{point.x - instance.geometry.translation.x,
+                                   point.y - instance.geometry.translation.y};
+        return effect_paint_reference(*instance.material.paint, local, coverage, opacity);
+    }
+    const auto color = instance.material.color;
+    return {color.red(), color.green(), color.blue(), color.alpha() * coverage * opacity};
+}
+
 runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float antialias_guard) {
     validate_rounded_effect(instance);
     if (!finite(antialias_guard) || antialias_guard < 0.0F) {
@@ -531,7 +568,8 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
         return bounds;
     }
     if (geometry.kind == RoundedEffectKind::arc &&
-        (geometry.outline_width <= 0 || std::get<RoundedArcPath>(geometry.path).sweep_radians <= 0)) {
+        (geometry.outline_width <= 0 || std::get<RoundedArcPath>(geometry.path).sweep_radians <= 0 ||
+         (geometry.shape.radius == 0 && std::get<RoundedArcPath>(geometry.path).cap != ArcCap::Round))) {
         return {bounds.x, bounds.y, 0, 0};
     }
     switch (geometry.kind) {
@@ -552,9 +590,40 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
     case RoundedEffectKind::outline:
         bounds = expand(bounds, geometry.outline_offset + geometry.outline_width + antialias_guard);
         break;
-    case RoundedEffectKind::arc:
-        bounds = expand(bounds, geometry.outline_width / 2 + antialias_guard);
+    case RoundedEffectKind::arc: {
+        const auto half_width = geometry.outline_width / 2;
+        const auto& arc = std::get<RoundedArcPath>(geometry.path);
+        if (arc.cap != ArcCap::Square || arc.sweep_radians >= turn) {
+            bounds = expand(bounds, half_width + antialias_guard);
+            break;
+        }
+        const auto center_x = bounds.x + geometry.shape.radius;
+        const auto center_y = bounds.y + geometry.shape.radius;
+        bounds = expand(bounds, half_width);
+        // A thick square cap can extend past radius + half_width on both
+        // axes. Include all actual cap corners before adding the AA guard.
+        for (const auto end : {false, true}) {
+            const auto angle = double(arc.start_radians) + (end ? arc.sweep_radians : 0);
+            const auto nx = std::cos(angle);
+            const auto ny = std::sin(angle);
+            for (const auto radial : {-half_width, half_width}) {
+                for (const auto along : {0.0F, end ? half_width : -half_width}) {
+                    const auto x =
+                        static_cast<float>(center_x + (double(geometry.shape.radius) + radial) * nx - along * ny);
+                    const auto y =
+                        static_cast<float>(center_y + (double(geometry.shape.radius) + radial) * ny + along * nx);
+                    const auto right = std::max(bounds.x + bounds.width, x);
+                    const auto bottom = std::max(bounds.y + bounds.height, y);
+                    bounds.x = std::min(bounds.x, x);
+                    bounds.y = std::min(bounds.y, y);
+                    bounds.width = right - bounds.x;
+                    bounds.height = bottom - bounds.y;
+                }
+            }
+        }
+        bounds = expand(bounds, antialias_guard);
         break;
+    }
     case RoundedEffectKind::dashed_outline:
         bounds = expand(bounds, antialias_guard);
         break;
@@ -884,8 +953,29 @@ std::size_t RoundedEffectStore::live_count() const noexcept {
     return diagnostics_.live_instances;
 }
 
+RoundedEffectRequirements RoundedEffectStore::live_requirements() const noexcept {
+    RoundedEffectRequirements result;
+    for (const auto& slot : slots_) {
+        if (!slot.instance) {
+            continue;
+        }
+        result.paint = result.paint || slot.instance->material.paint.has_value();
+        if (const auto* arc = std::get_if<RoundedArcPath>(&slot.instance->geometry.path)) {
+            result.nonround_caps = result.nonround_caps || arc->cap != ArcCap::Round;
+        }
+        if (result.paint && result.nonround_caps) {
+            break;
+        }
+    }
+    return result;
+}
+
 std::size_t RoundedEffectStore::slot_capacity() const noexcept {
     return slots_.capacity();
+}
+
+std::span<const RoundedEffectId> RoundedEffectStore::live_ids() const noexcept {
+    return draw_order_;
 }
 
 const RoundedEffectStoreDiagnostics& RoundedEffectStore::diagnostics() const noexcept {

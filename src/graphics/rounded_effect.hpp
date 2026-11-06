@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/dirty_ranges.hpp"
+#include "graphics/effect_paint.hpp"
 #include "graphics/glyph_scene.hpp"
 #include "runtime/geometry.hpp"
 
@@ -26,9 +27,12 @@ enum class RoundedEffectKind : std::uint8_t {
     tooltip_fill,
 };
 
+enum class ArcCap : std::uint8_t { Round, Butt, Square };
+
 struct RoundedArcPath final {
     float start_radians{};
     float sweep_radians{};
+    ArcCap cap{ArcCap::Round};
     friend constexpr bool operator==(RoundedArcPath, RoundedArcPath) = default;
 };
 
@@ -85,8 +89,9 @@ struct RoundedEffectMaterial final {
     Color color;
     float opacity{1.0F};
     bool visible{true};
+    std::optional<EffectPaint> paint;
 
-    friend constexpr bool operator==(RoundedEffectMaterial, RoundedEffectMaterial) = default;
+    friend bool operator==(const RoundedEffectMaterial&, const RoundedEffectMaterial&) = default;
 };
 
 struct RoundedEffectInstance final {
@@ -108,6 +113,13 @@ struct RoundedEffectInstance final {
 // Finite clockwise circular centerline with round caps; zero sweep is empty.
 [[nodiscard]] RoundedEffectInstance make_arc_effect(runtime::Point center, float radius, float width,
                                                     float start_degrees, float sweep_degrees, Color color,
+                                                    float opacity = 1, runtime::Point translation = {},
+                                                    std::optional<EffectClip> ancestor_clip = {});
+
+// Explicit cap entry. Angles remain centerline angles; component percent/cap
+// compensation belongs to the caller. Zero-radius non-round arcs are empty.
+[[nodiscard]] RoundedEffectInstance make_arc_effect(runtime::Point center, float radius, float width,
+                                                    float start_degrees, float sweep_degrees, ArcCap cap, Color color,
                                                     float opacity = 1, runtime::Point translation = {},
                                                     std::optional<EffectClip> ancestor_clip = {});
 
@@ -163,6 +175,11 @@ struct RoundedPathSample final {
 [[nodiscard]] float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance& instance,
                                             float antialias_width = 1.0F);
 
+// Field domains precede retained translation. Ancestor opacity is applied once;
+// callers whose material already contains it leave ancestor_opacity at one.
+[[nodiscard]] Color rounded_effect_fragment_reference(runtime::Point point, const RoundedEffectInstance& instance,
+                                                      float antialias_width = 1, float ancestor_opacity = 1);
+
 [[nodiscard]] runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float antialias_guard = 1.0F);
 
 [[nodiscard]] runtime::Rect intersect_effect_bounds(runtime::Rect bounds, runtime::Rect clip) noexcept;
@@ -201,6 +218,13 @@ struct RoundedEffectStoreDiagnostics final {
     std::size_t culled_instances{};
 };
 
+struct RoundedEffectRequirements final {
+    bool paint{};
+    bool nonround_caps{};
+
+    friend constexpr bool operator==(RoundedEffectRequirements, RoundedEffectRequirements) = default;
+};
+
 class RoundedEffectStore final {
 public:
     RoundedEffectStore();
@@ -230,6 +254,10 @@ public:
     void clear_dirty_ranges() noexcept;
 
     [[nodiscard]] std::size_t live_count() const noexcept;
+    // Includes hidden, clipped, and out-of-viewport instances, independently of
+    // compacted draw topology. A renderer must preflight live scene semantics.
+    [[nodiscard]] RoundedEffectRequirements live_requirements() const noexcept;
+    [[nodiscard]] std::span<const RoundedEffectId> live_ids() const noexcept;
     [[nodiscard]] std::size_t slot_capacity() const noexcept;
     [[nodiscard]] const RoundedEffectStoreDiagnostics& diagnostics() const noexcept;
 

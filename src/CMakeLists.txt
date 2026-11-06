@@ -198,11 +198,13 @@ rynui_assert_direct_dependencies(rynui_image RynUI::StbImage)
 rynui_assert_core_link_closure(rynui_image)
 
 add_library(rynui_graphics STATIC
+    graphics/arc_cap.cpp
     graphics/image_scene.cpp
     graphics/glyph_atlas.cpp
     graphics/glyph_scene.cpp
     graphics/graphics.cpp
     graphics/color_field.cpp
+    graphics/effect_paint.cpp
     graphics/quad_primitive.cpp
     graphics/quad_scene.cpp
     graphics/rounded_effect.cpp
@@ -361,6 +363,7 @@ target_link_libraries(rynui_components PRIVATE
 )
 
 add_library(rynui_renderer_common STATIC
+    renderer/common/effect_paint_packing.cpp
     renderer/common/image_gpu_resources.cpp
     renderer/common/scene_capabilities.cpp
     renderer/common/scene_metrics.cpp

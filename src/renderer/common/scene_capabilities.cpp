@@ -1,4 +1,5 @@
 #include "renderer/common/scene_capabilities.hpp"
+#include "renderer/common/effect_paint_packing.hpp"
 
 #include <bit>
 #include <stdexcept>
@@ -32,6 +33,20 @@ void validate_scene_capabilities(const SceneBackendCapabilities& value) {
     }
     if (!value.maximum_buffer_bytes || !value.maximum_texture_width || !value.maximum_texture_height) {
         throw std::invalid_argument("Renderer resource input limits must be positive");
+    }
+}
+
+void validate_scene_effect_requirements(const SceneBackendCapabilities& capabilities,
+                                        graphics::RoundedEffectRequirements requirements) {
+    if (requirements.paint && !capabilities.effect_paints) {
+        throw std::invalid_argument("Backend lacks required Effect paint capability");
+    }
+    if (requirements.nonround_caps && !capabilities.effect_arc_caps) {
+        throw std::invalid_argument("Backend lacks required Effect arc cap capability");
+    }
+    if ((requirements.paint || requirements.nonround_caps) &&
+        capabilities.effect_paint_abi_version != effect_paint_abi_version) {
+        throw std::invalid_argument("Backend Effect paint ABI is incompatible");
     }
 }
 

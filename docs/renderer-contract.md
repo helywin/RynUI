@@ -10,6 +10,14 @@ GlyphTransform 的 pivot 为 logical point，angle_degrees 为绕 pivot 的顺�
 
 CPU 类型没有 shader stride/offset 承诺，CPU bytes 不得直接作为 vertex upload。组件、TextSceneService、RetainedSurfaceService 和 QuadScene 只发布 CPU dirty ranges；GPU 资源和上传入口属于 renderer。新功能必须遵守此边界。
 
+## Effect logical paint / cap（107 A）
+
+`graphics/effect_paint` 属于 Core。EffectGradientRamp 复制调用者 stops 并共享不可变所有权；至少两个有限、非递减位置，保留重复点和域外位置，不设固定少量 stop 上限。不排序、不执行组件专用 floor/CSS fixup。相同位置右连续，域外保持端点。EffectPaintField 包含 ramp 与有限、非退化 Linear/Conic domain；linear 为不同的起止点，conic 为 center、规范化 start radians 和 `(0, 2pi]` 顺时针 sweep。field 使用保留 translation 之前的 logical 坐标；零面积几何由 coverage 发布空区域，不能创建退化 field。材质以值比较，共有所有权身份不同但值相等的 paint 不产生 dirty。
+
+native logical reference 在既有 Color 编码数值域内做 premultiplied RGBA 插值。可选 foreground / underlay 在同一 fragment 内先 source-over，再统一应用 coverage、material opacity 和祖先 opacity，输出 straight RGBA；已包含祖先因子的 material 不重复相乘。不引入线性/sRGB 转换或浏览器像素一致性声明。
+
+RoundedEffectMaterial 在旧 color/opacity/visible 前缀后增加可选 paint；缺省仍为 solid。RoundedArcPath 在旧 start/sweep 前缀后增加默认 Round 的 ArcCap。旧 factory 和 Round 解析路径、角度与零 radius footprint 保留；新显式 factory 不自行套用组件 percent 补偿。Butt/Square 以圆弧 strip 和端帽线段的暴露联合外边界计算一次距离/coverage；厚 strip 穿过中心时保留负径向部分，内部接合与帽相交不重复合成。Square bounds 包含实际端帽角点与 AA guard。新显式非 Round 的零 radius 或零 sweep 为空。
+
 ## Packed scene ABI v2
 
 `renderer/common/scene_packing` 与 `rounded_effect_packing` 将保留的 logical CPU scene 转为下表的数据；三个 packed 类型均属于 `ryn::detail`，与 Core CPU 类型独立。v2 仅扩展 glyph rotation basis，Quad/Effect 保持原有字段；shader coverage/fragment reference 留在 renderer，Core 仅保留 logical reference。旧 packed ABI v1 必须被能力检查拒绝，不能继续使用 80-byte glyph stride。
@@ -57,6 +65,30 @@ Recording 实际复制 buffer/texture 数据、校验范围和类型、保持 ha
 SceneBackend 必须显式提供 SceneBackendCapabilities：logical scene v3、packed ABI v2，Quad/Glyph/RoundedEffect、R8 sampling、ordered draws、partial uploads 与正的 maximum_buffer_bytes/texture width/height。缺任一必需能力或版本不匹配，SceneResources 在创建 sampler/buffer/texture 前给出原因；组件不静默忽略阴影、文字或顺序。SDL 实际查询 device 的 R8 sampling support；其他声明由当前 pipelines/上传实现提供。
 
 资源限制是 backend 接受输入的上限，不是可用显存或硬件能力保证。SDL buffer limit 为 API uint32 上限，texture extent 只约束可表示输入；实际 GPU create 仍可能失败。共同 preflight 在 begin 前检查 Quad 的实际增长容量（共享 helper，初次精确 count、后续 max(required, old_capacity×2)）、Glyph 精确 count 与 live Effect 的保守 power-of-two 容量；epoch 改变不带入旧 Quad capacity。Effect budget 用 live count，可能高于 cull 后的可见 count。有 page 才检查 atlas extent，空 atlas config 不导致错误。超限使附件失效并保留 retry/dirty 数据，修正输入后可重试。
+
+### Effect paint / cap preflight（107 A2）
+
+SceneResources 在 begin_upload_batch 前检查全部 live effects 的需求，隐藏、窗口外、ancestor clip 外、零 coverage 和零 opacity 均不能绕过；拒绝失效附件并保留原子重试数据。旧单记录 pack 在任何裁剪早退前拒绝 paint 或非 Round cap，不能降级成 solid/Round。baseline_scene_capabilities 的新能力始终关闭；B1 只由 Recording 声明支持，SDL 的接入与真实 shader 验证属于 B2。
+
+### Effect Paint ABI v1（107 B1）
+
+独立 `effect_paint_abi_version=1` 不改变 logical scene v3、packed scene ABI v2、112-byte Effect、七个 float4 或 kind 0..5。下列三表全部采用 16-byte alignment；整数均为 uint32，不以 float 存索引，不借用 base 的 dash/Tooltip 参数位。保留字段必须为零。
+
+| 表 | stride | 字段与 byte offset |
+| --- | --- | --- |
+| link（第二 instance stream） | 16 | foreground_field 0、underlay_field 4、arc_cap 8（Round=0 / Butt=1 / Square=2）、reserved 12 |
+| field（PS storage 0） | 32 | kind 0（Linear=1 / Conic=2）、first_stop 4、stop_count 8、reserved 12；float4 domain 16 |
+| stop（PS storage 1） | 32 | float4 position 0（x 为位置，yzw=0）；float4 premultiplied_rgba 16 |
+
+`0xffffffff` 是 link 的 no-field sentinel；foreground 缺省时 underlay 也必须缺省，solid 由 base.color 表达。Linear domain 为已施加 retained translation 和 display_scale 的物理 pixel 起止点 `(sx,sy,ex,ey)`；Conic 为同域 center 与不随 DPI 改变的 start/sweep radians `(cx,cy,start,sweep)`。至少两个 stop，保留重复点与域外位置。field/stop span 在 uint64 域检查后才收窄；field index 不能等于 sentinel。所有物理值必须有限，Linear 在 float 运算域内的端点差及长度平方必须有限且严格正，Conic sweep 在 `(0,2pi]`。重复 stop 右连续、premultiplied 插值、双场 source-over 后统一乘 coverage/opacity，与 logical reference 相同；packed reference 直接采样 packed tables。
+
+link 与同一次 compact 的实际 packed Effect 一一对应，包括 solid/paint 混排；删除、隐藏、cull 和 slot reuse 同步 remap，不使用 Store ID.index 作为 GPU index。全 solid/default Round 的可见场景只走旧 pipeline，三表资源为零。可见 paint 或非 Round cap 启用新 pipeline，所有可见 Effect 都具有 link；cap-only 场景也分配、上传各一个零 field/stop 作为两个 storage binding 的最小占位，不能省略 limits 检查。占位不被 link 引用。
+
+能力分别为 `effect_paints`、`effect_arc_caps`、`effect_linear_fields`、`effect_conic_fields`、`effect_underlays` 和独立 ABI；仅设置其中一个不能暗示其他支持。共同 preflight 扫描所有 live source，检查完整语义、物理 packed domain、stop span、整数及乘法溢出；base/link/field/stop 的实际分配 capacity（power-of-two 增长，保留同 epoch 已有容量）分别受 maximum_buffer_bytes 和 size_t 上限约束。epoch 变化不继承任何旧 GPU capacity。上限只是输入预算，不保证 create 成功。
+
+RoundedEffectGpuResources 一次 compact 并读取同一份 geometry/material dirty，完成 base/link/field/stop packing 和上传后才 clear dirty；paint 场景的任何更新整体重打包三表，idle 零上传。SceneResources 内任意 create/upload/exception/commit 失败，包括后续 Image 上传失败，均 cancel 并使整个 attachment 失效，强制 base 与三表无新增 CPU dirty 完整重试。backend upload 成功返回前拥有 bytes；retire 在旧 device 活着时释放全部表，epoch 改变仅 abandon 旧 handles/capacity/count，foreign owner/epoch/kind 拒绝沿用。
+
+共同 draw_binding(first,count) 同时提供实际 base/link byte offset（`first*112`、`first*16`）及 field/stop handles 和有效 count；B2 必须对两个 instance stream 使用同一个 first/count，两个 storage 从表起点绑定，不以 draw 的 first 重定位 field/stop。Recording 从实际 buffer 的 draw subrange 读取 link，并记录实际引用的 field/stop 索引与 bytes；多 draw 保持相同全局表索引。Card rounded descendant clip 将使用独立 clip ABI，不增加第四张 paint table。B1 不实现 SDL/HLSL 或 Progress 消费，不代表任何 GPU/OS 验收。
 
 ## 后续组件与 backend 的接入清单
 

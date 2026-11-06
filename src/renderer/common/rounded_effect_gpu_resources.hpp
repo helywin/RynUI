@@ -1,6 +1,6 @@
 #pragma once
 
-#include "renderer/common/rounded_effect_packing.hpp"
+#include "renderer/common/effect_paint_packing.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -9,6 +9,8 @@
 #include <vector>
 
 namespace ryn::detail {
+
+struct SceneBackendCapabilities;
 
 using RoundedEffectGpuBufferHandle = void*;
 
@@ -21,6 +23,30 @@ public:
                                       std::span<const std::byte> bytes) = 0;
     virtual void release_effect_buffer(RoundedEffectGpuBufferHandle buffer) noexcept = 0;
     [[nodiscard]] virtual const char* effect_gpu_error() const noexcept = 0;
+
+    // Unsupported backends retain their existing implementation and default-off capabilities.
+    virtual RoundedEffectGpuBufferHandle create_effect_paint_buffer(EffectPaintBufferKind, std::size_t) {
+        return nullptr;
+    }
+
+    virtual bool upload_effect_paint_buffer(EffectPaintBufferKind, RoundedEffectGpuBufferHandle, std::size_t,
+                                            std::span<const std::byte>) {
+        return false;
+    }
+
+    virtual void release_effect_paint_buffer(EffectPaintBufferKind, RoundedEffectGpuBufferHandle) noexcept {}
+};
+
+struct RoundedEffectDrawBinding final {
+    RoundedEffectGpuBufferHandle base{};
+    RoundedEffectGpuBufferHandle link{};
+    RoundedEffectGpuBufferHandle field{};
+    RoundedEffectGpuBufferHandle stop{};
+    std::size_t base_byte_offset{};
+    std::size_t link_byte_offset{};
+    std::uint32_t instance_count{};
+    std::uint32_t field_count{};
+    std::uint32_t stop_count{};
 };
 
 struct RoundedEffectGpuResourceCounters final {
@@ -48,10 +74,28 @@ public:
         instance_count_ = 0;
         metrics_.reset();
         instances_.clear();
+        paint_buffers_ = {};
+        paint_capacities_ = {};
+        paint_tables_.links.clear();
+        paint_tables_.fields.clear();
+        paint_tables_.stops.clear();
     }
 
-    void synchronize(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics);
+    static void preflight(const graphics::RoundedEffectStore* store, SceneDeviceMetrics metrics,
+                          const SceneBackendCapabilities& capabilities,
+                          const RoundedEffectGpuResources* current = nullptr);
+    void synchronize(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics, bool paint_transport = false);
     void invalidate_upload() noexcept;
+
+    [[nodiscard]] RoundedEffectDrawBinding draw_binding(std::uint32_t first, std::uint32_t count) const;
+
+    [[nodiscard]] const EffectPaintPackedTables& paint_tables() const noexcept {
+        return paint_tables_;
+    }
+
+    [[nodiscard]] const std::array<std::uint32_t, 3>& paint_capacities() const noexcept {
+        return paint_capacities_;
+    }
 
     [[nodiscard]] RoundedEffectGpuBufferHandle buffer() const noexcept;
     [[nodiscard]] std::uint32_t capacity() const noexcept;
@@ -60,12 +104,12 @@ public:
     [[nodiscard]] const RoundedEffectGpuResourceCounters& counters() const noexcept;
 
 private:
-    void synchronize_validated(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics);
+    void synchronize_validated(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics, bool paint_transport);
+    void release_paint_buffers() noexcept;
     void merge_dirty_ranges(std::span<const graphics::RoundedEffectInstanceRange> geometry,
                             std::span<const graphics::RoundedEffectInstanceRange> material);
-    [[nodiscard]] static std::uint32_t next_capacity(std::size_t required);
     void convert_range(std::span<const graphics::RoundedEffectInstance> source,
-                       graphics::RoundedEffectInstanceRange range, SceneDeviceMetrics metrics);
+                       graphics::RoundedEffectInstanceRange range, SceneDeviceMetrics metrics, bool paint_transport);
 
     RoundedEffectGpuApi* api_;
     RoundedEffectGpuBufferHandle buffer_{nullptr};
@@ -74,6 +118,9 @@ private:
     std::vector<RoundedEffectGpuInstance> instances_;
     std::vector<graphics::RoundedEffectInstanceRange> dirty_ranges_;
     std::optional<SceneDeviceMetrics> metrics_;
+    std::array<RoundedEffectGpuBufferHandle, 3> paint_buffers_{};
+    std::array<std::uint32_t, 3> paint_capacities_{};
+    EffectPaintPackedTables paint_tables_;
     RoundedEffectGpuResourceCounters counters_;
 };
 
