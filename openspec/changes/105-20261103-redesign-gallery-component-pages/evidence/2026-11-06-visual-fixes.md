@@ -44,3 +44,5 @@ Windows/MSVC `windows-msvc-release`、Ninja Multi-Config、最多 2 jobs，正�
 对照修复前原尺寸问题图，复核了上述 B/V 项以及 S01–S04 的对应外观；不是对所有生成状态逐张宣称视觉通过。Typography 保留两条往返裁图高度 1px 差异告警，与首次巡检相同，没有空白或像素差异告警。未覆盖完整 hover/拖拽/动画、全部 DPI/实际显示器、桌面 swapchain、OS IME/AT、Linux 或 240Hz 体验；原 tasks 6.1/6.2、7.1 保持未完成，未扩展本轮验收范围。
 
 最终 Gallery 的 PE stack reserve 为 **1,048,576 bytes**；`CL`、`_CL_` 均未设置，标准 Release flags 为 `/O2 /Ob2 /DNDEBUG`，没有提高栈或保留 Anchor 编译绕过。原始失败历史和所有运行产物只在 out。clang-format 22.1.3、Gallery 源码摘录生成检查（101 条）、OpenSpec doctor、strict **107/107**、`git diff --check` 通过；只提交源码、回归及本精简结果。
+
+实现提交 `fedcb76c` 已 fetch/rebase/push，并核对远端 main 一致。本次 11.1–11.5 已完成，原有三个独立平台项保持未完成；没有 archive 或恢复暂停的其他调优任务。
