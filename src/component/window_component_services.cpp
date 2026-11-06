@@ -106,17 +106,29 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
       surfaces_(text_.components(), nodes, scene_composer_), focus_(interactions_, &frame_requests),
       pointer_(interactions_, hit_test_, &frame_requests, &focus_) {
     pointer_.set_observer([this](const input::PointerInputEvent& event, auto hit, auto origin) {
+        const auto registration = participant_registration_revision_;
         pointer_participants_scratch_.assign(participants_.begin(), participants_.end());
         for (std::size_t index = 0; index < pointer_participants_scratch_.size(); ++index) {
             auto* participant = pointer_participants_scratch_[index];
             if (std::find(participants_.begin(), participants_.end(), participant) != participants_.end()) {
                 participant->on_pointer_input(event, hit, origin);
+                if (participant_registration_revision_ != registration) {
+                    break;
+                }
             }
         }
     });
     focus_.set_command_filter([this](const input::KeyboardInputEvent& event) {
-        for (auto it = participants_.rbegin(); it != participants_.rend(); ++it) {
-            if ((*it)->on_keyboard_input(event)) {
+        const auto registration = participant_registration_revision_;
+        for (std::size_t index = participants_.size(); index > 0; --index) {
+            if (index > participants_.size()) {
+                return true;
+            }
+            auto* participant = participants_[index - 1];
+            if (participant->on_keyboard_input(event)) {
+                return true;
+            }
+            if (participant_registration_revision_ != registration) {
                 return true;
             }
         }
@@ -203,11 +215,18 @@ WindowComponentServices::~WindowComponentServices() {
 }
 
 void WindowComponentServices::attach(WindowComponentParticipant& participant) {
+    if (!interactions_.is_owner_thread()) {
+        throw std::logic_error("Participant registration requires the owner thread");
+    }
+    if (participant_registration_revision_ == std::numeric_limits<std::uint64_t>::max()) {
+        throw std::length_error("Participant registration generation exhausted");
+    }
     if (std::find(participants_.begin(), participants_.end(), &participant) != participants_.end()) {
         throw std::logic_error("window component participant is already attached");
     }
     pointer_participants_scratch_.reserve(participants_.size() + 1);
     participants_.push_back(&participant);
+    ++participant_registration_revision_;
 }
 
 void WindowComponentServices::attach_input_host(WindowComponentParticipant& participant) {
@@ -240,7 +259,7 @@ void WindowComponentServices::detach_input_host(WindowComponentParticipant& part
 WindowTextEditServices& WindowComponentServices::bind_text_edit(input::TextInputPlatform& platform,
                                                                 input::TextClipboard& clipboard) {
     if (!text_edit_) {
-        text_edit_ = std::make_unique<WindowTextEditServices>(platform, clipboard);
+        text_edit_ = std::make_unique<WindowTextEditServices>(platform, clipboard, interactions_);
     } else if (!text_edit_->uses(platform, clipboard)) {
         throw std::logic_error("window text edit services are bound to different platform ports");
     }
@@ -292,21 +311,35 @@ bool WindowComponentServices::text_pointer_at(runtime::Point point) {
 }
 
 void WindowComponentServices::detach(WindowComponentParticipant& participant) noexcept {
-    std::erase(participants_, &participant);
+    if (!interactions_.is_owner_thread()) {
+        return;
+    }
+    if (std::erase(participants_, &participant) &&
+        participant_registration_revision_ != std::numeric_limits<std::uint64_t>::max()) {
+        ++participant_registration_revision_;
+    }
 }
 
 bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& event) {
     if (!input::is_valid(event) || !focus_.state().window_active) {
         return false;
     }
-    for (auto it = participants_.rbegin(); it != participants_.rend(); ++it) {
-        if ((*it)->on_scroll_input(event)) {
+    const auto registration = participant_registration_revision_;
+    for (std::size_t index = participants_.size(); index > 0; --index) {
+        if (index > participants_.size()) {
+            return true;
+        }
+        auto* participant = participants_[index - 1];
+        if (participant->on_scroll_input(event)) {
+            return true;
+        }
+        if (participant_registration_revision_ != registration) {
             return true;
         }
     }
     return time_picker_->consume_scroll_boundary(event) || date_picker_->consume_scroll_boundary(event) ||
            dropdown_->consume_scroll_boundary(event) || popover_->consume_scroll_boundary(event) ||
-           notices_->consume_scroll_boundary(event) || interactions_.input_boundary().has_value();
+           notices_->consume_scroll_boundary(event) || interactions_.consumes_unhandled_scroll();
 }
 
 bool WindowComponentServices::dispatch_file_drop(const input::FileDropEvent& event) {
@@ -323,8 +356,12 @@ bool WindowComponentServices::dispatch_file_drop(const input::FileDropEvent& eve
         }
     }
     const auto participants = participants_;
+    const auto registration = participant_registration_revision_;
     for (auto it = participants.rbegin(); it != participants.rend(); ++it) {
         if (std::ranges::find(participants_, *it) != participants_.end() && (*it)->on_file_drop(event)) {
+            return true;
+        }
+        if (participant_registration_revision_ != registration) {
             return true;
         }
     }
@@ -354,6 +391,55 @@ void WindowComponentServices::enqueue_retained_translation(runtime::ComponentId 
     retained_translation_work_.emplace_back(owner, std::move(compose));
 }
 
+void WindowComponentServices::ensure_input_owner_cleanup(const input::InputRootRef& owner) {
+    if (!interactions_.owns_input_root(owner)) {
+        throw std::invalid_argument("Input cleanup requires its exact live window owner");
+    }
+    const auto index = owner.component().index;
+    if (index < input_constraint_owners_.size() && input_constraint_owners_[index] == owner) {
+        return;
+    }
+    auto cleanup = interactions_.input_owner_cleanup(owner);
+    if (index >= input_constraint_owners_.size()) {
+        input_constraint_owners_.resize(std::size_t(index) + 1);
+    }
+    components().scope(owner.component()).on_cleanup(std::move(cleanup));
+    input_constraint_owners_[index] = owner;
+}
+
+input::InputConstraintLease WindowComponentServices::create_input_constraint(const input::InputRootRef& owner,
+                                                                             input::InputConstraintKind kind) {
+    ensure_input_owner_cleanup(owner);
+    return interactions_.create_input_constraint(owner, kind);
+}
+
+input::InputCompanionLease
+WindowComponentServices::create_input_companion(const input::InputConstraintAuthority& authority,
+                                                const input::InputRootRef& owner,
+                                                std::span<const input::InputRootRef> controls) {
+    ensure_input_owner_cleanup(owner);
+    return interactions_.create_input_companion(authority, owner, controls);
+}
+
+bool WindowComponentServices::publish_input_constraints(input::InputConstraintBatch& batch) {
+    const bool changed = interactions_.publish_input_constraints(batch);
+    return reconcile_input_boundary() || changed;
+}
+
+bool WindowComponentServices::synchronize_input_constraints() {
+    return reconcile_input_boundary();
+}
+
+bool WindowComponentServices::release_input_constraint(input::InputConstraintLease& lease) {
+    const bool changed = interactions_.release_input_constraint(lease);
+    return reconcile_input_boundary() || changed;
+}
+
+bool WindowComponentServices::release_input_companion(input::InputCompanionLease& lease) {
+    const bool changed = interactions_.release_input_companion(lease);
+    return reconcile_input_boundary() || changed;
+}
+
 void WindowComponentServices::request_frame() noexcept {
     frame_requests_->request_frame();
 }
@@ -373,45 +459,80 @@ runtime::Rect WindowComponentServices::component_clip(runtime::ComponentId id, r
 }
 
 bool WindowComponentServices::reconcile_input_boundary() {
-    if (const auto root = interactions_.input_boundary(); root && !components().contains(*root)) {
-        interactions_.set_input_boundary({});
-    }
-    const auto revision = interactions_.input_boundary_revision();
-    if (revision == reconciled_input_boundary_revision_) {
+    if (reconciling_input_boundary_) {
         return false;
     }
-    reconciled_input_boundary_revision_ = revision;
-    scene_structure_dirty_ = true;
-    for (auto root : components().root_components()) {
-        dirty_->invalidate(components().root(root), runtime::DirtyFlags::HitTest);
-    }
-    // Cancel pointer state without silently removing focus inside a keyboard
-    // command. FocusManager's outer sanitize/deferred transfer delivers blur.
-    const auto order = interactions_.declaration_order();
-    const std::vector<input::InteractionId> interactions{order.begin(), order.end()};
-    for (auto interaction : interactions) {
-        if (!interactions_.branch_active(interaction)) {
-            pointer_.cancel_pointer_interaction(interaction);
+
+    struct Guard final {
+        bool& flag;
+
+        ~Guard() {
+            flag = false;
+        }
+    } guard{reconciling_input_boundary_};
+
+    reconciling_input_boundary_ = true;
+    bool changed = false;
+    for (unsigned round = 0; round < 32; ++round) {
+        if (const auto root = interactions_.input_boundary(); root && !components().contains(*root)) {
+            interactions_.set_input_boundary({});
+        }
+        const auto revision = interactions_.input_boundary_revision();
+        if (revision == reconciled_input_boundary_revision_) {
+            return changed;
+        }
+        // Do not acknowledge a revision until every notification completed. A
+        // throwing callback leaves it pending, while newer revisions retire this pass.
+        scene_structure_dirty_ = true;
+        for (auto root : components().root_components()) {
+            dirty_->invalidate(components().root(root), runtime::DirtyFlags::HitTest);
+        }
+        if (text_edit_) {
+            static_cast<void>(text_edit_->sessions().synchronize());
+        }
+        const auto order = interactions_.declaration_order();
+        const std::vector<input::InteractionId> recipients{order.begin(), order.end()};
+        bool superseded = false;
+        for (auto interaction : recipients) {
+            if (!interactions_.branch_active(interaction)) {
+                pointer_.cancel_pointer_interaction(interaction);
+            }
             if (interactions_.input_boundary_revision() != revision) {
-                return true;
+                superseded = true;
+                break;
             }
         }
-    }
-    focus_.synchronize();
-    if (interactions_.input_boundary_revision() != revision) {
+        changed = true;
+        if (superseded) {
+            continue;
+        }
+        focus_.synchronize();
+        if (interactions_.input_boundary_revision() != revision) {
+            continue;
+        }
+        const auto participants = participants_;
+        const auto registration = participant_registration_revision_;
+        for (auto* participant : participants) {
+            if (std::ranges::find(participants_, participant) != participants_.end()) {
+                participant->on_input_boundary_changed();
+            }
+            if (interactions_.input_boundary_revision() != revision ||
+                participant_registration_revision_ != registration) {
+                superseded = true;
+                break;
+            }
+        }
+        if (superseded) {
+            continue;
+        }
+        focus_.synchronize();
+        if (interactions_.input_boundary_revision() != revision) {
+            continue;
+        }
+        reconciled_input_boundary_revision_ = revision;
         return true;
     }
-    const auto participants = participants_;
-    for (auto* participant : participants) {
-        if (std::find(participants_.begin(), participants_.end(), participant) != participants_.end()) {
-            participant->on_input_boundary_changed();
-            if (interactions_.input_boundary_revision() != revision) {
-                return true;
-            }
-        }
-    }
-    focus_.synchronize();
-    return true;
+    throw std::logic_error("Input constraint callbacks did not converge within 32 publications");
 }
 
 void WindowComponentServices::mount(const Content& content) {
@@ -586,6 +707,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
         }
     } guard{synchronizing_layout_};
 
+    reconcile_input_boundary();
     responsive_layout_->set_window_width(viewport.width);
     auto& text_scene = text_.scene_service();
     for (auto* participant : participants_) {

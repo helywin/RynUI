@@ -3,6 +3,7 @@
 #include "runtime/component_host.hpp"
 #include "runtime/geometry.hpp"
 #include "runtime/node_store.hpp"
+#include "input/input_constraints.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -113,11 +114,34 @@ public:
     [[nodiscard]] std::optional<runtime::ComponentId> input_boundary() const;
     [[nodiscard]] std::uint64_t input_boundary_revision() const;
     [[nodiscard]] bool component_active(runtime::ComponentId component) const;
+    [[nodiscard]] bool component_lifetime_active(runtime::ComponentId component) const;
+    [[nodiscard]] InputRootRef input_root(runtime::ComponentId);
+    [[nodiscard]] InputConstraintLease create_input_constraint(const InputRootRef&, InputConstraintKind);
+    [[nodiscard]] InputConstraintAuthority input_authority(const InputConstraintLease&) const;
+    [[nodiscard]] InputCompanionLease create_input_companion(const InputConstraintAuthority&, const InputRootRef&,
+                                                             std::span<const InputRootRef> controls);
+    [[nodiscard]] InputConstraintBatch begin_input_constraint_update();
+    bool publish_input_constraints(InputConstraintBatch&);
+    [[nodiscard]] bool owns_input_root(const InputRootRef&) const;
+    [[nodiscard]] std::function<void()> input_owner_cleanup(const InputRootRef&) const;
+    bool release_input_constraint(InputConstraintLease&) noexcept;
+    bool release_input_companion(InputCompanionLease&) noexcept;
+    [[nodiscard]] bool has_input_confinement() const;
+    [[nodiscard]] bool consumes_unhandled_scroll() const;
+    // Maintains an allowed descendant without granting input to its ancestors/siblings.
+    [[nodiscard]] bool subtree_intersects_input_domain(runtime::ComponentId,
+                                                       const InputConstraintLease* excluding = nullptr) const;
+    [[nodiscard]] InputConstraintDiagnostics input_constraint_diagnostics() const;
+    // Compatibility inspection of the selected Modal domain. It grants no input;
+    // composite qualification always uses the full owned-constraint predicate.
+    [[nodiscard]] bool is_boundary_authority(const InputConstraintAuthority&) const;
     [[nodiscard]] bool is_owner_thread() const noexcept;
     [[nodiscard]] std::size_t size() const;
     [[nodiscard]] std::span<const InteractionId> declaration_order() const;
 
 private:
+    friend class InputConstraintBatch;
+
     struct Slot final {
         std::optional<InteractionRecord> record;
         std::uint32_t generation{1};
@@ -131,6 +155,9 @@ private:
     [[nodiscard]] InteractionRecord* find_slot_record(InteractionId id) noexcept;
     [[nodiscard]] const InteractionRecord* find_slot_record(InteractionId id) const noexcept;
     [[nodiscard]] bool associations_are_live(const InteractionRecord& record) const;
+    [[nodiscard]] bool owned_input_active(runtime::ComponentId, const InputConstraintLease* = nullptr) const;
+    [[nodiscard]] bool component_active_impl(runtime::ComponentId, const InputConstraintLease*) const;
+    [[nodiscard]] bool component_scope_active(runtime::ComponentId) const;
     [[nodiscard]] std::uint32_t acquire_slot();
     static void advance_generation(Slot& slot) noexcept;
 
@@ -145,6 +172,8 @@ private:
     std::optional<runtime::ComponentId> input_boundary_;
     std::vector<runtime::ComponentId> blocked_roots_;
     std::uint64_t input_boundary_revision_{};
+    std::shared_ptr<InputConstraintState> constraints_;
+    InputConstraintAuthority boundary_authority_;
 };
 
 struct HitTestPaintEntry final {

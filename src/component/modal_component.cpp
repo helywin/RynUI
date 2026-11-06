@@ -6,10 +6,78 @@
 #include "runtime/prop_connection.hpp"
 #include <ryn/icon.hpp>
 #include <algorithm>
+#include <thread>
+#include <utility>
 #include <cmath>
 #include <limits>
 
 namespace ryn::detail {
+struct ModalInputCompanionLifetime final {
+    ModalComponentHost* host{};
+    std::thread::id owner{std::this_thread::get_id()};
+};
+
+struct ModalInputCompanionState final {
+    std::weak_ptr<ModalInputCompanionLifetime> lifetime;
+    input::InputRootRef owner;
+    std::vector<input::InputRootRef> controls;
+    input::InputCompanionLease lease;
+    input::InputConstraintAuthority authority;
+    bool registered{true};
+    bool enabled{};
+};
+
+bool ModalInputCompanion::bound() const {
+    if (!state_) {
+        return false;
+    }
+    const auto life = state_->lifetime.lock();
+    if (!life) {
+        return false;
+    }
+    if (life->owner != std::this_thread::get_id()) {
+        throw std::logic_error("Modal companion requires its owner thread");
+    }
+    return life->host && state_->registered && state_->owner.valid();
+}
+
+std::optional<std::uint64_t> ModalInputCompanion::stack_order() const {
+    if (!bound() || !state_->enabled) {
+        return {};
+    }
+    return state_->lifetime.lock()->host->input_context_order();
+}
+
+bool ModalInputCompanion::set_active(bool enabled) {
+    return update(enabled, {});
+}
+
+bool ModalInputCompanion::update(bool enabled, std::span<const input::InputConstraintUpdate> changes) {
+    if (!bound()) {
+        return false;
+    }
+    return state_->lifetime.lock()->host->update_companion(*state_, enabled, changes);
+}
+
+bool ModalInputCompanion::release() noexcept {
+    if (!state_) {
+        return false;
+    }
+    const auto life = state_->lifetime.lock();
+    if (life && life->owner != std::this_thread::get_id()) {
+        return false;
+    }
+    if (!std::exchange(state_->registered, false)) {
+        return false;
+    }
+    state_->enabled = false;
+    static_cast<void>(state_->lease.release());
+    if (life && life->host) {
+        life->host->retire_companion(state_.get());
+    }
+    return true;
+}
+
 namespace {
 thread_local ModalComponentHost* active_modals{};
 
@@ -161,11 +229,14 @@ bool inside(runtime::Rect rect, float x, float y) {
 }
 } // namespace
 
-ModalComponentHost::ModalComponentHost(WindowComponentServices& services) : services_(&services) {
+ModalComponentHost::ModalComponentHost(WindowComponentServices& services)
+    : services_(&services), input_lifetime_(std::make_shared<ModalInputCompanionLifetime>()) {
+    input_lifetime_->host = this;
     services.attach(*this);
 }
 
 ModalComponentHost::~ModalComponentHost() {
+    input_lifetime_->host = nullptr;
     services_->detach(*this);
 }
 
@@ -193,6 +264,14 @@ ModalSnapshot ModalComponentHost::snapshot(runtime::ComponentId id) const {
 }
 
 void ModalComponentHost::on_dispose() noexcept {
+    for (auto& companion : input_companions_) {
+        companion->registered = false;
+        static_cast<void>(companion->lease.release());
+    }
+    input_companions_.clear();
+    static_cast<void>(input_lease_.release());
+    input_authority_ = {};
+    input_domain_.reset();
     mounted_.clear();
     stack_.clear();
     confinement_dirty_ = false;
@@ -221,7 +300,11 @@ void ModalComponentHost::on_destroy() noexcept {
         confinement_dirty_ = true;
         // No user callbacks in this noexcept cleanup. Window services reconcile
         // pointer/focus state after every host has retired its resources.
-        services_->interactions().set_input_boundary(confinement_root());
+        try {
+            update_input_confinement(true);
+        } catch (...) {
+            confinement_dirty_ = true;
+        }
     }
 }
 
@@ -310,8 +393,8 @@ void ModalComponentHost::reconcile() {
                 s->revealed_caret_byte.reset();
                 if (*change) {
                     s->trigger = services_->focus().state().focused;
-                    stack_.push_back({id, s->snapshot.overlay, s->trigger, s->restore});
-                    services_->components().set_window_layer_stack(s->snapshot.overlay, ++next_order_);
+                    stack_.push_back({id, s->snapshot.overlay, s->trigger, s->restore, ++next_order_});
+                    services_->components().set_window_layer_stack(s->snapshot.overlay, next_order_);
                 } else {
                     if (s->restore && s->trigger && restorable(*services_, *s->trigger, {})) {
                         closed_restore = s->trigger;
@@ -343,7 +426,7 @@ void ModalComponentHost::reconcile() {
             }
             if (top_changed || confinement_dirty_) {
                 confinement_dirty_ = false;
-                services_->set_input_boundary(confinement_root());
+                update_input_confinement(false);
             }
             on_input_boundary_changed();
         } while (reconcile_again_);
@@ -355,17 +438,231 @@ void ModalComponentHost::reconcile() {
 }
 
 std::optional<runtime::ComponentId> ModalComponentHost::confinement_root() const noexcept {
-    // A non-trapping preview cannot release another still-open modal's boundary.
+    std::optional<runtime::ComponentId> top;
     for (auto entry = stack_.rbegin(); entry != stack_.rend(); ++entry) {
-        const auto* state = services_->components().state<ModalState>(entry->owner);
-        if (state && state->focus_trap) {
-            const auto top = stack_.back().overlay;
-            // Sibling dialogs have no shared modal subtree; confine to the top layer
-            // rather than exposing the window or blocking that layer behind a sibling.
-            return descendant(*services_, top, entry->overlay) ? entry->overlay : top;
+        const auto* s = services_->components().state<ModalState>(entry->owner);
+        if (s && services_->components().scope(entry->owner).active() && s->model.visible()) {
+            top = entry->overlay;
+            break;
+        }
+    }
+    if (!top) {
+        return {};
+    }
+    for (auto entry = stack_.rbegin(); entry != stack_.rend(); ++entry) {
+        const auto* s = services_->components().state<ModalState>(entry->owner);
+        if (s && services_->components().scope(entry->owner).active() && s->model.visible() && s->focus_trap) {
+            return descendant(*services_, *top, entry->overlay) ? entry->overlay : *top;
         }
     }
     return {};
+}
+
+std::optional<runtime::ComponentId> ModalComponentHost::effective_input_domain() const noexcept {
+    return confinement_root();
+}
+
+std::optional<std::uint64_t> ModalComponentHost::input_context_order() const noexcept {
+    for (auto entry = stack_.rbegin(); entry != stack_.rend(); ++entry) {
+        const auto* s = services_->components().state<ModalState>(entry->owner);
+        if (s && services_->components().scope(entry->owner).active() && s->model.visible()) {
+            return entry->order;
+        }
+    }
+    return {};
+}
+
+void ModalComponentHost::retire_companion(ModalInputCompanionState* state) noexcept {
+    std::erase_if(input_companions_, [state](const auto& entry) { return entry.get() == state; });
+}
+
+ModalInputCompanion ModalComponentHost::register_tour_controls(input::InputRootRef owner,
+                                                               std::vector<input::InputRootRef> controls, bool active) {
+    if (!services_->interactions().owns_input_root(owner) || controls.empty() || controls.size() > 128) {
+        throw std::invalid_argument("Tour companion requires its exact window owner and bounded controls");
+    }
+    for (const auto& root : controls) {
+        if (!services_->interactions().owns_input_root(root) ||
+            !descendant(*services_, root.component(), owner.component())) {
+            throw std::invalid_argument("Tour controls must belong to their registered owner");
+        }
+    }
+    ModalInputCompanion result;
+    result.state_ = std::make_shared<ModalInputCompanionState>();
+    result.state_->lifetime = input_lifetime_;
+    result.state_->owner = owner;
+    result.state_->controls = std::move(controls);
+    result.state_->enabled = active;
+    input_companions_.push_back(result.state_);
+    try {
+        services_->components().scope(owner.component()).on_cleanup([result]() mutable {
+            static_cast<void>(result.release());
+        });
+        if (active) {
+            update_input_confinement(false);
+        }
+    } catch (...) {
+        static_cast<void>(result.release());
+        throw;
+    }
+    return result;
+}
+
+bool ModalComponentHost::update_companion(ModalInputCompanionState& entry, bool enabled,
+                                          std::span<const input::InputConstraintUpdate> changes) {
+    if (!entry.registered || !entry.owner.valid()) {
+        return false;
+    }
+    for (const auto& change : changes) {
+        if (change.lease.owner() != entry.owner) {
+            throw std::invalid_argument("Tour transaction may change only its own leases");
+        }
+    }
+    // Settle any pending Modal stack change quietly before preparing the Tour
+    // edit. The Tour restriction and its companion then publish in one batch.
+    update_input_confinement(true);
+    bool permitted = input_domain_ && enabled;
+    for (const auto& root : entry.controls) {
+        permitted =
+            permitted && root.valid() && (!input_domain_ || !descendant(*services_, *input_domain_, root.component()));
+    }
+    const bool reuse = permitted && entry.lease.valid() && entry.authority == input_authority_;
+    if (entry.enabled == enabled && changes.empty() && (reuse || (!permitted && !entry.lease.valid()))) {
+        return false;
+    }
+    input::InputCompanionLease grant = reuse ? entry.lease : input::InputCompanionLease{};
+    bool acquired = false;
+    bool published = false;
+    try {
+        if (permitted && !reuse) {
+            grant = services_->create_input_companion(input_authority_, entry.owner, entry.controls);
+            acquired = true;
+        }
+        auto batch = services_->interactions().begin_input_constraint_update();
+        for (const auto& change : changes) {
+            if (change.spec) {
+                batch.replace(change.lease, *change.spec);
+            } else {
+                batch.deactivate(change.lease);
+            }
+        }
+        if (!reuse && entry.lease.valid()) {
+            batch.enable(entry.lease, false);
+        }
+        if (grant.valid()) {
+            batch.enable(grant);
+        }
+        const bool changed = services_->interactions().publish_input_constraints(batch);
+        published = true;
+        auto old = entry.lease;
+        entry.lease = grant;
+        entry.authority = input_authority_;
+        entry.enabled = enabled;
+        if (!reuse) {
+            static_cast<void>(old.release());
+        }
+        return services_->synchronize_input_constraints() || changed;
+    } catch (...) {
+        if (acquired && !published) {
+            static_cast<void>(grant.release());
+        }
+        throw;
+    }
+}
+
+void ModalComponentHost::update_input_confinement(bool quiet) {
+    const auto next_domain = confinement_root();
+    const bool boundary_changed = next_domain != input_domain_ || (next_domain && !input_lease_.valid());
+    auto next_lease = input_lease_;
+    auto next_authority = input_authority_;
+    std::vector<std::pair<std::shared_ptr<ModalInputCompanionState>, input::InputCompanionLease>> changes;
+    std::vector<input::InputCompanionLease> acquired;
+    bool acquired_boundary = false;
+    bool published = false;
+    changes.reserve(input_companions_.size());
+    acquired.reserve(input_companions_.size());
+    try {
+        if (boundary_changed) {
+            if (next_domain) {
+                next_lease = services_->create_input_constraint(services_->interactions().input_root(*next_domain),
+                                                                input::InputConstraintKind::RestrictToSubtrees);
+                acquired_boundary = true;
+                next_authority = services_->interactions().input_authority(next_lease);
+            } else {
+                next_lease = {};
+                next_authority = {};
+            }
+        }
+        for (const auto& entry : input_companions_) {
+            bool permitted = next_domain && entry->registered && entry->enabled && entry->owner.valid();
+            for (const auto& root : entry->controls) {
+                permitted = permitted && root.valid() &&
+                            (!next_domain || !descendant(*services_, *next_domain, root.component()));
+            }
+            if (permitted && entry->lease.valid() && entry->authority == next_authority) {
+                continue;
+            }
+            if (!permitted && !entry->lease.valid()) {
+                continue;
+            }
+            input::InputCompanionLease grant;
+            if (permitted) {
+                grant = services_->create_input_companion(next_authority, entry->owner, entry->controls);
+                acquired.push_back(grant);
+            }
+            changes.emplace_back(entry, grant);
+        }
+        if (!boundary_changed && changes.empty()) {
+            return;
+        }
+        auto batch = services_->interactions().begin_input_constraint_update();
+        if (boundary_changed) {
+            if (input_lease_.valid()) {
+                batch.deactivate(input_lease_);
+            }
+            if (next_domain) {
+                batch.replace(next_lease, {{services_->interactions().input_root(*next_domain)}, true});
+            }
+            batch.boundary_view(next_domain ? std::optional{next_authority} : std::nullopt);
+        }
+        for (const auto& [entry, grant] : changes) {
+            if (entry->lease.valid()) {
+                batch.enable(entry->lease, false);
+            }
+            if (grant.valid()) {
+                batch.enable(grant);
+            }
+        }
+        static_cast<void>(services_->interactions().publish_input_constraints(batch));
+        published = true;
+        auto old_lease = input_lease_;
+        input_lease_ = next_lease;
+        input_authority_ = next_authority;
+        input_domain_ = next_domain;
+        for (const auto& [entry, grant] : changes) {
+            auto old = entry->lease;
+            entry->lease = grant;
+            entry->authority = next_authority;
+            static_cast<void>(old.release());
+        }
+        if (boundary_changed) {
+            static_cast<void>(old_lease.release());
+        }
+        if (!quiet) {
+            static_cast<void>(services_->synchronize_input_constraints());
+        }
+    } catch (...) {
+        confinement_dirty_ = true;
+        if (!published) {
+            for (auto grant : acquired) {
+                static_cast<void>(grant.release());
+            }
+            if (acquired_boundary) {
+                static_cast<void>(next_lease.release());
+            }
+        }
+        throw;
+    }
 }
 
 void ModalComponentHost::focus_top() {
@@ -374,8 +671,18 @@ void ModalComponentHost::focus_top() {
         return;
     }
     const auto top = stack_.empty() ? std::optional<Entry>{} : stack_.back();
-    if (services.interactions().input_boundary() != confinement_root()) {
+    if ((input_domain_ && !services.interactions().is_boundary_authority(input_authority_)) ||
+        (!input_domain_ && services.interactions().has_input_confinement())) {
         return;
+    }
+    if (const auto focused = services.focus().state().focused;
+        focused && services.interactions().branch_active(*focused)) {
+        const auto* record = services.interactions().find(*focused);
+        if (record && top && !descendant(services, record->component, top->overlay)) {
+            restore_target_.reset();
+            focus_pending_ = false;
+            return;
+        }
     }
     if (restore_target_ && can_focus(services, *restore_target_)) {
         const auto target = *restore_target_;
@@ -420,6 +727,9 @@ void ModalComponentHost::focus_top() {
 }
 
 void ModalComponentHost::on_input_boundary_changed() {
+    if (!reconciling_ && !mounting_) {
+        reconcile();
+    }
     for (auto id : mounted_) {
         const auto* s = services_->components().state<ModalState>(id);
         if (!s || !s->ready || !s->model.visible()) {
@@ -1275,7 +1585,8 @@ bool ModalComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
     while (layer && !services_->components().is_window_layer_root(*layer)) {
         layer = services_->components().parent(*layer);
     }
-    if (!s || !layer || *layer != s->snapshot.overlay) {
+    if (!s || !layer || *layer != s->snapshot.overlay ||
+        !services_->interactions().component_active(s->snapshot.overlay)) {
         return false;
     }
     if (inside(s->snapshot.body_bounds, event.x, event.y)) {

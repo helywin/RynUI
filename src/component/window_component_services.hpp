@@ -191,6 +191,15 @@ public:
     }
 
     bool set_input_boundary(std::optional<runtime::ComponentId> root);
+    [[nodiscard]] input::InputConstraintLease create_input_constraint(const input::InputRootRef&,
+                                                                      input::InputConstraintKind);
+    [[nodiscard]] input::InputCompanionLease create_input_companion(const input::InputConstraintAuthority&,
+                                                                    const input::InputRootRef&,
+                                                                    std::span<const input::InputRootRef> controls);
+    bool publish_input_constraints(input::InputConstraintBatch&);
+    bool synchronize_input_constraints();
+    bool release_input_constraint(input::InputConstraintLease&);
+    bool release_input_companion(input::InputCompanionLease&);
     bool set_input_blocked(runtime::ComponentId root, bool blocked);
     void request_frame() noexcept;
     [[nodiscard]] std::uint64_t frame_request_revision() const noexcept;
@@ -527,8 +536,11 @@ public:
 
 private:
     bool retiring_failed_component_{};
+    void ensure_input_owner_cleanup(const input::InputRootRef&);
+    std::vector<input::InputRootRef> input_constraint_owners_;
     bool reconcile_input_boundary();
     std::uint64_t reconciled_input_boundary_revision_{};
+    bool reconciling_input_boundary_{};
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
     runtime::DirtyQueues* dirty_;
@@ -544,6 +556,8 @@ private:
     animation::AnimationTime animation_time_;
     animation::MotionPreference motion_preference_{animation::MotionPreference::normal};
     std::vector<WindowComponentParticipant*> participants_;
+    // Retire a callback pass if detach/attach reuses a participant address.
+    std::uint64_t participant_registration_revision_{};
     std::vector<std::pair<runtime::ComponentId, std::function<void()>>> retained_translation_work_;
     bool collecting_retained_translations_{};
     std::vector<WindowComponentParticipant*> pointer_participants_scratch_;

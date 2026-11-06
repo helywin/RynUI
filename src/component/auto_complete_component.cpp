@@ -1967,7 +1967,8 @@ bool AutoCompleteComponentHost::on_scroll_input(const input::ScrollInputEvent& e
     const auto owner = layer(*services_, record->component);
     for (auto id : mounted_) {
         auto* s = checked(*services_, id);
-        if (!s || !s->visible || owner != std::optional{s->popup} || !inside(s->clip, event.x, event.y)) {
+        if (!s || !s->visible || !services_->interactions().component_active(s->popup) ||
+            owner != std::optional{s->popup} || !inside(s->clip, event.x, event.y)) {
             continue;
         }
         const auto& t = services_->components().theme_scope(id)->snapshot().auto_complete();

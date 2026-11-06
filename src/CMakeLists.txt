@@ -172,6 +172,7 @@ target_link_libraries(rynui_motion PRIVATE
 add_library(rynui_interaction STATIC
     input/focus_manager.cpp
     input/interaction_registry.cpp
+    input/input_constraints.cpp
     input/pointer_router.cpp
 )
 rynui_configure_cpp_target(rynui_interaction)

@@ -5,6 +5,14 @@
 
 namespace ryn::input {
 
+// Window-owned admission only. Implementations perform an exact editor-generation
+// lookup and read native input eligibility; they never invoke application code.
+class TextInputAdmission {
+public:
+    virtual ~TextInputAdmission() = default;
+    [[nodiscard]] virtual bool permits(TextInputOwnerId) const noexcept = 0;
+};
+
 struct TextInputSessionDiagnostics {
     std::uint64_t starts{};
     std::uint64_t stops{};
@@ -24,6 +32,7 @@ public:
     bool blur();
     bool set_window_active(bool);
     bool synchronize();
+    void bind_admission(const TextInputAdmission*);
     bool cancel_composition();
     bool set_input_area(const TextInputAreaGeometry&);
     [[nodiscard]] TextEditResult dispatch(const TextCommitted&);
@@ -40,6 +49,7 @@ private:
     TextEditorState* recipient(TextInputSessionStamp);
     TextEditorStore* store_;
     TextInputPlatform* platform_;
+    const TextInputAdmission* admission_{};
     TextInputOwnerId focused_;
     TextInputSessionStamp active_;
     TextInputProperties properties_;

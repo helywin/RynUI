@@ -435,7 +435,9 @@ bool PointerRouter::invoke_handler(PointerState& state, PointerDispatchContext& 
         return context.propagation_stopped_;
     }
     const bool cleanup_event = context.kind_ == PointerEventKind::cancel || context.kind_ == PointerEventKind::leave;
-    if ((!record->eligible || !registry_->branch_active(current)) && !cleanup_event) {
+    if ((!registry_->component_lifetime_active(record->component) || !record->eligible ||
+         !registry_->branch_active(current)) &&
+        !cleanup_event) {
         ++diagnostics_.stale_skips;
         prune_invalid_state(state);
         return context.propagation_stopped_;

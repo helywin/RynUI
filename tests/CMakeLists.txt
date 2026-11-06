@@ -1,3 +1,13 @@
+add_executable(rynui_input_constraint_tests input_constraint_tests.cpp)
+rynui_configure_cpp_target(rynui_input_constraint_tests)
+target_link_libraries(rynui_input_constraint_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_input_constraint_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS ownership algebra lifetime text callback modal hot rollback scope routes child_modal wheel participant focus_ticket)
+    add_test(NAME rynui.input_constraint_${case} COMMAND rynui_input_constraint_tests ${case})
+endforeach()
+
 add_library(rynui_qrcode_public_api_compile OBJECT qrcode_public_api_compile.cpp)
 rynui_configure_cpp_target(rynui_qrcode_public_api_compile)
 target_link_libraries(rynui_qrcode_public_api_compile PRIVATE rynui_components)

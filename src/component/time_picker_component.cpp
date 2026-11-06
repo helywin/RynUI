@@ -1323,7 +1323,8 @@ bool TimePickerComponentHost::on_scroll_input(const input::ScrollInputEvent& eve
     const auto layer = nearest_layer(*services_, target->component);
     for (auto id : mounted_) {
         auto* s = services_->components().state<TimePickerState>(id);
-        if (!s || !s->view.visible || layer != s->view.popup) {
+        if (!s || !s->view.visible || !services_->interactions().component_active(s->view.popup) ||
+            layer != s->view.popup) {
             continue;
         }
         for (int column = 0; column < 5; ++column) {

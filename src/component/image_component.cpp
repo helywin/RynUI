@@ -577,16 +577,7 @@ void ImageComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             }
         }
     }
-    bool descendant_boundary = false;
-    for (auto boundary = services_->interactions().input_boundary();
-         boundary && services_->components().contains(*boundary);
-         boundary = services_->components().parent(*boundary)) {
-        if (*boundary == id) {
-            descendant_boundary = true;
-            break;
-        }
-    }
-    s->suspended = !services_->interactions().component_active(id) && !descendant_boundary;
+    s->suspended = !services_->interactions().subtree_intersects_input_domain(id);
     const bool eligible =
         shown && !s->disabled && !s->suspended && s->geometry_available && active_ && s->options.enabled && ready;
     if (s->view.interaction.valid()) {

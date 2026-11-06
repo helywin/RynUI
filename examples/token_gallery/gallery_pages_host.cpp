@@ -1623,7 +1623,7 @@ void GalleryPagesHost::Impl::place_bars() {
 }
 
 bool GalleryPagesHost::Impl::pointer(const input::PointerInputEvent& event) {
-    const bool boundary = services.interactions().input_boundary().has_value();
+    const bool boundary = services.interactions().has_input_confinement();
     if (!boundary) {
         const auto previous_navigation = navigation_bar.visual_state();
         const auto previous_document = document_bar.visual_state();
@@ -1662,7 +1662,7 @@ bool GalleryPagesHost::Impl::scroll(const input::ScrollInputEvent& event) {
         ++work.component_wheels;
         return true;
     }
-    if (services.interactions().input_boundary()) {
+    if (services.interactions().has_input_confinement()) {
         return true;
     }
     const float delta = -48 * (event.delta_y != 0 ? event.delta_y : event.delta_x);
@@ -1699,8 +1699,8 @@ bool GalleryPagesHost::Impl::keyboard(const input::KeyboardInputEvent& event) {
     const auto session = inputs.sessions().active();
     const auto* editor = inputs.editors().find(session.owner);
     if (event.key == input::Key::k && input::has_modifier(event.modifiers, input::KeyModifier::control) &&
-        !input::has_modifier(event.modifiers, input::KeyModifier::alt) && !services.interactions().input_boundary() &&
-        (!editor || !editor->composition().active)) {
+        !input::has_modifier(event.modifiers, input::KeyModifier::alt) &&
+        !services.interactions().has_input_confinement() && (!editor || !editor->composition().active)) {
         if (event.action == input::KeyAction::down && !event.repeat) {
             focus_search();
         }
@@ -1714,7 +1714,7 @@ bool GalleryPagesHost::Impl::keyboard(const input::KeyboardInputEvent& event) {
     const bool editor_focus = record && std::ranges::any_of(inputs.mounted_inputs(), [record](const auto& item) {
                                   return item.component == record->component;
                               });
-    if (event.action == input::KeyAction::down && !editor_focus && !services.interactions().input_boundary() &&
+    if (event.action == input::KeyAction::down && !editor_focus && !services.interactions().has_input_confinement() &&
         (page_focus || !record)) {
         bool changed = false;
         switch (event.key) {
@@ -1747,7 +1747,7 @@ bool GalleryPagesHost::Impl::keyboard(const input::KeyboardInputEvent& event) {
 bool GalleryPagesHost::Impl::reveal_focus() {
     const auto focused = app.focus().state().focused;
     const auto* record = focused ? services.interactions().find(*focused) : nullptr;
-    if (!record || services.interactions().input_boundary()) {
+    if (!record || services.interactions().has_input_confinement()) {
         return false;
     }
     const auto& node = app.nodes().require(record->node);
@@ -1809,7 +1809,7 @@ bool GalleryPagesHost::Impl::dispatch(const input::PlatformInputEvent& event) {
         },
         event);
     // No component callback remains on the stack at this safe boundary.
-    if (services.interactions().input_boundary()) {
+    if (services.interactions().has_input_confinement()) {
         const bool navigation_reset = navigation_bar.reset();
         const bool document_reset = document_bar.reset();
         if (navigation_reset || document_reset) {

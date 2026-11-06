@@ -740,12 +740,23 @@ void FloatButtonComponentHost::on_input_boundary_changed() {
         if (!s) {
             continue;
         }
-        const auto parent = services_->components().parent(id);
-        const auto boundary = services_->interactions().input_boundary();
-        const bool external_active = (!parent || services_->interactions().component_active(*parent)) &&
-                                     (!boundary || descendant(*services_, id, *boundary));
-        if (!external_active || s->disabled.get()) {
+        const bool maintained = services_->interactions().subtree_intersects_input_domain(id);
+        if (!maintained || s->disabled.get()) {
             stop(id);
+        } else if (!services_->interactions().component_active(id)) {
+            // A permitted child popup/target can outlive its non-receiving host.
+            // End only the host gesture; never cancel an allowed child's capture.
+            auto* state = services_->components().state<FloatState>(id);
+            const auto capture = std::exchange(state->capture, {});
+            state->hovered = false;
+            state->started.reset();
+            state->press = false;
+            state->dragged = false;
+            state->view.dragging = false;
+            state->view.animating = false;
+            if (capture && !services_->interactions().branch_active(*capture)) {
+                services_->pointer().cancel_pointer_interaction(*capture);
+            }
         }
     }
 }

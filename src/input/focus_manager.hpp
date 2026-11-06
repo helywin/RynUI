@@ -55,6 +55,9 @@ public:
     // Queue transfers requested by activation/blur handlers; generation and
     // eligibility are checked after the enclosing dispatch has finished.
     void defer_focus(std::optional<InteractionId> target, FocusModality modality);
+    // Restore tickets never replace a newer explicit/deferred focus intent.
+    [[nodiscard]] std::uint64_t focus_request_revision() const;
+    bool defer_focus_if_current(std::uint64_t ticket, std::optional<InteractionId>, FocusModality);
     void set_window_active(bool active);
     void synchronize();
     void cancel_interaction(InteractionId interaction, bool notify = true);
@@ -76,6 +79,7 @@ private:
     void activate(InteractionId target);
     void notify_state(InteractionId target, FocusPresentation presentation);
     void request_frame() noexcept;
+    void advance_focus_request();
     [[nodiscard]] FocusPresentation presentation_for(InteractionId target) const noexcept;
 
     InteractionRegistry* registry_;
@@ -99,6 +103,7 @@ private:
     std::function<bool(const KeyboardInputEvent&)> command_filter_;
     std::function<void()> observer_;
     std::optional<InteractionId> observed_focus_;
+    std::uint64_t focus_request_revision_{};
 };
 
 } // namespace ryn::input

@@ -4,6 +4,23 @@
 #include <ryn/drawer.hpp>
 
 namespace ryn::detail {
+struct ModalInputCompanionState;
+struct ModalInputCompanionLifetime;
+
+class ModalInputCompanion final {
+public:
+    ModalInputCompanion() = default;
+    [[nodiscard]] bool bound() const;
+    [[nodiscard]] std::optional<std::uint64_t> stack_order() const;
+    bool set_active(bool);
+    bool update(bool, std::span<const input::InputConstraintUpdate>);
+    bool release() noexcept;
+
+private:
+    friend class ModalComponentHost;
+    std::shared_ptr<ModalInputCompanionState> state_;
+};
+
 struct ModalSnapshot final {
     runtime::ComponentId overlay;
     runtime::ComponentId dialog;
@@ -29,6 +46,11 @@ public:
     ~ModalComponentHost();
     void mount(const ModalProps&, const ModalContent&, const ModalSlots&);
     void mount(const DrawerProps&, const DrawerContent&, const DrawerSlots&);
+    // Internal Tour protocol: authorize only registered controls owned by this
+    // exact grantee, never its external target or a common window ancestor.
+    [[nodiscard]] ModalInputCompanion
+    register_tour_controls(input::InputRootRef owner, std::vector<input::InputRootRef> controls, bool active = false);
+    [[nodiscard]] std::optional<runtime::ComponentId> effective_input_domain() const noexcept;
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;
@@ -54,11 +76,18 @@ public:
     bool synchronize_auxiliary_fragments() override;
 
 private:
+    friend class ModalInputCompanion;
+    void update_input_confinement(bool quiet);
+    void retire_companion(ModalInputCompanionState*) noexcept;
+    bool update_companion(ModalInputCompanionState&, bool, std::span<const input::InputConstraintUpdate>);
+    [[nodiscard]] std::optional<std::uint64_t> input_context_order() const noexcept;
+
     struct Entry final {
         runtime::ComponentId owner;
         runtime::ComponentId overlay;
         std::optional<input::InteractionId> trigger;
         bool restore{};
+        std::uint64_t order{};
     };
 
     struct Transition final {
@@ -82,6 +111,12 @@ private:
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     std::vector<Entry> stack_;
+    std::shared_ptr<ModalInputCompanionLifetime> input_lifetime_;
+    std::vector<std::shared_ptr<ModalInputCompanionState>> input_companions_;
+    input::InputConstraintLease input_lease_;
+    input::InputConstraintAuthority input_authority_;
+    std::optional<runtime::ComponentId> input_domain_;
+
     std::vector<Transition> transitions_;
     std::uint64_t next_order_{};
     bool mounting_{};

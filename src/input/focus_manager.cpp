@@ -1,6 +1,7 @@
 #include "input/focus_manager.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 namespace ryn::input {
@@ -156,6 +157,7 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
 bool FocusManager::focus_from_pointer(std::optional<InteractionId> target) {
     begin_operation();
     try {
+        advance_focus_request();
         ++diagnostics_.pointer_focus_requests;
         sanitize_internal();
         static_cast<void>(cancel_keyboard_press_internal(true));
@@ -181,6 +183,7 @@ void FocusManager::set_observer(std::function<void()> observer) {
 bool FocusManager::request_focus(InteractionId target, FocusModality modality) {
     begin_operation();
     try {
+        advance_focus_request();
         sanitize_internal();
         const bool changed = window_active_ && can_focus(target) ? set_focus_internal(target, modality) : false;
         sanitize_internal();
@@ -196,6 +199,7 @@ void FocusManager::defer_focus(std::optional<InteractionId> target, FocusModalit
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("FocusManager can only be used on its owner thread");
     }
+    advance_focus_request();
     pending_focus_ = FocusRequest{target, modality};
     if (!dispatching_ && !flushing_focus_) {
         end_operation();
@@ -205,6 +209,7 @@ void FocusManager::defer_focus(std::optional<InteractionId> target, FocusModalit
 bool FocusManager::clear_focus() {
     begin_operation();
     try {
+        advance_focus_request();
         const bool changed = clear_focus_internal(false);
         end_operation();
         return changed;
@@ -222,6 +227,7 @@ void FocusManager::set_window_active(bool active) {
             end_operation();
             return;
         }
+        advance_focus_request();
         window_active_ = active;
         if (!active) {
             const bool had_press = keyboard_press_.has_value();
@@ -511,7 +517,7 @@ void FocusManager::sanitize_internal() {
 }
 
 bool FocusManager::activation_permitted(InteractionId target) {
-    if (!window_active_ || focused_ != target) {
+    if (!window_active_ || focused_ != target || !registry_->branch_active(target)) {
         ++diagnostics_.activation_rejections;
         return false;
     }
@@ -527,7 +533,8 @@ bool FocusManager::activation_permitted(InteractionId target) {
         return false;
     }
     const auto* current = registry_->find(target);
-    if (current == nullptr || !current->eligible || !current->focusable || !window_active_ || focused_ != target) {
+    if (current == nullptr || !current->eligible || !current->focusable || !window_active_ || focused_ != target ||
+        !registry_->branch_active(target)) {
         ++diagnostics_.activation_rejections;
         return false;
     }
@@ -551,7 +558,8 @@ void FocusManager::activate(InteractionId target) {
 
 void FocusManager::notify_state(InteractionId target, FocusPresentation presentation) {
     const auto* record = registry_->find(target);
-    if (record == nullptr || record->focus_handlers == nullptr || !record->focus_handlers->state_changed) {
+    if (record == nullptr || !registry_->component_lifetime_active(record->component) ||
+        record->focus_handlers == nullptr || !record->focus_handlers->state_changed) {
         return;
     }
     const auto handlers = record->focus_handlers;
@@ -579,4 +587,32 @@ FocusPresentation FocusManager::presentation_for(InteractionId target) const noe
     };
 }
 
+} // namespace ryn::input
+
+namespace ryn::input {
+void FocusManager::advance_focus_request() {
+    if (focus_request_revision_ == std::numeric_limits<std::uint64_t>::max()) {
+        throw std::length_error("Focus request generation exhausted");
+    }
+    ++focus_request_revision_;
+}
+
+std::uint64_t FocusManager::focus_request_revision() const {
+    if (!registry_->is_owner_thread()) {
+        throw std::logic_error("Focus request query requires owner thread");
+    }
+    return focus_request_revision_;
+}
+
+bool FocusManager::defer_focus_if_current(std::uint64_t ticket, std::optional<InteractionId> target,
+                                          FocusModality modality) {
+    if (!registry_->is_owner_thread()) {
+        throw std::logic_error("Focus restore requires owner thread");
+    }
+    if (ticket != focus_request_revision_ || !window_active_ || (target && !can_focus(*target))) {
+        return false;
+    }
+    defer_focus(target, modality);
+    return true;
+}
 } // namespace ryn::input

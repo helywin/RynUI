@@ -312,11 +312,6 @@ bool InteractionRegistry::set_input_boundary(std::optional<runtime::ComponentId>
     return true;
 }
 
-std::optional<runtime::ComponentId> InteractionRegistry::input_boundary() const {
-    ensure_owner_thread();
-    return input_boundary_;
-}
-
 bool InteractionRegistry::set_input_blocked(runtime::ComponentId root, bool blocked) {
     ensure_owner_thread();
     const auto found = std::find(blocked_roots_.begin(), blocked_roots_.end(), root);
@@ -345,13 +340,28 @@ std::uint64_t InteractionRegistry::input_boundary_revision() const {
 
 bool InteractionRegistry::component_active(runtime::ComponentId component) const {
     ensure_owner_thread();
-    return components_->branch_active(component) &&
+    return component_active_impl(component, nullptr);
+}
+
+bool InteractionRegistry::component_active_impl(runtime::ComponentId component,
+                                                const InputConstraintLease* excluding) const {
+    return component_scope_active(component) && components_->branch_active(component) &&
            std::none_of(blocked_roots_.begin(), blocked_roots_.end(),
                         [&](auto root) {
                             return components_->contains(root) && component_is_same_or_ancestor(root, component);
                         }) &&
            (!input_boundary_ ||
-            (components_->contains(*input_boundary_) && component_is_same_or_ancestor(*input_boundary_, component)));
+            (components_->contains(*input_boundary_) && component_is_same_or_ancestor(*input_boundary_, component))) &&
+           owned_input_active(component, excluding);
+}
+
+bool InteractionRegistry::component_scope_active(runtime::ComponentId component) const {
+    for (auto current = std::optional{component}; current; current = components_->parent(*current)) {
+        if (!components_->contains(*current) || !components_->scope(*current).active()) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool InteractionRegistry::associations_are_live(const InteractionRecord& record) const {

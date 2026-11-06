@@ -618,6 +618,7 @@ struct InputPropsAccess {
                 if (owner.sessions_.active().owner == mounted.editor) {
                     static_cast<void>(owner.sessions_.blur());
                 }
+                owner.edit_services_->unbind_editor(mounted.editor);
                 static_cast<void>(owner.editors_.destroy(mounted.editor));
                 static_cast<void>(host.surfaces().destroy_content_range(current->selection_surface));
                 static_cast<void>(host.surfaces().destroy_content_range(current->overlay_surface));
@@ -655,6 +656,7 @@ struct InputPropsAccess {
         }
         state.mounted.interaction =
             host.interactions().create({component, state.mounted.node, parent, !disabled, true, {}});
+        owner.edit_services_->bind_editor(state.mounted.editor, component, state.mounted.interaction);
         input::InteractionHandlers pointer_handlers;
         pointer_handlers.target = [&owner, component](input::PointerDispatchContext& context) {
             if (auto* current = owner.host_->components().state<InputState>(component)) {
@@ -1648,6 +1650,9 @@ std::size_t InputComponentHost::tick_auxiliary(animation::AnimationTime now) {
     std::size_t changed{};
     const auto mounted_copy = mounted_;
     for (const auto& mounted : mounted_copy) {
+        if (!host_->interactions().component_active(mounted.component)) {
+            continue;
+        }
         if (auto* state = host_->components().state<InputState>(mounted.component); state && state->number) {
             const auto actions = state->number->actions;
             changed += tick_input_number_actions(*host_, actions, now);
@@ -2579,8 +2584,9 @@ const text::TextCaretMap& InputComponentHost::caret_map(runtime::ComponentId com
 bool InputComponentHost::set_caret_deadline(runtime::ComponentId component,
                                             std::optional<animation::AnimationTime> deadline) {
     auto* state = host_->components().state<InputState>(component);
-    if (!state || (deadline &&
-                   (!state->focused || state->disabled || state->read_only || !host_->focus().state().window_active))) {
+    if (!state ||
+        (deadline && (!state->focused || state->disabled || state->read_only || !host_->focus().state().window_active ||
+                      !host_->interactions().component_active(component)))) {
         return false;
     }
     return state->caret_blink.override_deadline(deadline);
@@ -2589,6 +2595,9 @@ bool InputComponentHost::set_caret_deadline(runtime::ComponentId component,
 std::optional<animation::AnimationTime> InputComponentHost::next_caret_deadline() const {
     std::optional<animation::AnimationTime> next;
     for (const auto& mounted : mounted_) {
+        if (!host_->interactions().component_active(mounted.component)) {
+            continue;
+        }
         const auto* state = host_->components().state<InputState>(mounted.component);
         auto candidate = state ? state->caret_blink.deadline() : std::nullopt;
         if (state && state->number) {

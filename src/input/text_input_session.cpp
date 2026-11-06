@@ -83,6 +83,10 @@ bool TextInputSessionHost::focus(TextInputOwnerId id, TextInputProperties proper
     if (!store_->find(id) || !valid_properties(properties)) {
         return false;
     }
+    if (admission_ && !admission_->permits(id)) {
+        static_cast<void>(synchronize_impl());
+        return false;
+    }
     if (focused_ != id) {
         requested_area_.reset();
     }
@@ -109,9 +113,16 @@ bool TextInputSessionHost::synchronize() {
     return synchronize_impl();
 }
 
+void TextInputSessionHost::bind_admission(const TextInputAdmission* admission) {
+    ensure_thread();
+    admission_ = admission;
+    static_cast<void>(synchronize_impl());
+}
+
 bool TextInputSessionHost::synchronize_impl() noexcept {
     auto* desired = store_->find(focused_);
-    const bool eligible = desired && window_active_ && !desired->disabled() && !desired->read_only();
+    const bool eligible = desired && window_active_ && !desired->disabled() && !desired->read_only() &&
+                          (!admission_ || admission_->permits(focused_));
     const bool unchanged =
         eligible && active_.valid() && active_.owner == focused_ && started_properties_ == properties_;
     if (active_.valid() && !unchanged) {

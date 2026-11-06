@@ -11,6 +11,13 @@ function(rynui_portable_test name source)
     add_test(NAME rynui.portable.${name} COMMAND rynui_portable_${name})
 endfunction()
 
+# Owned constraints change the central CPU routes; exercise their existing
+# allocation/lifetime/geometry fixtures in actual HEADLESS builds as well.
+foreach(input_constraint_contract IN ITEMS hit_test hit_test_refresh pointer_state pointer_lifecycle
+        pointer_allocation focus_allocation text_input_focus)
+    rynui_portable_test(${input_constraint_contract} "${input_constraint_contract}_tests.cpp")
+endforeach()
+
 rynui_portable_test(transfer_component "transfer_component_tests.cpp")
 rynui_portable_test(transfer_complete "transfer_complete_tests.cpp")
 rynui_portable_test(cascader_component "cascader_component_tests.cpp")

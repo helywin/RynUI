@@ -879,15 +879,7 @@ void UploadComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         drop_paths_.clear();
     }
     services_->interactions().set_eligible(s->drop_interaction, enabled);
-    bool own_popup = false;
-    for (auto boundary = services_->interactions().input_boundary();
-         boundary && services_->components().contains(*boundary);
-         boundary = services_->components().parent(*boundary)) {
-        if (*boundary == id) {
-            own_popup = true;
-            break;
-        }
-    }
+    const bool own_popup = services_->interactions().subtree_intersects_input_domain(id);
     const bool work_enabled =
         enabled || (own_popup && active_ && s->visible && !s->disabled && !s->read_only && s->geometry_available);
     s->trigger_disabled.set(!enabled);
