@@ -150,3 +150,11 @@ set(RYNUI_STB_SOURCE_URL "https://codeload.github.com/nothings/stb/tar.gz/${RYNU
 set(RYNUI_STB_SOURCE_SHA256 "1b59a668a789a28a8fd4e01ff1413eec7eaeb28688bafdc66ec7068f4e7095e1")
 set(RYNUI_STB_IMAGE_HEADER_SHA256 "594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3")
 set(RYNUI_STB_LICENSE "MIT OR Unlicense")
+
+# QR Model 2 encoder. Sources are fetched to ignored build output, never vendored.
+set(RYNUI_QRCODEGEN_VERSION "1.8.0")
+set(RYNUI_QRCODEGEN_SOURCE_URL "https://codeload.github.com/nayuki/QR-Code-generator/tar.gz/refs/tags/v1.8.0")
+set(RYNUI_QRCODEGEN_SOURCE_SHA256 "2ec0a4d33d6f521c942eeaf473d42d5fe139abcfa57d2beffe10c5cf7d34ae60")
+set(RYNUI_QRCODEGEN_HEADER_SHA256 "b779c3b156cf7a57ce789d6fee4fc991ccc2913774d26c909d22bb8f26b2a793")
+set(RYNUI_QRCODEGEN_CPP_SHA256 "1f3b3fcdac6954c32cf583ccd02ec9b5901f756a38c461acedc70be4a77d3757")
+set(RYNUI_QRCODEGEN_LICENSE "MIT")

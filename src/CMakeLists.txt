@@ -220,6 +220,13 @@ target_link_libraries(rynui_text_scene PRIVATE
     rynui_text
 )
 
+add_library(rynui_qrcode_model STATIC component/qrcode_model.cpp)
+rynui_configure_cpp_target(rynui_qrcode_model)
+target_include_directories(rynui_qrcode_model PUBLIC "${PROJECT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(rynui_qrcode_model PRIVATE RynUI::QrCodeGen PUBLIC rynui_string rynui_image)
+rynui_assert_direct_dependencies(rynui_qrcode_model RynUI::QrCodeGen rynui_string rynui_image)
+rynui_assert_core_link_closure(rynui_qrcode_model)
+
 add_library(rynui_upload_model STATIC component/upload_model.cpp)
 rynui_configure_cpp_target(rynui_upload_model)
 target_include_directories(rynui_upload_model PUBLIC "${PROJECT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")

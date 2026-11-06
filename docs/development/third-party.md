@@ -98,3 +98,7 @@ SheenBidi 的 MSVC atomic fallback 包含 Windows SDK，因此 BUNDLED 强制标
 `SDL_shadercross`、SPIRV-Cross 和 DXC 都只存在于构建工具链。RynUI library 与示例应用不链接 `SDL3_shadercross` runtime library，也不分发 DXC binary；如在其他产品流程中复制这些上游二进制，发布方必须单独复核 archive 内 license terms。
 
 图像解码的 BUNDLED source override 为 `FETCHCONTENT_SOURCE_DIR_RYNUI_STB`；SYSTEM 必须显式提供 `RYNUI_SYSTEM_STB_IMAGE_DIRECTORY`，两种模式均校验锁定头文件 SHA256，不搜索系统目录、不回退。仅编译 PNG/JPEG/BMP，其他格式返回 unsupported_format。依赖 license 见 `third_party/licenses/stb_image-2.30.txt`。
+
+### QRCode 编码器
+
+QRCode Model 2 使用 Project Nayuki qrcodegen 1.8.0（MIT），支持版本 1–40、L/M/Q/H、八种 mask；中央 lock 固定发布 tarball 与两个 C++ 文件的 SHA256。BUNDLED 经 FetchContent 解压至 out；SYSTEM 必须显式设置 `RYNUI_SYSTEM_QRCODEGEN_DIRECTORY`，提供同一锁定源码，不搜索或回退系统包。许可证见 `third_party/licenses/qrcodegen-1.8.0.txt`。该纯 C++ 库仅供 Core CPU 编码，不依赖 React、renderer、SDL 或系统字体。

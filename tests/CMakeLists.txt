@@ -1,3 +1,8 @@
+add_executable(rynui_qrcode_model_tests qrcode_model_tests.cpp)
+rynui_configure_cpp_target(rynui_qrcode_model_tests)
+target_link_libraries(rynui_qrcode_model_tests PRIVATE rynui_qrcode_model)
+add_test(NAME rynui.qrcode_model COMMAND rynui_qrcode_model_tests)
+
 add_executable(rynui_retained_translation_phase_tests retained_translation_phase_tests.cpp)
 rynui_configure_cpp_target(rynui_retained_translation_phase_tests)
 target_link_libraries(rynui_retained_translation_phase_tests PRIVATE rynui_components)
@@ -207,6 +212,14 @@ endforeach()
 
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+find_program(RYNUI_QRCODE_ZBAR NAMES zbarimg)
+find_program(RYNUI_QRCODE_RSVG NAMES rsvg-convert)
+if(RYNUI_QRCODE_ZBAR AND RYNUI_QRCODE_RSVG)
+    add_test(NAME rynui.qrcode_independent_decode COMMAND "${Python3_EXECUTABLE}"
+        "${PROJECT_SOURCE_DIR}/tests/qrcode_independent_decode.py" "$<TARGET_FILE:rynui_qrcode_model_tests>"
+        "${RYNUI_QRCODE_ZBAR}" "${RYNUI_QRCODE_RSVG}" "${CMAKE_BINARY_DIR}/qrcode-exports/$<CONFIG>")
+endif()
+
 add_test(NAME rynui.calendar_carousel_theme_baseline COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_calendar_carousel_theme_baseline.py")
 add_test(NAME rynui.mentions_theme_baseline COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_mentions_theme_baseline.py")
 
