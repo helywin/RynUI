@@ -66,3 +66,10 @@
 - [x] 9.2 复现 Space.Compact 滚出再滚回的中部横线，修复确认的共用裁剪/绘制边界；新增最终 raster domain 与 source-over 回归，覆盖横/纵分区、分数缩放/坐标与半透明填充，保留真实祖先硬裁剪和既有 AA/ABI。
 - [x] 9.3 在 Windows/MSVC HEADLESS Debug/Release 构建并运行受影响宿主、RoundedEffect 与 Button/Compact 定向测试；正式 native Release 重建 Gallery，有限 Space 自动入口检查滚动往返、焦点留白和 GPU 图像，原始输出仅在 out。
 - [x] 9.4 记录本轮四项精简结果与平台边界，运行 format、OpenSpec doctor/strict、diff 检查；相关阶段提交后 fetch/rebase/push 并核对远端 SHA，提供新版 Gallery。
+
+## 10. 新增组件自动视觉巡检（2026-11-06）
+
+- [ ] 10.1 增加隐藏窗口的 GPU 离屏自动入口和局部截图 runner，按真实 sample identity 分段捕获全部样例，覆盖主题、宽窄布局及滚动往返；新增参数、窗口创建和产物路径自动合同。
+- [ ] 10.2 在 Windows/MSVC Release 构建最终 Gallery，自动遍历 106/107 已实现组件及新增样例，保存局部 PNG 与覆盖结果到 out；检查非空、裁剪、滚动稳定性及实际图像，失败如实计数。
+- [ ] 10.3 修复巡检确认的视觉问题，增加对应几何或像素回归并完成受影响 Debug/Release 自动测试；重新捕获受影响状态，不用修改期望掩盖错误。
+- [ ] 10.4 记录逐组件精简结论与未测状态，完成格式、doctor/strict、diff 检查并提交推送；不提交原始图片或日志，不把离屏 GPU 回读写成桌面/IME/完整交互验收。
