@@ -1,16 +1,19 @@
 #include "component/transfer_component.hpp"
+#include "component/localized_prop.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/input_component.hpp"
 #include "component/selection_component.hpp"
 #include "component/pagination_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
+#include "reactive/untracked.hpp"
 #include <ryn/button.hpp>
 #include <algorithm>
 #include <cmath>
 #include <thread>
 #include <exception>
 #include <limits>
+#include <memory>
 
 namespace ryn::detail {
 namespace {
@@ -96,6 +99,9 @@ struct State final {
     Signal<bool> disabled{false};
     Signal<ThemeConfig> child_theme{ThemeConfig{}};
     Signal<TransferLocale> locale{TransferLocale{}};
+    Prop<TransferLocale> locale_source{TransferLocale{}};
+    Prop<IntegerPluralRule> plural_source{IntegerPluralRule::EnglishOneOther};
+    std::uint64_t locale_revision{};
     Signal<TextDirection> direction{TextDirection::LeftToRight};
     std::array<Signal<String>, 2> action_label{Signal<String>{String{}}, Signal<String>{String{}}};
     std::array<Signal<String>, 2> action_icon{Signal<String>{String{}}, Signal<String>{String{}}};
@@ -123,6 +129,7 @@ struct State final {
     bool ready{};
     bool mounting{true};
     bool refreshing{};
+    bool loading{};
 };
 
 using S = std::shared_ptr<State>;
@@ -175,8 +182,9 @@ bool descendant(WindowComponentServices& services, runtime::ComponentId child, r
     return false;
 }
 
-ThemeConfig child_theme(const TransferThemeToken& t) {
-    ThemeConfig c;
+std::unique_ptr<ThemeConfig> child_theme(const TransferThemeToken& t) {
+    auto result = std::make_unique<ThemeConfig>();
+    auto& c = *result;
     c.text.tokens.color = t.colors.text;
     c.text.tokens.font_size = dp(t.typography.font_size);
     c.text.tokens.line_height = dp(t.typography.line_height);
@@ -240,11 +248,40 @@ ThemeConfig child_theme(const TransferThemeToken& t) {
     c.select.tokens.option_active_background = t.colors.hover;
     c.select.tokens.option_color = t.colors.text;
     c.select.tokens.option_disabled_color = t.colors.disabled;
-    return c;
+    return result;
+}
+
+void publish_theme(Signal<ThemeConfig> target, std::unique_ptr<ThemeConfig> config) {
+    target.set(std::move(*config));
 }
 
 TransferDirection side(std::size_t i) {
     return i ? TransferDirection::Right : TransferDirection::Left;
+}
+
+String count_text(const TransferLocale& locale, std::size_t selected, std::size_t total, bool explicit_locale,
+                  IntegerPluralRule rule) {
+    // Preserve the established explicit Locale unit-field contract. Inherited packs
+    // additionally own their complete count templates. Both paths use exact UInt args.
+    if (explicit_locale) {
+        static const MessageKey key{u8"ryn.transfer.legacy_count",
+                                    String{u8"{selected} / {total} {unit}"},
+                                    {{u8"selected", MessageArgType::UInt},
+                                     {u8"total", MessageArgType::UInt},
+                                     {u8"unit", MessageArgType::Text}}};
+        return formatMessage(key, key.fallback(),
+                             {{u8"selected", static_cast<std::uint64_t>(selected)},
+                              {u8"total", static_cast<std::uint64_t>(total)},
+                              {u8"unit", total == 1 ? locale.item_unit : locale.items_unit}},
+                             IntegerPluralRule::EnglishOneOther);
+    }
+    static const MessageKey key{
+        u8"ryn.transfer.count",
+        PluralMessage{u8"total", String{u8"{selected}/{total} item"}, u8"{selected}/{total} items"},
+        {{u8"selected", MessageArgType::UInt}, {u8"total", MessageArgType::UInt}}};
+    return formatMessage(
+        key, PluralMessage{u8"total", locale.count_one, locale.count_other},
+        {{u8"selected", static_cast<std::uint64_t>(selected)}, {u8"total", static_cast<std::uint64_t>(total)}}, rule);
 }
 
 runtime::Rect intersect(runtime::Rect a, runtime::Rect b) {
@@ -510,6 +547,69 @@ void TransferComponentHost::refresh(runtime::ComponentId id) {
     refresh_content(id);
 }
 
+void TransferComponentHost::localize(runtime::ComponentId id, TransferLocale locale, IntegerPluralRule rule) {
+    run_untracked([&] {
+        const auto s = state(*services_, id);
+        if (!s || !s->alive || !services_->components().scope(id).active()) {
+            return;
+        }
+        const auto revision = ++s->locale_revision;
+        const auto current = [&] {
+            return state(*services_, id) == s && s->alive && s->locale_revision == revision &&
+                   services_->components().scope(id).active();
+        };
+        // Prepare only text from retained projection results. No render/filter/getter,
+        // page clamping, input boundary, reconciliation or slot factory runs here.
+        std::vector<std::pair<Signal<String>, String>> updates;
+        for (const auto& row : s->rows) {
+            updates.emplace_back(row->remove_label, locale.remove);
+        }
+        for (std::size_t i = 0; i < 2; ++i) {
+            const auto& panel = s->panels[i];
+            const auto summary = s->props.select_all_label_
+                                     ? panel.count_text.get()
+                                     : count_text(locale, panel.selected_count.get(), panel.total.get(),
+                                                  s->props.locale_.has_value(), rule);
+            if (!s->props.select_all_label_) {
+                updates.emplace_back(panel.count_text, summary);
+            }
+            updates.emplace_back(
+                panel.summary,
+                String::from_utf8(std::string((panel.checked.get() ? locale.deselect_all : locale.select_all).bytes()) +
+                                  " · " + std::string(summary.bytes()))
+                    .value());
+            if (!s->props.titles_) {
+                updates.emplace_back(panel.title_text, locale.titles[i]);
+            }
+            if (!s->props.search_placeholder_) {
+                updates.emplace_back(panel.placeholder, locale.search_placeholder);
+            }
+            if (s->loading || !s->props.empty_) {
+                updates.emplace_back(panel.empty_text, s->loading ? locale.loading : locale.empty[i]);
+            }
+            updates.emplace_back(panel.invert_text, locale.select_invert);
+            updates.emplace_back(panel.clear_text, locale.clear);
+            updates.emplace_back(panel.current_text, locale.select_current);
+            updates.emplace_back(panel.remove_all_text, locale.remove_all);
+            updates.emplace_back(panel.remove_current_text, locale.remove_current);
+            if (!s->props.operations_) {
+                updates.emplace_back(s->action_label[i], locale.actions[i ? 0 : 1]);
+            }
+        }
+        auto locale_signal = s->locale;
+        locale_signal.set(std::move(locale));
+        if (!current()) {
+            return;
+        }
+        for (auto& [signal, text] : updates) {
+            signal.set(std::move(text));
+            if (!current()) {
+                return;
+            }
+        }
+    });
+}
+
 void TransferComponentHost::refresh_content(runtime::ComponentId id) {
     // Keep the reentry check outside the frame holding complete child themes.
     auto s = state(*services_, id);
@@ -533,7 +633,6 @@ void TransferComponentHost::refresh_content(runtime::ComponentId id) {
         const auto pagination = read_prop(s->props.pagination_);
         const auto size = read_prop(s->props.size_);
         const auto direction = read_prop(s->props.direction_);
-        const auto locale = read_prop(s->props.locale_);
         const auto spacing = read_prop(s->props.row_spacing_);
         if (!s->alive) {
             return;
@@ -632,10 +731,7 @@ void TransferComponentHost::refresh_content(runtime::ComponentId id) {
             summaries[i] =
                 s->props.select_all_label_
                     ? s->props.select_all_label_({side(i), static_cast<std::size_t>(selected), lists[i].size()})
-                    : String::from_utf8(
-                          std::to_string(selected) + " / " + std::to_string(lists[i].size()) + " " +
-                          std::string((lists[i].size() == 1 ? locale.item_unit : locale.items_unit).bytes()))
-                          .value();
+                    : String{};
             if (!s->alive) {
                 return;
             }
@@ -654,6 +750,7 @@ void TransferComponentHost::refresh_content(runtime::ComponentId id) {
         const bool pagination_changed = s->pagination != pagination;
         s->pagination = pagination;
         s->size = size;
+        s->loading = loading;
         const auto branch = [&](runtime::ComponentId child, bool shown, bool blocked = false) {
             if (!child.valid() || !s->alive) {
                 return;
@@ -682,10 +779,9 @@ void TransferComponentHost::refresh_content(runtime::ComponentId id) {
         }
         auto content_theme = child_theme(token);
         if (!enabled) {
-            content_theme.text.tokens.color = token.colors.disabled;
+            content_theme->text.tokens.color = token.colors.disabled;
         }
-        s->child_theme.set(content_theme);
-        s->locale.set(locale);
+        publish_theme(s->child_theme, std::move(content_theme));
         s->direction.set(direction);
         if (!s->alive) {
             return;
@@ -708,11 +804,10 @@ void TransferComponentHost::refresh_content(runtime::ComponentId id) {
             r->rtl = s->rtl;
             r->direction.set(direction);
             auto row_theme = child_theme(token);
-            row_theme.text.tokens.color = r->disabled.get() ? token.colors.disabled : token.colors.text;
-            row_theme.input.tokens.background =
+            row_theme->text.tokens.color = r->disabled.get() ? token.colors.disabled : token.colors.text;
+            row_theme->input.tokens.background =
                 r->disabled.get() ? token.colors.disabled_background : token.colors.background;
-            r->theme.set(row_theme);
-            r->remove_label.set(locale.remove);
+            publish_theme(r->theme, std::move(row_theme));
             r->label.set(labels[j]);
             if (!s->alive) {
                 return;
@@ -792,23 +887,18 @@ void TransferComponentHost::refresh_content(runtime::ComponentId id) {
                 }
             }
             p.selected.set(side_selected);
-            p.summary.set(
-                String::from_utf8(
-                    std::string((checked && checked == selectable ? locale.deselect_all : locale.select_all).bytes()) +
-                    " · " + std::string(summaries[i].bytes()))
-                    .value());
-            p.count_text.set(summaries[i]);
-            p.title_text.set(s->props.titles_ ? read_prop(*s->props.titles_)[i] : locale.titles[i]);
-            p.placeholder.set(s->props.search_placeholder_ ? read_prop(*s->props.search_placeholder_)
-                                                           : locale.search_placeholder);
-            p.empty_text.set(loading           ? locale.loading
-                             : s->props.empty_ ? read_prop(*s->props.empty_)
-                                               : locale.empty[i]);
-            p.invert_text.set(locale.select_invert);
-            p.clear_text.set(locale.clear);
-            p.current_text.set(locale.select_current);
-            p.remove_all_text.set(locale.remove_all);
-            p.remove_current_text.set(locale.remove_current);
+            if (s->props.select_all_label_) {
+                p.count_text.set(summaries[i]);
+            }
+            if (s->props.titles_) {
+                p.title_text.set(read_prop(*s->props.titles_)[i]);
+            }
+            if (s->props.search_placeholder_) {
+                p.placeholder.set(read_prop(*s->props.search_placeholder_));
+            }
+            if (!loading && s->props.empty_) {
+                p.empty_text.set(read_prop(*s->props.empty_));
+            }
             if (!s->alive) {
                 return;
             }
@@ -825,8 +915,9 @@ void TransferComponentHost::refresh_content(runtime::ComponentId id) {
             s->move_disabled[i].set(!enabled || (i == 0 && one_way) || std::ranges::none_of(rows, [&](const auto& r) {
                 return r->target == (i == 0) && !r->item.disabled && has(selected_keys, r->item.key);
             }));
-            const auto operations = read_prop(s->props.operations_);
-            s->action_label[i].set(operations[i ? 0 : 1].empty() ? locale.actions[i ? 0 : 1] : operations[i ? 0 : 1]);
+            if (s->props.operations_) {
+                s->action_label[i].set(read_prop(*s->props.operations_)[i ? 0 : 1]);
+            }
             s->action_icon[i].set(i != s->rtl ? String{u8"→"} : String{u8"←"});
         }
         branch(s->actions[0], !one_way);
@@ -882,6 +973,7 @@ void TransferComponentHost::refresh_content(runtime::ComponentId id) {
                                                        runtime::DirtyFlags::HitTest);
         }
         services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
+        run_untracked([&] { localize(id, read_prop(s->locale_source), read_prop(s->plural_source)); });
         if (!s->alive || !s->again) {
             return;
         }
@@ -1231,9 +1323,13 @@ void TransferComponentHost::mount(const TransferProps& input) {
     safe(props.status_);
     safe(props.direction_);
     safe(props.pagination_);
-    safe(props.locale_);
+    if (props.locale_) {
+        safe(*props.locale_);
+    }
     safe(props.row_spacing_);
-    safe(props.operations_);
+    if (props.operations_) {
+        safe(*props.operations_);
+    }
     safe(props.search_default_);
     if (props.target_) {
         safe(*props.target_);
@@ -1257,6 +1353,11 @@ void TransferComponentHost::mount(const TransferProps& input) {
         safe(*props.titles_);
     }
     s->props = props;
+    s->locale_source = localized_prop(props.locale_, b.config_scope(), [](const LocaleData& d) { return d.transfer; });
+    if (!props.locale_) {
+        s->plural_source = localized_prop(std::optional<Prop<IntegerPluralRule>>{}, b.config_scope(),
+                                          [](const LocaleData& d) { return d.plural; });
+    }
     // Retained list/footer factories must see their initial data during mount.
     // Publishing an empty list first would force native child lists to append
     // rows while ComponentHost is still inside the enclosing mount transaction.
@@ -1273,10 +1374,11 @@ void TransferComponentHost::mount(const TransferProps& input) {
         initial_keys.push_back(item.key);
     }
     valid_keys(initial_keys);
-    s->locale.set(read_prop(props.locale_));
+    s->locale.set(read_prop(s->locale_source));
+    s->loading = read_prop(props.loading_);
     s->direction.set(read_prop(props.direction_));
     s->disabled.set(!editable(id));
-    s->child_theme.set(child_theme(b.theme_scope()->snapshot().transfer()));
+    publish_theme(s->child_theme, child_theme(b.theme_scope()->snapshot().transfer()));
     const auto queries = read_prop(props.search_default_);
     for (std::size_t i = 0; i < 2; ++i) {
         auto& panel = s->panels[i];
@@ -1322,14 +1424,13 @@ void TransferComponentHost::mount(const TransferProps& input) {
         const auto summary =
             props.select_all_label_
                 ? props.select_all_label_({side(i), checked, filtered.size()})
-                : String::from_utf8(std::to_string(checked) + " / " + std::to_string(filtered.size()) + " " +
-                                    std::string((filtered.size() == 1 ? locale.item_unit : locale.items_unit).bytes()))
-                      .value();
+                : count_text(locale, checked, filtered.size(), props.locale_.has_value(), read_prop(s->plural_source));
         if (!s->alive) {
             transaction.done = true;
             return;
         }
         panel.total.set(filtered.size());
+        panel.count_text.set(summary);
         panel.selected_count.set(checked);
         panel.checked.set(selectable && checked == selectable);
         panel.indeterminate.set(checked && checked < selectable);
@@ -1347,8 +1448,8 @@ void TransferComponentHost::mount(const TransferProps& input) {
                                                        : locale.empty[i]);
         panel.filtered.set(filtered);
         panel.selected.set(selected);
-        const auto operations = read_prop(props.operations_);
-        s->action_label[i].set(operations[i ? 0 : 1].empty() ? locale.actions[i ? 0 : 1] : operations[i ? 0 : 1]);
+        s->action_label[i].set(props.operations_ ? read_prop(*props.operations_)[i ? 0 : 1]
+                                                 : locale.actions[i ? 0 : 1]);
         s->action_icon[i].set((i != 0) != (s->direction.get() == TextDirection::RightToLeft) ? String{u8"→"}
                                                                                              : String{u8"←"});
         s->move_disabled[i].set(s->disabled.get() || (i == 0 && read_prop(props.one_way_)) ||
@@ -1500,7 +1601,7 @@ void TransferComponentHost::mount(const TransferProps& input) {
                                     p.icon = wrapper(*props.selections_icon_);
                                 }
                                 p.pagination = child([&] {
-                                    Pagination(
+                                    auto pagination_props =
                                         PaginationProps{}
                                             .total(p.total)
                                             .current(p.page)
@@ -1508,7 +1609,6 @@ void TransferComponentHost::mount(const TransferProps& input) {
                                             .disabled(s->disabled)
                                             .size(ControlSize::Small)
                                             .direction(s->direction)
-                                            .locale(bind([locale = s->locale] { return locale.get().pagination; }))
                                             .simple(bind([pagination = props.pagination_] {
                                                 return read_prop(pagination).simple;
                                             }))
@@ -1536,7 +1636,12 @@ void TransferComponentHost::mount(const TransferProps& input) {
                                                         callback({side(i), page, size});
                                                     }
                                                 }
-                                            }));
+                                            });
+                                    if (props.locale_) {
+                                        pagination_props.locale(
+                                            bind([locale = s->locale] { return locale.get().pagination; }));
+                                    }
+                                    Pagination(std::move(pagination_props));
                                 });
                                 if (props.footers_[i]) {
                                     p.footer = wrapper(*props.footers_[i]);
@@ -1638,9 +1743,12 @@ void TransferComponentHost::mount(const TransferProps& input) {
                                                ButtonContent{[operations = props.operations_, i,
                                                               icon = s->action_icon[i]] {
                                                    Text(TextProps{}.content(bind([operations, i, icon] {
-                                                       const auto label = read_prop(operations)[i ? 0 : 1];
+                                                       if (!operations) {
+                                                           return icon.get();
+                                                       }
+                                                       const auto label = read_prop(*operations)[i ? 0 : 1];
                                                        return label.empty()
-                                                                  ? icon.get()
+                                                                  ? String{}
                                                                   : String::from_utf8(std::string(icon.get().bytes()) +
                                                                                       " " + std::string(label.bytes()))
                                                                         .value();
@@ -1736,8 +1844,15 @@ void TransferComponentHost::mount(const TransferProps& input) {
     watch(props.size_);
     watch(props.status_);
     watch(props.row_spacing_);
-    watch(props.locale_);
-    watch(props.operations_);
+    connect_prop(
+        s->bindings,
+        Prop<std::pair<TransferLocale, IntegerPluralRule>>{bind([locale = s->locale_source, plural = s->plural_source] {
+            return std::pair{read_prop(locale), read_prop(plural)};
+        })},
+        [this, id](auto value) { localize(id, std::move(value.first), value.second); });
+    if (props.operations_) {
+        watch(*props.operations_);
+    }
     if (props.height_) {
         watch(*props.height_);
     }

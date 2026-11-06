@@ -34,10 +34,19 @@ struct AlertSlots final {
     std::optional<AlertClose> close;
 };
 
+struct AlertMarquee final {
+    bool enabled{true};
+    float speed{40}; // Logical pixels per second.
+    float gap{24};
+    bool pause_on_hover{true};
+    friend bool operator==(AlertMarquee, AlertMarquee) = default;
+};
+
 class AlertProps final {
 public:
     AlertProps& status(Prop<Status> value) {
         status_ = std::move(value);
+        status_explicit_ = true;
         return *this;
     }
 
@@ -61,6 +70,7 @@ public:
 
     AlertProps& showIcon(Prop<bool> value = true) {
         show_icon_ = std::move(value);
+        icon_explicit_ = true;
         return *this;
     }
 
@@ -79,6 +89,26 @@ public:
         return *this;
     }
 
+    AlertProps& banner(Prop<bool> value = true) {
+        banner_ = std::move(value);
+        return *this;
+    }
+
+    AlertProps& marquee(Prop<AlertMarquee> value) {
+        marquee_ = std::move(value);
+        return *this;
+    }
+
+    AlertProps& motion(Prop<bool> value = true) {
+        motion_ = std::move(value);
+        return *this;
+    }
+
+    AlertProps& afterClose(std::function<void()> value) {
+        after_close_ = std::move(value);
+        return *this;
+    }
+
     AlertProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -91,8 +121,14 @@ private:
     Prop<String> description_{String{}};
     Prop<bool> show_icon_{false};
     Prop<bool> closable_{false};
-    Prop<bool> visible_{true};
+    std::optional<Prop<bool>> visible_;
+    Prop<bool> banner_{false};
+    Prop<AlertMarquee> marquee_{AlertMarquee{false}};
+    Prop<bool> motion_{false};
+    bool status_explicit_{};
+    bool icon_explicit_{};
     std::function<void()> on_close_;
+    std::function<void()> after_close_;
     LayoutStyle layout_;
 };
 

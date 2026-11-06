@@ -463,7 +463,7 @@ private:
     std::optional<Prop<TreeKeys>> expanded_;
     std::optional<TreeKeys> default_expanded_;
     Prop<String> placeholder_{String{}};
-    Prop<String> not_found_content_{String{u8"No data"}};
+    std::optional<Prop<String>> not_found_content_;
     Prop<bool> allow_clear_{false};
     Prop<bool> disabled_{false};
     Prop<bool> read_only_{false};

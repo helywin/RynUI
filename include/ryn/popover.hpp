@@ -9,12 +9,13 @@ class PopoverComponentHost;
 
 using PopoverPlacement = TooltipPlacement;
 
-enum class PopoverTriggerMode { Manual, Hover, Focus, HoverFocus, Click };
+enum class PopoverTriggerMode { Manual, Hover, Focus, HoverFocus, Click, ContextMenu };
 
 struct PopoverTriggers final {
     bool hover{};
     bool focus{};
     bool click{};
+    bool context_menu{};
     friend bool operator==(const PopoverTriggers&, const PopoverTriggers&) = default;
 };
 
@@ -86,6 +87,21 @@ public:
         return *this;
     }
 
+    PopoverProps& direction(Prop<TextDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
+    PopoverProps& animated(Prop<bool> value = true) {
+        animated_ = std::move(value);
+        return *this;
+    }
+
+    PopoverProps& contentScroll(Prop<bool> value = true) {
+        content_scroll_ = std::move(value);
+        return *this;
+    }
+
     PopoverProps& arrow(Prop<bool> value) {
         arrow_ = std::move(value);
         return *this;
@@ -134,6 +150,9 @@ private:
     bool explicit_trigger_{};
     std::optional<Prop<PopoverTriggers>> triggers_;
     Prop<PopoverPlacement> placement_{PopoverPlacement::Top};
+    Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    Prop<bool> animated_{false};
+    Prop<bool> content_scroll_{true};
     Prop<bool> arrow_{true};
     Prop<bool> point_at_center_{false};
     Prop<bool> adjust_{true};

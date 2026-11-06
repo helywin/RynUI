@@ -66,6 +66,11 @@ using SkeletonContent = SlotContent<SkeletonContentSlot>;
 
 class SkeletonProps final {
 public:
+    SkeletonProps& active(Prop<bool> value) {
+        active_ = std::move(value);
+        return *this;
+    }
+
     SkeletonProps& loading(Prop<bool> value) {
         loading_ = std::move(value);
         return *this;
@@ -115,11 +120,17 @@ private:
     Prop<SkeletonParagraph> paragraph_{SkeletonParagraph{}};
     Prop<SkeletonAvatarOptions> avatar_{SkeletonAvatarOptions{}};
     Prop<bool> round_{false};
+    Prop<bool> active_{false};
     LayoutStyle layout_;
 };
 
 class SkeletonAvatarProps final {
 public:
+    SkeletonAvatarProps& active(Prop<bool> value) {
+        active_ = std::move(value);
+        return *this;
+    }
+
     SkeletonAvatarProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
         return *this;
@@ -139,11 +150,17 @@ private:
     friend class detail::SkeletonComponentHost;
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<SkeletonAvatarShape> shape_{SkeletonAvatarShape::Circle};
+    Prop<bool> active_{false};
     LayoutStyle layout_;
 };
 
 class SkeletonButtonProps final {
 public:
+    SkeletonButtonProps& active(Prop<bool> value) {
+        active_ = std::move(value);
+        return *this;
+    }
+
     SkeletonButtonProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
         return *this;
@@ -169,11 +186,17 @@ private:
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<SkeletonButtonShape> shape_{SkeletonButtonShape::Default};
     Prop<bool> block_{false};
+    Prop<bool> active_{false};
     LayoutStyle layout_;
 };
 
 class SkeletonInputProps final {
 public:
+    SkeletonInputProps& active(Prop<bool> value) {
+        active_ = std::move(value);
+        return *this;
+    }
+
     SkeletonInputProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
         return *this;
@@ -193,6 +216,47 @@ private:
     friend class detail::SkeletonComponentHost;
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<bool> block_{false};
+    Prop<bool> active_{false};
+    LayoutStyle layout_;
+};
+
+struct SkeletonNodeContentSlot final {};
+
+using SkeletonNodeContent = SlotContent<SkeletonNodeContentSlot>;
+
+class SkeletonImageProps final {
+public:
+    SkeletonImageProps& active(Prop<bool> value) {
+        active_ = std::move(value);
+        return *this;
+    }
+
+    SkeletonImageProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
+
+private:
+    friend class detail::SkeletonComponentHost;
+    Prop<bool> active_{false};
+    LayoutStyle layout_;
+};
+
+class SkeletonNodeProps final {
+public:
+    SkeletonNodeProps& active(Prop<bool> value) {
+        active_ = std::move(value);
+        return *this;
+    }
+
+    SkeletonNodeProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
+
+private:
+    friend class detail::SkeletonComponentHost;
+    Prop<bool> active_{false};
     LayoutStyle layout_;
 };
 
@@ -201,4 +265,7 @@ void Skeleton(SkeletonProps props, SkeletonContent content);
 void SkeletonAvatar(SkeletonAvatarProps props = {});
 void SkeletonButton(SkeletonButtonProps props = {});
 void SkeletonInput(SkeletonInputProps props = {});
+void SkeletonImage(SkeletonImageProps props = {});
+void SkeletonNode(SkeletonNodeProps props = {});
+void SkeletonNode(SkeletonNodeProps props, SkeletonNodeContent content);
 } // namespace ryn

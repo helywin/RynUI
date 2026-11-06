@@ -1,4 +1,5 @@
 #include "component/pagination_component.hpp"
+#include "component/localized_prop.hpp"
 #include "component/responsive_layout.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -38,6 +39,7 @@ struct PaginationState final {
     std::size_t pages{1};
     std::size_t page_size{10};
     PaginationLocale locale;
+    std::uint64_t locale_revision{};
     TextDirection direction{TextDirection::LeftToRight};
     bool less{};
     Signal<TextDirection> child_direction{TextDirection::LeftToRight};
@@ -58,6 +60,7 @@ struct PaginationState final {
     Signal<String> draft{String{}};
     Signal<String> total_text{String{}};
     Signal<String> simple_text{String{}};
+    Signal<String> jump_placeholder{String{}};
     Signal<bool> controls_disabled{false};
     Signal<bool> editor_read_only{false};
     Signal<ControlSize> control_size{ControlSize::Middle};
@@ -88,6 +91,28 @@ void valid_control_size(ControlSize value) {
     if (value != ControlSize::Small && value != ControlSize::Middle && value != ControlSize::Large) {
         throw std::invalid_argument("Pagination size is invalid");
     }
+}
+
+String integer_text(std::size_t value) {
+    static const MessageKey key{u8"ryn.pagination.integer", String{u8"{count}"}, {{u8"count", MessageArgType::UInt}}};
+    return formatMessage(key, key.fallback(), {{u8"count", static_cast<std::uint64_t>(value)}},
+                         IntegerPluralRule::EnglishOneOther);
+}
+
+std::vector<SelectOption> size_options(std::vector<std::size_t> sizes, std::size_t current,
+                                       const PaginationLocale& locale) {
+    sizes.push_back(current);
+    std::ranges::sort(sizes);
+    sizes.erase(std::unique(sizes.begin(), sizes.end()), sizes.end());
+    std::vector<SelectOption> result;
+    for (const auto size : sizes) {
+        const auto number = integer_text(size);
+        result.push_back(
+            {SelectValue{number},
+             String::from_utf8(std::string(number.bytes()) + std::string(locale.items_per_page.bytes())).value(),
+             false});
+    }
+    return result;
 }
 } // namespace
 
@@ -129,6 +154,39 @@ PaginationSnapshot PaginationComponentHost::snapshot(runtime::ComponentId id) co
     return result;
 }
 
+void PaginationComponentHost::localize(runtime::ComponentId id, PaginationLocale locale) {
+    auto* s = services_->components().state<PaginationState>(id);
+    if (!s || !services_->components().scope(id).active()) {
+        return;
+    }
+    s->locale = std::move(locale);
+    const auto revision = ++s->locale_revision;
+    const auto current = [this, id, owner = s, revision] {
+        const auto* state = services_->components().state<PaginationState>(id);
+        return state == owner && state && state->locale_revision == revision &&
+               services_->components().scope(id).active();
+    };
+    // Locale-only projection never writes the editor draft or runs showTotal/itemRender.
+    // Copy each retained Signal before publishing: an observer can destroy/reenter this owner.
+    const auto options = size_options(s->size_options, s->page_size, s->locale);
+    const auto separator =
+        String::from_utf8(std::string(s->locale.page_separator.bytes()) + std::string(integer_text(s->pages).bytes()))
+            .value();
+    const auto placeholder = s->locale.jump_placeholder;
+    auto options_signal = s->options;
+    auto separator_signal = s->simple_text;
+    auto placeholder_signal = s->jump_placeholder;
+    options_signal.set(options);
+    if (!current()) {
+        return;
+    }
+    separator_signal.set(separator);
+    if (!current()) {
+        return;
+    }
+    placeholder_signal.set(placeholder);
+}
+
 void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     auto* s = services_->components().state<PaginationState>(id);
     if (!s || !services_->components().scope(id).active()) {
@@ -162,21 +220,12 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     s->controls_disabled.set(s->disabled);
     s->editor_read_only.set(s->read_only);
     s->selected_size.set(SelectValue{String::from_utf8(std::to_string(s->page_size)).value()});
-    std::vector<SelectOption> options;
-    auto sizes = s->size_options;
-    sizes.push_back(s->page_size);
-    std::ranges::sort(sizes);
-    sizes.erase(std::unique(sizes.begin(), sizes.end()), sizes.end());
-    for (auto size : sizes) {
-        options.push_back(
-            {SelectValue{String::from_utf8(std::to_string(size)).value()},
-             String::from_utf8(std::to_string(size) + std::string(s->locale.items_per_page.bytes())).value(), false});
-    }
-    s->options.set(std::move(options));
+    s->options.set(size_options(s->size_options, s->page_size, s->locale));
     s->simple_text.set(
-        String::from_utf8(std::string(s->locale.page_separator.bytes()) + std::to_string(s->pages)).value());
+        String::from_utf8(std::string(s->locale.page_separator.bytes()) + std::string(integer_text(s->pages).bytes()))
+            .value());
     if (s->simple) {
-        s->draft.set(String::from_utf8(std::to_string(s->current)).value());
+        s->draft.set(integer_text(s->current));
     }
     if (s->total_render) {
         // Copy the callback and its arguments: it may destroy this Pagination.
@@ -249,7 +298,7 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                 ? (s->direction == TextDirection::RightToLeft ? IconName::LeftOutlined : IconName::RightOutlined)
                 : IconName::EllipsisOutlined);
         item.icon_visible.set(navigation_icon);
-        item.label.set(navigation_icon ? String{} : String::from_utf8(std::to_string(item.target)).value());
+        item.label.set(navigation_icon ? String{} : integer_text(item.target));
         item.disabled.set(s->disabled || (index == 0 && s->current == 1) || (index == 10 && s->current == s->pages));
         item.extent.set(dp(s->extent));
         ThemeConfig config;
@@ -349,7 +398,7 @@ void PaginationComponentHost::jump(runtime::ComponentId id, String text) {
     }
     s = services_->components().state<PaginationState>(id);
     if (s) {
-        s->draft.set(s->simple ? String::from_utf8(std::to_string(s->current)).value() : String{});
+        s->draft.set(s->simple ? integer_text(s->current) : String{});
     }
 }
 
@@ -440,12 +489,15 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
         throw std::invalid_argument("Pagination current must be positive");
     }
     auto& build = runtime::require_component_build_context();
+    const auto locale =
+        localized_prop(props.locale_, build.config_scope(), [](const LocaleData& d) { return d.pagination; });
     auto& services = *services_;
     const auto id = build.mount_component<PaginationState>();
     auto& s = build.state<PaginationState>(id);
     s.node = build.root(id);
     s.controlled = props.current_.has_value();
-    s.locale = read_prop(props.locale_);
+    s.locale = read_prop(locale);
+    s.jump_placeholder.set(s.locale.jump_placeholder);
     s.direction = read_prop(props.direction_);
     s.child_direction.set(s.direction);
     s.less = read_prop(props.less_);
@@ -466,17 +518,7 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
     s.disabled = read_prop(props.disabled_);
     s.hide_single = read_prop(props.hide_single_);
     s.on_change = props.on_change_;
-    auto initial_sizes = s.size_options;
-    initial_sizes.push_back(s.page_size);
-    std::ranges::sort(initial_sizes);
-    initial_sizes.erase(std::unique(initial_sizes.begin(), initial_sizes.end()), initial_sizes.end());
-    std::vector<SelectOption> initial_options;
-    for (auto size : initial_sizes) {
-        initial_options.push_back(
-            {SelectValue{String::from_utf8(std::to_string(size)).value()},
-             String::from_utf8(std::to_string(size) + std::string(s.locale.items_per_page.bytes())).value(), false});
-    }
-    s.options.set(std::move(initial_options));
+    s.options.set(size_options(s.size_options, s.page_size, s.locale));
     s.selected_size.set(SelectValue{String::from_utf8(std::to_string(s.page_size)).value()});
     runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
     build.on_resource_cleanup(id, [&services, node = s.node] { services.layout().remove_layout(node); });
@@ -531,14 +573,14 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
             services.layout().set_layout(services.components().root(s.total_component), layout::BoxLayout{});
             s.simple_total = wrap([label = s.simple_text] { Text(TextProps{}.content(label)); });
             services.layout().set_layout(services.components().root(s.simple_total), layout::BoxLayout{});
-            s.jumper = wrap([this, id, &s, locale = props.locale_] {
+            s.jumper = wrap([this, id, &s] {
                 Input(InputProps{}
                           .direction(s.child_direction)
                           .value(s.draft)
                           .disabled(s.controls_disabled)
                           .readOnly(s.editor_read_only)
                           .size(s.control_size)
-                          .placeholder(bind([locale] { return read_prop(locale).jump_placeholder; }))
+                          .placeholder(s.jump_placeholder)
                           .onChange([this, id](String value) {
                               if (auto* current = services_->components().state<PaginationState>(id)) {
                                   current->draft.set(std::move(value));
@@ -627,12 +669,7 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
             refresh(id, true);
         }
     });
-    connect_prop(scope, props.locale_, [this, id](PaginationLocale value) {
-        if (auto* s = services_->components().state<PaginationState>(id)) {
-            s->locale = value;
-            refresh(id, true);
-        }
-    });
+    connect_prop(scope, locale, [this, id](PaginationLocale value) { localize(id, std::move(value)); });
     connect_prop(scope, props.direction_, [this, id](TextDirection value) {
         if (auto* s = services_->components().state<PaginationState>(id)) {
             if (value != TextDirection::Auto && value != TextDirection::LeftToRight &&

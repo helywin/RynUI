@@ -221,7 +221,9 @@ private:
     Prop<ImageSource> source_{ImageSource{}};
     Prop<ImageSource> preview_source_{ImageSource{}};
     Prop<ImageSource> fallback_{ImageSource{}};
-    Prop<String> alt_{String{}};
+    std::optional<Prop<String>> alt_;
+    // PreviewGroup's legacy aggregate uses an empty alt as an omitted label.
+    bool inherit_empty_alt_{};
     Prop<ImageShape> shape_{ImageShape::Rectangle};
     Prop<ImageFit> fit_{ImageFit::Contain};
     Prop<ImagePreviewOptions> preview_{ImagePreviewOptions{}};
@@ -230,7 +232,7 @@ private:
     Prop<bool> disabled_{false};
     Prop<bool> visible_{true};
     Prop<bool> rtl_{false};
-    Prop<ImageLocale> locale_{ImageLocale{}};
+    std::optional<Prop<ImageLocale>> locale_;
     Prop<std::shared_ptr<const ImageActionsRenderer>> actions_{std::shared_ptr<const ImageActionsRenderer>{}};
     std::optional<ImageRef> ref_;
     std::function<void(bool)> on_open_;
@@ -347,7 +349,7 @@ private:
     Prop<bool> visible_{true};
     Prop<bool> disabled_{false};
     Prop<bool> rtl_{false};
-    Prop<ImageLocale> locale_{ImageLocale{}};
+    std::optional<Prop<ImageLocale>> locale_;
     Prop<std::shared_ptr<const ImageActionsRenderer>> actions_{std::shared_ptr<const ImageActionsRenderer>{}};
     std::function<void(bool, std::size_t)> on_open_;
     std::function<void(std::size_t, std::size_t)> on_change_;

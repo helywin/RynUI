@@ -31,3 +31,7 @@ API 对照基线为 Ant Design 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e7
 `preview(false)` 初始不创建 Modal、工具栏或焦点边界；响应更新 enabled 后惰性挂载并复用。禁用会关闭预览和清理 capture。Card 封面可向直接 Image 子组件传内部上角策略，来自 Card token；显式 Circle/RoundedRectangle shape 优先。自有背景、hover 和边框遵循同一上角策略；它不裁剪 slot 中的任意后代。这个策略不进入预览，不传播到任意后代，替换区域后不泄漏到别的 owner。
 
 预览 actionsRender 在私有 Form 编辑作用域内执行，工具栏内部 Input 不认领外层 FormItem 的自动 value/Enter 绑定；调用者显式声明的嵌套 FormItem 仍使用自己的绑定。
+
+108 媒体接入：未调用 `locale(...)` 时，Image 与 PreviewGroup 的内置加载、错误、预览操作和计数继承最近 ConfigProvider 的 image 语言组；显式完整 ImageLocale（包括英文和空字段）优先，typed slots 保持原有优先级。未设置的 `alt` 可使用本地化错误文案，显式 `.alt(u8"")` 保留空内容；ImagePreviewItem 的旧 aggregate 空 alt 仍视为未提供，不在内部转发时封死默认文案。业务 alt、分组 key 与图片内容不翻译。`ImageLocale.count` 使用 `{current}`、`{total}` 无符号整数模板，显式空模板隐藏计数。
+
+语言更新只重投影 retained 文案，不重新加载 source/previewSource、不改变受控 open/current 或预览变换，也不重跑 actions renderer。新增 `rynui.i18n_components_media` 覆盖真实组件行为；本子阶段交接尚未编译、运行或进行 native/GPU 验证，验收状态由父线程实际结果更新。

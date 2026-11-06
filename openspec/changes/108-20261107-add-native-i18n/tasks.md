@@ -11,9 +11,9 @@
 
 ## 2. 组件文案、格式与编辑保留
 
-- [ ] 2.1 接入 Modal/Popconfirm、Empty/Select/TreeSelect/Mentions/Cascader 等实际内置文案，保留 slot/显式 Locale/英文与空串优先；运行 `rynui.i18n_components_defaults`、`overrides` 及对应旧组件测试，更新组件文档。
-- [ ] 2.2 接入 Picker/Range/TimePicker/Calendar 的 placeholder、面板、月份/年、确认取消与格式语言，保留编辑冻结及同 key 单元格；运行 `rynui.i18n_components_pickers`、`editors` 和受影响既有 Picker/Calendar 测试，记录解析/格式边界。
-- [ ] 2.3 接入 Pagination/Table/Transfer/Descriptions 与媒体 Upload/Image/QRCode，修复绕过 Locale 的计数/错误显示，业务字符串保持原文；运行 `rynui.i18n_components_collections`、`media` 和对应 retained/controlled/cleanup 旧回归，更新各组件说明。
+- [x] 2.1 接入 Modal/Popconfirm、Empty/Select/TreeSelect/Mentions/Cascader 等实际内置文案，保留 slot/显式 Locale/英文与空串优先；运行 `rynui.i18n_components_defaults`、`overrides` 及对应旧组件测试，更新组件文档。
+- [x] 2.2 接入 Picker/Range/TimePicker/Calendar 的 placeholder、面板、月份/年、确认取消与格式语言，保留编辑冻结及同 key 单元格；运行 `rynui.i18n_components_pickers`、`editors` 和受影响既有 Picker/Calendar 测试，记录解析/格式边界。
+- [x] 2.3 接入 Pagination/Table/Transfer/Descriptions 与媒体 Upload/Image/QRCode，修复绕过 Locale 的计数/错误显示，业务字符串保持原文；运行 `rynui.i18n_components_collections`、`media` 和对应 retained/controlled/cleanup 旧回归，更新各组件说明。
 - [ ] 2.4 在整合 StatisticLocale 后抽取精确 number helper，接入 Statistic/InputNumber/ColorPicker 等实际数字与默认文案，保留显式 formatter/parser/separator、整数/Decimal/负零语义；运行 `rynui.i18n_components_formatting` 与既有数字合同，文档明确有限能力。
 - [ ] 2.5 实现 Form builtin/literal 来源、required 重载、optional rule message 迁移与当前 issue 重投影，保持已返回结果快照/validator/async/dirty 语义；运行 `rynui.i18n_components_form`、公开编译及受影响 Form 旧回归，提供迁移说明。
 - [ ] 2.6 正式 HEADLESS Debug/Release 完成各组件族新测试与受影响旧测试，验证实际输入/反向选区/composition/undo、弹层 open/clip/hit 和回调退役；运行格式/doctor/strict/diff，记录分族数量并分阶段提交，不重复无关全量矩阵。

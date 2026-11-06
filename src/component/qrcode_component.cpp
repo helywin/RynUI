@@ -1,5 +1,6 @@
 #include "component/qrcode_component.hpp"
 #include "component/form_control_binding.hpp"
+#include "component/localized_prop.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <ryn/button.hpp>
@@ -140,7 +141,11 @@ void append(WindowComponentServices& s, runtime::ComponentId parent, const Conte
     }
     if (b && &b->host() == &s.components()) {
         b->mount_slot_with_theme_scope(
-            Content{[&] { runtime::require_component_build_context().mount_slot(parent, content); }},
+            Content{[&] {
+                runtime::require_component_build_context().mount_slot_with_config_scope(
+                    Content{[&] { runtime::require_component_build_context().mount_slot(parent, content); }},
+                    s.components().config_scope(parent));
+            }},
             s.components().theme_scope(parent));
     } else {
         s.append_slot(parent, content);
@@ -221,6 +226,7 @@ void QRCodeComponentHost::encode(runtime::ComponentId id) {
     }
     const auto value = s->value;
     const auto options = s->encoding;
+    ++s->view.encoding_revision;
     try {
         auto data = QRCodeData::encode(value, options);
         s->view.data = std::move(data);
@@ -478,6 +484,7 @@ void QRCodeComponentHost::status_content(runtime::ComponentId id) {
 
 void QRCodeComponentHost::mount(const QRCodeProps& p) {
     auto& b = runtime::require_component_build_context();
+    const auto locale = localized_prop(p.locale_, b.config_scope(), &LocaleData::qrcode);
     const auto id = b.mount_component<QRCodeState>();
     auto& s = b.state<QRCodeState>(id);
     s.node = b.root(id);
@@ -595,11 +602,14 @@ void QRCodeComponentHost::mount(const QRCodeProps& p) {
             refresh(id);
         }
     });
-    connect_prop(scope, p.locale_, [this, id](QRCodeLocale v) {
+    connect_prop(scope, locale, [this, id](QRCodeLocale v) {
         if (auto* s = services_->components().state<QRCodeState>(id)) {
             s->locale = v;
-            s->labels.set(v);
+            const auto labels = s->labels;
             refresh(id);
+            // The public status renderer can retire the owner or switch locale.
+            // Do not touch the borrowed State after publishing its Signal.
+            labels.set(std::move(v));
         }
     });
     connect_prop(scope, p.bordered_, [this, id](bool v) {

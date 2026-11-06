@@ -27,8 +27,8 @@ struct PickerLocale final {
     void validate() const;
     // Trailing fields preserve the existing aggregate prefix.
     String date_placeholder{u8"Select date"};
-    String time_placeholder{u8"Select time"};
-    String date_time_placeholder{u8"Select date and time"};
+    String time_placeholder{u8"Select a time"};
+    String date_time_placeholder{u8"Select date"};
     std::array<String, 2> range_placeholder{u8"Start date", u8"End date"};
     std::array<String, 2> time_range_placeholder{u8"Start time", u8"End time"};
     String clear{u8"Clear"};
@@ -41,6 +41,14 @@ struct PickerLocale final {
     String time_format{u8"HH:mm:ss"};
     String date_time_format{u8"YYYY-MM-DD HH:mm:ss"};
     String month_panel_format{u8"MMMM YYYY"};
+    String year_placeholder{u8"Select year"};
+    String quarter_placeholder{u8"Select quarter"};
+    String month_placeholder{u8"Select month"};
+    String week_placeholder{u8"Select week"};
+    std::array<String, 2> year_range_placeholder{u8"Start year", u8"End year"};
+    std::array<String, 2> quarter_range_placeholder{u8"Start quarter", u8"End quarter"};
+    std::array<String, 2> month_range_placeholder{u8"Start month", u8"End month"};
+    std::array<String, 2> week_range_placeholder{u8"Start week", u8"End week"};
     friend bool operator==(const PickerLocale&, const PickerLocale&) = default;
 };
 

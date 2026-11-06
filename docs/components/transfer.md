@@ -28,6 +28,10 @@
 
 `disabled/readOnly/loading/visible`、modal input boundary、窗口失活及零面积会停止失效分支输入与文本会话。绑定、过滤、render、factory 或事件回调抛异常时，组件会在发布前回滚或完整 retire，释放其 popup、focus、capture、文本会话和场景资源；其他组件继续存活。
 
+未设置 `locale` 时实时继承最近 ConfigProvider 的 Transfer 组，内部 Pagination 自行继承同一作用域，不传默认英文 aggregate；显式完整 TransferLocale 则将其 `pagination` 继续传给内部分页。具体标题/空态/搜索/操作文字和 typed slots 优先，显式英文与空串不会退回默认值。`TransferSearchOptions::placeholder` 改为 `optional<String>`：缺省继承，显式空值清空 placeholder；直接读取该字段的调用者需先判断/解引用。
+
+语言投影使用已有过滤结果与选择计数，只更新保留文字，不运行 render/filter/reconcile 或工厂，不改变 page、scroll、selection 或输入会话。继承包使用 `count_one/count_other` 模板；显式旧 Locale 保留 `item_unit/items_unit` 的 `selected / total unit` 合同；`selectAllLabels` 结果仍优先且不会因语言变化重算。两条内置计数路径均使用现有 i18n UInt 精确插值，当前数字为 ASCII 十进制，不引入 number helper。新增组合测试源码见 `rynui.i18n_components_collections`，本次未运行 build/CTest。
+
 ## 平台边界
 
 平台通用合同和实际平台结果分别记录于 change 107 的 `evidence/transfer-linux.md` 与 `evidence/transfer-integration.md`。Core 文案、逻辑输入和 composition 合同不代表 OS 屏幕阅读器或系统 IME 候选窗实测。DOM/CSS/React、HTML 属性、浏览器事件及 Web refs 不属于公开原生接口；Windows MSVC 和物理系统 IME/AT 由对应平台单独验证，不列人工实施任务。

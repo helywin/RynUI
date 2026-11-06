@@ -54,6 +54,7 @@ public:
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:
+    void update_empty_label(runtime::ComponentId id, String value);
     void refresh(runtime::ComponentId id, bool geometry = true);
     void request_open(runtime::ComponentId id, bool open);
     void choose(runtime::ComponentId id, std::optional<std::size_t> index);

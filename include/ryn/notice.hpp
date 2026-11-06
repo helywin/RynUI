@@ -6,14 +6,28 @@
 #include <optional>
 #include <functional>
 #include <cstdint>
+#include <future>
 
 namespace ryn {
+class AppRef;
+class MessageProps;
+class NotificationProps;
+struct MessageSlots;
+struct NotificationSlots;
 enum class NoticeStatus : std::uint8_t { Success, Info, Warning, Error, Loading };
 enum class NotificationPlacement : std::uint8_t { TopLeft, TopRight, BottomLeft, BottomRight };
+enum class NoticeCloseResult : std::uint8_t { Closed, Cancelled, Failed };
+
+struct NoticeStack final {
+    bool enabled{false};
+    std::size_t threshold{3};
+    friend bool operator==(NoticeStack, NoticeStack) = default;
+};
 
 namespace detail {
 class NoticeComponentHost;
 struct NoticeRefState;
+struct NoticeCompletion;
 
 struct NoticeOptions final {
     std::optional<Prop<String>> title;
@@ -22,9 +36,31 @@ struct NoticeOptions final {
     std::optional<Prop<NotificationPlacement>> placement;
     std::optional<Prop<double>> duration;
     std::optional<Prop<bool>> closable;
+    std::optional<Prop<bool>> pause_on_hover;
+    std::optional<Prop<bool>> show_progress;
+    std::optional<Prop<bool>> motion;
     std::optional<std::function<void()>> on_close;
+    std::shared_ptr<NoticeCompletion> completion;
 };
 } // namespace detail
+
+// The future is safe to observe on another thread. UI requests stay on the
+// holder's owner thread; destroying that holder resolves pending work Cancelled.
+class NoticeHandle final {
+public:
+    NoticeHandle();
+    [[nodiscard]] std::shared_future<NoticeCloseResult> closed() const;
+    [[nodiscard]] bool close() const;
+    [[nodiscard]] bool update(MessageProps props) const;
+    [[nodiscard]] bool update(NotificationProps props) const;
+    [[nodiscard]] bool update(MessageProps props, MessageSlots slots) const;
+    [[nodiscard]] bool update(NotificationProps props, NotificationSlots slots) const;
+
+private:
+    friend class MessageRef;
+    friend class NotificationRef;
+    std::shared_ptr<detail::NoticeCompletion> state_;
+};
 
 struct MessageContentSlot final {};
 
@@ -76,8 +112,24 @@ public:
         return *this;
     }
 
+    MessageProps& pauseOnHover(Prop<bool> value = true) {
+        options_.pause_on_hover = std::move(value);
+        return *this;
+    }
+
+    MessageProps& showProgress(Prop<bool> value = true) {
+        options_.show_progress = std::move(value);
+        return *this;
+    }
+
+    MessageProps& motion(Prop<bool> value = true) {
+        options_.motion = std::move(value);
+        return *this;
+    }
+
 private:
     friend class MessageRef;
+    friend class NoticeHandle;
     detail::NoticeOptions options_;
 };
 
@@ -86,11 +138,13 @@ public:
     MessageRef();
     [[nodiscard]] bool bound() const;
     [[nodiscard]] bool open(String key, MessageProps props, MessageSlots slots = {}) const;
+    [[nodiscard]] NoticeHandle openAsync(String key, MessageProps props, MessageSlots slots = {}) const;
     [[nodiscard]] bool close(String key) const;
     [[nodiscard]] bool clear() const;
 
 private:
     friend class MessageHolderProps;
+    friend class AppRef;
     std::shared_ptr<detail::NoticeRefState> state_;
 };
 
@@ -106,10 +160,16 @@ public:
         return *this;
     }
 
+    MessageHolderProps& stack(Prop<NoticeStack> value) {
+        stack_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend class detail::NoticeComponentHost;
     std::shared_ptr<detail::NoticeRefState> reference_;
     Prop<std::size_t> max_count_{std::size_t{8}};
+    Prop<NoticeStack> stack_{NoticeStack{}};
 };
 
 void MessageHolder(MessageHolderProps props);
@@ -159,8 +219,24 @@ public:
         return *this;
     }
 
+    NotificationProps& pauseOnHover(Prop<bool> value = true) {
+        options_.pause_on_hover = std::move(value);
+        return *this;
+    }
+
+    NotificationProps& showProgress(Prop<bool> value = true) {
+        options_.show_progress = std::move(value);
+        return *this;
+    }
+
+    NotificationProps& motion(Prop<bool> value = true) {
+        options_.motion = std::move(value);
+        return *this;
+    }
+
 private:
     friend class NotificationRef;
+    friend class NoticeHandle;
     detail::NoticeOptions options_;
 };
 
@@ -169,11 +245,13 @@ public:
     NotificationRef();
     [[nodiscard]] bool bound() const;
     [[nodiscard]] bool open(String key, NotificationProps props, NotificationSlots slots = {}) const;
+    [[nodiscard]] NoticeHandle openAsync(String key, NotificationProps props, NotificationSlots slots = {}) const;
     [[nodiscard]] bool close(String key) const;
     [[nodiscard]] bool clear() const;
 
 private:
     friend class NotificationHolderProps;
+    friend class AppRef;
     std::shared_ptr<detail::NoticeRefState> state_;
 };
 
@@ -189,10 +267,16 @@ public:
         return *this;
     }
 
+    NotificationHolderProps& stack(Prop<NoticeStack> value) {
+        stack_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend class detail::NoticeComponentHost;
     std::shared_ptr<detail::NoticeRefState> reference_;
     Prop<std::size_t> max_count_{std::size_t{8}};
+    Prop<NoticeStack> stack_{NoticeStack{}};
 };
 
 void NotificationHolder(NotificationHolderProps props);

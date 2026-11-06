@@ -2,6 +2,7 @@
 #include "component/select_component.hpp"
 #include "component/auto_complete_component.hpp"
 #include "component/popover_model.hpp"
+#include "component/popup_motion.hpp"
 #include "component/table_component.hpp"
 #include "component/date_picker_component.hpp"
 #include "component/time_picker_component.hpp"
@@ -24,6 +25,17 @@ struct PopoverState final {
     input::InteractionId trigger_hit;
     input::InteractionId popup_hit;
     component::RetainedSurfaceId surface;
+    runtime::ComponentId content_body;
+    component::RetainedSurfaceId title_separator;
+    PopupMotion motion;
+    bool animated{};
+    bool content_scroll{true};
+    TextDirection direction{TextDirection::LeftToRight};
+    Signal<TextDirection> text_direction{TextDirection::LeftToRight};
+    std::optional<runtime::Point> context_anchor;
+    std::optional<std::pair<input::PointerIdentity, input::InteractionId>> context_press;
+    float natural_content_height{};
+    float content_view_height{};
     Signal<String> title{String{}};
     Signal<String> content{String{}};
     Signal<runtime::SemanticForeground> text_color{{0, 0, 0, 1}};
@@ -212,8 +224,20 @@ void PopoverComponentHost::refresh(runtime::ComponentId id) {
     const bool changed = visible != s->view.geometry.visible;
     s->view.geometry.visible = visible;
     const auto popup = s->view.popup;
-    bool structure = services_->components().set_branch_active(popup, visible);
-    structure |= services_->components().set_branch_active(s->view.arrow, visible && s->arrow);
+    const auto policy = animation::resolve_motion_policy(services_->components().theme_scope(id)->snapshot(),
+                                                         services_->motion_preference());
+    const bool motion_allowed = s->animated && policy.enabled() && window_active_ && !s->disabled &&
+                                services_->components().branch_active(id) &&
+                                services_->interactions().component_lifetime_active(id) &&
+                                (visible || services_->interactions().component_active(id));
+    s->motion.target(visible, services_->animation_time(), policy.tokens().fast, motion_allowed);
+    const bool painted = s->motion.painted();
+    bool structure = services_->components().set_branch_active(popup, painted);
+    structure |= services_->components().set_branch_active(s->view.arrow, painted && s->arrow);
+    if (services_->nodes().set_paint_opacity(services_->components().root(popup), s->motion.opacity()) |
+        services_->nodes().set_paint_opacity(services_->components().root(s->view.arrow), s->motion.opacity())) {
+        services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
+    }
     structure |= services_->components().set_branch_active(s->view.title, has_title(*s));
     structure |= services_->components().set_branch_active(s->view.content, has_content(*s));
     services_->nodes().require(services_->components().root(s->view.title)).out_of_flow = !has_title(*s);
@@ -274,7 +298,8 @@ void PopoverComponentHost::request_open(runtime::ComponentId id, bool open, bool
 
         ~ManualRequestGuard() noexcept {
             auto* live = services.components().state<PopoverState>(id);
-            if (live && !live->triggers.hover && !live->triggers.focus && !live->triggers.click) {
+            if (live && !live->triggers.hover && !live->triggers.focus && !live->triggers.click &&
+                !live->triggers.context_menu) {
                 live->model.settle_request();
             }
         }
@@ -295,6 +320,8 @@ void PopoverComponentHost::suppress(runtime::ComponentId id) {
     s->hovered = false;
     s->click_open = false;
     s->press_open.reset();
+    s->context_anchor.reset();
+    s->context_press.reset();
     const bool notify = s->model.suppress();
     const auto callback = s->on_open;
     refresh(id);
@@ -314,6 +341,7 @@ void PopoverComponentHost::observe(runtime::ComponentId id, animation::Animation
             s->hovered = false;
             s->click_open = false;
             s->press_open.reset();
+            s->context_press.reset();
             s->model.reset_observation();
             refresh(id);
         } else {
@@ -396,14 +424,52 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
     const auto initial_title = read_prop(props.title_);
     const auto initial_content = read_prop(props.content_);
     const bool disabled = read_prop(props.disabled_);
+    const auto direction = read_prop(props.direction_);
+    static_cast<void>(directional_popup_placement(PopoverPlacement::Top, direction));
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     const auto id = build.mount_component<PopoverState>(props.open_.has_value(), initial_open);
+
+    struct MountRollback final {
+        WindowComponentServices& services;
+        runtime::ComponentId owner;
+        bool committed{};
+
+        ~MountRollback() noexcept {
+            if (!committed) {
+                services.retire_failed_component(owner);
+            }
+        }
+    } rollback{services, id};
+
+    const auto valid = [&](bool complete = false) {
+        const auto* live = services.components().state<PopoverState>(id);
+        if (!live || !services.components().scope(id).active()) {
+            return false;
+        }
+        const std::array edges{std::pair{live->view.trigger, id},
+                               std::pair{live->view.popup, id},
+                               std::pair{live->view.title, live->view.popup},
+                               std::pair{live->view.content, live->view.popup},
+                               std::pair{live->content_body, live->view.content},
+                               std::pair{live->view.arrow, id}};
+        for (const auto& [child, parent] : edges) {
+            if (child.valid() ? !services.components().contains(child) ||
+                                    services.components().parent(child) != std::optional{parent}
+                              : complete) {
+                services.retire_failed_component(id);
+                return false;
+            }
+        }
+        return true;
+    };
     auto& s = build.state<PopoverState>(id);
     s.node = build.root(id);
     s.rich_title = slots.title.has_value();
     s.rich_content = slots.content.has_value();
     s.disabled = disabled;
+    s.direction = direction;
+    s.text_direction.set(s.direction);
     s.triggers = actions;
     s.on_open = props.on_open_;
     s.title.set(initial_title);
@@ -418,11 +484,17 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
         services.layout().remove_layout(node);
     });
     runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
+    if (!valid()) {
+        return;
+    }
     build.mount_slot(
         id, Content{[&] {
             auto& children = runtime::require_component_build_context();
             s.view.trigger = group(services);
             children.mount_slot(s.view.trigger, trigger);
+            if (!valid()) {
+                return;
+            }
             for (auto hit : services.interactions().declaration_order()) {
                 const auto* r = services.interactions().find(hit);
                 if (r && r->focusable && descendant(services, r->component, s.view.trigger)) {
@@ -448,6 +520,12 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
             effects.focus_enabled = false;
             s.surface = services.surfaces().create(s.view.popup, popup_node, surface, s.popup_hit,
                                                    std::span{&initial, 1}, effects);
+            const auto separator =
+                children.register_scene_fragment(s.view.popup, runtime::SceneFragmentPlacement::before_children);
+            s.title_separator = services.surfaces().create_content_range(separator, {});
+            children.on_resource_cleanup(s.view.popup, [&services, separator = s.title_separator] {
+                services.surfaces().destroy_content_range(separator);
+            });
             children.on_resource_cleanup(s.view.popup,
                                          [&services, popup = s.view.popup, hit = s.popup_hit, surface = s.surface] {
                                              services.interactions().set_input_blocked(popup, false);
@@ -455,21 +533,72 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
                                              services.interactions().remove(hit);
                                              services.surfaces().destroy(surface);
                                          });
-            children.mount_slot(s.view.popup, Content{[&] {
-                                    auto& popup = runtime::require_component_build_context();
-                                    s.view.title = group(services);
-                                    popup.mount_slot_with_semantic_text_style(
-                                        s.view.title,
-                                        slots.title ? Content{SlotContentAccess::function(*slots.title)}
-                                                    : Content{[&s] { Text(TextProps{}.content(s.title)); }},
-                                        s.title_color, s.title_font);
-                                    s.view.content = group(services);
-                                    popup.mount_slot_with_semantic_text_style(
-                                        s.view.content,
-                                        slots.content ? Content{SlotContentAccess::function(*slots.content)}
-                                                      : Content{[&s] { Text(TextProps{}.content(s.content)); }},
-                                        s.text_color, s.font);
-                                }});
+            children.mount_slot(
+                s.view.popup, Content{[&] {
+                    auto& popup = runtime::require_component_build_context();
+                    s.view.title = group(services);
+                    popup.mount_slot_with_semantic_text_style(
+                        s.view.title, slots.title ? Content{SlotContentAccess::function(*slots.title)} : Content{[&s] {
+                            Text(TextProps{}.content(s.title).direction(s.text_direction));
+                        }},
+                        s.title_color, s.title_font);
+                    if (!valid()) {
+                        return;
+                    }
+                    s.view.content = group(services);
+                    services.nodes().require(popup.root(s.view.content)).clip_content = true;
+                    services.nodes().require(popup.root(s.view.content)).clip_decorations = false;
+                    popup.mount_slot(
+                        s.view.content, Content{[&] {
+                            auto& body = runtime::require_component_build_context();
+                            s.content_body = group(services);
+                            body.mount_slot_with_semantic_text_style(
+                                s.content_body,
+                                slots.content ? Content{SlotContentAccess::function(*slots.content)} : Content{[&s] {
+                                    Text(TextProps{}.content(s.content).direction(s.text_direction));
+                                }},
+                                s.text_color, s.font);
+                        }});
+                }});
+            if (!valid()) {
+                return;
+            }
+            const auto content_node = children.root(s.view.content);
+            services.layout().set_layout(
+                content_node,
+                layout::ComponentLayout{
+                    [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                        auto* state = services_->components().state<PopoverState>(id);
+                        const auto& t = services_->components().theme_scope(id)->snapshot().popover();
+                        const float horizontal = std::min(t.content_padding_inline, limits.max_width / 2);
+                        const float vertical = std::min(t.content_padding_block, limits.max_height / 2);
+                        const auto natural = engine.measure_child(
+                            services_->components().root(state->content_body),
+                            {0, std::max(0.0F, limits.max_width - 2 * horizontal), 0,
+                             state->content_scroll ? std::numeric_limits<float>::infinity()
+                                                   : std::max(0.0F, limits.max_height - 2 * vertical)});
+                        state->natural_content_height = natural.height;
+                        return limits.constrain({natural.width + 2 * horizontal, natural.height + 2 * vertical});
+                    },
+                    [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect rect) {
+                        auto* state = services_->components().state<PopoverState>(id);
+                        const auto& t = services_->components().theme_scope(id)->snapshot().popover();
+                        const float horizontal = std::min(t.content_padding_inline, rect.width / 2);
+                        const float vertical = std::min(t.content_padding_block, rect.height / 2);
+                        state->content_view_height = std::max(0.0F, rect.height - 2 * vertical);
+                        state->view.scroll_extent =
+                            state->content_scroll
+                                ? std::max(0.0F, state->natural_content_height - state->content_view_height)
+                                : 0;
+                        state->view.scroll_offset =
+                            std::clamp(state->view.scroll_offset, 0.0F, state->view.scroll_extent);
+                        engine.place_child(services_->components().root(state->content_body),
+                                           {rect.x + horizontal, rect.y + vertical - state->view.scroll_offset,
+                                            std::max(0.0F, rect.width - 2 * horizontal),
+                                            state->content_scroll
+                                                ? std::max(state->natural_content_height, state->content_view_height)
+                                                : state->content_view_height});
+                    }});
             services.layout().set_layout(
                 popup_node,
                 layout::ComponentLayout{
@@ -479,6 +608,11 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
                         const float padding = std::min(t.padding, std::min(limits.max_width, limits.max_height) / 2);
                         const float width = std::max(0.0F, limits.max_width - 2 * padding);
                         const float height = std::max(0.0F, limits.max_height - 2 * padding);
+                        services_->layout().set_layout(
+                            services_->components().root(state->view.title),
+                            layout::BoxLayout{{t.title_padding_inline, t.title_padding_top, t.title_padding_inline,
+                                               t.title_padding_bottom + t.title_border_width},
+                                              true});
                         const auto natural_title =
                             has_title(*state)
                                 ? engine.measure_child(services_->components().root(state->view.title),
@@ -537,6 +671,9 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
                 s.view.arrow, Content{[&s] { mount_text_component(TextProps{}.content(s.arrow_glyph), true); }},
                 s.arrow_color, s.arrow_font);
         }});
+    if (!valid(true)) {
+        return;
+    }
     services.layout().set_layout(
         s.node, layout::ComponentLayout{
                     [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
@@ -549,9 +686,26 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
                     }});
     mounted_.push_back(id);
     const auto connect = [this, id]<typename T, typename Apply>(const Prop<T>& prop, Apply&& apply) {
-        if (services_->components().contains(id) && services_->components().scope(id).active()) {
-            connect_prop(services_->components().scope(id), prop, std::forward<Apply>(apply));
+        if (!services_->components().contains(id) || !services_->components().scope(id).active()) {
+            return;
         }
+        auto run = [this, id, prop, apply = std::forward<Apply>(apply), last = std::optional<T>{}]() mutable {
+            auto value = read_prop(prop);
+            if (services_->components().contains(id) && services_->components().scope(id).active()) {
+                if (last && *last == value) {
+                    return;
+                }
+                last = value;
+                apply(std::move(value));
+            }
+        };
+        if (PropAccess::static_value(prop)) {
+            run();
+            return;
+        }
+        auto observer = detail::observe(detail::ObserverPhase::binding, std::move(run), false);
+        services_->components().scope(id).on_cleanup([observer] { observer->deactivate(); });
+        observer->run();
     };
     const auto text = [&](const Prop<String>& prop, Signal<String> PopoverState::* field) {
         connect(prop, [this, id, field](String value) {
@@ -591,6 +745,8 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
         if (auto* state = services_->components().state<PopoverState>(id); state && state->triggers != value) {
             state->triggers = value;
             state->click_open = false;
+            state->context_press.reset();
+            state->context_anchor.reset();
             state->model.reset_observation();
             request_open(id, false);
         }
@@ -614,6 +770,18 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
     flag(props.arrow_, &PopoverState::arrow);
     flag(props.point_at_center_, &PopoverState::point_at_center);
     flag(props.adjust_, &PopoverState::adjust);
+    flag(props.animated_, &PopoverState::animated);
+    flag(props.content_scroll_, &PopoverState::content_scroll);
+    connect(props.direction_, [this, id](TextDirection value) {
+        static_cast<void>(directional_popup_placement(PopoverPlacement::Top, value));
+        if (auto* state = services_->components().state<PopoverState>(id)) {
+            state->direction = value;
+            const auto direction = state->text_direction;
+            state->needs_measure = true;
+            services_->dirty().invalidate(state->node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Geometry);
+            direction.set(value);
+        }
+    });
     connect(props.placement_, [this, id](PopoverPlacement value) {
         validate_placement(value);
         if (auto* state = services_->components().state<PopoverState>(id)) {
@@ -635,7 +803,7 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
     };
     delay(props.enter_, &PopoverState::enter);
     delay(props.leave_, &PopoverState::leave);
-    if (!services_->components().contains(id) || !services_->components().scope(id).active()) {
+    if (!valid(true)) {
         return;
     }
     const auto theme = build.theme_scope();
@@ -649,6 +817,7 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
     }
     update_theme(id, true);
     refresh(id);
+    rollback.committed = valid(true);
 }
 
 void PopoverComponentHost::on_window_active(bool active) {
@@ -663,6 +832,13 @@ void PopoverComponentHost::on_window_active(bool active) {
     }
 }
 
+void PopoverComponentHost::synchronize_auxiliary_motion() {
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        refresh(id);
+    }
+}
+
 void PopoverComponentHost::on_input_boundary_changed() {
     const auto ids = mounted_;
     for (auto id : ids) {
@@ -672,6 +848,7 @@ void PopoverComponentHost::on_input_boundary_changed() {
                     s->hovered = false;
                     s->click_open = false;
                     s->press_open.reset();
+                    s->context_press.reset();
                     s->model.reset_observation();
                 }
                 refresh(id);
@@ -700,6 +877,33 @@ bool PopoverComponentHost::on_keyboard_input(const input::KeyboardInputEvent& ev
     const auto component = record ? std::optional{record->component} : std::nullopt;
     const auto handlers = record ? record->focus_handlers : nullptr;
     const auto ids = mounted_;
+    if (event.action == input::KeyAction::down && component && (!handlers || !handlers->text_edit)) {
+        for (auto it = ids.rbegin(); it != ids.rend(); ++it) {
+            auto* s = services_->components().state<PopoverState>(*it);
+            if (!s || !s->view.geometry.visible || s->view.scroll_extent <= 0 ||
+                !descendant(*services_, *component, s->view.popup)) {
+                continue;
+            }
+            float next = s->view.scroll_offset;
+            if (event.key == input::Key::page_down) {
+                next += s->content_view_height;
+            } else if (event.key == input::Key::page_up) {
+                next -= s->content_view_height;
+            } else if (event.key == input::Key::home) {
+                next = 0;
+            } else if (event.key == input::Key::end) {
+                next = s->view.scroll_extent;
+            } else {
+                continue;
+            }
+            s->view.scroll_offset = std::clamp(next, 0.0F, s->view.scroll_extent);
+            s->needs_measure = true;
+            services_->dirty().invalidate(services_->components().root(s->view.content),
+                                          runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
+                                              runtime::DirtyFlags::HitTest);
+            return true;
+        }
+    }
     for (auto id : ids) {
         auto* s = services_->components().state<PopoverState>(id);
         if (!s || s->disabled || !s->triggers.click || !services_->interactions().component_active(id)) {
@@ -719,6 +923,7 @@ bool PopoverComponentHost::on_keyboard_input(const input::KeyboardInputEvent& ev
                 if (s && services_->components().scope(id).active() && services_->interactions().component_active(id)) {
                     const bool open = !s->view.geometry.visible;
                     s->click_open = open;
+                    s->context_anchor.reset();
                     if (!open) {
                         s->model.dismiss();
                     }
@@ -761,6 +966,15 @@ void PopoverComponentHost::on_pointer_input(const input::PointerInputEvent& even
         const auto* r = hit ? services_->interactions().find(*hit) : nullptr;
         const bool trigger = hit == s->trigger_hit || (r && descendant(*services_, r->component, s->view.trigger));
         const bool popup = r && descendant(*services_, r->component, s->view.popup);
+        if (event.action == input::PointerAction::down && event.button == input::PointerButton::secondary) {
+            s->context_press = trigger && hit ? std::optional{std::pair{event.pointer, *hit}} : std::nullopt;
+        }
+        const bool context_release =
+            s->context_press && hit && s->context_press->first == event.pointer && s->context_press->second == *hit;
+        if (event.action == input::PointerAction::cancel ||
+            (event.action == input::PointerAction::up && event.button == input::PointerButton::secondary)) {
+            s->context_press.reset();
+        }
         // Focus is acquired on pointer down, before the pointer observer. A
         // combined focus/click trigger must use this press's opening intent,
         // rather than toggle the focus-opened popup closed on pointer up.
@@ -774,8 +988,19 @@ void PopoverComponentHost::on_pointer_input(const input::PointerInputEvent& even
         }
         if (event.action == input::PointerAction::down && s->view.geometry.visible && !trigger && !popup) {
             s->click_open = false;
+            s->context_anchor.reset();
             s->model.dismiss();
             request_open(id, false, false);
+        } else if (event.action == input::PointerAction::up && event.button == input::PointerButton::secondary &&
+                   trigger && context_release && s->triggers.context_menu &&
+                   trigger_can_activate(*services_, id, hit)) {
+            s = services_->components().state<PopoverState>(id);
+            if (s && services_->components().scope(id).active() && services_->interactions().component_active(id)) {
+                s->context_anchor = runtime::Point{event.x, event.y};
+                s->click_open = true;
+                services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry);
+                request_open(id, true);
+            }
         } else if (event.action == input::PointerAction::up && event.button == input::PointerButton::primary &&
                    trigger && hit && hit == origin && s->triggers.click && trigger_can_activate(*services_, id, hit)) {
             s = services_->components().state<PopoverState>(id);
@@ -783,6 +1008,7 @@ void PopoverComponentHost::on_pointer_input(const input::PointerInputEvent& even
                 const bool open = !s->press_open.value_or(s->view.geometry.visible);
                 s->press_open.reset();
                 s->click_open = open;
+                s->context_anchor.reset();
                 if (!open) {
                     s->model.dismiss();
                 }
@@ -806,8 +1032,19 @@ bool PopoverComponentHost::consume_scroll_boundary(const input::ScrollInputEvent
     }
     const auto owner = nearest_layer(*services_, r->component);
     for (auto id : mounted_) {
-        const auto* s = services_->components().state<PopoverState>(id);
+        auto* s = services_->components().state<PopoverState>(id);
         if (s && s->view.geometry.visible && owner == s->view.popup) {
+            if (s->content_scroll && s->view.scroll_extent > 0 && event.delta_y != 0) {
+                const float next =
+                    std::clamp(s->view.scroll_offset - event.delta_y * 32.0F, 0.0F, s->view.scroll_extent);
+                if (next != s->view.scroll_offset) {
+                    s->view.scroll_offset = next;
+                    s->needs_measure = true;
+                    services_->dirty().invalidate(services_->components().root(s->view.content),
+                                                  runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
+                                                      runtime::DirtyFlags::HitTest);
+                }
+            }
             return true;
         }
     }
@@ -823,9 +1060,14 @@ std::size_t PopoverComponentHost::tick_auxiliary(animation::AnimationTime time) 
             continue;
         }
         const bool before = s->view.geometry.visible;
+        const bool moving = s->motion.running();
         observe(id, time);
         s = services_->components().state<PopoverState>(id);
         if (s && before != s->view.geometry.visible) {
+            ++changed;
+        }
+        if (s && moving) {
+            services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
             ++changed;
         }
     }
@@ -838,6 +1080,12 @@ std::optional<animation::AnimationTime> PopoverComponentHost::next_auxiliary_dea
         const auto* s = services_->components().state<PopoverState>(id);
         if (s && s->model.deadline() && (!result || *s->model.deadline() < *result)) {
             result = s->model.deadline();
+        }
+        if (s && s->motion.running()) {
+            const auto next = services_->animation_time() + animation::AnimationDuration::microseconds(16667);
+            if (!result || next < *result) {
+                result = next;
+            }
         }
     }
     return result;
@@ -941,11 +1189,15 @@ void PopoverComponentHost::position_window_layer(runtime::ComponentId id, runtim
         s->needs_measure = false;
     }
     const auto& node = services_->nodes().require(s->node);
-    const runtime::Rect anchor{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
-                               node.bounds.width, node.bounds.height};
+    runtime::Rect anchor{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y, node.bounds.width,
+                         node.bounds.height};
+    if (s->context_anchor) {
+        anchor = {s->context_anchor->x, s->context_anchor->y, 0, 0};
+    }
     s->view.geometry =
-        position_tooltip(anchor, s->popup_size, clip, s->placement, t.gap + (s->arrow ? t.arrow_size : 0), s->adjust,
-                         s->arrow && s->point_at_center, std::max(12.0F, t.border_radius + 2));
+        position_tooltip(anchor, s->popup_size, clip, directional_popup_placement(s->placement, s->direction),
+                         t.gap + (s->arrow ? t.arrow_size : 0), s->adjust, s->arrow && s->point_at_center,
+                         std::max(12.0F, t.border_radius + 2));
     if (measure || services_->nodes().require(popup_node).bounds != s->view.geometry.bounds) {
         engine.place_child(popup_node, s->view.geometry.bounds);
         positioned = true;
@@ -998,7 +1250,7 @@ void PopoverComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime
     const auto ids = mounted_;
     for (auto id : ids) {
         const auto* s = services_->components().state<PopoverState>(id);
-        if (!s || !s->view.geometry.visible) {
+        if (!s || !s->motion.painted()) {
             continue;
         }
         const auto& token = services_->components().theme_scope(id)->snapshot().popover();
@@ -1014,6 +1266,16 @@ void PopoverComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime
         effects.shadows = token.shadow;
         effects.ancestor_clip = graphics::EffectClip{1, s->clip};
         static_cast<void>(services_->surfaces().update_effects(s->surface, effects));
+        std::vector<graphics::QuadInstance> separator;
+        if (has_title(*s) && token.title_border_width > 0) {
+            const auto title = services_->nodes().require(services_->components().root(s->view.title)).bounds;
+            graphics::QuadInstance line;
+            line.bounds = {title.x, title.y + std::max(0.0F, title.height - token.title_border_width), title.width,
+                           std::min(title.height, token.title_border_width)};
+            line.color = foreground(token.title_border);
+            separator.push_back(line);
+        }
+        static_cast<void>(services_->surfaces().update_content_range(s->title_separator, separator));
     }
 }
 } // namespace ryn::detail

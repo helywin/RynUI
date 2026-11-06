@@ -6,6 +6,7 @@
 #include "component/popover_component.hpp"
 #include "component/tree_component.hpp"
 #include "component/navigation_transition.hpp"
+#include "component/localized_prop.hpp"
 #include <ryn/tag.hpp>
 #include <ryn/flex.hpp>
 #include <map>
@@ -278,6 +279,7 @@ TreeSelectSnapshot TreeSelectComponentHost::snapshot(runtime::ComponentId id) co
             result.tags.push_back(row.id);
         }
     }
+    result.empty = s->empty;
     return result;
 }
 
@@ -946,6 +948,18 @@ void TreeSelectComponentHost::mount(const TreeSelectProps& p, const std::vector<
         });
         return intact(id);
     };
+    const auto empty_content = localized_prop(p.not_found_content_, build.config_scope(),
+                                              [](const LocaleData& data) { return data.common.empty; });
+    connect_prop(s->bindings, empty_content, [this, id](String value) {
+        if (intact(id)) {
+            CallbackFailure failure{*services_, id};
+            const auto label = state(*services_, id)->empty_label;
+            label.set(std::move(value));
+        }
+    });
+    if (!intact(id)) {
+        return;
+    }
     if ((p.value_ && !bind_value(*p.value_, [](auto& v, String x) { v.model.reconcile_value(std::move(x)); })) ||
         (p.open_ && !bind_value(*p.open_,
                                 [](auto& v, bool x) {
@@ -960,7 +974,6 @@ void TreeSelectComponentHost::mount(const TreeSelectProps& p, const std::vector<
         !bind_value(p.read_only_, [](auto& v, bool x) { v.read_only = x; }) ||
         !bind_value(p.allow_clear_, [](auto& v, bool x) { v.allow_clear = x; }) ||
         !bind_value(p.placeholder_, [](auto& v, String x) { v.placeholder.set(std::move(x)); }) ||
-        !bind_value(p.not_found_content_, [](auto& v, String x) { v.empty_label.set(std::move(x)); }) ||
         !bind_value(p.size_, [](auto& v, ControlSize x) { v.size.set(x); }) ||
         !bind_value(p.variant_, [](auto& v, InputVariant x) { v.variant.set(x); }) ||
         !bind_value(p.status_, [](auto& v, InputStatus x) { v.status.set(x); }) ||

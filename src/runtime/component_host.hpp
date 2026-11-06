@@ -126,6 +126,8 @@ public:
     void reorder_children(ComponentId parent, std::span<const ComponentId> order);
     bool set_branch_active(ComponentId id, bool active);
     [[nodiscard]] bool branch_active(ComponentId id) const;
+    // Overlay preflight evaluates its proposed ancestor branches before publishing any paint changes.
+    [[nodiscard]] bool local_branch_active(ComponentId id) const noexcept;
     bool set_window_layer(ComponentId id, std::optional<int> priority);
     // A modal's opening order groups its layer and all owned popups. The group
     // root is painted first; child popup priorities remain local to that group.

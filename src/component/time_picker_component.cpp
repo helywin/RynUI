@@ -6,6 +6,7 @@
 #include "component/table_component.hpp"
 #include "component/navigation_transition.hpp"
 #include "component/picker_range.hpp"
+#include "component/picker_i18n.hpp"
 #include "component/date_picker_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -32,6 +33,13 @@ struct TimeRow final {
     bool hovered{};
 };
 
+struct TimeDisplayFormat final {
+    bool twelve{};
+    String pattern;
+    PickerLocale locale;
+    friend bool operator==(const TimeDisplayFormat&, const TimeDisplayFormat&) = default;
+};
+
 struct TimePickerState final {
     explicit TimePickerState(TimePickerModel value) : model(std::move(value)) {}
 
@@ -53,6 +61,7 @@ struct TimePickerState final {
     std::array<bool, 5> reveal{true, true, true, true, true};
     std::unique_ptr<NavigationTransition> transition;
     PickerLocale locale;
+    PickerLocale format_locale;
     std::optional<PickerEndpoint> range_endpoint;
     String format;
     bool twelve{};
@@ -74,17 +83,80 @@ struct TimePickerState final {
     bool need_confirm{true};
     bool needs_layout{true};
     bool focus_within{};
+    bool updating_rows{};
+    bool rows_pending{};
+    std::uint64_t revision{};
+    std::uint64_t edit_session{};
+    std::optional<std::uint64_t> submitting;
+    std::optional<std::pair<TimePickerValue, std::uint64_t>> echo;
     runtime::Rect anchor;
     runtime::Rect clip;
     std::function<void(TimePickerValue)> on_change;
-    std::function<void(TimePickerValue)> on_request;
+    std::function<PickerRequestDisposition(TimePickerValue, const PickerCandidate&)> on_request;
     std::function<void(bool)> on_open;
 };
+
+PickerCandidate range_candidate(WindowComponentServices& services,
+                                const std::shared_ptr<PickerRangeState<TimeOfDay>>& range,
+                                const PickerCandidate& source = {}) {
+    std::vector<std::pair<runtime::ComponentId, PickerEditorSession>> editors;
+    for (const auto id : range->owners) {
+        if (const auto* state = services.components().state<TimePickerState>(id)) {
+            const auto* editor = services.input_runtime()->editors().find(state->editor);
+            if (editor) {
+                editors.emplace_back(id, PickerEditorSession{state->edit_session, editor->composition().active});
+            }
+        }
+    }
+    return {source.semantics, [&services, editors = std::move(editors), source] {
+                if (!source.active()) {
+                    return false;
+                }
+                for (const auto& [id, session] : editors) {
+                    const auto* state = services.components().state<TimePickerState>(id);
+                    const auto* editor = state ? services.input_runtime()->editors().find(state->editor) : nullptr;
+                    if (!state || state->edit_session != session.edit || !services.components().scope(id).active() ||
+                        !editor || editor->composition().active != session.composing) {
+                        return false;
+                    }
+                }
+                return true;
+            }};
+}
+
+bool active_edit(WindowComponentServices& services, const TimePickerState& state) {
+    const auto* editor = services.input_runtime()->editors().find(state.editor);
+    return state.model.text_dirty() || (editor && services.input_runtime()->focused(state.view.selector) &&
+                                        (editor->composition().active || !editor->selection().empty()));
+}
 
 bool descendant(WindowComponentServices& services, runtime::ComponentId child, runtime::ComponentId parent) {
     for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
         if (*current == parent) {
             return true;
+        }
+    }
+    return false;
+}
+
+bool range_sibling(WindowComponentServices& services, runtime::ComponentId id, const TimePickerState& state,
+                   runtime::ComponentId target) {
+    if (!state.on_request || !state.range_endpoint) {
+        return false;
+    }
+    const auto parent = services.components().parent(id);
+    if (!parent) {
+        return false;
+    }
+    for (auto current = std::optional{target}; current && services.components().contains(*current);
+         current = services.components().parent(*current)) {
+        const auto* sibling = services.components().state<TimePickerState>(*current);
+        if (sibling && sibling->on_request && sibling->range_endpoint &&
+            sibling->range_endpoint != state.range_endpoint && services.components().parent(*current) == parent) {
+            return true;
+        }
+        if (*current == *parent) {
+            break;
         }
     }
     return false;
@@ -172,6 +244,16 @@ void TimePickerComponentHost::on_destroy() noexcept {
     std::erase_if(mounted_, [this](auto id) { return !services_->components().contains(id); });
 }
 
+std::optional<PickerEditorSession> TimePickerComponentHost::editor_session(runtime::ComponentId id) const {
+    const auto* state = services_->components().state<TimePickerState>(id);
+    if (!state || !services_->components().scope(id).active()) {
+        return std::nullopt;
+    }
+    const auto* editor = services_->input_runtime()->editors().find(state->editor);
+    return editor ? std::optional{PickerEditorSession{state->edit_session, editor->composition().active}}
+                  : std::nullopt;
+}
+
 TimePickerSnapshot TimePickerComponentHost::snapshot(runtime::ComponentId id) const {
     const auto* s = services_->components().state<TimePickerState>(id);
     if (!s) {
@@ -182,7 +264,7 @@ TimePickerSnapshot TimePickerComponentHost::snapshot(runtime::ComponentId id) co
     result.pending = s->model.panel();
     result.draft = s->model.draft();
     const auto model = s->model;
-    result.confirmable = model.confirmable() && (!model.text_dirty() || model.text_value().has_value());
+    result.confirmable = model.text_dirty() ? model.text_value().has_value() : model.confirmable();
     return result;
 }
 
@@ -191,6 +273,28 @@ void TimePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) tr
     if (!s || !services_->components().scope(id).active()) {
         return;
     }
+    const auto revision = ++s->revision;
+    if (s->updating_rows) {
+        s->rows_pending = true;
+        s->needs_layout = true;
+        services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+        return;
+    }
+    const auto live = [&] {
+        s = services_->components().state<TimePickerState>(id);
+        return s && services_->components().scope(id).active() && s->revision == revision;
+    };
+    const auto publish = [&](auto signal, auto value) {
+        signal.set(std::move(value));
+        return live();
+    };
+    const auto row_for = [&](runtime::ComponentId child) {
+        auto* row = services_->components().state<TimeRow>(child);
+        if (!row) {
+            static_cast<void>(services_->retire_failed_component(id));
+        }
+        return row;
+    };
     const bool visible =
         s->open && !s->suppressed && !s->disabled && window_active_ && services_->interactions().component_active(id);
     if (!s->model.column_visible(static_cast<TimeColumn>(s->view.active_column))) {
@@ -201,17 +305,16 @@ void TimePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) tr
     if (changed || !visible) {
         const auto focused = services_->focus().state().focused;
         const auto* target = focused ? services_->interactions().find(*focused) : nullptr;
-        s->focus_within = visible && target && descendant(*services_, target->component, id);
+        s->focus_within =
+            visible && target &&
+            (descendant(*services_, target->component, id) || range_sibling(*services_, id, *s, target->component));
     }
     bool structure = services_->components().set_branch_active(s->view.popup, visible);
     structure |= services_->components().set_branch_active(s->actions, s->need_confirm);
+    s->rows_pending = false;
     for (int c = 0; c < 5; ++c) {
         if (s->model.column_visible(static_cast<TimeColumn>(c)) && s->view.rows[c].empty()) {
-            services_->append_slot(s->view.columns[c], Content{[this, id, c] { mount_rows(id, c); }});
-            s = services_->components().state<TimePickerState>(id);
-            if (!s) {
-                return;
-            }
+            s->rows_pending = true;
         }
         structure |= services_->components().set_branch_active(
             s->view.columns[c], !s->panel && s->model.column_visible(static_cast<TimeColumn>(c)));
@@ -222,23 +325,30 @@ void TimePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) tr
     if (structure) {
         services_->mark_scene_structure_dirty();
     }
-    s->display.set(s->model.draft());
-    s->clear_visible.set(s->allow_clear && s->model.value().has_value() && !s->disabled);
-    s->action_disabled.set(s->disabled);
-    const auto validation_model = s->model;
-    const bool confirmable =
-        validation_model.confirmable() && (!validation_model.text_dirty() || validation_model.text_value().has_value());
-    s = services_->components().state<TimePickerState>(id);
-    if (!s) {
+    if (!publish(s->display, s->model.draft()) ||
+        !publish(s->clear_visible, s->allow_clear && s->model.value().has_value() && !s->disabled) ||
+        !publish(s->action_disabled, s->disabled)) {
         return;
     }
-    s->confirm_disabled.set(!confirmable);
+    const auto validation_model = s->model;
+    const bool confirmable =
+        validation_model.text_dirty() ? validation_model.text_value().has_value() : validation_model.confirmable();
+    if (!live()) {
+        return;
+    }
+    if (!publish(s->confirm_disabled, !confirmable)) {
+        return;
+    }
     const auto token = services_->components().theme_scope(id)->snapshot().time_picker();
     const auto model = s->model;
+    const auto rows = s->view.rows;
     for (int column = 0; column < 5; ++column) {
-        for (std::size_t index = 0; index < s->view.rows[column].size(); ++index) {
-            const auto row_id = s->view.rows[column][index];
-            auto* row = services_->components().state<TimeRow>(row_id);
+        for (std::size_t index = 0; index < rows[column].size(); ++index) {
+            const auto row_id = rows[column][index];
+            auto* row = row_for(row_id);
+            if (!row) {
+                return;
+            }
             const bool column_shown = model.column_visible(static_cast<TimeColumn>(column));
             const bool shown = column_shown &&
                                static_cast<int>(index) < model.row_count(static_cast<TimeColumn>(column)) &&
@@ -246,40 +356,55 @@ void TimePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) tr
             structure |= services_->components().set_branch_active(row_id, shown);
             const bool enabled =
                 shown && model.candidate(static_cast<TimeColumn>(column), static_cast<int>(index)).has_value();
-            s = services_->components().state<TimePickerState>(id);
-            row = services_->components().state<TimeRow>(row_id);
-            if (!s || !row) {
+            if (!live()) {
+                return;
+            }
+            row = row_for(row_id);
+            if (!row) {
                 return;
             }
             row->enabled = enabled;
             const int n = static_cast<int>(index);
-            row->text.set(column == 4 ? (n == 0 ? s->locale.am : s->locale.pm)
-                                      : String::from_utf8(column == 0 && s->twelve ? std::to_string((n + 11) % 12 + 1)
-                                                          : column == 3 ? (n < 10    ? "00"
-                                                                           : n < 100 ? "0"
-                                                                                     : "") +
-                                                                              std::to_string(n)
-                                                                        : (n < 10 ? "0" : "") + std::to_string(n))
-                                            .value());
-            services_->interactions().set_eligible(row->interaction, visible && row->enabled);
-            const bool selected = s->model.row_value(static_cast<TimeColumn>(column)) == static_cast<int>(index);
-            row->color.set(foreground(!row->enabled ? token.colors.disabled
-                                      : selected    ? token.colors.selected
-                                                    : token.colors.text));
-            row->info.set({static_cast<TimePickerColumn>(column), column == 0 && s->twelve ? (n + 11) % 12 + 1 : n,
-                           selected, !enabled, s->range_endpoint});
-            s = services_->components().state<TimePickerState>(id);
-            row = services_->components().state<TimeRow>(row_id);
-            if (!s || !row) {
+            if (!publish(row->text, column == 4
+                                        ? (n == 0 ? s->locale.am : s->locale.pm)
+                                        : String::from_utf8(column == 0 && s->twelve ? std::to_string((n + 11) % 12 + 1)
+                                                            : column == 3 ? (n < 10    ? "00"
+                                                                             : n < 100 ? "0"
+                                                                                       : "") +
+                                                                                std::to_string(n)
+                                                                          : (n < 10 ? "0" : "") + std::to_string(n))
+                                              .value())) {
                 return;
             }
-            row->font.set({token.metrics.font_family, 400, false, token.metrics.font_size, token.metrics.line_height});
+            row = row_for(row_id);
+            if (!row) {
+                return;
+            }
+            services_->interactions().set_eligible(row->interaction, visible && row->enabled);
+            const bool selected = s->model.row_value(static_cast<TimeColumn>(column)) == static_cast<int>(index);
+            if (!publish(row->color, foreground(!row->enabled ? token.colors.disabled
+                                                : selected    ? token.colors.selected
+                                                              : token.colors.text))) {
+                return;
+            }
+            row = row_for(row_id);
+            if (!row || !publish(row->info, TimePickerCellInfo{static_cast<TimePickerColumn>(column),
+                                                               column == 0 && s->twelve ? (n + 11) % 12 + 1 : n,
+                                                               selected, !enabled, s->range_endpoint})) {
+                return;
+            }
+            row = row_for(row_id);
+            if (!row ||
+                !publish(row->font, runtime::SemanticTypography{token.metrics.font_family, 400, false,
+                                                                token.metrics.font_size, token.metrics.line_height})) {
+                return;
+            }
         }
     }
     if (structure) {
         services_->mark_scene_structure_dirty();
     }
-    if (geometry || changed || structure) {
+    if (geometry || changed || structure || s->rows_pending) {
         s->needs_layout = true;
         if (geometry || changed) {
             s->reveal.fill(true);
@@ -362,43 +487,82 @@ void TimePickerComponentHost::suppress(runtime::ComponentId id) {
     }
 }
 
-void TimePickerComponentHost::publish(runtime::ComponentId id, TimePickerValue value, bool close) try {
+bool TimePickerComponentHost::publish(runtime::ComponentId id, TimePickerValue value, bool close, bool from_text) try {
     auto* s = services_->components().state<TimePickerState>(id);
     if (!s || s->disabled || !services_->interactions().component_active(id)) {
-        return;
+        return false;
     }
     const auto before = s->model.value();
-    auto model = s->model;
-    const auto intent = model.request(value);
-    s = services_->components().state<TimePickerState>(id);
-    if (!intent || !s) {
-        return;
+    const auto revision = s->revision;
+    const auto session = s->edit_session;
+    const auto editor_id = s->editor;
+    const bool composing = services_->input_runtime()->editors().require(editor_id).composition().active;
+    if (s->submitting == session) {
+        return false;
     }
-    s->model = std::move(model);
+    auto model = s->model;
+    model.owner_guard([this, id, revision, session, editor_id, composing] {
+        const auto* live = services_->components().state<TimePickerState>(id);
+        const auto* editor = services_->input_runtime()->editors().find(editor_id);
+        return live && !live->disabled && live->revision == revision && live->edit_session == session &&
+               services_->components().scope(id).active() && editor && (composing || !editor->composition().active);
+    });
+    const auto precision = model.request_precision(from_text);
+    const auto intent = model.request(value, from_text);
+    s = services_->components().state<TimePickerState>(id);
+    if (!intent || !s || s->revision != revision || s->edit_session != session) {
+        return false;
+    }
     const auto callback = s->on_change;
     const auto request = s->on_request;
+    const auto current = [this, id, session, editor_id, composing] {
+        const auto* live = services_->components().state<TimePickerState>(id);
+        const auto* editor = services_->input_runtime()->editors().find(editor_id);
+        return live && !live->disabled && live->edit_session == session && services_->components().scope(id).active() &&
+               editor && (composing || !editor->composition().active);
+    };
     if (request) {
         close = false;
+        s->submitting = session;
+        const auto result = request(*intent, PickerCandidate{{{}, precision}, current});
+        s = services_->components().state<TimePickerState>(id);
+        if (s && s->submitting == session) {
+            s->submitting.reset();
+        }
+        if (result != PickerRequestDisposition::Consumed || !current()) {
+            return false;
+        }
+        // The parent has reconciled its actual pending/authority, including refusal.
+        s->model.cancel();
+    } else {
+        model.owner_guard(
+            [this, id] { return services_->components().contains(id) && services_->components().scope(id).active(); });
+        s->model = std::move(model);
+        s->model.finish_edit();
     }
     if (close) {
         s->model.cancel();
     }
     refresh(id);
-    if (!services_->components().contains(id)) {
-        return;
+    s = services_->components().state<TimePickerState>(id);
+    if (!s) {
+        return true;
     }
-    if (request) {
-        request(*intent);
-    }
-    if (!services_->components().contains(id)) {
-        return;
+    if (!current()) {
+        return true;
     }
     if (before != *intent && callback) {
+        s->echo = std::pair{*intent, session};
         callback(*intent);
     }
-    if (close && services_->components().contains(id)) {
+    s = services_->components().state<TimePickerState>(id);
+    if (s && s->echo && s->echo->second == session) {
+        s->echo.reset();
+    }
+    if (close && s && s->edit_session == session && !s->model.text_dirty() && !active_edit(*services_, *s)) {
         request_open(id, false, true);
     }
+    return true;
 } catch (...) {
 
     static_cast<void>(services_->retire_failed_component(id));
@@ -406,28 +570,45 @@ void TimePickerComponentHost::publish(runtime::ComponentId id, TimePickerValue v
 }
 
 void TimePickerComponentHost::confirm(runtime::ComponentId id) try {
-    const auto* s = services_->components().state<TimePickerState>(id);
+    auto* s = services_->components().state<TimePickerState>(id);
     if (!s) {
         return;
     }
+    if (services_->input_runtime()->editors().require(s->editor).composition().active) {
+        return;
+    }
     const bool composite = bool(s->on_request);
+    const auto session = s->edit_session;
+    const auto revision = s->revision;
     const auto model = s->model;
     const auto value = model.text_dirty()    ? model.text_value()
                        : model.confirmable() ? std::optional<TimePickerValue>{model.panel()}
                                              : std::nullopt;
-    if (!value || !services_->components().contains(id)) {
+    s = services_->components().state<TimePickerState>(id);
+    if (!value || !s || s->revision != revision || s->edit_session != session) {
         return;
     }
-    publish(id, *value, false);
+    if (!publish(id, *value, false, model.text_dirty())) {
+        return;
+    }
     s = services_->components().state<TimePickerState>(id);
     if (!s) {
         return;
+    }
+    if (s->edit_session == session && !s->model.text_dirty()) {
+        s->model.finish_edit();
+        refresh(id, false);
+        s = services_->components().state<TimePickerState>(id);
+        if (!s) {
+            return;
+        }
     }
     const auto callback = s->on_ok;
     if (callback) {
         callback(*value);
     }
-    if (!composite && services_->components().contains(id)) {
+    s = services_->components().state<TimePickerState>(id);
+    if (!composite && s && s->edit_session == session && !s->model.text_dirty() && !active_edit(*services_, *s)) {
         request_open(id, false, true);
     }
 } catch (...) {
@@ -441,13 +622,19 @@ void TimePickerComponentHost::choose(runtime::ComponentId id, TimeColumn column,
     if (!s || !s->view.visible) {
         return;
     }
+    const auto revision = s->revision;
+    const auto session = s->edit_session;
     auto model = s->model;
     if (!model.candidate(column, value)) {
         return;
     }
+    s = services_->components().state<TimePickerState>(id);
+    if (!s || s->revision != revision) {
+        return;
+    }
     model.select(column, value);
     s = services_->components().state<TimePickerState>(id);
-    if (!s) {
+    if (!s || s->revision != revision) {
         return;
     }
     s->model = std::move(model);
@@ -475,7 +662,7 @@ void TimePickerComponentHost::choose(runtime::ComponentId id, TimeColumn column,
         notify(selected);
     }
     s = services_->components().state<TimePickerState>(id);
-    if (s && !s->need_confirm) {
+    if (s && !s->need_confirm && s->edit_session == session && !s->model.text_dirty() && s->model.panel() == selected) {
         publish(id, selected, false);
     }
 } catch (...) {
@@ -527,87 +714,140 @@ void TimePickerComponentHost::update_theme(runtime::ComponentId id, bool geometr
 void TimePickerComponentHost::mount_rows(runtime::ComponentId id, int column) {
     auto& services = *services_;
     auto* s = services.components().state<TimePickerState>(id);
+    if (!s || s->updating_rows || !s->view.rows[column].empty()) {
+        return;
+    }
+    const auto revision = s->revision;
+    const auto model = s->model;
+    const auto popup_hit = s->popup_hit;
+    const auto endpoint = s->range_endpoint;
+    const auto render = s->cell_render;
+    const bool twelve = s->twelve;
+    std::vector<runtime::ComponentId> created;
+    const auto live = [&] {
+        s = services.components().state<TimePickerState>(id);
+        return s && services.components().scope(id).active() && s->revision == revision;
+    };
+    const auto cancel = [&] {
+        for (auto child : created) {
+            static_cast<void>(services.retire_failed_component(child));
+        }
+        if (auto* current = services.components().state<TimePickerState>(id)) {
+            current->updating_rows = false;
+            current->rows_pending = true;
+            services.request_frame();
+        }
+    };
     auto& build = runtime::require_component_build_context();
     const int count = column == 0 ? 24 : column == 3 ? 1000 : column == 4 ? 2 : 60;
-    for (int value = 0; value < count; ++value) {
-        const auto row_id = build.mount_component<TimeRow>();
-        auto& row = build.state<TimeRow>(row_id);
-        row.node = build.root(row_id);
-        services.layout().set_layout(row.node, layout::BoxLayout{});
-        services.nodes().require(row.node).clip_content = true;
-        row.interaction =
-            services.interactions().create({row_id, row.node, s->popup_hit, false, false, {}, false, false});
-        input::InteractionHandlers handlers;
-        handlers.target = [this, id, row_id, column, value](input::PointerDispatchContext& event) {
-            const auto* s = services_->components().state<TimePickerState>(id);
-            auto* row = services_->components().state<TimeRow>(row_id);
-            if (!s || !row || !row->enabled || !s->view.visible) {
-                return;
-            }
-            if (event.kind() == input::PointerEventKind::enter || event.kind() == input::PointerEventKind::leave) {
-                row->hovered = event.kind() == input::PointerEventKind::enter;
-                services_->dirty().invalidate(row->node, runtime::DirtyFlags::Material);
-            }
-            if (event.kind() == input::PointerEventKind::down &&
-                event.event().button == input::PointerButton::primary) {
-                static_cast<void>(event.capture_pointer());
-                event.stop_propagation();
-            }
-            if (event.kind() == input::PointerEventKind::up && event.event().button == input::PointerButton::primary) {
-                static_cast<void>(event.release_pointer_capture());
-                const auto bounds =
-                    intersect(services_->nodes().require(row->node).bounds, s->view.column_clips[column]);
-                const bool hit = event.press_origin() == row->interaction &&
-                                 inside(bounds, event.event().x, event.event().y) &&
-                                 services_->hit_test().hit_test({event.event().x, event.event().y}) == row->interaction;
-                event.stop_propagation();
-                if (hit) {
-                    choose(id, static_cast<TimeColumn>(column), value);
+    s->updating_rows = true;
+    try {
+        for (int value = 0; value < count; ++value) {
+            const auto row_id = build.mount_component<TimeRow>();
+            created.push_back(row_id);
+            services.components().set_branch_active(row_id, false);
+            auto& row = build.state<TimeRow>(row_id);
+            row.node = build.root(row_id);
+            services.layout().set_layout(row.node, layout::BoxLayout{});
+            services.nodes().require(row.node).clip_content = true;
+            row.interaction =
+                services.interactions().create({row_id, row.node, popup_hit, false, false, {}, false, false});
+            input::InteractionHandlers handlers;
+            handlers.target = [this, id, row_id, column, value](input::PointerDispatchContext& event) {
+                const auto* s = services_->components().state<TimePickerState>(id);
+                auto* row = services_->components().state<TimeRow>(row_id);
+                if (!s || !row || !row->enabled || !s->view.visible) {
+                    return;
                 }
-            }
-        };
-        services.interactions().set_handlers(row.interaction, std::move(handlers));
-        row.hit = build.register_scene_fragment(row_id, runtime::SceneFragmentPlacement::before_children);
-        services.scene_composer().set_fragment(row.hit, {}, row.interaction);
-        const auto fragment = build.register_scene_fragment(row_id, runtime::SceneFragmentPlacement::before_children);
-        graphics::QuadInstance initial;
-        initial.opacity = 0;
-        component::RetainedSurfaceEffects effects;
-        effects.focus_enabled = false;
-        row.surface = services.surfaces().create_surface(row_id, row.node, fragment, std::span{&initial, 1}, effects);
-        build.on_resource_cleanup(
-            row_id, [&services, node = row.node, interaction = row.interaction, hit = row.hit, surface = row.surface] {
+                if (event.kind() == input::PointerEventKind::enter || event.kind() == input::PointerEventKind::leave) {
+                    row->hovered = event.kind() == input::PointerEventKind::enter;
+                    services_->dirty().invalidate(row->node, runtime::DirtyFlags::Material);
+                }
+                if (event.kind() == input::PointerEventKind::down &&
+                    event.event().button == input::PointerButton::primary) {
+                    static_cast<void>(event.capture_pointer());
+                    event.stop_propagation();
+                }
+                if (event.kind() == input::PointerEventKind::up &&
+                    event.event().button == input::PointerButton::primary) {
+                    static_cast<void>(event.release_pointer_capture());
+                    const auto bounds =
+                        intersect(services_->nodes().require(row->node).bounds, s->view.column_clips[column]);
+                    const bool hit =
+                        event.press_origin() == row->interaction && inside(bounds, event.event().x, event.event().y) &&
+                        services_->hit_test().hit_test({event.event().x, event.event().y}) == row->interaction;
+                    event.stop_propagation();
+                    if (hit) {
+                        choose(id, static_cast<TimeColumn>(column), value);
+                    }
+                }
+            };
+            services.interactions().set_handlers(row.interaction, std::move(handlers));
+            row.hit = build.register_scene_fragment(row_id, runtime::SceneFragmentPlacement::before_children);
+            services.scene_composer().set_fragment(row.hit, {}, row.interaction);
+            const auto fragment =
+                build.register_scene_fragment(row_id, runtime::SceneFragmentPlacement::before_children);
+            graphics::QuadInstance initial;
+            initial.opacity = 0;
+            component::RetainedSurfaceEffects effects;
+            effects.focus_enabled = false;
+            row.surface =
+                services.surfaces().create_surface(row_id, row.node, fragment, std::span{&initial, 1}, effects);
+            build.on_resource_cleanup(row_id, [&services, node = row.node, interaction = row.interaction, hit = row.hit,
+                                               surface = row.surface] {
                 services.pointer().cancel_interaction(interaction);
                 services.interactions().remove(interaction);
                 services.surfaces().destroy(surface);
                 services.scene_composer().remove_fragment(hit);
                 services.layout().remove_layout(node);
             });
-        const auto model = s->model;
-        const bool eligible = model.candidate(static_cast<TimeColumn>(column), value).has_value();
-        s = services.components().state<TimePickerState>(id);
-        if (!s || !services.components().contains(row_id)) {
-            throw std::runtime_error("TimePicker predicate retired its owner");
-        }
-        row.info.set({static_cast<TimePickerColumn>(column), column == 0 && s->twelve ? (value + 11) % 12 + 1 : value,
-                      model.row_value(static_cast<TimeColumn>(column)) == value, !eligible, s->range_endpoint});
-        if (s->cell_render) {
-            const auto render = s->cell_render;
-            const auto rich = render(Prop<TimePickerCellInfo>{row.info});
-            if (!services.components().contains(id) || !services.components().contains(row_id)) {
-                throw std::runtime_error("TimePicker cell renderer retired its owner");
+            const bool eligible = model.candidate(static_cast<TimeColumn>(column), value).has_value();
+            if (!live()) {
+                cancel();
+                return;
             }
-            build.mount_slot_with_semantic_text_style(row_id, Content{SlotContentAccess::function(rich)}, row.color,
-                                                      row.font);
-        } else {
-            build.mount_slot_with_semantic_text_style(
-                row_id, Content{[text = row.text] { Text(TextProps{}.content(text)); }}, row.color, row.font);
+            auto* current = services.components().state<TimeRow>(row_id);
+            if (!current) {
+                throw std::runtime_error("TimePicker predicate retired its unpublished row");
+            }
+            current->info.set({static_cast<TimePickerColumn>(column),
+                               column == 0 && twelve ? (value + 11) % 12 + 1 : value,
+                               model.row_value(static_cast<TimeColumn>(column)) == value, !eligible, endpoint});
+            const auto info = current->info;
+            const auto color = current->color;
+            const auto font = current->font;
+            const auto text = current->text;
+            if (render) {
+                const auto rich = render(Prop<TimePickerCellInfo>{info});
+                if (!live()) {
+                    cancel();
+                    return;
+                }
+                if (!services.components().contains(row_id)) {
+                    throw std::runtime_error("TimePicker renderer retired its unpublished row");
+                }
+                build.mount_slot_with_semantic_text_style(row_id, Content{SlotContentAccess::function(rich)}, color,
+                                                          font);
+            } else {
+                build.mount_slot_with_semantic_text_style(row_id, Content{[text] { Text(TextProps{}.content(text)); }},
+                                                          color, font);
+            }
+            if (!live()) {
+                cancel();
+                return;
+            }
+            if (!services.components().contains(row_id)) {
+                throw std::runtime_error("TimePicker slot retired its unpublished row");
+            }
         }
-        s = services.components().state<TimePickerState>(id);
-        if (!s || !services.components().contains(row_id)) {
-            throw std::runtime_error("TimePicker cell content retired its owner");
+        s->view.rows[column] = std::move(created);
+        s->updating_rows = false;
+    } catch (...) {
+        for (auto child : created) {
+            static_cast<void>(services.retire_failed_component(child));
         }
-        s->view.rows[column].push_back(row_id);
+        static_cast<void>(services.retire_failed_component(id));
+        throw;
     }
 }
 
@@ -620,10 +860,24 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
     if ((props.value_ && props.default_value_) || (props.open_ && props.default_open_)) {
         throw std::invalid_argument("TimePicker cannot combine controlled and default values");
     }
+    const auto locale_source =
+        picker_locale_prop(props.locale_, runtime::require_component_build_context().config_scope());
+    const auto format_locale_source =
+        picker_format_locale_prop(props.locale_, runtime::require_component_build_context().config_scope());
+    const Prop<TimeDisplayFormat> display_format_source = bind(
+        [format_locale_source, format = props.format_, precision = props.precision_, twelve = props.use_12_hours_] {
+            auto locale = read_prop(format_locale_source);
+            locale.validate();
+            const auto use_twelve = read_prop(twelve);
+            auto pattern = picker_time_pattern(read_prop(precision), use_twelve, read_prop(format), locale);
+            validate_time_format(pattern.bytes());
+            return TimeDisplayFormat{use_twelve, std::move(pattern), std::move(locale)};
+        });
+    const auto initial_format = read_prop(display_format_source);
     TimePickerModel model{read_prop(props.rules_), read_prop(props.precision_),
                           props.value_ ? read_prop(*props.value_) : props.default_value_.value_or(TimePickerValue{}),
                           props.value_.has_value(), props.panel_value_};
-    model.configure_display(read_prop(props.use_12_hours_), read_prop(props.format_), read_prop(props.locale_));
+    model.configure_display(initial_format.twelve, initial_format.pattern, initial_format.locale);
     if (read_prop(props.show_now_) && !props.clock_) {
         throw std::invalid_argument("TimePicker showNow requires an explicit clock");
     }
@@ -640,10 +894,11 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
     s.model.owner_guard(
         [this, id] { return services_->components().contains(id) && services_->components().scope(id).active(); });
     s.transition = std::make_unique<NavigationTransition>(services, id);
-    s.locale = read_prop(props.locale_);
+    s.locale = read_prop(locale_source);
+    s.format_locale = initial_format.locale;
     s.range_endpoint = props.range_endpoint_;
-    s.format = read_prop(props.format_);
-    s.twelve = read_prop(props.use_12_hours_);
+    s.format = initial_format.pattern;
+    s.twelve = initial_format.twelve;
     s.direction = read_prop(props.direction_);
     s.placement = read_prop(props.placement_);
     s.change_on_scroll = read_prop(props.change_on_scroll_);
@@ -670,7 +925,13 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                       FormPrivateEditorScope private_editor;
                       Input(InputProps{}
                                 .value(s.display)
-                                .placeholder(props.placeholder_)
+                                .placeholder(props.placeholder_.value_or(
+                                    Prop<String>{bind([locale_source, endpoint = props.range_endpoint_] {
+                                        const auto locale = read_prop(locale_source);
+                                        return endpoint
+                                                   ? locale.time_range_placeholder[static_cast<std::size_t>(*endpoint)]
+                                                   : locale.time_placeholder;
+                                    })}))
                                 .disabled(props.disabled_)
                                 .readOnly(props.read_only_)
                                 .size(props.size_)
@@ -683,7 +944,19 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                                     if (!s || s->disabled) {
                                         return;
                                     }
-                                    s->model.edit(std::move(value));
+                                    if (s->submitting == s->edit_session) {
+                                        s->model.finish_edit();
+                                    }
+                                    const auto revision = s->revision;
+                                    const auto session = ++s->edit_session;
+                                    s->model.stage_edit(value);
+                                    auto model = s->model;
+                                    model.edit(std::move(value));
+                                    s = services_->components().state<TimePickerState>(id);
+                                    if (!s || s->revision != revision || s->edit_session != session) {
+                                        return;
+                                    }
+                                    s->model = std::move(model);
                                     refresh(id);
                                 })
                                 .onSubmit([this, id](String) { confirm(id); })
@@ -694,7 +967,11 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                                     }
                                     const auto focused = services_->focus().state().focused;
                                     const auto* record = focused ? services_->interactions().find(*focused) : nullptr;
-                                    if (record && descendant(*services_, record->component, s->view.popup)) {
+                                    if (record && (descendant(*services_, record->component, s->view.popup) ||
+                                                   range_sibling(*services_, id, *s, record->component))) {
+                                        return;
+                                    }
+                                    if (s->submitting == s->edit_session) {
                                         return;
                                     }
                                     s->model.cancel();
@@ -736,6 +1013,7 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                               } else {
                                   live->model.cancel();
                               }
+                              ++live->edit_session;
                               refresh(id);
                           });
                   }});
@@ -811,7 +1089,7 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                                                    throw;
                                                }
                                            }),
-                                       ButtonContent{[label = bind([locale = props.locale_] {
+                                       ButtonContent{[label = bind([locale = locale_source] {
                                                           return read_prop(locale).now;
                                                       })] { Text(TextProps{}.content(label)); }});
                             }
@@ -827,7 +1105,7 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                                                  Button(ButtonProps{}.size(ControlSize::Small).onClick([this, id] {
                                                      request_open(id, false, true);
                                                  }),
-                                                        ButtonContent{[locale = props.locale_] {
+                                                        ButtonContent{[locale = locale_source] {
                                                             Text(TextProps{}.content(
                                                                 bind([locale] { return read_prop(locale).cancel; })));
                                                         }});
@@ -839,7 +1117,7 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                                                             .size(ControlSize::Small)
                                                             .disabled(s.confirm_disabled)
                                                             .onClick([this, id] { confirm(id); }),
-                                                        ButtonContent{[locale = props.locale_] {
+                                                        ButtonContent{[locale = locale_source] {
                                                             Text(TextProps{}.content(
                                                                 bind([locale] { return read_prop(locale).confirm; })));
                                                         }});
@@ -864,7 +1142,18 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
     if (props.value_) {
         connect_prop(scope, *props.value_, [this, id](TimePickerValue value) {
             if (auto* s = services_->components().state<TimePickerState>(id)) {
-                s->model.reconcile(value);
+                if (s->on_request) {
+                    s->model.reconcile_candidate(value);
+                    if (s->submitting != s->edit_session) {
+                        s->model.finish_edit();
+                    }
+                } else {
+                    const bool echoed = s->echo && s->echo->second == s->edit_session && s->echo->first == value;
+                    if (!echoed) {
+                        ++s->edit_session;
+                    }
+                    s->model.reconcile(value);
+                }
                 refresh(id);
             }
         });
@@ -874,7 +1163,12 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
             if (auto* s = services_->components().state<TimePickerState>(id)) {
                 s->open = value;
                 s->suppressed = false;
-                s->model.cancel();
+                if (s->submitting != s->edit_session && (!value || !active_edit(*services_, *s))) {
+                    if (!value && !s->on_request) {
+                        ++s->edit_session;
+                    }
+                    s->model.cancel();
+                }
                 refresh(id);
             }
         });
@@ -887,6 +1181,9 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
     });
     connect_prop(scope, props.precision_, [this, id](TimePickerPrecision precision) {
         if (auto* s = services_->components().state<TimePickerState>(id)) {
+            if (active_edit(*services_, *s)) {
+                s->model.freeze_edit();
+            }
             s->model.configure(s->model.rules(), precision);
             if (precision == TimePickerPrecision::Minute && s->view.active_column == 2) {
                 s->view.active_column = 1;
@@ -898,6 +1195,7 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
         if (auto* s = services_->components().state<TimePickerState>(id)) {
             s->disabled = value;
             if (value) {
+                ++s->edit_session;
                 suppress(id);
             }
             refresh(id);
@@ -915,24 +1213,19 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
             refresh(id);
         }
     });
-    connect_prop(scope, props.use_12_hours_, [this, id](bool v) {
+    connect_prop(scope, locale_source, [this, id](PickerLocale v) {
+        v.validate();
         if (auto* s = services_->components().state<TimePickerState>(id)) {
-            s->model.configure_display(v, s->format, s->locale);
-            s->twelve = v;
-            refresh(id);
-        }
-    });
-    connect_prop(scope, props.format_, [this, id](String v) {
-        if (auto* s = services_->components().state<TimePickerState>(id)) {
-            s->model.configure_display(s->twelve, v, s->locale);
-            s->format = std::move(v);
-            refresh(id);
-        }
-    });
-    connect_prop(scope, props.locale_, [this, id](PickerLocale v) {
-        if (auto* s = services_->components().state<TimePickerState>(id)) {
-            s->model.configure_display(s->twelve, s->format, v);
             s->locale = std::move(v);
+            refresh(id);
+        }
+    });
+    connect_prop(scope, display_format_source, [this, id](TimeDisplayFormat v) {
+        if (auto* s = services_->components().state<TimePickerState>(id)) {
+            s->model.configure_display(v.twelve, v.pattern, v.locale, active_edit(*services_, *s));
+            s->twelve = v.twelve;
+            s->format = std::move(v.pattern);
+            s->format_locale = std::move(v.locale);
             refresh(id);
         }
     });
@@ -971,6 +1264,8 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
 
 void TimePickerComponentHost::mount_range(const TimeRangePickerProps& props,
                                           const std::optional<TimePickerFooter>& footer) {
+    const auto locale_source =
+        picker_locale_prop(props.picker_.locale_, runtime::require_component_build_context().config_scope());
     if ((props.value_ && props.default_value_) || (props.open_ && props.default_open_)) {
         throw std::invalid_argument("TimeRangePicker controlled/default conflict");
     }
@@ -990,13 +1285,19 @@ void TimePickerComponentHost::mount_range(const TimeRangePickerProps& props,
                                   : (state->policy.disabled[0] ? PickerEndpoint::End : PickerEndpoint::Start));
     state->disabled = [weak = std::weak_ptr{state}, custom = props.disabled_time_, rules = props.picker_.rules_,
                        precision = props.picker_.precision_](TimeOfDay time, PickerEndpoint endpoint,
-                                                             const TimePickerRangeValue& range) {
-        TimePickerModel model{read_prop(rules), read_prop(precision), {}, true};
-        model.owner_guard([weak] {
+                                                             const TimePickerRangeValue& range,
+                                                             const PickerCandidateSemantics& semantics) {
+        const auto owner = weak.lock();
+        if (!owner || !owner->alive) {
+            return true;
+        }
+        const auto ticket = owner->revision;
+        TimePickerModel model{read_prop(rules), semantics.time.value_or(read_prop(precision)), {}, true};
+        model.owner_guard([weak, ticket] {
             const auto live = weak.lock();
-            return live && live->alive;
+            return live && live->current(ticket);
         });
-        return !model.allowed(time) || (custom && custom(time, endpoint, range));
+        return !model.allowed(time) || !owner->current(ticket) || (custom && custom(time, endpoint, range));
     };
     state->on_change = props.on_change_;
     state->on_calendar = props.on_calendar_;
@@ -1021,16 +1322,22 @@ void TimePickerComponentHost::mount_range(const TimeRangePickerProps& props,
         static_cast<void>(services_->retire_failed_component(owner));
     };
     if (props.value_) {
-        connect_prop(build.scope(owner), *props.value_, [state](TimePickerRangeValue v) {
-            state->accepted.set(v);
-            state->pending.set(v);
-        });
+        connect_prop(build.scope(owner), *props.value_,
+                     [state](TimePickerRangeValue v) { state->reconcile_authority(v); });
     }
     if (props.open_) {
         connect_prop(build.scope(owner), *props.open_, [state](bool v) {
+            state->invalidate();
+            const auto ticket = state->revision;
             state->open.set(v);
+            if (!state->current(ticket)) {
+                return;
+            }
             if (!v) {
-                state->pending.set(state->accepted.get());
+                const bool restored = state->restore_pending();
+                if (restored && state->end_editors) {
+                    state->end_editors();
+                }
             }
         });
     }
@@ -1038,9 +1345,27 @@ void TimePickerComponentHost::mount_range(const TimeRangePickerProps& props,
         connect_prop(build.scope(owner), *props.endpoint_, [state](PickerEndpoint v) { state->reconcile_endpoint(v); });
     }
     connect_prop(build.scope(owner), props.policy_, [state](PickerRangePolicy v) {
+        const bool disabling =
+            (!state->policy.disabled[0] && v.disabled[0]) || (!state->policy.disabled[1] && v.disabled[1]);
         state->policy = v;
+        state->invalidate();
+        if (disabling) {
+            if (!state->restore_pending()) {
+                return;
+            }
+            const auto ticket = state->revision;
+            if (state->end_editors) {
+                state->end_editors();
+            }
+            if (!state->current(ticket)) {
+                return;
+            }
+        }
         state->policy_source.set(v);
     });
+    connect_range_business(build.scope(owner), state, props.disabled_);
+    connect_range_business(build.scope(owner), state, props.picker_.disabled_);
+    connect_range_business(build.scope(owner), state, props.picker_.rules_);
     build.mount_slot(
         owner, Content{[&, state] {
             for (auto endpoint : {PickerEndpoint::Start, PickerEndpoint::End}) {
@@ -1048,13 +1373,14 @@ void TimePickerComponentHost::mount_range(const TimeRangePickerProps& props,
                 picker.range_endpoint_ = endpoint;
                 picker.autoFocus(picker.auto_focus_ && state->endpoint.get() == endpoint);
                 const auto base_rules = picker.rules_;
-                picker.rules(bind([state, base_rules, endpoint] {
+                picker.rules(bind([state, base_rules, endpoint, custom = props.disabled_time_] {
                     auto rules = read_prop(base_rules);
                     const auto existing = rules.disabled;
-                    const auto draft = state->pending.get();
-                    rules.disabled = [state, existing, endpoint, draft](TimeOfDay v) {
-                        return (existing && existing(v)) || !state->alive ||
-                               (state->disabled && state->disabled(v, endpoint, draft));
+                    static_cast<void>(state->pending.get());
+                    rules.disabled = [state, existing, endpoint, custom](TimeOfDay v) {
+                        auto draft = state->pending.get();
+                        (endpoint == PickerEndpoint::Start ? draft.start : draft.end) = v;
+                        return (existing && existing(v)) || !state->alive || (custom && custom(v, endpoint, draft));
                     };
                     return rules;
                 }));
@@ -1072,36 +1398,54 @@ void TimePickerComponentHost::mount_range(const TimeRangePickerProps& props,
                 picker.ref(endpoint == PickerEndpoint::Start ? props.ref_.start : props.ref_.end);
                 picker.on_change_ = {};
                 picker.on_ok_ = {};
-                picker.on_request_ = [state, endpoint](TimePickerValue v) {
-                    state->choose(endpoint, v);
+                picker.on_request_ = [this, state, endpoint](TimePickerValue v, const PickerCandidate& candidate) {
+                    return state->choose(endpoint, v, range_candidate(*services_, state, candidate));
                 };
-                picker.onOpenChange([state, endpoint](bool v) {
+                picker.onOpenChange([this, state, endpoint](bool v) {
+                    const auto candidate = range_candidate(*services_, state);
                     if (v) {
-                        state->activate(endpoint);
-                        state->request_open(true);
+                        if (state->activate(endpoint, candidate) == PickerRequestDisposition::Consumed) {
+                            state->request_open(true, candidate);
+                        }
                     } else if (state->alive && state->open.get() && state->endpoint.get() == endpoint) {
-                        state->request_open(false);
+                        state->request_open(false, candidate);
                     }
                 });
                 TimePicker(
-                    std::move(picker), TimePickerFooter{[state, footer, presets = props.presets_] {
+                    std::move(picker), TimePickerFooter{[this, state, footer, presets = props.presets_, locale_source] {
                         if (footer) {
                             SlotContentAccess::function (*footer)();
                         }
                         for (const auto& preset : presets) {
-                            Button(ButtonProps{}.size(ControlSize::Small).onClick([state, preset] {
-                                state->preset(preset);
+                            Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state, preset] {
+                                state->preset(preset, range_candidate(*services_, state));
                             }),
                                    ButtonContent{[label = preset.label] { Text(label); }});
                         }
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] { state->clear(); }),
-                               ButtonContent{[] { Text(u8"Clear range"); }});
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] {
-                            static_cast<void>(state->commit());
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            state->clear(range_candidate(*services_, state));
                         }),
-                               ButtonContent{[] { Text(u8"Confirm range"); }});
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] { state->request_open(false); }),
-                               ButtonContent{[] { Text(u8"Cancel range"); }});
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).clear_range; })));
+                               }});
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            static_cast<void>(state->commit(range_candidate(*services_, state)));
+                        }),
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).confirm_range; })));
+                               }});
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            const auto result = state->request_open(false, range_candidate(*services_, state));
+                            if (result == PickerRequestDisposition::Consumed && state->end_editors) {
+                                state->end_editors();
+                            }
+                        }),
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).cancel_range; })));
+                               }});
                     }});
                 const auto child = mounted_.back();
                 state->owners.push_back(child);
@@ -1109,11 +1453,20 @@ void TimePickerComponentHost::mount_range(const TimeRangePickerProps& props,
                 state->references.push_back(services_->components().state<TimePickerState>(child)->reference);
             }
         }});
-    connect_range_reset(*services_, state, [this, state] {
+    connect_range_reset(*services_, state, [this, weak = std::weak_ptr{state}] {
+        const auto state = weak.lock();
+        if (!state || !state->alive) {
+            return;
+        }
         const auto accepted = state->accepted.get();
+        const auto ticket = state->revision;
         for (std::size_t i = 0; i < state->owners.size(); ++i) {
+            if (!state->current(ticket)) {
+                return;
+            }
             if (auto* live = services_->components().state<TimePickerState>(state->owners[i])) {
                 live->model.reconcile(i == 0 ? accepted.start : accepted.end);
+                ++live->edit_session;
                 refresh(state->owners[i]);
             }
         }
@@ -1143,8 +1496,44 @@ void TimePickerComponentHost::on_input_boundary_changed() {
     }
 }
 
+void TimePickerComponentHost::reorder_rows(runtime::ComponentId id) {
+    const auto* state = services_->components().state<TimePickerState>(id);
+    if (!state) {
+        return;
+    }
+    std::vector<runtime::ComponentId> rows;
+    for (const auto& column : state->view.rows) {
+        rows.insert(rows.end(), column.begin(), column.end());
+    }
+    std::vector<std::vector<input::InteractionId>> blocks(rows.size());
+    for (auto interaction : services_->interactions().declaration_order()) {
+        const auto* record = services_->interactions().find(interaction);
+        if (!record) {
+            continue;
+        }
+        for (auto ancestor = std::optional{record->component}; ancestor && *ancestor != id;
+             ancestor = services_->components().parent(*ancestor)) {
+            const auto found = std::ranges::find(rows, *ancestor);
+            if (found != rows.end()) {
+                blocks[static_cast<std::size_t>(found - rows.begin())].push_back(interaction);
+                break;
+            }
+        }
+    }
+    std::vector<input::InteractionId> order;
+    for (const auto& block : blocks) {
+        order.insert(order.end(), block.begin(), block.end());
+    }
+    services_->interactions().reorder_after(state->popup_hit, order);
+}
+
 void TimePickerComponentHost::prepare_auxiliary_layout() {
     const auto ids = mounted_;
+    bool mounting = false;
+    try {
+        mounting = &runtime::require_component_build_context().host() == &services_->components();
+    } catch (const std::logic_error&) {
+    }
     for (auto id : ids) {
         auto* s = services_->components().state<TimePickerState>(id);
         if (s && s->open && !s->suppressed && !services_->interactions().component_active(id)) {
@@ -1152,12 +1541,41 @@ void TimePickerComponentHost::prepare_auxiliary_layout() {
         } else if (s && s->view.visible) {
             const auto focused = services_->focus().state().focused;
             const auto* target = focused ? services_->interactions().find(*focused) : nullptr;
-            const bool within = target && descendant(*services_, target->component, id);
+            const bool within = target && (descendant(*services_, target->component, id) ||
+                                           range_sibling(*services_, id, *s, target->component));
             const bool left = s->focus_within && !within;
             s->focus_within = within;
             if (left) {
                 request_open(id, false);
             }
+        }
+        s = services_->components().state<TimePickerState>(id);
+        if (!s || !s->rows_pending || s->updating_rows) {
+            continue;
+        }
+        if (mounting) {
+            services_->request_frame();
+            continue;
+        }
+        bool created = false;
+        for (int column = 0; column < 5; ++column) {
+            s = services_->components().state<TimePickerState>(id);
+            if (!s) {
+                break;
+            }
+            if (s->model.column_visible(static_cast<TimeColumn>(column)) && s->view.rows[column].empty()) {
+                const auto parent = s->view.columns[column];
+                const auto context = services_->components().capture_context(parent);
+                services_->append_slot(parent, Content{[this, id, column] { mount_rows(id, column); }}, context);
+                s = services_->components().state<TimePickerState>(id);
+                created |= s && !s->view.rows[column].empty();
+            }
+        }
+        if (services_->components().contains(id)) {
+            if (created) {
+                reorder_rows(id);
+            }
+            refresh(id);
         }
     }
 }
@@ -1254,6 +1672,8 @@ bool TimePickerComponentHost::on_keyboard_input(const input::KeyboardInputEvent&
         refresh(*owner);
         return true;
     }
+    const auto revision = s->revision;
+    const auto session = s->edit_session;
     auto model = s->model;
     bool changed{};
     try {
@@ -1265,7 +1685,7 @@ bool TimePickerComponentHost::on_keyboard_input(const input::KeyboardInputEvent&
         throw;
     }
     s = services_->components().state<TimePickerState>(*owner);
-    if (!s) {
+    if (!s || s->revision != revision) {
         return true;
     }
     s->model = std::move(model);
@@ -1279,7 +1699,8 @@ bool TimePickerComponentHost::on_keyboard_input(const input::KeyboardInputEvent&
         picker_callback(*services_, *owner, notify, value);
     }
     s = services_->components().state<TimePickerState>(*owner);
-    if (changed && s && !s->need_confirm) {
+    if (changed && s && !s->need_confirm && s->edit_session == session && !s->model.text_dirty() &&
+        s->model.panel() == value) {
         publish(*owner, value, false);
     }
     return true;
@@ -1298,7 +1719,8 @@ void TimePickerComponentHost::on_pointer_input(const input::PointerInputEvent& e
             continue;
         }
         const auto* record = hit ? services_->interactions().find(*hit) : nullptr;
-        const bool within = record && descendant(*services_, record->component, id);
+        const bool within = record && (descendant(*services_, record->component, id) ||
+                                       range_sibling(*services_, id, *s, record->component));
         if (event.action == input::PointerAction::down && !within) {
             request_open(id, false);
         } else if (event.action == input::PointerAction::up && event.button == input::PointerButton::primary &&

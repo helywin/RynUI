@@ -4,6 +4,7 @@
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
+#include <ryn/design_token.hpp>
 #include <cmath>
 #include <concepts>
 #include <cstdint>
@@ -56,6 +57,16 @@ private:
 
 using StatisticFormatter = std::function<String(const StatisticValue&)>;
 
+enum class StatisticTimerType { Countdown, Countup };
+
+// Remaining/elapsed duration at this revision; the window's monotonic clock advances it after mount/update.
+struct StatisticTimer final {
+    StatisticTimerType type{StatisticTimerType::Countdown};
+    Duration value;
+    String format{u8"HH:mm:ss"};
+    friend bool operator==(const StatisticTimer&, const StatisticTimer&) = default;
+};
+
 struct StatisticTitleSlot final {};
 
 struct StatisticValueSlot final {};
@@ -103,6 +114,7 @@ public:
 
     StatisticProps& decimalSeparator(Prop<String> value) {
         decimal_separator_ = std::move(value);
+        explicit_decimal_ = true;
         return *this;
     }
 
@@ -112,6 +124,7 @@ public:
 
     StatisticProps& groupSeparator(Prop<String> value) {
         group_separator_ = std::move(value);
+        explicit_group_ = true;
         return *this;
     }
 
@@ -180,6 +193,35 @@ public:
         return *this;
     }
 
+    StatisticProps& locale(Prop<StatisticLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
+    StatisticProps& animated(Prop<bool> value = true) {
+        animated_ = std::move(value);
+        return *this;
+    }
+
+    StatisticProps& timer(Prop<std::optional<StatisticTimer>> value) {
+        timer_ = std::move(value);
+        return *this;
+    }
+
+    StatisticProps& timer(StatisticTimer value) {
+        return timer(std::optional{std::move(value)});
+    }
+
+    StatisticProps& onChange(std::function<void(Duration)> value) {
+        on_change_ = std::move(value);
+        return *this;
+    }
+
+    StatisticProps& onFinish(std::function<void()> value) {
+        on_finish_ = std::move(value);
+        return *this;
+    }
+
     StatisticProps& visible(Prop<bool> value) {
         visible_ = std::move(value);
         return *this;
@@ -196,6 +238,13 @@ private:
     Prop<std::optional<int>> precision_{std::nullopt};
     Prop<String> decimal_separator_{String{u8"."}};
     Prop<String> group_separator_{String{u8","}};
+    bool explicit_decimal_{};
+    bool explicit_group_{};
+    Prop<StatisticLocale> locale_{StatisticLocale{}};
+    Prop<bool> animated_{false};
+    Prop<std::optional<StatisticTimer>> timer_{std::nullopt};
+    std::function<void(Duration)> on_change_;
+    std::function<void()> on_finish_;
     Prop<StatisticFormatter> formatter_{StatisticFormatter{}};
     Prop<String> title_{String{}};
     Prop<String> prefix_{String{}};

@@ -8,6 +8,10 @@
 #include <string_view>
 
 namespace ryn {
+namespace detail {
+struct PickerCandidate;
+enum class PickerRequestDisposition;
+} // namespace detail
 
 // A valid time within one day. There is deliberately no date, zone or clock.
 class TimeOfDay final {
@@ -312,15 +316,15 @@ private:
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
-    Prop<String> placeholder_{String{u8"Select a time"}};
+    std::optional<Prop<String>> placeholder_;
     std::optional<TimePickerRef> ref_;
     bool auto_focus_{};
     std::function<void(TimePickerValue)> on_change_;
-    std::function<void(TimePickerValue)> on_request_;
+    std::function<detail::PickerRequestDisposition(TimePickerValue, const detail::PickerCandidate&)> on_request_;
     std::function<void(bool)> on_open_;
     Prop<bool> use_12_hours_{false};
     Prop<String> format_{String{}};
-    Prop<PickerLocale> locale_{PickerLocale{}};
+    std::optional<Prop<PickerLocale>> locale_;
     Prop<bool> change_on_scroll_{false};
     Prop<bool> show_now_{false};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};

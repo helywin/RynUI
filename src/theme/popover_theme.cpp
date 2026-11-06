@@ -20,6 +20,17 @@ PopoverThemeToken derive_popover(const AntDesignDefaultSeed& seed, const ThemeMa
     t.font_family = seed.font_family;
     t.shadow = alias.box_shadow_secondary;
     t.z_index_popup = seed.z_index_popup_base + 30;
+    t.title_border = alias.color_split;
+    if (seed.wireframe) {
+        t.padding = 0;
+        t.title_gap = 0;
+        t.title_padding_inline = map.size;
+        t.title_padding_top = std::max(0.0F, (map.control_height - t.line_height) / 2);
+        t.title_padding_bottom = std::max(0.0F, t.title_padding_top - seed.line_width);
+        t.title_border_width = seed.line_width;
+        t.content_padding_inline = map.size;
+        t.content_padding_block = map.size_small;
+    }
     return t;
 }
 
@@ -32,6 +43,9 @@ void apply_popover_override(PopoverThemeToken& t, const PopoverTokenOverride& o)
     }
     if (o.text) {
         t.text = *o.text;
+    }
+    if (o.title_border) {
+        t.title_border = *o.title_border;
     }
     const auto length = [](float& target, const std::optional<LogicalLength>& value) {
         if (value) {
@@ -50,6 +64,12 @@ void apply_popover_override(PopoverThemeToken& t, const PopoverTokenOverride& o)
     length(t.gap, o.gap);
     length(t.font_size, o.font_size);
     length(t.line_height, o.line_height);
+    length(t.title_padding_inline, o.title_padding_inline);
+    length(t.title_padding_top, o.title_padding_top);
+    length(t.title_padding_bottom, o.title_padding_bottom);
+    length(t.title_border_width, o.title_border_width);
+    length(t.content_padding_inline, o.content_padding_inline);
+    length(t.content_padding_block, o.content_padding_block);
     if (o.font_family) {
         t.font_family = *o.font_family;
     }
@@ -72,7 +92,9 @@ void apply_popover_override(PopoverThemeToken& t, const PopoverTokenOverride& o)
         }
         extent += value * 2048;
     }
+    constexpr auto maximum_font_pixels = std::numeric_limits<int>::max() / 64;
     if (t.max_width <= 0 || !std::isfinite(t.font_size) || t.font_size < .5F ||
+        std::round(static_cast<double>(t.font_size)) > maximum_font_pixels ||
         static_cast<double>(t.font_size) >= std::numeric_limits<long>::max() ||
         static_cast<double>(t.font_size) >= std::numeric_limits<std::uint32_t>::max() ||
         !std::isfinite(t.line_height) || t.line_height <= 0 || t.font_weight < 100 || t.font_weight > 1000 ||

@@ -1,4 +1,5 @@
 #include "component/calendar_component.hpp"
+#include "component/picker_i18n.hpp"
 #include "component/date_picker_model.hpp"
 #include "component/form_control_binding.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -55,6 +56,7 @@ struct CalendarState final {
     std::optional<CivilDate> today;
     CalendarMode mode{CalendarMode::Month};
     PickerLocale locale;
+    PickerLocale format_locale;
     std::optional<CalendarRange> range;
     DisabledDate predicate;
     CalendarCellRenderer renderer;
@@ -375,6 +377,8 @@ void CalendarComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         s->year.set(SelectValue{s->value.year()});
         s->month.set(SelectValue{int(s->value.month())});
         s->today_label.set(s->locale.today);
+        s->month_label.set(s->locale.month);
+        s->year_label.set(s->locale.year);
         s->private_disabled.set(s->disabled || !s->visible);
         const auto navigation = clamp(s->value, s->range);
         s->previous_disabled.set(
@@ -387,7 +391,7 @@ void CalendarComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         const int first = std::max(s->range ? s->range->start.year() : 1, s->value.year() - 10);
         const int last = std::min(s->range ? s->range->end.year() : 9999, s->value.year() + 10);
         for (int y = first; y <= last; ++y) {
-            years.push_back({y, number(y + s->locale.year_offset)});
+            years.push_back({y, number(y + s->format_locale.year_offset)});
         }
         s->years.set(std::move(years));
         std::vector<SelectOption> months;
@@ -396,7 +400,7 @@ void CalendarComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                              (s->value.year() == s->range->end.year() && m > s->range->end.month()))) {
                 continue;
             }
-            months.push_back({int(m), s->locale.short_months[m - 1]});
+            months.push_back({int(m), s->format_locale.short_months[m - 1]});
         }
         s->months.set(std::move(months));
         if (s->month_control &&
@@ -566,13 +570,28 @@ void CalendarComponentHost::cells(runtime::ComponentId id, runtime::ComponentBui
     if (!s || s->updating || !s->pending) {
         return;
     }
-    s->updating = true;
-    s->pending = false;
     const auto revision = s->revision;
     const auto previous = s->rows;
     std::vector<runtime::ComponentId> next;
     std::vector<runtime::ComponentId> created;
+    std::vector<runtime::ComponentId> retired;
     bool metadata_delivery{};
+    bool published{};
+    const auto cancel = [&] {
+        for (auto child : created) {
+            services_->retire_failed_component(child);
+        }
+        if (auto* current = services_->components().state<CalendarState>(id)) {
+            if (std::ranges::any_of(
+                    previous, [&](auto child) { return child.valid() && !services_->components().contains(child); })) {
+                services_->retire_failed_component(id);
+                return;
+            }
+            current->updating = false;
+            current->pending = true;
+            services_->request_frame();
+        }
+    };
     const auto range = s->range;
     DatePickerModel grid{{},
                          false,
@@ -584,6 +603,8 @@ void CalendarComponentHost::cells(runtime::ComponentId id, runtime::ComponentBui
                           {},
                           DatePickerMode::Date}};
     grid.view(s->mode == CalendarMode::Month ? DatePickerMode::Date : DatePickerMode::Month, s->locale);
+    s->updating = true;
+    s->pending = false;
     try {
         bool tab = false;
         for (std::size_t i = 0; i < grid.cell_count(); ++i) {
@@ -594,7 +615,8 @@ void CalendarComponentHost::cells(runtime::ComponentId id, runtime::ComponentBui
             }
             s = services_->components().state<CalendarState>(id);
             if (!s || s->revision != revision) {
-                throw std::runtime_error("Calendar factory superseded its owner");
+                cancel();
+                return;
             }
             const auto candidate = s->mode == CalendarMode::Year
                                        ? clamp(add_months(s->value, (date->year() - s->value.year()) * 12 +
@@ -611,7 +633,8 @@ void CalendarComponentHost::cells(runtime::ComponentId id, runtime::ComponentBui
                 disabled_rule(*services_, id, candidate);
             s = services_->components().state<CalendarState>(id);
             if (!s || s->revision != revision) {
-                throw std::runtime_error("Calendar rule superseded its owner");
+                cancel();
+                return;
             }
             CalendarCellInfo info{
                 *date,
@@ -640,7 +663,8 @@ void CalendarComponentHost::cells(runtime::ComponentId id, runtime::ComponentBui
             }
             s = services_->components().state<CalendarState>(id);
             if (!s || s->revision != revision) {
-                throw std::runtime_error("Calendar cell factory changed owner state");
+                cancel();
+                return;
             }
             auto* row = services_->components().state<Cell>(child);
             row->label.set(info.mode == CalendarMode::Month ? number(int(date->day()))
@@ -659,12 +683,30 @@ void CalendarComponentHost::cells(runtime::ComponentId id, runtime::ComponentBui
             metadata_delivery = true;
             meta.set(info);
             metadata_delivery = false;
+            s = services_->components().state<CalendarState>(id);
+            if (!s || s->revision != revision) {
+                cancel();
+                return;
+            }
+            if (!services_->components().contains(child)) {
+                services_->retire_failed_component(id);
+                cancel();
+                return;
+            }
         }
         s = services_->components().state<CalendarState>(id);
-        if (!s) {
+        if (!s || s->revision != revision) {
+            cancel();
             return;
         }
+        for (auto child : previous) {
+            if (child.valid() && std::ranges::find(next, child) == next.end()) {
+                retired.push_back(child);
+            }
+        }
         s->rows = next;
+        published = true;
+        created.clear();
         s->updating = false;
         std::optional<input::InteractionId> tab_stop;
         for (auto child : next) {
@@ -679,11 +721,12 @@ void CalendarComponentHost::cells(runtime::ComponentId id, runtime::ComponentBui
                 services_->interactions().set_tab_stop(row->interaction, tab_stop == row->interaction);
             }
         }
-        for (auto child : previous) {
-            if (child.valid() && std::ranges::find(next, child) == next.end()) {
+        for (auto child : retired) {
+            if (services_->components().contains(child)) {
                 services_->destroy(child);
             }
         }
+        retired.clear();
         for (auto child : next) {
             const auto* row = services_->components().state<Cell>(child);
             if (row) {
@@ -694,10 +737,13 @@ void CalendarComponentHost::cells(runtime::ComponentId id, runtime::ComponentBui
             services_->request_frame();
         }
     } catch (...) {
-        if (metadata_delivery) {
+        if (metadata_delivery || published) {
             services_->retire_failed_component(id);
         }
         for (auto child : created) {
+            services_->retire_failed_component(child);
+        }
+        for (auto child : retired) {
             services_->retire_failed_component(child);
         }
         if (auto* current = services_->components().state<CalendarState>(id)) {
@@ -844,7 +890,11 @@ runtime::ComponentId CalendarComponentHost::header(runtime::ComponentId id, Cale
 }
 
 void CalendarComponentHost::mount(const CalendarProps& props) {
-    const auto locale = read_prop(props.locale_);
+    const auto locale_source =
+        picker_locale_prop(props.locale_, runtime::require_component_build_context().config_scope());
+    const auto format_locale_source =
+        picker_format_locale_prop(props.locale_, runtime::require_component_build_context().config_scope());
+    const auto locale = read_prop(locale_source);
     locale.validate();
     const auto range = read_prop(props.range_);
     if (range && range->start > range->end) {
@@ -869,6 +919,7 @@ void CalendarComponentHost::mount(const CalendarProps& props) {
     s.today = today;
     s.mode = mode;
     s.locale = locale;
+    s.format_locale = read_prop(format_locale_source);
     s.range = range;
     const auto reference = props.ref_.state_;
     reference->check();
@@ -947,7 +998,8 @@ void CalendarComponentHost::mount(const CalendarProps& props) {
             throw std::invalid_argument("Calendar Today requires a clock");
         }
     });
-    connect(props.locale_, &CalendarState::locale, [](const auto& v) { v.validate(); });
+    connect(locale_source, &CalendarState::locale, [](const auto& v) { v.validate(); });
+    connect(format_locale_source, &CalendarState::format_locale, [](const auto& v) { v.validate(); });
     connect(props.range_, &CalendarState::range, [](const auto& v) {
         if (v && v->start > v->end) {
             throw std::invalid_argument("Calendar range reversed");

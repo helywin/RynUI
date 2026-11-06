@@ -1385,13 +1385,32 @@ struct PopoverThemeToken final {
     std::uint32_t title_font_weight{600};
     ShadowList shadow;
     std::int32_t z_index_popup{1030};
+    Color title_border;
+    float title_padding_inline{};
+    float title_padding_top{};
+    float title_padding_bottom{};
+    float title_border_width{};
+    float content_padding_inline{};
+    float content_padding_block{};
 
-    [[nodiscard]] std::array<Color, 3> colors() const {
-        return {background, title, text};
+    [[nodiscard]] std::array<Color, 4> colors() const {
+        return {background, title, text, title_border};
     }
 
-    [[nodiscard]] std::array<float, 7> metrics() const {
-        return {max_width, title_min_width, padding, title_gap, border_radius, arrow_size, gap};
+    [[nodiscard]] std::array<float, 13> metrics() const {
+        return {max_width,
+                title_min_width,
+                padding,
+                title_gap,
+                border_radius,
+                arrow_size,
+                gap,
+                title_padding_inline,
+                title_padding_top,
+                title_padding_bottom,
+                title_border_width,
+                content_padding_inline,
+                content_padding_block};
     }
 
     friend bool operator==(const PopoverThemeToken&, const PopoverThemeToken&) = default;
@@ -1415,6 +1434,13 @@ struct PopoverTokenOverride final {
     std::optional<std::uint32_t> title_font_weight;
     std::optional<ShadowList> shadow;
     std::optional<std::int32_t> z_index_popup;
+    std::optional<Color> title_border;
+    std::optional<LogicalLength> title_padding_inline;
+    std::optional<LogicalLength> title_padding_top;
+    std::optional<LogicalLength> title_padding_bottom;
+    std::optional<LogicalLength> title_border_width;
+    std::optional<LogicalLength> content_padding_inline;
+    std::optional<LogicalLength> content_padding_block;
     friend bool operator==(const PopoverTokenOverride&, const PopoverTokenOverride&) = default;
 };
 

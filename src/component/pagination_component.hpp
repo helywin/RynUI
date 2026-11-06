@@ -39,6 +39,7 @@ public:
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override {}
 
 private:
+    void localize(runtime::ComponentId, PaginationLocale);
     void refresh(runtime::ComponentId, bool geometry);
     void request(runtime::ComponentId, std::size_t index);
     void change(runtime::ComponentId, std::size_t page, std::size_t size);

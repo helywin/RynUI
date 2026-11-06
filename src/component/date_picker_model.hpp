@@ -1,5 +1,6 @@
 #pragma once
 #include <ryn/date_picker.hpp>
+#include "component/picker_candidate.hpp"
 #include <array>
 
 namespace ryn::detail {
@@ -19,6 +20,7 @@ public:
     void reconcile(DatePickerValue value);
     [[nodiscard]] std::optional<DatePickerValue> request(DatePickerValue value);
     [[nodiscard]] bool eligible(CivilDate value) const;
+    [[nodiscard]] bool eligible(CivilDate value, DateValueSemantics) const;
     bool navigate(int months);
     bool move(int days);
     bool boundary(bool last);

@@ -1,5 +1,6 @@
 #pragma once
 #include <ryn/component.hpp>
+#include <ryn/component_locales.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
@@ -99,6 +100,7 @@ struct TableOptions final {
     Prop<bool> loading{false};
     Prop<bool> show_header{true};
     LayoutStyle layout;
+    std::optional<Prop<TableLocale>> locale;
 };
 
 void mount_table(TableOptions, Prop<std::vector<TableRecord>>, std::vector<TableColumnSchema>,
@@ -162,6 +164,11 @@ template <typename Row> struct TableRowSelection final {
 
 template <typename Row> class TableProps final {
 public:
+    TableProps& locale(Prop<TableLocale> value) {
+        options_.locale = std::move(value);
+        return *this;
+    }
+
     TableProps& dataSource(Prop<std::vector<Row>> value) {
         source_ = std::move(value);
         return *this;

@@ -1,5 +1,6 @@
 #include "component/notice_component.hpp"
 #include "runtime/prop_connection.hpp"
+#include "animation/motion_policy.hpp"
 #include <ryn/button.hpp>
 #include <ryn/icon.hpp>
 #include <algorithm>
@@ -15,12 +16,23 @@ struct HolderState final {
     NoticeModel model;
     std::shared_ptr<NoticeBinding> binding{std::make_shared<NoticeBinding>()};
     std::shared_ptr<Scope> max_scope{std::make_shared<Scope>()};
+    NoticeStack stack;
+    bool expanded{};
 };
 
 struct EntryState final {
+    runtime::CapturedComponentContext context;
     runtime::NodeId node;
     NoticeSnapshot snapshot;
     NoticeTimer timer;
+    bool pause_on_hover{true};
+    bool hovered{};
+    bool show_progress{};
+    bool motion{};
+    std::optional<animation::AnimationTime> motion_start;
+    animation::AnimationDuration motion_duration;
+    std::shared_ptr<std::vector<std::shared_ptr<NoticeCompletion>>> completions{
+        std::make_shared<std::vector<std::shared_ptr<NoticeCompletion>>>()};
     std::uint64_t revision{};
     std::function<void()> on_close;
     Signal<String> title{String{}};
@@ -32,7 +44,7 @@ struct EntryState final {
     Signal<runtime::SemanticTypography> title_font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> body_font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> icon_font{runtime::SemanticTypography{}};
-    std::array<std::shared_ptr<Scope>, 6> bindings;
+    std::array<std::shared_ptr<Scope>, 9> bindings;
     std::array<theme_runtime::Subscription, 4> subscriptions;
     std::array<runtime::Size, 3> measured;
     bool rich_description{};
@@ -72,6 +84,23 @@ void set_region(NoticeSnapshot& s, unsigned index, runtime::ComponentId id) {
         s.actions = id;
     }
 }
+
+bool context_live(WindowComponentServices& services, runtime::ComponentId holder,
+                  const runtime::CapturedComponentContext& context) {
+    auto& host = services.components();
+    if (!host.active() || !host.contains(holder) || !host.scope(holder).active() || !context.owner.lock() ||
+        context.owner.lock() != host.capture_context(holder).owner.lock() || !context.theme || !context.config ||
+        !context.config->active()) {
+        return false;
+    }
+    return !context.component_owner ||
+           (host.contains(*context.component_owner) && host.scope(*context.component_owner).active());
+}
+
+bool same_context(const runtime::CapturedComponentContext& a, const runtime::CapturedComponentContext& b) {
+    return a.owner.lock() == b.owner.lock() && a.theme == b.theme && a.config == b.config &&
+           a.component_owner == b.component_owner;
+}
 } // namespace
 
 NoticeComponentHost::NoticeComponentHost(WindowComponentServices& services) : services_(&services) {
@@ -79,6 +108,7 @@ NoticeComponentHost::NoticeComponentHost(WindowComponentServices& services) : se
 }
 
 NoticeComponentHost::~NoticeComponentHost() {
+    lifetime_.reset();
     services_->detach(*this);
 }
 
@@ -94,6 +124,28 @@ void NoticeComponentHost::end_mount(void* previous) noexcept {
 
 void NoticeComponentHost::on_destroy() noexcept {
     std::erase_if(holders_, [this](auto id) { return !services_->components().contains(id); });
+    if (!pruning_ && services_->components().active()) {
+        pruning_ = true;
+        for (std::size_t i = 0; i < entries_.size();) {
+            const auto entry = entries_[i];
+            const auto* state = services_->components().state<EntryState>(entry);
+            if (state && !context_live(*services_, state->snapshot.owner, state->context)) {
+                // Quiet retirement updates all real text/input participants.
+                // Its nested on_destroy pass only prunes stale bookkeeping.
+                if (!services_->retire_failed_component(entry)) {
+                    break;
+                }
+                i = 0;
+            } else {
+                ++i;
+            }
+        }
+        pruning_ = false;
+    }
+    std::erase_if(entries_, [this](auto id) { return !services_->components().contains(id); });
+    std::erase_if(context_sources_, [this](auto id) {
+        return !services_->components().contains(id) || !services_->components().scope(id).active();
+    });
     for (auto id : holders_) {
         auto& model = services_->components().state<HolderState>(id)->model;
         std::erase_if(model.entries, [this](const auto& entry) { return !services_->components().contains(entry.id); });
@@ -102,6 +154,8 @@ void NoticeComponentHost::on_destroy() noexcept {
 
 void NoticeComponentHost::on_dispose() noexcept {
     holders_.clear();
+    entries_.clear();
+    context_sources_.clear();
 }
 
 animation::AnimationTime NoticeComponentHost::now() {
@@ -132,15 +186,15 @@ bool NoticeComponentHost::visible() const {
 }
 
 void NoticeComponentHost::mount(const MessageHolderProps& props) {
-    mount_holder(true, props.reference_, props.max_count_);
+    mount_holder(true, props.reference_, props.max_count_, props.stack_);
 }
 
 void NoticeComponentHost::mount(const NotificationHolderProps& props) {
-    mount_holder(false, props.reference_, props.max_count_);
+    mount_holder(false, props.reference_, props.max_count_, props.stack_);
 }
 
 void NoticeComponentHost::mount_holder(bool message, const std::shared_ptr<NoticeRefState>& reference,
-                                       const Prop<std::size_t>& max_count) {
+                                       const Prop<std::size_t>& max_count, const Prop<NoticeStack>& stack) {
     if (!reference) {
         throw std::invalid_argument("Notice holder requires a Ref");
     }
@@ -157,6 +211,11 @@ void NoticeComponentHost::mount_holder(bool message, const std::shared_ptr<Notic
     auto& services = *services_;
     const auto node = build.root(id);
     build.scope(id).on_cleanup([binding] { binding->alive = false; });
+    build.scope(id).on_cleanup([this, weak = std::weak_ptr{lifetime_}] {
+        if (weak.lock()) {
+            on_destroy();
+        }
+    });
     services.nodes().require(node).out_of_flow = true;
     services.layout().set_layout(node, layout::LeafLayout{});
     build.on_resource_cleanup(id, [binding, max_scope, &services, node] {
@@ -164,9 +223,12 @@ void NoticeComponentHost::mount_holder(bool message, const std::shared_ptr<Notic
         max_scope->dispose();
         services.layout().remove_layout(node);
     });
-    binding->open = [this, id, weak = std::weak_ptr{binding}](String key, NoticeOptions props, NoticeContent content) {
+    binding->open = [this, id,
+                     weak = std::weak_ptr{binding}](String key, NoticeOptions props, NoticeContent content,
+                                                    std::optional<runtime::CapturedComponentContext> context) {
         const auto alive = weak.lock();
-        return alive && alive->alive && open(id, std::move(key), std::move(props), std::move(content));
+        return alive && alive->alive &&
+               open(id, std::move(key), std::move(props), std::move(content), std::move(context));
     };
     binding->close = [this, id, weak = std::weak_ptr{binding}](String key) {
         const auto alive = weak.lock();
@@ -185,6 +247,18 @@ void NoticeComponentHost::mount_holder(bool message, const std::shared_ptr<Notic
         }
         if (services_->components().state<HolderState>(id)) {
             trim(id);
+        }
+    });
+    if (!services.components().contains(id) || !max_scope->active()) {
+        return;
+    }
+    connect_prop(*max_scope, stack, [this, id](NoticeStack value) {
+        if (value.threshold == 0 || value.threshold > 1024) {
+            throw std::invalid_argument("Notice stack threshold must be in [1, 1024]");
+        }
+        if (auto* holder = services_->components().state<HolderState>(id)) {
+            holder->stack = value;
+            services_->request_frame();
         }
     });
 }
@@ -208,11 +282,12 @@ runtime::ComponentId NoticeComponentHost::region(runtime::ComponentId id, unsign
     return child;
 }
 
-runtime::ComponentId NoticeComponentHost::create(runtime::ComponentId owner, String key) {
+runtime::ComponentId NoticeComponentHost::create(runtime::ComponentId owner, String key,
+                                                 const runtime::CapturedComponentContext& context) {
     auto& services = *services_;
     runtime::ComponentId id;
     services.append_slot(
-        owner, Content{[&, key = std::move(key)] {
+        context.component_owner.value_or(owner), Content{[&, key = std::move(key)] {
             auto& build = runtime::require_component_build_context();
             auto* holder = services.components().state<HolderState>(owner);
             if (!holder) {
@@ -221,11 +296,18 @@ runtime::ComponentId NoticeComponentHost::create(runtime::ComponentId owner, Str
             const bool message = holder->message;
             id = build.mount_component<EntryState>();
             auto& state = build.state<EntryState>(id);
+            state.context = context;
+            entries_.push_back(id);
             state.snapshot.owner = owner;
             state.snapshot.message = message;
             state.snapshot.closable = !message;
             state.timer.seconds = message ? 3 : 4.5;
             state.node = build.root(id);
+            build.scope(id).on_cleanup([completions = state.completions] {
+                for (const auto& completion : *completions) {
+                    completion->settle(NoticeCloseResult::Cancelled);
+                }
+            });
             const auto node = state.node;
             services.nodes().require(node).out_of_flow = true;
             services.nodes().require(node).clip_content = true;
@@ -235,7 +317,8 @@ runtime::ComponentId NoticeComponentHost::create(runtime::ComponentId owner, Str
             const auto fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
             graphics::QuadInstance initial;
             initial.opacity = 0;
-            state.surface = services.surfaces().create(id, node, fragment, interaction, std::span{&initial, 1});
+            const std::array initial_quads{initial, initial};
+            state.surface = services.surfaces().create(id, node, fragment, interaction, initial_quads);
             const auto surface = state.surface;
             build.on_resource_cleanup(id, [&services, node, surface, interaction, id] {
                 services.interactions().set_input_blocked(id, false);
@@ -421,7 +504,8 @@ runtime::ComponentId NoticeComponentHost::create(runtime::ComponentId owner, Str
                                                          }
                                                      });
             }
-        }});
+        }},
+        context);
     refresh(id, true);
     return id;
 }
@@ -453,7 +537,8 @@ void NoticeComponentHost::connect(runtime::ComponentId id, std::size_t index, co
     });
 }
 
-bool NoticeComponentHost::open(runtime::ComponentId owner, String key, NoticeOptions props, NoticeContent content) {
+bool NoticeComponentHost::open(runtime::ComponentId owner, String key, NoticeOptions props, NoticeContent content,
+                               std::optional<runtime::CapturedComponentContext> captured) {
     if (key.empty()) {
         throw std::invalid_argument("Notice key must not be empty");
     }
@@ -461,21 +546,66 @@ bool NoticeComponentHost::open(runtime::ComponentId owner, String key, NoticeOpt
     if (!holder || !holder->binding->alive || !services_->components().scope(owner).active()) {
         return false;
     }
+    const auto context = captured.value_or(services_->components().capture_context(owner));
+    if (!context_live(*services_, owner, context)) {
+        throw std::invalid_argument("Notice requires a live context from its target window");
+    }
+    if (context.component_owner && *context.component_owner != owner &&
+        std::ranges::find(context_sources_, *context.component_owner) == context_sources_.end()) {
+        context_sources_.push_back(*context.component_owner);
+        try {
+            services_->components().scope(*context.component_owner).on_cleanup([this, weak = std::weak_ptr{lifetime_}] {
+                if (weak.lock()) {
+                    on_destroy();
+                }
+            });
+        } catch (...) {
+            std::erase(context_sources_, *context.component_owner);
+            throw;
+        }
+    }
     auto id = holder->model.find(key);
     const bool created = !id.valid();
+    if (!created) {
+        const auto* previous = services_->components().state<EntryState>(id);
+        if (previous && !same_context(previous->context, context)) {
+            throw std::invalid_argument("Notice key belongs to a different captured context");
+        }
+    }
     if (created) {
-        id = create(owner, key);
+        id = create(owner, key, context);
     }
     auto* s = services_->components().state<EntryState>(id);
     if (!s) {
         return false;
     }
     const auto revision = ++s->revision;
-    const auto current = [this, id, revision] {
+    const auto current = [this, id, owner, revision] {
         const auto* entry = services_->components().state<EntryState>(id);
-        return entry && entry->revision == revision;
+        return entry && entry->revision == revision && context_live(*services_, owner, entry->context);
     };
+    bool replacing_slot{};
     try {
+        s->snapshot.closing = false;
+        s->motion_start.reset();
+        s->snapshot.opacity = 1;
+        if (props.completion) {
+            s->completions->push_back(props.completion);
+            const auto binding = services_->components().state<HolderState>(owner)->binding;
+            props.completion->message = s->snapshot.message;
+            props.completion->close = [this, owner, id, context, weak = std::weak_ptr{binding}] {
+                const auto binding = weak.lock();
+                return binding && binding->thread == std::this_thread::get_id() && binding->alive &&
+                       context_live(*services_, owner, context) && close(owner, id);
+            };
+            props.completion->update = [this, owner, id, key, context,
+                                        weak = std::weak_ptr{binding}](NoticeOptions options, NoticeContent slots) {
+                const auto binding = weak.lock();
+                return binding && binding->alive && binding->thread == std::this_thread::get_id() &&
+                       services_->components().contains(id) &&
+                       open(owner, key, std::move(options), std::move(slots), context);
+            };
+        }
         if (props.on_close) {
             s->on_close = *props.on_close;
         }
@@ -483,6 +613,35 @@ bool NoticeComponentHost::open(runtime::ComponentId owner, String key, NoticeOpt
             if (auto* entry = services_->components().state<EntryState>(id)) {
                 auto signal = entry->title;
                 signal.set(std::move(value));
+            }
+        });
+        if (!current()) {
+            return false;
+        }
+        connect(id, 6, props.pause_on_hover, [this, id](bool value) {
+            if (auto* entry = services_->components().state<EntryState>(id)) {
+                entry->pause_on_hover = value;
+                if (value && entry->hovered) {
+                    entry->timer.pause(now());
+                } else {
+                    entry->timer.resume(now());
+                }
+            }
+        });
+        if (!current()) {
+            return false;
+        }
+        connect(id, 7, props.show_progress, [this, id](bool value) {
+            if (auto* entry = services_->components().state<EntryState>(id)) {
+                entry->show_progress = value;
+            }
+        });
+        if (!current()) {
+            return false;
+        }
+        connect(id, 8, props.motion, [this, id](bool value) {
+            if (auto* entry = services_->components().state<EntryState>(id)) {
+                entry->motion = value;
             }
         });
         if (!current()) {
@@ -539,7 +698,10 @@ bool NoticeComponentHost::open(runtime::ComponentId owner, String key, NoticeOpt
             s = services_->components().state<EntryState>(id);
             const auto old = region_id(s->snapshot, index);
             runtime::ComponentId replacement;
-            services_->append_slot(id, Content{[&, index] { replacement = region(id, index, *replacements[index]); }});
+            replacing_slot = true;
+            services_->append_slot(id, Content{[&, index] { replacement = region(id, index, *replacements[index]); }},
+                                   context);
+            replacing_slot = false;
             if (!current()) {
                 return false;
             }
@@ -558,6 +720,18 @@ bool NoticeComponentHost::open(runtime::ComponentId owner, String key, NoticeOpt
         }
         s = services_->components().state<EntryState>(id);
         s->timer.reset(now(), s->timer.seconds);
+        s->snapshot.progress = s->timer.progress(now());
+        services_->set_input_blocked(id, false);
+        if (!current()) {
+            return false;
+        }
+        s = services_->components().state<EntryState>(id);
+        if (created && s->motion && motion_allowed(id)) {
+            s->motion_start = now();
+            s->motion_duration =
+                animation::resolve_motion_tokens(services_->components().theme_scope(id)->snapshot()).fast;
+            s->snapshot.opacity = 0;
+        }
         refresh(id, true);
         if (!current()) {
             return false;
@@ -566,14 +740,40 @@ bool NoticeComponentHost::open(runtime::ComponentId owner, String key, NoticeOpt
         services_->request_frame();
         return services_->components().contains(id);
     } catch (...) {
-        if (created && services_->components().contains(id)) {
+        if (current() && (!replacing_slot || created)) {
+            for (const auto& completion : *services_->components().state<EntryState>(id)->completions) {
+                completion->settle(NoticeCloseResult::Failed);
+            }
             services_->destroy(id);
+        } else if (current() && props.completion) {
+            props.completion->settle(NoticeCloseResult::Failed);
+            std::erase(*services_->components().state<EntryState>(id)->completions, props.completion);
         }
         throw;
     }
 }
 
-bool NoticeComponentHost::close(runtime::ComponentId owner, runtime::ComponentId id) {
+bool NoticeComponentHost::close(runtime::ComponentId owner, runtime::ComponentId id, bool immediate) {
+    auto* s = services_->components().state<EntryState>(id);
+    if (!s || s->snapshot.owner != owner) {
+        return false;
+    }
+    if (!immediate && s->motion && motion_allowed(id)) {
+        if (!s->snapshot.closing) {
+            s->snapshot.closing = true;
+            s->timer.deadline.reset();
+            s->motion_start = now();
+            s->motion_duration =
+                animation::resolve_motion_tokens(services_->components().theme_scope(id)->snapshot()).fast;
+            services_->set_input_blocked(id, true);
+            services_->request_frame();
+        }
+        return true;
+    }
+    return finish_close(owner, id);
+}
+
+bool NoticeComponentHost::finish_close(runtime::ComponentId owner, runtime::ComponentId id) {
     auto* holder = services_->components().state<HolderState>(owner);
     const auto* s = services_->components().state<EntryState>(id);
     if (!holder || !holder->binding->alive || !s || !services_->components().scope(id).active() ||
@@ -581,6 +781,9 @@ bool NoticeComponentHost::close(runtime::ComponentId owner, runtime::ComponentId
         return false;
     }
     const auto callback = s->on_close;
+    for (const auto& completion : *s->completions) {
+        completion->settle(NoticeCloseResult::Closed);
+    }
     holder->model.erase(id);
     services_->destroy(id);
     services_->focus().synchronize();
@@ -596,8 +799,18 @@ bool NoticeComponentHost::clear(runtime::ComponentId owner) {
         return false;
     }
     const auto batch = entries(owner);
+    std::exception_ptr failure;
     for (const auto& item : batch) {
-        close(owner, item.id);
+        try {
+            close(owner, item.id, true);
+        } catch (...) {
+            if (!failure) {
+                failure = std::current_exception();
+            }
+        }
+    }
+    if (failure) {
+        std::rethrow_exception(failure);
     }
     return true;
 }
@@ -624,7 +837,7 @@ void NoticeComponentHost::trim(runtime::ComponentId owner) {
             return;
         }
         const auto oldest = holder->model.entries.front().id;
-        if (!close(owner, oldest)) {
+        if (!close(owner, oldest, true)) {
             return;
         }
     }
@@ -651,7 +864,7 @@ void NoticeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     s->body_font.set({m.font_family, 400, false, m.font_size, m.line_height});
     s->icon_font.set({m.font_family, 400, false, m.icon_size, m.icon_size});
     const auto close_region = s->snapshot.close;
-    if (services_->components().set_branch_active(close_region, s->snapshot.closable)) {
+    if (services_->components().set_branch_active(close_region, s->snapshot.closable && !s->snapshot.collapsed)) {
         services_->mark_scene_structure_dirty();
     }
     if (services_->components().set_window_layer(id, t.z_index)) {
@@ -661,7 +874,7 @@ void NoticeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                                                           runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
                                                     : runtime::DirtyFlags::Material);
     // This is the only callback boundary. No state is accessed afterwards.
-    services_->set_input_blocked(close_region, !s->snapshot.closable);
+    services_->set_input_blocked(close_region, !s->snapshot.closable || s->snapshot.collapsed);
 }
 
 void NoticeComponentHost::position_window_layers(runtime::Size, runtime::Rect clip) {
@@ -671,19 +884,45 @@ void NoticeComponentHost::position_window_layers(runtime::Size, runtime::Rect cl
             continue;
         }
         std::array<float, 4> offsets{};
-        for (const auto& item : holder->model.entries) {
-            const auto* s = services_->components().state<EntryState>(item.id);
+        std::array<std::size_t, 4> counts{};
+        std::array<std::size_t, 4> indices{};
+        const bool collapse = holder->stack.enabled && !holder->expanded;
+        const auto threshold = holder->stack.threshold;
+        const auto batch = holder->model.entries;
+        for (const auto& item : batch) {
+            if (const auto* entry = services_->components().state<EntryState>(item.id)) {
+                ++counts[entry->snapshot.message ? 0U : static_cast<unsigned>(entry->snapshot.placement)];
+            }
+        }
+        for (const auto& item : batch) {
+            auto* s = services_->components().state<EntryState>(item.id);
             if (!s) {
                 continue;
             }
             const auto& m = token(*services_, item.id, s->snapshot.message).metrics;
             const auto group = s->snapshot.message ? 0U : static_cast<unsigned>(s->snapshot.placement);
+            const auto index = indices[group]++;
+            const bool collapsed = collapse && counts[group] > threshold && index + 1 < counts[group];
+            const bool hidden = collapsed && index + threshold < counts[group];
+            s->snapshot.collapsed = collapsed;
+            for (auto child : {s->snapshot.title, s->snapshot.description, s->snapshot.actions, s->snapshot.icon}) {
+                if (services_->components().set_branch_active(child, !collapsed)) {
+                    services_->mark_scene_structure_dirty();
+                }
+            }
+            if (services_->components().set_branch_active(s->snapshot.close, !collapsed && s->snapshot.closable)) {
+                services_->mark_scene_structure_dirty();
+            }
+            services_->nodes().set_paint_opacity(s->node, hidden ? 0 : s->snapshot.opacity);
             const float margin = std::min(m.offset, std::min(clip.width, clip.height) / 2);
             const float max_width = std::max(0.0F, clip.width - margin * 2);
             const float max_height = std::max(0.0F, clip.height - margin * 2 - offsets[group]);
             const float width = std::min(m.width, max_width);
-            const auto size =
+            auto size =
                 services_->layout().measure_child(s->node, {s->snapshot.message ? 0.0F : width, width, 0, max_height});
+            if (collapsed) {
+                size = {width, hidden ? 0.0F : std::min(m.gap, max_height)};
+            }
             const bool right = s->snapshot.placement == NotificationPlacement::TopRight ||
                                s->snapshot.placement == NotificationPlacement::BottomRight;
             const bool bottom = s->snapshot.placement == NotificationPlacement::BottomLeft ||
@@ -697,7 +936,7 @@ void NoticeComponentHost::position_window_layers(runtime::Size, runtime::Rect cl
                                             {clip.x + std::clamp(x, 0.0F, std::max(0.0F, clip.width - size.width)),
                                              clip.y + std::clamp(y, 0.0F, std::max(0.0F, clip.height - size.height)),
                                              size.width, size.height});
-            offsets[group] += size.height + m.stack_gap;
+            offsets[group] += size.height + (collapsed ? 0 : m.stack_gap);
         }
     }
 }
@@ -715,14 +954,23 @@ void NoticeComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
             q.bounds = {node.bounds.x, node.bounds.y, node.bounds.width, node.bounds.height};
             q.color = foreground(t.colors.background);
             q.corner_radius = std::min(t.metrics.border_radius, std::min(node.bounds.width, node.bounds.height) / 2);
-            q.opacity = node.opacity;
+            q.opacity = services_->nodes().content_opacity(s->node);
             q.translation = {node.translation.x, node.translation.y};
-            static_cast<void>(services_->surfaces().update(s->surface, std::span{&q, 1}));
+            auto progress = q;
+            const auto color = t.colors.info;
+            progress.color = foreground(color);
+            progress.bounds = {node.bounds.x, node.bounds.y + node.bounds.height - 2,
+                               s->snapshot.progress * node.bounds.width, 2};
+            progress.corner_radius = 0;
+            progress.opacity = s->show_progress && s->timer.seconds > 0 && !s->snapshot.collapsed ? q.opacity : 0;
+            const std::array quads{q, progress};
+            static_cast<void>(services_->surfaces().update(s->surface, quads));
             component::RetainedSurfaceEffects effects;
             effects.shape = {node.bounds.x, node.bounds.y, node.bounds.width, node.bounds.height, q.corner_radius};
             effects.shadows = t.shadow;
             effects.focus_enabled = false;
             effects.translation = node.translation;
+            effects.shadow_opacity = q.opacity;
             const auto clip = services_->component_clip(item.id, viewport, document_clip);
             effects.ancestor_clip = graphics::EffectClip{1, clip};
             static_cast<void>(services_->surfaces().update_effects(s->surface, effects));
@@ -743,7 +991,8 @@ std::size_t NoticeComponentHost::tick_auxiliary(animation::AnimationTime time) {
     for (auto owner : holders_) {
         for (const auto& item : entries(owner)) {
             const auto* s = services_->components().state<EntryState>(item.id);
-            if (s && s->timer.deadline && *s->timer.deadline <= effective) {
+            if (s && services_->components().branch_active(item.id) && !s->snapshot.closing && s->timer.deadline &&
+                *s->timer.deadline <= effective) {
                 expired.push_back({owner, item.id, s->revision});
             }
         }
@@ -753,6 +1002,35 @@ std::size_t NoticeComponentHost::tick_auxiliary(animation::AnimationTime time) {
         const auto* s = services_->components().state<EntryState>(item.id);
         if (s && s->revision == item.revision && s->timer.deadline && *s->timer.deadline <= effective) {
             changed += close(item.owner, item.id);
+        }
+    }
+    const auto owners = holders_;
+    for (auto owner : owners) {
+        for (const auto& item : entries(owner)) {
+            auto* s = services_->components().state<EntryState>(item.id);
+            if (!s) {
+                continue;
+            }
+            s->snapshot.progress = s->timer.progress(effective);
+            if (s->motion_start) {
+                const auto sample =
+                    animation::sample_animation_interval(effective, *s->motion_start, {}, s->motion_duration);
+                const bool settled =
+                    !motion_allowed(item.id) || sample.phase == animation::AnimationIntervalPhase::completed;
+                s->snapshot.opacity = settled ? 1 : s->snapshot.closing ? 1 - sample.progress : sample.progress;
+                if (settled) {
+                    s->motion_start.reset();
+                    if (s->snapshot.closing) {
+                        changed += finish_close(owner, item.id);
+                        continue;
+                    }
+                }
+            }
+            s = services_->components().state<EntryState>(item.id);
+            if (s) {
+                services_->nodes().set_paint_opacity(s->node, s->snapshot.opacity);
+                services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
+            }
         }
     }
     return changed;
@@ -767,12 +1045,100 @@ std::optional<animation::AnimationTime> NoticeComponentHost::next_auxiliary_dead
         }
         for (const auto& item : holder->model.entries) {
             const auto* s = services_->components().state<EntryState>(item.id);
-            if (s && s->timer.deadline && (!next || *s->timer.deadline < *next)) {
+            const bool active = s && services_->components().branch_active(item.id);
+            if (active && s->timer.deadline && (!next || *s->timer.deadline < *next)) {
                 next = s->timer.deadline;
+            }
+            if (active && services_->focus().state().window_active &&
+                (s->motion_start || (s->show_progress && s->timer.deadline))) {
+                const auto frame = clock_.last().value_or(services_->animation_time()) +
+                                   animation::AnimationDuration::milliseconds(16);
+                if (!next || frame < *next) {
+                    next = frame;
+                }
             }
         }
     }
     return next;
+}
+
+bool NoticeComponentHost::motion_allowed(runtime::ComponentId id) const {
+    return services_->components().branch_active(id) && services_->focus().state().window_active &&
+           animation::resolve_motion_policy(services_->components().theme_scope(id)->snapshot(),
+                                            services_->motion_preference())
+               .enabled();
+}
+
+void NoticeComponentHost::on_pointer_input(const input::PointerInputEvent& event,
+                                           std::optional<input::InteractionId> hit,
+                                           std::optional<input::InteractionId>) {
+    const auto* record = hit ? services_->interactions().find(*hit) : nullptr;
+    const auto target =
+        record && event.action != input::PointerAction::cancel ? record->component : runtime::ComponentId{};
+    for (auto owner : holders_) {
+        auto* holder = services_->components().state<HolderState>(owner);
+        if (!holder) {
+            continue;
+        }
+        bool expanded = false;
+        for (const auto& item : entries(owner)) {
+            auto* s = services_->components().state<EntryState>(item.id);
+            if (!s) {
+                continue;
+            }
+            const bool hovered = target.valid() && descendant(*services_, target, item.id) &&
+                                 services_->interactions().component_active(item.id);
+            expanded = expanded || hovered;
+            s->hovered = hovered;
+            if ((hovered && s->pause_on_hover) || !services_->components().branch_active(item.id) ||
+                !services_->focus().state().window_active) {
+                s->timer.pause(now());
+            } else {
+                s->timer.resume(now());
+            }
+        }
+        if (holder->expanded != expanded) {
+            holder->expanded = expanded;
+            services_->request_frame();
+        }
+    }
+}
+
+void NoticeComponentHost::on_window_active(bool active) {
+    if (!active) {
+        on_pointer_input({input::PointerIdentity::mouse(), input::PointerAction::cancel}, {}, {});
+    }
+    synchronize_auxiliary_motion();
+}
+
+void NoticeComponentHost::prepare_auxiliary_layout() {
+    synchronize_auxiliary_motion();
+}
+
+void NoticeComponentHost::synchronize_auxiliary_motion() {
+    const auto owners = holders_;
+    for (auto owner : owners) {
+        for (const auto& item : entries(owner)) {
+            auto* s = services_->components().state<EntryState>(item.id);
+            if (s) {
+                if (!services_->components().branch_active(item.id) || (s->hovered && s->pause_on_hover)) {
+                    s->timer.pause(now());
+                } else {
+                    s->timer.resume(now());
+                }
+            }
+            if (s && s->motion_start && (!s->motion || !motion_allowed(item.id))) {
+                s->motion_start.reset();
+                s->snapshot.opacity = 1;
+                if (s->snapshot.closing) {
+                    finish_close(owner, item.id);
+                } else {
+                    services_->nodes().set_paint_opacity(s->node, 1);
+                    services_->request_frame();
+                }
+            }
+        }
+    }
 }
 
 bool NoticeComponentHost::consume_scroll_boundary(const input::ScrollInputEvent& event) {

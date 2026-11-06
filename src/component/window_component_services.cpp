@@ -40,7 +40,9 @@
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
 #include "component/notice_component.hpp"
+#include "component/app_component.hpp"
 #include "component/modal_component.hpp"
+#include "component/window_overlay_stack.hpp"
 #include "component/tag_badge_component.hpp"
 #include "component/popconfirm_component.hpp"
 #include "component/popover_component.hpp"
@@ -141,6 +143,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     text_.attach_window_services(*this);
     animations_.reserve(256, 64, 256);
     animations_.set_schedule_observer(&frame_requests);
+    overlay_stack_ = std::make_unique<WindowOverlayStack>(*this);
     responsive_layout_ = std::make_unique<ResponsiveLayoutHost>(*this);
     masonry_ = std::make_unique<MasonryComponentHost>(*this);
     shell_layout_ = std::make_unique<ShellLayoutComponentHost>(*this);
@@ -152,6 +155,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     slider_ = std::make_unique<SliderComponentHost>(*this);
     color_picker_ = std::make_unique<ColorPickerComponentHost>(*this);
     notices_ = std::make_unique<NoticeComponentHost>(*this);
+    app_ = std::make_unique<AppComponentHost>(*this);
     modal_ = std::make_unique<ModalComponentHost>(*this);
     table_ = std::make_unique<TableComponentHost>(*this);
     popover_ = std::make_unique<PopoverComponentHost>(*this);
@@ -478,11 +482,16 @@ bool WindowComponentServices::reconcile_input_boundary() {
     reconciling_input_boundary_ = true;
     bool changed = false;
     for (unsigned round = 0; round < 32; ++round) {
+        static_cast<void>(overlay_stack_->reconcile(true));
         if (const auto root = interactions_.input_boundary(); root && !components().contains(*root)) {
             interactions_.set_input_boundary({});
         }
         const auto revision = interactions_.input_boundary_revision();
         if (revision == reconciled_input_boundary_revision_) {
+            overlay_stack_->synchronize_focus();
+            if (interactions_.input_boundary_revision() != revision) {
+                continue;
+            }
             return changed;
         }
         // Do not acknowledge a revision until every notification completed. A
@@ -529,6 +538,7 @@ bool WindowComponentServices::reconcile_input_boundary() {
         if (superseded) {
             continue;
         }
+        overlay_stack_->synchronize_focus();
         focus_.synchronize();
         if (interactions_.input_boundary_revision() != revision) {
             continue;
@@ -552,6 +562,7 @@ void WindowComponentServices::mount(const Content& content) {
         for (auto* participant : participants_) {
             participant->on_destroy();
         }
+        overlay_stack_->on_destroy();
         for (auto it = active.rbegin(); it != active.rend(); ++it) {
             it->first->end_mount(it->second);
         }
@@ -580,6 +591,7 @@ void WindowComponentServices::append_slot(runtime::ComponentId parent, const Con
         for (auto* participant : participants_) {
             participant->on_destroy();
         }
+        overlay_stack_->on_destroy();
         for (auto it = active.rbegin(); it != active.rend(); ++it) {
             it->first->end_mount(it->second);
         }
@@ -597,6 +609,7 @@ bool WindowComponentServices::destroy(runtime::ComponentId id) {
     for (auto* participant : participants_) {
         participant->on_destroy();
     }
+    overlay_stack_->on_destroy();
     reconcile_input_boundary();
     scene_structure_dirty_ = true;
     return true;
@@ -633,6 +646,7 @@ bool WindowComponentServices::retire_failed_component(runtime::ComponentId id) n
     for (auto* participant : participants_) {
         participant->on_destroy();
     }
+    overlay_stack_->on_destroy();
     if (const auto boundary = interactions_.input_boundary(); boundary && !components().contains(*boundary)) {
         interactions_.set_input_boundary({});
     }
@@ -653,6 +667,7 @@ void WindowComponentServices::dispose() noexcept {
     for (auto* participant : participants_) {
         participant->on_dispose();
     }
+    overlay_stack_->dispose();
     interactions_.set_input_boundary({});
     reconciled_input_boundary_revision_ = interactions_.input_boundary_revision();
     scene_structure_dirty_ = true;
@@ -667,6 +682,8 @@ void WindowComponentServices::set_window_active(bool active) {
     for (auto* participant : participants_) {
         participant->on_window_active(active);
     }
+    overlay_stack_->on_window_active(active);
+    static_cast<void>(reconcile_input_boundary());
 }
 
 void WindowComponentServices::set_motion_preference(animation::MotionPreference preference) {

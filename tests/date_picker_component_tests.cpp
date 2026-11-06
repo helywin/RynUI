@@ -136,6 +136,7 @@ void selection_and_identity() {
                   "Input forwarding");
         }
     }
+    const auto before_theme = f.services.date_picker().snapshot(id);
     ThemeConfig config;
     config.algorithms = {ThemeAlgorithm::Dark};
     theme.set(config);
@@ -144,7 +145,7 @@ void selection_and_identity() {
     theme.set(config);
     sync(f);
     s = f.services.date_picker().snapshot(id);
-    check(s.input == original.input && s.footer == original.footer && s.cells == original.cells && runs == 1 &&
+    check(s.input == original.input && s.footer == original.footer && s.cells == before_theme.cells && runs == 1 &&
               footer_runs == 1,
           "ordinary update remounted");
     bool cleared = false;
@@ -437,6 +438,7 @@ void retained_footer_editor_and_color() {
     click(f, bounds(f, original.navigation[2]));
     check(f.inputs.sessions().active() == session && f.inputs.editors().require(input.editor).value() == "Draft",
           "month update replaced footer editor");
+    const auto after_navigation = f.services.date_picker().snapshot(id);
     const auto node = f.services.components().root(original.popup);
     const auto measured = f.nodes.require(node).measure_count;
     ThemeConfig config;
@@ -446,7 +448,7 @@ void retained_footer_editor_and_color() {
     check(f.nodes.require(node).measure_count == measured, "DatePicker color remeasured panel");
     bool glyph = false;
     for (auto text : f.services.text().mounted_texts()) {
-        if (!descendant(f, text.component, original.cells[20])) {
+        if (!descendant(f, text.component, after_navigation.cells[20])) {
             continue;
         }
         const auto primitive = f.scene.primitive(text.scene);
@@ -464,7 +466,7 @@ void retained_footer_editor_and_color() {
         sync(f);
     }
     const auto after = f.services.date_picker().snapshot(id);
-    check(after.input == original.input && after.footer == original.footer && after.cells == original.cells &&
+    check(after.input == original.input && after.footer == original.footer && after.cells == after_navigation.cells &&
               f.inputs.mounted_inputs().back().editor == input.editor && f.inputs.sessions().active() == session &&
               runs == 1 && f.inputs.editors().require(input.editor).value() == "Draft",
           "Theme/status update replaced retained footer");

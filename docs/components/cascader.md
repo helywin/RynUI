@@ -16,6 +16,13 @@
 
 `loadData` 是显式应用服务，不访问网络。`is_leaf=false` 且无 children 的项展开时收到 `CascaderLoadRequest`，含路径、线程安全取消标志和 `complete`。应用必须把完成派发回挂载线程；外线程立即返回 false，不读取可变 UI 状态。完成只能使用一次。新加载、搜索、选项替换、关闭、禁用、隐藏、卸载和窗口销毁会使旧 generation 失效。加载及错误显示在与选项视口分离的状态区，使用真实 Retry 按钮或重新激活该项重试。合法完成更新内部选项快照；之后新的 `options` Prop 更新仍有权替换它。
 
+`locale(Prop<CascaderLocale>)` 显式覆盖完整的空态、加载、默认失败、搜索提示和重试文案组；组内英文及空字段均为有效显式值。
+未设置时读取最近 ConfigProvider 有效包的 `cascader` 组，无 Provider 保持原英文。`emptyContent` typed slot 优先于 `notFoundContent`，
+显式 `notFoundContent`（含英文和空串）优先于 locale 空态。selector 的默认 placeholder 继续为空。
+语言更新只投影已有 Text/Input 文案，不刷新 options、重跑 display/search/tag renderer、重建富 slots 或修改值、查询、展开、滚动及当前 loader 票据。
+内部默认加载失败带 builtin 来源，显示时按当前组翻译；`CascaderLoadResult.error` 是业务原文，即使等于英文 `Loading failed` 也不改写。
+108 新入口 `rynui.i18n_components_selection` 的相关回归在本子阶段交接时未编译、运行，尚无本次 GPU 或系统 IME 验收。
+
 `content`、`popupContent`、`triggerContent`、`emptyContent`、`prefix` 和 `tagRender` 都是保留的 typed slots；图标使用 typed `IconSource`，包含 `showSearch` 的 `searchIcon`；弹层打开时 selector 与搜索头均使用搜索图标。`CascaderRef` 提供 `focus/blur/bound`，适用于默认和自定义触发器。事件包括 `onChange/onOpenChange/onExpand/onSearch/onClear/onFocus/onBlur`；`onChange` 可接收 value，或同时接收每条路径的 typed selected-option ancestry。应用把自定义数据字段映射到 `CascaderOption`，不依赖运行期字段名字符串。`size/status/variant/placement/direction` 为 typed Prop，`layout` 仅控制外部布局。
 
 `ThemeConfig::cascader` 提供独立 Component Token、组件 seed/algorithm 和作用域 inherit；palette、metrics、typography、effects 分别订阅和失效。token 实际驱动 selector、列/选项/选中态、箭头/清除、tags、搜索高亮、空状态、焦点和 popup 阴影；不重建无关工厂。完整 snapshot/identity 和五种算法 golden 保留其他组件全部字段。

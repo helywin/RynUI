@@ -285,6 +285,7 @@ add_library(rynui_components STATIC
     component/tag_badge_component.cpp
     component/button_component.cpp
     component/window_component_services.cpp
+    component/window_overlay_stack.cpp
     component/input_component.cpp
     component/input_number_value.cpp
     component/input_number_model.cpp
@@ -311,6 +312,7 @@ add_library(rynui_components STATIC
     component/skeleton_component.cpp
     component/notice_model.cpp
     component/notice_component.cpp
+    component/app_component.cpp
     component/tabs_model.cpp
     component/modal_model.cpp
     component/drawer_model.cpp

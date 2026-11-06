@@ -12,6 +12,13 @@ constexpr std::size_t maximum_leases = 4096;
 constexpr std::size_t maximum_roots = 256;
 
 struct ConstraintSlot final {
+    // Count construction lets MSVC Debug proxy allocation failures propagate.
+    ConstraintSlot() : spec{std::vector<InputRootRef>(std::size_t{0}), false} {}
+
+    // Copy on growth: vector's noexcept move constructor can allocate a Debug proxy.
+    ConstraintSlot(const ConstraintSlot&) = default;
+    ConstraintSlot& operator=(const ConstraintSlot&) = default;
+
     std::uint64_t generation{1};
     runtime::ComponentId owner;
     InputConstraintKind kind{};
@@ -21,6 +28,11 @@ struct ConstraintSlot final {
 };
 
 struct CompanionSlot final {
+    CompanionSlot() : roots(std::size_t{0}) {}
+
+    CompanionSlot(const CompanionSlot&) = default;
+    CompanionSlot& operator=(const CompanionSlot&) = default;
+
     std::uint64_t generation{1};
     runtime::ComponentId owner;
     std::uint32_t authority{};
@@ -250,6 +262,10 @@ bool operator==(const InputConstraintAuthority& a, const InputConstraintAuthorit
 }
 
 struct InputConstraintBatch::Impl final {
+    explicit Impl(const std::shared_ptr<InputConstraintState>& source)
+        : window(source), mutation(source->mutation), constraints(source->constraints), companions(source->companions),
+          constraint_edits(constraints.size()), companion_edits(companions.size()) {}
+
     std::weak_ptr<InputConstraintState> window;
     std::uint64_t mutation{};
     std::vector<ConstraintSlot> constraints;
@@ -279,7 +295,7 @@ InputConstraintBatch::InputConstraintBatch(InputConstraintBatch&&) noexcept = de
 InputConstraintBatch& InputConstraintBatch::operator=(InputConstraintBatch&&) noexcept = default;
 InputConstraintBatch::~InputConstraintBatch() = default;
 
-void InputConstraintBatch::replace(const InputConstraintLease& lease, InputConstraintSpec spec) {
+void InputConstraintBatch::replace(const InputConstraintLease& lease, const InputConstraintSpec& spec) {
     const auto state = impl_->state();
     if (!same_window(lease.window_, impl_->window) || lease.index_ >= impl_->constraints.size()) {
         throw std::invalid_argument("Foreign input constraint lease");
@@ -296,12 +312,15 @@ void InputConstraintBatch::replace(const InputConstraintLease& lease, InputConst
             throw std::invalid_argument("Input constraint requires live roots from its window");
         }
     }
-    std::ranges::sort(spec.roots, [](const auto& a, const auto& b) {
+    // Keep ownership in the unpublished batch without a noexcept vector move at
+    // the call boundary (MSVC Debug allocates a proxy in that constructor).
+    slot.spec.roots.assign(spec.roots.begin(), spec.roots.end());
+    std::ranges::sort(slot.spec.roots, [](const auto& a, const auto& b) {
         return a.component_.index < b.component_.index ||
                (a.component_.index == b.component_.index && a.component_.generation < b.component_.generation);
     });
-    spec.roots.erase(std::unique(spec.roots.begin(), spec.roots.end()), spec.roots.end());
-    slot.spec = std::move(spec);
+    slot.spec.roots.erase(std::unique(slot.spec.roots.begin(), slot.spec.roots.end()), slot.spec.roots.end());
+    slot.spec.consume_unhandled_scroll = spec.consume_unhandled_scroll;
     slot.active = true;
     impl_->constraint_edits[lease.index_] = true;
 }
@@ -417,11 +436,12 @@ InputConstraintLease InteractionRegistry::create_input_constraint(const InputRoo
         ++slots[index].generation;
     }
     auto& slot = slots[index];
-    slot.live = true;
-    slot.active = false;
+    slot.spec.roots.clear();
+    slot.spec.consume_unhandled_scroll = false;
     slot.owner = owner.component_;
     slot.kind = kind;
-    slot.spec = {};
+    slot.active = false;
+    slot.live = true;
     ++constraints_->mutation;
     InputConstraintLease result;
     result.window_ = constraints_;
@@ -493,14 +513,7 @@ InputConstraintBatch InteractionRegistry::begin_input_constraint_update() {
     if (!constraints_) {
         throw std::logic_error("Create an inactive owned constraint before editing it");
     }
-    auto impl = std::make_unique<InputConstraintBatch::Impl>();
-    impl->window = constraints_;
-    impl->mutation = constraints_->mutation;
-    impl->constraints = constraints_->constraints;
-    impl->companions = constraints_->companions;
-    impl->constraint_edits.resize(impl->constraints.size());
-    impl->companion_edits.resize(impl->companions.size());
-    return InputConstraintBatch{std::move(impl)};
+    return InputConstraintBatch{std::make_unique<InputConstraintBatch::Impl>(constraints_)};
 }
 
 bool InteractionRegistry::owned_input_active(runtime::ComponentId component,

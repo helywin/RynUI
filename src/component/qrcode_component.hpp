@@ -16,6 +16,7 @@ struct QRCodeSnapshot final {
     QRCodeStatus status{};
     ImageStatus logo_status{};
     std::vector<graphics::QuadInstance> modules;
+    std::uint64_t encoding_revision{};
 };
 
 class QRCodeComponentHost final : public WindowComponentParticipant {

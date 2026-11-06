@@ -3,6 +3,12 @@
 #include "component/time_picker_model.hpp"
 
 namespace ryn::detail {
+struct PickerEditorSession final {
+    std::uint64_t edit{};
+    bool composing{};
+    friend bool operator==(const PickerEditorSession&, const PickerEditorSession&) = default;
+};
+
 struct TimePickerSnapshot final {
     runtime::ComponentId selector;
     runtime::ComponentId popup;
@@ -35,6 +41,7 @@ public:
     }
 
     [[nodiscard]] TimePickerSnapshot snapshot(runtime::ComponentId) const;
+    [[nodiscard]] std::optional<PickerEditorSession> editor_session(runtime::ComponentId) const;
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
@@ -60,10 +67,11 @@ private:
     void update_theme(runtime::ComponentId, bool geometry);
     void request_open(runtime::ComponentId, bool, bool restore = false);
     void suppress(runtime::ComponentId);
-    void publish(runtime::ComponentId, TimePickerValue, bool close);
+    bool publish(runtime::ComponentId, TimePickerValue, bool close, bool from_text = false);
     void confirm(runtime::ComponentId);
     void choose(runtime::ComponentId, TimeColumn, int);
     void mount_rows(runtime::ComponentId, int);
+    void reorder_rows(runtime::ComponentId);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     std::vector<runtime::ComponentId> positioning_;

@@ -1,6 +1,7 @@
 #pragma once
 #include "component/window_component_services.hpp"
 #include <ryn/date_picker.hpp>
+#include "component/picker_candidate.hpp"
 
 namespace ryn::detail {
 struct DatePickerSnapshot final {
@@ -21,6 +22,8 @@ struct DatePickerSnapshot final {
     DatePickerValue pending_date;
     TimePickerValue pending_time;
     DatePickerMode mode{DatePickerMode::Date};
+    std::vector<DatePickerCellInfo> cell_info;
+    bool grid_pending{};
 };
 
 class DatePickerComponentHost final : public WindowComponentParticipant {
@@ -59,11 +62,16 @@ private:
     void refresh(runtime::ComponentId, bool geometry = true);
     void update_theme(runtime::ComponentId, bool geometry);
     void request_open(runtime::ComponentId, bool, bool restore = false);
-    void choose(runtime::ComponentId, DatePickerValue, bool close = true, bool confirm = false);
+    PickerRequestDisposition choose(runtime::ComponentId, DatePickerValue, bool close = true, bool confirm = false,
+                                    bool from_text = false, const PickerCandidate& = {}, TimePickerValue = {});
     void navigate(runtime::ComponentId, int);
     void confirm(runtime::ComponentId);
-    void commit(runtime::ComponentId, bool blur);
+    PickerRequestDisposition commit(runtime::ComponentId, bool blur);
     void mount_items(runtime::ComponentId);
+    runtime::ComponentId mount_item(runtime::ComponentId, std::size_t, DatePickerValue, DatePickerMode,
+                                    std::vector<runtime::ComponentId>* created = nullptr);
+    void reconcile_items(runtime::ComponentId);
+    void reorder_items(runtime::ComponentId);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     std::vector<runtime::ComponentId> positioning_;

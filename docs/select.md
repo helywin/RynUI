@@ -74,3 +74,10 @@ Multiple 选择既有选项，Tags 允许通过 Enter 创建字符串值。分�
 Form 继续显式 `.value(field.value()).onChange(field.onChange()).ref(ref)` 或对应多值绑定，FormItem `.control(ref)`；并显式连接 disabled/readOnly/status。reset 即使同值也结束 preedit、清理搜索/浮层和异步票据，不自动绑定任意子控件。
 
 107 的平台通用结果见 [Linux HEADLESS 验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/select-linux.md)。Linux 私有后台 Wayland/Vulkan 的有限输入与离页清理见 [组合验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/select-autocomplete-integration.md)；系统 IME、跨实际显示器、辅助技术和 Windows MSVC 原生窗口仍未验证。DOM/CSS/React/浏览器 portal、fieldNames 的动态对象字段映射及废弃 Web 别名不进入 typed Core。
+
+## 默认空态的语言来源
+
+未设置 `notFoundContent` 时使用最近 ConfigProvider 的有效语言包 `common.empty`；无 Provider 保持 `No data`。
+显式英文和显式空字符串均保持原文，已有 option/popup renderer 优先级不变。默认 placeholder 继续为空。
+语言更新只投影保留空行的文案，不重配 options、重启异步搜索或设置 value/open，也不重跑富内容 renderer。
+108 选择族新增源码回归入口为 `rynui.i18n_components_selection`；本子阶段交接时尚未编译、运行或取得 GPU/系统 IME 证据。

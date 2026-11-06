@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/tooltip.hpp>
+#include <ryn/component_locales.hpp>
 
 namespace ryn {
 namespace detail {
@@ -26,6 +27,11 @@ struct PopconfirmSlots final {
 
 class PopconfirmProps final {
 public:
+    PopconfirmProps& locale(Prop<CommonLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
     PopconfirmProps& title(Prop<String> value) {
         title_ = std::move(value);
         explicit_title_ = true;
@@ -140,8 +146,9 @@ private:
     Prop<bool> disabled_{false};
     Prop<bool> show_cancel_{true};
     Prop<bool> loading_{false};
-    Prop<String> ok_text_{String{u8"OK"}};
-    Prop<String> cancel_text_{String{u8"Cancel"}};
+    std::optional<Prop<String>> ok_text_;
+    std::optional<Prop<String>> cancel_text_;
+    std::optional<Prop<CommonLocale>> locale_;
     Prop<PopconfirmPlacement> placement_{PopconfirmPlacement::Top};
     Prop<bool> arrow_{true};
     Prop<bool> point_at_center_{false};

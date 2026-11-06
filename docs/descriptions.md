@@ -66,3 +66,9 @@ ryn::Descriptions(
 ```
 
 107 新增 1/2/3 列窗口断点样例，保留可编辑富 cell、header 重排按钮、fill 行尾与 RTL 操作；数据标明为合成示例。
+
+## ConfigProvider 分隔文字
+
+未设置 `locale` 时，separator 实时继承最近 ConfigProvider 的 Descriptions 组，无 Provider 时为 `:`；显式完整 Locale（包括 `:` 和合法空串）优先。`colon(false)` 始终保留，语言不会重新启用冒号。label、content、title、extra 的普通业务 String 维持原文。
+
+语言只更新 separator 的保留 Signal，必要文字测量沿原布局传播，不 repack 或重跑任何 slot factory，不重新仲裁输入边界。新增 `rynui.i18n_components_collections` 源码覆盖真实 Input 的反向选区/preedit/undo/focus 保留；本次未运行 build/CTest，不新增平台通过结论。

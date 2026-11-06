@@ -1,10 +1,32 @@
 #pragma once
-#include <ryn/picker_common.hpp>
+#include <ryn/time_picker.hpp>
 #include <cctype>
 #include <stdexcept>
 #include <string_view>
 
 namespace ryn::detail {
+struct PickerEditFormat final {
+    PickerLocale locale;
+    String pattern;
+    std::vector<String> alternatives;
+    friend bool operator==(const PickerEditFormat&, const PickerEditFormat&) = default;
+};
+
+[[nodiscard]] inline String picker_time_pattern(TimePickerPrecision precision, bool twelve,
+                                                const String& explicit_format, const PickerLocale& locale) {
+    if (!explicit_format.empty()) {
+        return explicit_format;
+    }
+    if (!twelve && precision == TimePickerPrecision::Second) {
+        return locale.time_format;
+    }
+    return String::from_utf8(twelve ? (precision == TimePickerPrecision::Minute        ? "h:mm a"
+                                       : precision == TimePickerPrecision::Millisecond ? "h:mm:ss.SSS a"
+                                                                                       : "h:mm:ss a")
+                                    : (precision == TimePickerPrecision::Minute ? "HH:mm" : "HH:mm:ss.SSS"))
+        .value();
+}
+
 struct FormatPart final {
     std::string text;
     bool token{};

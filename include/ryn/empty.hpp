@@ -1,5 +1,6 @@
 #pragma once
 #include <ryn/component.hpp>
+#include <ryn/component_locales.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
 #include <ryn/image.hpp>
@@ -38,6 +39,11 @@ struct EmptyDynamicContent final {
 
 class EmptyProps final {
 public:
+    EmptyProps& locale(Prop<CommonLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
     EmptyProps& illustration(Prop<bool> value = true) {
         illustration_ = std::move(value);
         return *this;
@@ -75,7 +81,8 @@ public:
 private:
     friend class detail::EmptyResultComponentHost;
     Prop<EmptyImage> image_{EmptyImage::Default};
-    Prop<String> description_{String{u8"No data"}};
+    std::optional<Prop<String>> description_;
+    std::optional<Prop<CommonLocale>> locale_;
     std::optional<Prop<ImageSource>> source_;
     std::optional<Prop<bool>> illustration_;
     std::optional<Prop<EmptyDynamicContent>> dynamic_;

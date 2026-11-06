@@ -69,6 +69,11 @@ TreeSelectRef 保留 InputRef 的 bound/focus/blur 与文本选择合同；Tree 
 
 ## Theme 与验收
 
+未设置 `notFoundContent` 时，空态使用最近 ConfigProvider 有效包的 `common.empty`；无 Provider 保持英文 `No data`。
+显式英文和显式空字符串按来源保留，默认 placeholder 仍为空。语言更新只投影空态文字，不设置 query/value/open/expanded/checked，
+不刷新拓扑或重启 Tree loader，也不重挂 selector、Tree 行、标签与 typed slots。
+108 新增选择族入口 `rynui.i18n_components_selection` 的源码覆盖真实 Provider、pending loader、键状态与富 Input 保留；交接时尚未编译或运行。
+
 `ThemeConfig.tree_select` 独立于 Select/Tree；selector tokens 控制背景、边框、outline 和 popup padding/radius/gap/shadow/order，tree tokens 控制节点视觉与字体，Input/Tag 继续使用共同原生 Token。完整五份 Theme golden 保留所有既有领域。
 
 Gallery 独立页保留原有目标选择、受控拒绝、备注和 Form reset，并追加多选/搜索/标签、自定义 popup、strict checkbox、RTL、10,000 个动态虚拟选项、明确标注的合成异步源及真实 callbacks。结果见 [107 TreeSelect 证据](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/tree-select-linux.md)和[主线 Form 组合验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/tree-treeselect-integration.md)。HEADLESS 证明 logical scene/Input 合同；Linux 私有 Wayland/GPU、Windows/MSVC、系统 IME 候选 UI、辅助技术与跨显示器证据分别记录。Web DOM/CSS/React/portal、DataTransfer 和字段映射别名不移植。

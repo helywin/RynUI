@@ -148,7 +148,7 @@ public:
 
 private:
     friend class detail::PaginationComponentHost;
-    Prop<PaginationLocale> locale_{PaginationLocale{}};
+    std::optional<Prop<PaginationLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
     Prop<bool> less_{false};
     Prop<std::size_t> total_{0};

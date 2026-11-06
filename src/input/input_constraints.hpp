@@ -102,7 +102,7 @@ public:
     ~InputConstraintBatch();
     InputConstraintBatch(const InputConstraintBatch&) = delete;
     InputConstraintBatch& operator=(const InputConstraintBatch&) = delete;
-    void replace(const InputConstraintLease&, InputConstraintSpec);
+    void replace(const InputConstraintLease&, const InputConstraintSpec&);
     void deactivate(const InputConstraintLease&);
     void enable(const InputCompanionLease&, bool = true);
     void boundary_view(std::optional<InputConstraintAuthority>);

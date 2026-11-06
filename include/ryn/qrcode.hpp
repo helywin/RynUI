@@ -182,7 +182,7 @@ private:
     Prop<bool> bordered_{true};
     Prop<ImageSource> icon_{ImageSource{}};
     Prop<QRCodeIconSize> iconSize_{QRCodeIconSize{}};
-    Prop<QRCodeLocale> locale_{QRCodeLocale{}};
+    std::optional<Prop<QRCodeLocale>> locale_;
     Prop<bool> visible_{true};
     Prop<bool> disabled_{false};
     std::optional<Prop<Color>> color_;

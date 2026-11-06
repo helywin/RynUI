@@ -38,6 +38,7 @@ struct CascaderSnapshot final {
     String error;
     bool loading{};
     runtime::ComponentId arrow;
+    runtime::ComponentId empty;
 };
 
 class CascaderComponentHost final : public WindowComponentParticipant {
@@ -81,6 +82,7 @@ private:
     void clear(runtime::ComponentId);
     void emit_focus(runtime::ComponentId, bool);
     void reconcile(runtime::ComponentId, const std::vector<CascaderOption>&);
+    void update_locale(runtime::ComponentId, CascaderLocale);
     void refresh(runtime::ComponentId, bool geometry = true);
     void activate(runtime::ComponentId, String, bool select);
     void request_open(runtime::ComponentId, bool);

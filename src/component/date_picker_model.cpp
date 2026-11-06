@@ -98,31 +98,39 @@ void DatePickerModel::reconcile(DatePickerValue value) {
 }
 
 bool DatePickerModel::eligible(CivilDate date) const {
+    return eligible(date, {mode_, locale_.first_day});
+}
+
+bool DatePickerModel::eligible(CivilDate date, DateValueSemantics semantics) const {
     if (!owner_active()) {
         return false;
     }
     auto first = date;
     auto last = date;
-    if (mode_ == DatePickerMode::Month || mode_ == DatePickerMode::Quarter) {
-        const auto month = mode_ == DatePickerMode::Month ? date.month() : (date.month() - 1) / 3 * 3 + 1;
+    const auto mode = semantics.mode;
+    if (mode == DatePickerMode::Month || mode == DatePickerMode::Quarter) {
+        const auto month = mode == DatePickerMode::Month ? date.month() : (date.month() - 1) / 3 * 3 + 1;
         first = CivilDate{date.year(), month, 1};
-        const auto final_month = mode_ == DatePickerMode::Month ? month : month + 2;
+        const auto final_month = mode == DatePickerMode::Month ? month : month + 2;
         unsigned day = 31;
         while (!CivilDate::valid(date.year(), final_month, day)) {
             --day;
         }
         last = CivilDate{date.year(), final_month, day};
-    } else if (mode_ == DatePickerMode::Year || mode_ == DatePickerMode::Decade) {
-        const int year = mode_ == DatePickerMode::Year ? date.year() : std::max(1, date.year() / 10 * 10);
+    } else if (mode == DatePickerMode::Year || mode == DatePickerMode::Decade) {
+        const int year = mode == DatePickerMode::Year ? date.year() : std::max(1, date.year() / 10 * 10);
         first = CivilDate{year, 1, 1};
-        last = CivilDate{std::min(9999, mode_ == DatePickerMode::Year ? year : year + 9), 12, 31};
-    } else if (mode_ == DatePickerMode::Week) {
-        first = normalized(date);
+        last = CivilDate{std::min(9999, mode == DatePickerMode::Year ? year : year + 9), 12, 31};
+    } else if (mode == DatePickerMode::Week) {
+        first = civil(std::max(
+            days(CivilDate{1, 1, 1}),
+            days(date) -
+                std::chrono::days{(std::chrono::weekday{days(date)}.c_encoding() + 7 - semantics.first_day) % 7}));
         last = civil(std::min(days(first) + std::chrono::days{6}, days(CivilDate{9999, 12, 31})));
     }
     return (!rules_.min || last >= *rules_.min) && (!rules_.max || first <= *rules_.max) &&
            (!rules_.disabled || !rules_.disabled(date)) && owner_active() &&
-           (!rules_.info || !rules_.info(date, {mode_, rules_.from})) && owner_active();
+           (!rules_.info || !rules_.info(date, {mode, rules_.from})) && owner_active();
 }
 
 std::optional<DatePickerValue> DatePickerModel::request(DatePickerValue value) {

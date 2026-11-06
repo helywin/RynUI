@@ -15,6 +15,7 @@ struct TreeSelectSnapshot final {
     TreeKeys values;
     String search;
     std::vector<runtime::ComponentId> tags;
+    runtime::ComponentId empty;
 };
 
 class TreeSelectComponentHost final : public WindowComponentParticipant {

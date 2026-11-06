@@ -31,6 +31,9 @@ rynui_portable_test(empty_result_theme "empty_result_theme_tests.cpp")
 rynui_portable_test(default_theme "default_theme_tests.cpp")
 rynui_portable_test(theme_public_api "theme_public_api_tests.cpp")
 rynui_portable_test(theme_scope_component "theme_scope_component_tests.cpp")
+rynui_portable_test(result_completion "result_completion_tests.cpp")
+rynui_portable_test(skeleton_completion "skeleton_completion_tests.cpp")
+rynui_portable_test(spin_completion "spin_completion_tests.cpp")
 
 foreach(name IN ITEMS prop glyph_texture_upload texture_upload_batch_layout logical_scene_packing quad_primitive binding_quad_integration button_scene_service
         font_runtime text_engine text_state text_scene_service

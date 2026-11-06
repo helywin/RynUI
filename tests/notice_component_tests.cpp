@@ -194,7 +194,7 @@ void clock_test() {
     check(f.services.next_frame_deadline() == animation::AnimationTime::microseconds(5500000),
           "remaining Notification deadline wrong");
     static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(2000000)));
-    check(notices.open(u8"default", NotificationProps{}.duration(1)), "duration update failed");
+    check(notices.open(u8"default", NotificationProps{}.duration(1).pauseOnHover(false)), "duration update failed");
     check(f.services.next_frame_deadline() == animation::AnimationTime::microseconds(5000000),
           "clock regressed during keyed update");
     f.services.set_window_active(true);

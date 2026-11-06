@@ -290,6 +290,11 @@ bool ComponentHost::branch_active(ComponentId id) const {
     return !record->parent || branch_active(*record->parent);
 }
 
+bool ComponentHost::local_branch_active(ComponentId id) const noexcept {
+    const auto* record = find_record(id);
+    return record && record->branch_active;
+}
+
 std::size_t ComponentHost::declaration_order(ComponentId id) const {
     return require_record(id).declaration_order;
 }

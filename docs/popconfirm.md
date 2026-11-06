@@ -21,6 +21,14 @@ ryn::Popconfirm(
 
 `PopconfirmSlots` 提供 typed `PopconfirmTitle` 和 `PopconfirmDescription`。同一内容不能同时通过文字 Prop 与 slot 声明。全部 slots 首次挂载一次，关闭时保留组件身份和编辑状态；初始关闭的内容不自动获得焦点。普通属性和 Theme 变化不重新执行 slots。使用一个明确的操作入口作为 trigger；已有 Button 等入口沿用自身焦点，无交互内容则由 wrapper 提供键盘入口。
 
+108 默认文案接入（source-only，尚未编译或运行）：未设置 `okText/cancelText` 时使用最近活 ConfigProvider 的
+`common.confirm/cancel`，无 Provider 保持 OK/Cancel。`locale(Prop<CommonLocale>)` 接收完整组件覆盖；
+显式具体文字高于完整 Locale，完整 Locale 高于作用域包，英文同文案和空串/空字段均视为显式来源。
+title/description 业务 String 和原有 typed 富内容保留原意。已打开气泡随语言更新默认按钮和必要定位测量，
+保留 loading/open、富 Input 身份及编辑会话，不调用 onOpenChange/onConfirm/onCancel。
+新增真实 CPU host 源码入口为 `rynui.i18n_components_defaults` / `rynui.i18n_components_overrides`；
+尚未构建或运行，不提升既有支持状态或增加异步确认/静态服务合同。
+
 打开后焦点移至确认按钮，关闭恢复有效触发入口；外部点击保持外部入口获得的焦点。弹层保持非模态，Tab 沿窗口或所属 Modal 的正常顺序移动。说明内可以放置 Select、Input 或 Tooltip；子浮层的逻辑归属保留，点击子菜单不关闭父层，Escape 优先由编辑器/子 Select/Tooltip 处理。关闭父层会清理子弹层输入。Modal 外部弹层不能越过其输入边界。
 
 `PopconfirmPlacement` 使用 Tooltip 的12方位枚举；`arrow` 默认 true，`pointAtCenter` 默认 false，`autoAdjustOverflow` 默认 true。定位复用原生 Tooltip 算法，按窗口翻转和夹紧，弹层脱离正文布局并允许越过父级内容裁剪。`LayoutStyle` 只控制触发区域的外部布局。

@@ -1,25 +1,11 @@
 #pragma once
 #include "component/window_component_services.hpp"
+#include "component/window_overlay_stack.hpp"
 #include <ryn/modal.hpp>
 #include <ryn/drawer.hpp>
 
 namespace ryn::detail {
-struct ModalInputCompanionState;
-struct ModalInputCompanionLifetime;
-
-class ModalInputCompanion final {
-public:
-    ModalInputCompanion() = default;
-    [[nodiscard]] bool bound() const;
-    [[nodiscard]] std::optional<std::uint64_t> stack_order() const;
-    bool set_active(bool);
-    bool update(bool, std::span<const input::InputConstraintUpdate>);
-    bool release() noexcept;
-
-private:
-    friend class ModalComponentHost;
-    std::shared_ptr<ModalInputCompanionState> state_;
-};
+using ModalInputCompanion = WindowOverlayCompanion;
 
 struct ModalSnapshot final {
     runtime::ComponentId overlay;
@@ -38,6 +24,12 @@ struct ModalSnapshot final {
     bool visible{};
     bool topmost{};
     bool drawer{};
+    runtime::ComponentId extra;
+    runtime::ComponentId placeholder;
+    runtime::ComponentId resize_handle;
+    bool loading{};
+    bool body_mounted{};
+    bool resizing{};
 };
 
 class ModalComponentHost final : public WindowComponentParticipant {
@@ -58,9 +50,7 @@ public:
 
     [[nodiscard]] ModalSnapshot snapshot(runtime::ComponentId) const;
 
-    [[nodiscard]] bool visible() const noexcept {
-        return !stack_.empty();
-    }
+    [[nodiscard]] bool visible() const noexcept;
 
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
@@ -76,19 +66,7 @@ public:
     bool synchronize_auxiliary_fragments() override;
 
 private:
-    friend class ModalInputCompanion;
-    void update_input_confinement(bool quiet);
-    void retire_companion(ModalInputCompanionState*) noexcept;
-    bool update_companion(ModalInputCompanionState&, bool, std::span<const input::InputConstraintUpdate>);
-    [[nodiscard]] std::optional<std::uint64_t> input_context_order() const noexcept;
-
-    struct Entry final {
-        runtime::ComponentId owner;
-        runtime::ComponentId overlay;
-        std::optional<input::InteractionId> trigger;
-        bool restore{};
-        std::uint64_t order{};
-    };
+    void update_overlay(runtime::ComponentId);
 
     struct Transition final {
         runtime::ComponentId owner;
@@ -96,7 +74,10 @@ private:
     };
 
     void refresh(runtime::ComponentId, bool geometry);
-    void mount_panel(const ModalProps&, const ModalContent&, const ModalSlots&, const DrawerProps*);
+    void mount_panel(const ModalProps&, const ModalContent&, const ModalSlots&, const DrawerProps*,
+                     const DrawerSlots* = nullptr);
+    void reconcile_drawer_content(runtime::ComponentId);
+    void resize_drawer(runtime::ComponentId, float, bool);
     [[nodiscard]] runtime::Size measure_drawer(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place_drawer(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     void reconcile();
@@ -106,25 +87,13 @@ private:
     void place(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     bool reveal_focus(runtime::ComponentId, bool caret_ready);
     bool scroll_to(runtime::ComponentId, float);
-    void focus_top();
-    std::optional<runtime::ComponentId> confinement_root() const noexcept;
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
-    std::vector<Entry> stack_;
-    std::shared_ptr<ModalInputCompanionLifetime> input_lifetime_;
-    std::vector<std::shared_ptr<ModalInputCompanionState>> input_companions_;
-    input::InputConstraintLease input_lease_;
-    input::InputConstraintAuthority input_authority_;
-    std::optional<runtime::ComponentId> input_domain_;
-
+    std::shared_ptr<int> lifetime_{std::make_shared<int>(0)};
     std::vector<Transition> transitions_;
-    std::uint64_t next_order_{};
     bool mounting_{};
-    bool confinement_dirty_{};
     bool reconciling_{};
     bool reconcile_again_{};
     bool notifying_{};
-    bool focus_pending_{};
-    std::optional<input::InteractionId> restore_target_;
 };
 } // namespace ryn::detail

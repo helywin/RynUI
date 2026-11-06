@@ -5,6 +5,7 @@
 #include "component/otp_component.hpp"
 #include "component/float_button_component.hpp"
 #include "component/modal_component.hpp"
+#include "component/notice_component.hpp"
 #include "component/select_component.hpp"
 #include "component/table_component.hpp"
 #include "component/tree_select_component.hpp"
@@ -960,6 +961,34 @@ void test_complete_form_examples() {
     }
 }
 
+void test_independent_notification_page() {
+    Fixture f;
+    f.show("ant.component.notification");
+    constexpr auto sample_id = "gallery.sample.notification.center";
+    require(f.services.notices().holders().size() == 1, "Notification page borrowed the Message holder");
+    f.action(sample_id, "gallery.notification.independent.open");
+    const auto holder = f.services.notices().holders().front();
+    const auto id = f.services.notices().entries(holder).front().id;
+    require(!f.services.notices().snapshot(id).message, "Notification page opened a Message entry");
+    const auto editor = f.editor(sample_id, "gallery.notification.independent.draft");
+    f.replace(editor, String{u8"Retained notification note"});
+    f.action(sample_id, "gallery.notification.independent.update");
+    f.action(sample_id, "gallery.notification.independent.placement");
+    f.action(sample_id, "gallery.notification.independent.status");
+    require(f.editor(sample_id, "gallery.notification.independent.draft").component == editor.component &&
+                f.inputs.editors().require(editor.editor).value() == "Retained notification note",
+            "independent Notification update lost its retained editor");
+    for (int i = 0; i < 4; ++i) {
+        f.action(sample_id, "gallery.notification.independent.timed");
+    }
+    require(f.services.notices().entries(holder).size() == 5 && f.services.notices().snapshot(id).collapsed,
+            "independent Notification did not expose the real collapsed stack");
+    f.action(sample_id, "gallery.notification.independent.clear");
+    require(f.services.notices().entries(holder).empty(), "independent clear left notifications");
+    f.show("ant.component.button");
+    require(f.services.notices().holders().empty(), "leaving Notification page retained its holder");
+}
+
 int main() {
     try {
         test_compiled_source_metadata();
@@ -974,6 +1003,7 @@ int main() {
         test_layout_and_navigation_pages();
         test_remaining_workflows_and_drafts();
         test_complete_form_examples();
+        test_independent_notification_page();
         test_readable_labels_and_sample_footers();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

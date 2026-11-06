@@ -60,6 +60,7 @@ private:
     void cancel_selection(runtime::ComponentId) noexcept;
     void resolve_drop(runtime::ComponentId, std::vector<String>);
     void refresh(runtime::ComponentId, bool geometry = true);
+    void update_locale(runtime::ComponentId, UploadLocale);
     void reconcile(runtime::ComponentId);
     void build_row(runtime::ComponentId, const UploadFile&);
     void replace_content(runtime::ComponentId, const UploadUid&);

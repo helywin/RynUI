@@ -2,6 +2,7 @@
 #include "component/form_control_binding.hpp"
 #include "component/select_model.hpp"
 #include "component/option_list_support.hpp"
+#include "component/localized_prop.hpp"
 #include "input/text_boundary.hpp"
 #include <ryn/tag.hpp>
 #include <ryn/flex.hpp>
@@ -140,6 +141,7 @@ struct SelectState final {
     Signal<String> placeholder{String{}};
     String external_placeholder;
     String empty_label{u8"No data"};
+    std::uint64_t locale_generation{};
     Signal<bool> read_only{true};
     Signal<bool> clear_visible{false};
     Signal<bool> action_disabled{false};
@@ -290,6 +292,23 @@ runtime::ComponentId select_group(WindowComponentServices& services, bool leaf =
     return id;
 }
 
+void mount_select_content(WindowComponentServices& services, runtime::ComponentId parent, const Content& content,
+                          bool mounting) {
+    const auto theme = services.components().theme_scope(parent);
+    const auto config = services.components().config_scope(parent);
+    const Content typed{[parent, content] { runtime::require_component_build_context().mount_slot(parent, content); }};
+    const Content configured{
+        [config, typed] { runtime::require_component_build_context().mount_slot_with_config_scope(typed, config); }};
+    const Content themed{[theme, configured] {
+        runtime::require_component_build_context().mount_slot_with_theme_scope(configured, theme);
+    }};
+    if (mounting) {
+        SlotContentAccess::function(themed)();
+    } else {
+        services.append_slot(parent, themed);
+    }
+}
+
 std::vector<std::size_t> graphemes(StringView text) {
     input::TextBoundaryMap map;
     if (!map.assign(text.bytes())) {
@@ -349,6 +368,32 @@ SelectSnapshot SelectComponentHost::snapshot(runtime::ComponentId id) const {
         }
     }
     return result;
+}
+
+void SelectComponentHost::update_empty_label(runtime::ComponentId id, String value) {
+    auto* s = select_state(*services_, id);
+    if (!s || s->empty_label == value) {
+        return;
+    }
+    SelectRetireOnFailure rollback{*services_, id};
+    s->empty_label = std::move(value);
+    const auto generation = ++s->locale_generation;
+    auto rows = s->rows;
+    rows.insert(rows.end(), s->parked.begin(), s->parked.end());
+    for (auto child : rows) {
+        const auto* row = services_->components().state<SelectRow>(child);
+        if (row && !row->index) {
+            s->needs_layout = true;
+            const auto label = row->label;
+            label.set(s->empty_label);
+            s = select_state(*services_, id);
+            if (!s || s->locale_generation != generation) {
+                rollback.complete = true;
+                return;
+            }
+        }
+    }
+    rollback.complete = true;
 }
 
 void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
@@ -1029,11 +1074,7 @@ void SelectComponentHost::rebuild_rows(runtime::ComponentId id) {
             if (found == previous.end()) {
                 const auto list = s->list;
                 const Content content{[this, id, index] { mount_row(id, index); }};
-                if (mount_depth_) {
-                    runtime::require_component_build_context().mount_slot(list, content);
-                } else {
-                    services_->append_slot(list, content);
-                }
+                mount_select_content(*services_, list, content, mount_depth_ != 0);
                 s = select_state(*services_, id);
                 if (!s) {
                     return;
@@ -1235,11 +1276,7 @@ void SelectComponentHost::reconcile_tags(runtime::ComponentId id) {
                         }
                     }});
             }};
-            if (mount_depth_) {
-                runtime::require_component_build_context().mount_slot(parent, content);
-            } else {
-                services_->append_slot(parent, content);
-            }
+            mount_select_content(*services_, parent, content, mount_depth_ != 0);
             s = select_state(*services_, id);
             if (!s) {
                 return;
@@ -1644,6 +1681,8 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
         model.reconcile_values(props.values_ ? read_prop(*props.values_) : *props.default_values_);
     }
     auto& build = runtime::require_component_build_context();
+    const auto empty_content = localized_prop(props.not_found_content_, build.config_scope(),
+                                              [](const LocaleData& data) { return data.common.empty; });
     const auto id = build.mount_component<SelectState>(std::move(model));
     SelectRetireOnFailure rollback{services, id};
     auto& s = build.state<SelectState>(id);
@@ -1690,7 +1729,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
     s.open = props.open_ ? read_prop(*props.open_) : props.default_open_.value_or(false);
     s.controlled_open = props.open_.has_value();
     s.external_placeholder = read_prop(props.placeholder_);
-    s.empty_label = read_prop(props.not_found_content_);
+    s.empty_label = read_prop(empty_content);
     s.list_height = height;
     s.on_change = props.on_change_;
     s.on_search = props.on_search_;
@@ -2010,12 +2049,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
             refresh(id);
         }
     });
-    connect(props.not_found_content_, [this, id](String value) {
-        if (auto* s = select_state(*services_, id)) {
-            s->empty_label = std::move(value);
-            refresh(id);
-        }
-    });
+    connect(empty_content, [this, id](String value) { update_empty_label(id, std::move(value)); });
     connect(props.list_height_, [this, id](float value) {
         validate_height(value);
         if (auto* s = select_state(*services_, id)) {

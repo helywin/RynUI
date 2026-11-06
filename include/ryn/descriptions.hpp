@@ -161,7 +161,7 @@ private:
     Prop<int> column_{3};
     std::optional<Prop<Responsive<int>>> responsive_column_;
     Prop<Breakpoints> breakpoints_{Breakpoints{}};
-    Prop<DescriptionsLocale> locale_{DescriptionsLocale{}};
+    std::optional<Prop<DescriptionsLocale>> locale_;
     Prop<bool> rtl_{false};
     Prop<bool> visible_{true};
     std::optional<Prop<DescriptionsTitle>> dynamic_title_;

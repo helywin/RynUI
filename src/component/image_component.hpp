@@ -53,6 +53,7 @@ public:
 private:
     struct Lifetime;
     void refresh(runtime::ComponentId, bool geometry = true);
+    void update_locale(runtime::ComponentId, ImageLocale);
     void load(runtime::ComponentId, ImageSource, bool fallback = false);
     void load_preview(runtime::ComponentId);
     void cancel_preview(runtime::ComponentId) noexcept;

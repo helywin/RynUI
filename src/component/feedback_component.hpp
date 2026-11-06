@@ -18,6 +18,10 @@ struct AlertSnapshot final {
     bool has_description{};
     Status status{Status::Default};
     AlertPalette palette;
+    bool banner{};
+    bool closing{};
+    float exit_fraction{1};
+    float marquee_offset{};
 };
 
 struct SpinSnapshot final {
@@ -29,6 +33,11 @@ struct SpinSnapshot final {
     bool spinning{true};
     bool in_view{};
     bool wrapped{};
+    bool requested{true};
+    bool fullscreen{};
+    bool automatic{};
+    std::optional<float> percent;
+    runtime::Rect overlay_bounds;
 };
 
 struct ProgressSnapshot final {
@@ -70,15 +79,31 @@ public:
     void on_dispose() noexcept override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool on_scroll_input(const input::ScrollInputEvent&) override;
+    void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
+                          std::optional<input::InteractionId>) override;
+    void position_window_layers(runtime::Size, runtime::Rect) override;
+    void synchronize_auxiliary_motion() override;
+    void on_window_active(bool) override;
+    void on_input_boundary_changed() override;
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
 private:
+    void synchronize_alert_motion();
+    std::size_t tick_alerts(animation::AnimationTime);
+    std::optional<animation::AnimationTime> next_alert_deadline() const;
     void refresh_alert(runtime::ComponentId, bool);
     void refresh_spin(runtime::ComponentId, bool);
+    void update_spin_delay(runtime::ComponentId);
     void refresh_progress(runtime::ComponentId, bool);
     void close_alert(runtime::ComponentId);
+    void set_alert_visible(runtime::ComponentId, bool);
+    bool alert_motion_allowed(runtime::ComponentId) const;
+    void settle_alert(runtime::ComponentId);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> alerts_;
     std::vector<runtime::ComponentId> spins_;
     std::vector<runtime::ComponentId> progress_;
+    animation::MonotonicTimeCursor clock_;
 };
 } // namespace ryn::detail

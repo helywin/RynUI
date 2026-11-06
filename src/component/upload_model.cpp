@@ -255,7 +255,7 @@ struct UploadModel::State final : std::enable_shared_from_this<State> {
     }
 
     bool report(const std::shared_ptr<Job>& job, std::uint64_t serial, UploadChangeReason reason, float percent,
-                UploadResult result, String error) {
+                UploadResult result, String error, UploadErrorSource error_source) {
         if (owner != std::this_thread::get_id() || !current(job) || job->serial != serial) {
             return false;
         }
@@ -277,6 +277,7 @@ struct UploadModel::State final : std::enable_shared_from_this<State> {
             next.response = std::move(result.response);
             next.url = std::move(result.url);
             next.error = std::move(error);
+            next.error_source = reason == UploadChangeReason::Failure ? error_source : UploadErrorSource::Unspecified;
         }
         replace(std::move(next), reason);
         return true;
@@ -294,6 +295,7 @@ struct UploadModel::State final : std::enable_shared_from_this<State> {
         file.status = UploadFileStatus::Uploading;
         file.percent = 0;
         file.error = {};
+        file.error_source = UploadErrorSource::Unspecified;
         file.response = {};
         replace(file, UploadChangeReason::Start);
         if (!current(job)) {
@@ -304,14 +306,15 @@ struct UploadModel::State final : std::enable_shared_from_this<State> {
         const std::weak_ptr<State> weak = shared_from_this();
         const std::weak_ptr<Job> weak_job = job;
         const auto serial = job->serial;
-        const auto report = [weak, weak_job, serial, thread = owner](UploadChangeReason reason, float p, UploadResult r,
-                                                                     String error) {
+        const auto report = [weak, weak_job, serial,
+                             thread = owner](UploadChangeReason reason, float p, UploadResult r, String error,
+                                             UploadErrorSource source = UploadErrorSource::Literal) {
             if (thread != std::this_thread::get_id()) {
                 return false;
             }
             const auto s = weak.lock();
             const auto j = weak_job.lock();
-            return s && j && s->report(j, serial, reason, p, std::move(r), std::move(error));
+            return s && j && s->report(j, serial, reason, p, std::move(r), std::move(error), source);
         };
         UploadRequest request{
             file, [report](float p) { return report(UploadChangeReason::Progress, p, {}, {}); },
@@ -333,7 +336,7 @@ struct UploadModel::State final : std::enable_shared_from_this<State> {
             }
         } catch (...) {
             if (current(job)) {
-                report(UploadChangeReason::Failure, 0, {}, String{u8"Transport threw"});
+                report(UploadChangeReason::Failure, 0, {}, String{u8"Transport threw"}, UploadErrorSource::Builtin);
             } else if (!alive) {
                 throw;
             }
@@ -473,7 +476,9 @@ void UploadModel::validate_files(const UploadFiles& files) {
     std::set<std::string> keys;
     for (const auto& f : files) {
         if (f.uid.empty() || f.name.empty() || !keys.insert(uid(f.uid)).second || f.status < UploadFileStatus::Ready ||
-            f.status > UploadFileStatus::Cancelled || !std::isfinite(f.percent) || f.percent < 0 || f.percent > 100) {
+            f.status > UploadFileStatus::Cancelled || f.error_source < UploadErrorSource::Unspecified ||
+            f.error_source > UploadErrorSource::Literal || !std::isfinite(f.percent) || f.percent < 0 ||
+            f.percent > 100) {
             throw std::invalid_argument("Upload requires unique stable UIDs and finite status/progress");
         }
     }

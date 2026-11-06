@@ -24,6 +24,7 @@ capture_form_upload_geometry(const UploadRef&);
 
 using UploadUid = String;
 enum class UploadFileStatus { Ready, Uploading, Done, Error, Removed, Cancelled };
+enum class UploadErrorSource { Unspecified, Builtin, Literal };
 
 struct UploadFile final {
     UploadUid uid;
@@ -37,6 +38,8 @@ struct UploadFile final {
     String error;
     String url;
     ImageSource thumbnail;
+    // Trailing source metadata preserves the existing aggregate prefix.
+    UploadErrorSource error_source{UploadErrorSource::Unspecified};
     friend bool operator==(const UploadFile&, const UploadFile&) = default;
 };
 
@@ -372,7 +375,7 @@ private:
     Prop<bool> rtl_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<InputStatus> status_{InputStatus::Default};
-    Prop<UploadLocale> locale_{UploadLocale{}};
+    std::optional<Prop<UploadLocale>> locale_;
     Prop<bool> dialog_on_click_{true};
     std::optional<UploadRef> ref_;
     LayoutStyle layout_;

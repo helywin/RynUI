@@ -11,6 +11,8 @@ struct PopoverSnapshot final {
     runtime::ComponentId content;
     runtime::ComponentId arrow;
     TooltipSnapshot geometry;
+    float scroll_offset{};
+    float scroll_extent{};
 };
 
 class PopoverComponentHost final : public WindowComponentParticipant {
@@ -29,6 +31,7 @@ public:
     void on_destroy() noexcept override;
     void on_dispose() noexcept override;
     void on_window_active(bool) override;
+    void synchronize_auxiliary_motion() override;
     void on_input_boundary_changed() override;
     bool on_keyboard_input(const input::KeyboardInputEvent&) override;
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,

@@ -6,7 +6,7 @@
 namespace ryn::detail {
 inline constexpr std::size_t skeleton_max_rows = 1024;
 
-enum class SkeletonKind { Content, Avatar, Button, Input };
+enum class SkeletonKind { Content, Avatar, Button, Input, Image, Node };
 
 struct SkeletonModel final {
     SkeletonKind kind{SkeletonKind::Content};
@@ -18,6 +18,7 @@ struct SkeletonModel final {
     SkeletonButtonShape button_shape{SkeletonButtonShape::Default};
     bool round{};
     bool block{};
+    bool active{};
 };
 
 struct SkeletonShape final {

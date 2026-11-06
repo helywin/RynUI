@@ -54,7 +54,7 @@ void TimePickerModel::configure(TimePickerRules rules, TimePickerPrecision preci
     completions_ = std::make_shared<CompletionCache>();
     precision_ = precision;
     pending_ = normalized(pending_);
-    if (!text_dirty_) {
+    if (!text_dirty_ && !edit_format_) {
         draft_ = value_ ? format(*value_) : String{};
     }
 }
@@ -73,6 +73,7 @@ TimeOfDay TimePickerModel::normalized(TimeOfDay time) const {
 void TimePickerModel::begin() {
     pending_ = normalized(value_.value_or(default_panel_));
     text_dirty_ = false;
+    edit_format_.reset();
     draft_ = value_ ? format(*value_) : String{};
 }
 
@@ -81,19 +82,28 @@ void TimePickerModel::cancel() {
 }
 
 void TimePickerModel::edit(String text) {
-    draft_ = std::move(text);
-    text_dirty_ = true;
+    stage_edit(std::move(text));
     const auto parsed = text_value();
     if (parsed && *parsed) {
         pending_ = **parsed;
     }
 }
 
+void TimePickerModel::stage_edit(String text) {
+    freeze_edit();
+    draft_ = std::move(text);
+    text_dirty_ = true;
+}
+
 bool TimePickerModel::allowed(TimeOfDay time) const {
-    return owner_active() && (precision_ != TimePickerPrecision::Minute || time.second() == 0) &&
+    return allowed(time, precision_);
+}
+
+bool TimePickerModel::allowed(TimeOfDay time, TimePickerPrecision precision) const {
+    return owner_active() && (precision != TimePickerPrecision::Minute || time.second() == 0) &&
            time.hour() % rules_.hour_step == 0 && time.minute() % rules_.minute_step == 0 &&
            time.second() % rules_.second_step == 0 && time.millisecond() % rules_.millisecond_step == 0 &&
-           (precision_ == TimePickerPrecision::Millisecond || time.millisecond() == 0) &&
+           (precision == TimePickerPrecision::Millisecond || time.millisecond() == 0) &&
            (!rules_.disabled_hours || !rules_.disabled_hours(time.hour())) && owner_active() &&
            (!rules_.disabled_minutes || !rules_.disabled_minutes(time.hour(), time.minute())) && owner_active() &&
            (!rules_.disabled_seconds || !rules_.disabled_seconds(time.hour(), time.minute(), time.second())) &&
@@ -108,45 +118,48 @@ std::optional<TimePickerValue> TimePickerModel::text_value() const {
     if (draft_.empty()) {
         return TimePickerValue{};
     }
-    const auto parsed = parse_time_of_day(
-        draft_.view().bytes(),
-        format_.empty() ? (twelve_ ? (precision_ == TimePickerPrecision::Minute        ? "h:mm a"
-                                      : precision_ == TimePickerPrecision::Millisecond ? "h:mm:ss.SSS a"
-                                                                                       : "h:mm:ss a")
-                                   : (precision_ == TimePickerPrecision::Minute        ? "HH:mm"
-                                      : precision_ == TimePickerPrecision::Millisecond ? "HH:mm:ss.SSS"
-                                                                                       : "HH:mm:ss"))
-                        : format_.bytes(),
-        locale_);
-    if (!parsed || !allowed(*parsed)) {
+    const auto pattern =
+        edit_format_ ? edit_format_->input.pattern : picker_time_pattern(precision_, twelve_, format_, locale_);
+    const auto parsed =
+        parse_time_of_day(draft_.view().bytes(), pattern.bytes(), edit_format_ ? edit_format_->input.locale : locale_);
+    if (!parsed || !allowed(*parsed, edit_format_ ? edit_format_->precision : precision_)) {
         return {};
     }
     return parsed;
 }
 
-void TimePickerModel::configure_display(bool twelve, String pattern, PickerLocale locale) {
+void TimePickerModel::configure_display(bool twelve, String pattern, PickerLocale locale, bool preserve_edit) {
     locale.validate();
     if (!pattern.empty()) {
         validate_time_format(pattern.bytes());
     }
+    validate_time_format(picker_time_pattern(precision_, twelve, pattern, locale).bytes());
+    if (preserve_edit || text_dirty_) {
+        freeze_edit();
+    }
     twelve_ = twelve;
     format_ = std::move(pattern);
     locale_ = std::move(locale);
-    if (!text_dirty_) {
+    if (!edit_format_) {
         draft_ = value_ ? format(*value_) : String{};
     }
 }
 
+void TimePickerModel::freeze_edit() {
+    if (!edit_format_) {
+        edit_format_ = std::make_shared<const EditFormat>(
+            EditFormat{{locale_, picker_time_pattern(precision_, twelve_, format_, locale_), {}}, precision_, twelve_});
+    }
+}
+
+void TimePickerModel::finish_edit() {
+    text_dirty_ = false;
+    edit_format_.reset();
+    draft_ = value_ ? format(*value_) : String{};
+}
+
 String TimePickerModel::format(TimeOfDay time) const {
-    const auto pattern = format_.empty()
-                             ? (twelve_ ? (precision_ == TimePickerPrecision::Minute        ? "h:mm a"
-                                           : precision_ == TimePickerPrecision::Millisecond ? "h:mm:ss.SSS a"
-                                                                                            : "h:mm:ss a")
-                                        : (precision_ == TimePickerPrecision::Minute        ? "HH:mm"
-                                           : precision_ == TimePickerPrecision::Millisecond ? "HH:mm:ss.SSS"
-                                                                                            : "HH:mm:ss"))
-                             : format_.bytes();
-    return format_time_of_day(time, pattern, locale_);
+    return format_time_of_day(time, picker_time_pattern(precision_, twelve_, format_, locale_).bytes(), locale_);
 }
 
 int TimePickerModel::row_count(TimeColumn column) const {
@@ -286,6 +299,7 @@ bool TimePickerModel::select(TimeColumn column, int value) {
     const bool changed = pending_ != *next || text_dirty_;
     pending_ = *next;
     text_dirty_ = false;
+    edit_format_.reset();
     draft_ = format(pending_);
     return changed;
 }
@@ -303,10 +317,13 @@ bool TimePickerModel::navigate(TimeColumn column, int direction, bool boundary) 
     return false;
 }
 
-std::optional<TimePickerValue> TimePickerModel::request(TimePickerValue value) {
+std::optional<TimePickerValue> TimePickerModel::request(TimePickerValue value, bool from_text) {
+    const auto precision = request_precision(from_text);
     if (value) {
-        value = normalized(*value);
-        if (!allowed(*value)) {
+        value = precision == TimePickerPrecision::Minute   ? TimeOfDay{value->hour(), value->minute()}
+                : precision == TimePickerPrecision::Second ? TimeOfDay{value->hour(), value->minute(), value->second()}
+                                                           : *value;
+        if (!allowed(*value, precision)) {
             return {};
         }
     }

@@ -61,7 +61,7 @@ struct TransferPagination final {
 };
 
 struct TransferSearchOptions final {
-    String placeholder;
+    std::optional<String> placeholder;
     std::array<String, 2> default_values;
 };
 
@@ -155,8 +155,8 @@ public:
 
     TransferProps& showSearch(TransferSearchOptions value) {
         show_search_ = true;
-        if (!value.placeholder.empty()) {
-            search_placeholder_ = std::move(value.placeholder);
+        if (value.placeholder) {
+            search_placeholder_ = std::move(*value.placeholder);
         }
         search_default_ = std::move(value.default_values);
         return *this;
@@ -401,9 +401,9 @@ private:
     std::function<void(TransferDirection, String)> on_search_;
     std::function<void(TransferScrollInfo)> on_scroll_;
     std::function<void(TransferPageInfo)> on_page_;
-    Prop<TransferLocale> locale_{TransferLocale{}};
+    std::optional<Prop<TransferLocale>> locale_;
     Prop<float> row_spacing_{0};
-    Prop<std::array<String, 2>> operations_{std::array<String, 2>{String{}, String{}}};
+    std::optional<Prop<std::array<String, 2>>> operations_;
     Prop<std::array<String, 2>> search_default_{std::array<String, 2>{String{}, String{}}};
     std::array<std::function<TransferAction(TransferActionContext)>, 2> action_slots_;
     std::vector<TransferAction> additional_actions_;

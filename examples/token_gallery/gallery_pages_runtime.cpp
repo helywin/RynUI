@@ -29,6 +29,9 @@
 #include "component/steps_component.hpp"
 #include "component/tabs_component.hpp"
 #include "component/popover_component.hpp"
+#include "component/statistic_component.hpp"
+#include "component/feedback_component.hpp"
+#include "component/skeleton_component.hpp"
 #include "component/float_button_component.hpp"
 #include "component/collapse_component.hpp"
 #include "component/segmented_component.hpp"
@@ -571,7 +574,18 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                 : i % 3 == 1 ? std::vector{ThemeAlgorithm::Dark}
                                              : std::vector{ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
             if (options.visual && (route.component_identity == "ant.component.switch" ||
-                                   route.component_identity == "ant.component.border-beam")) {
+                                   route.component_identity == "ant.component.border-beam" ||
+                                   route.component_identity == "ant.component.popover" ||
+                                   route.component_identity == "ant.component.tooltip" ||
+                                   route.component_identity == "ant.component.statistic" ||
+                                   route.component_identity == "ant.component.result" ||
+                                   route.component_identity == "ant.component.skeleton" ||
+                                   route.component_identity == "ant.component.spin" ||
+                                   route.component_identity == "ant.component.alert" ||
+                                   route.component_identity == "ant.component.drawer" ||
+                                   route.component_identity == "ant.component.message" ||
+                                   route.component_identity == "ant.component.notification" ||
+                                   route.component_identity == "ant.component.app")) {
                 config.seed.motion = true;
             }
         });
@@ -639,9 +653,11 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     } else if (name == "ant.component.dropdown") {
                         gather(app.services().dropdown(), [](auto, const auto& s) { return s.trigger; });
                     } else if (name == "ant.component.popover") {
-                        const auto trigger = pages.target("gallery.popover.trigger");
-                        if (trigger.valid()) {
-                            targets.push_back(trigger);
+                        for (const auto identity : {"gallery.popover.trigger", "gallery.popover.context-trigger"}) {
+                            const auto trigger = pages.target(identity);
+                            if (trigger.valid()) {
+                                targets.push_back(trigger);
+                            }
                         }
                     } else if (name == "ant.component.tooltip") {
                         gather(app.services().tooltip(), [](auto id, const auto&) { return id; });
@@ -708,6 +724,12 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                                   "gallery.modal.centered", "gallery.modal.long-body"}) {
                                 add(id);
                             }
+                        } else if (name == "ant.component.statistic") {
+                            for (const auto id : {"gallery.statistic.countdown", "gallery.statistic.countup",
+                                                  "gallery.statistic.animate", "gallery.statistic.locale",
+                                                  "gallery.statistic.timer-stop"}) {
+                                add(id);
+                            }
                         } else if (name == "ant.component.popconfirm") {
                             add("gallery.popconfirm.single");
                             add("gallery.popconfirm.controlled");
@@ -736,10 +758,31 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                             }
                         } else if (name == "ant.component.image") {
                             add("gallery.image.preview");
-                        } else if (name == "ant.component.spin" || name == "ant.component.progress") {
-                            const auto owner =
-                                pages.target(name == "ant.component.spin" ? "gallery.sample.spin.loading"
-                                                                          : "gallery.sample.progress.values");
+                        } else if (name == "ant.component.result") {
+                            for (const auto id : {"gallery.result.status", "gallery.result.topology",
+                                                  "gallery.result.status", "gallery.result.topology"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.skeleton") {
+                            for (const auto id :
+                                 {"gallery.skeleton.active", "gallery.skeleton.shape", "gallery.skeleton.block",
+                                  "gallery.skeleton.title", "gallery.skeleton.avatar", "gallery.skeleton.round",
+                                  "gallery.skeleton.active", "gallery.skeleton.loading"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.spin") {
+                            for (const auto id :
+                                 {"gallery.spin.toggle", "gallery.spin.percent", "gallery.spin.delay",
+                                  "gallery.spin.toggle", "gallery.spin.fullscreen", "gallery.spin.dismiss"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.app") {
+                            for (const auto id : {"gallery.app.open", "gallery.app.update", "gallery.app.language",
+                                                  "gallery.app.close", "gallery.app.result"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.progress") {
+                            const auto owner = pages.target("gallery.sample.progress.values");
                             for (const auto& button : app.mounted_buttons()) {
                                 if (owns(app, button.component, owner) &&
                                     app.interactions().branch_active(button.interaction)) {
@@ -751,6 +794,15 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                             for (const auto id : {"gallery.message.open", "gallery.message.update",
                                                   "gallery.notification.open", "gallery.notification.update",
                                                   "gallery.notification.placement", "gallery.notification.status"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.notification") {
+                            for (const auto id :
+                                 {"gallery.notification.independent.open", "gallery.notification.independent.update",
+                                  "gallery.notification.independent.placement",
+                                  "gallery.notification.independent.status", "gallery.notification.independent.timed",
+                                  "gallery.notification.independent.timed", "gallery.notification.independent.timed",
+                                  "gallery.notification.independent.timed"}) {
                                 add(id);
                             }
                         }
@@ -766,6 +818,40 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                             retained_listy_editor =
                                 replace_text(snapshot.items.front().component, u8"native retained Listy draft");
                         }
+                    }
+                    if (route.component_identity == "ant.component.popover" &&
+                        id == pages.target("gallery.popover.context-trigger")) {
+                        const auto rect = bounds(id);
+                        const auto send_context = [&] {
+                            for (const auto action : {input::PointerAction::down, input::PointerAction::up}) {
+                                pages.dispatch(input::PointerInputEvent{
+                                    input::PointerIdentity::mouse(), action, input::PointerButton::secondary,
+                                    rect.x + rect.width / 2, rect.y + rect.height / 2});
+                            }
+                            render();
+                        };
+                        send_context();
+                        auto& host = app.services().popover();
+                        const auto owner = std::ranges::find_if(
+                            host.mounted(), [&](auto popup) { return owns(app, id, host.snapshot(popup).trigger); });
+                        check(owner != host.mounted().end(), "hidden Popover context owner is missing");
+                        const auto popup = *owner;
+                        auto view = host.snapshot(popup);
+                        std::cerr << "popover context visible=" << view.geometry.visible
+                                  << " anchor=" << view.geometry.anchor.width << ',' << view.geometry.anchor.height
+                                  << " extent=" << view.scroll_extent << " bounds=" << view.geometry.bounds.width << ','
+                                  << view.geometry.bounds.height << '\n';
+                        check(view.geometry.visible && view.geometry.anchor.width == 0 && view.scroll_extent > 0,
+                              "hidden Popover context/scroll contract is not active");
+                        events.inject_scroll_at(view.geometry.bounds.x + 1, view.geometry.bounds.y + 1, -100);
+                        render();
+                        view = host.snapshot(popup);
+                        check(view.scroll_offset == view.scroll_extent, "hidden Popover wheel did not reach the end");
+                        replace_text(pages.target("gallery.popover.scroll-draft"), String{u8"hidden retained draft"});
+                        click(pages.target("gallery.popover.scroll-save"));
+                        check(has_text(String{u8"清单末尾保存成功"}), "hidden Popover bottom action did not run");
+                        SDL_Delay(350);
+                        return;
                     }
                     if (route.component_identity == "ant.component.color-picker") {
                         const auto order = app.interactions().declaration_order();
@@ -799,11 +885,26 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                             }
                         }
                     }
+                    if (route.component_identity == "ant.component.statistic") {
+                        const bool timed = id == pages.target("gallery.statistic.countdown") ||
+                                           id == pages.target("gallery.statistic.countup");
+                        const auto value =
+                            pages.target(timed ? "gallery.statistic.timer" : "gallery.statistic.animated-value");
+                        reveal(value);
+                        SDL_Delay(timed ? 1100 : 100);
+                        render();
+                        if (timed) {
+                            const auto view = app.services().statistic().snapshot(value);
+                            const auto elapsed = view.timer_value.count_milliseconds();
+                            const bool countdown = id == pages.target("gallery.statistic.countdown");
+                            check(view.timer_running && (countdown ? elapsed < 5000 : elapsed >= 1000),
+                                  "hidden Statistic Timer did not advance");
+                        }
+                    }
                     if (route.component_identity == "ant.component.mentions" && inputs.sessions().active().valid()) {
                         pages.dispatch(input::TextCommitted{String{u8" @a"}, inputs.sessions().active()});
                     }
-                    if (route.component_identity == "ant.component.tooltip" ||
-                        route.component_identity == "ant.component.dropdown") {
+                    if (route.component_identity == "ant.component.dropdown") {
                         SDL_Delay(350);
                     }
                 },

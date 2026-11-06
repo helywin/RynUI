@@ -4,12 +4,12 @@
 
 namespace ryn::detail {
 PopoverTriggers popover_triggers(PopoverTriggerMode mode) {
-    if (mode < PopoverTriggerMode::Manual || mode > PopoverTriggerMode::Click) {
+    if (mode < PopoverTriggerMode::Manual || mode > PopoverTriggerMode::ContextMenu) {
         throw std::invalid_argument("Popover trigger is invalid");
     }
     return {mode == PopoverTriggerMode::Hover || mode == PopoverTriggerMode::HoverFocus,
             mode == PopoverTriggerMode::Focus || mode == PopoverTriggerMode::HoverFocus,
-            mode == PopoverTriggerMode::Click};
+            mode == PopoverTriggerMode::Click, mode == PopoverTriggerMode::ContextMenu};
 }
 
 void validate_popover_delay(Duration value) {

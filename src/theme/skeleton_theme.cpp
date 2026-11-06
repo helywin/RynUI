@@ -9,6 +9,8 @@ SkeletonThemeToken derive_skeleton(const AntDesignDefaultSeed& seed, const Theme
     const auto base = map.color_text_base;
     const bool dark = base.red() + base.green() + base.blue() > 1.5F;
     t.colors.background = Color(base.red(), base.green(), base.blue(), dark ? .12F : .06F);
+    t.colors.gradient_to = Color(base.red(), base.green(), base.blue(), dark ? .18F : .15F);
+    t.colors.image = Color::rgba8(191, 191, 191);
     auto& m = t.metrics;
     m.title_height = map.control_height / 2;
     m.block_radius = map.border_radius_small;
@@ -30,6 +32,12 @@ SkeletonThemeToken derive_skeleton(const AntDesignDefaultSeed& seed, const Theme
 void apply_skeleton_override(SkeletonThemeToken& t, const SkeletonTokenOverride& o) {
     if (o.background) {
         t.colors.background = *o.background;
+    }
+    if (o.gradient_to) {
+        t.colors.gradient_to = *o.gradient_to;
+    }
+    if (o.image) {
+        t.colors.image = *o.image;
     }
     const auto length = [](float& target, const std::optional<LogicalLength>& value) {
         if (!value) {

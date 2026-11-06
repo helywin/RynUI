@@ -28,6 +28,11 @@ ryn::Mentions(ryn::MentionsProps{}
 
 `notFoundContent` 接受 String 或 typed `MentionsRichLabel` 内容。loading 与异步 pending 使用有限静态加载状态，不产生 idle 动画。`popupRender` 包裹保留的 origin，必须同步调用一次。可选 `editor(MentionsEditor)` 用于包装原生 TextArea，必须保留给定的 value/ref/event 绑定并且只挂载一个 MultiLine 编辑器。更换 renderer 只重建其局部拥有区域；富内容的普通数据更新应使用 reactive Props。
 
+未设置 String 空态时使用最近 ConfigProvider 有效包的 `common.empty`；loading/pending 使用 `common.loading`，无 Provider 保持原英文。
+显式英文、显式空串及非加载时的 typed rich empty 维持原优先级。语言切换只更新保留文案，不重跑 editor/popup/row/empty 工厂或重新搜索，
+不修改完整业务文档、query、选区、composition、undo、open 或异步票据。默认 placeholder 继续为空。
+108 新入口 `rynui.i18n_components_selection` 的相关回归尚处源码交接状态，未编译或运行；Core preedit 不等于系统 IME 实测。
+
 ```cpp
 const auto entities = ryn::getMentions(u8"@Ada #native", {{u8"@", u8"#"}, u8" "});
 // entities: {"@", "Ada"}, {"#", "native"}

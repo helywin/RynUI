@@ -1,6 +1,7 @@
 #pragma once
 #include "component/window_component_services.hpp"
 #include <ryn/transfer.hpp>
+#include <ryn/i18n.hpp>
 
 namespace ryn::detail {
 struct TransferRowSnapshot final {
@@ -62,6 +63,7 @@ public:
     void on_focus_changed();
 
 private:
+    void localize(runtime::ComponentId, TransferLocale, IntegerPluralRule);
     void reconcile(runtime::ComponentId, const std::vector<TransferItem>&);
     void refresh(runtime::ComponentId);
     void refresh_content(runtime::ComponentId);

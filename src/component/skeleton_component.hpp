@@ -8,6 +8,8 @@ struct SkeletonSnapshot final {
     component::RetainedSurfaceId surface;
     SkeletonKind kind{SkeletonKind::Content};
     bool loading{true};
+    bool animating{};
+    float phase{};
 };
 
 class SkeletonComponentHost final : public WindowComponentParticipant {
@@ -18,6 +20,8 @@ public:
     void mount(const SkeletonAvatarProps&);
     void mount(const SkeletonButtonProps&);
     void mount(const SkeletonInputProps&);
+    void mount(const SkeletonImageProps&);
+    void mount(const SkeletonNodeProps&, const std::optional<SkeletonNodeContent>&);
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;
@@ -30,6 +34,10 @@ public:
     void on_dispose() noexcept override;
     void prepare_auxiliary_layout() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
+    void synchronize_auxiliary_motion() override;
+    void on_window_active(bool) override;
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
 private:
     runtime::ComponentId create(SkeletonModel, const LayoutStyle&, const std::optional<SkeletonContent>&, bool);
@@ -37,5 +45,6 @@ private:
     template <typename T> void connect(runtime::ComponentId, const Prop<T>&, T SkeletonModel::*);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
+    bool window_active_{true};
 };
 } // namespace ryn::detail

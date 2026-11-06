@@ -32,7 +32,37 @@ struct StatisticState final {
     Signal<runtime::SemanticTypography> title_font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> content_font{runtime::SemanticTypography{}};
     std::array<theme_runtime::Subscription, 2> subscriptions;
+    bool animated{};
+    bool geometry_visible{};
+    StatisticValue displayed;
+    std::optional<animation::AnimationTime> value_start;
+    std::int64_t value_duration{};
+    double value_from{};
+    double value_target{};
+    std::optional<StatisticTimer> timer;
+    animation::AnimationTime timer_origin;
+    std::uint64_t timer_revision{};
+    bool timer_finished{};
+    std::optional<std::int64_t> timer_sample;
+    std::optional<animation::AnimationTime> deadline;
+    std::function<void(Duration)> on_change;
+    std::function<void()> on_finish;
 };
+
+std::optional<double> animatable_number(const StatisticValue& value) {
+    return std::visit(
+        [](const auto& item) -> std::optional<double> {
+            using T = std::decay_t<decltype(item)>;
+            if constexpr (std::same_as<T, String>) {
+                return {};
+            } else {
+                const auto number = static_cast<double>(item);
+                return std::isfinite(number) && std::abs(number) <= 9007199254740991.0 ? std::optional{number}
+                                                                                       : std::nullopt;
+            }
+        },
+        value.storage());
+}
 
 runtime::SemanticForeground foreground(Color c) {
     return {c.red(), c.green(), c.blue(), c.alpha()};
@@ -211,17 +241,45 @@ void StatisticComponentHost::connect(runtime::ComponentId id, const Prop<T>& pro
                 ++s->model_revision;
                 return;
             }
+            const auto revision = current->model_revision;
             // formatter is user code. Do not retain a borrowed state across it.
-            auto text = format_statistic(candidate);
+            auto validation = candidate;
+            if (current->timer) {
+                validation.formatter = {};
+            }
+            auto text = format_statistic(validation);
             if (!valid_composition(id, true)) {
                 return;
             }
             auto* s = services_->components().state<StatisticState>(id);
+            if (s->model_revision != revision) {
+                return;
+            }
+            s->value_start.reset();
+            s->deadline.reset();
+            if constexpr (std::same_as<T, StatisticValue>) {
+                const auto from = animatable_number(s->displayed);
+                const auto to = animatable_number(candidate.value);
+                const auto policy = animation::resolve_motion_policy(
+                    services_->components().theme_scope(id)->snapshot(), services_->motion_preference());
+                if (s->animated && !s->timer && !candidate.formatter && from && to && *from != *to &&
+                    dynamic_allowed(id) && policy.tokens().slow.count_microseconds() > 0) {
+                    s->value_from = *from;
+                    s->value_target = *to;
+                    s->value_start = clock_.observe(services_->animation_time()).effective;
+                    s->value_duration = policy.tokens().slow.count_microseconds();
+                }
+            }
             s->model = std::move(candidate);
-            s->snapshot.formatted_value = text;
-            const auto signal = s->value;
-            signal.set(std::move(text));
-            refresh(id, true);
+            ++s->model_revision;
+            if (s->timer || s->value_start) {
+                services_->request_frame();
+                update_dynamic(id, services_->animation_time());
+            } else {
+                s->displayed = s->model.value;
+                s->snapshot.animating = false;
+                publish_text(id, std::move(text));
+            }
         },
         [](const T& a, const T& b) {
             if constexpr (std::same_as<T, StatisticFormatter>) {
@@ -255,6 +313,10 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
     auto& s = build.state<StatisticState>(id);
     s.node = root_node;
     s.parent = services.components().parent(id);
+    s.model.explicit_decimal = props.explicit_decimal_;
+    s.model.explicit_group = props.explicit_group_;
+    s.on_change = props.on_change_;
+    s.on_finish = props.on_finish_;
     s.rich = {props.rich_title_.has_value(), props.rich_prefix_.has_value(), props.rich_value_.has_value(),
               props.rich_suffix_.has_value()};
     // Keep owned signal handles, never a state reference, across user slot execution.
@@ -508,6 +570,61 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
     if (!valid_mount(true)) {
         return;
     }
+    connect(id, props.locale_, &StatisticModel::locale);
+    if (!valid_mount(true)) {
+        return;
+    }
+    watch(id, props.animated_, [this, id](bool value) {
+        auto* current = services_->components().state<StatisticState>(id);
+        current->animated = value;
+        if (current->ready) {
+            update_dynamic(id, services_->animation_time());
+        }
+    });
+    if (!valid_mount(true)) {
+        return;
+    }
+    watch(id, props.timer_, [this, id](std::optional<StatisticTimer> value) {
+        if (value) {
+            validate_statistic_timer(*value);
+        }
+        auto* current = services_->components().state<StatisticState>(id);
+        std::optional<String> static_text;
+        if (current->ready && !value) {
+            const auto model_revision = current->model_revision;
+            const auto timer_revision = current->timer_revision;
+            auto model = current->model;
+            static_text = format_statistic(model);
+            if (!valid_composition(id, true)) {
+                return;
+            }
+            current = services_->components().state<StatisticState>(id);
+            if (current->model_revision != model_revision || current->timer_revision != timer_revision) {
+                return;
+            }
+        }
+        current->timer = std::move(value);
+        ++current->timer_revision;
+        current->timer_origin = clock_.observe(services_->animation_time()).effective;
+        current->timer_finished = false;
+        current->timer_sample.reset();
+        current->value_start.reset();
+        current->deadline.reset();
+        if (current->ready) {
+            services_->request_frame();
+            current->snapshot.animating = false;
+            current->snapshot.timer_running = false;
+            if (current->timer) {
+                update_dynamic(id, services_->animation_time());
+            } else {
+                current->displayed = current->model.value;
+                publish_text(id, std::move(*static_text));
+            }
+        }
+    });
+    if (!valid_mount(true)) {
+        return;
+    }
     const auto text = [this, id](const Prop<String>& prop, Signal<String> StatisticState::* member) {
         watch(id, prop, [this, id, member](String value) {
             if (auto* s = services_->components().state<StatisticState>(id)) {
@@ -543,7 +660,14 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
         }
         const auto revision = services.components().state<StatisticState>(id)->model_revision;
         auto candidate = services.components().state<StatisticState>(id)->model;
-        auto formatted = format_statistic(candidate);
+        const auto timer = services.components().state<StatisticState>(id)->timer;
+        if (timer) {
+            auto validation = candidate;
+            validation.formatter = {};
+            static_cast<void>(format_statistic(validation));
+        }
+        auto formatted =
+            timer ? format_statistic_timer(timer->value, timer->format, candidate.locale) : format_statistic(candidate);
         if (!valid_mount(true)) {
             return;
         }
@@ -566,12 +690,209 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
         return;
     }
     services.components().state<StatisticState>(id)->ready = true;
+    services.components().state<StatisticState>(id)->displayed =
+        services.components().state<StatisticState>(id)->model.value;
+    if (const auto timer = services.components().state<StatisticState>(id)->timer) {
+        services.components().state<StatisticState>(id)->snapshot.timer_value = timer->value;
+    }
     loading_signal.set(services.components().state<StatisticState>(id)->snapshot.loading);
     if (!valid_mount(true)) {
         return;
     }
     refresh(id, true);
     rollback.committed = valid_mount(true);
+}
+
+bool StatisticComponentHost::dynamic_allowed(runtime::ComponentId id) const {
+    const auto* s = services_->components().state<StatisticState>(id);
+    return s && s->ready && s->snapshot.visible && !s->snapshot.loading && !s->rich[2] && s->geometry_visible &&
+           services_->focus().state().window_active && services_->components().branch_active(id) &&
+           services_->interactions().component_active(id) &&
+           animation::resolve_motion_policy(services_->components().theme_scope(id)->snapshot(),
+                                            services_->motion_preference())
+               .enabled();
+}
+
+void StatisticComponentHost::publish_text(runtime::ComponentId id, String text) {
+    if (!valid_composition(id, true)) {
+        return;
+    }
+    auto* s = services_->components().state<StatisticState>(id);
+    if (s->snapshot.formatted_value == text) {
+        return;
+    }
+    s->snapshot.formatted_value = text;
+    const auto signal = s->value;
+    signal.set(std::move(text));
+    refresh(id, true);
+}
+
+void StatisticComponentHost::update_dynamic(runtime::ComponentId id, animation::AnimationTime now, bool notify) {
+    auto* s = services_->components().state<StatisticState>(id);
+    if (!s || !s->ready) {
+        return;
+    }
+    if (!s->timer && !s->value_start) {
+        s->deadline.reset();
+        s->snapshot.timer_running = false;
+        return;
+    }
+    now = clock_.observe(now).effective;
+    s->deadline.reset();
+    s->snapshot.timer_running = false;
+    if (!dynamic_allowed(id)) {
+        if (s->value_start) {
+            s->value_start.reset();
+            s->snapshot.animating = false;
+            s->displayed = s->model.value;
+            auto model = s->model;
+            const auto text = format_statistic(model);
+            publish_text(id, text);
+        }
+        return;
+    }
+    if (s->timer) {
+        const auto timer = *s->timer;
+        const auto revision = s->timer_revision;
+        const auto elapsed =
+            std::max<std::int64_t>(0, now.count_microseconds() - s->timer_origin.count_microseconds()) / 1000;
+        const auto initial = static_cast<std::int64_t>(timer.value.count_milliseconds());
+        constexpr auto maximum = std::numeric_limits<std::int64_t>::max() / 1000;
+        const auto value = timer.type == StatisticTimerType::Countdown ? std::max<std::int64_t>(0, initial - elapsed)
+                                                                       : initial + std::min(elapsed, maximum - initial);
+        const auto duration = Duration::milliseconds(double(value));
+        s->snapshot.timer_value = duration;
+        const auto quantum = statistic_timer_quantum(timer.format);
+        const bool finished = timer.type == StatisticTimerType::Countdown && value == 0;
+        if (!s->timer_finished && (!finished || !notify)) {
+            std::int64_t wait = quantum == 0                                  ? 0
+                                : timer.type == StatisticTimerType::Countdown ? value % quantum + 1
+                                                                              : quantum - value % quantum;
+            if (timer.type == StatisticTimerType::Countdown) {
+                wait = wait == 0 ? std::max<std::int64_t>(1, value) : std::min(wait, std::max<std::int64_t>(1, value));
+            }
+            if (wait > 0 && (timer.type == StatisticTimerType::Countdown || value < maximum)) {
+                // Millisecond formats are sampled at most once per display frame.
+                if (quantum > 0 && quantum < 17 && !finished) {
+                    wait = std::max<std::int64_t>(17, wait);
+                    if (timer.type == StatisticTimerType::Countdown) {
+                        wait = std::min(wait, value);
+                    }
+                }
+                const auto remaining_time = std::numeric_limits<std::int64_t>::max() - now.count_microseconds();
+                s->deadline = now + animation::AnimationDuration::microseconds(std::min(wait * 1000, remaining_time));
+                s->snapshot.timer_running = true;
+            }
+        }
+        const auto changed = s->timer_sample != value;
+        const auto on_change = s->on_change;
+        const auto on_finish = s->on_finish;
+        const bool finish_callback = notify && finished && !s->timer_finished;
+        if (notify) {
+            s->timer_sample = value;
+            s->timer_finished |= finished;
+        }
+        auto text = format_statistic_timer(duration, timer.format, s->model.locale);
+        publish_text(id, std::move(text));
+        const auto current = [&]() {
+            const auto* live = services_->components().state<StatisticState>(id);
+            return live && live->timer_revision == revision && dynamic_allowed(id);
+        };
+        try {
+            if (notify && changed && on_change && current()) {
+                on_change(duration);
+            }
+            if (finish_callback && on_finish && current()) {
+                on_finish();
+            }
+        } catch (...) {
+            services_->retire_failed_component(id);
+            throw;
+        }
+        return;
+    }
+    if (s->value_start) {
+        const auto elapsed = std::max<std::int64_t>(0, now.count_microseconds() - s->value_start->count_microseconds());
+        const double progress = std::clamp(double(elapsed) / double(s->value_duration), 0.0, 1.0);
+        const double eased = 1 - (1 - progress) * (1 - progress) * (1 - progress);
+        auto model = s->model;
+        s->displayed =
+            progress >= 1 ? s->model.value : StatisticValue{s->value_from + (s->value_target - s->value_from) * eased};
+        model.value = s->displayed;
+        s->snapshot.animating = progress < 1;
+        if (progress >= 1 || !s->animated) {
+            s->value_start.reset();
+            s->snapshot.animating = false;
+            s->displayed = model.value = s->model.value;
+        } else {
+            s->deadline = now + animation::AnimationDuration::microseconds(16667);
+        }
+        auto text = format_statistic(model);
+        publish_text(id, std::move(text));
+    }
+}
+
+void StatisticComponentHost::prepare_auxiliary_layout() {
+    const auto ids = mounted_;
+    for (const auto id : ids) {
+        update_dynamic(id, services_->animation_time());
+    }
+}
+
+void StatisticComponentHost::synchronize_auxiliary_motion() {
+    prepare_auxiliary_layout();
+}
+
+void StatisticComponentHost::on_window_active(bool) {
+    prepare_auxiliary_layout();
+}
+
+void StatisticComponentHost::on_input_boundary_changed() {
+    prepare_auxiliary_layout();
+}
+
+void StatisticComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
+    const auto ids = mounted_;
+    for (const auto id : ids) {
+        auto* s = services_->components().state<StatisticState>(id);
+        if (!s) {
+            continue;
+        }
+        const auto& node = services_->nodes().require(s->node);
+        const auto clip =
+            services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip));
+        const auto visible =
+            graphics::intersect_effect_bounds({node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
+                                               node.bounds.width, node.bounds.height},
+                                              clip);
+        s->geometry_visible =
+            visible.width > 0 && visible.height > 0 && services_->nodes().content_opacity(s->node) > 0;
+        update_dynamic(id, services_->animation_time());
+    }
+}
+
+std::size_t StatisticComponentHost::tick_auxiliary(animation::AnimationTime now) {
+    const auto ids = mounted_;
+    std::size_t changed{};
+    for (const auto id : ids) {
+        const auto* s = services_->components().state<StatisticState>(id);
+        if (s && s->deadline && now >= *s->deadline) {
+            update_dynamic(id, now, true);
+            ++changed;
+        }
+    }
+    return changed;
+}
+
+std::optional<animation::AnimationTime> StatisticComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> result;
+    for (const auto id : mounted_) {
+        const auto* s = services_->components().state<StatisticState>(id);
+        if (s && s->deadline && dynamic_allowed(id) && (!result || *s->deadline < *result)) {
+            result = s->deadline;
+        }
+    }
+    return result;
 }
 
 runtime::Size StatisticComponentHost::measure_value(runtime::ComponentId id, layout::LayoutEngine& e,

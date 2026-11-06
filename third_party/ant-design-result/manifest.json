@@ -1,0 +1,29 @@
+{
+  "version": "6.6.5",
+  "commit": "4a39f54842eade4e565ab336ef6097cd7e723cdd",
+  "scale": 2,
+  "generator": "CairoSVG 2.9.0",
+  "assets": [
+    {
+      "status": 403,
+      "source": "components/result/unauthorized.tsx",
+      "sourceSha256": "861ec866dbe24593cea13feaae8298eab258a424a998f6feb158b684996f971f",
+      "pngSha256": "8861111ad3864967598bdf456053e629592de3a4cec2f81057d1ae1db4969ace",
+      "pngBytes": 46547
+    },
+    {
+      "status": 404,
+      "source": "components/result/noFound.tsx",
+      "sourceSha256": "820d08c37e44c54487789f4b27b8cb9712cc5920d88583422f4f49c0d8978fa8",
+      "pngSha256": "e5d0c34633c29fe0c700141abe4331918de108c157e9aad283f0ac5c77615200",
+      "pngBytes": 46536
+    },
+    {
+      "status": 500,
+      "source": "components/result/serverError.tsx",
+      "sourceSha256": "a43caa80b285498785d02f28a7cd1b6d4804c97f88200422e04d042cc2df66d7",
+      "pngSha256": "db4e0a908ac7d9779af27480cff3a08635fc05ada6471bf60d29448c5e05e270",
+      "pngBytes": 47456
+    }
+  ]
+}

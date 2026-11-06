@@ -2,6 +2,7 @@
 #include <functional>
 #include <optional>
 #include <ryn/component.hpp>
+#include <ryn/component_locales.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
 
@@ -37,6 +38,11 @@ struct ModalSlots final {
 
 class ModalProps final {
 public:
+    ModalProps& locale(Prop<CommonLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
     ModalProps& open(Prop<bool> value = true) {
         open_ = std::move(value);
         return *this;
@@ -146,8 +152,9 @@ private:
     Prop<ModalMask> mask_{ModalMask{}};
     Prop<bool> confirm_loading_{false};
     Prop<ModalFooterMode> footer_{ModalFooterMode::Default};
-    Prop<String> ok_text_{String{u8"OK"}};
-    Prop<String> cancel_text_{String{u8"Cancel"}};
+    std::optional<Prop<String>> ok_text_;
+    std::optional<Prop<String>> cancel_text_;
+    std::optional<Prop<CommonLocale>> locale_;
     Prop<bool> restore_focus_{true};
     std::function<void()> on_ok_;
     std::function<void(ModalCancelReason)> on_cancel_;

@@ -39,7 +39,7 @@ void add_next() {}'''
     else:
         raise AssertionError('truncated source was accepted')
     records = MODULE.generate(ROOT)
-    check(len(records) == 104 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
+    check(len(records) == 109 and len({r.identity for r in records}) == len(records), 'sample/source inventory drifted')
     for row in records:
         check((ROOT / row.header).is_file() and row.line > 0 and row.function in row.code,
               'missing source or public header')
@@ -110,6 +110,13 @@ void add_next() {}'''
     check('MessageProps' in by_id['gallery.sample.message.workflow'].props and
           by_id['gallery.sample.message.workflow'].theme_path == 'ThemeConfig.message.tokens',
           'forwarding header or shared NoticeThemeConfig mapping failed')
+    notification = by_id['gallery.sample.notification.center']
+    check('NotificationProps' in notification.props and
+          notification.theme_path == 'ThemeConfig.notification.tokens' and
+          'NotificationHolder(' in notification.code and 'MessageHolder(' not in notification.code and
+          'NotificationDescription' in notification.code and 'NotificationActions' in notification.code and
+          'openAsync' in notification.code and 'showProgress' in notification.code,
+          'Notification needs its own typed, actionable sample and real progress service')
     check(not by_id['gallery.sample.flex.layouts'].theme_path, 'invented a component token for Flex')
     check('RowProps' in by_id['gallery.sample.grid.layouts'].props and
           'ColProps' in by_id['gallery.sample.grid.layouts'].props and

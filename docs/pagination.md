@@ -32,3 +32,9 @@ ryn::Pagination(ryn::PaginationProps{}
 `locale(Prop<PaginationLocale>)` 响应更新页大小后缀、simple 分隔文字与跳页 placeholder；`direction` 镜像控件顺序和前后箭头，并传递至 Input/Select。`showLessItems` 将当前页半径缩至一页，省略按钮改为跳转三页。页大小选择器在空间允许时可换至第二行，实际 Select 命中区域随布局约束；原有受控页码、页大小、快速跳页、simple、responsive、align、showTotal 与 itemRender 合同继续保留。
 
 Gallery 独立页提供页大小、跳页、总数、simple 和 typed renderer 实例。上述扩展基于 [Ant Design 6.6.5 固定源码](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/pagination/index.en-US.md)。Linux HEADLESS 是逻辑/输入合同证据；实际 GPU、系统 IME 与 Windows 平台结果由分类集成单独记录。
+
+## ConfigProvider 语言继承
+
+未设置 `locale` 时，从当前窗口最近的 ConfigProvider 实时读取 Pagination 语言组，无 Provider 时使用英文。显式完整 `PaginationLocale`（包括英文和空字段）始终优先。切换仅更新保留的页大小选项、simple 分隔文字和跳页 placeholder，不重写正在编辑的 draft，不调用 `showTotal` 或重新执行 `itemRender`；业务 formatter 返回的 String 保持原文。
+
+页码、页数和选项计数使用 i18n 的精确 UInt 插值，不经过 double。当前显示和跳页解析仍采用 ASCII 十进制；不增加分组、货币或其他数字体系，`PaginationLocale::total` 不会自行启用总数区域。新增 `rynui.i18n_components_collections` 源码覆盖真实 Provider/host 组合；本次源码交接未运行 build/CTest，验证由父集成者完成。

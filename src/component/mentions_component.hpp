@@ -23,6 +23,7 @@ struct MentionsSnapshot final {
     String prefix;
     std::size_t query_begin{};
     std::size_t caret{};
+    runtime::ComponentId empty;
 };
 
 class MentionsComponentHost final : public WindowComponentParticipant {
@@ -59,6 +60,7 @@ public:
 
 private:
     [[nodiscard]] bool editable(runtime::ComponentId, bool check_composition = true) const;
+    void update_locale(runtime::ComponentId, String empty, String loading);
     void refresh(runtime::ComponentId, bool geometry = true);
     void update_theme(runtime::ComponentId, bool geometry);
     void request_open(runtime::ComponentId, bool, bool restore_focus = false);

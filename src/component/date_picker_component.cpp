@@ -8,6 +8,7 @@
 #include "component/navigation_transition.hpp"
 #include "component/picker_range.hpp"
 #include "component/picker_format.hpp"
+#include "component/picker_i18n.hpp"
 #include "component/time_picker_component.hpp"
 #include <ryn/button.hpp>
 #include <set>
@@ -27,6 +28,9 @@ struct DateItem final {
     runtime::SceneFragmentId hit;
     component::RetainedSurfaceId surface;
     DatePickerValue date;
+    DatePickerMode key_mode{DatePickerMode::Date};
+    std::size_t empty_index{};
+    bool ready{};
     int months{};
     Signal<DatePickerCellInfo> info{DatePickerCellInfo{}};
     Signal<String> text{String{}};
@@ -34,18 +38,29 @@ struct DateItem final {
     Signal<runtime::SemanticTypography> font{runtime::SemanticTypography{}};
 };
 
+struct DateInputFormat final {
+    PickerLocale locale;
+    String pattern;
+    std::vector<String> alternatives;
+    DatePickerMode picker{DatePickerMode::Date};
+    TimePickerPrecision time_precision{TimePickerPrecision::Second};
+    bool time_twelve{};
+    friend bool operator==(const DateInputFormat&, const DateInputFormat&) = default;
+};
+
 struct DateState final {
-    explicit DateState(DatePickerModel value) : model(std::move(value)) {}
+    explicit DateState(DatePickerModel value) : model(std::move(value)), published_model(model) {}
 
     DatePickerModel model;
+    DatePickerModel published_model;
     DatePickerRules rules;
     std::unique_ptr<NavigationTransition> transition;
     DatePickerMode picker{DatePickerMode::Date};
     DatePickerMode mode{DatePickerMode::Date};
     PickerLocale locale;
+    DateInputFormat formatting;
+    std::shared_ptr<const DateInputFormat> edit_format;
     std::optional<PickerEndpoint> range_endpoint;
-    String format;
-    std::vector<String> input_formats;
     TextDirection direction{TextDirection::LeftToRight};
     PickerPlacement placement{PickerPlacement::BottomLeft};
     bool controlled_mode{};
@@ -55,7 +70,6 @@ struct DateState final {
     bool controlled_multiple{};
     bool need_confirm{};
     bool show_time{};
-    String time_format{u8"HH:mm:ss"};
     Prop<TimePickerRules> time_rules{TimePickerRules{}};
     Prop<TimePickerPrecision> time_precision{TimePickerPrecision::Second};
     bool controlled_time{};
@@ -63,7 +77,10 @@ struct DateState final {
     DatePickerMultipleValue pending_multiple;
     DatePickerDateTimeValue accepted_time;
     DatePickerValue pending_date;
-    Signal<DatePickerValue> time_date{DatePickerValue{}};
+    using StagedDate = std::pair<DatePickerValue, std::optional<DateValueSemantics>>;
+    Signal<StagedDate> time_date{StagedDate{}};
+    PickerCandidateSemantics pending_semantics;
+    PickerCandidateSemantics accepted_semantics;
     Signal<TimePickerValue> pending_time{TimePickerValue{TimeOfDay{}}};
     std::function<bool(CivilDate, TimeOfDay)> disabled_time;
     std::function<void(DatePickerValue)> on_ok;
@@ -84,6 +101,11 @@ struct DateState final {
     runtime::ComponentId popup;
     runtime::ComponentId footer;
     std::vector<runtime::ComponentId> items;
+    DatePickerMode published_mode{DatePickerMode::Date};
+    std::size_t published_count{};
+    std::uint64_t revision{};
+    bool updating_cells{};
+    bool cells_pending{};
     input::InteractionId input_hit;
     input::InteractionId popup_hit;
     input::TextInputOwnerId editor;
@@ -96,6 +118,18 @@ struct DateState final {
     Signal<ThemeConfig> input_theme{ThemeConfig{}};
     std::array<theme_runtime::Subscription, 4> subscriptions;
     bool dirty_draft{};
+    std::uint64_t edit_session{};
+    std::optional<std::uint64_t> submitting;
+
+    struct Echo final {
+        DatePickerValue date;
+        DatePickerDateTimeValue time;
+        PickerCandidateSemantics semantics;
+        std::uint64_t session;
+        bool date_time{};
+    };
+
+    std::optional<Echo> echo;
     // Pointer focus/blur runs before the outside-pointer observer in the same dispatch.
     bool closed_on_blur{};
     bool disabled{};
@@ -109,12 +143,49 @@ struct DateState final {
     runtime::Rect clip;
     runtime::Rect anchor;
     std::function<void(DatePickerValue)> on_change;
-    std::function<void(DatePickerValue)> on_request;
-    std::function<void(DatePickerDateTimeValue)> on_time_request;
+    std::function<PickerRequestDisposition(DatePickerValue, const PickerCandidate&)> on_request;
+    std::function<PickerRequestDisposition(DatePickerDateTimeValue, const PickerCandidate&)> on_time_request;
     std::function<void(bool)> on_open;
     std::function<void()> on_focus;
     std::function<void()> on_blur;
 };
+
+template <typename T>
+PickerCandidate range_candidate(WindowComponentServices& services, const std::shared_ptr<PickerRangeState<T>>& range,
+                                const PickerCandidate& source = {}) {
+    std::vector<std::pair<runtime::ComponentId, PickerEditorSession>> dates;
+    std::vector<std::pair<runtime::ComponentId, PickerEditorSession>> times;
+    for (const auto id : range->owners) {
+        if (const auto* state = services.components().state<DateState>(id)) {
+            const auto* editor = services.input_runtime()->editors().find(state->editor);
+            if (editor) {
+                dates.emplace_back(id, PickerEditorSession{state->edit_session, editor->composition().active});
+            }
+            if (const auto session = services.time_picker().editor_session(state->time_picker)) {
+                times.emplace_back(state->time_picker, *session);
+            }
+        }
+    }
+    return {source.semantics, [&services, dates = std::move(dates), times = std::move(times), source] {
+                if (!source.active()) {
+                    return false;
+                }
+                for (const auto& [id, session] : times) {
+                    if (services.time_picker().editor_session(id) != session) {
+                        return false;
+                    }
+                }
+                for (const auto& [id, session] : dates) {
+                    const auto* state = services.components().state<DateState>(id);
+                    const auto* editor = state ? services.input_runtime()->editors().find(state->editor) : nullptr;
+                    if (!state || state->edit_session != session.edit || !services.components().scope(id).active() ||
+                        !editor || editor->composition().active != session.composing) {
+                        return false;
+                    }
+                }
+                return true;
+            }};
+}
 
 runtime::SemanticForeground foreground(Color c) {
     return {c.red(), c.green(), c.blue(), c.alpha()};
@@ -158,23 +229,19 @@ std::optional<runtime::ComponentId> layer(WindowComponentServices& services, run
 }
 
 std::string_view pattern(const DateState& state) {
-    return !state.format.empty()                     ? state.format.bytes()
-           : state.picker == DatePickerMode::Week    ? "gggg-[W]ww"
-           : state.picker == DatePickerMode::Month   ? "YYYY-MM"
-           : state.picker == DatePickerMode::Quarter ? "YYYY-[Q]Q"
-           : state.picker == DatePickerMode::Year    ? "YYYY"
-                                                     : "YYYY-MM-DD";
+    return state.formatting.pattern.bytes();
 }
 
-std::string datetime_pattern(const DateState& state) {
-    if (!state.format.empty()) {
-        try {
-            static_cast<void>(split_date_time_format(state.format.bytes()));
-            return std::string{state.format.bytes()};
-        } catch (const std::invalid_argument&) {
-        }
+bool active_edit(WindowComponentServices& services, const DateState& state) {
+    const auto* editor = services.input_runtime()->editors().find(state.editor);
+    return state.dirty_draft || (editor && services.input_runtime()->focused(state.input) &&
+                                 (editor->composition().active || !editor->selection().empty()));
+}
+
+void freeze_edit_format(DateState& state) {
+    if (!state.edit_format) {
+        state.edit_format = std::make_shared<const DateInputFormat>(state.formatting);
     }
-    return std::string{pattern(state)} + " " + std::string{state.time_format.bytes()};
 }
 
 int panel_step(DatePickerMode mode) {
@@ -191,28 +258,29 @@ String display(const DateState& state, DatePickerValue value) {
             if (!text.empty()) {
                 text += ", ";
             }
-            text += format_date(date, pattern(state), state.locale).bytes();
+            text += format_date(date, pattern(state), state.formatting.locale).bytes();
         }
         return String::from_utf8(text).value();
     }
     if (state.show_time) {
-        return state.accepted_time ? format_date_time(*state.accepted_time, datetime_pattern(state), state.locale)
+        return state.accepted_time ? format_date_time(*state.accepted_time, pattern(state), state.formatting.locale)
                                    : String{};
     }
-    return value ? format_date(*value, pattern(state), state.locale) : String{};
+    return value ? format_date(*value, pattern(state), state.formatting.locale) : String{};
 }
 
-bool selected(const DateState& state, DatePickerValue value) {
+bool selected(const DateState& state, DatePickerValue value, const DatePickerModel* published = nullptr) {
     if (!value) {
         return false;
     }
-    const auto candidate = state.model.normalized(*value);
+    const auto& model = published ? *published : state.model;
+    const auto candidate = model.normalized(*value);
     if (state.multiple) {
         return std::ranges::any_of(state.pending_multiple,
-                                   [&](CivilDate d) { return state.model.normalized(d) == candidate; });
+                                   [&](CivilDate d) { return model.normalized(d) == candidate; });
     }
     const auto current = state.pending_date ? state.pending_date : state.model.value();
-    return current && state.model.normalized(*current) == candidate;
+    return current && model.normalized(*current) == candidate;
 }
 
 runtime::ComponentId group(WindowComponentServices& services) {
@@ -253,13 +321,21 @@ DatePickerSnapshot DatePickerComponentHost::snapshot(runtime::ComponentId id) co
         throw std::out_of_range("stale DatePicker");
     }
     std::vector<component::RetainedSurfaceId> surfaces{s->background};
-    for (auto child : s->items) {
-        surfaces.push_back(services_->components().state<DateItem>(child)->surface);
+    std::vector<DatePickerCellInfo> metadata;
+    for (std::size_t i = 0; i < s->items.size(); ++i) {
+        const auto* item = services_->components().state<DateItem>(s->items[i]);
+        if (!item) {
+            throw std::out_of_range("DatePicker published cell retired");
+        }
+        surfaces.push_back(item->surface);
+        if (i >= 12) {
+            metadata.push_back(item->info.get());
+        }
     }
     return {s->input,
             s->popup,
             s->footer,
-            {s->items.begin() + 12, s->items.begin() + 12 + static_cast<std::ptrdiff_t>(s->model.cell_count())},
+            {s->items.begin() + 12, s->items.end()},
             {s->items.begin(), s->items.begin() + 4},
             s->model.value(),
             s->model.active(),
@@ -272,13 +348,59 @@ DatePickerSnapshot DatePickerComponentHost::snapshot(runtime::ComponentId id) co
             s->accepted_time,
             s->pending_date,
             s->pending_time.get(),
-            s->mode};
+            s->published_mode,
+            std::move(metadata),
+            s->cells_pending || s->updating_cells};
 }
 
 void DatePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) try {
     auto* s = services_->components().state<DateState>(id);
     if (!s || !services_->components().scope(id).active()) {
         return;
+    }
+    const auto revision = ++s->revision;
+    if (s->updating_cells) {
+        s->cells_pending = true;
+        s->needs_layout = true;
+        services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+        return;
+    }
+    const auto live = [&] {
+        s = services_->components().state<DateState>(id);
+        return s && services_->components().scope(id).active() && s->revision == revision;
+    };
+    const auto publish = [&](auto signal, auto value) {
+        signal.set(std::move(value));
+        return live();
+    };
+    if (s->show_time) {
+        const auto date = s->pending_date    ? s->pending_date
+                          : s->accepted_time ? DatePickerValue{s->accepted_time->date}
+                                             : DatePickerValue{s->model.active()};
+        const auto semantics =
+            s->pending_date || s->pending_semantics.date ? s->pending_semantics.date : s->accepted_semantics.date;
+        if (!publish(s->time_date, DateState::StagedDate{date, semantics})) {
+            return;
+        }
+    }
+    const auto item_for = [&](runtime::ComponentId child) {
+        auto* item = services_->components().state<DateItem>(child);
+        if (!item) {
+            static_cast<void>(services_->retire_failed_component(id));
+        }
+        return item;
+    };
+    s->cells_pending = s->items.size() != 12 + s->model.cell_count() || s->published_mode != s->mode;
+    for (std::size_t i = 12; !s->cells_pending && i < s->items.size(); ++i) {
+        const auto* item = services_->components().state<DateItem>(s->items[i]);
+        if (!item) {
+            static_cast<void>(services_->retire_failed_component(id));
+            return;
+        }
+        s->cells_pending = !item || !item->ready || item->key_mode != s->mode || item->date != s->model.cell(i - 12);
+    }
+    if (!s->cells_pending) {
+        s->published_model = s->model;
     }
     const bool visible =
         s->open && !s->suppressed && !s->disabled && active_ && services_->interactions().component_active(id);
@@ -293,21 +415,38 @@ void DatePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) tr
     if (services_->components().set_branch_active(s->popup, visible)) {
         services_->mark_scene_structure_dirty();
     }
-    s->clear_visible.set(s->allow_clear && (s->model.value().has_value() || !s->accepted_multiple.empty() ||
-                                            s->accepted_time.has_value()));
-    s->action_disabled.set(s->disabled);
+    if (!publish(s->clear_visible, s->allow_clear && (s->model.value().has_value() || !s->accepted_multiple.empty() ||
+                                                      s->accepted_time.has_value())) ||
+        !publish(s->action_disabled, s->disabled)) {
+        return;
+    }
     if (s->confirm_group.valid() && services_->components().set_branch_active(s->confirm_group, s->need_confirm)) {
         services_->mark_scene_structure_dirty();
     }
     const auto t = services_->components().theme_scope(id)->snapshot().date_picker();
     const auto model = s->model;
-    for (std::size_t i = 0; i < s->items.size(); ++i) {
-        auto* item = services_->components().state<DateItem>(s->items[i]);
+    const auto items = s->items;
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        if (i >= 12 && s->cells_pending) {
+            continue;
+        }
+        auto* item = item_for(items[i]);
+        if (!item) {
+            static_cast<void>(services_->retire_failed_component(id));
+            return;
+        }
         if (i == 4) {
-            item->text.set(
-                format_date(model.panel(),
-                            s->mode == DatePickerMode::Year || s->mode == DatePickerMode::Decade ? "YYYY" : "MMMM YYYY",
-                            s->locale));
+            if (!publish(item->text, format_date(model.panel(),
+                                                 s->mode == DatePickerMode::Year || s->mode == DatePickerMode::Decade
+                                                     ? "YYYY"
+                                                     : s->formatting.locale.month_panel_format.bytes(),
+                                                 s->formatting.locale))) {
+                return;
+            }
+            item = item_for(items[i]);
+            if (!item) {
+                return;
+            }
         }
         const bool days = s->mode == DatePickerMode::Date || s->mode == DatePickerMode::Week;
         if (i < 4) {
@@ -321,31 +460,45 @@ void DatePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) tr
         }
         const bool date = i >= 12;
         if (date) {
-            item->date = model.cell(i - 12);
-            const bool shown = i - 12 < model.cell_count() && !s->panel;
-            if (services_->components().set_branch_active(s->items[i], shown)) {
+            const bool shown = !s->panel;
+            if (services_->components().set_branch_active(items[i], shown)) {
                 services_->mark_scene_structure_dirty();
             }
-            item->text.set(
-                item->date ? format_date(*item->date,
-                                         s->mode == DatePickerMode::Month                                       ? "MMM"
-                                         : s->mode == DatePickerMode::Quarter                                   ? "[Q]Q"
-                                         : s->mode == DatePickerMode::Year || s->mode == DatePickerMode::Decade ? "YYYY"
-                                                                                                                : "D",
-                                         s->locale)
-                           : String{});
+            if (!publish(item->text,
+                         item->date ? format_date(*item->date,
+                                                  s->mode == DatePickerMode::Month     ? "MMM"
+                                                  : s->mode == DatePickerMode::Quarter ? "[Q]Q"
+                                                  : s->mode == DatePickerMode::Year || s->mode == DatePickerMode::Decade
+                                                      ? "YYYY"
+                                                      : "D",
+                                                  s->locale)
+                                    : String{})) {
+                return;
+            }
+            item = item_for(items[i]);
+            if (!item) {
+                return;
+            }
         }
         if (i >= 5 && i < 12) {
-            item->text.set(s->locale.weekdays[(i - 5 + s->locale.first_day) % 7]);
+            if (!publish(item->text, s->locale.weekdays[(i - 5 + s->locale.first_day) % 7])) {
+                return;
+            }
+            item = item_for(items[i]);
+            if (!item) {
+                return;
+            }
             if (services_->components().set_branch_active(
                     s->items[i], (s->mode == DatePickerMode::Date || s->mode == DatePickerMode::Week) && !s->panel)) {
                 services_->mark_scene_structure_dirty();
             }
         }
         const bool enabled = date && item->date && model.eligible(*item->date);
-        s = services_->components().state<DateState>(id);
-        item = services_->components().state<DateItem>(s ? s->items[i] : runtime::ComponentId{});
-        if (!s || !item) {
+        if (!live()) {
+            return;
+        }
+        item = item_for(items[i]);
+        if (!item) {
             return;
         }
         bool navigable = i < 4;
@@ -355,24 +508,35 @@ void DatePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) tr
         }
         services_->interactions().set_eligible(item->interaction,
                                                visible && (enabled || ((!s->header) && (navigable || i == 4))));
-        const bool is_selected = date && selected(*s, item->date);
-        item->info.set({item->date, s->mode, is_selected, !enabled, s->range_endpoint});
-        s = services_->components().state<DateState>(id);
-        if (!s) {
+        if (!live()) {
             return;
         }
-        item = services_->components().state<DateItem>(s->items[i]);
+        item = item_for(items[i]);
+        if (!item) {
+            return;
+        }
+        const bool is_selected = date && selected(*s, item->date);
+        if (!publish(item->info, DatePickerCellInfo{item->date, s->mode, is_selected, !enabled, s->range_endpoint})) {
+            return;
+        }
+        item = item_for(items[i]);
         if (!item) {
             return;
         }
         const bool muted = date && item->date && item->date->month() != s->model.panel().month();
-        item->color.set(foreground((date && !enabled) || (i < 4 && !navigable) ? t.colors.disabled
-                                   : is_selected                               ? t.colors.selected_text
-                                   : muted                                     ? t.colors.muted
-                                                                               : t.colors.text));
-        item->font.set({t.metrics.font_family, 400, false, t.metrics.font_size, t.metrics.line_height});
+        if (!publish(item->color, foreground((date && !enabled) || (i < 4 && !navigable) ? t.colors.disabled
+                                             : is_selected                               ? t.colors.selected_text
+                                             : muted                                     ? t.colors.muted
+                                                                                         : t.colors.text))) {
+            return;
+        }
+        item = item_for(items[i]);
+        if (!item || !publish(item->font, runtime::SemanticTypography{t.metrics.font_family, 400, false,
+                                                                      t.metrics.font_size, t.metrics.line_height})) {
+            return;
+        }
     }
-    if (geometry || changed) {
+    if (geometry || changed || s->cells_pending) {
         s->needs_layout = true;
         services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     } else {
@@ -401,6 +565,7 @@ void DatePickerComponentHost::request_open(runtime::ComponentId id, bool open, b
         return;
     }
     const bool changed = s->open != open;
+    const auto edit_session = s->edit_session;
     const auto callback = s->on_open;
     const auto input = s->input_hit;
     if (!s->controlled_open) {
@@ -408,19 +573,36 @@ void DatePickerComponentHost::request_open(runtime::ComponentId id, bool open, b
     }
     if (!open) {
         s->pending_date.reset();
+        s->pending_semantics = s->accepted_semantics;
         s->pending_multiple = s->accepted_multiple;
-        s->pending_time.set(s->accepted_time ? s->accepted_time->time : TimeOfDay{});
-        s->dirty_draft = false;
-        s->display.set(display(*s, s->model.value()));
+        const auto pending_time = s->pending_time;
+        pending_time.set(s->accepted_time ? s->accepted_time->time : TimeOfDay{});
+        s = services_->components().state<DateState>(id);
+        if (!s) {
+            return;
+        }
+        if (s->edit_session == edit_session && s->submitting != edit_session) {
+            s->dirty_draft = false;
+            s->edit_format.reset();
+            const auto display_signal = s->display;
+            display_signal.set(display(*s, s->model.value()));
+        }
+    }
+    s = services_->components().state<DateState>(id);
+    if (!s) {
+        return;
     }
     if (open) {
         s->suppressed = false;
     }
     refresh(id);
+    const auto focus_before_callback = services_->focus().state().focused;
     if (changed && callback) {
         callback(open);
     }
-    if (restore && services_->components().contains(id) && services_->interactions().component_active(id)) {
+    s = services_->components().state<DateState>(id);
+    if (restore && s && s->edit_session == edit_session && services_->interactions().component_active(id) &&
+        services_->focus().state().focused == focus_before_callback) {
         services_->focus().defer_focus(input, input::FocusModality::keyboard);
     }
 } catch (...) {
@@ -469,24 +651,61 @@ void DatePickerComponentHost::confirm(runtime::ComponentId id) try {
     throw;
 }
 
-void DatePickerComponentHost::choose(runtime::ComponentId id, DatePickerValue value, bool close, bool confirmed) try {
+PickerRequestDisposition DatePickerComponentHost::choose(runtime::ComponentId id, DatePickerValue value, bool close,
+                                                         bool confirmed, bool from_text, const PickerCandidate& source,
+                                                         TimePickerValue explicit_time) try {
     auto* s = services_->components().state<DateState>(id);
     if (!s || s->disabled || !active_ || !services_->interactions().component_active(id)) {
-        return;
+        return PickerRequestDisposition::Superseded;
     }
     const auto* input = services_->interactions().find(s->input_hit);
     if (!input || !input->eligible || !services_->interactions().component_active(s->input)) {
-        return;
+        return PickerRequestDisposition::Rejected;
     }
+    const auto session = s->edit_session;
+    if (s->submitting == session || !source.active()) {
+        return PickerRequestDisposition::Superseded;
+    }
+    const auto operation_revision = s->revision;
+    const auto editor_id = s->editor;
+    const bool composing = services_->input_runtime()->editors().require(editor_id).composition().active;
+    const auto current = [&] {
+        s = services_->components().state<DateState>(id);
+        const auto* editor = services_->input_runtime()->editors().find(editor_id);
+        return s && services_->components().scope(id).active() && s->revision == operation_revision &&
+               s->edit_session == session && source.active() && !s->disabled && editor &&
+               (composing || !editor->composition().active);
+    };
     auto model = s->model;
+    model.owner_guard(current);
+    const bool browsing = !from_text && !source.semantics.date && !confirmed && value && s->mode != s->picker &&
+                          !(s->picker == DatePickerMode::Week && s->mode == DatePickerMode::Date);
+    PickerCandidateSemantics semantics = source.semantics;
+    if (from_text) {
+        const auto& format = s->edit_format ? *s->edit_format : s->formatting;
+        model.view(format.picker, format.locale);
+        semantics = {{DateValueSemantics{format.picker, format.locale.first_day}},
+                     s->show_time ? std::optional{format.time_precision} : std::nullopt};
+    } else {
+        if (confirmed && (s->pending_date || s->show_time) && !semantics.date) {
+            semantics.date = s->pending_semantics.date;
+        }
+        if (!semantics.date) {
+            semantics.date = DateValueSemantics{s->picker, s->locale.first_day};
+        }
+        auto locale = s->locale;
+        locale.first_day = semantics.date->first_day;
+        if (!browsing) {
+            model.view(semantics.date->mode, std::move(locale));
+        }
+    }
     if (value && !(s->multiple && confirmed) && !model.eligible(*value)) {
-        return;
+        return current() ? PickerRequestDisposition::Rejected : PickerRequestDisposition::Superseded;
     }
-    s = services_->components().state<DateState>(id);
-    if (!s) {
-        return;
+    if (!current()) {
+        return PickerRequestDisposition::Superseded;
     }
-    if (value && s->mode != s->picker && !(s->picker == DatePickerMode::Week && s->mode == DatePickerMode::Date)) {
+    if (browsing) {
         const auto mode = s->mode == DatePickerMode::Decade ? DatePickerMode::Year
                           : s->mode == DatePickerMode::Year ? DatePickerMode::Month
                                                             : DatePickerMode::Date;
@@ -502,12 +721,10 @@ void DatePickerComponentHost::choose(runtime::ComponentId id, DatePickerValue va
         if (callback) {
             callback(*value, mode);
         }
-        return;
+        return PickerRequestDisposition::Consumed;
     }
-    if (value) {
-        auto normalize = model;
-        normalize.view(s->picker, s->locale);
-        value = normalize.normalized(*value);
+    if (value && !source.semantics.date && !(confirmed && (s->pending_date || s->show_time))) {
+        value = model.normalized(*value);
     }
     if (s->multiple && !value) {
         s->pending_multiple.clear();
@@ -528,14 +745,8 @@ void DatePickerComponentHost::choose(runtime::ComponentId id, DatePickerValue va
         }
         if (s->need_confirm && value) {
             refresh(id);
-            return;
+            return PickerRequestDisposition::Consumed;
         }
-    }
-    if (s->need_confirm && !confirmed && value) {
-        s->pending_date = value;
-        s->time_date.set(value);
-        refresh(id);
-        return;
     }
     if ((s->multiple || s->show_time) && !s->need_confirm && value && !confirmed) {
         close = false;
@@ -544,12 +755,11 @@ void DatePickerComponentHost::choose(runtime::ComponentId id, DatePickerValue va
         const auto pending = s->pending_multiple;
         for (const auto& date : pending) {
             if (!model.eligible(date)) {
-                return;
+                return current() ? PickerRequestDisposition::Rejected : PickerRequestDisposition::Superseded;
             }
         }
-        s = services_->components().state<DateState>(id);
-        if (!s) {
-            return;
+        if (!current()) {
+            return PickerRequestDisposition::Superseded;
         }
     }
     const auto before = s->model.value();
@@ -558,46 +768,61 @@ void DatePickerComponentHost::choose(runtime::ComponentId id, DatePickerValue va
     const auto multi = s->pending_multiple;
     DatePickerDateTimeValue date_time;
     if (s->show_time && value) {
-        const auto pending = s->pending_time.get();
+        const auto pending = explicit_time ? explicit_time : s->pending_time.get();
         if (!pending) {
-            return;
+            return PickerRequestDisposition::Rejected;
         }
         const auto time = *pending;
         const auto rules = s->time_rules;
         const auto precision = s->time_precision;
-        TimePickerModel time_model{read_prop(rules), read_prop(precision), {}, true};
-        if (!time_model.allowed(time)) {
-            return;
+        if (!semantics.time) {
+            semantics.time = s->pending_semantics.time;
         }
-        s = services_->components().state<DateState>(id);
-        if (!s) {
-            return;
+        const auto parse_precision = semantics.time.value_or(read_prop(precision));
+        semantics.time = parse_precision;
+        TimePickerModel time_model{read_prop(rules), parse_precision, {}, true};
+        time_model.owner_guard(current);
+        if (!time_model.allowed(time)) {
+            return current() ? PickerRequestDisposition::Rejected : PickerRequestDisposition::Superseded;
+        }
+        if (!current()) {
+            return PickerRequestDisposition::Superseded;
         }
         const auto disabled = s->disabled_time;
         if (disabled && disabled(*value, time)) {
-            return;
+            return current() ? PickerRequestDisposition::Rejected : PickerRequestDisposition::Superseded;
         }
-        s = services_->components().state<DateState>(id);
-        if (!s) {
-            return;
+        if (!current()) {
+            return PickerRequestDisposition::Superseded;
         }
         date_time = CivilDateTime{*value, time};
     }
+    if (s->need_confirm && !confirmed && value) {
+        s->pending_date = value;
+        s->pending_semantics = semantics;
+        const auto date_source = s->time_date;
+        const auto time_source = s->pending_time;
+        date_source.set({value, semantics.date});
+        if (!current()) {
+            return PickerRequestDisposition::Superseded;
+        }
+        if (date_time) {
+            time_source.set(date_time->time);
+        }
+        if (!current()) {
+            return PickerRequestDisposition::Superseded;
+        }
+        refresh(id);
+        return PickerRequestDisposition::Consumed;
+    }
     const auto intent = model.request(s->multiple ? DatePickerValue{} : value);
-    s = services_->components().state<DateState>(id);
-    if (!intent || !s) {
-        return;
+    if (!current() || !intent) {
+        return current() ? PickerRequestDisposition::Rejected : PickerRequestDisposition::Superseded;
     }
     if (s->panel_authority) {
         model.panel_date(*s->panel_authority);
     }
-    s->model = std::move(model);
-    if (!s->controlled_multiple) {
-        s->accepted_multiple = multi;
-    }
-    if (!s->controlled_time) {
-        s->accepted_time = date_time;
-    }
+    model.view(s->mode, s->locale);
     const auto callback = s->on_change;
     const auto request = s->on_request;
     const auto time_request = s->on_time_request;
@@ -610,20 +835,55 @@ void DatePickerComponentHost::choose(runtime::ComponentId id, DatePickerValue va
     const auto callback_time_ok = s->on_time_ok;
     const bool multiple = s->multiple;
     const bool time = s->show_time;
+    const auto same_session = [this, id, session, source, editor_id, composing] {
+        const auto* live = services_->components().state<DateState>(id);
+        const auto* editor = services_->input_runtime()->editors().find(editor_id);
+        return live && !live->disabled && services_->components().scope(id).active() && live->edit_session == session &&
+               source.active() && editor && (composing || !editor->composition().active);
+    };
+    if (request || time_request) {
+        s->submitting = session;
+        const PickerCandidate candidate{value ? semantics : PickerCandidateSemantics{}, same_session};
+        const auto result = time && time_request ? time_request(date_time, candidate) : request(value, candidate);
+        s = services_->components().state<DateState>(id);
+        if (s && s->submitting == session) {
+            s->submitting.reset();
+        }
+        if (result != PickerRequestDisposition::Consumed || !same_session()) {
+            return result == PickerRequestDisposition::Rejected ? result : PickerRequestDisposition::Superseded;
+        }
+    } else {
+        model.owner_guard(
+            [this, id] { return services_->components().contains(id) && services_->components().scope(id).active(); });
+        s->model = std::move(model);
+        if (!s->controlled_multiple) {
+            s->accepted_multiple = multi;
+        }
+        if (!s->controlled_time) {
+            s->accepted_time = date_time;
+            s->accepted_semantics = value ? semantics : PickerCandidateSemantics{};
+        }
+    }
+    if (time && !s->controlled_time) {
+        const auto pending = s->pending_time;
+        pending.set(date_time ? date_time->time : TimeOfDay{});
+        if (!same_session()) {
+            return PickerRequestDisposition::Superseded;
+        }
+        s = services_->components().state<DateState>(id);
+    }
     s->pending_date.reset();
+    s->pending_semantics = s->accepted_semantics;
     s->dirty_draft = false;
+    s->edit_format.reset();
     s->display.set(display(*s, s->model.value()));
     refresh(id);
-    if (!services_->components().contains(id)) {
-        return;
+    s = services_->components().state<DateState>(id);
+    if (!s) {
+        return PickerRequestDisposition::Superseded;
     }
-    if (time && time_request) {
-        time_request(date_time);
-    } else if (!time && request) {
-        request(value);
-    }
-    if (!services_->components().contains(id)) {
-        return;
+    if (!same_session()) {
+        return PickerRequestDisposition::Superseded;
     }
     if (multiple) {
         if (before_multi != multi && callback_multi) {
@@ -631,63 +891,86 @@ void DatePickerComponentHost::choose(runtime::ComponentId id, DatePickerValue va
         }
     } else if (time) {
         if (before_time != date_time && callback_time) {
+            s->echo = DateState::Echo{value, date_time, semantics, session, true};
             callback_time(date_time);
         }
     } else if (before != *intent && callback) {
+        s->echo = DateState::Echo{value, {}, semantics, session, false};
         callback(*intent);
     }
-    if (close && services_->components().contains(id)) {
+    s = services_->components().state<DateState>(id);
+    if (s && s->echo && s->echo->session == session) {
+        s->echo.reset();
+    }
+    if (close && same_session() && !active_edit(*services_, *s)) {
         if (time && callback_time_ok) {
             callback_time_ok(date_time);
         } else if (!time && callback_ok) {
             callback_ok(value);
         }
     }
-    if (close && services_->components().contains(id)) {
+    s = services_->components().state<DateState>(id);
+    if (close && same_session() && !active_edit(*services_, *s)) {
         request_open(id, false, true);
     }
+    return PickerRequestDisposition::Consumed;
 } catch (...) {
 
     static_cast<void>(services_->retire_failed_component(id));
     throw;
 }
 
-void DatePickerComponentHost::commit(runtime::ComponentId id, bool blur) {
+PickerRequestDisposition DatePickerComponentHost::commit(runtime::ComponentId id, bool blur) {
     auto* s = services_->components().state<DateState>(id);
     if (!s) {
-        return;
+        return PickerRequestDisposition::Superseded;
     }
+    const auto session = s->edit_session;
+    if (s->submitting == session) {
+        return PickerRequestDisposition::Superseded;
+    }
+    const auto editor_id = s->editor;
     const bool composing = services_->input_runtime()->editors().require(s->editor).composition().active;
+    auto disposition = composing ? PickerRequestDisposition::Rejected : PickerRequestDisposition::Consumed;
     if (s->dirty_draft && !composing) {
         const auto draft = s->display.get();
+        const auto format = s->edit_format ? s->edit_format : std::make_shared<const DateInputFormat>(s->formatting);
         DatePickerValue value;
+        TimePickerValue time;
         if (s->show_time) {
-            const auto date_time = parse_date_time(draft.bytes(), datetime_pattern(*s), s->locale);
+            const auto date_time = parse_date_time(draft.bytes(), format->pattern.bytes(), format->locale);
             if (date_time) {
                 value = date_time->date;
-                s->pending_time.set(date_time->time);
+                time = date_time->time;
             }
         } else {
-            value = parse_date(draft.bytes(), pattern(*s), s->locale);
+            value = parse_date(draft.bytes(), format->pattern.bytes(), format->locale);
         }
         if (!value) {
-            for (const auto& format : s->input_formats) {
-                value = parse_date(draft.bytes(), format.bytes(), s->locale);
+            for (const auto& alternative : format->alternatives) {
+                value = parse_date(draft.bytes(), alternative.bytes(), format->locale);
                 if (value) {
                     break;
                 }
             }
         }
         if (draft.empty() || value) {
-            s->dirty_draft = false;
-            choose(id, value, !blur, !blur);
+            disposition = choose(id, value, !blur, !blur, true, {}, time);
+        } else {
+            disposition = PickerRequestDisposition::Rejected;
         }
     }
     s = services_->components().state<DateState>(id);
-    if (s && blur) {
+    if (s && blur && disposition == PickerRequestDisposition::Rejected && !s->on_request && !s->on_time_request) {
+        disposition = PickerRequestDisposition::Consumed;
+    }
+    if (disposition == PickerRequestDisposition::Consumed && s && blur && s->edit_session == session &&
+        s->editor == editor_id) {
         s->dirty_draft = false;
+        s->edit_format.reset();
         s->display.set(display(*s, s->model.value()));
     }
+    return disposition;
 }
 
 void DatePickerComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
@@ -716,17 +999,32 @@ void DatePickerComponentHost::update_theme(runtime::ComponentId id, bool geometr
     refresh(id, geometry);
 }
 
-void DatePickerComponentHost::mount_items(runtime::ComponentId id) {
+runtime::ComponentId DatePickerComponentHost::mount_item(runtime::ComponentId id, std::size_t i, DatePickerValue date,
+                                                         DatePickerMode mode,
+                                                         std::vector<runtime::ComponentId>* created) {
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     auto& s = *services.components().state<DateState>(id);
+    const auto revision = s.revision;
+    const auto model = s.model;
+    const auto renderer = s.cell_render;
+    const auto endpoint = s.range_endpoint;
+    const auto popup_hit = s.popup_hit;
+    const bool initial_selected = i >= 12 && selected(s, date);
     constexpr std::array navigation_icons{IconName::DoubleLeftOutlined, IconName::LeftOutlined, IconName::RightOutlined,
                                           IconName::DoubleRightOutlined};
     const std::array labels{u8"", u8"Su", u8"Mo", u8"Tu", u8"We", u8"Th", u8"Fr", u8"Sa"};
-    for (std::size_t i = 0; i < 54; ++i) {
+    {
         const auto child = build.mount_component<DateItem>();
+        if (created) {
+            created->push_back(child);
+        }
+        services.components().set_branch_active(child, false);
         auto& item = build.state<DateItem>(child);
         item.node = build.root(child);
+        item.date = date;
+        item.key_mode = mode;
+        item.empty_index = i >= 12 ? i - 12 : 0;
         if (i >= 4 && i < 12) {
             item.text.set(String::from_utf8(std::u8string_view{labels[i - 4]}).value());
         }
@@ -736,7 +1034,7 @@ void DatePickerComponentHost::mount_items(runtime::ComponentId id) {
         services.layout().set_layout(item.node, layout::BoxLayout{});
         services.nodes().require(item.node).clip_content = true;
         item.interaction =
-            services.interactions().create({child, item.node, s.popup_hit, false, false, {}, false, false});
+            services.interactions().create({child, item.node, popup_hit, false, false, {}, false, false});
         input::InteractionHandlers handlers;
         handlers.target = [this, id, child](input::PointerDispatchContext& event) {
             auto* s = services_->components().state<DateState>(id);
@@ -810,31 +1108,38 @@ void DatePickerComponentHost::mount_items(runtime::ComponentId id) {
                 services.layout().remove_layout(node);
             });
         if (i >= 12) {
-            const auto model = s.model;
-            const auto date = model.cell(i - 12);
-            const bool is_selected = selected(s, date);
             const bool eligible = date && model.eligible(*date);
-            if (!services.components().contains(id) || !services.components().contains(child)) {
-                throw std::runtime_error("DatePicker predicate retired its owner");
+            const auto* live = services.components().state<DateState>(id);
+            if (!live || live->revision != revision || !services.components().contains(child)) {
+                return child;
             }
-            item.info.set({date, s.mode, is_selected, !eligible, s.range_endpoint});
+            item.info.set({date, mode, initial_selected, !eligible, endpoint});
         }
+        const auto info = item.info;
+        const auto color = item.color;
+        const auto font = item.font;
+        const auto text = item.text;
+        const auto node = item.node;
         if (i < navigation_icons.size()) {
             build.mount_slot_with_semantic_text_style(
-                child, Content{[icon = navigation_icons[i]] { Icon(IconProps{}.name(icon)); }}, item.color, item.font);
-        } else if (i >= 12 && s.cell_render) {
-            const auto rich = s.cell_render(Prop<DatePickerCellInfo>{item.info});
-            if (!services.components().contains(id) || !services.components().contains(child)) {
-                throw std::runtime_error("DatePicker cell renderer retired its owner");
+                child, Content{[icon = navigation_icons[i]] { Icon(IconProps{}.name(icon)); }}, color, font);
+        } else if (i >= 12 && renderer) {
+            const auto rich = renderer(Prop<DatePickerCellInfo>{info});
+            const auto* live = services.components().state<DateState>(id);
+            if (!live || live->revision != revision || !services.components().contains(child)) {
+                return child;
             }
-            build.mount_slot_with_semantic_text_style(child, Content{SlotContentAccess::function(rich)}, item.color,
-                                                      item.font);
+            build.mount_slot_with_semantic_text_style(child, Content{SlotContentAccess::function(rich)}, color, font);
         } else {
-            build.mount_slot_with_semantic_text_style(
-                child, Content{[text = item.text] { Text(TextProps{}.content(text)); }}, item.color, item.font);
+            build.mount_slot_with_semantic_text_style(child, Content{[text] { Text(TextProps{}.content(text)); }},
+                                                      color, font);
+        }
+        const auto* live = services.components().state<DateState>(id);
+        if (!live || live->revision != revision || !services.components().contains(child)) {
+            return child;
         }
         services.layout().set_layout(
-            item.node,
+            node,
             layout::ComponentLayout{
                 [&services](layout::LayoutEngine& engine, runtime::NodeId node, layout::Constraints limits) {
                     runtime::Size size;
@@ -852,10 +1157,201 @@ void DatePickerComponentHost::mount_items(runtime::ComponentId id) {
                                                    rect.y + (rect.height - size.height) / 2, size.width, size.height});
                     }
                 }});
-        if (!services.components().contains(id) || !services.components().contains(child)) {
-            throw std::runtime_error("DatePicker cell content retired its owner");
+        if (auto* current = services.components().state<DateItem>(child)) {
+            current->ready = true;
         }
-        s.items.push_back(child);
+        return child;
+    }
+}
+
+void DatePickerComponentHost::mount_items(runtime::ComponentId id) {
+    const auto* state = services_->components().state<DateState>(id);
+    const auto model = state->model;
+    const auto mode = state->mode;
+    for (std::size_t i = 0; i < 12 + model.cell_count(); ++i) {
+        const auto child = mount_item(id, i, i >= 12 ? model.cell(i - 12) : DatePickerValue{}, mode);
+        auto* live = services_->components().state<DateState>(id);
+        if (!live || !services_->components().contains(child)) {
+            throw std::runtime_error("DatePicker initial grid retired its owner");
+        }
+        live->items.push_back(child);
+    }
+    auto* live = services_->components().state<DateState>(id);
+    live->published_count = model.cell_count();
+    live->published_mode = mode;
+    live->published_model = model;
+}
+
+void DatePickerComponentHost::reorder_items(runtime::ComponentId id) {
+    const auto* state = services_->components().state<DateState>(id);
+    if (!state) {
+        return;
+    }
+    const auto items = state->items;
+    const auto popup = state->popup;
+    const auto custom_header = state->custom_header;
+    auto anchor = state->popup_hit;
+    std::vector<std::vector<input::InteractionId>> blocks(items.size() - 12);
+    for (auto interaction : services_->interactions().declaration_order()) {
+        const auto* record = services_->interactions().find(interaction);
+        if (!record) {
+            continue;
+        }
+        for (auto ancestor = std::optional{record->component}; ancestor && *ancestor != popup;
+             ancestor = services_->components().parent(*ancestor)) {
+            const auto found = std::ranges::find(items, *ancestor);
+            if (found != items.end()) {
+                const auto index = static_cast<std::size_t>(found - items.begin());
+                if (index < 12) {
+                    anchor = interaction;
+                } else {
+                    blocks[index - 12].push_back(interaction);
+                }
+                break;
+            }
+            if (*ancestor == custom_header) {
+                anchor = interaction;
+                break;
+            }
+        }
+    }
+    std::vector<input::InteractionId> interactions;
+    for (const auto& block : blocks) {
+        interactions.insert(interactions.end(), block.begin(), block.end());
+    }
+    services_->interactions().reorder_after(anchor, interactions);
+    const auto children = services_->components().children(popup);
+    auto order = items;
+    for (auto child : children) {
+        if (std::ranges::find(order, child) == order.end()) {
+            order.push_back(child);
+        }
+    }
+    if (order != children) {
+        services_->components().reorder_children(popup, order);
+        services_->mark_scene_structure_dirty();
+    }
+}
+
+void DatePickerComponentHost::reconcile_items(runtime::ComponentId id) {
+    auto* state = services_->components().state<DateState>(id);
+    if (!state || state->updating_cells || !state->cells_pending) {
+        return;
+    }
+    const auto revision = state->revision;
+    auto model = state->model;
+    const auto mode = state->mode;
+    const auto popup = state->popup;
+    const auto context = services_->components().capture_context(popup);
+    const auto previous = state->items;
+    std::vector<runtime::ComponentId> next(previous.begin(), previous.begin() + 12);
+    std::vector<runtime::ComponentId> created;
+    std::vector<runtime::ComponentId> retired;
+    bool published = false;
+    state->updating_cells = true;
+    state->cells_pending = false;
+    const auto live = [&] {
+        state = services_->components().state<DateState>(id);
+        return state && services_->components().scope(id).active() && state->revision == revision;
+    };
+    const auto cancel = [&] {
+        for (auto child : created) {
+            static_cast<void>(services_->retire_failed_component(child));
+        }
+        if (auto* current = services_->components().state<DateState>(id)) {
+            current->updating_cells = false;
+            current->cells_pending = true;
+            current->needs_layout = true;
+            services_->request_frame();
+        }
+    };
+    const auto drain_retired = [&] {
+        std::exception_ptr failure;
+        for (auto child : retired) {
+            if (!services_->components().contains(child)) {
+                continue;
+            }
+            try {
+                services_->destroy(child);
+            } catch (...) {
+                static_cast<void>(services_->retire_failed_component(child));
+                if (!failure) {
+                    failure = std::current_exception();
+                }
+            }
+        }
+        retired.clear();
+        if (failure) {
+            std::rethrow_exception(failure);
+        }
+    };
+    try {
+        for (std::size_t i = 0; i < model.cell_count(); ++i) {
+            const auto date = model.cell(i);
+            const auto found = std::find_if(previous.begin() + 12, previous.end(), [&](auto child) {
+                const auto* item = services_->components().state<DateItem>(child);
+                return item && item->ready && item->key_mode == mode && item->date == date &&
+                       (date || item->empty_index == i);
+            });
+            runtime::ComponentId child;
+            if (found != previous.end()) {
+                child = *found;
+            } else {
+                services_->append_slot(popup, Content{[&] { child = mount_item(id, i + 12, date, mode, &created); }},
+                                       context);
+            }
+            if (!live()) {
+                cancel();
+                return;
+            }
+            const auto* item = services_->components().state<DateItem>(child);
+            if (!item || !item->ready) {
+                throw std::runtime_error("DatePicker factory retired its unpublished cell");
+            }
+            next.push_back(child);
+        }
+        if (!live()) {
+            cancel();
+            return;
+        }
+        for (auto child = previous.begin() + 12; child != previous.end(); ++child) {
+            if (std::ranges::find(next, *child) == next.end()) {
+                retired.push_back(*child);
+            }
+        }
+        // No user code in this publication. New cells now belong to the live
+        // view; cleanup after this point must never treat them as temporaries.
+        state->items = std::move(next);
+        state->published_count = model.cell_count();
+        state->published_mode = mode;
+        state->published_model = std::move(model);
+        published = true;
+        created.clear();
+        drain_retired();
+        state = services_->components().state<DateState>(id);
+        if (!state) {
+            return;
+        }
+        reorder_items(id);
+        state = services_->components().state<DateState>(id);
+        if (!state) {
+            return;
+        }
+        state->updating_cells = false;
+        refresh(id);
+    } catch (...) {
+        if (!published) {
+            for (auto child : created) {
+                static_cast<void>(services_->retire_failed_component(child));
+            }
+        }
+        // Published children retire with their owner. Old-only children are no
+        // longer in its view and must be drained even after a reentrant update.
+        for (auto child : retired) {
+            static_cast<void>(services_->retire_failed_component(child));
+        }
+        static_cast<void>(services_->retire_failed_component(id));
+        throw;
     }
 }
 
@@ -897,7 +1393,62 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
             throw std::invalid_argument("Invalid date-time preset");
         }
     }
-    const auto locale = read_prop(props.locale_);
+    const auto locale_source =
+        picker_locale_prop(props.locale_, runtime::require_component_build_context().config_scope());
+    const auto format_locale_source =
+        picker_format_locale_prop(props.locale_, runtime::require_component_build_context().config_scope());
+    const Prop<DateInputFormat> editor_format_source =
+        bind([format_locale_source, explicit_format = props.format_, selected = props.picker_,
+              alternatives = props.input_formats_, time = props.time_picker_] {
+            auto locale = read_prop(format_locale_source);
+            const auto explicit_pattern = read_prop(explicit_format);
+            const auto mode = read_prop(selected);
+            auto precision = TimePickerPrecision::Second;
+            bool twelve = false;
+            auto result = !explicit_pattern.empty()         ? explicit_pattern
+                          : mode == DatePickerMode::Week    ? String{u8"gggg-[W]ww"}
+                          : mode == DatePickerMode::Month   ? String{u8"YYYY-MM"}
+                          : mode == DatePickerMode::Quarter ? String{u8"YYYY-[Q]Q"}
+                          : mode == DatePickerMode::Year    ? String{u8"YYYY"}
+                                                            : locale.date_format;
+            if (time) {
+                bool combined = false;
+                if (!explicit_pattern.empty()) {
+                    try {
+                        static_cast<void>(split_date_time_format(explicit_pattern.bytes()));
+                        combined = true;
+                    } catch (const std::invalid_argument&) {
+                    }
+                }
+                if (!combined) {
+                    const auto time_format = read_prop(time->format_);
+                    precision = read_prop(time->precision_);
+                    twelve = read_prop(time->use_12_hours_);
+                    if (explicit_pattern.empty() && mode == DatePickerMode::Date && time_format.empty() &&
+                        precision == TimePickerPrecision::Second && !twelve) {
+                        result = locale.date_time_format;
+                    } else {
+                        result = String::from_utf8(
+                                     std::string{result.bytes()} + " " +
+                                     std::string{picker_time_pattern(precision, twelve, time_format, locale).bytes()})
+                                     .value();
+                    }
+                }
+                validate_date_time_format(result.bytes());
+            } else {
+                validate_date_format(result.bytes());
+            }
+            auto inputs = read_prop(alternatives);
+            for (const auto& input : inputs) {
+                validate_date_format(input.bytes());
+            }
+            if (time) {
+                precision = read_prop(time->precision_);
+                twelve = read_prop(time->use_12_hours_);
+            }
+            return DateInputFormat{std::move(locale), std::move(result), std::move(inputs), mode, precision, twelve};
+        });
+    const auto locale = read_prop(locale_source);
     locale.validate();
     const auto format = read_prop(props.format_);
     if (!format.empty()) {
@@ -940,8 +1491,7 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
     s.mode = props.mode_ ? read_prop(*props.mode_) : s.picker;
     s.locale = locale;
     s.range_endpoint = props.range_endpoint_;
-    s.format = format;
-    s.input_formats = read_prop(props.input_formats_);
+    s.formatting = read_prop(editor_format_source);
     s.model.view(s.mode, s.locale);
     s.controlled_mode = props.mode_.has_value();
     s.controlled_panel = props.controlled_panel_.has_value();
@@ -963,13 +1513,6 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
         s.time_reference = props.time_picker_->ref_.value_or(TimePickerRef{});
         s.time_rules = props.time_picker_->rules_;
         s.time_precision = props.time_picker_->precision_;
-        const auto tf = read_prop(props.time_picker_->format_);
-        const auto precision = read_prop(props.time_picker_->precision_);
-        s.time_format = !tf.empty() ? tf
-                                    : String::from_utf8(precision == TimePickerPrecision::Minute        ? "HH:mm"
-                                                        : precision == TimePickerPrecision::Millisecond ? "HH:mm:ss.SSS"
-                                                                                                        : "HH:mm:ss")
-                                          .value();
     }
     s.accepted_time = date_time;
     s.pending_time.set(date_time            ? date_time->time
@@ -1004,7 +1547,12 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                       FormPrivateEditorScope private_editor;
                       Input(InputProps{}
                                 .value(s.display)
-                                .placeholder(props.placeholder_)
+                                .placeholder(props.placeholder_.value_or(Prop<String>{
+                                    bind([locale_source, mode = props.picker_, endpoint = props.range_endpoint_,
+                                          time = props.time_picker_.has_value()] {
+                                        return picker_placeholder(read_prop(locale_source), read_prop(mode), endpoint,
+                                                                  time);
+                                    })}))
                                 .readOnly(bind([read_only = props.read_only_, multiple = props.multiple_] {
                                     return read_prop(read_only) || read_prop(multiple);
                                 }))
@@ -1016,6 +1564,11 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                                 .autoFocus(props.auto_focus_)
                                 .onChange([this, id](String text) {
                                     if (auto* s = services_->components().state<DateState>(id)) {
+                                        if (s->submitting == s->edit_session) {
+                                            s->edit_format.reset();
+                                        }
+                                        freeze_edit_format(*s);
+                                        ++s->edit_session;
                                         s->dirty_draft = true;
                                         s->display.set(std::move(text));
                                     }
@@ -1036,16 +1589,26 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                                         return;
                                     }
                                     const auto callback = s->on_blur;
+                                    const auto session = s->edit_session;
                                     const auto focused = services_->focus().state().focused;
                                     const auto* record = focused ? services_->interactions().find(*focused) : nullptr;
-                                    const bool internal = record && descendant(*services_, record->component, s->popup);
+                                    const auto range_owner = s->on_request || s->on_time_request
+                                                                 ? services_->components().parent(id)
+                                                                 : std::nullopt;
+                                    const bool internal =
+                                        record &&
+                                        (descendant(*services_, record->component, s->popup) ||
+                                         (range_owner && descendant(*services_, record->component, *range_owner)));
                                     const auto* input = services_->interactions().find(s->input_hit);
                                     const bool input_active = input && input->eligible &&
                                                               services_->interactions().component_active(s->input) &&
                                                               services_->focus().state().window_active;
-                                    commit(id, true);
-                                    if (!internal && input_active && services_->components().contains(id)) {
-                                        services_->components().state<DateState>(id)->closed_on_blur = true;
+                                    const auto disposition = commit(id, true);
+                                    s = services_->components().state<DateState>(id);
+                                    if (disposition == PickerRequestDisposition::Consumed && !internal &&
+                                        input_active && s && s->edit_session == session &&
+                                        services_->focus().state().focused == focused) {
+                                        s->closed_on_blur = true;
                                         request_open(id, false);
                                     }
                                     if (services_->components().contains(id) && callback) {
@@ -1078,12 +1641,23 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                               return;
                           }
                           current->model.reconcile(accepted);
+                          const auto session = ++current->edit_session;
                           current->dirty_draft = false;
+                          current->edit_format.reset();
                           current->pending_date.reset();
                           current->pending_multiple = current->accepted_multiple;
-                          current->pending_time.set(current->accepted_time ? current->accepted_time->time
-                                                                           : TimeOfDay{});
-                          current->display.set(display(*current, current->model.value()));
+                          const auto pending_time = current->pending_time;
+                          pending_time.set(current->accepted_time ? current->accepted_time->time : TimeOfDay{});
+                          current = services_->components().state<DateState>(id);
+                          if (!current || current->editor != editor || current->edit_session != session) {
+                              return;
+                          }
+                          const auto display_signal = current->display;
+                          display_signal.set(display(*current, current->model.value()));
+                          current = services_->components().state<DateState>(id);
+                          if (!current || current->editor != editor || current->edit_session != session) {
+                              return;
+                          }
                           const auto reset_time = capture_form_input(current->time_reference).second;
                           if (reset_time) {
                               reset_time();
@@ -1135,36 +1709,65 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                             }
                             if (props.time_picker_) {
                                 auto time = *props.time_picker_;
+                                if (!time.locale_ && props.locale_) {
+                                    time.locale(*props.locale_);
+                                }
                                 time.ref(s.time_reference);
                                 time.range_endpoint_ = props.range_endpoint_;
                                 const auto base = time.rules_;
-                                time.rules(bind([this, id, base] {
+                                time.rules(bind([this, id, base, min = props.min_, max = props.max_,
+                                                 disabled_date = props.disabled_date_, info = props.disabled_info_] {
                                     auto rules = read_prop(base);
+                                    DatePickerRules date_rules{read_prop(min), read_prop(max), read_prop(disabled_date),
+                                                               info};
                                     const auto* live = services_->components().state<DateState>(id);
                                     if (!live) {
                                         return rules;
                                     }
-                                    const auto date = live->time_date.get().value_or(live->model.active());
+                                    const auto staged = live->time_date.get();
+                                    const auto date = staged.first.value_or(live->model.active());
+                                    const auto semantics = staged.second.value_or(
+                                        DateValueSemantics{live->picker, live->locale.first_day});
+                                    auto date_model = live->model;
+                                    date_model.configure(std::move(date_rules));
                                     const auto disabled = live->disabled_time;
                                     const auto existing = rules.disabled;
-                                    rules.disabled = [date, disabled, existing](TimeOfDay value) {
-                                        return (existing && existing(value)) || (disabled && disabled(date, value));
+                                    rules.disabled = [date, semantics, date_model, disabled,
+                                                      existing](TimeOfDay value) {
+                                        return !date_model.eligible(date, semantics) || (existing && existing(value)) ||
+                                               (disabled && disabled(date, value));
                                     };
                                     return rules;
                                 }));
-                                time.value(s.pending_time).needConfirm(false).onChange([this, id](TimePickerValue v) {
-                                    if (auto* live = services_->components().state<DateState>(id)) {
-                                        live->pending_time.set(v);
-                                        live = services_->components().state<DateState>(id);
-                                        if (live && !live->need_confirm && v) {
-                                            const auto date =
-                                                live->pending_date ? live->pending_date : live->model.value();
-                                            if (date) {
-                                                choose(id, date, false, true);
-                                            }
-                                        }
+                                time.value(s.pending_time).needConfirm(false);
+                                time.on_request_ = [this, id](TimePickerValue v, const PickerCandidate& candidate) {
+                                    auto* live = services_->components().state<DateState>(id);
+                                    if (!live || live->disabled || !candidate.active()) {
+                                        return PickerRequestDisposition::Superseded;
                                     }
-                                });
+                                    const auto session = live->edit_session;
+                                    const auto current = [this, id, session, candidate] {
+                                        const auto* owner = services_->components().state<DateState>(id);
+                                        return owner && !owner->disabled && owner->edit_session == session &&
+                                               services_->components().scope(id).active() && candidate.active();
+                                    };
+                                    const auto date = live->pending_date ? live->pending_date : live->model.value();
+                                    auto semantics =
+                                        live->pending_date ? live->pending_semantics : live->accepted_semantics;
+                                    if (!semantics.date) {
+                                        semantics.date = DateValueSemantics{live->picker, live->locale.first_day};
+                                    }
+                                    semantics.time = candidate.semantics.time;
+                                    if (!live->need_confirm && date && v) {
+                                        return choose(id, date, false, true, false, PickerCandidate{semantics, current},
+                                                      v);
+                                    }
+                                    live->pending_semantics = semantics;
+                                    const auto pending = live->pending_time;
+                                    pending.set(v);
+                                    return current() ? PickerRequestDisposition::Consumed
+                                                     : PickerRequestDisposition::Superseded;
+                                };
                                 TimePicker(std::move(time));
                                 s.time_picker = services.time_picker().mounted().back();
                             }
@@ -1237,16 +1840,18 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                                                    throw;
                                                }
                                            }),
-                                       ButtonContent{[locale = props.locale_] {
-                                           Text(
-                                               TextProps{}.content(bind([locale] { return read_prop(locale).today; })));
+                                       ButtonContent{[locale = locale_source, time = props.time_picker_.has_value()] {
+                                           Text(TextProps{}.content(bind([locale, time] {
+                                               const auto value = read_prop(locale);
+                                               return time ? value.now : value.today;
+                                           })));
                                        }});
                             }
                             s.confirm_group = group(services);
                             build.mount_slot(
                                 s.confirm_group, Content{[&] {
                                     Button(ButtonProps{}.size(ControlSize::Small).onClick([this, id] { confirm(id); }),
-                                           ButtonContent{[locale = props.locale_] {
+                                           ButtonContent{[locale = locale_source] {
                                                Text(TextProps{}.content(
                                                    bind([locale] { return read_prop(locale).confirm; })));
                                            }});
@@ -1271,12 +1876,26 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
         connect_prop(scope, *props.value_, [this, id](DatePickerValue value) {
             if (auto* s = services_->components().state<DateState>(id)) {
                 if (s->model.value() != value) {
+                    const bool echoed =
+                        s->echo && !s->echo->date_time && s->echo->session == s->edit_session && s->echo->date == value;
                     s->model.reconcile(value);
                     if (s->panel_authority) {
                         s->model.panel_date(*s->panel_authority);
                     }
-                    s->dirty_draft = false;
-                    s->display.set(display(*s, value));
+                    if (s->submitting != s->edit_session) {
+                        if (!echoed && !s->on_request) {
+                            ++s->edit_session;
+                        }
+                        if (echoed) {
+                            s->accepted_semantics = s->echo->semantics;
+                        } else if (!s->on_request) {
+                            s->accepted_semantics = {};
+                        }
+                        s->pending_semantics = s->accepted_semantics;
+                        s->dirty_draft = false;
+                        s->edit_format.reset();
+                        s->display.set(display(*s, value));
+                    }
                     refresh(id);
                 }
             }
@@ -1290,10 +1909,15 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                 if (changed && open) {
                     s->suppressed = false;
                 }
-                if (!open) {
+                if (!open && s->submitting != s->edit_session) {
+                    if (!s->on_request && !s->on_time_request) {
+                        ++s->edit_session;
+                    }
                     s->pending_date.reset();
+                    s->pending_semantics = s->accepted_semantics;
                     s->pending_multiple = s->accepted_multiple;
                     s->dirty_draft = false;
+                    s->edit_format.reset();
                     const auto time = s->accepted_time ? s->accepted_time->time : TimeOfDay{};
                     picker_callback(*services_, id, [&] { s->pending_time.set(time); });
                     s = services_->components().state<DateState>(id);
@@ -1310,8 +1934,10 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
         if (auto* s = services_->components().state<DateState>(id)) {
             s->disabled = disabled;
             if (disabled) {
+                ++s->edit_session;
                 s->suppressed = true;
                 s->dirty_draft = false;
+                s->edit_format.reset();
                 s->display.set(display(*s, s->model.value()));
                 request_open(id, false);
             }
@@ -1411,38 +2037,23 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
             }
         });
     }
-    connect_prop(scope, props.locale_, [this, id](PickerLocale v) {
+    connect_prop(scope, locale_source, [this, id](PickerLocale v) {
         if (auto* s = services_->components().state<DateState>(id)) {
             s->model.view(s->mode, v);
             s->locale = std::move(v);
-            if (!s->dirty_draft) {
-                s->display.set(display(*s, s->model.value()));
-            }
             refresh(id);
         }
     });
-    connect_prop(scope, props.format_, [this, id](String v) {
-        if (!v.empty()) {
-            if (v.bytes().find('H') != std::string_view::npos || v.bytes().find('h') != std::string_view::npos) {
-                validate_date_time_format(v.bytes());
-            } else {
-                validate_date_format(v.bytes());
-            }
-        }
+    connect_prop(scope, editor_format_source, [this, id](DateInputFormat v) {
         if (auto* s = services_->components().state<DateState>(id)) {
-            s->format = std::move(v);
-            if (!s->dirty_draft) {
+            if (active_edit(*services_, *s)) {
+                freeze_edit_format(*s);
+            }
+            s->formatting = std::move(v);
+            if (!s->edit_format) {
                 s->display.set(display(*s, s->model.value()));
             }
             refresh(id);
-        }
-    });
-    connect_prop(scope, props.input_formats_, [this, id](std::vector<String> v) {
-        for (const auto& f : v) {
-            validate_date_format(f.bytes());
-        }
-        if (auto* s = services_->components().state<DateState>(id)) {
-            s->input_formats = std::move(v);
         }
     });
     connect_prop(scope, props.direction_, [this, id](TextDirection v) {
@@ -1470,18 +2081,48 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
     if (props.date_time_value_) {
         connect_prop(scope, *props.date_time_value_, [this, id](DatePickerDateTimeValue v) {
             if (auto* s = services_->components().state<DateState>(id)) {
+                const bool submitting = s->submitting == s->edit_session;
+                const bool echoed =
+                    s->echo && s->echo->date_time && s->echo->session == s->edit_session && s->echo->time == v;
+                const bool independent = !submitting && !echoed && !s->on_time_request;
+                if (echoed) {
+                    s->accepted_semantics = s->echo->semantics;
+                    s->pending_semantics = s->accepted_semantics;
+                }
+                if (!submitting && !echoed) {
+                    if (!s->on_time_request) {
+                        ++s->edit_session;
+                        s->accepted_semantics = {};
+                    }
+                    s->dirty_draft = false;
+                    s->edit_format.reset();
+                    s->pending_semantics = s->accepted_semantics;
+                }
+                const auto session = s->edit_session;
                 s->accepted_time = v;
                 picker_callback(*services_, id, [&] { s->pending_time.set(v ? v->time : TimeOfDay{}); });
                 s = services_->components().state<DateState>(id);
-                if (!s) {
+                if (!s || s->edit_session != session) {
                     return;
+                }
+                if (independent) {
+                    const auto reset = capture_form_input(s->time_reference).second;
+                    if (reset) {
+                        reset();
+                    }
+                    s = services_->components().state<DateState>(id);
+                    if (!s || s->edit_session != session) {
+                        return;
+                    }
                 }
                 s->pending_date.reset();
                 s->model.reconcile(v ? DatePickerValue{v->date} : DatePickerValue{});
                 if (s->panel_authority) {
                     s->model.panel_date(*s->panel_authority);
                 }
-                s->display.set(display(*s, s->model.value()));
+                if (!submitting) {
+                    s->display.set(display(*s, s->model.value()));
+                }
                 refresh(id);
             }
         });
@@ -1500,6 +2141,8 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
 
 void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
                                           const std::optional<DatePickerFooter>& footer) {
+    const auto locale_source =
+        picker_locale_prop(props.picker_.locale_, runtime::require_component_build_context().config_scope());
     if ((props.value_ && props.default_value_) || (props.open_ && props.default_open_)) {
         throw std::invalid_argument("DateRangePicker controlled/default conflict");
     }
@@ -1522,17 +2165,23 @@ void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
     }
     state->disabled = [weak = std::weak_ptr{state}, custom = props.disabled_date_, min = props.picker_.min_,
                        max = props.picker_.max_, disabled = props.picker_.disabled_date_,
-                       info = props.picker_.disabled_info_, type = props.picker_.picker_,
-                       locale = props.picker_.locale_](CivilDate date, PickerEndpoint endpoint,
-                                                       const DatePickerRangeValue& range) {
+                       info = props.picker_.disabled_info_, type = props.picker_.picker_, locale = locale_source](
+                          CivilDate date, PickerEndpoint endpoint, const DatePickerRangeValue& range,
+                          const PickerCandidateSemantics& semantics) {
+        const auto owner = weak.lock();
+        if (!owner || !owner->alive) {
+            return true;
+        }
+        const auto ticket = owner->revision;
         DatePickerRules rules{read_prop(min), read_prop(max), read_prop(disabled), info, range.start, read_prop(type)};
         DatePickerModel model{{}, true, date, std::move(rules)};
-        model.owner_guard([weak] {
+        model.owner_guard([weak, ticket] {
             const auto live = weak.lock();
-            return live && live->alive;
+            return live && live->current(ticket);
         });
-        model.view(read_prop(type), read_prop(locale));
-        return !model.eligible(date) || (custom && custom(date, endpoint, range));
+        const auto effective =
+            semantics.date.value_or(DateValueSemantics{read_prop(type), read_prop(locale).first_day});
+        return !model.eligible(date, effective) || !owner->current(ticket) || (custom && custom(date, endpoint, range));
     };
     state->on_change = props.on_change_;
     state->on_calendar = props.on_calendar_;
@@ -1558,16 +2207,22 @@ void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
         static_cast<void>(services_->retire_failed_component(owner));
     };
     if (props.value_) {
-        connect_prop(build.scope(owner), *props.value_, [state](DatePickerRangeValue v) {
-            state->accepted.set(v);
-            state->pending.set(v);
-        });
+        connect_prop(build.scope(owner), *props.value_,
+                     [state](DatePickerRangeValue v) { state->reconcile_authority(v); });
     }
     if (props.open_) {
         connect_prop(build.scope(owner), *props.open_, [state](bool v) {
+            state->invalidate();
+            const auto ticket = state->revision;
             state->open.set(v);
+            if (!state->current(ticket)) {
+                return;
+            }
             if (!v) {
-                state->pending.set(state->accepted.get());
+                const bool restored = state->restore_pending();
+                if (restored && state->end_editors) {
+                    state->end_editors();
+                }
             }
         });
     }
@@ -1575,9 +2230,29 @@ void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
         connect_prop(build.scope(owner), *props.endpoint_, [state](PickerEndpoint v) { state->reconcile_endpoint(v); });
     }
     connect_prop(build.scope(owner), props.policy_, [state](PickerRangePolicy v) {
+        const bool disabling =
+            (!state->policy.disabled[0] && v.disabled[0]) || (!state->policy.disabled[1] && v.disabled[1]);
         state->policy = v;
+        state->invalidate();
+        if (disabling) {
+            if (!state->restore_pending()) {
+                return;
+            }
+            const auto ticket = state->revision;
+            if (state->end_editors) {
+                state->end_editors();
+            }
+            if (!state->current(ticket)) {
+                return;
+            }
+        }
         state->policy_source.set(v);
     });
+    connect_range_business(build.scope(owner), state, props.disabled_);
+    connect_range_business(build.scope(owner), state, props.picker_.disabled_);
+    connect_range_business(build.scope(owner), state, props.picker_.min_);
+    connect_range_business(build.scope(owner), state, props.picker_.max_);
+    connect_range_business(build.scope(owner), state, props.picker_.disabled_date_);
     build.mount_slot(
         owner, Content{[&, state] {
             for (auto endpoint : {PickerEndpoint::Start, PickerEndpoint::End}) {
@@ -1586,16 +2261,18 @@ void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
                 picker.autoFocus(picker.auto_focus_ && state->endpoint.get() == endpoint);
                 const auto base = picker.disabled_date_;
                 const auto info = picker.disabled_info_;
-                const auto type = picker.picker_;
-                picker.disabled_info_ = {};
-                picker.disabledDate(bind([state, base, info, type, endpoint] {
-                    const auto draft = state->pending.get();
+                picker.disabled_info_ = [state, info, endpoint](CivilDate v, const DatePickerDisabledInfo& effective) {
+                    auto context = effective;
+                    context.from = endpoint == PickerEndpoint::Start ? DatePickerValue{v} : state->pending.get().start;
+                    return !state->alive || (info && info(v, context));
+                };
+                picker.disabledDate(bind([state, base, custom = props.disabled_date_, endpoint] {
+                    static_cast<void>(state->pending.get());
                     const auto original = read_prop(base);
-                    const auto picker_mode = read_prop(type);
-                    return DisabledDate{[state, original, info, endpoint, draft, picker_mode](CivilDate v) {
-                        return (original && original(v)) || !state->alive ||
-                               (info && info(v, {picker_mode, draft.start})) || !state->alive ||
-                               (state->disabled && state->disabled(v, endpoint, draft));
+                    return DisabledDate{[state, original, custom, endpoint](CivilDate v) {
+                        auto next = state->pending.get();
+                        (endpoint == PickerEndpoint::Start ? next.start : next.end) = v;
+                        return (original && original(v)) || !state->alive || (custom && custom(v, endpoint, next));
                     }};
                 }));
                 picker.default_value_.reset();
@@ -1614,36 +2291,54 @@ void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
                 picker.on_ok_ = {};
                 picker.on_date_time_ = {};
                 picker.on_time_ok_ = {};
-                picker.on_request_ = [state, endpoint](DatePickerValue v) {
-                    state->choose(endpoint, v);
+                picker.on_request_ = [this, state, endpoint](DatePickerValue v, const PickerCandidate& candidate) {
+                    return state->choose(endpoint, v, range_candidate(*services_, state, candidate));
                 };
-                picker.onOpenChange([state, endpoint](bool v) {
+                picker.onOpenChange([this, state, endpoint](bool v) {
+                    const auto candidate = range_candidate(*services_, state);
                     if (v) {
-                        state->activate(endpoint);
-                        state->request_open(true);
+                        if (state->activate(endpoint, candidate) == PickerRequestDisposition::Consumed) {
+                            state->request_open(true, candidate);
+                        }
                     } else if (state->alive && state->open.get() && state->endpoint.get() == endpoint) {
-                        state->request_open(false);
+                        state->request_open(false, candidate);
                     }
                 });
                 DatePicker(
-                    std::move(picker), DatePickerFooter{[state, footer, presets = props.presets_] {
+                    std::move(picker), DatePickerFooter{[this, state, footer, presets = props.presets_, locale_source] {
                         if (footer) {
                             SlotContentAccess::function (*footer)();
                         }
                         for (const auto& preset : presets) {
-                            Button(ButtonProps{}.size(ControlSize::Small).onClick([state, preset] {
-                                state->preset(preset);
+                            Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state, preset] {
+                                state->preset(preset, range_candidate(*services_, state));
                             }),
                                    ButtonContent{[label = preset.label] { Text(label); }});
                         }
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] { state->clear(); }),
-                               ButtonContent{[] { Text(u8"Clear range"); }});
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] {
-                            static_cast<void>(state->commit());
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            state->clear(range_candidate(*services_, state));
                         }),
-                               ButtonContent{[] { Text(u8"Confirm range"); }});
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] { state->request_open(false); }),
-                               ButtonContent{[] { Text(u8"Cancel range"); }});
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).clear_range; })));
+                               }});
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            static_cast<void>(state->commit(range_candidate(*services_, state)));
+                        }),
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).confirm_range; })));
+                               }});
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            const auto result = state->request_open(false, range_candidate(*services_, state));
+                            if (result == PickerRequestDisposition::Consumed && state->end_editors) {
+                                state->end_editors();
+                            }
+                        }),
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).cancel_range; })));
+                               }});
                     }});
                 const auto child = mounted_.back();
                 state->owners.push_back(child);
@@ -1651,13 +2346,50 @@ void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
                 state->references.push_back(services_->components().state<DateState>(child)->reference);
             }
         }});
-    connect_range_reset(*services_, state, [this, state] {
-        const auto accepted = state->accepted.get();
+    state->sync_semantics = [this, weak = std::weak_ptr{state}](bool publish) {
+        const auto state = weak.lock();
+        if (!state || !state->alive) {
+            return;
+        }
+        const auto ticket = state->revision;
         for (std::size_t i = 0; i < state->owners.size(); ++i) {
+            if (!state->current(ticket)) {
+                return;
+            }
+            if (auto* live = services_->components().state<DateState>(state->owners[i])) {
+                live->accepted_semantics = state->pending_semantics[i];
+                if (!live->pending_date) {
+                    live->pending_semantics = live->accepted_semantics;
+                }
+                if (publish && live->show_time) {
+                    const auto date = live->pending_date    ? live->pending_date
+                                      : live->accepted_time ? DatePickerValue{live->accepted_time->date}
+                                                            : DatePickerValue{live->model.active()};
+                    const auto source = live->time_date;
+                    source.set({date, live->pending_semantics.date});
+                }
+            }
+        }
+    };
+    connect_range_reset(*services_, state, [this, weak = std::weak_ptr{state}] {
+        const auto state = weak.lock();
+        if (!state || !state->alive) {
+            return;
+        }
+        const auto accepted = state->accepted.get();
+        const auto ticket = state->revision;
+        for (std::size_t i = 0; i < state->owners.size(); ++i) {
+            if (!state->current(ticket)) {
+                return;
+            }
             if (auto* live = services_->components().state<DateState>(state->owners[i])) {
                 live->model.reconcile(i == 0 ? accepted.start : accepted.end);
+                ++live->edit_session;
+                live->accepted_semantics = state->accepted_semantics[i];
+                live->pending_semantics = live->accepted_semantics;
                 live->pending_date.reset();
                 live->dirty_draft = false;
+                live->edit_format.reset();
                 live->display.set(display(*live, live->model.value()));
                 refresh(state->owners[i]);
             }
@@ -1667,6 +2399,8 @@ void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
 
 void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
                                           const std::optional<DatePickerFooter>& footer) {
+    const auto locale_source =
+        picker_locale_prop(props.picker_.locale_, runtime::require_component_build_context().config_scope());
     if ((props.value_ && props.default_value_) || (props.open_ && props.default_open_)) {
         throw std::invalid_argument("DateRangePicker controlled/default conflict");
     }
@@ -1686,10 +2420,15 @@ void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
                                   : (state->policy.disabled[0] ? PickerEndpoint::End : PickerEndpoint::Start));
     state->disabled = [weak = std::weak_ptr{state}, custom = props.disabled_date_, min = props.picker_.min_,
                        max = props.picker_.max_, disabled = props.picker_.disabled_date_,
-                       info = props.picker_.disabled_info_, type = props.picker_.picker_,
-                       locale = props.picker_.locale_, time = props.picker_.time_picker_,
-                       disabled_time = props.picker_.disabled_time_](CivilDateTime date, PickerEndpoint endpoint,
-                                                                     const DateTimePickerRangeValue& range) {
+                       info = props.picker_.disabled_info_, type = props.picker_.picker_, locale = locale_source,
+                       time = props.picker_.time_picker_, disabled_time = props.picker_.disabled_time_](
+                          CivilDateTime date, PickerEndpoint endpoint, const DateTimePickerRangeValue& range,
+                          const PickerCandidateSemantics& semantics) {
+        const auto owner = weak.lock();
+        if (!owner || !owner->alive) {
+            return true;
+        }
+        const auto ticket = owner->revision;
         DatePickerRules rules{read_prop(min),
                               read_prop(max),
                               read_prop(disabled),
@@ -1697,21 +2436,23 @@ void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
                               range.start ? DatePickerValue{range.start->date} : DatePickerValue{},
                               read_prop(type)};
         DatePickerModel model{{}, true, date.date, std::move(rules)};
-        model.owner_guard([weak] {
+        model.owner_guard([weak, ticket] {
             const auto live = weak.lock();
-            return live && live->alive;
+            return live && live->current(ticket);
         });
-        model.view(read_prop(type), read_prop(locale));
+        const auto effective =
+            semantics.date.value_or(DateValueSemantics{read_prop(type), read_prop(locale).first_day});
         TimePickerModel tm{time ? read_prop(time->rules_) : TimePickerRules{},
-                           time ? read_prop(time->precision_) : TimePickerPrecision::Second,
+                           semantics.time.value_or(time ? read_prop(time->precision_) : TimePickerPrecision::Second),
                            {},
                            true};
-        tm.owner_guard([weak] {
+        tm.owner_guard([weak, ticket] {
             const auto live = weak.lock();
-            return live && live->alive;
+            return live && live->current(ticket);
         });
-        return !model.eligible(date.date) || !tm.allowed(date.time) ||
-               (disabled_time && disabled_time(date.date, date.time)) || (custom && custom(date, endpoint, range));
+        return !model.eligible(date.date, effective) || !tm.allowed(date.time) || !owner->current(ticket) ||
+               (disabled_time && disabled_time(date.date, date.time)) || !owner->current(ticket) ||
+               (custom && custom(date, endpoint, range));
     };
     state->on_change = props.on_change_;
     state->on_calendar = props.on_calendar_;
@@ -1737,16 +2478,22 @@ void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
         static_cast<void>(services_->retire_failed_component(owner));
     };
     if (props.value_) {
-        connect_prop(build.scope(owner), *props.value_, [state](DateTimePickerRangeValue v) {
-            state->accepted.set(v);
-            state->pending.set(v);
-        });
+        connect_prop(build.scope(owner), *props.value_,
+                     [state](DateTimePickerRangeValue v) { state->reconcile_authority(v); });
     }
     if (props.open_) {
         connect_prop(build.scope(owner), *props.open_, [state](bool v) {
+            state->invalidate();
+            const auto ticket = state->revision;
             state->open.set(v);
+            if (!state->current(ticket)) {
+                return;
+            }
             if (!v) {
-                state->pending.set(state->accepted.get());
+                const bool restored = state->restore_pending();
+                if (restored && state->end_editors) {
+                    state->end_editors();
+                }
             }
         });
     }
@@ -1754,9 +2501,33 @@ void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
         connect_prop(build.scope(owner), *props.endpoint_, [state](PickerEndpoint v) { state->reconcile_endpoint(v); });
     }
     connect_prop(build.scope(owner), props.policy_, [state](PickerRangePolicy v) {
+        const bool disabling =
+            (!state->policy.disabled[0] && v.disabled[0]) || (!state->policy.disabled[1] && v.disabled[1]);
         state->policy = v;
+        state->invalidate();
+        if (disabling) {
+            if (!state->restore_pending()) {
+                return;
+            }
+            const auto ticket = state->revision;
+            if (state->end_editors) {
+                state->end_editors();
+            }
+            if (!state->current(ticket)) {
+                return;
+            }
+        }
         state->policy_source.set(v);
     });
+    connect_range_business(build.scope(owner), state, props.disabled_);
+    connect_range_business(build.scope(owner), state, props.picker_.disabled_);
+    connect_range_business(build.scope(owner), state, props.picker_.min_);
+    connect_range_business(build.scope(owner), state, props.picker_.max_);
+    connect_range_business(build.scope(owner), state, props.picker_.disabled_date_);
+    if (props.picker_.time_picker_) {
+        connect_range_business(build.scope(owner), state, props.picker_.time_picker_->rules_);
+        connect_range_business(build.scope(owner), state, props.picker_.time_picker_->disabled_);
+    }
     build.mount_slot(
         owner, Content{[&, state] {
             for (auto endpoint : {PickerEndpoint::Start, PickerEndpoint::End}) {
@@ -1767,10 +2538,22 @@ void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
                     picker.showTime();
                 }
                 const auto original_disabled = picker.disabled_time_;
-                picker.disabledTime([state, endpoint, original_disabled](CivilDate date, TimeOfDay time) {
-                    const auto draft = state->pending.get();
+                const auto info = picker.disabled_info_;
+                picker.disabled_info_ = [state, info, endpoint](CivilDate v, const DatePickerDisabledInfo& effective) {
+                    auto context = effective;
+                    const auto start = state->pending.get().start;
+                    context.from = endpoint == PickerEndpoint::Start ? DatePickerValue{v}
+                                   : start                           ? DatePickerValue{start->date}
+                                                                     : DatePickerValue{};
+                    return !state->alive || (info && info(v, context));
+                };
+                picker.disabledTime([state, endpoint, original_disabled,
+                                     custom = props.disabled_date_](CivilDate date, TimeOfDay time) {
+                    auto draft = state->pending.get();
+                    const CivilDateTime value{date, time};
+                    (endpoint == PickerEndpoint::Start ? draft.start : draft.end) = value;
                     return (original_disabled && original_disabled(date, time)) || !state->alive ||
-                           (state->disabled && state->disabled(CivilDateTime{date, time}, endpoint, draft));
+                           (custom && custom(value, endpoint, draft));
                 });
                 picker.default_value_.reset();
                 picker.default_date_time_.reset();
@@ -1790,36 +2573,55 @@ void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
                 picker.on_ok_ = {};
                 picker.on_date_time_ = {};
                 picker.on_time_ok_ = {};
-                picker.on_time_request_ = [state, endpoint](DatePickerDateTimeValue v) {
-                    state->choose(endpoint, v);
+                picker.on_time_request_ = [this, state, endpoint](DatePickerDateTimeValue v,
+                                                                  const PickerCandidate& candidate) {
+                    return state->choose(endpoint, v, range_candidate(*services_, state, candidate));
                 };
-                picker.onOpenChange([state, endpoint](bool v) {
+                picker.onOpenChange([this, state, endpoint](bool v) {
+                    const auto candidate = range_candidate(*services_, state);
                     if (v) {
-                        state->activate(endpoint);
-                        state->request_open(true);
+                        if (state->activate(endpoint, candidate) == PickerRequestDisposition::Consumed) {
+                            state->request_open(true, candidate);
+                        }
                     } else if (state->alive && state->open.get() && state->endpoint.get() == endpoint) {
-                        state->request_open(false);
+                        state->request_open(false, candidate);
                     }
                 });
                 DatePicker(
-                    std::move(picker), DatePickerFooter{[state, footer, presets = props.presets_] {
+                    std::move(picker), DatePickerFooter{[this, state, footer, presets = props.presets_, locale_source] {
                         if (footer) {
                             SlotContentAccess::function (*footer)();
                         }
                         for (const auto& preset : presets) {
-                            Button(ButtonProps{}.size(ControlSize::Small).onClick([state, preset] {
-                                state->preset(preset);
+                            Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state, preset] {
+                                state->preset(preset, range_candidate(*services_, state));
                             }),
                                    ButtonContent{[label = preset.label] { Text(label); }});
                         }
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] { state->clear(); }),
-                               ButtonContent{[] { Text(u8"Clear range"); }});
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] {
-                            static_cast<void>(state->commit());
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            state->clear(range_candidate(*services_, state));
                         }),
-                               ButtonContent{[] { Text(u8"Confirm range"); }});
-                        Button(ButtonProps{}.size(ControlSize::Small).onClick([state] { state->request_open(false); }),
-                               ButtonContent{[] { Text(u8"Cancel range"); }});
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).clear_range; })));
+                               }});
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            static_cast<void>(state->commit(range_candidate(*services_, state)));
+                        }),
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).confirm_range; })));
+                               }});
+                        Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
+                            const auto result = state->request_open(false, range_candidate(*services_, state));
+                            if (result == PickerRequestDisposition::Consumed && state->end_editors) {
+                                state->end_editors();
+                            }
+                        }),
+                               ButtonContent{[locale_source] {
+                                   Text(TextProps{}.content(
+                                       bind([locale_source] { return read_prop(locale_source).cancel_range; })));
+                               }});
                     }});
                 const auto child = mounted_.back();
                 state->owners.push_back(child);
@@ -1827,17 +2629,63 @@ void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
                 state->references.push_back(services_->components().state<DateState>(child)->reference);
             }
         }});
-    connect_range_reset(*services_, state, [this, state] {
-        const auto accepted = state->accepted.get();
+    state->sync_semantics = [this, weak = std::weak_ptr{state}](bool publish) {
+        const auto state = weak.lock();
+        if (!state || !state->alive) {
+            return;
+        }
+        const auto ticket = state->revision;
         for (std::size_t i = 0; i < state->owners.size(); ++i) {
+            if (!state->current(ticket)) {
+                return;
+            }
+            if (auto* live = services_->components().state<DateState>(state->owners[i])) {
+                live->accepted_semantics = state->pending_semantics[i];
+                if (!live->pending_date) {
+                    live->pending_semantics = live->accepted_semantics;
+                }
+                if (publish && live->show_time) {
+                    const auto date = live->pending_date    ? live->pending_date
+                                      : live->accepted_time ? DatePickerValue{live->accepted_time->date}
+                                                            : DatePickerValue{live->model.active()};
+                    const auto source = live->time_date;
+                    source.set({date, live->pending_semantics.date});
+                }
+            }
+        }
+    };
+    connect_range_reset(*services_, state, [this, weak = std::weak_ptr{state}] {
+        const auto state = weak.lock();
+        if (!state || !state->alive) {
+            return;
+        }
+        const auto accepted = state->accepted.get();
+        const auto ticket = state->revision;
+        for (std::size_t i = 0; i < state->owners.size(); ++i) {
+            if (!state->current(ticket)) {
+                return;
+            }
             if (auto* live = services_->components().state<DateState>(state->owners[i])) {
                 const auto value = i == 0 ? accepted.start : accepted.end;
                 live->accepted_time = value;
+                const auto session = ++live->edit_session;
+                live->accepted_semantics = state->accepted_semantics[i];
+                live->pending_semantics = live->accepted_semantics;
                 live->model.reconcile(value ? DatePickerValue{value->date} : DatePickerValue{});
                 live->pending_date.reset();
                 live->dirty_draft = false;
-                live->pending_time.set(value ? value->time : TimeOfDay{});
+                live->edit_format.reset();
+                const auto pending_time = live->pending_time;
+                pending_time.set(value ? value->time : TimeOfDay{});
+                live = services_->components().state<DateState>(state->owners[i]);
+                if (!live || live->edit_session != session || !state->current(ticket)) {
+                    return;
+                }
                 live->display.set(display(*live, live->model.value()));
+                live = services_->components().state<DateState>(state->owners[i]);
+                if (!live || live->edit_session != session || !state->current(ticket)) {
+                    return;
+                }
                 if (live->time_picker.valid()) {
                     const auto reset = capture_form_input(live->time_reference).second;
                     if (reset) {
@@ -1865,6 +2713,7 @@ void DatePickerComponentHost::on_input_boundary_changed() {
         if ((!active_ || !services_->interactions().component_active(id)) && !s->suppressed) {
             s->suppressed = true;
             s->dirty_draft = false;
+            s->edit_format.reset();
             s->display.set(display(*s, s->model.value()));
             request_open(id, false);
         }
@@ -1873,7 +2722,8 @@ void DatePickerComponentHost::on_input_boundary_changed() {
 }
 
 void DatePickerComponentHost::prepare_auxiliary_layout() {
-    for (auto id : mounted_) {
+    const auto ids = mounted_;
+    for (auto id : ids) {
         if (auto* s = services_->components().state<DateState>(id)) {
             s->closed_on_blur = false;
         }
@@ -1883,6 +2733,25 @@ void DatePickerComponentHost::prepare_auxiliary_layout() {
             return s && !s->suppressed && !services_->interactions().component_active(id);
         })) {
         on_input_boundary_changed();
+    }
+    bool mounting = false;
+    try {
+        mounting = &runtime::require_component_build_context().host() == &services_->components();
+    } catch (const std::logic_error&) {
+    }
+    for (auto id : ids) {
+        const auto* state = services_->components().state<DateState>(id);
+        if (!state || !state->cells_pending) {
+            continue;
+        }
+        if (mounting) {
+            // Publishing locale during another Provider's declaration only
+            // queues the keyed work. The target's captured scopes are applied
+            // by its own append transaction in the ordinary auxiliary pass.
+            services_->request_frame();
+        } else {
+            reconcile_items(id);
+        }
     }
 }
 
@@ -2090,7 +2959,12 @@ void DatePickerComponentHost::position_window_layer(runtime::ComponentId id, run
     if (!s || !s->visible) {
         return;
     }
-    const auto& t = services_->components().theme_scope(id)->snapshot().date_picker();
+    const auto revision = s->revision;
+    const auto current = [&] {
+        s = services_->components().state<DateState>(id);
+        return s && services_->components().scope(id).active() && s->visible && s->revision == revision;
+    };
+    const auto t = services_->components().theme_scope(id)->snapshot().date_picker();
     auto anchor = services_->nodes().require(s->node).bounds;
     const auto translation = services_->nodes().require(s->node).translation;
     anchor.x += translation.x;
@@ -2107,9 +2981,12 @@ void DatePickerComponentHost::position_window_layer(runtime::ComponentId id, run
     const auto footer_node = services_->components().root(s->footer);
     const auto footer_size =
         engine.measure_child(footer_node, {0, std::max(0.0F, width - 2 * padding), 0, available.height});
-    const bool days = s->mode == DatePickerMode::Date || s->mode == DatePickerMode::Week;
-    const int rows = days ? 7 : s->mode == DatePickerMode::Quarter ? 2 : 4;
-    const int columns = days ? 7 : s->mode == DatePickerMode::Quarter ? 2 : 3;
+    if (!current()) {
+        return;
+    }
+    const bool days = s->published_mode == DatePickerMode::Date || s->published_mode == DatePickerMode::Week;
+    const int rows = days ? 7 : s->published_mode == DatePickerMode::Quarter ? 2 : 4;
+    const int columns = days ? 7 : s->published_mode == DatePickerMode::Quarter ? 2 : 3;
     const float wanted = 2 * padding + t.metrics.header_height + rows * t.metrics.row_height + footer_size.height;
     const float below =
         std::clamp(available.y + available.height - anchor.y - anchor.height - t.metrics.gap, 0.0F, available.height);
@@ -2125,37 +3002,73 @@ void DatePickerComponentHost::position_window_layer(runtime::ComponentId id, run
                             available.y, available.y + available.height - height),
                  width, height};
     static_cast<void>(engine.measure_child(popup_node, layout::Constraints::fixed(width, height)));
+    if (!current()) {
+        return;
+    }
     engine.place_child(popup_node, s->bounds);
+    if (!current()) {
+        return;
+    }
     const float x = s->bounds.x + padding;
     const float y = s->bounds.y + padding;
     const float body = std::max(0.0F, width - 2 * padding);
     const float nav = std::min(t.metrics.header_height, body / 6);
     const auto place = [&](runtime::ComponentId item, runtime::Rect rect) {
+        const auto item_live = [&] {
+            if (!current()) {
+                return false;
+            }
+            if (!services_->components().contains(item)) {
+                static_cast<void>(services_->retire_failed_component(id));
+                return false;
+            }
+            return true;
+        };
+        if (!item_live()) {
+            return false;
+        }
         const auto node = services_->components().root(item);
         static_cast<void>(engine.measure_child(node, layout::Constraints::fixed(rect.width, rect.height)));
+        if (!item_live()) {
+            return false;
+        }
         engine.place_child(node, rect);
+        return item_live();
     };
     for (std::size_t i = 0; i < 4; ++i) {
         const float offset = i < 2 ? nav * float(i) : body - nav * float(4 - i);
-        place(s->items[i], {x + offset, y, nav, t.metrics.header_height});
+        if (!place(s->items[i], {x + offset, y, nav, t.metrics.header_height})) {
+            return;
+        }
     }
     const float title_inset = days ? 2 * nav : nav;
-    place(s->items[4], {x + title_inset, y, std::max(0.0F, body - 2 * title_inset), t.metrics.header_height});
+    if (!place(s->items[4], {x + title_inset, y, std::max(0.0F, body - 2 * title_inset), t.metrics.header_height})) {
+        return;
+    }
     for (std::size_t i = 5; i < s->items.size(); ++i) {
         const std::size_t index = days ? i - 5 : i >= 12 ? i - 12 : 0;
         const int column = static_cast<int>(index % columns);
         const int visual = s->direction == TextDirection::RightToLeft ? columns - 1 - column : column;
-        place(s->items[i], {x + visual * body / columns,
-                            y + t.metrics.header_height + static_cast<float>(index / columns) * t.metrics.row_height,
-                            body / columns, t.metrics.row_height});
+        if (!place(s->items[i],
+                   {x + visual * body / columns,
+                    y + t.metrics.header_height + static_cast<float>(index / columns) * t.metrics.row_height,
+                    body / columns, t.metrics.row_height})) {
+            return;
+        }
     }
     if (s->panel) {
-        place(s->custom_panel, {x, y + t.metrics.header_height, body, rows * t.metrics.row_height});
+        if (!place(s->custom_panel, {x, y + t.metrics.header_height, body, rows * t.metrics.row_height})) {
+            return;
+        }
     }
     if (s->header) {
-        place(s->custom_header, {x, y, body, t.metrics.header_height});
+        if (!place(s->custom_header, {x, y, body, t.metrics.header_height})) {
+            return;
+        }
     }
-    place(s->footer, {x, y + t.metrics.header_height + rows * t.metrics.row_height, body, footer_size.height});
+    if (!place(s->footer, {x, y + t.metrics.header_height + rows * t.metrics.row_height, body, footer_size.height})) {
+        return;
+    }
     s->needs_layout = false;
     s->anchor = anchor;
     s->clip = available;
@@ -2168,7 +3081,8 @@ void DatePickerComponentHost::position_window_layer(runtime::ComponentId id, run
 }
 
 void DatePickerComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) {
-    for (auto id : mounted_) {
+    const auto ids = mounted_;
+    for (auto id : ids) {
         const auto* s = services_->components().state<DateState>(id);
         if (!s || !s->visible) {
             continue;
@@ -2186,9 +3100,13 @@ void DatePickerComponentHost::synchronize_auxiliary_geometry(runtime::Size, runt
         static_cast<void>(services_->surfaces().update_effects(s->background, effects));
         for (auto child : s->items) {
             const auto* item = services_->components().state<DateItem>(child);
-            const bool is_selected = selected(*s, item->date);
-            const bool active =
-                item->date && s->model.normalized(*item->date) == s->model.normalized(s->model.active());
+            if (!item) {
+                static_cast<void>(services_->retire_failed_component(id));
+                break;
+            }
+            const bool is_selected = selected(*s, item->date, &s->published_model);
+            const bool active = item->date && s->published_model.normalized(*item->date) ==
+                                                  s->published_model.normalized(s->published_model.active());
             const auto r = services_->nodes().require(item->node).bounds;
             const float size = std::min({t.metrics.cell_height, r.width, r.height});
             const runtime::Rect inner{r.x + (r.width - size) / 2, r.y + (r.height - size) / 2, size, size};

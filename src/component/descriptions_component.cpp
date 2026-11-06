@@ -1,4 +1,5 @@
 #include "component/descriptions_component.hpp"
+#include "component/localized_prop.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "component/data_display_retained.hpp"
 #include "component/responsive_layout.hpp"
@@ -287,6 +288,8 @@ void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std:
     auto rows = pack_descriptions(columns, model);
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
+    const auto locale =
+        localized_prop(props.locale_, build.config_scope(), [](const LocaleData& d) { return d.descriptions; });
     const auto id = build.mount_component<DescriptionsOwner>(std::make_shared<DescriptionsState>());
     auto owner = build.state<DescriptionsOwner>(id);
     auto& s = *owner;
@@ -301,7 +304,7 @@ void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std:
     s.breakpoints = read_prop(props.breakpoints_);
     s.rtl = read_prop(props.rtl_);
     s.visible = read_prop(props.visible_);
-    s.separator.set(read_prop(props.locale_).separator);
+    s.separator.set(read_prop(locale).separator);
     s.size = size;
     s.placement = placement;
     s.bordered = read_prop(props.bordered_);
@@ -469,10 +472,12 @@ void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std:
             refresh(id, true);
         }
     });
-    connect_prop(scope, props.locale_, [this, id](DescriptionsLocale value) {
+    connect_prop(scope, locale, [this, id](DescriptionsLocale value) {
         if (auto s = descriptions_state(*services_, id)) {
-            s->separator.set(value.separator);
-            refresh(id, true);
+            auto separator = s->separator;
+            separator.set(std::move(value.separator));
+            // Text invalidation propagates the necessary measure/layout work.
+            // No repack, factory, input-boundary reconciliation or stale owner write.
         }
     });
     if (title_source) {

@@ -1,5 +1,6 @@
 #pragma once
 #include <ryn/config_provider.hpp>
+#include <ryn/app.hpp>
 #include <ryn/i18n.hpp>
 #include <ryn/message.hpp>
 #include <ryn/notification.hpp>

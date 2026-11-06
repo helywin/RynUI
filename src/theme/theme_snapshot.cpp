@@ -4742,6 +4742,8 @@ ThemeSnapshot::ThemeSnapshot(
     status_json << ",\"skeleton\":{\"colors\":[";
     first = true;
     color(skeleton_->colors.background);
+    color(skeleton_->colors.gradient_to);
+    color(skeleton_->colors.image);
     status_json << "],\"metrics\":[";
     first = true;
     for (const auto value : skeleton_->metrics.values()) {
@@ -4769,11 +4771,17 @@ ThemeSnapshot::ThemeSnapshot(
     }
     status_json << "],\"metrics\":[";
     first = true;
-    for (auto value : popover_->metrics()) {
-        metric(value);
+    const auto popover_metrics = popover_->metrics();
+    // Preserve the established seven metrics plus typography prefix in JSON.
+    constexpr std::size_t established_popover_metrics = 7;
+    for (std::size_t i = 0; i < established_popover_metrics; ++i) {
+        metric(popover_metrics[i]);
     }
     metric(popover_->font_size);
     metric(popover_->line_height);
+    for (std::size_t i = established_popover_metrics; i < popover_metrics.size(); ++i) {
+        metric(popover_metrics[i]);
+    }
     hash_integer(identity_, popover_->font_family);
     hash_integer(identity_, popover_->font_weight);
     hash_integer(identity_, popover_->title_font_weight);

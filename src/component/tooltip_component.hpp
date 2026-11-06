@@ -15,6 +15,7 @@ struct TooltipSnapshot final {
 [[nodiscard]] TooltipSnapshot position_tooltip(runtime::Rect anchor, runtime::Size popup, runtime::Rect viewport,
                                                TooltipPlacement placement, float distance, bool adjust,
                                                bool point_at_center = false, float arrow_inset = 0);
+[[nodiscard]] TooltipPlacement directional_popup_placement(TooltipPlacement, TextDirection);
 
 class TooltipComponentHost final : public WindowComponentParticipant {
 public:
@@ -36,6 +37,7 @@ public:
     }
 
     void on_window_active(bool active) override;
+    void synchronize_auxiliary_motion() override;
     void on_input_boundary_changed() override;
     bool on_keyboard_input(const input::KeyboardInputEvent& event) override;
     void on_pointer_input(const input::PointerInputEvent& event, std::optional<input::InteractionId> hit,

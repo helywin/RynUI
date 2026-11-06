@@ -8,6 +8,10 @@ using namespace timeline_test;
 
 struct TransferFixture final : Fixture {
     detail::SelectionComponentHost selections{services};
+
+    ~TransferFixture() {
+        services.dispose();
+    }
 };
 
 std::vector<TransferItem> items() {

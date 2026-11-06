@@ -445,15 +445,16 @@ private:
     Prop<bool> allow_clear_{true};
     Prop<bool> disabled_{false};
     Prop<bool> read_only_{false};
-    Prop<String> placeholder_{String{u8"Select date"}};
+    std::optional<Prop<String>> placeholder_;
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
     std::optional<DatePickerRef> ref_;
     bool auto_focus_{};
     std::function<void(DatePickerValue)> on_change_;
-    std::function<void(DatePickerValue)> on_request_;
-    std::function<void(DatePickerDateTimeValue)> on_time_request_;
+    std::function<detail::PickerRequestDisposition(DatePickerValue, const detail::PickerCandidate&)> on_request_;
+    std::function<detail::PickerRequestDisposition(DatePickerDateTimeValue, const detail::PickerCandidate&)>
+        on_time_request_;
     std::function<void(bool)> on_open_;
     std::function<void()> on_focus_;
     std::function<void()> on_blur_;
@@ -462,7 +463,7 @@ private:
     std::optional<Prop<CivilDate>> controlled_panel_;
     Prop<String> format_{String{}};
     Prop<std::vector<String>> input_formats_{std::vector<String>{}};
-    Prop<PickerLocale> locale_{PickerLocale{}};
+    std::optional<Prop<PickerLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
     Prop<PickerPlacement> placement_{PickerPlacement::BottomLeft};
     Prop<bool> multiple_{false};

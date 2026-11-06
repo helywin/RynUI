@@ -1,10 +1,13 @@
 #include "component/feedback_component.hpp"
+#include "component/window_overlay_stack.hpp"
 #include "input/pressable_behavior.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
+#include "animation/motion_policy.hpp"
 #include <ryn/icon.hpp>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace ryn::detail {
 namespace {
@@ -18,6 +21,20 @@ struct AlertState final {
     bool description_slot{};
     bool action_slot{};
     bool hovered{};
+    bool marquee_hovered{};
+    bool controlled{};
+    bool motion{};
+    bool status_explicit{};
+    bool icon_explicit{};
+    bool requested_icon{};
+    Status requested_status{Status::Default};
+    AlertMarquee marquee{false};
+    std::optional<animation::AnimationTime> exit_start;
+    animation::AnimationDuration exit_duration;
+    std::optional<animation::AnimationTime> marquee_time;
+    float marquee_width{};
+    bool in_view{};
+    std::function<void()> after_close;
     input::PressableBehavior press;
     input::FocusPresentation focus;
     std::function<void()> on_close;
@@ -48,9 +65,33 @@ struct SpinState final {
     Signal<runtime::SemanticTypography> font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> icon_font{runtime::SemanticTypography{}};
     component::RetainedSurfaceId mask;
+    component::RetainedSurfaceId progress;
+    std::optional<WindowOverlayTicket> overlay_ticket;
+    bool custom_indicator{};
+    SpinPercent percent;
+    std::chrono::milliseconds delay{};
+    std::optional<animation::AnimationTime> show_at;
+    std::optional<animation::AnimationTime> auto_at;
+    animation::AnimationTime observed;
     std::array<runtime::Size, 3> sizes;
     std::array<theme_runtime::Subscription, 2> subscriptions;
 };
+
+void validate_spin(const SpinPercent& value, std::chrono::milliseconds delay) {
+    if (value.valueless_by_exception() || (std::get_if<float>(&value) && !std::isfinite(std::get<float>(value)))) {
+        throw std::invalid_argument("Spin percent must be finite");
+    }
+    if (delay.count() < 0 || delay.count() > std::numeric_limits<std::int64_t>::max() / 1000) {
+        throw std::invalid_argument("Spin delay must be nonnegative and representable in microseconds");
+    }
+}
+
+bool spin_motion(WindowComponentServices& services, runtime::ComponentId id) {
+    return services.focus().state().window_active && services.components().branch_active(id) &&
+           animation::resolve_motion_policy(services.components().theme_scope(id)->snapshot(),
+                                            services.motion_preference())
+               .enabled();
+}
 
 struct ProgressState final {
     runtime::NodeId node;
@@ -229,8 +270,64 @@ void FeedbackComponentHost::close_alert(runtime::ComponentId id) {
         return;
     }
     const auto callback = s->on_close;
+    const bool controlled = s->controlled;
     if (callback) {
         callback();
+    }
+    if (!controlled && services_->components().contains(id)) {
+        set_alert_visible(id, false);
+    }
+}
+
+bool FeedbackComponentHost::alert_motion_allowed(runtime::ComponentId id) const {
+    return services_->components().branch_active(id) && services_->focus().state().window_active &&
+           animation::resolve_motion_policy(services_->components().theme_scope(id)->snapshot(),
+                                            services_->motion_preference())
+               .enabled();
+}
+
+void FeedbackComponentHost::settle_alert(runtime::ComponentId id) {
+    auto* s = services_->components().state<AlertState>(id);
+    if (!s || !s->snapshot.closing) {
+        return;
+    }
+    s->snapshot.closing = false;
+    s->snapshot.visible = false;
+    s->snapshot.exit_fraction = 0;
+    s->exit_start.reset();
+    const auto callback = s->after_close;
+    refresh_alert(id, true);
+    if (callback && services_->components().contains(id) && services_->components().scope(id).active()) {
+        callback();
+    }
+}
+
+void FeedbackComponentHost::set_alert_visible(runtime::ComponentId id, bool value) {
+    auto* s = services_->components().state<AlertState>(id);
+    if (!s || (value == s->snapshot.visible && !s->snapshot.closing)) {
+        return;
+    }
+    if (value) {
+        s->exit_start.reset();
+        s->snapshot.closing = false;
+        s->snapshot.visible = true;
+        s->snapshot.exit_fraction = 1;
+        services_->nodes().require(s->node).clip_content = false;
+        services_->nodes().set_paint_opacity(s->node, 1);
+        refresh_alert(id, true);
+        services_->set_input_blocked(id, false);
+    } else if (!s->snapshot.closing) {
+        s->snapshot.closing = true;
+        services_->nodes().require(s->node).clip_content = true;
+        if (s->motion && alert_motion_allowed(id)) {
+            s->exit_start = clock_.observe(services_->animation_time()).effective;
+            s->exit_duration =
+                animation::resolve_motion_tokens(services_->components().theme_scope(id)->snapshot()).slow;
+            services_->set_input_blocked(id, true);
+            services_->request_frame();
+        } else {
+            settle_alert(id);
+        }
     }
 }
 
@@ -241,6 +338,8 @@ void FeedbackComponentHost::refresh_alert(runtime::ComponentId id, bool geometry
     }
     const auto& t = services_->components().theme_scope(id)->snapshot().alert();
     const auto& m = t.metrics;
+    s->snapshot.status = !s->status_explicit && s->snapshot.banner ? Status::Warning : s->requested_status;
+    s->show_icon = !s->icon_explicit && s->snapshot.banner ? true : s->requested_icon;
     s->snapshot.has_description = s->description_slot || !s->description.get().empty();
     s->snapshot.palette = t.colors.statuses[static_cast<std::size_t>(s->snapshot.status)];
     const auto status = s->snapshot.status;
@@ -276,9 +375,46 @@ void FeedbackComponentHost::refresh_alert(runtime::ComponentId id, bool geometry
         static_cast<void>(s->press.reset());
     }
     if (geometry) {
-        services_->layout().set_layout(
-            services_->components().root(s->snapshot.body),
-            layout::FlexLayout{layout::FlexDirection::vertical, description ? m.description_gap : 0});
+        const auto body_node = services_->components().root(s->snapshot.body);
+        services_->nodes().require(body_node).clip_content = s->marquee.enabled;
+        if (!s->marquee.enabled) {
+            services_->layout().set_layout(
+                body_node, layout::FlexLayout{layout::FlexDirection::vertical, description ? m.description_gap : 0});
+        } else {
+            services_->layout().set_layout(
+                body_node,
+                layout::ComponentLayout{
+                    [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                        auto& state = *services_->components().state<AlertState>(id);
+                        const auto message =
+                            engine.measure_child(services_->components().root(state.snapshot.message),
+                                                 {0, std::numeric_limits<float>::infinity(), 0, limits.max_height});
+                        state.marquee_width = message.width;
+                        auto size = message;
+                        if (state.snapshot.has_description) {
+                            const auto desc =
+                                engine.measure_child(services_->components().root(state.snapshot.description), limits);
+                            size.height +=
+                                desc.height +
+                                services_->components().theme_scope(id)->snapshot().alert().metrics.description_gap;
+                        }
+                        return limits.constrain(size);
+                    },
+                    [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect rect) {
+                        const auto& state = *services_->components().state<AlertState>(id);
+                        const auto message = services_->components().root(state.snapshot.message);
+                        const auto height = services_->nodes().require(message).layout_size.height;
+                        engine.place_child(message, {rect.x - state.snapshot.marquee_offset, rect.y,
+                                                     std::max(rect.width, state.marquee_width), height});
+                        if (state.snapshot.has_description) {
+                            const auto gap =
+                                services_->components().theme_scope(id)->snapshot().alert().metrics.description_gap;
+                            engine.place_child(services_->components().root(state.snapshot.description),
+                                               {rect.x, rect.y + height + gap, rect.width,
+                                                std::max(0.0F, rect.height - height - gap)});
+                        }
+                    }});
+        }
     }
     invalidate(*services_, s->node, geometry);
 }
@@ -291,19 +427,26 @@ void FeedbackComponentHost::mount(const AlertProps& props, const AlertSlots& slo
     auto& s = build.state<AlertState>(id);
     s.node = build.root(id);
     s.snapshot.status = read_prop(props.status_);
-    s.snapshot.visible = read_prop(props.visible_);
+    s.requested_status = s.snapshot.status;
+    s.status_explicit = props.status_explicit_;
+    s.icon_explicit = props.icon_explicit_;
+    s.controlled = props.visible_.has_value();
+    s.snapshot.visible = !props.visible_ || read_prop(*props.visible_);
     s.snapshot.closable = read_prop(props.closable_);
     s.message.set(read_prop(props.message_));
     s.description.set(read_prop(props.description_));
     s.show_icon = read_prop(props.show_icon_);
+    s.requested_icon = s.show_icon;
     s.description_slot = slots.description.has_value();
     s.action_slot = slots.action.has_value();
     s.on_close = props.on_close_;
+    s.after_close = props.after_close_;
     runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
     s.surface = surface(services, id);
     const auto border_fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     s.border = services.surfaces().create_content_range(border_fragment, {});
-    build.on_resource_cleanup(id, [&services, border = s.border, node = s.node] {
+    build.on_resource_cleanup(id, [&services, border = s.border, node = s.node, id] {
+        services.interactions().set_input_blocked(id, false);
         services.surfaces().destroy_content_range(border);
         services.layout().remove_layout(node);
     });
@@ -428,7 +571,8 @@ void FeedbackComponentHost::mount(const AlertProps& props, const AlertSlots& slo
                     engine.measure_child(services_->components().root(s.snapshot.body), {0, available, 0, height});
                 return limits.constrain(
                     {std::isfinite(limits.max_width) ? limits.max_width : 2 * px + reserved + s.sizes[3].width,
-                     2 * py + std::max({s.sizes[0].height, s.sizes[1].height, s.sizes[2].height, s.sizes[3].height})});
+                     (2 * py + std::max({s.sizes[0].height, s.sizes[1].height, s.sizes[2].height, s.sizes[3].height})) *
+                         s.snapshot.exit_fraction});
             },
             [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect r) {
                 auto& s = *services_->components().state<AlertState>(id);
@@ -475,7 +619,7 @@ void FeedbackComponentHost::mount(const AlertProps& props, const AlertSlots& slo
     connect_prop(scope, props.status_, [this, id](Status value) {
         validate(value);
         if (auto* s = services_->components().state<AlertState>(id)) {
-            s->snapshot.status = value;
+            s->requested_status = value;
             refresh_alert(id, false);
         }
     });
@@ -492,7 +636,7 @@ void FeedbackComponentHost::mount(const AlertProps& props, const AlertSlots& slo
     });
     connect_prop(scope, props.show_icon_, [this, id](bool value) {
         if (auto* s = services_->components().state<AlertState>(id)) {
-            s->show_icon = value;
+            s->requested_icon = value;
             refresh_alert(id, true);
         }
     });
@@ -502,9 +646,29 @@ void FeedbackComponentHost::mount(const AlertProps& props, const AlertSlots& slo
             refresh_alert(id, true);
         }
     });
-    connect_prop(scope, props.visible_, [this, id](bool value) {
+    if (props.visible_) {
+        connect_prop(scope, *props.visible_, [this, id](bool value) { set_alert_visible(id, value); });
+    }
+    connect_prop(scope, props.banner_, [this, id](bool value) {
         if (auto* s = services_->components().state<AlertState>(id)) {
-            s->snapshot.visible = value;
+            s->snapshot.banner = value;
+            refresh_alert(id, true);
+        }
+    });
+    connect_prop(scope, props.motion_, [this, id](bool value) {
+        if (auto* s = services_->components().state<AlertState>(id)) {
+            s->motion = value;
+        }
+        synchronize_auxiliary_motion();
+    });
+    connect_prop(scope, props.marquee_, [this, id](AlertMarquee value) {
+        if (!std::isfinite(value.speed) || value.speed <= 0 || !std::isfinite(value.gap) || value.gap < 0) {
+            throw std::invalid_argument("Alert marquee speed must be positive and gap nonnegative");
+        }
+        if (auto* s = services_->components().state<AlertState>(id)) {
+            s->marquee = value;
+            s->snapshot.marquee_offset = 0;
+            s->marquee_time.reset();
             refresh_alert(id, true);
         }
     });
@@ -525,154 +689,302 @@ void FeedbackComponentHost::refresh_spin(runtime::ComponentId id, bool geometry)
     const auto dot = sized(s->size, m.dot_size_small, m.dot_size, m.dot_size_large);
     s->color.set(foreground(t.colors.indicator));
     s->font.set({m.font_family, 400, false, m.font_size, m.line_height});
-    s->icon_font.set({m.font_family, 400, false, dot, dot});
-    active(*services_, s->snapshot.overlay, s->snapshot.spinning);
+    s->icon_font.set({m.font_family, 400, false, std::max(1.0F, dot), std::max(1.0F, dot)});
+    s->snapshot.automatic = std::holds_alternative<SpinAutomaticPercent>(s->percent);
+    if (const auto* value = std::get_if<float>(&s->percent)) {
+        s->snapshot.percent = std::clamp(*value, 0.0F, 100.0F);
+    } else if (!s->snapshot.automatic) {
+        s->snapshot.percent.reset();
+    } else if (!s->snapshot.percent) {
+        s->snapshot.percent = 0;
+    }
     active(*services_, s->snapshot.description, !s->description.get().empty());
-    s->animate.set(s->snapshot.spinning && s->snapshot.in_view);
-    if (services_->interactions().set_eligible(s->snapshot.shield, s->snapshot.spinning && s->snapshot.wrapped)) {
+    active(*services_, s->snapshot.indicator, !s->snapshot.percent || s->custom_indicator);
+    s->animate.set(s->snapshot.spinning && s->snapshot.in_view && !s->snapshot.percent && spin_motion(*services_, id));
+    if (services_->interactions().set_eligible(
+            s->snapshot.shield, s->snapshot.spinning && (s->snapshot.wrapped || s->snapshot.fullscreen))) {
         services_->mark_scene_structure_dirty();
     }
+    WindowOverlayState overlay;
+    overlay.input_visible = s->snapshot.fullscreen && s->snapshot.spinning;
+    overlay.paint_visible = s->snapshot.spinning;
+    overlay.layer_priority = s->snapshot.fullscreen ? std::optional{1000} : std::nullopt;
+    overlay.body = s->snapshot.indicator;
+    services_->overlay_stack().update(*s->overlay_ticket, overlay);
+    static_cast<void>(services_->overlay_stack().reconcile(true));
+    s = services_->components().state<SpinState>(id);
+    if (!s) {
+        return;
+    }
+    services_->nodes().require(s->node).out_of_flow =
+        !s->snapshot.wrapped && (s->snapshot.fullscreen || !s->snapshot.spinning);
+    services_->nodes().require(services_->components().root(s->snapshot.overlay)).out_of_flow = s->snapshot.fullscreen;
     invalidate(*services_, s->node, geometry);
     // Reconciliation can deliver blur callbacks that destroy this component.
     const auto content = s->snapshot.content;
     const auto blocked = s->snapshot.spinning && s->snapshot.wrapped;
     services_->set_input_blocked(content, blocked);
+    if (services_->components().contains(id)) {
+        services_->synchronize_input_constraints();
+    }
+}
+
+void FeedbackComponentHost::update_spin_delay(runtime::ComponentId id) {
+    auto* s = services_->components().state<SpinState>(id);
+    if (!s) {
+        return;
+    }
+    const auto now = std::max(s->observed, services_->animation_time());
+    const bool was_shown = s->snapshot.spinning;
+    s->show_at.reset();
+    s->auto_at.reset();
+    s->snapshot.spinning = s->snapshot.requested && (was_shown || s->delay.count() == 0);
+    if (s->snapshot.requested && !s->snapshot.spinning) {
+        s->show_at = now + animation::AnimationDuration::milliseconds(static_cast<double>(s->delay.count()));
+    }
+    if (std::holds_alternative<SpinAutomaticPercent>(s->percent) && (!was_shown || !s->snapshot.spinning)) {
+        s->snapshot.percent = 0;
+    }
+    refresh_spin(id, true);
+    services_->request_frame();
 }
 
 void FeedbackComponentHost::mount(const SpinProps& props, const std::optional<SpinContent>& content,
                                   const SpinSlots& slots) {
     validate(read_prop(props.size_));
+    validate_spin(read_prop(props.percent_), read_prop(props.delay_));
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     const auto id = build.mount_component<SpinState>();
     auto& s = build.state<SpinState>(id);
-    s.node = build.root(id);
-    s.size = read_prop(props.size_);
-    s.snapshot.spinning = read_prop(props.spinning_);
-    s.snapshot.wrapped = content.has_value();
-    s.description.set(read_prop(props.description_));
-    runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
-    build.mount_slot(id, Content{[&] {
-                         auto& context = runtime::require_component_build_context();
-                         s.snapshot.content = context.mount_component<int>(0);
-                         const auto node = context.root(s.snapshot.content);
-                         services.layout().set_layout(node, layout::BoxLayout{});
-                         context.on_resource_cleanup(s.snapshot.content,
-                                                     [&services, node] { services.layout().remove_layout(node); });
-                         if (content) {
-                             context.mount_slot(s.snapshot.content, *content);
-                         }
-                     }});
-    s.snapshot.overlay = region(services, id, Content{[] {}}, s.color, s.font);
-    const auto overlay_node = services.components().root(s.snapshot.overlay);
-    s.snapshot.shield =
-        services.interactions().create({s.snapshot.overlay, overlay_node, {}, true, false, {}, false, false});
-    build.on_resource_cleanup(id, [&services, node = s.node, hit = s.snapshot.shield, content = s.snapshot.content] {
-        services.interactions().set_input_blocked(content, false);
-        services.pointer().cancel_interaction(hit);
-        services.interactions().remove(hit);
-        services.layout().remove_layout(node);
-    });
-    input::InteractionHandlers shield;
-    shield.target = [](input::PointerDispatchContext& context) {
-        context.stop_propagation();
-    };
-    services.interactions().set_handlers(s.snapshot.shield, std::move(shield));
-    s.mask = surface(services, s.snapshot.overlay, s.snapshot.shield);
-    s.snapshot.indicator = region(services, s.snapshot.overlay, Content{[slot = slots.indicator, animate = s.animate] {
-                                      if (slot) {
-                                          SlotContentAccess::function (*slot)();
-                                      } else {
-                                          Icon(IconProps{}.name(IconName::LoadingOutlined).spin(animate));
-                                      }
-                                  }},
-                                  s.color, s.icon_font);
-    s.snapshot.description =
-        region(services, s.snapshot.overlay, Content{[text = s.description] { Text(TextProps{}.content(text)); }},
-               s.color, s.font);
-    services.layout().set_layout(
-        s.node,
-        layout::ComponentLayout{
-            [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                auto& s = *services_->components().state<SpinState>(id);
-                const auto& m = services_->components().theme_scope(id)->snapshot().spin().metrics;
-                const auto available = layout::Constraints{0, limits.max_width, 0, limits.max_height};
-                s.sizes[0] = engine.measure_child(services_->components().root(s.snapshot.content), available);
-                const auto icon = engine.measure_child(services_->components().root(s.snapshot.indicator), available);
-                s.sizes[2] = icon;
-                const auto description =
-                    s.description.get().empty()
-                        ? runtime::Size{}
-                        : engine.measure_child(services_->components().root(s.snapshot.description), available);
-                s.sizes[1] = {std::max(icon.width, description.width),
-                              icon.height + (description.height > 0 ? m.description_gap + description.height : 0)};
-                if (s.snapshot.spinning) {
-                    static_cast<void>(
-                        engine.measure_child(services_->components().root(s.snapshot.overlay), available));
+    try {
+        s.node = build.root(id);
+        s.size = read_prop(props.size_);
+        s.snapshot.requested = read_prop(props.spinning_);
+        s.snapshot.fullscreen = read_prop(props.fullscreen_);
+        s.delay = read_prop(props.delay_);
+        s.percent = read_prop(props.percent_);
+        s.snapshot.spinning = s.snapshot.requested && s.delay.count() == 0;
+        s.custom_indicator = slots.indicator.has_value();
+        s.snapshot.wrapped = content.has_value();
+        s.description.set(read_prop(props.description_));
+        build.on_resource_cleanup(id, [&services, id, node = s.node] {
+            if (auto* state = services.components().state<SpinState>(id)) {
+                if (state->snapshot.content.valid()) {
+                    services.interactions().set_input_blocked(state->snapshot.content, false);
                 }
-                return limits.constrain(s.snapshot.wrapped    ? s.sizes[0]
-                                        : s.snapshot.spinning ? s.sizes[1]
-                                                              : runtime::Size{});
-            },
-            [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect r) {
-                auto& s = *services_->components().state<SpinState>(id);
-                engine.place_child(services_->components().root(s.snapshot.content), r);
-                if (s.snapshot.spinning) {
-                    engine.place_child(services_->components().root(s.snapshot.overlay), r, true, true);
+                services.pointer().cancel_interaction(state->snapshot.shield, false);
+                services.interactions().remove(state->snapshot.shield);
+            }
+            services.layout().remove_layout(node);
+        });
+        runtime::connect_layout_style(build.scope(id), props.layout_, s.node, services.nodes(), services.dirty());
+        build.mount_slot(id, Content{[&] {
+                             auto& context = runtime::require_component_build_context();
+                             s.snapshot.content = context.mount_component<int>(0);
+                             const auto node = context.root(s.snapshot.content);
+                             services.layout().set_layout(node, layout::BoxLayout{});
+                             context.on_resource_cleanup(s.snapshot.content,
+                                                         [&services, node] { services.layout().remove_layout(node); });
+                             if (content) {
+                                 context.mount_slot(s.snapshot.content, *content);
+                             }
+                         }});
+        if (!services.components().contains(id) || !services.components().contains(s.snapshot.content)) {
+            services.retire_failed_component(id);
+            return;
+        }
+        s.snapshot.overlay = region(services, id, Content{[] {}}, s.color, s.font);
+        const auto overlay_node = services.components().root(s.snapshot.overlay);
+        s.snapshot.shield =
+            services.interactions().create({s.snapshot.overlay, overlay_node, {}, true, false, {}, false, false});
+        services.components().set_branch_active(s.snapshot.overlay, false);
+        s.overlay_ticket = services.overlay_stack().add(services.interactions().input_root(id),
+                                                        services.interactions().input_root(s.snapshot.overlay),
+                                                        WindowOverlayKind::FullscreenSpin);
+        input::InteractionHandlers shield;
+        shield.target = [](input::PointerDispatchContext& context) {
+            context.stop_propagation();
+        };
+        services.interactions().set_handlers(s.snapshot.shield, std::move(shield));
+        s.mask = surface(services, s.snapshot.overlay, s.snapshot.shield);
+        const auto progress_fragment =
+            build.register_scene_fragment(s.snapshot.overlay, runtime::SceneFragmentPlacement::before_children);
+        s.progress = services.surfaces().create_content_range(progress_fragment, {});
+        build.on_resource_cleanup(s.snapshot.overlay, [&services, progress = s.progress] {
+            services.surfaces().destroy_content_range(progress);
+        });
+        const auto indicator =
+            region(services, s.snapshot.overlay, Content{[slot = slots.indicator, animate = s.animate] {
+                       if (slot) {
+                           SlotContentAccess::function (*slot)();
+                       } else {
+                           Icon(IconProps{}.name(IconName::LoadingOutlined).spin(animate));
+                       }
+                   }},
+                   s.color, s.icon_font);
+        if (!services.components().contains(id) || !services.components().contains(indicator)) {
+            services.retire_failed_component(id);
+            return;
+        }
+        s.snapshot.indicator = indicator;
+        const auto description_part =
+            region(services, s.snapshot.overlay, Content{[text = s.description] { Text(TextProps{}.content(text)); }},
+                   s.color, s.font);
+        if (!services.components().contains(id) || !services.components().contains(description_part)) {
+            services.retire_failed_component(id);
+            return;
+        }
+        s.snapshot.description = description_part;
+        services.layout().set_layout(
+            s.node,
+            layout::ComponentLayout{
+                [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                    auto& s = *services_->components().state<SpinState>(id);
+                    const auto& m = services_->components().theme_scope(id)->snapshot().spin().metrics;
+                    const auto available = layout::Constraints{0, limits.max_width, 0, limits.max_height};
+                    s.sizes[0] = engine.measure_child(services_->components().root(s.snapshot.content), available);
+                    const auto dot = sized(s.size, m.dot_size_small, m.dot_size, m.dot_size_large);
+                    const auto icon = engine.measure_child(
+                        services_->components().root(s.snapshot.indicator),
+                        s.snapshot.percent && !s.custom_indicator ? layout::Constraints::fixed(dot, dot) : available);
+                    s.sizes[2] = icon;
+                    const auto description =
+                        s.description.get().empty()
+                            ? runtime::Size{}
+                            : engine.measure_child(services_->components().root(s.snapshot.description), available);
+                    s.sizes[1] = {std::max(icon.width, description.width),
+                                  icon.height + (description.height > 0 ? m.description_gap + description.height : 0)};
+                    if (s.snapshot.spinning) {
+                        static_cast<void>(
+                            engine.measure_child(services_->components().root(s.snapshot.overlay), available));
+                    }
+                    return limits.constrain(s.snapshot.fullscreen && !s.snapshot.wrapped ? runtime::Size{}
+                                            : s.snapshot.wrapped                         ? s.sizes[0]
+                                            : s.snapshot.spinning                        ? s.sizes[1]
+                                                                                         : runtime::Size{});
+                },
+                [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect r) {
+                    auto& s = *services_->components().state<SpinState>(id);
+                    engine.place_child(services_->components().root(s.snapshot.content), r);
+                    if (s.snapshot.spinning && !s.snapshot.fullscreen) {
+                        engine.place_child(services_->components().root(s.snapshot.overlay), r, true, true);
+                    }
+                }});
+        services.layout().set_layout(
+            overlay_node,
+            layout::ComponentLayout{
+                [](layout::LayoutEngine&, runtime::NodeId, layout::Constraints limits) { return limits.constrain({}); },
+                [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect r) {
+                    auto& s = *services_->components().state<SpinState>(id);
+                    const auto& m = services_->components().theme_scope(id)->snapshot().spin().metrics;
+                    const auto icon =
+                        runtime::Size{std::min(s.sizes[2].width, r.width), std::min(s.sizes[2].height, r.height)};
+                    const auto description =
+                        s.description.get().empty()
+                            ? runtime::Size{}
+                            : engine.measure_child(
+                                  services_->components().root(s.snapshot.description),
+                                  {0, r.width, 0, std::max(0.0F, r.height - icon.height - m.description_gap)});
+                    const auto h = icon.height + (description.height > 0 ? m.description_gap + description.height : 0);
+                    const auto y = r.y + std::max(0.0F, (r.height - h) / 2);
+                    engine.place_child(services_->components().root(s.snapshot.indicator),
+                                       {r.x + (r.width - icon.width) / 2, y, icon.width, icon.height});
+                    if (description.height > 0) {
+                        engine.place_child(services_->components().root(s.snapshot.description),
+                                           {r.x + (r.width - description.width) / 2,
+                                            y + icon.height + m.description_gap, description.width,
+                                            description.height});
+                    }
+                }});
+        spins_.push_back(id);
+        // Application content may have changed these Props while mounting.
+        s.snapshot.requested = read_prop(props.spinning_);
+        s.snapshot.fullscreen = read_prop(props.fullscreen_);
+        s.percent = read_prop(props.percent_);
+        s.delay = read_prop(props.delay_);
+        validate_spin(s.percent, s.delay);
+        update_spin_delay(id);
+        if (!services.components().contains(id)) {
+            return;
+        }
+        connect_prop(build.scope(id), props.spinning_, [this, id](bool value) {
+            if (auto* s = services_->components().state<SpinState>(id)) {
+                if (s->snapshot.requested == value) {
+                    return;
                 }
-            }});
-    services.layout().set_layout(
-        overlay_node,
-        layout::ComponentLayout{
-            [](layout::LayoutEngine&, runtime::NodeId, layout::Constraints limits) { return limits.constrain({}); },
-            [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect r) {
-                auto& s = *services_->components().state<SpinState>(id);
-                const auto& m = services_->components().theme_scope(id)->snapshot().spin().metrics;
-                const auto icon =
-                    runtime::Size{std::min(s.sizes[2].width, r.width), std::min(s.sizes[2].height, r.height)};
-                const auto description =
-                    s.description.get().empty()
-                        ? runtime::Size{}
-                        : engine.measure_child(
-                              services_->components().root(s.snapshot.description),
-                              {0, r.width, 0, std::max(0.0F, r.height - icon.height - m.description_gap)});
-                const auto h = icon.height + (description.height > 0 ? m.description_gap + description.height : 0);
-                const auto y = r.y + std::max(0.0F, (r.height - h) / 2);
-                engine.place_child(services_->components().root(s.snapshot.indicator),
-                                   {r.x + (r.width - icon.width) / 2, y, icon.width, icon.height});
-                if (description.height > 0) {
-                    engine.place_child(services_->components().root(s.snapshot.description),
-                                       {r.x + (r.width - description.width) / 2, y + icon.height + m.description_gap,
-                                        description.width, description.height});
+                s->snapshot.requested = value;
+                update_spin_delay(id);
+            }
+        });
+        if (!services.components().contains(id)) {
+            return;
+        }
+        connect_prop(build.scope(id), props.size_, [this, id](ControlSize value) {
+            validate(value);
+            if (auto* s = services_->components().state<SpinState>(id)) {
+                s->size = value;
+                refresh_spin(id, true);
+            }
+        });
+        if (!services.components().contains(id)) {
+            return;
+        }
+        connect_prop(build.scope(id), props.description_, [this, id](String value) {
+            if (auto* s = services_->components().state<SpinState>(id)) {
+                s->description.set(std::move(value));
+                refresh_spin(id, true);
+            }
+        });
+        if (!services.components().contains(id)) {
+            return;
+        }
+        connect_prop(build.scope(id), props.fullscreen_, [this, id](bool value) {
+            if (auto* s = services_->components().state<SpinState>(id)) {
+                s->snapshot.fullscreen = value;
+                refresh_spin(id, true);
+            }
+        });
+        if (!services.components().contains(id)) {
+            return;
+        }
+        connect_prop(build.scope(id), props.delay_, [this, id](std::chrono::milliseconds value) {
+            if (auto* s = services_->components().state<SpinState>(id)) {
+                validate_spin(s->percent, value);
+                if (s->delay == value) {
+                    return;
                 }
-            }});
-    spins_.push_back(id);
-    refresh_spin(id, true);
-    auto& scope = build.scope(id);
-    connect_prop(scope, props.spinning_, [this, id](bool value) {
-        if (auto* s = services_->components().state<SpinState>(id)) {
-            s->snapshot.spinning = value;
-            refresh_spin(id, true);
+                s->delay = value;
+                update_spin_delay(id);
+            }
+        });
+        if (!services.components().contains(id)) {
+            return;
         }
-    });
-    connect_prop(scope, props.size_, [this, id](ControlSize value) {
-        validate(value);
-        if (auto* s = services_->components().state<SpinState>(id)) {
-            s->size = value;
-            refresh_spin(id, true);
+        connect_prop(build.scope(id), props.percent_, [this, id](SpinPercent value) {
+            if (auto* s = services_->components().state<SpinState>(id)) {
+                validate_spin(value, s->delay);
+                if (s->percent == value) {
+                    return;
+                }
+                s->percent = std::move(value);
+                s->snapshot.percent.reset();
+                s->auto_at.reset();
+                refresh_spin(id, false);
+            }
+        });
+        if (!services.components().contains(id)) {
+            return;
         }
-    });
-    connect_prop(scope, props.description_, [this, id](String value) {
-        if (auto* s = services_->components().state<SpinState>(id)) {
-            s->description.set(std::move(value));
-            refresh_spin(id, true);
-        }
-    });
-    const auto theme = build.theme_scope();
-    s.subscriptions[0] = theme->capture([this, id](auto) { refresh_spin(id, false); },
-                                        [theme] { static_cast<void>(theme->spin_colors()); });
-    s.subscriptions[1] = theme->capture([this, id](auto) { refresh_spin(id, true); },
-                                        [theme] { static_cast<void>(theme->spin_metrics()); });
+        const auto theme = build.theme_scope();
+        s.subscriptions[0] = theme->capture([this, id](auto) { refresh_spin(id, false); },
+                                            [theme] { static_cast<void>(theme->spin_colors()); });
+        s.subscriptions[1] = theme->capture([this, id](auto) { refresh_spin(id, true); },
+                                            [theme] { static_cast<void>(theme->spin_metrics()); });
+    } catch (...) {
+        services.retire_failed_component(id);
+        throw;
+    }
 }
 
 void FeedbackComponentHost::refresh_progress(runtime::ComponentId id, bool geometry) {
@@ -813,8 +1125,215 @@ bool FeedbackComponentHost::on_scroll_input(const input::ScrollInputEvent& event
     const auto hit = services_->hit_test().hit_test({event.x, event.y});
     return std::any_of(spins_.begin(), spins_.end(), [&](auto id) {
         const auto* s = services_->components().state<SpinState>(id);
-        return s && s->snapshot.spinning && s->snapshot.wrapped && hit == s->snapshot.shield;
+        return s && s->snapshot.spinning && (s->snapshot.wrapped || s->snapshot.fullscreen) &&
+               hit == s->snapshot.shield;
     });
+}
+
+void FeedbackComponentHost::on_pointer_input(const input::PointerInputEvent& event, std::optional<input::InteractionId>,
+                                             std::optional<input::InteractionId>) {
+    for (auto id : alerts_) {
+        if (auto* s = services_->components().state<AlertState>(id)) {
+            const auto& node = services_->nodes().require(s->node);
+            const auto r = node.bounds;
+            const float x = event.x - node.translation.x;
+            const float y = event.y - node.translation.y;
+            const bool hovered = event.action != input::PointerAction::cancel && x >= r.x && x < r.x + r.width &&
+                                 y >= r.y && y < r.y + r.height;
+            if (s->marquee_hovered != hovered) {
+                s->marquee_hovered = hovered;
+                s->marquee_time.reset();
+                services_->request_frame();
+            }
+        }
+    }
+}
+
+void FeedbackComponentHost::synchronize_alert_motion() {
+    const auto batch = alerts_;
+    for (auto id : batch) {
+        auto* s = services_->components().state<AlertState>(id);
+        if (s && (!alert_motion_allowed(id) || !s->in_view)) {
+            s->marquee_time.reset();
+            const bool moved = s->snapshot.marquee_offset != 0;
+            s->snapshot.marquee_offset = 0;
+            if (moved) {
+                invalidate(*services_, s->node, true);
+            }
+            if (s->snapshot.closing) {
+                settle_alert(id);
+            }
+        } else if (s && s->snapshot.closing && !s->motion) {
+            settle_alert(id);
+        }
+    }
+}
+
+std::size_t FeedbackComponentHost::tick_alerts(animation::AnimationTime time) {
+    const auto now = clock_.observe(time).effective;
+    std::size_t changed{};
+    const auto batch = alerts_;
+    for (auto id : batch) {
+        auto* s = services_->components().state<AlertState>(id);
+        if (!s) {
+            continue;
+        }
+        if (s->exit_start) {
+            const auto sample = animation::sample_animation_interval(now, *s->exit_start, {}, s->exit_duration);
+            if (!alert_motion_allowed(id) || !s->in_view ||
+                sample.phase == animation::AnimationIntervalPhase::completed) {
+                settle_alert(id);
+                ++changed;
+                continue;
+            }
+            s->snapshot.exit_fraction = 1 - sample.progress;
+            services_->nodes().set_paint_opacity(s->node, s->snapshot.exit_fraction);
+            invalidate(*services_, s->node, true);
+            ++changed;
+        }
+        if (s->marquee.enabled && s->snapshot.visible && !s->snapshot.closing && s->in_view &&
+            alert_motion_allowed(id) && !(s->marquee.pause_on_hover && s->marquee_hovered) &&
+            s->marquee_width > bounds(*services_, s->snapshot.body).width) {
+            if (s->marquee_time) {
+                const double elapsed = (now - *s->marquee_time).count_microseconds() / 1000000.0;
+                s->snapshot.marquee_offset = static_cast<float>(std::fmod(
+                    s->snapshot.marquee_offset + elapsed * s->marquee.speed, s->marquee_width + s->marquee.gap));
+                invalidate(*services_, s->node, true);
+                ++changed;
+            }
+            s->marquee_time = now;
+        } else {
+            s->marquee_time.reset();
+        }
+    }
+    return changed;
+}
+
+std::optional<animation::AnimationTime> FeedbackComponentHost::next_alert_deadline() const {
+    for (auto id : alerts_) {
+        const auto* s = services_->components().state<AlertState>(id);
+        if (s && s->in_view && alert_motion_allowed(id) &&
+            (s->exit_start || (s->marquee.enabled && s->snapshot.visible && !s->snapshot.closing &&
+                               !(s->marquee.pause_on_hover && s->marquee_hovered) &&
+                               s->marquee_width > bounds(*services_, s->snapshot.body).width))) {
+            return clock_.last().value_or(services_->animation_time()) + animation::AnimationDuration::milliseconds(16);
+        }
+    }
+    return {};
+}
+
+void FeedbackComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect) {
+    const auto ids = spins_;
+    for (auto id : ids) {
+        auto* s = services_->components().state<SpinState>(id);
+        if (!s || !s->snapshot.fullscreen || !s->snapshot.spinning || !services_->components().branch_active(id)) {
+            continue;
+        }
+        const runtime::Rect r{0, 0, viewport.width, viewport.height};
+        const layout::Constraints limits{0, r.width, 0, r.height};
+        const auto& m = services_->components().theme_scope(id)->snapshot().spin().metrics;
+        const auto dot = sized(s->size, m.dot_size_small, m.dot_size, m.dot_size_large);
+        s->sizes[2] = services_->layout().measure_child(
+            services_->components().root(s->snapshot.indicator),
+            s->snapshot.percent && !s->custom_indicator ? layout::Constraints::fixed(dot, dot) : limits);
+        if (!s->description.get().empty()) {
+            static_cast<void>(
+                services_->layout().measure_child(services_->components().root(s->snapshot.description), limits));
+        }
+        const auto node = services_->components().root(s->snapshot.overlay);
+        static_cast<void>(services_->layout().measure_child(node, layout::Constraints::fixed(r.width, r.height)));
+        services_->layout().place_child(node, r);
+        s->snapshot.overlay_bounds = r;
+    }
+}
+
+void FeedbackComponentHost::on_window_active(bool) {
+    synchronize_auxiliary_motion();
+}
+
+void FeedbackComponentHost::on_input_boundary_changed() {
+    synchronize_auxiliary_motion();
+}
+
+void FeedbackComponentHost::synchronize_auxiliary_motion() {
+    synchronize_alert_motion();
+    const auto ids = spins_;
+    for (auto id : ids) {
+        auto* s = services_->components().state<SpinState>(id);
+        if (!s) {
+            continue;
+        }
+        const bool moving = s->snapshot.spinning && s->snapshot.in_view && spin_motion(*services_, id) &&
+                            services_->nodes().content_opacity(s->node) > 0;
+        s->animate.set(moving && !s->snapshot.percent);
+        if (!moving || !s->snapshot.automatic || s->snapshot.percent.value_or(0) > 96) {
+            s->auto_at.reset();
+        } else if (!s->auto_at) {
+            s->auto_at =
+                std::max(s->observed, services_->animation_time()) + animation::AnimationDuration::microseconds(200000);
+        }
+    }
+}
+
+std::size_t FeedbackComponentHost::tick_auxiliary(animation::AnimationTime now) {
+    synchronize_auxiliary_motion();
+    std::size_t changed = tick_alerts(now);
+    const auto ids = spins_;
+    for (auto id : ids) {
+        auto* s = services_->components().state<SpinState>(id);
+        if (!s) {
+            continue;
+        }
+        const auto time = std::max(now, s->observed);
+        s->observed = time;
+        if (s->show_at && time >= *s->show_at && s->snapshot.requested) {
+            s->show_at.reset();
+            s->snapshot.spinning = true;
+            refresh_spin(id, true);
+            ++changed;
+            s = services_->components().state<SpinState>(id);
+            if (!s) {
+                continue;
+            }
+        }
+        if (s->auto_at && time >= *s->auto_at && spin_motion(*services_, id)) {
+            // Fixed 200ms buckets from pinned usePercent; catch up at most the finite sequence to 96%.
+            while (s->auto_at && time >= *s->auto_at) {
+                float p = s->snapshot.percent.value_or(0);
+                if (p > 96) {
+                    s->auto_at.reset();
+                    break;
+                }
+                p += (100 - p) * (p <= 30 ? .05F : p <= 70 ? .03F : .01F);
+                s->snapshot.percent = p;
+                *s->auto_at = *s->auto_at + animation::AnimationDuration::microseconds(200000);
+            }
+            invalidate(*services_, s->node, false);
+            ++changed;
+        }
+    }
+    return changed;
+}
+
+std::optional<animation::AnimationTime> FeedbackComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> next = next_alert_deadline();
+    const auto offer = [&](auto time) {
+        if (time && (!next || *time < *next)) {
+            next = time;
+        }
+    };
+    for (auto id : spins_) {
+        const auto* s = services_->components().state<SpinState>(id);
+        if (!s || !services_->components().branch_active(id) || !services_->focus().state().window_active ||
+            services_->nodes().content_opacity(s->node) <= 0) {
+            continue;
+        }
+        offer(s->show_at);
+        if (s->snapshot.in_view && spin_motion(*services_, id)) {
+            offer(s->auto_at);
+        }
+    }
+    return next;
 }
 
 void FeedbackComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
@@ -828,16 +1347,20 @@ void FeedbackComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
         const auto& m = t.metrics;
         const auto clip =
             services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip));
+        s->in_view = intersects({node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
+                                 node.bounds.width, node.bounds.height},
+                                clip);
         const auto p = s->snapshot.palette;
-        const auto q = quad(node, node.bounds, p.background, m.border_radius);
+        auto q = quad(node, node.bounds, p.background, s->snapshot.banner ? 0 : m.border_radius);
+        q.opacity = services_->nodes().content_opacity(s->node);
         static_cast<void>(services_->surfaces().update(s->surface, std::span{&q, 1}));
         component::RetainedSurfaceEffects effects;
         effects.focus_enabled = false;
         effects.ancestor_clip = graphics::EffectClip{1, clip};
         static_cast<void>(services_->surfaces().update_effects(s->surface, effects));
         const auto r = node.bounds;
-        const auto width = std::min(m.border_width, std::min(r.width, r.height) / 2);
-        const auto radius = std::min(m.border_radius, std::min(r.width, r.height) / 2);
+        const auto width = s->snapshot.banner ? 0 : std::min(m.border_width, std::min(r.width, r.height) / 2);
+        const auto radius = s->snapshot.banner ? 0 : std::min(m.border_radius, std::min(r.width, r.height) / 2);
         const runtime::Rect inner{r.x + width, r.y + width, std::max(0.0F, r.width - 2 * width),
                                   std::max(0.0F, r.height - 2 * width)};
         const auto close = bounds(*services_, s->snapshot.close);
@@ -851,30 +1374,54 @@ void FeedbackComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
                 node.translation, graphics::EffectClip{1, clip})};
         static_cast<void>(services_->surfaces().update_content_effects(s->border, borders));
     }
-    for (auto id : spins_) {
+    const auto spin_ids = spins_;
+    for (auto id : spin_ids) {
         auto* s = services_->components().state<SpinState>(id);
         if (!s) {
             continue;
         }
         const auto& node = services_->nodes().require(s->node);
+        const auto overlay_node = services_->components().root(s->snapshot.overlay);
+        const auto& overlay = services_->nodes().require(overlay_node);
         const auto clip =
-            services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip));
+            s->snapshot.fullscreen
+                ? runtime::Rect{0, 0, viewport.width, viewport.height}
+                : services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip));
         const auto icon = bounds(*services_, s->snapshot.indicator);
         const runtime::Rect translated{icon.x + node.translation.x, icon.y + node.translation.y, icon.width,
                                        icon.height};
         s->snapshot.in_view = services_->components().branch_active(id) && node.opacity > 0 &&
                               intersects(translated, clip) &&
                               intersects(translated, {0, 0, viewport.width, viewport.height});
-        s->animate.set(s->snapshot.spinning && s->snapshot.in_view);
+        s->animate.set(s->snapshot.spinning && s->snapshot.in_view && !s->snapshot.percent &&
+                       spin_motion(*services_, id));
         const auto& t = services_->components().theme_scope(id)->snapshot().spin();
-        const auto q =
-            quad(node, node.bounds, t.colors.mask, 0, s->snapshot.spinning && s->snapshot.wrapped ? 1.0F : 0.0F);
+        s->snapshot.overlay_bounds = overlay.bounds;
+        // Keep the retained built-in indicator's layout while its percent ring is painted by the common arc primitive.
+        std::vector<graphics::RoundedEffectInstance> ring;
+        if (s->snapshot.percent && !s->custom_indicator && s->snapshot.spinning) {
+            const float side = std::min(icon.width, icon.height);
+            if (side > 0) {
+                const float stroke = side * .1F;
+                const runtime::Point center{icon.x + icon.width / 2, icon.y + icon.height / 2};
+                ring.push_back(graphics::make_arc_effect(center, (side - stroke) / 2, stroke, -90, 360,
+                                                         t.colors.indicator, node.opacity * .15F, overlay.translation,
+                                                         graphics::EffectClip{1, clip}));
+                ring.push_back(graphics::make_arc_effect(center, (side - stroke) / 2, stroke, -90,
+                                                         3.6F * *s->snapshot.percent, t.colors.indicator, node.opacity,
+                                                         overlay.translation, graphics::EffectClip{1, clip}));
+            }
+        }
+        static_cast<void>(services_->surfaces().update_content_effects(s->progress, ring));
+        const auto q = quad(overlay, overlay.bounds, t.colors.mask, 0,
+                            s->snapshot.spinning && (s->snapshot.wrapped || s->snapshot.fullscreen) ? 1.0F : 0.0F);
         static_cast<void>(services_->surfaces().update(s->mask, std::span{&q, 1}));
         component::RetainedSurfaceEffects effects;
         effects.focus_enabled = false;
         effects.ancestor_clip = graphics::EffectClip{1, clip};
         static_cast<void>(services_->surfaces().update_effects(s->mask, effects));
     }
+    synchronize_auxiliary_motion();
     for (auto id : progress_) {
         auto* s = services_->components().state<ProgressState>(id);
         if (!s || !services_->components().branch_active(id)) {
@@ -942,6 +1489,13 @@ void Spin(SpinProps props) {
         throw std::logic_error("Spin requires window component services");
     }
     detail::active_feedback->mount(props, std::nullopt, {});
+}
+
+void Spin(SpinProps props, SpinSlots slots) {
+    if (!detail::active_feedback) {
+        throw std::logic_error("Spin requires window component services");
+    }
+    detail::active_feedback->mount(props, std::nullopt, slots);
 }
 
 void Spin(SpinProps props, SpinContent content, SpinSlots slots) {

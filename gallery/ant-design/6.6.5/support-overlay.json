@@ -1427,18 +1427,18 @@
     {
       "identity": "ant.component.popover",
       "status": "partial",
-      "summary": "原生 Popover 提供保留式交互富内容、受控开合、组合触发与定位箭头；Gallery 提供真实备注编辑、保存、方位与禁用恢复，平台验收独立记录。",
+      "summary": "原生 Popover 支持保留富内容、组合/右键触发、RTL、有限动画及内容滚动，Windows 定向与原生验收已记录。",
       "supported_scope": [
         "typed trigger/title/content slots and reactive string title/content with retained native editors and controls",
         "controlled/default visibility, hover/focus/click combinations, finite delays and keyboard/outside closing",
         "twelve placements, arrows, viewport clipping and independent Theme inheritance",
         "Modal/Spin/hidden suppression, child-popup priority, content-first wheel routing and callback lifetime checks",
-        "interactive Gallery: real note editing/save, placements, arrows and disabled recovery from the catalog"
+        "interactive Gallery: real note editing/save, placements, arrows and disabled recovery from the catalog",
+        "contextMenu/composed triggers, RTL/wireframe, finite motion and retained scrolling content"
       ],
       "missing_scope": [
-        "contextMenu trigger, animations, RTL, wireframe special cases and built-in content scrolling",
-        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
-        "full Ant Design Web/DOM/CSS API"
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/popover/index.en-US.md",
@@ -1451,7 +1451,8 @@
         "openspec:091-20261026-add-overlay-and-timeline-gallery",
         "runtime:examples/token_gallery/token_gallery_definition.cpp",
         "test:rynui.token_gallery_frame",
-        "docs:docs/popover.md"
+        "docs:docs/popover.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
@@ -1517,19 +1518,23 @@
     {
       "identity": "ant.component.statistic",
       "status": "partial",
-      "summary": "原生 Statistic 指标：typed 数值、精度截断/补零和保留编辑。",
+      "summary": "原生 Statistic 支持 Timer 倒计时/正计时、局部 locale 与有限数值动画，Windows 定向及原生验收已记录。",
       "supported_scope": [
         "int64/uint64/double/String、precision、分隔符、formatter、富内容和 loading",
-        "Gallery 目录直达真实统计值及富 Input、精确业务值反馈和加载恢复"
+        "Gallery 目录直达真实统计值及富 Input、精确业务值反馈和加载恢复",
+        "Countdown/Countup, explicit reactive StatisticLocale and finite value animation"
       ],
       "missing_scope": [
-        "Timer/动画/locale；GPU/原生窗口与人工视觉、Linux、系统 IME 和 AT 验收"
+        "ConfigProvider 统一数字格式接入仍由 108 的数字族阶段跟踪",
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/statistic/index.en-US.md",
         "openspec:089-20261026-add-native-statistic",
         "openspec:093-20261026-add-member-and-rating-gallery",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
@@ -1685,57 +1690,63 @@
     {
       "identity": "ant.component.alert",
       "status": "partial",
-      "summary": "已实现原生状态提示、描述、图标、action 与受控关闭，隐藏后兄弟内容重新排布；Gallery 提供实际关闭和恢复入口。",
+      "summary": "原生 Alert 支持 banner、跑马灯、有限退出及 afterClose，Windows 定向与原生验收已记录。",
       "supported_scope": [
         "reactive Status/message/description/visible/closable and onClose requests",
-        "retained typed message/description/icon/action/close slots and Alert Component Token"
+        "retained typed message/description/icon/action/close slots and Alert Component Token",
+        "banner, pausable marquee, finite exit and afterClose"
       ],
       "missing_scope": [
-        "banner/marquee and exit animation",
-        "complete Web/DOM compatibility and native accessibility bridge"
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/alert/index.en-US.md",
         "openspec:065-20261023-add-native-feedback-components",
         "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
-        "docs:docs/feedback.md"
+        "docs:docs/feedback.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
       "identity": "ant.component.drawer",
       "status": "partial",
-      "summary": "已实现四边停靠 Drawer、受控关闭、保留插槽、正文滚动与模态焦点边界；Gallery 可切换四边并保留编辑草稿，原生平台验收独立记录。",
+      "summary": "原生 Drawer 已补 loading、extra、RTL、resize、push、lazy/destroy 和定向阴影；完整开合动画与动态服务继续跟踪。",
       "supported_scope": [
         "controlled open, four placements, finite width/height and retained typed title/content/footer",
         "fixed header/footer, scrolling body, focus reveal/restoration and shared Modal nesting",
-        "mask/keyboard/close controls, lifecycle callbacks and independent Drawer Component Token"
+        "mask/keyboard/close controls, lifecycle callbacks and independent Drawer Component Token",
+        "loading/Skeleton, extra, RTL, drag resize, push, lazy/destroyOnHidden and directional shadows"
       ],
       "missing_scope": [
-        "loading/Skeleton, animation, push/drag/resize and static service",
-        "extra slot, directional shadow mapping, lazy/destroyOnHidden, RTL and native accessibility bridge"
+        "完整开合动画与 App/静态动态服务尚未收口",
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/drawer/index.en-US.md",
         "openspec:062-20261023-add-native-drawer",
         "test:drawer_model/drawer_public_api/drawer_theme/drawer_component/token_gallery_frame",
-        "docs:docs/drawer.md"
+        "docs:docs/drawer.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
       "identity": "ant.component.message",
       "status": "partial",
-      "summary": "原生 Message 提供窗口内键控更新、五种状态和单调到期；Gallery 提供真实打开、同 key 成功更新、关闭及清空，不提供全局 service 或动画。",
+      "summary": "原生 Message 支持 hover 暂停、进度、有限动画、关闭 future、折叠栈及 App 活上下文服务。",
       "supported_scope": [
         "window-scoped typed holder/ref with keyed open, partial update, close and clear",
         "five status icons, string/rich content and retained editor identities",
         "top-centered stacking, maxCount eviction, persistent or monotonic timed entries",
         "Theme, input boundaries, reentrant callbacks and actual clipped scene rendering",
-        "interactive Gallery: catalog-linked native open/update/close/clear workflow"
+        "interactive Gallery: catalog-linked native open/update/close/clear workflow",
+        "pauseOnHover, progress, finite motion, close future, collapsed stack and captured App services"
       ],
       "missing_scope": [
-        "animations, progress, pauseOnHover, global service and promise API",
-        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
-        "full Ant Design Web/DOM/CSS API"
+        "Loading 状态图标仍为静态",
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/message/index.en-US.md",
@@ -1748,7 +1759,8 @@
         "openspec:091-20261026-add-overlay-and-timeline-gallery",
         "runtime:examples/token_gallery/token_gallery_definition.cpp",
         "test:rynui.token_gallery_frame",
-        "docs:docs/message-notification.md"
+        "docs:docs/message-notification.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
@@ -1776,18 +1788,19 @@
     {
       "identity": "ant.component.notification",
       "status": "partial",
-      "summary": "原生 Notification 提供窗口内四角键控通知和富内容；Gallery 提供实际编辑、局部更新、位置/状态切换和关闭清空，保留更新中的编辑草稿。",
+      "summary": "原生 Notification 提供独立操作页、hover 暂停、进度、有限动画、关闭 future、折叠栈与 App 活上下文服务。",
       "supported_scope": [
         "typed window-scoped holder/ref with keyed partial updates and safe close/clear",
         "four-corner stacking, title/description/actions and real close Button",
         "persistent/timed entries, maxCount, retained rich controls and reentrant lifecycle",
         "independent Theme, clipping, focus/input boundaries and child-popup priority",
-        "interactive Gallery: retained native editor, keyed title updates, placement/status changes and close/clear"
+        "interactive Gallery: retained native editor, keyed title updates, placement/status changes and close/clear",
+        "independent actionable Gallery, pause/progress/motion/future/stack and captured App services"
       ],
       "missing_scope": [
-        "animations, pauseOnHover, progress, collapsed stack and global/promise APIs",
-        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
-        "full Ant Design Web/DOM/CSS API"
+        "Loading 状态图标仍为静态",
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/notification/index.en-US.md",
@@ -1800,7 +1813,8 @@
         "openspec:091-20261026-add-overlay-and-timeline-gallery",
         "runtime:examples/token_gallery/token_gallery_definition.cpp",
         "test:rynui.token_gallery_frame",
-        "docs:docs/message-notification.md"
+        "docs:docs/message-notification.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
@@ -1846,19 +1860,19 @@
     {
       "identity": "ant.component.result",
       "status": "partial",
-      "summary": "RynUI 已提供原生 Result：语义状态与 403/404/500、响应式标题/说明、保留 icon/content/extra slots 和实际编辑控件；076 追加状态循环与草稿 Gallery，运行验收单独记录。",
+      "summary": "原生 Result 支持固定上游异常插画、保留式动态区域与有限状态动画，Windows 定向及原生验收已记录。",
       "supported_scope": [
         "typed ResultProps/ResultStatus, reactive title/subtitle/status and retained icon/content/extra slots",
         "Success/Warning/Error/info and Forbidden/NotFound/ServerError mapped to existing native Icons",
         "Theme component colors/metrics, finite text/Icon clipping, wrapped native actions and content surface",
         "retained Button interaction, Input editor/draft and Text scene identity across status/Theme updates",
-        "076 Gallery source: seven-state cycle, native continue action/draft, static 404 and custom Icon/Text Flex"
+        "076 Gallery source: seven-state cycle, native continue action/draft, static 404 and custom Icon/Text Flex",
+        "pinned 403/404/500 illustrations through shared ImageSource, retained dynamic slots and finite state motion"
       ],
       "missing_scope": [
-        "upstream large exception SVG illustration parity and image URL/raster/network APIs",
-        "animation, network/state services and dynamic slot topology",
-        "Web DOM/CSS/React aliases and screen-reader semantic bridge",
-        "076 Gallery runtime acceptance, component GPU/manual visual, Linux and system IME evidence are recorded independently"
+        "通用 HTTP/网络状态服务由应用提供",
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/result/index.en-US.md",
@@ -1868,24 +1882,26 @@
         "test:rynui.empty_result_public_api",
         "test:rynui.empty_result_theme",
         "test:rynui.empty_result_component",
-        "test:tests/token_gallery_frame_tests.cpp#test_empty_and_result_gallery_after_document_scroll"
+        "test:tests/token_gallery_frame_tests.cpp#test_empty_and_result_gallery_after_document_scroll",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
       "identity": "ant.component.skeleton",
       "status": "partial",
-      "summary": "原生静态 Skeleton 提供标题、段落、avatar 和独立 Avatar/Button/Input 占位；086 Gallery 可切换加载并恢复正文草稿与分享范围，动画尚未提供。",
+      "summary": "原生 Skeleton 支持 active 渐变、Image/Node 与保留式加载正文，Windows 定向及原生验收已记录。",
       "supported_scope": [
         "typed reactive static title/paragraph/avatar composition and proportional row widths",
         "standalone SkeletonAvatar/SkeletonButton/SkeletonInput with size, shape and block semantics",
         "retained loading content with input, focus, popup and preedit cleanup plus identity/draft restoration",
         "finite and zero-size recovery, logical scene clipping, Theme inheritance and idle behavior",
-        "086 interactive Gallery: loading/title/paragraph/avatar/round, standalone shapes and native retained publication flow"
+        "086 interactive Gallery: loading/title/paragraph/avatar/round, standalone shapes and native retained publication flow",
+        "active shimmer, SkeletonImage/SkeletonNode and themed image glyph sizing/color"
       ],
       "missing_scope": [
-        "active/shimmer animation, SkeletonImage and SkeletonNode",
-        "native GPU/manual visual/Linux/system IME and assistive technology acceptance",
-        "network loading and full Ant Design Web/DOM/CSS API"
+        "网络加载服务由应用提供",
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/skeleton/index.en-US.md",
@@ -1898,27 +1914,30 @@
         "openspec:086-20261025-add-descriptions-and-skeleton-gallery",
         "docs:docs/skeleton.md",
         "test:rynui_token_gallery_frame_tests --details-loading-only",
-        "evidence:openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/01-gallery.md"
+        "evidence:openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/01-gallery.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
       "identity": "ant.component.spin",
       "status": "partial",
-      "summary": "已实现独立或包裹内容的加载提示、保留内容和逻辑子树输入屏蔽；动画随可见性与窗口活动停止，Gallery 可切换加载并保留草稿。",
+      "summary": "原生 Spin 支持 fullscreen、delay、数值/自动百分比及保留式正文，Windows 定向及原生验收已记录。",
       "supported_scope": [
         "reactive spinning/size/description, retained content/custom indicator and Spin Component Token",
         "dim shield, nested input/capture/focus/session cleanup and recovery without disabled mutation",
-        "finite LoadingOutlined motion with reduced/offscreen/inactive/hidden lifetime handling"
+        "finite LoadingOutlined motion with reduced/offscreen/inactive/hidden lifetime handling",
+        "fullscreen input domain, cancellable delay, numeric/automatic percent and custom indicator"
       ],
       "missing_scope": [
-        "fullscreen, delay and automatic percent",
-        "complete Web/DOM compatibility and native accessibility bridge"
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
         "source:components/spin/index.en-US.md",
         "openspec:065-20261023-add-native-feedback-components",
         "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
-        "docs:docs/feedback.md"
+        "docs:docs/feedback.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
       ]
     },
     {
@@ -1965,16 +1984,25 @@
     },
     {
       "identity": "ant.component.app",
-      "status": "planned",
-      "summary": "包裹组件（App）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 App 已提供 typed App/useApp 与真实 Message/Notification 活上下文服务，代际、future、清理及 Windows 原生验收已记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "retained App/AppRef/useApp, captured live theme/config, real Message/Notification holders and generation-safe handles"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Modal/Drawer/Popconfirm 动态服务继续按 107 后续阶段实施",
+        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
+        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
       "evidence_identifiers": [
-        "source:components/app/index.en-US.md"
+        "source:components/app/index.en-US.md",
+        "api:include/ryn/app.hpp",
+        "runtime:src/component/app_component.cpp",
+        "test:rynui.app_public_api",
+        "test:rynui.app_service_binding",
+        "docs:docs/app.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {

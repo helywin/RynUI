@@ -5,11 +5,30 @@
 #include "support/timeline_fixture.hpp"
 #include <array>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <limits>
 #include <thread>
+#if defined(_MSC_VER)
+#include <crtdbg.h>
+#endif
 using namespace timeline_test;
 
 namespace {
 int checks{};
+
+void suppress_dialogs() {
+#if defined(_MSC_VER)
+    _set_error_mode(_OUT_TO_STDERR);
+    _set_abort_behavior(0, _CALL_REPORTFAULT);
+#if defined(_DEBUG)
+    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+#endif
+#endif
+}
 
 void expect(bool v, const char* message) {
     ++checks;
@@ -403,7 +422,95 @@ void hot_path() {
     f.clean();
 }
 
+struct CreationResult final {
+    std::size_t allocations{};
+    bool failed{};
+};
+
+CreationResult creation_attempt(bool companions, std::size_t failure) {
+    Inputs f;
+    f.mount();
+    auto& registry = f.services.interactions();
+    auto lease = f.lease(InputConstraintKind::RestrictToSubtrees);
+    const auto authority = registry.input_authority(lease);
+    const auto owner = f.root(2);
+    const std::array controls{owner};
+    auto existing = f.services.create_input_companion(authority, owner, controls);
+    auto setup = registry.begin_input_constraint_update();
+    setup.replace(lease, {{f.root(1)}, true});
+    setup.enable(existing);
+    setup.boundary_view(authority);
+    static_cast<void>(f.services.publish_input_constraints(setup));
+    expect(f.refs[1].focus() && f.refs[2].focus() && !f.refs[0].focus(), "Creation sweep authority setup failed");
+    const auto revision = registry.input_boundary_revision();
+    const auto diagnostics = registry.input_constraint_diagnostics();
+    const auto focus = f.services.focus().state().focused;
+    const auto ticket = f.services.focus().focus_request_revision();
+    std::array<InputConstraintLease, 16> leases;
+    std::array<InputCompanionLease, 16> grants;
+    std::size_t created{};
+    CreationResult result;
+    std::fprintf(stderr, "input creation companions=%d failure=%zu\n", companions, failure);
+    // Fixed handle arrays are prepared above. Only production creation runs in the fault scope;
+    // no test-side vector default/move construction, focus request or notification is included.
+    ryn_test::allocation::begin(failure);
+    try {
+        for (; created < leases.size(); ++created) {
+            if (companions) {
+                grants[created] = registry.create_input_companion(authority, owner, controls);
+            } else {
+                leases[created] = registry.create_input_constraint(owner, InputConstraintKind::BlockSubtrees);
+            }
+        }
+    } catch (const std::bad_alloc&) {
+        result.failed = true;
+    } catch (...) {
+        static_cast<void>(ryn_test::allocation::end());
+        throw;
+    }
+    result.allocations = ryn_test::allocation::end();
+    for (std::size_t i = 0; i < created; ++i) {
+        expect(companions ? grants[i].release() : leases[i].release(),
+               "Creation sweep lost a returned inactive handle");
+    }
+    const auto after = registry.input_constraint_diagnostics();
+    expect(after.leases == diagnostics.leases && after.active_leases == diagnostics.active_leases &&
+               after.companions == diagnostics.companions && after.active_companions == diagnostics.active_companions &&
+               after.publications == diagnostics.publications && registry.input_boundary_revision() == revision &&
+               registry.is_boundary_authority(authority) && registry.input_boundary() == f.ids[1] && existing.valid() &&
+               f.services.focus().state().focused == focus && f.services.focus().focus_request_revision() == ticket,
+           "New slot/growth failure leaked a live slot or changed the published authority/focus");
+    expect(f.refs[1].focus() && f.refs[2].focus() && !f.refs[0].focus() && !f.refs[3].focus(),
+           "New slot/growth failure changed actual restriction/companion routing");
+    f.clean();
+    return result;
+}
+
+void creation_rollback() {
+    constexpr std::size_t limit = 512;
+    for (const bool companions : {false, true}) {
+        const auto measured = creation_attempt(companions, std::numeric_limits<std::size_t>::max());
+        expect(!measured.failed && measured.allocations > 0 && measured.allocations < limit,
+               "Creation allocation count is empty or exceeds the bounded sweep");
+        std::size_t failures{};
+        for (std::size_t failure = 0; failure <= measured.allocations; ++failure) {
+            const auto result = creation_attempt(companions, failure);
+            expect(result.failed == (failure < measured.allocations), "Creation sweep skipped a fault index");
+            if (result.failed) {
+                ++failures;
+            } else {
+                expect(result.allocations == measured.allocations,
+                       "Creation success sentinel allocation count drifted");
+            }
+        }
+        expect(failures == measured.allocations, "Creation allocation sweep was incomplete");
+        std::cout << "creation companions=" << companions << " allocations=" << measured.allocations
+                  << " caught=" << failures << " success_sentinel=1\n";
+    }
+}
+
 void rollback_and_callbacks() {
+    creation_rollback();
     Inputs f;
     f.mount();
     auto lease = f.lease(InputConstraintKind::RestrictToSubtrees);
@@ -413,19 +520,37 @@ void rollback_and_callbacks() {
         f.services.publish_input_constraints(batch);
     };
     select(1);
-    unsigned failures{};
-    for (std::size_t failure = 0; failure < 16; ++failure) {
+    const auto update = [&] {
+        auto batch = f.services.interactions().begin_input_constraint_update();
+        batch.replace(lease, {{f.root(2)}, true});
+        static_cast<void>(f.services.interactions().publish_input_constraints(batch));
+    };
+    ryn_test::allocation::begin();
+    try {
+        update();
+    } catch (...) {
+        static_cast<void>(ryn_test::allocation::end());
+        throw;
+    }
+    const auto allocations = ryn_test::allocation::end();
+    expect(allocations > 0 && allocations < 512, "Batch allocation count is empty or exceeds the bounded sweep");
+    select(1);
+    std::size_t failures{};
+    for (std::size_t failure = 0; failure <= allocations; ++failure) {
         const auto before = f.services.interactions().input_boundary_revision();
         bool rejected = false;
+        std::fprintf(stderr, "input batch failure=%zu\n", failure);
         ryn_test::allocation::begin(failure);
         try {
-            auto batch = f.services.interactions().begin_input_constraint_update();
-            batch.replace(lease, {{f.root(2)}, true});
-            f.services.interactions().publish_input_constraints(batch);
+            update();
         } catch (const std::bad_alloc&) {
             rejected = true;
+        } catch (...) {
+            static_cast<void>(ryn_test::allocation::end());
+            throw;
         }
-        static_cast<void>(ryn_test::allocation::end());
+        const auto attempted = ryn_test::allocation::end();
+        expect(rejected == (failure < allocations), "Batch sweep skipped a fault index");
         if (rejected) {
             ++failures;
             expect(f.services.interactions().input_boundary_revision() == before &&
@@ -433,11 +558,13 @@ void rollback_and_callbacks() {
                        !f.services.interactions().component_active(f.ids[2]),
                    "Allocation failure partially published an input policy");
         } else {
+            expect(attempted == allocations, "Batch success sentinel allocation count drifted");
             expect(f.services.interactions().component_active(f.ids[2]), "Successful transaction did not publish");
             select(1);
         }
     }
-    expect(failures > 0, "Policy allocation rollback probe did not exercise failures");
+    expect(failures == allocations, "Policy allocation rollback sweep was incomplete");
+    std::cout << "batch allocations=" << allocations << " caught=" << failures << " success_sentinel=1\n";
     f.services.release_input_constraint(lease);
 
     struct Participant final : detail::WindowComponentParticipant {
@@ -783,6 +910,7 @@ void focus_restore_tickets() {
 } // namespace
 
 int main(int argc, char** argv) {
+    suppress_dialogs();
     try {
         const std::string name = argc > 1 ? argv[1] : "all";
         if (name == "ownership" || name == "all") {

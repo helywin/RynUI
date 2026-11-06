@@ -5,6 +5,7 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
+#include <ryn/text_direction.hpp>
 #include <functional>
 #include <optional>
 #include <utility>
@@ -87,6 +88,16 @@ public:
         return *this;
     }
 
+    TooltipProps& direction(Prop<TextDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
+    TooltipProps& animated(Prop<bool> value = true) {
+        animated_ = std::move(value);
+        return *this;
+    }
+
     TooltipProps& triggers(Prop<TooltipTriggers> value) {
         triggers_ = std::move(value);
         return *this;
@@ -137,6 +148,8 @@ private:
     Prop<bool> disabled_{false};
     Prop<TooltipPlacement> placement_{TooltipPlacement::Top};
     Prop<TooltipTriggerMode> trigger_{TooltipTriggerMode::HoverFocus};
+    Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    Prop<bool> animated_{false};
     bool explicit_trigger_{};
     std::optional<Prop<TooltipTriggers>> triggers_;
     Prop<bool> arrow_{true};

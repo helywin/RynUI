@@ -261,7 +261,7 @@ private:
     Prop<bool> show_today_{false};
     Prop<std::optional<CalendarRange>> range_{std::optional<CalendarRange>{}};
     Prop<DisabledDate> disabled_date_{DisabledDate{}};
-    Prop<PickerLocale> locale_{PickerLocale{}};
+    std::optional<Prop<PickerLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
     CalendarRef ref_;
     std::function<CivilDate()> clock_;

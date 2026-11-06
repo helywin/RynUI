@@ -19,6 +19,86 @@ target_compile_definitions(rynui_i18n_public_api_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.i18n_public_api COMMAND rynui_i18n_public_api_tests)
 
+add_executable(rynui_i18n_components_collections_tests i18n_components_collections_tests.cpp)
+rynui_configure_cpp_target(rynui_i18n_components_collections_tests)
+target_link_libraries(rynui_i18n_components_collections_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_i18n_components_collections_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_components_collections COMMAND rynui_i18n_components_collections_tests)
+
+foreach(i18n_components_case IN ITEMS defaults overrides)
+    add_executable(rynui_i18n_components_${i18n_components_case}_tests
+        i18n_components_${i18n_components_case}_tests.cpp)
+    rynui_configure_cpp_target(rynui_i18n_components_${i18n_components_case}_tests)
+    target_link_libraries(rynui_i18n_components_${i18n_components_case}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_i18n_components_${i18n_components_case}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.i18n_components_${i18n_components_case}
+        COMMAND rynui_i18n_components_${i18n_components_case}_tests)
+endforeach()
+
+add_executable(rynui_app_service_tests app_service_tests.cpp)
+rynui_configure_cpp_target(rynui_app_service_tests)
+target_link_libraries(rynui_app_service_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_app_service_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(app_case IN ITEMS binding nested windows update callbacks failures cleanup domain clip)
+    add_test(NAME rynui.app_service_${app_case} COMMAND rynui_app_service_tests ${app_case})
+endforeach()
+
+add_executable(rynui_i18n_service_tests i18n_service_tests.cpp)
+rynui_configure_cpp_target(rynui_i18n_service_tests)
+target_link_libraries(rynui_i18n_service_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_i18n_service_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_service COMMAND rynui_i18n_service_tests)
+
+add_executable(rynui_app_public_api_tests app_public_api_tests.cpp
+    "${PROJECT_SOURCE_DIR}/examples/app_notice/app_notice.cpp")
+rynui_configure_cpp_target(rynui_app_public_api_tests)
+target_link_libraries(rynui_app_public_api_tests PRIVATE RynUI::RynUI)
+target_compile_definitions(rynui_app_public_api_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.app_public_api COMMAND rynui_app_public_api_tests)
+
+add_executable(rynui_i18n_components_selection_tests i18n_components_selection_tests.cpp)
+rynui_configure_cpp_target(rynui_i18n_components_selection_tests)
+target_link_libraries(rynui_i18n_components_selection_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_i18n_components_selection_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_components_selection COMMAND rynui_i18n_components_selection_tests)
+
+add_executable(rynui_i18n_components_pickers_tests i18n_components_pickers_tests.cpp
+    i18n_pickers_retained_cases.cpp)
+rynui_configure_cpp_target(rynui_i18n_components_pickers_tests)
+target_link_libraries(rynui_i18n_components_pickers_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_i18n_components_pickers_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_components_pickers COMMAND rynui_i18n_components_pickers_tests)
+
+add_executable(rynui_i18n_components_editors_tests i18n_components_editors_tests.cpp i18n_picker_range_cases.cpp)
+rynui_configure_cpp_target(rynui_i18n_components_editors_tests)
+target_link_libraries(rynui_i18n_components_editors_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_i18n_components_editors_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_components_editors COMMAND rynui_i18n_components_editors_tests)
+
+add_executable(rynui_i18n_components_media_tests i18n_components_media_tests.cpp)
+rynui_configure_cpp_target(rynui_i18n_components_media_tests)
+target_link_libraries(rynui_i18n_components_media_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_i18n_components_media_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_components_media COMMAND rynui_i18n_components_media_tests)
+
 add_executable(rynui_overlay_descendant_maintenance_tests overlay_descendant_maintenance_tests.cpp)
 rynui_configure_cpp_target(rynui_overlay_descendant_maintenance_tests)
 target_link_libraries(rynui_overlay_descendant_maintenance_tests PRIVATE rynui_components)
@@ -26,6 +106,26 @@ target_compile_definitions(rynui_overlay_descendant_maintenance_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.overlay_descendant_maintenance COMMAND rynui_overlay_descendant_maintenance_tests)
+
+add_executable(rynui_window_overlay_stack_tests window_overlay_stack_tests.cpp)
+rynui_configure_cpp_target(rynui_window_overlay_stack_tests)
+target_link_libraries(rynui_window_overlay_stack_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_window_overlay_stack_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(overlay_case IN ITEMS order domain nested focus drawer companion reentry rollback cleanup two_windows)
+    add_test(NAME rynui.window_overlay_${overlay_case} COMMAND rynui_window_overlay_stack_tests ${overlay_case})
+endforeach()
+
+add_executable(rynui_popup_statistic_completion_tests popup_statistic_completion_tests.cpp)
+rynui_configure_cpp_target(rynui_popup_statistic_completion_tests)
+target_link_libraries(rynui_popup_statistic_completion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_popup_statistic_completion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS context scroll popup_motion locale timer statistic_motion callback)
+    add_test(NAME rynui.popup_statistic_${case} COMMAND rynui_popup_statistic_completion_tests ${case})
+endforeach()
 
 if(NOT RYNUI_HAS_SDL_GPU)
     add_executable(rynui_tooltip_component_tests tooltip_component_tests.cpp)
@@ -704,6 +804,16 @@ endforeach()
 
 add_test(NAME rynui.notice_docs_example COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_notice_examples.py")
 
+add_executable(rynui_feedback_completion_tests feedback_completion_tests.cpp)
+rynui_configure_cpp_target(rynui_feedback_completion_tests)
+target_link_libraries(rynui_feedback_completion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_feedback_completion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(feedback_completion_case IN ITEMS alert notice_timer notice_lifecycle notice_stack drawer drawer_push)
+    add_test(NAME rynui.feedback_completion_${feedback_completion_case}
+        COMMAND rynui_feedback_completion_tests ${feedback_completion_case})
+endforeach()
 
 foreach(statistic_test IN ITEMS statistic_model statistic_theme)
     add_executable(rynui_${statistic_test}_tests ${statistic_test}_tests.cpp)
@@ -1000,6 +1110,17 @@ foreach(feedback_test IN ITEMS feedback_public_api feedback_theme feedback_compo
     add_test(NAME rynui.${feedback_test} COMMAND rynui_${feedback_test}_tests)
 endforeach()
 
+# Wave 2 contracts are CPU fixtures. Register independently of the historical combined feedback suite.
+foreach(completion_test IN ITEMS result_completion skeleton_completion spin_completion)
+    add_executable(rynui_${completion_test}_tests ${completion_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${completion_test}_tests)
+    target_link_libraries(rynui_${completion_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${completion_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${completion_test} COMMAND rynui_${completion_test}_tests)
+endforeach()
+
 foreach(number_test IN ITEMS input_number_model input_number_public_api)
     add_executable(rynui_${number_test}_tests ${number_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${number_test}_tests)
@@ -1215,7 +1336,7 @@ endforeach()
 
 if(NOT RYNUI_HAS_SDL_GPU)
     # Reuse affected interaction and container contracts in HEADLESS builds.
-    foreach(retained_boundary_contract IN ITEMS selection_component modal_component input_component)
+    foreach(retained_boundary_contract IN ITEMS selection_component modal_component popconfirm_component input_component)
         add_executable(rynui_${retained_boundary_contract}_tests "${retained_boundary_contract}_tests.cpp")
         rynui_configure_cpp_target(rynui_${retained_boundary_contract}_tests)
         target_link_libraries(rynui_${retained_boundary_contract}_tests PRIVATE rynui_components rynui_text_input_session)

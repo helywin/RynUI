@@ -4,6 +4,8 @@
 #include "component/option_list_support.hpp"
 #include "component/input_component.hpp"
 #include "component/popover_component.hpp"
+#include "component/localized_prop.hpp"
+#include "reactive/untracked.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
@@ -81,6 +83,7 @@ struct State final {
     bool shown{true};
     bool caret_offscreen{};
     String not_found_text{u8"No data"};
+    String loading_text{u8"Loading…"};
 
     runtime::NodeId node;
     runtime::ComponentId input;
@@ -329,6 +332,7 @@ void mount_content(WindowComponentServices& services, runtime::ComponentId paren
                    bool mounting, std::optional<Prop<runtime::SemanticForeground>> color = {},
                    std::optional<Prop<runtime::SemanticTypography>> font = {}) {
     const auto theme = services.components().theme_scope(parent);
+    const auto config = services.components().config_scope(parent);
     const Content typed{[parent, content, color, font] {
         auto& build = runtime::require_component_build_context();
         if (color && font) {
@@ -337,8 +341,11 @@ void mount_content(WindowComponentServices& services, runtime::ComponentId paren
             build.mount_slot(parent, content);
         }
     }};
-    const Content themed{
-        [theme, typed] { runtime::require_component_build_context().mount_slot_with_theme_scope(typed, theme); }};
+    const Content configured{
+        [config, typed] { runtime::require_component_build_context().mount_slot_with_config_scope(typed, config); }};
+    const Content themed{[theme, configured] {
+        runtime::require_component_build_context().mount_slot_with_theme_scope(configured, theme);
+    }};
     if (mounting) {
         SlotContentAccess::function(themed)();
     } else {
@@ -415,6 +422,7 @@ MentionsSnapshot MentionsComponentHost::snapshot(runtime::ComponentId id) const 
     }
     result.total_rows = s->model.filtered().size();
     result.pending = s->pending;
+    result.empty = s->empty_label_root;
     if (s->active_query) {
         result.prefix = s->active_query->prefix;
         result.query_begin = s->active_query->begin;
@@ -435,6 +443,31 @@ bool MentionsComponentHost::editable(runtime::ComponentId id, bool composition) 
            !editor->disabled() && !editor->read_only() && (!composition || !editor->composition().active);
 }
 
+void MentionsComponentHost::update_locale(runtime::ComponentId id, String empty, String loading) {
+    auto* s = checked(*services_, id);
+    if (!s) {
+        return;
+    }
+    s->not_found_text = std::move(empty);
+    s->loading_text = std::move(loading);
+    if (!s->loading && !s->pending && s->empty_content.content()) {
+        return;
+    }
+    const auto text = s->loading || s->pending ? s->loading_text : s->not_found_text;
+    const auto label = s->not_found;
+    if (label.get() == text) {
+        return;
+    }
+    RetireOnException failure{*services_, id};
+    const auto generation = ++s->refresh_generation;
+    label.set(text);
+    s = checked(*services_, id);
+    if (!s || s->refresh_generation != generation) {
+        return;
+    }
+    s->needs_layout = true;
+}
+
 void MentionsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     auto* s = checked(*services_, id);
     if (!s || !s->private_ready || s->mounting) {
@@ -442,7 +475,7 @@ void MentionsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     }
     const auto generation = ++s->refresh_generation;
     auto empty_label = s->not_found;
-    empty_label.set(s->loading || s->pending ? String{u8"Loading…"} : s->not_found_text);
+    empty_label.set(s->loading || s->pending ? s->loading_text : s->not_found_text);
     s = checked(*services_, id);
     if (!s || s->refresh_generation != generation) {
         return;
@@ -1511,6 +1544,10 @@ void MentionsComponentHost::mount(const MentionsProps& props) {
     const auto popup_render = read_prop(props.popup_render_);
     const auto empty_content = read_prop(props.empty_content_);
     auto& build = runtime::require_component_build_context();
+    const auto not_found = localized_prop(props.not_found_, build.config_scope(),
+                                          [](const LocaleData& data) { return data.common.empty; });
+    const auto loading_text =
+        localized_prop<String>({}, build.config_scope(), [](const LocaleData& data) { return data.common.loading; });
     const auto id = build.mount_component<State>(
         MentionsModel{{}, props.default_value_.value_or(String{}), props.value_.has_value(), MentionsFilter{}, true});
     RetireOnFailure rollback{services, id};
@@ -1720,14 +1757,11 @@ void MentionsComponentHost::mount(const MentionsProps& props) {
                          signal.set(std::move(icon));
                      }
                  }) ||
-        !connect(props.not_found_, [this, id](String text) {
-            if (auto* s = checked(*services_, id)) {
-                s->not_found_text = text;
-                auto signal = s->not_found;
-                signal.set(std::move(text));
-                refresh(id);
-            }
-        })) {
+        !connect(Prop<std::pair<String, String>>{bind(
+                     [not_found, loading_text] { return std::pair{read_prop(not_found), read_prop(loading_text)}; })},
+                 [this, id](std::pair<String, String> text) {
+                     run_untracked([&] { update_locale(id, std::move(text.first), std::move(text.second)); });
+                 })) {
         return;
     }
     const auto simple = [&](const auto& prop, auto member) {

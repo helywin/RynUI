@@ -107,6 +107,21 @@ inline void capture_gallery_visuals(const GalleryPageRoute& route, std::size_t c
                      {0, 0, viewport.width, viewport.height});
             }
         }
+        if (route.component_identity == "ant.component.skeleton" || route.component_identity == "ant.component.spin" ||
+            route.component_identity == "ant.component.result" || route.component_identity == "ant.component.popover" ||
+            route.component_identity == "ant.component.statistic" ||
+            route.component_identity == "ant.component.tooltip" || route.component_identity == "ant.component.alert" ||
+            route.component_identity == "ant.component.drawer" || route.component_identity == "ant.component.message" ||
+            route.component_identity == "ant.component.notification" ||
+            route.component_identity == "ant.component.app") {
+            const std::size_t phases = route.component_identity == "ant.component.tooltip" ? 6 : 3;
+            for (std::size_t phase = 1; phase <= phases; ++phase) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(60));
+                render();
+                save(route.component_identity, "animation", state_index * 10 + phase,
+                     {0, 0, viewport.width, viewport.height});
+            }
+        }
         if (route.component_identity == "ant.component.border-beam" && advance_animation) {
             const auto beam = pages.target("gallery.border-beam.main");
             for (std::size_t phase = 1; phase <= 4; ++phase) {

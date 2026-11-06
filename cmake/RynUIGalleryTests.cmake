@@ -18,6 +18,18 @@ target_compile_definitions(rynui_qrcode_tour_gallery_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.qrcode_gallery COMMAND rynui_qrcode_tour_gallery_tests qrcode)
 
+add_executable(rynui_feedback_wave2_gallery_tests feedback_wave2_gallery_tests.cpp)
+rynui_configure_cpp_target(rynui_feedback_wave2_gallery_tests)
+target_include_directories(rynui_feedback_wave2_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_feedback_wave2_gallery_tests PRIVATE
+    rynui_token_gallery_definition rynui_token_gallery_reference_surface rynui_components)
+target_compile_definitions(rynui_feedback_wave2_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(feedback_page IN ITEMS result skeleton spin)
+    add_test(NAME rynui.${feedback_page}_completion_gallery COMMAND rynui_feedback_wave2_gallery_tests ${feedback_page})
+endforeach()
+
 add_executable(rynui_status_gallery_tests status_gallery_tests.cpp)
 rynui_configure_cpp_target(rynui_status_gallery_tests)
 target_include_directories(rynui_status_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")

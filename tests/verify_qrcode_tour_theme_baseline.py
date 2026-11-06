@@ -12,6 +12,15 @@ def identities(text):
     return re.findall(r'^\s+(\w+),',text.split('enum class TokenIdentity')[1].split('};')[0],re.M)
 def fields(text):
     return re.findall(r'^    (.+);$',text.split('struct ThemeConfig final {')[1].split('friend bool')[0],re.M)
+def appended_tokens(before, after, additions, context):
+    assert list(after) == list(before), (context, 'component fields')
+    for key,value in before.items():
+        if key in additions:
+            assert len(after[key]) == len(value) + additions[key], (context, key, 'append count')
+            assert after[key][:len(value)] == value, (context, key, 'old prefix')
+        else:
+            assert after[key] == value, (context, key)
+
 def main():
     domains={'qrcode', 'watermark', 'borderBeam', 'affix'}
     for p in sorted((ROOT/'design-tokens/ant-design/6.6.5/golden').glob('*.json')):
@@ -20,7 +29,12 @@ def main():
         assert list(after) == list(before) + ['qrcode', 'watermark', 'borderBeam', 'affix'], (p.name, 'domain order')
         assert set(before)|domains==set(after),(p.name,set(after)-set(before))
         for name,value in before.items():
-            if name!='identity': assert after[name]==value,(p.name,name)
+            if name == 'skeleton':
+                appended_tokens(value, after[name], {'colors':2}, (p.name,name))
+            elif name == 'popover':
+                appended_tokens(value, after[name], {'colors':1,'metrics':6}, (p.name,name))
+            elif name!='identity':
+                assert after[name]==value,(p.name,name)
         assert after['identity']!=before['identity']
     path='src/theme/theme_runtime_types.hpp'
     before=identities(old(path));after=identities((ROOT/path).read_text())

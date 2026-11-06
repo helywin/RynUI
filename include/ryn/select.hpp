@@ -660,7 +660,7 @@ private:
     Prop<InputStatus> status_{InputStatus::Default};
     std::optional<Prop<bool>> open_;
     std::optional<bool> default_open_;
-    Prop<String> not_found_content_{String{u8"No data"}};
+    std::optional<Prop<String>> not_found_content_;
     Prop<float> list_height_{256};
     std::function<void(SelectSelection)> on_change_;
     std::function<void(String)> on_search_;

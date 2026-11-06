@@ -26,3 +26,7 @@ logo 遮挡、低纠错、低对比度、透明背景、过密/过小模块及�
 `QRCodeRef.data()` 返回当前可用编码模型副本；`exportPng(pixelSize)` 返回确定性 RGBA8 PNG，`exportSvg()` 返回完整 SVG（logo 以内嵌 PNG 保存），纯函数还提供 `rasterize_qrcode`。导出包含编码模型、colors、quiet zone、中心 logo/excavation/alpha，排除容器 border/padding 和状态覆盖。PNG 采用整数 module pitch，多余像素居中；pixelSize 至少容纳所有模块、最多 4096，过小/无效/已退役 ref 会明确失败。SVG 保留 logical 位置，无脚本、外链或服务器状态；文件目的地和 IO 归应用所有。未完成/失败的 logo 按当前画面导出无 logo 模型。导出验证见 change107 的 [Linux 证据](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/qrcode-linux.md)。
 
 Web `type=canvas|svg` 映射为显式原生导出 API，屏幕统一 logical CPU scene；icon URL/crossOrigin 映射为应用持有的 ImageSource/loader。DOM refs、HTML/canvas attributes、CSS classNames/styles、React nodes 与 portal 不移植。Windows/MSVC/D3D12、物理系统 IME、AT 与真实跨显示器未验证。
+
+108 媒体接入：未设置 `locale(...)` 时，内置 expired/refresh/loading/scanned 文案与 `QRCodeStatusContext.locale` 继承最近 ConfigProvider 的 qrcode 语言组。显式完整 QRCodeLocale 优先，英文和空字段不被默认包替换；status renderer 继续拥有自己的内容。语言更新不重新编码 payload、不重载 logo、不触发 onRefresh，也不重跑 status renderer 或重建其中的编辑器。业务 payload、应用错误和导出数据不翻译。
+
+新增 `rynui.i18n_components_media` 覆盖 retained 文案、编码调用计数、异步 logo、重入/退役和作用域；本子阶段交接为未编译、未运行状态，尚无新的 native/GPU 验收结论。

@@ -24,6 +24,10 @@ ryn::Tooltip(ryn::TooltipProps{}
 
 `triggers(Prop<TooltipTriggers>)` 组合 `hover`、`focus`、`click`、`context_menu`（默认 struct 字段均 false，空组合手动），与显式 `trigger()` 互斥。组合中点击关闭后，仍在 hover/focus 时保持关闭，离开全部自动触发状态后再允许自动打开。
 
+`direction(Prop<TextDirection>)` 默认 LeftToRight；RightToLeft 镜像左右方位和角对齐，内置 title 采用同一文本方向。`animated(Prop<bool>)` 默认 false，开启后使用 Theme fast duration 的有限淡入淡出；逻辑关闭立即阻止富标题输入，退场只保留 paint。hidden/off-page、窗口失活、disabled 与 reduced motion 清除多余动画 deadline。独立目录页的 `gallery.tooltip.rtl-combined` 为实际 RTL、四种组合 trigger 和动画入口。
+
+107 增补与 `rynui.popup_statistic_*` 的 MSVC Debug/Release、D3D12 局部和动画帧结果见[Windows 阶段验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md)。OS AT 桥接与其他平台继续独立跟踪。
+
 富标题使用 `Tooltip(props, TooltipTrigger{...}, TooltipTitle{...})`，与显式 String `title()` 互斥。标题可组合 Text/Icon/Flex，继承提示 foreground/typography，挂载一次；内部 reactive 变化只调整自身浮层尺寸。`titleAvailable(Prop<bool>)` 默认 true，表示富标题是否有可显示内容；为 false 时取消显示和 deadline。关闭保留标题 state，销毁/挂载异常完整清理。
 
 ```cpp
@@ -37,4 +41,4 @@ ryn::Tooltip(ryn::TooltipProps{}.trigger(ryn::TooltipTriggerMode::Click),
     }});
 ```
 
-`pointAtCenter(Prop<bool>)` 默认 false：中心 placement 指向 trigger 中心，角 placement 保留固定边缘内距；启用后移动 popup，使固定角箭头对准 trigger 中心。溢出 flip/shift 仍受窗口约束。箭头使用四向私有向量 glyph，经共用 R8 atlas 呈现连续三角形，颜色跟随 Tooltip background；不产生细条 quad。DOM、CSS、portal container 等 Web 专用 API 不移植。基线来自锁定 [Ant Design 6.6.5 Tooltip API](https://github.com/ant-design/ant-design/blob/6.6.5/components/tooltip/shared/sharedProps.en-US.md) 和 [style](https://github.com/ant-design/ant-design/blob/6.6.5/components/tooltip/style/index.ts)。实际阶段与平台验收见 [040 清单](../openspec/changes/040-20261002-add-tooltip-overlay-foundation/tasks.md)、[043 清单](../openspec/changes/043-20261002-complete-native-tooltip-interactions/tasks.md)，已有组件的原生收尾范围见 [组件收尾](component-completion.md)。
+`pointAtCenter(Prop<bool>)` 默认 false：中心 placement 指向 trigger 中心，角 placement 保留固定边缘内距；启用后移动 popup，使固定角箭头对准 trigger 中心。溢出 flip/shift 仍受窗口约束。箭头与圆角主体使用共同 logical fill effect，在同一覆盖中合成，颜色跟随 Tooltip background。DOM、CSS、portal container 等 Web 专用 API 不移植。基线来自锁定 [Ant Design 6.6.5 Tooltip API](https://github.com/ant-design/ant-design/blob/6.6.5/components/tooltip/shared/sharedProps.en-US.md) 和 [style](https://github.com/ant-design/ant-design/blob/6.6.5/components/tooltip/style/index.ts)。实际阶段与平台验收见 [040 清单](../openspec/changes/040-20261002-add-tooltip-overlay-foundation/tasks.md)、[043 清单](../openspec/changes/043-20261002-complete-native-tooltip-interactions/tasks.md)，已有组件的原生收尾范围见 [组件收尾](component-completion.md)。

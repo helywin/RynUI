@@ -2,6 +2,7 @@
 #include "component/form_control_binding.hpp"
 #include "component/input_component.hpp"
 #include "component/popover_component.hpp"
+#include "component/localized_prop.hpp"
 #include "input/text_boundary.hpp"
 #include "reactive/untracked.hpp"
 #include <limits>
@@ -129,12 +130,17 @@ struct State final {
     Signal<String> selector_text{String{}};
     Signal<bool> selector_read_only{true};
     Signal<String> empty_label{String{u8"No data"}};
+    CascaderLocale locale;
+    Signal<String> search_placeholder{String{u8"Search paths"}};
+    Signal<String> retry_label{String{u8"Retry"}};
+    std::uint64_t locale_generation{};
     Signal<bool> popup_open{false};
     Signal<bool> disabled{false};
     Signal<bool> clear_disabled{true};
     String query;
     String effective_query;
     String error;
+    bool builtin_error{};
     std::vector<float> scroll;
     std::shared_ptr<std::atomic_bool> cancelled{std::make_shared<std::atomic_bool>(false)};
     std::uint64_t generation{};
@@ -152,6 +158,14 @@ using S = std::shared_ptr<State>;
 S state(WindowComponentServices& v, runtime::ComponentId id) {
     const auto* s = v.components().state<S>(id);
     return s ? *s : S{};
+}
+
+bool has_error(const State& s) {
+    return s.builtin_error || !s.error.empty();
+}
+
+String error_text(const State& s) {
+    return s.builtin_error ? s.locale.loading_failed : s.error;
 }
 
 template <class F> void invoke(WindowComponentServices& v, runtime::ComponentId id, F&& f) {
@@ -226,8 +240,9 @@ float large_font_size(float base) {
     return std::max(base, std::floor(base * std::exp(.2F) / 2.F) * 2.F);
 }
 
-ThemeConfig child_theme(const CascaderThemeToken& t, ControlSize size) {
-    ThemeConfig c;
+std::unique_ptr<ThemeConfig> child_theme(const CascaderThemeToken& t, ControlSize size) {
+    auto config = std::make_unique<ThemeConfig>();
+    auto& c = *config;
     c.button.tokens.border_radius = dp(t.metrics.radius);
     c.button.algorithm = true;
     c.button.seed.control_height = dp(size == ControlSize::Small   ? t.metrics.selector_height_small
@@ -286,11 +301,13 @@ ThemeConfig child_theme(const CascaderThemeToken& t, ControlSize size) {
     c.popover.tokens.border_radius = dp(t.metrics.radius);
     c.popover.tokens.shadow = t.shadow;
     c.popover.tokens.z_index_popup = t.z_index_popup;
-    return c;
+    return config;
 }
 
-ThemeConfig item_theme(const CascaderThemeToken& t, bool selected, bool tag = false, bool compact = false) {
-    ThemeConfig c;
+std::unique_ptr<ThemeConfig> item_theme(const CascaderThemeToken& t, bool selected, bool tag = false,
+                                        bool compact = false) {
+    auto config = std::make_unique<ThemeConfig>();
+    auto& c = *config;
     const auto background = tag        ? t.colors.tag_background
                             : selected ? t.colors.option_selected_background
                                        : t.colors.popup_background;
@@ -332,7 +349,11 @@ ThemeConfig item_theme(const CascaderThemeToken& t, bool selected, bool tag = fa
     c.typography.tokens.base_line_height = dp(t.typography.line_height);
     c.typography.tokens.font_weight = selected ? t.typography.selected_font_weight : t.typography.font_weight;
     c.button.seed.color_primary = t.colors.option_hover_background;
-    return c;
+    return config;
+}
+
+void publish_theme(Signal<ThemeConfig> target, std::unique_ptr<ThemeConfig> config) {
+    target.set(std::move(*config));
 }
 
 CascaderThemeToken sized_tags(CascaderThemeToken token, ControlSize size) {
@@ -483,10 +504,11 @@ CascaderSnapshot CascaderComponentHost::snapshot(runtime::ComponentId id) const 
     }
     out.status = s->status;
     out.retry = s->retry_button;
-    out.error = s->error;
+    out.error = error_text(*s);
     out.loading = s->loading.has_value();
     out.clear = s->clear;
     out.arrow = s->arrow;
+    out.empty = s->empty;
     out.overflow = s->overflow;
     out.scroll = s->scroll;
     for (auto& tag : s->tags) {
@@ -667,6 +689,7 @@ void CascaderComponentHost::reconcile(runtime::ComponentId id, const std::vector
             std::ranges::none_of(next, [&](const auto& row) { return row->option.key == *s->retry_key; })) {
             s->retry_key.reset();
             s->error = {};
+            s->builtin_error = false;
         }
         s->options = options;
         s->rows = std::move(next);
@@ -674,6 +697,33 @@ void CascaderComponentHost::reconcile(runtime::ComponentId id, const std::vector
         s->reconciling = false;
         refresh(id);
         on_focus_changed();
+    });
+}
+
+void CascaderComponentHost::update_locale(runtime::ComponentId id, CascaderLocale value) {
+    auto s = state(*services_, id);
+    if (!s || !services_->components().scope(id).active() || s->locale == value) {
+        return;
+    }
+    s->locale = std::move(value);
+    const auto status = s->loading ? s->locale.loading : error_text(*s);
+    if (s->search_placeholder.get() == s->locale.search_paths && s->retry_label.get() == s->locale.retry &&
+        s->empty_label.get() == status) {
+        return;
+    }
+    const auto generation = ++s->locale_generation;
+    const std::array labels{std::pair{s->search_placeholder, s->locale.search_paths},
+                            std::pair{s->retry_label, s->locale.retry}, std::pair{s->empty_label, status}};
+    invoke(*services_, id, [&] {
+        for (const auto& [label, text] : labels) {
+            label.set(text);
+            s = state(*services_, id);
+            if (!s || !services_->components().scope(id).active() || s->locale_generation != generation) {
+                return;
+            }
+        }
+        // Existing text/input bindings invalidate only their own layout. Do not
+        // refresh options, renderers, tags or the active loader for a language change.
     });
 }
 
@@ -736,23 +786,32 @@ void CascaderComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             auto visual_theme = child_theme(token, read_prop(s->props.size_));
             if (read_prop(s->props.show_search_) && s->selector_focused && s->query.empty() &&
                 !read_prop(s->props.multiple_) && !s->value.empty()) {
-                visual_theme.input.tokens.placeholder_color = token.colors.selector_color;
+                visual_theme->input.tokens.placeholder_color = token.colors.selector_color;
             }
-            s->theme.set(visual_theme);
+            publish_theme(s->theme, std::move(visual_theme));
+            if (state(*services_, id) != s) {
+                return;
+            }
             const auto direction = read_prop(s->props.direction_);
             s->flow.set(direction == TextDirection::RightToLeft ? FlexDirection::RightToLeft
                                                                 : FlexDirection::LeftToRight);
             s->placement.set(!s->props.explicit_placement_ && direction == TextDirection::RightToLeft
                                  ? PopoverPlacement::BottomRight
                                  : read_prop(s->props.placement_));
-            s->overflow_theme.set(
-                item_theme(sized_tags(token, read_prop(s->props.size_)), false, true,
-                           std::ranges::find(services_->components().theme_scope(id)->snapshot().algorithms(),
-                                             ThemeAlgorithm::Compact) !=
-                               services_->components().theme_scope(id)->snapshot().algorithms().end()));
-            ThemeConfig empty_theme;
-            empty_theme.text.tokens.color = token.colors.empty;
-            s->empty_theme.set(empty_theme);
+            publish_theme(s->overflow_theme,
+                          item_theme(sized_tags(token, read_prop(s->props.size_)), false, true,
+                                     std::ranges::find(services_->components().theme_scope(id)->snapshot().algorithms(),
+                                                       ThemeAlgorithm::Compact) !=
+                                         services_->components().theme_scope(id)->snapshot().algorithms().end()));
+            if (state(*services_, id) != s) {
+                return;
+            }
+            auto empty_theme = std::make_unique<ThemeConfig>();
+            empty_theme->text.tokens.color = token.colors.empty;
+            publish_theme(s->empty_theme, std::move(empty_theme));
+            if (state(*services_, id) != s) {
+                return;
+            }
             s->arrow_color.set({enabled ? token.colors.arrow : token.colors.disabled_color, {}});
             s->clear_color.set({enabled ? token.colors.clear : token.colors.disabled_color, {}});
             s->placeholder.set(read_prop(s->props.multiple_) && !s->value.empty() ? String{}
@@ -871,11 +930,15 @@ void CascaderComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                 services_->components().set_branch_active(r->label_root, !rich);
                 services_->nodes().require(services_->components().root(r->label_root)).out_of_flow = rich;
                 r->disabled.set(!enabled || r->blocked);
-                r->theme.set(
+                publish_theme(
+                    r->theme,
                     item_theme(token, r->checked || s->expanded == r->path, false,
                                std::ranges::find(services_->components().theme_scope(id)->snapshot().algorithms(),
                                                  ThemeAlgorithm::Compact) !=
                                    services_->components().theme_scope(id)->snapshot().algorithms().end()));
+                if (state(*services_, id) != s) {
+                    return;
+                }
                 r->icon_visible.set(!r->option.children.empty() || !r->option.is_leaf);
                 r->icon.set(s->loading && *s->loading == r->option.key ? read_prop(s->props.loading_icon_)
                             : !s->props.explicit_expand_icon_ && direction == TextDirection::RightToLeft
@@ -914,7 +977,7 @@ void CascaderComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                 services_->components().set_branch_active(r->viewport, r->shown);
                 services_->nodes().require(services_->components().root(r->viewport)).out_of_flow = !r->shown;
             }
-            const bool status = s->loading.has_value() || !s->error.empty();
+            const bool status = s->loading.has_value() || has_error(*s);
             services_->components().set_branch_active(s->status, status);
             services_->nodes().require(services_->components().root(s->status)).out_of_flow = !status;
             services_->components().set_branch_active(s->empty, !any && !status);
@@ -923,11 +986,11 @@ void CascaderComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                 s->retry_key
                     ? std::ranges::find_if(s->rows, [&](const auto& row) { return row->option.key == *s->retry_key; })
                     : s->rows.end();
-            const bool retry = !s->error.empty() && retry_row != s->rows.end();
+            const bool retry = has_error(*s) && retry_row != s->rows.end();
             s->retry_disabled.set(!enabled || !retry || (retry_row != s->rows.end() && (*retry_row)->blocked));
             services_->components().set_branch_active(s->retry_button, retry);
             services_->nodes().require(services_->components().root(s->retry_button)).out_of_flow = !retry;
-            s->empty_label.set(s->loading ? String{u8"Loading…"} : s->error);
+            s->empty_label.set(s->loading ? s->locale.loading : error_text(*s));
             reconcile_tags(id);
             if (!state(*services_, id)) {
                 return;
@@ -1011,6 +1074,7 @@ void CascaderComponentHost::activate(runtime::ComponentId id, String key, bool s
     }
     auto r = *it;
     s->error = {};
+    s->builtin_error = false;
     s->retry_key.reset();
     s->cancelled->store(true);
     ++s->generation;
@@ -1103,6 +1167,7 @@ void CascaderComponentHost::load(runtime::ComponentId id, String key) {
     const auto ticket = ++s->generation;
     s->loading = key;
     s->error = String{};
+    s->builtin_error = false;
     refresh(id);
     if (!state(*services_, id) || !editable(id) || s->generation != ticket || s->cancelled->load()) {
         return;
@@ -1120,6 +1185,7 @@ void CascaderComponentHost::load(runtime::ComponentId id, String key) {
         s->loading.reset();
         if (!result.error.empty()) {
             s->error = result.error;
+            s->builtin_error = false;
             s->retry_key = key;
             refresh(id);
             return true;
@@ -1140,7 +1206,8 @@ void CascaderComponentHost::load(runtime::ComponentId id, String key) {
             reconcile(id, options);
         } catch (...) {
             if (state(*services_, id)) {
-                s->error = String{u8"Loading failed"};
+                s->error = {};
+                s->builtin_error = true;
                 s->retry_key = key;
                 refresh(id);
             }
@@ -1156,7 +1223,8 @@ void CascaderComponentHost::load(runtime::ComponentId id, String key) {
             s->cancelled->store(true);
             ++s->generation;
             s->loading.reset();
-            s->error = String{u8"Loading failed"};
+            s->error = {};
+            s->builtin_error = true;
             s->retry_key = key;
             refresh(id);
         }
@@ -1193,6 +1261,13 @@ void CascaderComponentHost::mount(const CascaderProps& p, bool embedded) {
         validate_paths({s->expanded}, false);
     }
     auto& b = runtime::require_component_build_context();
+    const auto locale =
+        localized_prop(p.locale_, b.config_scope(), [](const LocaleData& data) { return data.cascader; });
+    const Prop<String> empty_content =
+        p.empty_ ? *p.empty_ : Prop<String>{bind([locale] { return read_prop(locale).empty; })};
+    s->locale = read_prop(locale);
+    s->search_placeholder.set(s->locale.search_paths);
+    s->retry_label.set(s->locale.retry);
     const auto id = b.mount_component<S>(s);
     s->node = b.root(id);
 
@@ -1232,7 +1307,7 @@ void CascaderComponentHost::mount(const CascaderProps& p, bool embedded) {
                 Input(InputProps{}
                           .value(s->query_signal)
                           .disabled(s->disabled)
-                          .placeholder(String{u8"Search paths"})
+                          .placeholder(s->search_placeholder)
                           .direction(p.direction_)
                           .onChange([this, id](String q) { set_query(id, q, true); }),
                       InputPrefix{[&] { Icon(IconProps{}.source(p.search_icon_).twoToneColor(s->arrow_color)); }});
@@ -1265,7 +1340,9 @@ void CascaderComponentHost::mount(const CascaderProps& p, bool embedded) {
                                                                   load(id, *s->retry_key);
                                                               }
                                                           }),
-                                                      ButtonContent{[] { Text(u8"Retry"); }});
+                                                      ButtonContent{[label = s->retry_label] {
+                                                          Text(TextProps{}.content(label));
+                                                      }});
                                                s->retry_button =
                                                    services_->interactions()
                                                        .require(services_->interactions().declaration_order()[before])
@@ -1278,7 +1355,7 @@ void CascaderComponentHost::mount(const CascaderProps& p, bool embedded) {
                           if (p.empty_content_) {
                               SlotContentAccess::function (*p.empty_content_)();
                           } else {
-                              Text(TextProps{}.content(p.empty_));
+                              Text(TextProps{}.content(empty_content));
                           }
                       }});
                 s->empty = services_->components().children(s->panel).back();
@@ -1565,7 +1642,8 @@ void CascaderComponentHost::mount(const CascaderProps& p, bool embedded) {
     watch(p.size_);
     watch(p.status_);
     watch(p.variant_);
-    watch(p.empty_);
+    connect_prop(s->bindings, locale,
+                 [this, id](CascaderLocale value) { run_untracked([&] { update_locale(id, std::move(value)); }); });
     if (p.max_tags_) {
         watch(*p.max_tags_);
     }
@@ -1588,6 +1666,7 @@ void CascaderComponentHost::set_query(runtime::ComponentId id, String q, bool no
     }
     cancel_load(s);
     s->error = {};
+    s->builtin_error = false;
     s->retry_key.reset();
     if (!notify || !s->props.query_) {
         if (s->query != q) {
@@ -1922,11 +2001,14 @@ void CascaderComponentHost::reconcile_tags(runtime::ComponentId id) {
             tag->label.set(label);
             tag->disabled.set(!editable(id) ||
                               (row != s->rows.end() && ((*row)->blocked || (*row)->option.disable_checkbox)));
-            tag->theme.set(
-                item_theme(sized_tags(t, read_prop(s->props.size_)), false, true,
-                           std::ranges::find(services_->components().theme_scope(id)->snapshot().algorithms(),
-                                             ThemeAlgorithm::Compact) !=
-                               services_->components().theme_scope(id)->snapshot().algorithms().end()));
+            publish_theme(tag->theme,
+                          item_theme(sized_tags(t, read_prop(s->props.size_)), false, true,
+                                     std::ranges::find(services_->components().theme_scope(id)->snapshot().algorithms(),
+                                                       ThemeAlgorithm::Compact) !=
+                                         services_->components().theme_scope(id)->snapshot().algorithms().end()));
+            if (state(*services_, id) != s) {
+                return;
+            }
             if (found == old.end()) {
                 const auto content = Content{[&, tag] {
                     auto& b = runtime::require_component_build_context();
@@ -2049,7 +2131,7 @@ runtime::Size CascaderComponentHost::measure_panel(runtime::ComponentId id, layo
         s->header_height = e.measure_child(services_->components().root(s->search), {0, width, 0, s->height}).height +
                            t.metrics.menu_padding;
     }
-    const bool status = s->loading.has_value() || !s->error.empty();
+    const bool status = s->loading.has_value() || has_error(*s);
     s->status_height = status ? e.measure_child(services_->components().root(s->status),
                                                 {0, width, 0, std::max(0.F, s->height - s->header_height)})
                                         .height +

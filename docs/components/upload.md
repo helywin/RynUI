@@ -31,3 +31,9 @@ API 对照基线为 Ant Design 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e7
 `UploadLocale.image_preview` 配置共享预览的原生标签，RTL 同步到预览控制器。重排保留当前预览的 UID 与变换；显式 renderer 替换会更新该项的 Image/action 区域，普通进度仍保留草稿。异步 before/transform 的异常会清理对应 Upload owner；外部保存的 item action 在 owner 退休后安全忽略。
 
 Upload 的内部触发与富文件内容不占用外层 FormItem 的自动控件或隐式 Enter；富内容中的显式独立 FormItem 仍保持自己的 typed 绑定及 Enter。reset、disabled/readOnly 和退休继续遵守当前 Form 注册代际合同。
+
+108 媒体接入：未设置 `locale(...)` 时，触发区、文件状态与操作继承 ConfigProvider 的 upload 语言组，默认缩略图和 PreviewGroup 分别继承同作用域的 image 语言组。显式完整 UploadLocale 优先，并把其中 `image_preview` 传给内部图片与预览；英文和空字段均保留。文件名、response/url、传输回调 `failure(String)` 和 `std::exception::what()` 作为应用内容保留原文。选择服务的诊断回调仍返回诊断正文，不把它当作内置界面文案。
+
+`UploadFile` 尾部新增 `UploadErrorSource error_source`，原 aggregate 前缀与常用初始化保持可用：Unspecified 保留旧的非空 error/默认错误规则，Builtin 使用当前 Locale 的通用错误，Literal 保留 error（包括显式空串）。`failure(String)` 标为 Literal，框架生成的未知 transport 异常标为 Builtin；`error` 中仍可保留原诊断。重试清除旧来源，成功恢复 Unspecified。语言切换只更新现有行和预览文案，不改变文件列表、请求、受控状态或业务 onChange，不重新执行 item/icon renderer。
+
+新增 `rynui.i18n_components_media` 入口覆盖源码中的真实组件合同；本子阶段交接尚未编译或运行，不代表 OS chooser、native 或 GPU 验收通过。

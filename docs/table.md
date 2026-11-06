@@ -62,3 +62,9 @@ scrollY 为有限、非负的正文高度上限（默认 240），表头保持�
 视觉基线固定 Ant Design 6.6.5。`ThemeConfig::table.tokens` 提供背景、表头、正文、边框、hover/selected 颜色，以及三档 padding、字体尺寸/行高、最小列宽、选择列宽、空状态高度和边框宽度。字体族/正文字重继承 Text token；表头字重为 600。Default、Dark、Compact 和嵌套覆盖均受测；颜色更新不测量或重跑 cell。LayoutStyle 只控制外部布局。
 
 首版全量保留挂载，适合有限桌面业务数据，内存随行数×列数增长；分页只控制可见行。没有虚拟化、服务端请求管线、过滤菜单、列 schema 动态替换、固定列、复杂 span、树或内置编辑。绘制仅使用共同 logical CPU scene v3，GPU ABI v2 不变。本 change 的证据为 Windows MSVC headless，不代表 GPU、Linux、人工视觉或 IME 验收。
+
+## ConfigProvider 内置文案
+
+`TableProps<Row>::locale(Prop<TableLocale>)` 可显式覆盖完整空态/loading 文案，英文和空字符串均有明确来源。未设置时实时继承最近 ConfigProvider 的 Table 组，无 Provider 时保持英文；第二参数 `TableEmpty` 仍优先于空态文字。列标题、cell、header 与 empty slot 的业务 String 不会自动翻译。
+
+语言投影只写入保留的文字 Signal，不触发数据投影、排序、分页缓存或 cell factory，也不修改选择、滚动、page 和富内容编辑状态。`rynui.i18n_components_collections` 新增真实组合及工作计数断言；该源码交接未运行 build/CTest，不提升既有平台证据或其他 Table 扩展状态。

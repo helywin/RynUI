@@ -2,6 +2,7 @@
 #include <ryn/button.hpp>
 #include <ryn/input.hpp>
 #include <ryn/popover.hpp>
+#include <ryn/component_locales.hpp>
 #include <atomic>
 #include <thread>
 #include <variant>
@@ -334,6 +335,11 @@ public:
         return *this;
     }
 
+    CascaderProps& locale(Prop<CascaderLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
     CascaderProps& prefix(InputPrefix value) {
         prefix_ = std::move(value);
         return *this;
@@ -423,7 +429,8 @@ private:
     std::function<CascaderTagContent(CascaderTagInfo)> tag_render_;
     std::optional<Prop<String>> query_;
     std::optional<String> default_query_;
-    Prop<String> empty_{String{u8"No data"}};
+    std::optional<Prop<String>> empty_;
+    std::optional<Prop<CascaderLocale>> locale_;
     std::optional<InputPrefix> prefix_;
     Prop<IconSource> search_icon_{IconSource{IconName::SearchOutlined}};
     Prop<IconSource> suffix_icon_{IconSource{IconName::DownOutlined}};

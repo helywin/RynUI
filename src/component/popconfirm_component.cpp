@@ -1,4 +1,5 @@
 #include "component/popconfirm_component.hpp"
+#include "component/localized_prop.hpp"
 #include "component/popconfirm_model.hpp"
 #include "component/select_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -30,6 +31,7 @@ struct PopconfirmState final {
     Signal<String> description{String{}};
     Signal<String> ok_text{String{u8"OK"}};
     Signal<String> cancel_text{String{u8"Cancel"}};
+    std::uint64_t label_revision{};
     Signal<bool> loading{false};
     Signal<runtime::SemanticForeground> text_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> title_color{{0, 0, 0, 1}};
@@ -299,6 +301,11 @@ void PopconfirmComponentHost::mount(const PopconfirmProps& props, const Popconfi
     validate_placement(read_prop(props.placement_));
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
+    const auto locale =
+        localized_prop(props.locale_, build.config_scope(), [](const LocaleData& data) { return data.common; });
+    const auto ok_text = props.ok_text_ ? *props.ok_text_ : bind([locale] { return read_prop(locale).confirm; });
+    const auto cancel_text =
+        props.cancel_text_ ? *props.cancel_text_ : bind([locale] { return read_prop(locale).cancel; });
     const auto id = build.mount_component<PopconfirmState>(
         props.open_.has_value(), props.open_ ? read_prop(*props.open_) : props.default_open_.value_or(false));
     auto& s = build.state<PopconfirmState>(id);
@@ -450,17 +457,26 @@ void PopconfirmComponentHost::mount(const PopconfirmProps& props, const Popconfi
     const auto text = [&](const Prop<String>& prop, Signal<String> PopconfirmState::* field) {
         connect_prop(scope, prop, [this, id, field](String value) {
             if (auto* state = services_->components().state<PopconfirmState>(id)) {
-                (state->*field).set(std::move(value));
+                const auto revision = ++state->label_revision;
+                const auto target = state->*field;
+                target.set(std::move(value));
+                state = services_->components().state<PopconfirmState>(id);
+                if (!state || state->label_revision != revision) {
+                    return;
+                }
                 state->needs_measure = true;
                 update_theme(id, true);
-                refresh(id);
+                state = services_->components().state<PopconfirmState>(id);
+                if (state && state->label_revision == revision) {
+                    refresh(id);
+                }
             }
         });
     };
     text(props.title_, &PopconfirmState::title);
     text(props.description_, &PopconfirmState::description);
-    text(props.ok_text_, &PopconfirmState::ok_text);
-    text(props.cancel_text_, &PopconfirmState::cancel_text);
+    text(ok_text, &PopconfirmState::ok_text);
+    text(cancel_text, &PopconfirmState::cancel_text);
     if (props.open_) {
         connect_prop(scope, *props.open_, [this, id](bool value) {
             if (auto* state = services_->components().state<PopconfirmState>(id)) {

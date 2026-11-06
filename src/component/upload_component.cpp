@@ -4,6 +4,7 @@
 #include "component/form_control_binding.hpp"
 #include "component/image_component.hpp"
 #include "component/button_component.hpp"
+#include "component/localized_prop.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <ryn/button.hpp>
@@ -114,6 +115,8 @@ struct UploadState final {
     InputStatus status{InputStatus::Default};
     UploadListActions list_actions;
     UploadLocale locale;
+    bool explicit_locale{};
+    std::uint64_t locale_revision{};
     std::shared_ptr<const UploadItemRenderer> renderer;
     std::shared_ptr<const UploadIconRenderer> icon_renderer;
     UploadSlots slots;
@@ -167,7 +170,11 @@ void append(WindowComponentServices& s, bool, runtime::ComponentId parent, const
         // Another retained owner can publish while the enclosing tree still mounts.
         // Use that mount transaction, with the target parent's actual theme.
         build->mount_slot_with_theme_scope(
-            Content{[&] { runtime::require_component_build_context().mount_slot(parent, content); }},
+            Content{[&] {
+                runtime::require_component_build_context().mount_slot_with_config_scope(
+                    Content{[&] { runtime::require_component_build_context().mount_slot(parent, content); }},
+                    s.components().config_scope(parent));
+            }},
             s.components().theme_scope(parent));
     } else {
         s.append_slot(parent, content);
@@ -221,7 +228,9 @@ String label(const UploadFile& file, const UploadLocale& l) {
         status = l.done;
         break;
     case UploadFileStatus::Error:
-        status = file.error.empty() ? l.error : file.error;
+        status = file.error_source == UploadErrorSource::Builtin
+                     ? l.error
+                     : (file.error_source == UploadErrorSource::Literal || !file.error.empty() ? file.error : l.error);
         break;
     case UploadFileStatus::Cancelled:
         status = l.cancelled;
@@ -612,15 +621,19 @@ void UploadComponentHost::replace_content(runtime::ComponentId id, const UploadU
                             Flex(FlexProps{}.vertical(r->card).direction(r->direction).gap(r->gap),
                                  FlexContent{[&, r, icon_renderer, slots] {
                                      const auto before = services_->image().mounted().size();
-                                     Image(ImageProps{}
-                                               .source(r->thumbnail)
-                                               .alt(bind([file = r->file] { return file.get().name; }))
-                                               .visible(r->picture)
-                                               .disabled(r->disabled)
-                                               .shape(r->shape)
-                                               .fit(ImageFit::Cover)
-                                               .preview(false)
-                                               .layout(LayoutStyle{}.width(r->side).height(r->side)));
+                                     auto image = ImageProps{}
+                                                      .source(r->thumbnail)
+                                                      .alt(bind([file = r->file] { return file.get().name; }))
+                                                      .visible(r->picture)
+                                                      .disabled(r->disabled)
+                                                      .shape(r->shape)
+                                                      .fit(ImageFit::Cover)
+                                                      .preview(false)
+                                                      .layout(LayoutStyle{}.width(r->side).height(r->side));
+                                     if (s->explicit_locale) {
+                                         image.locale(s->preview_locale);
+                                     }
+                                     Image(std::move(image));
                                      if (services_->image().mounted().size() == before + 1) {
                                          r->view.image = services_->image().mounted().back();
                                      }
@@ -894,6 +907,32 @@ void UploadComponentHost::reconcile(runtime::ComponentId id) {
     }
 }
 
+void UploadComponentHost::update_locale(runtime::ComponentId id, UploadLocale locale) {
+    auto* s = services_->components().state<UploadState>(id);
+    if (!s) {
+        return;
+    }
+    const auto revision = ++s->locale_revision;
+    s->locale = locale;
+    const auto trigger = s->trigger_label;
+    const auto preview = s->preview_locale;
+    const auto rows = s->rows;
+    const auto text = s->type == UploadType::Drag ? locale.drop : locale.select;
+    const auto emit = [this, id, revision](auto signal, auto value) {
+        signal.set(std::move(value));
+        const auto* current = services_->components().state<UploadState>(id);
+        return current && current->locale_revision == revision;
+    };
+    if (!emit(trigger, text) || !emit(preview, locale.image_preview)) {
+        return;
+    }
+    for (const auto& r : rows) {
+        if (!emit(r->locale, locale)) {
+            return;
+        }
+    }
+}
+
 void UploadComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     auto* s = services_->components().state<UploadState>(id);
     if (!s || s->refreshing) {
@@ -1111,6 +1150,7 @@ void UploadComponentHost::mount(const UploadProps& p, const UploadSlots& slots) 
     }
     UploadModel::validate_files(p.files_ ? read_prop(*p.files_) : p.default_files_);
     auto& b = runtime::require_component_build_context();
+    const auto locale = localized_prop(p.locale_, b.config_scope(), &LocaleData::upload);
     const auto id = b.mount_component<UploadState>();
     auto& s = b.state<UploadState>(id);
     s.node = b.root(id);
@@ -1127,7 +1167,8 @@ void UploadComponentHost::mount(const UploadProps& p, const UploadSlots& slots) 
     s.list_type = read_prop(p.list_type_);
     s.type = read_prop(p.type_);
     s.status = read_prop(p.status_);
-    s.locale = read_prop(p.locale_);
+    s.explicit_locale = p.locale_.has_value();
+    s.locale = read_prop(locale);
     s.renderer = read_prop(p.renderer_);
     s.icon_renderer = read_prop(p.icon_renderer_);
     s.on_preview = p.on_preview_;
@@ -1255,18 +1296,22 @@ void UploadComponentHost::mount(const UploadProps& p, const UploadSlots& slots) 
     b.mount_slot(id, Content{[&] {
                      Theme(ThemeProps{}.config(s.theme), ThemeContent{[&] {
                                const auto before = services_->image().mounted().size();
-                               PreviewGroup(PreviewGroupProps{}
-                                                .items(s.preview_items)
-                                                .thumbnails(false)
-                                                .rtl(s.preview_rtl)
-                                                .locale(s.preview_locale)
-                                                .open(s.preview_open)
-                                                .current(s.preview_current)
-                                                .onOpenChange([open = s.preview_open](bool value, std::size_t) {
-                                                    open.set(value);
-                                                })
-                                                .onChange([current = s.preview_current](
-                                                              std::size_t value, std::size_t) { current.set(value); }));
+                               auto preview =
+                                   PreviewGroupProps{}
+                                       .items(s.preview_items)
+                                       .thumbnails(false)
+                                       .rtl(s.preview_rtl)
+                                       .open(s.preview_open)
+                                       .current(s.preview_current)
+                                       .onOpenChange(
+                                           [open = s.preview_open](bool value, std::size_t) { open.set(value); })
+                                       .onChange([current = s.preview_current](std::size_t value, std::size_t) {
+                                           current.set(value);
+                                       });
+                               if (s.explicit_locale) {
+                                   preview.locale(s.preview_locale);
+                               }
+                               PreviewGroup(std::move(preview));
                                if (services_->image().mounted().size() > before) {
                                    s.view.preview_group = services_->image().mounted()[before];
                                }
@@ -1447,12 +1492,7 @@ void UploadComponentHost::mount(const UploadProps& p, const UploadSlots& slots) 
             refresh(id);
         }
     });
-    connect_prop(scope, p.locale_, [this, id](UploadLocale v) {
-        if (auto* s = services_->components().state<UploadState>(id)) {
-            s->locale = std::move(v);
-            refresh(id);
-        }
-    });
+    connect_prop(scope, locale, [this, id](UploadLocale v) { update_locale(id, std::move(v)); });
     connect_prop(scope, p.dialog_on_click_, [this, id](bool v) {
         if (auto* s = services_->components().state<UploadState>(id)) {
             s->dialog_on_click = v;

@@ -35,6 +35,10 @@ def main():
                 verify_appended_tokens(value, after[field], {'colors': 1, 'metrics': 2}, (path.name, field))
             elif field == 'empty':
                 verify_appended_tokens(value, after[field], {'colors': 6}, (path.name, field))
+            elif field == 'skeleton':
+                verify_appended_tokens(value, after[field], {'colors': 2}, (path.name, field))
+            elif field == 'popover':
+                verify_appended_tokens(value, after[field], {'colors': 1, 'metrics': 6}, (path.name, field))
             else:
                 assert after[field] == value, (path.name, field)
         assert after['identity']!=before['identity']

@@ -68,11 +68,13 @@ class BreadcrumbComponentHost;
 class StepsComponentHost;
 class SkeletonComponentHost;
 class NoticeComponentHost;
+class AppComponentHost;
 class ResponsiveLayoutHost;
 class MasonryComponentHost;
 class ShellLayoutComponentHost;
 class SplitterComponentHost;
 class DecorationComponentHost;
+class WindowOverlayStack;
 
 class WindowComponentParticipant {
 public:
@@ -434,6 +436,10 @@ public:
         return *notices_;
     }
 
+    [[nodiscard]] AppComponentHost& app() noexcept {
+        return *app_;
+    }
+
     [[nodiscard]] ModalComponentHost& modal() noexcept {
         return *modal_;
     }
@@ -547,6 +553,13 @@ public:
     }
 
 private:
+    friend class ModalComponentHost;
+    friend class FeedbackComponentHost;
+
+    [[nodiscard]] WindowOverlayStack& overlay_stack() noexcept {
+        return *overlay_stack_;
+    }
+
     bool retiring_failed_component_{};
     void ensure_input_owner_cleanup(const input::InputRootRef&);
     std::vector<input::InputRootRef> input_constraint_owners_;
@@ -567,6 +580,7 @@ private:
     animation::AnimationRuntime animations_;
     animation::AnimationTime animation_time_;
     animation::MotionPreference motion_preference_{animation::MotionPreference::normal};
+    std::unique_ptr<WindowOverlayStack> overlay_stack_;
     std::vector<WindowComponentParticipant*> participants_;
     // Retire a callback pass if detach/attach reuses a participant address.
     std::uint64_t participant_registration_revision_{};
@@ -644,6 +658,7 @@ private:
     std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<SkeletonComponentHost> skeleton_;
     std::unique_ptr<NoticeComponentHost> notices_;
+    std::unique_ptr<AppComponentHost> app_;
     std::unique_ptr<ResponsiveLayoutHost> responsive_layout_;
     std::unique_ptr<MasonryComponentHost> masonry_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;

@@ -65,9 +65,33 @@ void validate(const LocaleData& d) {
     require_array(p.weekdays);
     require_array(p.range_placeholder);
     require_array(p.time_range_placeholder);
-    require_strings({&p.am, &p.pm, &p.now, &p.today, &p.confirm, &p.cancel, &p.date_placeholder, &p.time_placeholder,
-                     &p.date_time_placeholder, &p.clear, &p.clear_range, &p.confirm_range, &p.cancel_range, &p.month,
-                     &p.year, &p.date_format, &p.time_format, &p.date_time_format, &p.month_panel_format});
+    require_array(p.year_range_placeholder);
+    require_array(p.quarter_range_placeholder);
+    require_array(p.month_range_placeholder);
+    require_array(p.week_range_placeholder);
+    require_strings({&p.am,
+                     &p.pm,
+                     &p.now,
+                     &p.today,
+                     &p.confirm,
+                     &p.cancel,
+                     &p.date_placeholder,
+                     &p.time_placeholder,
+                     &p.date_time_placeholder,
+                     &p.clear,
+                     &p.clear_range,
+                     &p.confirm_range,
+                     &p.cancel_range,
+                     &p.month,
+                     &p.year,
+                     &p.date_format,
+                     &p.time_format,
+                     &p.date_time_format,
+                     &p.month_panel_format,
+                     &p.year_placeholder,
+                     &p.quarter_placeholder,
+                     &p.month_placeholder,
+                     &p.week_placeholder});
     validate_pagination(d.pagination);
     const auto& t = d.transfer;
     require_array(t.titles);
@@ -152,6 +176,14 @@ LocalePack make_chinese() {
     p.time_format = u8"HH:mm:ss";
     p.date_time_format = u8"YYYY-MM-DD HH:mm:ss";
     p.month_panel_format = u8"YYYY[年]M[月]";
+    p.year_placeholder = u8"请选择年份";
+    p.quarter_placeholder = u8"请选择季度";
+    p.month_placeholder = u8"请选择月份";
+    p.week_placeholder = u8"请选择周";
+    p.year_range_placeholder = {u8"开始年份", u8"结束年份"};
+    p.quarter_range_placeholder = {u8"开始季度", u8"结束季度"};
+    p.month_range_placeholder = {u8"开始月份", u8"结束月份"};
+    p.week_range_placeholder = {u8"开始周", u8"结束周"};
     d->pagination = {u8" 条/页", u8"/ ", u8"跳至", u8"共 {total} 条"};
     auto& t = d->transfer;
     t.titles = {u8"源列表", u8"目标列表"};

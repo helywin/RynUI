@@ -1,4 +1,5 @@
 #include "component/table_component.hpp"
+#include "component/localized_prop.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "reactive/untracked.hpp"
@@ -84,6 +85,9 @@ struct TableState final {
     Signal<bool> all_checked{false};
     Signal<bool> all_partial{false};
     Signal<bool> all_disabled{true};
+    Signal<String> empty_text{String{}};
+    Signal<String> loading_text{String{}};
+    std::uint64_t locale_revision{};
     Signal<runtime::SemanticForeground> foreground{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> header_foreground{{0, 0, 0, 1}};
     Signal<runtime::SemanticTypography> typography{runtime::SemanticTypography{}};
@@ -881,6 +885,8 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
     valid_size(read_prop(options.size));
     validate_sort(read_prop(options.sort), columns);
     auto& build = runtime::require_component_build_context();
+    const auto locale =
+        localized_prop(options.locale, build.config_scope(), [](const LocaleData& d) { return d.table; });
     auto& services = *services_;
     const auto owner = std::make_shared<TableState>();
     const auto id = build.mount_component<TableStatePtr>(owner);
@@ -888,6 +894,9 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
     s.node = build.root(id);
     s.columns = std::move(columns);
     s.options = std::move(options);
+    const auto initial_locale = read_prop(locale);
+    s.empty_text.set(initial_locale.empty);
+    s.loading_text.set(initial_locale.loading);
     s.size = read_prop(s.options.size);
     s.loading = read_prop(s.options.loading);
     s.bordered = read_prop(s.options.bordered);
@@ -988,11 +997,11 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                                        s.by_key.emplace(std::string{record.key.bytes()}, row);
                                        s.source_order.push_back(row);
                                    }
-                                   s.empty = region(s.body, services, Content{[empty] {
+                                   s.empty = region(s.body, services, Content{[empty, label = s.empty_text] {
                                                         if (empty) {
                                                             SlotContentAccess::function (*empty)();
                                                         } else {
-                                                            Text(u8"No data");
+                                                            Text(TextProps{}.content(label));
                                                         }
                                                     }},
                                                     s.foreground, s.typography, shown_keys.empty() && !s.loading);
@@ -1001,7 +1010,8 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                 return;
             }
             s.loading_label =
-                region(id, services, Content{[] { Text(u8"Loading…"); }}, s.foreground, s.typography, s.loading);
+                region(id, services, Content{[label = s.loading_text] { Text(TextProps{}.content(label)); }},
+                       s.foreground, s.typography, s.loading);
             const auto loading_fragment =
                 context.register_scene_fragment(s.loading_label, runtime::SceneFragmentPlacement::before_children);
             s.loading_surface = services.surfaces().create_content_range(loading_fragment, {});
@@ -1124,6 +1134,23 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
         return;
     }
     auto& scope = build.scope(id);
+    connect_prop(scope, locale, [this, id](TableLocale value) {
+        const auto owner = table_state(*services_, id);
+        if (!owner || !live(*services_, id, owner)) {
+            return;
+        }
+        const auto revision = ++owner->locale_revision;
+        auto empty = owner->empty_text;
+        auto loading = owner->loading_text;
+        empty.set(std::move(value.empty));
+        if (!live(*services_, id, owner) || owner->locale_revision != revision) {
+            return;
+        }
+        loading.set(std::move(value.loading));
+    });
+    if (!live(services, id, owner)) {
+        return;
+    }
     connect_prop(scope, source, [this, id](std::vector<TableRecord> value) {
         run_untracked([&] { reconcile(id, std::move(value)); });
     });

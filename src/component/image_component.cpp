@@ -1,6 +1,7 @@
 #include "component/image_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/image_model.hpp"
+#include "component/localized_prop.hpp"
 #include "component/modal_component.hpp"
 #include "component/popover_component.hpp"
 #include "input/pressable_behavior.hpp"
@@ -67,6 +68,8 @@ struct ImageState final {
     Signal<float> preview_width{800};
     bool geometry_available{true};
     ImageLocale locale;
+    std::uint64_t locale_revision{};
+    bool explicit_alt{};
     bool visible{true};
     bool disabled{};
     bool rtl{};
@@ -146,7 +149,11 @@ void append(WindowComponentServices& s, bool, runtime::ComponentId parent, const
         // Another retained owner can publish while the enclosing tree still mounts.
         // Use that mount transaction, with the target parent's actual theme.
         build->mount_slot_with_theme_scope(
-            Content{[&] { runtime::require_component_build_context().mount_slot(parent, content); }},
+            Content{[&] {
+                runtime::require_component_build_context().mount_slot_with_config_scope(
+                    Content{[&] { runtime::require_component_build_context().mount_slot(parent, content); }},
+                    s.components().config_scope(parent));
+            }},
             s.components().theme_scope(parent));
     } else {
         s.append_slot(parent, content);
@@ -508,6 +515,30 @@ bool ImageComponentHost::complete(runtime::ComponentId id, std::uint64_t gen, Im
     return true;
 }
 
+void ImageComponentHost::update_locale(runtime::ComponentId id, ImageLocale locale) {
+    auto* s = services_->components().state<ImageState>(id);
+    if (!s) {
+        return;
+    }
+    const auto revision = ++s->locale_revision;
+    s->locale = locale;
+    const auto labels = s->labels;
+    const auto cover = s->cover_text;
+    const auto message = s->message;
+    const auto text = s->view.status == ImageStatus::Loading
+                          ? locale.loading
+                          : (s->explicit_alt || !s->view.alt.empty() ? s->view.alt : locale.error);
+    const auto emit = [this, id, revision](auto signal, auto value) {
+        signal.set(std::move(value));
+        const auto* current = services_->components().state<ImageState>(id);
+        return current && current->locale_revision == revision;
+    };
+    if (!emit(labels, locale) || !emit(cover, locale.preview)) {
+        return;
+    }
+    static_cast<void>(emit(message, text));
+}
+
 void ImageComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     auto* s = services_->components().state<ImageState>(id);
     if (!s || s->refreshing) {
@@ -549,8 +580,9 @@ void ImageComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     s->cover_foreground.set({t.colors.preview_text.red(), t.colors.preview_text.green(), t.colors.preview_text.blue(),
                              t.colors.preview_text.alpha()});
     s->typography.set({t.typography.font_family, 400, false, t.typography.font_size, t.typography.line_height});
-    s->message.set(s->view.status == ImageStatus::Loading ? s->locale.loading
-                                                          : (s->view.alt.empty() ? s->locale.error : s->view.alt));
+    s->message.set(s->view.status == ImageStatus::Loading
+                       ? s->locale.loading
+                       : (s->explicit_alt || !s->view.alt.empty() ? s->view.alt : s->locale.error));
     s->cover_text.set(s->locale.preview);
     s->labels.set(s->locale);
     s->options_state.set(s->options);
@@ -787,9 +819,18 @@ void ImageComponentHost::replace_actions(runtime::ComponentId id,
                              button(ImageAction::Reset, IconName::ReloadOutlined, &ImageLocale::reset);
                              button(ImageAction::Close, IconName::CloseOutlined, &ImageLocale::close);
                              Text(TextProps{}.content(bind([=] {
-                                 return String::from_utf8(std::to_string(actions.current.get() + 1) + " / " +
-                                                          std::to_string(actions.total.get()))
-                                     .value();
+                                 const auto pattern = labels.get().count;
+                                 if (pattern.empty()) {
+                                     return String{};
+                                 }
+                                 static const MessageKey key{
+                                     u8"ryn.image.count",
+                                     String{u8"{current} / {total}"},
+                                     {{u8"current", MessageArgType::UInt}, {u8"total", MessageArgType::UInt}}};
+                                 return formatMessage(key, pattern,
+                                                      {{u8"current", std::uint64_t(actions.current.get() + 1)},
+                                                       {u8"total", std::uint64_t(actions.total.get())}},
+                                                      IntegerPluralRule::OtherOnly);
                              })));
                          }});
                 }});
@@ -878,6 +919,7 @@ void ImageComponentHost::mount(const ImageProps& p, const ImageSlots& slots) {
         throw std::invalid_argument("Invalid Image fit");
     }
     auto& b = runtime::require_component_build_context();
+    const auto locale = localized_prop(p.locale_, b.config_scope(), &LocaleData::image);
     const auto id = b.mount_component<ImageState>();
     auto& s = b.state<ImageState>(id);
     s.node = b.root(id);
@@ -887,11 +929,12 @@ void ImageComponentHost::mount(const ImageProps& p, const ImageSlots& slots) {
     s.fit = fit;
     s.shape = read_prop(p.shape_);
     s.options = read_prop(p.preview_);
-    s.locale = read_prop(p.locale_);
+    s.locale = read_prop(locale);
     s.visible = read_prop(p.visible_);
     s.disabled = read_prop(p.disabled_);
     s.rtl = read_prop(p.rtl_);
-    s.view.alt = read_prop(p.alt_);
+    s.explicit_alt = p.alt_.has_value() && !p.inherit_empty_alt_;
+    s.view.alt = p.alt_ ? read_prop(*p.alt_) : String{};
     s.alt.set(s.view.alt);
     s.controlled_open = p.open_.has_value();
     s.desired_open = p.open_ ? read_prop(*p.open_) : p.default_open_;
@@ -1088,13 +1131,15 @@ void ImageComponentHost::mount(const ImageProps& p, const ImageSlots& slots) {
             refresh(id);
         }
     });
-    connect_prop(scope, p.alt_, [this, id](String v) {
-        if (auto* s = services_->components().state<ImageState>(id)) {
-            s->view.alt = v;
-            s->alt.set(v);
-            refresh(id);
-        }
-    });
+    if (p.alt_) {
+        connect_prop(scope, *p.alt_, [this, id](String v) {
+            if (auto* s = services_->components().state<ImageState>(id)) {
+                s->view.alt = v;
+                s->alt.set(v);
+                refresh(id);
+            }
+        });
+    }
     connect_prop(scope, p.preview_, [this, id](ImagePreviewOptions v) {
         validate_image_preview(v);
         if (auto* s = services_->components().state<ImageState>(id)) {
@@ -1134,12 +1179,7 @@ void ImageComponentHost::mount(const ImageProps& p, const ImageSlots& slots) {
             refresh(id);
         }
     });
-    connect_prop(scope, p.locale_, [this, id](ImageLocale v) {
-        if (auto* s = services_->components().state<ImageState>(id)) {
-            s->locale = std::move(v);
-            refresh(id);
-        }
-    });
+    connect_prop(scope, locale, [this, id](ImageLocale v) { update_locale(id, std::move(v)); });
     connect_prop(scope, p.actions_,
                  [this, id](std::shared_ptr<const ImageActionsRenderer> v) { replace_actions(id, std::move(v)); });
     if (p.open_) {
@@ -1655,29 +1695,32 @@ void ImageComponentHost::reconcile(runtime::ComponentId id, const std::vector<Im
             append(*services_, s->mounting, id,
                    Content{[&, source = thumb.source, alt = thumb.alt, key = item.key, side = s->thumbnail_size] {
                        const auto before = mounted_.size();
-                       Image(ImageProps{}
-                                 .source(source)
-                                 .fallback(s->fallback_signal)
-                                 .visible(s->thumbnails_visible)
-                                 .alt(alt)
-                                 .preview(true)
-                                 .onOpenChange([this, id, key](bool open) {
-                                     if (!open) {
-                                         return;
-                                     }
-                                     auto* s = services_->components().state<ImageState>(id);
-                                     if (!s) {
-                                         return;
-                                     }
-                                     auto it = std::ranges::find_if(s->items,
-                                                                    [&](const auto& v) { return v.item.key == key; });
-                                     if (it != s->items.end()) {
-                                         select(id, it - s->items.begin(), true);
-                                         request_open(id, true);
-                                     }
-                                 })
-                                 .open(false)
-                                 .layout(LayoutStyle{}.width(side).height(side)));
+                       auto thumbnail = ImageProps{}
+                                            .source(source)
+                                            .fallback(s->fallback_signal)
+                                            .visible(s->thumbnails_visible)
+                                            .alt(alt)
+                                            .locale(s->labels)
+                                            .preview(true)
+                                            .onOpenChange([this, id, key](bool open) {
+                                                if (!open) {
+                                                    return;
+                                                }
+                                                auto* s = services_->components().state<ImageState>(id);
+                                                if (!s) {
+                                                    return;
+                                                }
+                                                auto it = std::ranges::find_if(
+                                                    s->items, [&](const auto& v) { return v.item.key == key; });
+                                                if (it != s->items.end()) {
+                                                    select(id, it - s->items.begin(), true);
+                                                    request_open(id, true);
+                                                }
+                                            })
+                                            .open(false)
+                                            .layout(LayoutStyle{}.width(side).height(side));
+                       thumbnail.inherit_empty_alt_ = true;
+                       Image(std::move(thumbnail));
                        if (mounted_.size() != before + 1) {
                            throw std::logic_error("Image thumbnail failed to mount");
                        }
@@ -1774,6 +1817,7 @@ void ImageComponentHost::mount(const PreviewGroupProps& p) {
     validate_items(read_prop(p.items_));
     validate_image_preview(read_prop(p.preview_));
     auto& b = runtime::require_component_build_context();
+    const auto locale = localized_prop(p.locale_, b.config_scope(), &LocaleData::image);
     const auto id = b.mount_component<ImageState>();
     auto& s = b.state<ImageState>(id);
     s.node = b.root(id);
@@ -1790,7 +1834,7 @@ void ImageComponentHost::mount(const PreviewGroupProps& p) {
     s.visible = read_prop(p.visible_);
     s.disabled = read_prop(p.disabled_);
     s.rtl = read_prop(p.rtl_);
-    s.locale = read_prop(p.locale_);
+    s.locale = read_prop(locale);
     s.renderer = read_prop(p.actions_);
     s.on_group_open = p.on_open_;
     s.on_change = p.on_change_;
@@ -1877,12 +1921,7 @@ void ImageComponentHost::mount(const PreviewGroupProps& p) {
             refresh(id);
         }
     });
-    connect_prop(scope, p.locale_, [this, id](ImageLocale v) {
-        if (auto* s = services_->components().state<ImageState>(id)) {
-            s->locale = std::move(v);
-            refresh(id);
-        }
-    });
+    connect_prop(scope, locale, [this, id](ImageLocale v) { update_locale(id, std::move(v)); });
     connect_prop(scope, p.actions_,
                  [this, id](std::shared_ptr<const ImageActionsRenderer> v) { replace_actions(id, std::move(v)); });
     const auto theme = b.theme_scope();

@@ -40,6 +40,9 @@ std::size_t skeleton_rows(const SkeletonModel& s) {
 
 runtime::Size measure_skeleton(const SkeletonModel& s, const SkeletonMetricToken& m, layout::Constraints limits) {
     if (s.kind != SkeletonKind::Content) {
+        if (s.kind == SkeletonKind::Image || s.kind == SkeletonKind::Node) {
+            return limits.constrain({m.control_height * 3, m.control_height * 3});
+        }
         const auto h = height(s.size, m);
         const auto w = s.kind == SkeletonKind::Avatar ||
                                (s.kind == SkeletonKind::Button && s.button_shape == SkeletonButtonShape::Circle)
@@ -67,8 +70,10 @@ std::vector<SkeletonShape> arrange_skeleton(const SkeletonModel& s, const Skelet
     };
     if (s.kind != SkeletonKind::Content) {
         const auto size = measure_skeleton(s, m, {0, r.width, 0, r.height});
-        r.width = size.width;
-        r.height = size.height;
+        if (s.kind != SkeletonKind::Image && s.kind != SkeletonKind::Node) {
+            r.width = size.width;
+            r.height = size.height;
+        }
         if (s.kind == SkeletonKind::Avatar ||
             (s.kind == SkeletonKind::Button && s.button_shape == SkeletonButtonShape::Circle && !s.block)) {
             r.width = std::min(r.width, r.height);

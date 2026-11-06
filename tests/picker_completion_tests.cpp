@@ -50,6 +50,7 @@ void click(Fixture& f, runtime::ComponentId id) {
 }
 
 void format_contracts() {
+    std::cerr << "case: format_contracts" << std::endl;
     for (int hour = 0; hour < 24; ++hour) {
         for (int ms : {0, 1, 499, 999}) {
             const TimeOfDay time{hour, 59, 58, ms};
@@ -120,6 +121,7 @@ void format_contracts() {
 }
 
 void time_rules() {
+    std::cerr << "case: time_rules" << std::endl;
     TimePickerRules rules;
     rules.millisecond_step = 125;
     rules.minute_step = 15;
@@ -156,6 +158,7 @@ void time_rules() {
 }
 
 void meridiem_steps() {
+    std::cerr << "case: meridiem_steps" << std::endl;
     for (int step = 1; step <= 24; ++step) {
         TimePickerRules rules;
         rules.hour_step = step;
@@ -174,6 +177,7 @@ void meridiem_steps() {
 }
 
 void ranges() {
+    std::cerr << "case: ranges" << std::endl;
     for (bool controlled : {false, true}) {
         PickerRangeState<TimeOfDay> state;
         state.controlled = controlled;
@@ -209,16 +213,19 @@ void ranges() {
     check(partial.accepted.get().end == TimeOfDay{12} && !partial.accepted.get().start, "allow empty start");
     partial.policy.allow_empty = {false, false};
     partial.pending.set({{}, TimeOfDay{13}});
-    check(!partial.commit() && partial.accepted.get().end == TimeOfDay{12}, "invalid partial range atomicity");
-    partial.disabled = [](TimeOfDay time, PickerEndpoint endpoint, const TimePickerRangeValue& range) {
+    check(partial.commit() == PickerRequestDisposition::Rejected && partial.accepted.get().end == TimeOfDay{12},
+          "invalid partial range atomicity");
+    partial.disabled = [](TimeOfDay time, PickerEndpoint endpoint, const TimePickerRangeValue& range,
+                          const PickerCandidateSemantics&) {
         return endpoint == PickerEndpoint::End && range.start && time < *range.start;
     };
     partial.pending.set({TimeOfDay{15}, TimeOfDay{13}});
     partial.policy.order = false;
-    check(!partial.commit(), "disabled time dependency");
+    check(partial.commit() == PickerRequestDisposition::Rejected, "disabled time dependency");
 }
 
 void date_modes() {
+    std::cerr << "case: date_modes" << std::endl;
     DatePickerModel model{{}, false, CivilDate{2026, 11, 5}};
     PickerLocale iso;
     iso.first_day = 1;
@@ -258,6 +265,7 @@ void date_modes() {
 }
 
 void native_time() {
+    std::cerr << "case: native_time" << std::endl;
     Fixture f;
     TimePickerRef ref;
     Signal<TimePickerPrecision> precision{TimePickerPrecision::Minute};
@@ -313,6 +321,7 @@ void native_time() {
 }
 
 void native_date() {
+    std::cerr << "case: native_date" << std::endl;
     Fixture f;
     DatePickerRef ref;
     Signal<DatePickerMode> mode{DatePickerMode::Month};
@@ -343,15 +352,30 @@ void native_date() {
     const auto month = f.services.date_picker().snapshot(id);
     check(month.cells.size() == 12, "actual month panel");
     click(f, month.navigation[0]);
-    check(f.services.date_picker().snapshot(id).active.year() == 2025, "month header did not navigate one year");
+    const auto previous_year = f.services.date_picker().snapshot(id);
+    check(previous_year.active.year() == 2025 && cell_mounts == 24, "month header did not reconcile one year's keys");
+    for (auto old : month.cells) {
+        check(!f.services.components().contains(old), "month key leaving grid retained a stale subtree");
+    }
     mode.set(DatePickerMode::Quarter);
     sync(f);
-    check(f.services.date_picker().snapshot(id).cells.size() == 4, "actual quarter panel");
+    const auto quarter = f.services.date_picker().snapshot(id);
+    check(quarter.cells.size() == 4 && cell_mounts == 28, "actual keyed quarter panel");
+    for (auto old : previous_year.cells) {
+        check(!f.services.components().contains(old), "mode change reused a different mode's cell identity");
+    }
     mode.set(DatePickerMode::Date);
     sync(f);
     const auto date = f.services.date_picker().snapshot(id);
-    check(date.cells.size() == 42 && date.cells.front() == month.cells.front() && footer == 1 && cell_mounts == 42,
-          "date rich cell identity");
+    check(date.cells.size() == 42 && date.cells.front() != month.cells.front() && footer == 1 && cell_mounts == 70,
+          "date mode failed to mount only its own raw-date keys or remounted footer");
+    for (auto old : quarter.cells) {
+        check(!f.services.components().contains(old), "quarter key did not retire on date panel change");
+    }
+    mode.set(DatePickerMode::Date);
+    sync(f);
+    check(f.services.date_picker().snapshot(id).cells == date.cells && cell_mounts == 70,
+          "equal mode update remounted retained date keys");
 }
 
 bool below(Fixture& f, runtime::ComponentId child, runtime::ComponentId owner) {
@@ -379,6 +403,7 @@ void button(Fixture& f, std::string_view label) {
 }
 
 void native_ranges() {
+    std::cerr << "case: native_ranges" << std::endl;
     {
         Fixture f;
         rejects([&] {
@@ -471,6 +496,7 @@ void native_ranges() {
 }
 
 void range_same_value_reset() {
+    std::cerr << "case: range_same_value_reset" << std::endl;
     {
         Fixture f;
         TimeRangePickerRef ref;
@@ -532,6 +558,7 @@ void range_same_value_reset() {
 }
 
 void range_controlled_refusal() {
+    std::cerr << "case: range_controlled_refusal" << std::endl;
     {
         Fixture f;
         TimeRangePickerRef ref;
@@ -568,6 +595,9 @@ void range_controlled_refusal() {
               "controlled end authority transfers focus");
         key(f, Key::up);
         key(f, Key::enter);
+        std::cerr << "controlled time refusal: calendar=" << calendars << " change=" << changes << " close=" << closes
+                  << " visible=" << f.services.time_picker().snapshot(b).visible
+                  << " pending-hour=" << f.services.time_picker().snapshot(b).pending.hour() << std::endl;
         check(calendars == 2 && changes == 1 && closes == 1 && f.services.time_picker().snapshot(b).visible &&
                   f.services.time_picker().snapshot(b).pending == TimeOfDay{18},
               "controlled range close/value refusal event order");
@@ -608,6 +638,7 @@ void range_controlled_refusal() {
 }
 
 void multiple_authority() {
+    std::cerr << "case: multiple_authority" << std::endl;
     for (bool accept : {false, true}) {
         Fixture f;
         Signal<DatePickerMultipleValue> value{DatePickerMultipleValue{CivilDate{2026, 11, 5}}};
@@ -641,6 +672,7 @@ void multiple_authority() {
 }
 
 void date_confirmation_modes() {
+    std::cerr << "case: date_confirmation_modes" << std::endl;
     {
         Fixture f;
         DatePickerRef ref;
@@ -681,6 +713,7 @@ void date_confirmation_modes() {
 }
 
 void datetime_drafts() {
+    std::cerr << "case: datetime_drafts" << std::endl;
     Fixture f;
     DatePickerRef ref;
     int changes{};
@@ -739,11 +772,13 @@ void datetime_drafts() {
               "date-time range transfers focus");
         key(range, Key::right);
         key(range, Key::enter);
+        std::cerr << "datetime range requests=" << requests << std::endl;
         check(requests == 1, "datetime range commit");
     }
 }
 
 void immediate_date_time() {
+    std::cerr << "case: immediate_date_time" << std::endl;
     Fixture f;
     TimePickerRef time;
     int changes{};
@@ -769,6 +804,7 @@ void immediate_date_time() {
 }
 
 void failure_cleanup() {
+    std::cerr << "case: failure_cleanup" << std::endl;
     for (bool date : {false, true}) {
         Fixture f;
         InputRef ref;
@@ -824,6 +860,7 @@ void failure_cleanup() {
 }
 
 void clock_presets() {
+    std::cerr << "case: clock_presets" << std::endl;
     {
         Fixture f;
         TimePickerRef ref;
@@ -894,6 +931,7 @@ void clock_presets() {
 }
 
 void typed_date_presets_and_panel_authority() {
+    std::cerr << "case: typed_date_presets_and_panel_authority" << std::endl;
     {
         Fixture f;
         DatePickerMultipleValue selected;
@@ -959,6 +997,7 @@ void typed_date_presets_and_panel_authority() {
 }
 
 void predicate_lifetime_and_prefix_cost() {
+    std::cerr << "case: predicate_lifetime_and_prefix_cost" << std::endl;
     {
         int calls{};
         TimePickerRules rules;
@@ -1047,6 +1086,7 @@ void predicate_lifetime_and_prefix_cost() {
 }
 
 void rich_slot_identity() {
+    std::cerr << "case: rich_slot_identity" << std::endl;
     {
         Fixture f;
         InputRef cell;
@@ -1077,14 +1117,25 @@ void rich_slot_identity() {
         const auto editor = f.inputs.sessions().active().owner;
         check(bool(f.inputs.dispatch(TextCommitted{String{u8"retained date draft"}, f.inputs.sessions().active()})),
               "rich date cell edit");
+        const auto id = f.services.date_picker().mounted().front();
+        const auto original_cells = f.services.date_picker().snapshot(id).cells;
         value.set(CivilDate{2026, 11, 6});
-        mode.set(DatePickerMode::Month);
         ThemeConfig config;
         config.date_picker.tokens.selected = Color::rgba8(30, 100, 150);
         theme.set(config);
         sync(f);
-        check(renders == 42 && cell.bound() && f.inputs.editors().require(editor).value() == "retained date draft",
-              "rich date cell was rebuilt by mode/value/Theme");
+        check(renders == 42 && cell.bound() && f.services.date_picker().snapshot(id).cells == original_cells &&
+                  f.inputs.editors().require(editor).value() == "retained date draft",
+              "rich date cell was rebuilt by value/Theme");
+        mode.set(DatePickerMode::Month);
+        sync(f);
+        const auto months = f.services.date_picker().snapshot(id);
+        check(renders == 54 && !cell.bound() && !f.inputs.editors().find(editor) && months.cells.size() == 12 &&
+                  months.mode == DatePickerMode::Month,
+              "mode change retained a Date-keyed editor or failed to mount Month keys");
+        for (const auto old : original_cells) {
+            check(!f.services.components().contains(old), "mode change retained a previous Date cell identity");
+        }
     }
     {
         Fixture f;
@@ -1122,6 +1173,7 @@ void rich_slot_identity() {
 }
 
 void wheel_motion() {
+    std::cerr << "case: wheel_motion" << std::endl;
     Fixture f;
     TimePickerRef ref;
     Signal<bool> scroll{false};

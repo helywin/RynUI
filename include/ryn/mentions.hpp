@@ -490,7 +490,7 @@ private:
     std::function<void(TextAreaSize)> on_resize_;
     Prop<IconSource> clear_icon_{IconSource{IconName::CloseCircleFilled}};
     Prop<MentionsRichLabel> empty_content_{MentionsRichLabel{}};
-    Prop<String> not_found_{String{u8"No data"}};
+    std::optional<Prop<String>> not_found_;
     std::optional<Prop<std::vector<MentionsOptionGroup>>> groups_;
     Prop<MentionsSource> source_{MentionsSource{}};
     Prop<bool> virtual_{true};

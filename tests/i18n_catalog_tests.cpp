@@ -32,6 +32,42 @@ void locale_contract() {
                 zh.data().statistic == en.data().statistic && zh.data().cascader.retry == String{u8"重试"} &&
                 zh.data().color_picker.add_stop == String{u8"添加色标"},
             "complete built-in groups or compound locale data missing");
+    require(en.data().picker.time_placeholder == String{u8"Select a time"} &&
+                en.data().picker.date_time_placeholder == String{u8"Select date"} &&
+                zh.data().picker.date_time_placeholder == String{u8"请选择日期和时间"} &&
+                en.data().picker.year_placeholder == String{u8"Select year"} &&
+                en.data().picker.quarter_placeholder == String{u8"Select quarter"} &&
+                en.data().picker.month_placeholder == String{u8"Select month"} &&
+                en.data().picker.week_placeholder == String{u8"Select week"} &&
+                zh.data().picker.year_placeholder == String{u8"请选择年份"} &&
+                zh.data().picker.quarter_placeholder == String{u8"请选择季度"} &&
+                zh.data().picker.month_placeholder == String{u8"请选择月份"} &&
+                zh.data().picker.week_placeholder == String{u8"请选择周"},
+            "fixed Ant Design 6.6.5 picker placeholders or legacy time default missing");
+    const std::array range_fields{&PickerLocale::year_range_placeholder, &PickerLocale::quarter_range_placeholder,
+                                  &PickerLocale::month_range_placeholder, &PickerLocale::week_range_placeholder};
+    const std::array english_ranges{
+        std::array<String, 2>{u8"Start year", u8"End year"}, std::array<String, 2>{u8"Start quarter", u8"End quarter"},
+        std::array<String, 2>{u8"Start month", u8"End month"}, std::array<String, 2>{u8"Start week", u8"End week"}};
+    const std::array chinese_ranges{
+        std::array<String, 2>{u8"开始年份", u8"结束年份"}, std::array<String, 2>{u8"开始季度", u8"结束季度"},
+        std::array<String, 2>{u8"开始月份", u8"结束月份"}, std::array<String, 2>{u8"开始周", u8"结束周"}};
+    for (std::size_t i = 0; i < range_fields.size(); ++i) {
+        require(en.data().picker.*range_fields[i] == english_ranges[i] &&
+                    zh.data().picker.*range_fields[i] == chinese_ranges[i],
+                "picker range mode package values missing");
+        for (std::size_t endpoint = 0; endpoint < 2; ++endpoint) {
+            auto invalid = std::make_unique<LocaleData>(zh.data());
+            (invalid->picker.*range_fields[i])[endpoint] = {};
+            rejects([&] { static_cast<void>(LocalePack(*invalid)); }, I18nErrorCode::InvalidPack);
+        }
+    }
+    for (const auto field : {&PickerLocale::year_placeholder, &PickerLocale::quarter_placeholder,
+                             &PickerLocale::month_placeholder, &PickerLocale::week_placeholder}) {
+        auto invalid = std::make_unique<LocaleData>(en.data());
+        invalid->picker.*field = {};
+        rejects([&] { static_cast<void>(LocalePack(*invalid)); }, I18nErrorCode::InvalidPack);
+    }
     auto data = std::make_unique<LocaleData>(zh.data());
     const LocalePack frozen(*data);
     data->common.confirm = u8"mutated caller data";

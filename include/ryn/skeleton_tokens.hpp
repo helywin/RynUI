@@ -7,6 +7,8 @@
 namespace ryn {
 struct SkeletonColorToken final {
     Color background;
+    Color gradient_to;
+    Color image;
     friend bool operator==(const SkeletonColorToken&, const SkeletonColorToken&) = default;
 };
 
@@ -59,6 +61,8 @@ struct SkeletonTokenOverride final {
     std::optional<LogicalLength> control_height_large;
     std::optional<LogicalLength> control_radius;
     std::optional<LogicalLength> intrinsic_width;
+    std::optional<Color> gradient_to;
+    std::optional<Color> image;
     friend bool operator==(const SkeletonTokenOverride&, const SkeletonTokenOverride&) = default;
 };
 } // namespace ryn

@@ -1,4 +1,12 @@
-# Skeleton 静态骨架
+# Skeleton 骨架
+
+107 增补（[Windows 阶段验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md)）：所有 Skeleton Props 增加 `active(Prop<bool>)`，默认 false；
+`SkeletonImage(SkeletonImageProps)` 是真实图片占位，`SkeletonNode(SkeletonNodeProps, SkeletonNodeContent)`
+保留并居中自定义内容，二者默认尺寸由 Theme 的 control height 派生为三倍。
+
+active 使用共同 ImageStore 的不可变渐变 ramp 与圆角分解，只移动采样窗口，不逐帧上传纹理；
+背景、gradient_to 和图片图标颜色分别来自 Skeleton Token。静态、隐藏、裁剪离屏、窗口失活、loading=false、
+reduced motion 或卸载均停止 deadline。此增补没有网络加载服务，不提升目录状态或平台覆盖。
 
 原生静态 partial：组合 `Skeleton` 与独立 `SkeletonAvatar`、`SkeletonButton`、`SkeletonInput`。参考 Ant Design 6.6.5（`4a39f54842eade4e565ab336ef6097cd7e723cdd`）`components/skeleton/{Skeleton,Paragraph,Element}.tsx`、`style/index.ts` 与 API 文档；只映射设计合同，不引入 React/CSS。
 

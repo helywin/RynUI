@@ -38,7 +38,7 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                     : identity == "ant.component.skeleton"      ? "gallery.skeleton.preview "
                                     : identity == "ant.component.popover"       ? "gallery.popover.editor "
                                     : identity == "ant.component.message"       ? "gallery.notices.workflow "
-                                    : identity == "ant.component.notification"  ? "gallery.notices.workflow "
+                                    : identity == "ant.component.notification"  ? "gallery.notification.workflow "
                                     : identity == "ant.component.timeline"      ? "gallery.timeline.workflow "
                                     : identity == "ant.component.avatar"        ? "gallery.avatar.members "
                                     : identity == "ant.component.statistic"     ? "gallery.statistic.metrics "

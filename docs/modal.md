@@ -14,6 +14,14 @@ open默认false且由应用持有；OK/取消只发送请求，应用不回写fa
 
 width为正且有限的logical units，默认520；centered控制垂直居中。默认页脚OK/Cancel可改文字，footer(None)隐藏默认按钮，ModalSlots的typed title/footer支持自定义内容。restoreFocusAfterClose默认true。afterOpenChange在实际显示转换后通知，afterClose只在实际隐藏后通知，初始隐藏不产生关闭事件。
 
+108 默认文案接入（source-only，尚未编译或运行）：默认页脚读取最近活 ConfigProvider 的
+`common.confirm/cancel`，无 Provider 仍为 OK/Cancel。`locale(Prop<CommonLocale>)` 是完整组件覆盖；
+`okText/cancelText` 的显式英文或空串高于完整 Locale，完整 Locale 的英文/空字段高于作用域包。
+typed footer/title 与业务 body String 保留原意。语言切换只更新默认按钮标签与必要测量，保留打开状态、
+富 Input 身份、草稿、反向选区、preedit、undo 与焦点，不发送 onOk/onCancel/afterOpenChange。
+新 CPU host 源码入口为 `rynui.i18n_components_defaults` / `rynui.i18n_components_overrides`；
+未运行构建或 CTest，不表示服务、异步确认或平台验收已完成。
+
 首次挂载一次预建并保留全部slots，包括初始关闭时的内容。隐藏时清理焦点、输入和子弹层，再开保留编辑器、草稿和组件身份；初始隐藏内容的autoFocus被阻止。显示转换通知在后续窗口同步的安全阶段发出，初始关闭不通知。回调可以重开或卸载；已卸载owner不再接收后续通知。
 
 Modal脱离父级Box/Flex/Space和顶层正文流，不占空间或gap，保留逻辑owner和Theme。默认顶部距离100，宽度与高度按窗口安全边距夹紧；centered启用垂直居中。正文可滚动，标题与页脚固定；Tab焦点及超高TextArea的插入点会显露，滚动只更新像素对齐的平移和裁剪。正文内的TextArea、Select菜单和Tabs标签栏先处理自己的滚轮。

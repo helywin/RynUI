@@ -1,5 +1,12 @@
 # Alert、Spin 与 Progress
 
+107 Spin 增补（[Windows 阶段验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md)）：`fullscreen(Prop<bool>)` 使用原生 viewport layer 与
+owner-scoped 输入约束；`delay(Prop<std::chrono::milliseconds>)` 是可取消的延迟显示；
+`percent(Prop<SpinPercent>)` 接收 monostate、有限 float 或 `SpinAutomaticPercent{}`。自动百分比按锁定上游的
+200ms / 30、70、96 阈值推进；数值模式是共同解析 arc，静态时不申请下一帧。自动模式在 reduced motion、
+离屏、hidden、窗口失活或离页停止。`Spin(SpinProps, SpinSlots)` 支持没有正文的自定义 fullscreen 指示器。
+Gallery 的 fullscreen 例子有真实的结束按钮。此增补不提升目录状态或平台覆盖。
+
 这三个原生组件采用 typed Props、typed slots 与响应式 `Prop<T>`。普通属性变化保留节点和 slot 内容，`LayoutStyle` 仅控制外部布局。颜色和内部尺寸从 `ThemeConfig::alert/spin/progress` 读取，不扩展 CPU scene v3 或 GPU ABI v2。
 
 ```cpp
@@ -33,8 +40,10 @@ ryn::Progress(ryn::ProgressProps{}.type(ryn::ProgressType::Dashboard).percent(pe
 - `message`、`description` 支持 `Prop<String>` 与 UTF-8 literal。`AlertSlots::message/description` 可替代默认文本，slot 内容自行响应，优先于对应字符串。
 - `showIcon` 默认 false。`icon` 可替代默认状态图标；隐藏时仍保留 slot 生命周期。
 - `action` 用于按钮等交互内容；`close` 用于装饰性图标/文字，外层已有独立 pointer/Tab/Enter/Space close 操作。
-- `closable` 默认 false，`visible` 默认 true。close 只触发 `onClose()` 请求；调用方写回 visible 才隐藏，隐藏后清除交互资格。无退出动画。
+- `closable` 默认 false。显式 `visible(Prop<bool>)` 为受控权威，close 只发送 `onClose()` 请求；省略 visible 时默认显示并在关闭请求后隐藏。隐藏后清除交互资格。
 - description 非空或提供 description slot 时启用两层文本、较大图标和 padding。
+
+107 增补（[Windows 阶段验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md)）：`banner()` 去除边框与圆角，未显式指定时采用 Warning 与 showIcon=true；显式 status/showIcon 始终优先。`marquee(AlertMarquee{})` 在保留的消息区域内按 logical px/s 滚动，支持间距与悬停暂停；短文本、隐藏、离屏、窗口失活及 reduced motion 不持续请求帧。`motion()` 启用 Theme slow 时长的有限退出折叠与透明度，`afterClose()` 在实际隐藏后通知，重新显示会取消旧退出。默认 motion=false 保留旧调用的同步隐藏行为。本阶段自动检查与平台边界见上述验收记录。
 
 ## Spin
 
@@ -57,4 +66,4 @@ ryn::Progress(ryn::ProgressProps{}.type(ryn::ProgressType::Dashboard).percent(pe
 
 基线为 Ant Design 6.6.5，commit `4a39f54842eade4e565ab336ef6097cd7e723cdd`；alert/spin/progress style source 的 SHA256 与 `sources.lock.yaml` 一致。Context7 当前文档只用于补充语义，未升级锁定输入。
 
-首批范围不含 Alert banner/marquee/退出动画、Spin fullscreen/delay/percent、Progress active shimmer/steps/渐变/success segment/任意 gap、平台 accessibility adapter。没有声明原生 GPU、Linux、系统 IME 或人工视觉通过；实际 headless 测试及证据位于 change 065 的 validation.md。Token Gallery 的 LiveSamples 末尾提供 Alert 关闭/恢复、Spin 加载屏蔽/草稿保留，以及三种 Progress 的进度/异常状态联动示例；Gallery Recording 证据见 change 069。
+历史首批不含 Alert banner/marquee/退出动画；107 的补充及 Spin fullscreen/delay/percent 已进入上述 Windows 阶段验收。Progress active shimmer/steps/渐变/success segment/任意 gap、平台 accessibility adapter 继续按各自 change 追踪。Linux、系统 IME 的覆盖未据此增加；历史 headless 结果位于 change 065 的 validation.md。Token Gallery 提供 Alert 关闭/恢复与滚动公告，以及独立的 Spin、Progress 示例；历史 Gallery Recording 结果见 change 069。

@@ -20,19 +20,37 @@ struct DrawerMask final {
     friend bool operator==(DrawerMask, DrawerMask) = default;
 };
 
+struct DrawerResize final {
+    bool enabled{true};
+    float minimum{180};
+    float maximum{960};
+    float keyboard_step{10};
+    friend bool operator==(DrawerResize, DrawerResize) = default;
+};
+
+struct DrawerPush final {
+    bool enabled{true};
+    float distance{180};
+    friend bool operator==(DrawerPush, DrawerPush) = default;
+};
+
 struct DrawerContentSlot final {};
 
 struct DrawerTitleSlot final {};
 
 struct DrawerFooterSlot final {};
 
+struct DrawerExtraSlot final {};
+
 using DrawerContent = SlotContent<DrawerContentSlot>;
 using DrawerTitle = SlotContent<DrawerTitleSlot>;
 using DrawerFooter = SlotContent<DrawerFooterSlot>;
+using DrawerExtra = SlotContent<DrawerExtraSlot>;
 
 struct DrawerSlots final {
     std::optional<DrawerTitle> title;
     std::optional<DrawerFooter> footer;
+    std::optional<DrawerExtra> extra;
 };
 
 class DrawerProps final {
@@ -101,6 +119,46 @@ public:
         return *this;
     }
 
+    DrawerProps& loading(Prop<bool> value = true) {
+        loading_ = std::move(value);
+        return *this;
+    }
+
+    DrawerProps& lazy(Prop<bool> value = true) {
+        lazy_ = std::move(value);
+        return *this;
+    }
+
+    DrawerProps& destroyOnHidden(Prop<bool> value = true) {
+        destroy_hidden_ = std::move(value);
+        return *this;
+    }
+
+    DrawerProps& rtl(Prop<bool> value = true) {
+        rtl_ = std::move(value);
+        return *this;
+    }
+
+    DrawerProps& resizable(Prop<DrawerResize> value) {
+        resize_ = std::move(value);
+        return *this;
+    }
+
+    DrawerProps& push(Prop<DrawerPush> value) {
+        push_ = std::move(value);
+        return *this;
+    }
+
+    DrawerProps& onResize(std::function<void(float)> value) {
+        on_resize_ = std::move(value);
+        return *this;
+    }
+
+    DrawerProps& onResizeEnd(std::function<void(float)> value) {
+        on_resize_end_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend class detail::ModalComponentHost;
     Prop<bool> open_{false};
@@ -112,6 +170,14 @@ private:
     Prop<bool> keyboard_{true};
     Prop<DrawerMask> mask_{DrawerMask{}};
     Prop<bool> restore_focus_{true};
+    Prop<bool> loading_{false};
+    Prop<bool> lazy_{false};
+    Prop<bool> destroy_hidden_{false};
+    Prop<bool> rtl_{false};
+    Prop<DrawerResize> resize_{DrawerResize{false}};
+    Prop<DrawerPush> push_{DrawerPush{}};
+    std::function<void(float)> on_resize_;
+    std::function<void(float)> on_resize_end_;
     std::function<void(DrawerCancelReason)> on_cancel_;
     std::function<void()> after_close_;
     std::function<void(bool)> after_open_change_;

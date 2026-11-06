@@ -1,5 +1,14 @@
 # Empty 与 Result
 
+107 Result 增补（[Windows 阶段验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md)）：403/404/500 使用固定 6.6.5 插画的 2x PNG，
+由共同 `ImageSource` 解码与上传。来源、SHA256 和 MIT license 见 `third_party/ant-design-result/`；
+生成工具为 `tools/import_result_illustrations.py`，没有 URL/网络服务入口。
+
+`ResultSlots` 增加 typed `title` / `subtitle`；`ResultProps` 的 `iconRender`、`titleRender`、`subtitleRender`、
+`extraRender`、`contentRender` 接收 `Prop<std::shared_ptr<const 对应Slot>>`。相同指针保留子树，替换只更新对应区域；
+空指针恢复默认图标/文本或清空 extra/content。异常状态优先显示插画。`animated` 控制状态变化后的有限视觉过渡；
+hidden、窗口失活、reduced motion 和离页均停止后续帧。此增补不提升支持状态或平台覆盖。
+
 静态原生空状态和结果展示，基于 retained Component、Text/Icon 与 logical CPU scene。头文件为 `<ryn/empty.hpp>`、`<ryn/result.hpp>`，也由 `<ryn/rynui.hpp>` 导出。
 
 ```cpp
@@ -22,7 +31,16 @@ ryn::Result(
 
 `EmptyImage::Default` 是 100 dp 的 Inbox 图标，`Compact` 是 40 dp 图标和较小垂直留白，`None` 隐藏 image 区域。description 默认 `No data`，空字符串移除标签所占空间。typed `EmptySlots.image` 可替换内置图示，extra 可放置真实控件。
 
-`ResultStatus` 复用 Status：Success/Warning/Error 使用对应静态语义，Default 表示 info，None/Processing 也静态映射 info。`ResultException::Forbidden/NotFound/ServerError` 分别表达 403/404/500，使用 Lock/FileSearch/CloudServer 图标。title/subtitle 由调用者提供。可直接传静态 Status/ResultException；响应式使用 Prop<ResultStatus>、Signal<ResultStatus> 或返回 ResultStatus 的 binding。
+108 默认文案接入（平台结果见上述阶段验收）：未设置 `description` 时读取最近活 ConfigProvider 的
+`common.empty`，无 Provider 保持 `No data`。`locale(Prop<CommonLocale>)` 提供完整组件覆盖；其显式英文、
+空字段与 `description` 的显式英文/空串均保留，优先级为富 description slot、具体 description、完整 Locale、
+作用域包。普通业务 String 不翻译。语言变化只更新默认标签与必要局部测量，不替换富说明/extra 中的 Input；
+动态 description 退回默认文字时使用当前语言。默认 description 也用于共同 Image 的 alt。
+
+新增真实 CPU host 入口为 `rynui.i18n_components_defaults` / `rynui.i18n_components_overrides`，
+覆盖嵌套/双窗口、来源覆盖、等值、退役与富 Input；本阶段仅新增实际记录的 Windows 覆盖。
+
+`ResultStatus` 复用 Status：Success/Warning/Error 使用对应静态语义，Default 表示 info，None/Processing 也静态映射 info。`ResultException::Forbidden/NotFound/ServerError` 分别表达 403/404/500，默认使用对应的内置插画。title/subtitle 由调用者提供。可直接传静态 Status/ResultException；响应式使用 Prop<ResultStatus>、Signal<ResultStatus> 或返回 ResultStatus 的 binding。
 
 Result 的 typed icon、content、extra slots 可分别替换图标、提供详情和放置操作。区域顺序为 icon、title、subtitle、extra、content，与锁定 6.6.5 的结构一致。image/icon slot 中的复合布局由调用者使用 Flex/Space 组合；extra 自动居中、按 token gap 排列并在有限宽度换行；content 纵向排列。
 

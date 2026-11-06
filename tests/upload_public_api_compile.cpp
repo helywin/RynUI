@@ -1,5 +1,13 @@
 #include <ryn/upload.hpp>
 #include <ryn/form_upload.hpp>
+#include <type_traits>
+
+static_assert(std::is_aggregate_v<ryn::UploadFile> && std::is_aggregate_v<ryn::UploadLocale>);
+
+ryn::UploadFile legacy_upload_aggregate() {
+    return {u8"legacy", u8"file.txt", u8"text/plain",    4,  {}, ryn::UploadFileStatus::Error,
+            0,          {},           u8"Upload failed", {}, {}};
+}
 
 void attachments(ryn::UploadTransport send) {
     ryn::Upload(
