@@ -3,7 +3,6 @@
 #include "component/form_control_binding.hpp"
 #include "component/responsive_layout.hpp"
 #include "component/input_component.hpp"
-#include "component/modal_component.hpp"
 #include <ryn/tooltip.hpp>
 #include <ryn/flex.hpp>
 #include <limits>
@@ -140,26 +139,16 @@ bool form_scope_interactive(WindowComponentServices& services, runtime::Componen
         }
         return false;
     };
-    const auto boundary = services.interactions().input_boundary();
-    if (!boundary || !components.contains(*boundary) || !descendant(*boundary)) {
-        return false;
-    }
-    // A Modal's overlay is its input domain; its logical Form ancestor is not
-    // itself an input target. Only that Form's exact active registrations can
-    // keep whole-Form commands/validation available inside the overlay.
-    const bool modal_domain = std::ranges::any_of(services.modal().mounted(), [&](auto owner) {
-        const auto view = services.modal().snapshot(owner);
-        return view.visible && view.overlay == *boundary;
-    });
-    if (!modal_domain) {
-        return false;
-    }
+    // Keep a Form's commands available through its exact active Item registrations.
+    // An owned restriction or a Modal companion can admit the Item while its
+    // logical Form ancestor remains outside the complete input domain.
     for (auto item_id : items) {
         const auto* item = components.state<FormItemState>(item_id);
         if (!item || item->form != id || item->hidden || !item->registration_generation || !item->field ||
             !item->field->registered || item->field->owner.lock() != model ||
             item->field->generation != item->registration_generation || !descendant(item_id) ||
-            !services.interactions().component_active(item_id)) {
+            !services.interactions().component_active(item_id) ||
+            !services.interactions().subtree_intersects_input_domain(item_id)) {
             continue;
         }
         if (std::ranges::any_of(model->fields(), [&](const auto& registration) {
