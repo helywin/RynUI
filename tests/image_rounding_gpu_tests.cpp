@@ -149,6 +149,26 @@ int main(int argc, char** argv) {
                 }
             }
         }
+        renderer.set_clear_color(Color::rgba8(0, 0, 0, 0));
+        for (float scale : {1.F, 1.25F, 1.5F, 2.F}) {
+            for (float opacity : {1.F, .5F, 0.F, 1.F}) {
+                const runtime::Rect canvas{16.25F, 12.5F, 64.5F, 48.5F};
+                graphics::ImageInstance full{source, canvas, {0, 0, 192 / scale, 128 / scale}, {48.5F, 36.75F}};
+                full.opacity = opacity;
+                auto reference = draw({full}, scale, "transparent-reference.bmp");
+                auto frame =
+                    draw(graphics::decompose_rounded_image(full, canvas, 12), scale, "transparent-rounded.bmp");
+                const auto center = pixel(frame.get(), int(48.5F * scale), int(36.75F * scale));
+                check(center[3] == Uint8(128 * opacity), "transparent readback lost source alpha/paint opacity");
+                for (int y = int(26 * scale); y < int(47 * scale); ++y) {
+                    for (int x = int(18 * scale); x < int(78 * scale); ++x) {
+                        check(pixel(frame.get(), x, y) == pixel(reference.get(), x, y),
+                              "transparent RGBA seam blended twice or changed source alpha");
+                    }
+                }
+            }
+        }
+        renderer.set_clear_color(Color::rgba8(11, 37, 73));
         const std::array<std::byte, 16> colored{std::byte{255}, std::byte{0},   std::byte{0},   std::byte{128},
                                                 std::byte{0},   std::byte{255}, std::byte{0},   std::byte{64},
                                                 std::byte{0},   std::byte{0},   std::byte{255}, std::byte{0},

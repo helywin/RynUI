@@ -11,3 +11,5 @@
 - 必要命令：`cmake --build --preset linux-gcc-headless-{debug,release} --target rynui_image_{component,resource,rounding,lazy_preview}_tests rynui_image_public_api_compile -j2`；`ctest --test-dir out/build/linux-gcc-headless -C <Debug|Release> --output-on-failure -R '^rynui\.image_(component_.*|resource_.*|rounding|lazy_preview)$'`；`tools/run_background_wayland.py --timeout 60 -- <GPU test> <out directory>`。
 - logical scene v3、原 Quad/Glyph/Effect ABI v2、Image ABI v2/112 bytes、shader/backend API 均不变；Core 不依赖 renderer/SDL。无任意后代 mask；Card 只向直接默认 Rectangle Image 传内部上角策略，显式 shape 优先，预览独立。上角策略同时作用于 Image 自有背景/hover/border；四种 intrinsic fit 与 Theme 背景的半透明真实组件读回通过。
 - 原始日志和读回仅在忽略的 out。Windows/MSVC/D3D12、物理 IME/AT/跨实际显示器未验证；不关闭分类平台汇总项。
+
+- 来源 `f757e13c97b2342fc82d3670456e8556b7590664` 的后续独立 test-only 扩展在透明 FBO 上逐像素核对 RGB 与 alpha（128/64/0/恢复），防止不透明背景掩盖重复 blend。相同四个缩放与透明度序列的真实 Vulkan 合计 **2,581,848 检查**，`ctest --test-dir out/build/linux-gcc -C Debug -R '^rynui.image_rounding_vulkan_private$'` **1/1**；不修改 shader、ABI 或资源实现。
