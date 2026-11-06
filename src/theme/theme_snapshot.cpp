@@ -4277,15 +4277,17 @@ ThemeSnapshot::ThemeSnapshot(
     std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
     std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
     ImageThemeToken&& image, UploadThemeToken&& upload, CalendarThemeToken&& calendar, CarouselThemeToken&& carousel,
-    QRCodeThemeToken&& qrcode)
+    QRCodeThemeToken&& qrcode, WatermarkThemeToken&& watermark, BorderBeamThemeToken&& border_beam,
+    AffixThemeToken&& affix)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), float_button_(std::move(float_button)),
       divider_(std::move(divider)), slider_(std::move(slider)), tooltip_(std::move(tooltip)),
       select_(std::move(select)), card_(std::move(card)), tabs_(std::move(tabs)), segmented_(std::move(segmented)),
       date_picker_(std::move(date_picker)), calendar_(std::move(calendar)), carousel_(std::move(carousel)),
-      qrcode_(std::move(qrcode)), form_(std::move(form)), breadcrumb_(std::move(breadcrumb)),
-      anchor_(std::move(anchor)), transfer_(std::move(transfer)), image_(std::move(image)), upload_(std::move(upload)),
+      qrcode_(std::move(qrcode)), watermark_(std::move(watermark)), border_beam_(std::move(border_beam)),
+      affix_(std::move(affix)), form_(std::move(form)), breadcrumb_(std::move(breadcrumb)), anchor_(std::move(anchor)),
+      transfer_(std::move(transfer)), image_(std::move(image)), upload_(std::move(upload)),
       color_picker_(std::move(color_picker)), cascader_(std::move(cascader)), steps_(std::move(steps)),
       time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), timeline_(std::move(timeline)),
       avatar_(std::move(avatar)), rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
@@ -5192,6 +5194,26 @@ ThemeSnapshot::ThemeSnapshot(
     }
     hash_integer(identity_, qrcode_.metrics.font_family);
     status_json << "],\"fontFamily\":" << static_cast<int>(qrcode_.metrics.font_family) << '}';
+    status_json << ",\"watermark\":{\"color\":[";
+    first = true;
+    color(watermark_.color);
+    status_json << "],\"metrics\":[";
+    first = true;
+    metric(watermark_.font_size);
+    metric(watermark_.line_height);
+    metric(watermark_.image_opacity);
+    hash_integer(identity_, watermark_.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(watermark_.font_family) << '}';
+    status_json << ",\"borderBeam\":{\"color\":[";
+    first = true;
+    color(border_beam_.color);
+    status_json << "],\"metrics\":[";
+    first = true;
+    metric(border_beam_.width);
+    metric(border_beam_.radius);
+    metric(border_beam_.length);
+    status_json << "]},\"affix\":{\"zIndex\":" << affix_.z_index << '}';
+    hash_integer(identity_, affix_.z_index);
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -5336,7 +5358,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            *left.auto_complete_ == *right.auto_complete_ && *left.tree_select_ == *right.tree_select_ &&
            *left.layout_ == *right.layout_ && *left.splitter_ == *right.splitter_ &&
            *left.mentions_ == *right.mentions_ && left.calendar_ == right.calendar_ &&
-           left.carousel_ == right.carousel_ && left.qrcode_ == right.qrcode_;
+           left.carousel_ == right.carousel_ && left.qrcode_ == right.qrcode_ && left.watermark_ == right.watermark_ &&
+           left.border_beam_ == right.border_beam_ && left.affix_ == right.affix_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -5413,6 +5436,9 @@ struct ResolveState final {
     CalendarThemeToken calendar;
     CarouselThemeToken carousel;
     QRCodeThemeToken qrcode;
+    WatermarkThemeToken watermark;
+    BorderBeamThemeToken border_beam;
+    AffixThemeToken affix;
 };
 
 } // namespace
@@ -6969,6 +6995,51 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         }
         detail::apply_qrcode_override(token, config.qrcode.tokens);
     }();
+    const bool inherit_decorations = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                     config.alias == AliasTokenOverride{} && config.algorithms.empty();
+    auto& watermark = workspace->watermark;
+    watermark.color = Color(alias.color_text.red(), alias.color_text.green(), alias.color_text.blue(), .15F);
+    watermark.font_family = seed.font_family;
+    auto& border_beam = workspace->border_beam;
+    border_beam.color = map.color_primary;
+    border_beam.radius = map.border_radius;
+    auto& affix = workspace->affix;
+    affix.z_index = seed.z_index_base + 10;
+    if (inherit_decorations) {
+        watermark = parent->watermark();
+        border_beam = parent->border_beam();
+        affix = parent->affix();
+    }
+    const auto positive = [](const std::optional<float>& value, float fallback, bool zero = false) {
+        if (!value) {
+            return fallback;
+        }
+        if (!std::isfinite(*value) || (zero ? *value < 0 : *value <= 0)) {
+            throw std::invalid_argument("Decoration token dimension is invalid");
+        }
+        return *value;
+    };
+    const auto& w = config.watermark.tokens;
+    watermark.color = w.color.value_or(watermark.color);
+    watermark.font_size = positive(w.font_size, watermark.font_size);
+    watermark.line_height = positive(w.line_height, watermark.line_height);
+    if (watermark.font_size > 4096) {
+        throw std::invalid_argument("Watermark font size exceeds font limits");
+    }
+    watermark.font_family = w.font_family.value_or(watermark.font_family);
+    if (watermark.font_family != SystemFontFamily::ui_sans && watermark.font_family != SystemFontFamily::ui_monospace) {
+        throw std::invalid_argument("Invalid Watermark font family");
+    }
+    watermark.image_opacity = positive(w.image_opacity, watermark.image_opacity, true);
+    if (watermark.image_opacity > 1) {
+        throw std::invalid_argument("Watermark image opacity must be in [0,1]");
+    }
+    const auto& b = config.border_beam.tokens;
+    border_beam.color = b.color.value_or(border_beam.color);
+    border_beam.width = positive(b.width, border_beam.width);
+    border_beam.radius = positive(b.radius, border_beam.radius, true);
+    border_beam.length = positive(b.length, border_beam.length);
+    affix.z_index = config.affix.tokens.z_index.value_or(affix.z_index);
     return ThemeSnapshot(
         std::move(workspace->float_button), std::move(seed), std::move(map), std::move(alias),
         std::move(workspace->button), std::move(workspace->text), std::move(workspace->switch_token),
@@ -6989,7 +7060,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         std::move(workspace->statistic), std::move(workspace->tree), std::move(workspace->auto_complete),
         std::move(workspace->tree_select), std::move(workspace->layout), std::move(workspace->splitter),
         std::move(workspace->mentions), std::move(workspace->image), std::move(workspace->upload),
-        std::move(workspace->calendar), std::move(workspace->carousel), std::move(workspace->qrcode));
+        std::move(workspace->calendar), std::move(workspace->carousel), std::move(workspace->qrcode),
+        std::move(workspace->watermark), std::move(workspace->border_beam), std::move(workspace->affix));
 }
 
 } // namespace ryn

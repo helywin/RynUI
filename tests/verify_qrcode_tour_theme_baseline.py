@@ -7,17 +7,17 @@ import subprocess
 ROOT=Path(__file__).resolve().parents[1]
 BASE='c7bf186d741046ddc18641c44e341fd151fd6026'
 def old(path):
-    return subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT,text=True)
+    return subprocess.check_output(['git','show',f'{BASE}:{Path(path).as_posix()}'],cwd=ROOT,text=True,encoding='utf-8')
 def identities(text):
     return re.findall(r'^\s+(\w+),',text.split('enum class TokenIdentity')[1].split('};')[0],re.M)
 def fields(text):
     return re.findall(r'^    (.+);$',text.split('struct ThemeConfig final {')[1].split('friend bool')[0],re.M)
 def main():
-    domains={'qrcode'}
+    domains={'qrcode', 'watermark', 'borderBeam', 'affix'}
     for p in sorted((ROOT/'design-tokens/ant-design/6.6.5/golden').glob('*.json')):
         before=json.loads(old(p.relative_to(ROOT)))
-        after=json.loads(p.read_text())
-        assert list(after) == list(before) + ['qrcode'], (p.name, 'domain order')
+        after=json.loads(p.read_text(encoding='utf-8'))
+        assert list(after) == list(before) + ['qrcode', 'watermark', 'borderBeam', 'affix'], (p.name, 'domain order')
         assert set(before)|domains==set(after),(p.name,set(after)-set(before))
         for name,value in before.items():
             if name!='identity': assert after[name]==value,(p.name,name)
@@ -26,10 +26,10 @@ def main():
     before=identities(old(path));after=identities((ROOT/path).read_text())
     assert after[:len(before)-1]==before[:-1]
     assert after[-1]=='count' and len(after)==len(set(after))
-    additions=['qrcode_colors','qrcode_metrics']
+    additions=['qrcode_colors','qrcode_metrics','watermark','border_beam','affix']
     assert after[len(before)-1:-1]==additions
     path='include/ryn/theme.hpp'
-    additions=['QRCodeThemeConfig qrcode']
+    additions=['QRCodeThemeConfig qrcode','WatermarkThemeConfig watermark','BorderBeamThemeConfig border_beam','AffixThemeConfig affix']
     assert fields((ROOT/path).read_text())==fields(old(path))+additions
     print(f'5 complete goldens: all pre-QRCode main domains preserved; {len(domains)} appended domains; old identities and aggregate order unchanged')
 if __name__=='__main__':main()

@@ -9978,7 +9978,245 @@ void add_qrcode_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 1;
 }
 
+void add_watermark_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+
+    struct Pending final {
+        ImageCompletion done;
+        Signal<String> message{String{u8"文字水印保留真实输入；可切换共享图像或异步来源。"}};
+    };
+
+    auto pending = std::make_shared<Pending>();
+    auto loader = std::make_shared<ImageLoader>();
+    loader->start = [pending](ImageCompletion done) {
+        pending->done = std::move(done);
+        return [pending] {
+            pending->done = {};
+            pending->message.set(u8"异步水印请求已取消");
+        };
+    };
+    Signal<ImageSource> source{ImageSource{}};
+    Signal<float> rotate{-22};
+    Signal<WatermarkGap> gap{WatermarkGap{50, 40}};
+    Signal<WatermarkOffset> offset{WatermarkOffset{20, 20}};
+    Signal<LogicalLength> height{dp(260)};
+    Signal<ThemeConfig> theme{ThemeConfig{}};
+    Flex(FlexProps{}.gap(dp(8)).wrap(FlexWrap::Wrap), FlexContent{[=] {
+             Button(ButtonProps{}.onClick([=] { source.set(ImageSource{}); }), [] { Text(u8"文字水印"); });
+             remember_target(state, "gallery.watermark.text");
+             Button(ButtonProps{}.onClick([=] { source.set(ImageSource{media_fixture_source()}); }),
+                    [] { Text(u8"图像水印"); });
+             remember_target(state, "gallery.watermark.image");
+             Button(ButtonProps{}.onClick([=] { source.set(ImageSource{std::make_shared<ImageLoader>(*loader)}); }),
+                    [] { Text(u8"开始异步加载"); });
+             remember_target(state, "gallery.watermark.async");
+             Button(ButtonProps{}.onClick([=] {
+                 if (pending->done) {
+                     auto complete = std::exchange(pending->done, {});
+                     complete(decode_image(*media_fixture_source()));
+                 }
+             }),
+                    [] { Text(u8"完成加载"); });
+             remember_target(state, "gallery.watermark.complete");
+             Button(ButtonProps{}.onClick([=] {
+                 if (pending->done) {
+                     auto complete = std::exchange(pending->done, {});
+                     complete({{}, {ImageErrorCode::loader_failure, "Application source unavailable"}});
+                 }
+             }),
+                    [] { Text(u8"返回失败"); });
+             remember_target(state, "gallery.watermark.failure");
+             Button(ButtonProps{}.onClick([=] { rotate.set(rotate.get() == -22 ? 32.F : -22.F); }),
+                    [] { Text(u8"旋转"); });
+             remember_target(state, "gallery.watermark.rotate");
+             Button(ButtonProps{}.onClick([=] {
+                 gap.set(gap.get().x == 50 ? WatermarkGap{100, 80} : WatermarkGap{50, 40});
+                 offset.set(offset.get().x == 20 ? WatermarkOffset{60, 35} : WatermarkOffset{20, 20});
+             }),
+                    [] { Text(u8"间距 / 偏移"); });
+             remember_target(state, "gallery.watermark.spacing");
+             Button(ButtonProps{}.onClick([=] { height.set(height.get() == dp(260) ? dp(380) : dp(260)); }),
+                    [] { Text(u8"内容高度"); });
+             remember_target(state, "gallery.watermark.resize");
+             Button(ButtonProps{}.onClick([=] {
+                 auto next = theme.get();
+                 next.watermark.tokens.color =
+                     next.watermark.tokens.color ? std::optional<Color>{} : Color::rgba8(22, 119, 255, 75);
+                 next.watermark.tokens.image_opacity = .28F;
+                 theme.set(next);
+             }),
+                    [] { Text(u8"主题颜色"); });
+             remember_target(state, "gallery.watermark.theme");
+         }});
+    Theme(ThemeProps{}.config(theme), ThemeContent{[=] {
+              Watermark(WatermarkProps{}
+                            .content(u8"RynUI 原生水印\nConfidential")
+                            .image(source)
+                            .rotate(rotate)
+                            .gap(gap)
+                            .offset(offset)
+                            .onLoad([pending] { pending->message.set(u8"图像水印加载完成"); })
+                            .onError([pending](const ImageError&) {
+                                pending->message.set(u8"水印图像加载失败；可重试或切回文字。 ");
+                            })
+                            .layout(LayoutStyle{}.width(state->document_width).height(height)),
+                        WatermarkContent{[state] {
+                            Card(CardProps{}.title(u8"带水印的可编辑内容"), CardContent{[state] {
+                                     Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+                                              Input(
+                                                  InputProps{}.defaultValue(u8"旋转、切换水印或尺寸变化后草稿仍保留"));
+                                              remember_target(state, "gallery.watermark.note");
+                                              Text(u8"水印随实际内容尺寸重复，并保持子控件的原生命中。 ");
+                                              remember_target(state, "gallery.watermark.detail");
+                                          }});
+                                 }});
+                        }});
+              remember_target(state, "gallery.watermark.main");
+          }});
+    Text(TextProps{}.content(pending->message));
+    state->telemetry.live_samples += 1;
+}
+
+void add_affix_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    // The Gallery's real document scroll translates the placeholder subtree.
+    // This explicit window-logical viewport bounds both retained window layers.
+    Signal<AffixTarget> target{AffixTarget{1, 0, 140, 10000, 360}};
+    Signal<float> top{12};
+    Signal<float> bottom{12};
+    Signal<bool> disabled{false};
+    Signal<String> feedback{String{u8"滚动当前页面观察顶部 / 底部固定；输入草稿保留。"}};
+    Flex(FlexProps{}.gap(dp(8)).wrap(FlexWrap::Wrap), FlexContent{[=] {
+             Button(ButtonProps{}.onClick([=] {
+                 auto next = target.get();
+                 next.attached = !next.attached;
+                 target.set(next);
+             }),
+                    [] { Text(u8"连接 / 释放目标"); });
+             remember_target(state, "gallery.affix.attach");
+             Button(ButtonProps{}.onClick([=] {
+                 auto next = target.get();
+                 ++next.identity;
+                 next.y = next.y == 140 ? 180.F : 140.F;
+                 target.set(next);
+             }),
+                    [] { Text(u8"切换目标区域"); });
+             remember_target(state, "gallery.affix.target");
+             Button(ButtonProps{}.onClick([=] {
+                 top.set(top.get() == 12 ? 36.F : 12.F);
+                 bottom.set(bottom.get() == 12 ? 36.F : 12.F);
+             }),
+                    [] { Text(u8"切换偏移"); });
+             remember_target(state, "gallery.affix.offset");
+             Button(ButtonProps{}.onClick([=] { disabled.set(!disabled.get()); }), [] { Text(u8"禁用 / 启用"); });
+             remember_target(state, "gallery.affix.disabled");
+         }});
+    Affix(AffixProps{}
+              .target(target)
+              .offsetTop(top)
+              .disabled(disabled)
+              .onChange([=](bool fixed) {
+                  feedback.set(fixed ? String{u8"顶部 onChange(true)"} : String{u8"顶部 onChange(false)，恢复原位"});
+              })
+              .layout(LayoutStyle{}.width(state->document_width)),
+          AffixContent{[] {
+              Card(CardProps{}.title(u8"顶部固定：真实保留输入"),
+                   CardContent{[] { Input(InputProps{}.defaultValue(u8"滚动与切换目标不会重建这份草稿")); }});
+          }});
+    remember_target(state, "gallery.affix.top");
+    Text(u8"下面的内容保留自然文档空间。继续滚动可使顶部占位跨过固定边界；释放目标后恢复原位。 ");
+    Card(CardProps{}.title(u8"滚动内容").layout(LayoutStyle{}.height(dp(400))),
+         CardContent{[] { Text(u8"本示例使用 Gallery 原生文档滚动，没有浏览器或 DOM。 "); }});
+    Affix(AffixProps{}.target(target).offsetBottom(bottom).disabled(disabled).layout(
+              LayoutStyle{}.width(state->document_width)),
+          AffixContent{[=] {
+              Button(ButtonProps{}.onClick([=] { feedback.set(u8"底部固定按钮收到真实点击"); }),
+                     [] { Text(u8"底部固定按钮"); });
+          }});
+    remember_target(state, "gallery.affix.bottom");
+    Text(TextProps{}.content(feedback));
+    state->telemetry.live_samples += 1;
+}
+
+void add_border_beam_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<Duration> duration{Duration::seconds(6)};
+    Signal<BorderBeamDirection> direction{BorderBeamDirection::Clockwise};
+    Signal<bool> visible{true};
+    Signal<ThemeConfig> theme{ThemeConfig{}};
+    Flex(FlexProps{}.gap(dp(8)).wrap(FlexWrap::Wrap), FlexContent{[=] {
+             Button(ButtonProps{}.onClick([=] {
+                 direction.set(direction.get() == BorderBeamDirection::Clockwise ? BorderBeamDirection::Counterclockwise
+                                                                                 : BorderBeamDirection::Clockwise);
+             }),
+                    [] { Text(u8"切换方向"); });
+             remember_target(state, "gallery.border-beam.direction");
+             Button(ButtonProps{}.onClick([=] {
+                 duration.set(duration.get() == Duration::seconds(6) ? Duration::seconds(2) : Duration::seconds(6));
+             }),
+                    [] { Text(u8"周期 2s / 6s"); });
+             remember_target(state, "gallery.border-beam.duration");
+             Button(ButtonProps{}.onClick([=] {
+                 auto next = theme.get();
+                 next.border_beam.tokens.color =
+                     next.border_beam.tokens.color ? std::optional<Color>{} : Color::rgba8(235, 47, 150);
+                 next.border_beam.tokens.width = 3;
+                 next.border_beam.tokens.radius = 16;
+                 next.border_beam.tokens.length = 110;
+                 theme.set(next);
+             }),
+                    [] { Text(u8"主题颜色 / 圆角"); });
+             remember_target(state, "gallery.border-beam.theme");
+             Button(ButtonProps{}.onClick([=] {
+                 auto next = theme.get();
+                 next.seed.motion = !next.seed.motion.value_or(true);
+                 theme.set(next);
+             }),
+                    [] { Text(u8"减少动态效果"); });
+             remember_target(state, "gallery.border-beam.motion");
+             Button(ButtonProps{}.onClick([=] { visible.set(!visible.get()); }), [] { Text(u8"隐藏 / 显示"); });
+             remember_target(state, "gallery.border-beam.visible");
+         }});
+    Theme(ThemeProps{}.config(theme), ThemeContent{[=] {
+              BorderBeam(BorderBeamProps{}.duration(duration).direction(direction).visible(visible).layout(
+                             LayoutStyle{}.width(state->document_width).height(dp(200))),
+                         BorderBeamContent{[state] {
+                             Card(CardProps{}.title(u8"沿圆角周长运动的边框光束"), CardContent{[state] {
+                                      Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+                                               Input(InputProps{}.defaultValue(u8"改变颜色与运动参数保留此输入"));
+                                               remember_target(state, "gallery.border-beam.note");
+                                               Text(u8"减少动态效果时保留静态光束；隐藏、离页和窗口失活时停止运动。 ");
+                                               remember_target(state, "gallery.border-beam.detail");
+                                           }});
+                                  }});
+                         }});
+              remember_target(state, "gallery.border-beam.main");
+          }});
+    state->telemetry.live_samples += 1;
+}
+
 constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
+    {{"gallery.sample.watermark.native",
+      "ant.component.watermark",
+      {},
+      "文字与共享图像、旋转、重复和异步取消",
+      "add_watermark_samples",
+      "include/ryn/watermark.hpp"},
+     add_watermark_samples},
+    {{"gallery.sample.affix.native",
+      "ant.component.affix",
+      {},
+      "原生滚动目标、顶部 / 底部固定与释放恢复",
+      "add_affix_samples",
+      "include/ryn/affix.hpp"},
+     add_affix_samples},
+    {{"gallery.sample.border-beam.native",
+      "ant.component.border-beam",
+      {},
+      "圆角周长运动、方向、主题与减少动态效果",
+      "add_border_beam_samples",
+      "include/ryn/border_beam.hpp"},
+     add_border_beam_samples},
     {{"gallery.sample.qr-code.native",
       "ant.component.qr-code",
       {},

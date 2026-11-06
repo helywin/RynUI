@@ -57,6 +57,9 @@ public:
     Subscription capture(InvalidationCallback callback, const std::function<void()>& typed_token_reads);
 
     [[nodiscard]] const ThemeAliasToken& alias() const;
+    [[nodiscard]] const WatermarkThemeToken& watermark() const;
+    [[nodiscard]] const BorderBeamThemeToken& border_beam() const;
+    [[nodiscard]] const AffixThemeToken& affix() const;
     [[nodiscard]] const ThemeMapToken& map() const;
     [[nodiscard]] const ButtonThemeToken& button() const;
     [[nodiscard]] const FloatButtonThemeToken& float_button() const;

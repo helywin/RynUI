@@ -13,6 +13,7 @@
 #include <ryn/date_picker_tokens.hpp>
 #include <ryn/calendar_tokens.hpp>
 #include <ryn/carousel_tokens.hpp>
+#include <ryn/decoration_tokens.hpp>
 #include <ryn/qrcode_tokens.hpp>
 #include <ryn/form_tokens.hpp>
 #include <ryn/breadcrumb_tokens.hpp>
@@ -1903,6 +1904,9 @@ struct ThemeConfig final {
     CalendarThemeConfig calendar;
     CarouselThemeConfig carousel;
     QRCodeThemeConfig qrcode;
+    WatermarkThemeConfig watermark;
+    BorderBeamThemeConfig border_beam;
+    AffixThemeConfig affix;
 
     friend bool operator==(const ThemeConfig&, const ThemeConfig&) = default;
 };
@@ -2495,6 +2499,18 @@ public:
         return steps_;
     }
 
+    [[nodiscard]] const WatermarkThemeToken& watermark() const noexcept {
+        return watermark_;
+    }
+
+    [[nodiscard]] const BorderBeamThemeToken& border_beam() const noexcept {
+        return border_beam_;
+    }
+
+    [[nodiscard]] const AffixThemeToken& affix() const noexcept {
+        return affix_;
+    }
+
     [[nodiscard]] const CarouselThemeToken& carousel() const noexcept {
         return carousel_;
     }
@@ -2649,7 +2665,8 @@ private:
         std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
         std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
         ImageThemeToken&& image, UploadThemeToken&& upload, CalendarThemeToken&& calendar,
-        CarouselThemeToken&& carousel, QRCodeThemeToken&& qrcode);
+        CarouselThemeToken&& carousel, QRCodeThemeToken&& qrcode, WatermarkThemeToken&& watermark,
+        BorderBeamThemeToken&& border_beam, AffixThemeToken&& affix);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2672,6 +2689,9 @@ private:
     CalendarThemeToken calendar_;
     CarouselThemeToken carousel_;
     QRCodeThemeToken qrcode_;
+    WatermarkThemeToken watermark_;
+    BorderBeamThemeToken border_beam_;
+    AffixThemeToken affix_;
     FormThemeToken form_;
     BreadcrumbThemeToken breadcrumb_;
     AnchorThemeToken anchor_;

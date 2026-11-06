@@ -1214,8 +1214,8 @@
         "typed reactive Props and body/title/extra/cover/actions slots",
         "default/small, outlined/borderless and hover across nested controls",
         "retained loading placeholder with body focus/input/popup cleanup and editor state restoration",
-      "Card Component Token, precise invalidation, logical translation/clipping and idle cleanup",
-      "107 Grid/Meta/keyed Tabs, Image cover composition and bounded loading pulse; MSVC CPU and Windows hidden GPU checks"
+        "Card Component Token, precise invalidation, logical translation/clipping and idle cleanup",
+        "107 Grid/Meta/keyed Tabs, Image cover composition and bounded loading pulse; MSVC CPU and Windows hidden GPU checks"
       ],
       "missing_scope": [
         "arbitrary descendant rounded mask requires a shared Core/renderer contract",
@@ -1923,30 +1923,44 @@
     },
     {
       "identity": "ant.component.watermark",
-      "status": "planned",
-      "summary": "水印（Watermark）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Watermark 已实现文字/共享图像重复、旋转、间距/偏移、Theme、保留内容及可取消异步来源；Windows/MSVC 定向与 D3D12 Gallery 已验证。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive content/image/size/gap/offset/rotate and Theme",
+        "shared rotated glyph views / ImageSource, ancestor clipping and retained child input",
+        "owner-thread cancellation, generation checks, observable failure and retry",
+        "real Gallery actions and Windows D3D12 system-font readback"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Web DOM/CSS anti-tamper APIs are outside the native contract",
+        "Linux, other actual DPI, system IME and AT evidence remain independent"
       ],
       "evidence_identifiers": [
-        "source:components/watermark/index.en-US.md"
+        "api:include/ryn/watermark.hpp",
+        "test:decoration_component/decoration_gallery",
+        "evidence:107/decoration-windows",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {
       "identity": "ant.component.affix",
-      "status": "planned",
-      "summary": "固钉（Affix）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Affix 已实现显式目标、顶部/底部偏移、保留占位/子树、真实命中裁剪、onChange 与释放恢复；Windows/MSVC 定向与 D3D12 Gallery 已验证。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "explicit window-logical AffixTarget identity/viewport/offset/attachment",
+        "top/bottom offsets, Theme layer order and retained placeholder/content",
+        "native input/clip, target replacement, onChange and cleanup",
+        "real Gallery document scrolling and Windows D3D12 readback"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Applications publish native scroll target geometry; browser DOM target APIs are not emulated",
+        "Linux, other actual DPI, system IME and AT evidence remain independent"
       ],
       "evidence_identifiers": [
-        "source:components/affix/index.en-US.md"
+        "api:include/ryn/affix.hpp",
+        "test:decoration_component/decoration_gallery",
+        "evidence:107/decoration-windows",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {
@@ -1965,16 +1979,23 @@
     },
     {
       "identity": "ant.component.border-beam",
-      "status": "planned",
-      "summary": "边框流光（BorderBeam）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 BorderBeam 已实现单色圆角周长运动、时长/方向、Theme 与 reduced motion/隐藏/离页停帧；Windows/MSVC 定向和固定时钟 D3D12 帧已验证。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "retained children and one rounded-perimeter moving segment",
+        "reactive duration/direction and Theme color/width/radius/length",
+        "hidden/offscreen/offpage/inactive/reduced motion deadline cancellation",
+        "deterministic native motion frames, real Gallery actions and D3D12 readback"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "This native contract uses a single color segment; no gradient trail is claimed",
+        "Linux, other actual DPI, system IME and AT evidence remain independent"
       ],
       "evidence_identifiers": [
-        "source:components/border-beam/index.en-US.md"
+        "api:include/ryn/border_beam.hpp",
+        "test:decoration_component/decoration_gallery",
+        "evidence:107/decoration-windows",
+        "openspec:107-20261104-complete-navigation-and-remaining-components"
       ]
     },
     {

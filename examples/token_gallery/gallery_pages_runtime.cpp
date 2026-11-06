@@ -46,6 +46,7 @@
 #include "component/input_component.hpp"
 #include "component/card_component.hpp"
 #include "component/listy_component.hpp"
+#include "component/decoration_component.hpp"
 #include "component/selection_component.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
@@ -127,6 +128,7 @@ public:
     bool quit{};
     std::string error;
     std::chrono::steady_clock::time_point started{std::chrono::steady_clock::now()};
+    std::optional<animation::AnimationTime> acceptance_time;
 
     GalleryPageEvents(ryn::detail::PlatformState& host, GalleryPagesHost& gallery,
                       ryn::detail::ButtonComponentHost& application, ryn::detail::InputComponentHost& input,
@@ -137,6 +139,9 @@ public:
           scale(host.window_metrics().display_scale) {}
 
     animation::AnimationTime now() const noexcept override {
+        if (acceptance_time) {
+            return *acceptance_time;
+        }
         return animation::AnimationTime::microseconds(
             std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
     }
@@ -565,7 +570,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             config.algorithms = i % 3 == 0   ? std::vector{ThemeAlgorithm::Default}
                                 : i % 3 == 1 ? std::vector{ThemeAlgorithm::Dark}
                                              : std::vector{ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
-            if (options.visual && route.component_identity == "ant.component.switch") {
+            if (options.visual && (route.component_identity == "ant.component.switch" ||
+                                   route.component_identity == "ant.component.border-beam")) {
                 config.seed.motion = true;
             }
         });
@@ -576,6 +582,10 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         static_cast<void>(pages.process());
         if (options.visual) {
             std::cout << "visual_phase=mount_complete\n" << std::flush;
+            if (route.component_identity == "ant.component.border-beam") {
+                events.acceptance_time = events.now();
+                app.services().set_motion_preference(animation::MotionPreference::normal);
+            }
             render();
             std::optional<ryn::detail::MountedInputComponent> retained_listy_editor;
             capture_gallery_visuals(
@@ -672,6 +682,25 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                  {"gallery.listy.grid", "gallery.listy.reorder", "gallery.listy.pagination",
                                   "gallery.listy.scroll-end", "gallery.listy.direction", "gallery.listy.scroll-end",
                                   "gallery.listy.empty", "gallery.listy.empty"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.watermark") {
+                            for (const auto id :
+                                 {"gallery.watermark.rotate", "gallery.watermark.spacing", "gallery.watermark.async",
+                                  "gallery.watermark.failure", "gallery.watermark.async", "gallery.watermark.complete",
+                                  "gallery.watermark.resize", "gallery.watermark.theme"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.affix") {
+                            for (const auto id :
+                                 {"gallery.affix.target", "gallery.affix.offset", "gallery.affix.disabled",
+                                  "gallery.affix.disabled", "gallery.affix.attach", "gallery.affix.attach"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.border-beam") {
+                            for (const auto id : {"gallery.border-beam.direction", "gallery.border-beam.duration",
+                                                  "gallery.border-beam.theme", "gallery.border-beam.motion",
+                                                  "gallery.border-beam.motion"}) {
                                 add(id);
                             }
                         } else if (name == "ant.component.modal") {
@@ -781,6 +810,21 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 [&] {
                     pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::down});
                     pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::up});
+                },
+                [&] {
+                    auto& decorations = app.services().decorations();
+                    const auto owner = pages.target("gallery.border-beam.main");
+                    const auto before = decorations.snapshot(owner);
+                    events.acceptance_time = events.now() + animation::AnimationDuration::microseconds(200000);
+                    render();
+                    const auto after = decorations.snapshot(owner);
+                    check(after.content == before.content, "native Beam animation remounted content");
+                    if (before.animating) {
+                        check(after.phase != before.phase, "native Beam time advance did not move its path");
+                    } else {
+                        check(after.phase == before.phase && !decorations.next_auxiliary_deadline(),
+                              "native reduced-motion Beam changed phase or retained its deadline");
+                    }
                 });
             ++result.cases;
             write_gallery_page_acceptance(options.output, result);

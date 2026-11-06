@@ -106,6 +106,16 @@ target_compile_definitions(rynui_tree_form_integration_tests PRIVATE
 add_test(NAME rynui.tree_form_integration COMMAND rynui_tree_form_integration_tests)
 
 add_executable(rynui_carousel_tests carousel_tests.cpp)
+add_executable(rynui_decoration_component_tests decoration_component_tests.cpp decoration_public_api_compile.cpp)
+rynui_configure_cpp_target(rynui_decoration_component_tests)
+target_link_libraries(rynui_decoration_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_decoration_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS watermark_text watermark_image watermark_async watermark_lifetime affix_top affix_bottom affix_lifetime beam theme)
+    add_test(NAME rynui.decoration_${case} COMMAND rynui_decoration_component_tests ${case})
+endforeach()
+
 rynui_configure_cpp_target(rynui_carousel_tests)
 target_link_libraries(rynui_carousel_tests PRIVATE rynui_components)
 target_compile_definitions(rynui_carousel_tests PRIVATE

@@ -344,6 +344,9 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.auto_complete().z_index_popup, after.auto_complete().z_index_popup,
                       TokenIdentity::auto_complete_order, changed, count);
     append_if_changed(before.qrcode().colors, after.qrcode().colors, TokenIdentity::qrcode_colors, changed, count);
+    append_if_changed(before.watermark(), after.watermark(), TokenIdentity::watermark, changed, count);
+    append_if_changed(before.border_beam(), after.border_beam(), TokenIdentity::border_beam, changed, count);
+    append_if_changed(before.affix(), after.affix(), TokenIdentity::affix, changed, count);
     append_if_changed(before.qrcode().metrics, after.qrcode().metrics, TokenIdentity::qrcode_metrics, changed, count);
     append_if_changed(before.carousel().colors, after.carousel().colors, TokenIdentity::carousel_colors, changed,
                       count);
@@ -1977,6 +1980,24 @@ const QRCodeThemeToken& ThemeScope::qrcode_metrics() const {
     return snapshot_->qrcode();
 }
 
+const WatermarkThemeToken& ThemeScope::watermark() const {
+    ensure_owner_thread();
+    record(TokenIdentity::watermark);
+    return snapshot_->watermark();
+}
+
+const BorderBeamThemeToken& ThemeScope::border_beam() const {
+    ensure_owner_thread();
+    record(TokenIdentity::border_beam);
+    return snapshot_->border_beam();
+}
+
+const AffixThemeToken& ThemeScope::affix() const {
+    ensure_owner_thread();
+    record(TokenIdentity::affix);
+    return snapshot_->affix();
+}
+
 const CarouselThemeToken& ThemeScope::carousel_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::carousel_colors);
@@ -2489,6 +2510,9 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Carousel.effects",
         "QRCode.colors",
         "QRCode.metrics",
+        "Watermark",
+        "BorderBeam",
+        "Affix",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2783,6 +2807,12 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::drawer_order:
     case TokenIdentity::popconfirm_order:
         return DirtyPhase::paint_material | DirtyPhase::hit_test;
+    case TokenIdentity::watermark:
+        return DirtyPhase::text | DirtyPhase::geometry | DirtyPhase::paint_material;
+    case TokenIdentity::border_beam:
+        return DirtyPhase::geometry | DirtyPhase::paint_material | DirtyPhase::animation;
+    case TokenIdentity::affix:
+        return DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::count:
         return DirtyPhase::none;
     }

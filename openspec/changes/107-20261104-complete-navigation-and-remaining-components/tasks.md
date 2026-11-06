@@ -284,13 +284,13 @@
 
 ## 57. 反馈：Watermark
 
-- [ ] 57.1 按对应 spec 与 design 矩阵实现 Watermark 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 57.2 为 Watermark 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 57.1 按对应 spec 与 design 矩阵实现 Watermark 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 57.2 为 Watermark 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 58. 其他：Affix
 
-- [ ] 58.1 按对应 spec 与 design 矩阵实现 Affix 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 58.2 为 Affix 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 58.1 按对应 spec 与 design 矩阵实现 Affix 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 58.2 为 Affix 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 59. 其他：App
 
@@ -299,8 +299,8 @@
 
 ## 60. 其他：BorderBeam
 
-- [ ] 60.1 按对应 spec 与 design 矩阵实现 BorderBeam 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 60.2 为 BorderBeam 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 60.1 按对应 spec 与 design 矩阵实现 BorderBeam 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 60.2 为 BorderBeam 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 61. 其他：ConfigProvider
 

@@ -6,7 +6,7 @@ import re
 import subprocess
 ROOT=Path(__file__).resolve().parents[1]
 BASE='135ba70b74673bc6d7b34d1d83aa414fd0db3607'
-def original(path): return subprocess.check_output(['git','show',f'{BASE}:{path}'],cwd=ROOT,text=True)
+def original(path): return subprocess.check_output(['git','show',f'{BASE}:{Path(path).as_posix()}'],cwd=ROOT,text=True,encoding='utf-8')
 def verify_appended_tokens(before, after, appended, context):
     assert list(after) == list(before), (context, 'component field order changed')
     for key, value in before.items():
@@ -22,10 +22,10 @@ def main():
     assert len(paths)==5
     for path in paths:
         before=json.loads(original(path.relative_to(ROOT)))
-        after=json.loads(path.read_text())
+        after=json.loads(path.read_text(encoding='utf-8'))
         assert len(before)==64
-        assert list(after) == list(before) + ['calendar', 'carousel', 'qrcode']
-        assert len(after)==67
+        assert list(after) == list(before) + ['calendar', 'carousel', 'qrcode', 'watermark', 'borderBeam', 'affix']
+        assert len(after)==70
         for field,value in before.items():
             if field == 'identity':
                 continue
@@ -47,7 +47,7 @@ def main():
     assert after[len(before)+2:len(before)+5]==['carousel_colors','carousel_metrics','carousel_effects']
     path='include/ryn/theme.hpp'
     def config_fields(text): return re.findall(r'^    (.+);$',text.split('struct ThemeConfig final {')[1].split('friend bool')[0],re.M)
-    assert config_fields((ROOT/path).read_text()) == config_fields(original(path))+['CalendarThemeConfig calendar','CarouselThemeConfig carousel','QRCodeThemeConfig qrcode']
+    assert config_fields((ROOT/path).read_text()) == config_fields(original(path))+['CalendarThemeConfig calendar','CarouselThemeConfig carousel','QRCodeThemeConfig qrcode','WatermarkThemeConfig watermark','BorderBeamThemeConfig border_beam','AffixThemeConfig affix']
     runtime=(ROOT/'src/theme/theme_runtime.cpp').read_text()
     for name in ['Calendar.colors','Calendar.metrics','Calendar.effects','Carousel.colors','Carousel.metrics','Carousel.effects']: assert '"'+name+'"' in runtime
     print('Calendar/Carousel baseline: 5 full goldens, all 64 old fields/prefixes protected; exact Card/Empty appends; old TokenIdentity names/order unchanged')

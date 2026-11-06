@@ -267,6 +267,9 @@ enum class TokenIdentity : std::uint16_t {
     carousel_effects,
     qrcode_colors,
     qrcode_metrics,
+    watermark,
+    border_beam,
+    affix,
     count,
 };
 

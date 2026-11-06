@@ -72,6 +72,7 @@ class ResponsiveLayoutHost;
 class MasonryComponentHost;
 class ShellLayoutComponentHost;
 class SplitterComponentHost;
+class DecorationComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -331,6 +332,10 @@ public:
 
     [[nodiscard]] CarouselComponentHost& carousel() noexcept {
         return *carousel_;
+    }
+
+    [[nodiscard]] DecorationComponentHost& decorations() noexcept {
+        return *decorations_;
     }
 
     [[nodiscard]] CalendarComponentHost& calendar() noexcept {
@@ -599,6 +604,7 @@ private:
     std::unique_ptr<DatePickerComponentHost> date_picker_;
     std::unique_ptr<CalendarComponentHost> calendar_;
     std::unique_ptr<CarouselComponentHost> carousel_;
+    std::unique_ptr<DecorationComponentHost> decorations_;
     std::unique_ptr<TimePickerComponentHost> time_picker_;
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<ListyComponentHost> listy_;

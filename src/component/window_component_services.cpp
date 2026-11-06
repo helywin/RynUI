@@ -1,4 +1,5 @@
 #include "component/window_component_services.hpp"
+#include "component/decoration_component.hpp"
 #include "component/shell_layout_component.hpp"
 #include "component/splitter_component.hpp"
 #include "component/typography_component.hpp"
@@ -186,6 +187,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     tabs_ = std::make_unique<TabsComponentHost>(*this);
     calendar_ = std::make_unique<CalendarComponentHost>(*this);
     carousel_ = std::make_unique<CarouselComponentHost>(*this);
+    decorations_ = std::make_unique<DecorationComponentHost>(*this);
     collapse_ = std::make_unique<CollapseComponentHost>(*this);
     segmented_ = std::make_unique<SegmentedComponentHost>(*this);
     form_ = std::make_unique<FormComponentHost>(*this);

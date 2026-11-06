@@ -23,7 +23,8 @@ inline void capture_gallery_visuals(const GalleryPageRoute& route, std::size_t c
                                     const std::function<void()>& render, const std::function<void(float)>& wheel,
                                     const std::function<std::vector<ryn::runtime::ComponentId>()>& triggers,
                                     const std::function<void(ryn::runtime::ComponentId)>& activate,
-                                    const std::function<void()>& dismiss) {
+                                    const std::function<void()>& dismiss,
+                                    const std::function<void()>& advance_animation = {}) {
     using namespace ryn;
     const auto bounds = [&](runtime::ComponentId id) {
         const auto& node = app.nodes().require(app.components().root(id));
@@ -104,6 +105,14 @@ inline void capture_gallery_visuals(const GalleryPageRoute& route, std::size_t c
                 render();
                 save(route.component_identity, "animation", state_index * 10 + phase,
                      {0, 0, viewport.width, viewport.height});
+            }
+        }
+        if (route.component_identity == "ant.component.border-beam" && advance_animation) {
+            const auto beam = pages.target("gallery.border-beam.main");
+            for (std::size_t phase = 1; phase <= 4; ++phase) {
+                advance_animation();
+                render();
+                save(route.component_identity, "animation", state_index * 10 + phase, bounds(beam));
             }
         }
         dismiss();

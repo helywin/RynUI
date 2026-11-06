@@ -25,6 +25,9 @@
 #include <ryn/spin.hpp>
 #include <ryn/skeleton.hpp>
 #include <ryn/progress.hpp>
+#include <ryn/watermark.hpp>
+#include <ryn/affix.hpp>
+#include <ryn/border_beam.hpp>
 
 #include <ryn/menu.hpp>
 #include <ryn/dropdown.hpp>
