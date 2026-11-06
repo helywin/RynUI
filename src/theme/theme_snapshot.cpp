@@ -5,6 +5,7 @@
 #include "theme/date_picker_theme.hpp"
 #include "theme/calendar_theme.hpp"
 #include "theme/carousel_theme.hpp"
+#include "theme/qrcode_theme.hpp"
 #include "theme/form_theme.hpp"
 #include "theme/breadcrumb_theme.hpp"
 #include "theme/anchor_theme.hpp"
@@ -4269,15 +4270,16 @@ ThemeSnapshot::ThemeSnapshot(
     std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
     std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
     std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
-    ImageThemeToken image, UploadThemeToken upload, CalendarThemeToken calendar, CarouselThemeToken carousel)
+    ImageThemeToken image, UploadThemeToken upload, CalendarThemeToken calendar, CarouselThemeToken carousel,
+    QRCodeThemeToken qrcode)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), float_button_(std::move(float_button)),
       divider_(std::move(divider)), slider_(std::move(slider)), tooltip_(std::move(tooltip)),
       select_(std::move(select)), card_(std::move(card)), tabs_(std::move(tabs)), segmented_(std::move(segmented)),
       date_picker_(std::move(date_picker)), calendar_(std::move(calendar)), carousel_(std::move(carousel)),
-      form_(std::move(form)), breadcrumb_(std::move(breadcrumb)), anchor_(std::move(anchor)),
-      transfer_(std::move(transfer)), image_(std::move(image)), upload_(std::move(upload)),
+      qrcode_(std::move(qrcode)), form_(std::move(form)), breadcrumb_(std::move(breadcrumb)),
+      anchor_(std::move(anchor)), transfer_(std::move(transfer)), image_(std::move(image)), upload_(std::move(upload)),
       color_picker_(std::move(color_picker)), cascader_(std::move(cascader)), steps_(std::move(steps)),
       time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), timeline_(std::move(timeline)),
       avatar_(std::move(avatar)), rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
@@ -5172,6 +5174,18 @@ ThemeSnapshot::ThemeSnapshot(
         status_json << ']';
     }
     status_json << "]}";
+    status_json << ",\"qrcode\":{\"colors\":[";
+    first = true;
+    for (auto v : qrcode_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : qrcode_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, qrcode_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(qrcode_.metrics.font_family) << '}';
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -5316,7 +5330,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            *left.auto_complete_ == *right.auto_complete_ && *left.tree_select_ == *right.tree_select_ &&
            *left.layout_ == *right.layout_ && *left.splitter_ == *right.splitter_ &&
            *left.mentions_ == *right.mentions_ && left.calendar_ == right.calendar_ &&
-           left.carousel_ == right.carousel_;
+           left.carousel_ == right.carousel_ && left.qrcode_ == right.qrcode_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -6888,6 +6902,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_carousel_override(token, config.carousel.tokens);
         return token;
     }();
+    auto qrcode = [&] {
+        QRCodeThemeToken token;
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.qrcode.algorithm && config.qrcode.seed == SeedTokenOverride{};
+        if (inherit) {
+            token = parent->qrcode();
+        } else if (config.qrcode.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.qrcode.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            token = detail::derive_qrcode(component_seed, component_map,
+                                          derive_alias(component_seed, component_map, algorithms));
+        } else {
+            token = detail::derive_qrcode(seed, map, alias);
+        }
+        detail::apply_qrcode_override(token, config.qrcode.tokens);
+        return token;
+    }();
     return ThemeSnapshot(
         std::move(float_button), std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
         std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography), std::move(divider),
@@ -6901,7 +6934,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         std::move(skeleton), std::move(descriptions), std::move(popover), std::move(message), std::move(notification),
         std::move(timeline), std::move(avatar), std::move(rate), std::move(statistic), std::move(tree),
         std::move(auto_complete), std::move(tree_select), std::move(layout), std::move(splitter), std::move(mentions),
-        std::move(image), std::move(upload), std::move(calendar), std::move(carousel));
+        std::move(image), std::move(upload), std::move(calendar), std::move(carousel), std::move(qrcode));
 }
 
 } // namespace ryn

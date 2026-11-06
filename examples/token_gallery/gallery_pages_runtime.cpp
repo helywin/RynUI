@@ -6,6 +6,8 @@
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
 #include "component/image_component.hpp"
+#include "component/qrcode_component.hpp"
+#include <fstream>
 #include "component/calendar_component.hpp"
 #include "component/carousel_component.hpp"
 #include "component/upload_component.hpp"
@@ -2129,6 +2131,83 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             std::cout
                 << "carousel_native=passed arrows_dots=true scroll_fade_midpoints=true draft=true drag_cancel=true "
                    "autoplay_pause_wake=true retirement=true\n";
+        }
+        if (route.component_identity == "ant.component.qr-code") {
+            auto& codes = app.services().qrcode();
+            const auto id = pages.target("gallery.qrcode.main");
+            reveal(id);
+            pointer(input::PointerAction::move, {0, 0});
+            render();
+            auto view = codes.snapshot(id);
+            check(view.data.has_value() && !view.modules.empty(), "Native QRCode has no standard model/modules");
+            const auto frame = read_frame("qrcode-native-" + std::to_string(i));
+            const auto pitch = view.symbol.width / view.data->size();
+            for (int y = 0; y < view.data->size(); ++y) {
+                for (int x = 0; x < view.data->size(); ++x) {
+                    const auto expected = view.data->module(x, y) ? view.paint.foreground : view.paint.background;
+                    check_pixel(frame.get(),
+                                {(view.symbol.x + (x + .5F) * pitch) * events.scale,
+                                 (view.symbol.y + (y + .5F) * pitch) * events.scale},
+                                expected);
+                }
+            }
+            check_pixel(frame.get(),
+                        {(view.symbol.x - 2 * pitch) * events.scale, (view.symbol.y + pitch / 2) * events.scale},
+                        view.paint.background);
+            const auto run = [&](std::string_view name) {
+                reveal(pages.target(name));
+                activate(pages.target(name));
+                render();
+            };
+            run("gallery.qrcode.expire");
+            view = codes.snapshot(id);
+            check(view.status == QRCodeStatus::Expired, "Native QR expiration action is static");
+            reveal(view.refresh);
+            activate(view.refresh);
+            render();
+            check(codes.snapshot(id).status == QRCodeStatus::Active,
+                  "Native QR refresh callback did not accept request");
+            run("gallery.qrcode.refuse");
+            run("gallery.qrcode.expire");
+            view = codes.snapshot(id);
+            reveal(view.refresh);
+            activate(view.refresh);
+            render();
+            check(codes.snapshot(id).status == QRCodeStatus::Expired, "Controlled QR refresh refusal was overwritten");
+            run("gallery.qrcode.status");
+            check(codes.snapshot(id).status == QRCodeStatus::Loading, "Native QR loading action is static");
+            run("gallery.qrcode.status");
+            check(codes.snapshot(id).status == QRCodeStatus::Scanned, "Native QR scanned action is static");
+            run("gallery.qrcode.status");
+            run("gallery.qrcode.level");
+            check(codes.snapshot(id).data->error_level() == QRCodeErrorLevel::Q,
+                  "Native QR EC action did not reencode");
+            run("gallery.qrcode.invalid");
+            check(!codes.snapshot(id).data && codes.snapshot(id).modules.empty(),
+                  "Invalid QR content produced fake modules");
+            run("gallery.qrcode.invalid");
+            run("gallery.qrcode.logo");
+            view = codes.snapshot(id);
+            check(view.logo_status == ImageStatus::Ready && view.logo_image && view.paint.logo,
+                  "Native QR logo did not use shared real pixels");
+            run("gallery.qrcode.export");
+            view = codes.snapshot(id);
+            const auto png = export_qrcode_png(*view.data, view.paint, 464);
+            const auto svg = export_qrcode_svg(*view.data, view.paint);
+            const auto path = options.output.parent_path() / ("qrcode-export-" + std::to_string(i));
+            {
+                std::ofstream file(path.string() + ".png", std::ios::binary);
+                file.write(reinterpret_cast<const char*>(png.data()), static_cast<std::streamsize>(png.size()));
+                check(bool(file), "Native QR export PNG write failed");
+            }
+            {
+                std::ofstream file(path.string() + ".svg", std::ios::binary);
+                file << svg;
+                check(bool(file), "Native QR export SVG write failed");
+            }
+            check(pages.sample_runs("gallery.sample.qr-code.native") == 1, "Native QR props reran sample factory");
+            std::cout << "qrcode_native=passed real_gpu_module_centers=true quiet_zone=true controlled_refresh=true "
+                         "four_statuses=true ec=true error_recovery=true shared_logo=true png_svg_export=true\n";
         }
         if (route.component_identity == "ant.component.image") {
             auto& images = app.services().image();

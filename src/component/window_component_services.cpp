@@ -25,6 +25,7 @@
 #include "component/timeline_component.hpp"
 #include "component/avatar_component.hpp"
 #include "component/image_component.hpp"
+#include "component/qrcode_component.hpp"
 #include "component/upload_component.hpp"
 #include "component/rate_component.hpp"
 #include "component/statistic_component.hpp"
@@ -178,6 +179,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     timeline_ = std::make_unique<TimelineComponentHost>(*this);
     avatar_ = std::make_unique<AvatarComponentHost>(*this);
     image_ = std::make_unique<ImageComponentHost>(*this);
+    qrcode_ = std::make_unique<QRCodeComponentHost>(*this);
     upload_ = std::make_unique<UploadComponentHost>(*this);
     rate_ = std::make_unique<RateComponentHost>(*this);
     statistic_ = std::make_unique<StatisticComponentHost>(*this);

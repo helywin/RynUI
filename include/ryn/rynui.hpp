@@ -6,6 +6,7 @@
 #include <ryn/timeline.hpp>
 #include <ryn/avatar.hpp>
 #include <ryn/image.hpp>
+#include <ryn/qrcode.hpp>
 #include <ryn/upload.hpp>
 #include <ryn/form_upload.hpp>
 #include <ryn/rate.hpp>

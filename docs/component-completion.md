@@ -27,6 +27,7 @@
 | Radio | 048 已实现三类值、动态 options、最近 typed Group、单一 Tab 入口/方向键、RadioButton、outline/solid、三尺寸/block/H/V/RTL、ref/autoFocus/onClick、独立主题与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Switch | 046 已实现保留状态文字/图标、RTL、ref/autoFocus/onClick、加载透明度、主题/阴影、按压与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Input / Search / Password / TextArea / OTP | 052 单行特性、053 多行/autoSize/scroll/resize、054 OTP 分格/formatter/mask/导航/动态长度已实现。055 已完成 Unicode 17 visual bidi | 保留 Unicode/IME/clipboard 合同；107 五个 canonical family route 的 Linux 定向输入见本轮证据 |
+| QRCode | 107 实现标准 QR Model 2、UTF-8/ECI/binary/分段、纠错/版本/boost、四状态与真实刷新、共享 ImageSource logo、保留 status slot、原生 ref 及确定性 PNG/SVG/RGBA 导出；见 [QRCode API](qrcode.md) | Linux GCC HEADLESS D/R、独立矩阵/解码与私有 Wayland/Vulkan 模块像素通过，见 [QRCode 验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/qrcode-linux.md)；Windows/MSVC/D3D12、物理 IME/AT/跨显示器独立未验证 |
 | Theme（ConfigProvider 原生映射） | 原生公共配置覆盖需要审核 | 作为 Theme 收尾，Web ConfigProvider API 不照抄 |
 
 来源：`examples/token_gallery/generated_ant_design_reference_catalog.inc`、现有公开 headers、changes 003–039 的 tasks。每项开发前再次检查对应源码与锁定 Ant Design 6.6.5 合同，后续清单随已验证实现更新。

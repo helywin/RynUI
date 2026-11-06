@@ -13,6 +13,7 @@
 #include <ryn/date_picker_tokens.hpp>
 #include <ryn/calendar_tokens.hpp>
 #include <ryn/carousel_tokens.hpp>
+#include <ryn/qrcode_tokens.hpp>
 #include <ryn/form_tokens.hpp>
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/anchor_tokens.hpp>
@@ -1826,6 +1827,13 @@ struct CarouselThemeConfig final {
     friend bool operator==(const CarouselThemeConfig&, const CarouselThemeConfig&) = default;
 };
 
+struct QRCodeThemeConfig final {
+    QRCodeTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const QRCodeThemeConfig&, const QRCodeThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     FloatButtonThemeConfig float_button;
     StepsThemeConfig steps;
@@ -1891,6 +1899,7 @@ struct ThemeConfig final {
 
     CalendarThemeConfig calendar;
     CarouselThemeConfig carousel;
+    QRCodeThemeConfig qrcode;
 
     friend bool operator==(const ThemeConfig&, const ThemeConfig&) = default;
 };
@@ -2487,6 +2496,10 @@ public:
         return carousel_;
     }
 
+    [[nodiscard]] const QRCodeThemeToken& qrcode() const noexcept {
+        return qrcode_;
+    }
+
     [[nodiscard]] const CalendarThemeToken& calendar() const noexcept {
         return calendar_;
     }
@@ -2631,7 +2644,8 @@ private:
         std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
         std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
         std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
-        ImageThemeToken image, UploadThemeToken upload, CalendarThemeToken calendar, CarouselThemeToken carousel);
+        ImageThemeToken image, UploadThemeToken upload, CalendarThemeToken calendar, CarouselThemeToken carousel,
+        QRCodeThemeToken qrcode);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2653,6 +2667,7 @@ private:
     DatePickerThemeToken date_picker_;
     CalendarThemeToken calendar_;
     CarouselThemeToken carousel_;
+    QRCodeThemeToken qrcode_;
     FormThemeToken form_;
     BreadcrumbThemeToken breadcrumb_;
     AnchorThemeToken anchor_;

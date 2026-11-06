@@ -13,10 +13,10 @@ using Code = qrcodegen::QrCode;
 constexpr std::size_t max_payload = 7089;
 
 void validate(const QRCodeData& data, const QRCodePaint& p) {
-    if (data.size() < 21 || p.margin > 64 || !std::isfinite(p.size) || p.size <= 0 || p.size > 16384 ||
-        !std::isfinite(p.logo_width) || !std::isfinite(p.logo_height) || p.logo_width < 0 || p.logo_height < 0 ||
-        p.logo_width > p.size || p.logo_height > p.size || !std::isfinite(p.logo_opacity) || p.logo_opacity < 0 ||
-        p.logo_opacity > 1) {
+    if (data.size() < 21 || data.modules().size() != std::size_t(data.size()) * data.size() || p.margin > 64 ||
+        !std::isfinite(p.size) || p.size <= 0 || p.size > 16384 || !std::isfinite(p.logo_width) ||
+        !std::isfinite(p.logo_height) || p.logo_width < 0 || p.logo_height < 0 || p.logo_width > 16384 ||
+        p.logo_height > 16384 || !std::isfinite(p.logo_opacity) || p.logo_opacity < 0 || p.logo_opacity > 1) {
         throw std::invalid_argument("Invalid QRCode paint geometry");
     }
     if (p.foreground == p.background || p.foreground.alpha() == 0) {
@@ -214,7 +214,8 @@ QRCodeData QRCodeData::encode(const QRCodeValue& value, QRCodeEncoding options) 
 }
 
 bool QRCodeData::module(int x, int y) const noexcept {
-    return x >= 0 && y >= 0 && x < size_ && y < size_ && modules_[std::size_t(y) * size_ + x] != 0;
+    return x >= 0 && y >= 0 && x < size_ && y < size_ && std::size_t(y) * size_ + x < modules_.size() &&
+           modules_[std::size_t(y) * size_ + x] != 0;
 }
 
 std::shared_ptr<const ImagePixels> rasterize_qrcode(const QRCodeData& data, const QRCodePaint& p, std::uint32_t size) {

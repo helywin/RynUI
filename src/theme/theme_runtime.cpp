@@ -343,6 +343,8 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       changed, count);
     append_if_changed(before.auto_complete().z_index_popup, after.auto_complete().z_index_popup,
                       TokenIdentity::auto_complete_order, changed, count);
+    append_if_changed(before.qrcode().colors, after.qrcode().colors, TokenIdentity::qrcode_colors, changed, count);
+    append_if_changed(before.qrcode().metrics, after.qrcode().metrics, TokenIdentity::qrcode_metrics, changed, count);
     append_if_changed(before.carousel().colors, after.carousel().colors, TokenIdentity::carousel_colors, changed,
                       count);
     append_if_changed(before.carousel().metrics, after.carousel().metrics, TokenIdentity::carousel_metrics, changed,
@@ -1965,6 +1967,18 @@ const ResultThemeToken& ThemeScope::result_metrics() const {
     return snapshot_->result();
 }
 
+const QRCodeThemeToken& ThemeScope::qrcode_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::qrcode_colors);
+    return snapshot_->qrcode();
+}
+
+const QRCodeThemeToken& ThemeScope::qrcode_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::qrcode_metrics);
+    return snapshot_->qrcode();
+}
+
 const CarouselThemeToken& ThemeScope::carousel_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::carousel_colors);
@@ -2475,6 +2489,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Carousel.colors",
         "Carousel.metrics",
         "Carousel.effects",
+        "QRCode.colors",
+        "QRCode.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2581,6 +2597,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::avatar_colors:
     case TokenIdentity::rate_colors:
     case TokenIdentity::tree_colors:
+    case TokenIdentity::qrcode_colors:
     case TokenIdentity::carousel_colors:
     case TokenIdentity::calendar_colors:
     case TokenIdentity::mentions_colors:
@@ -2727,6 +2744,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::menu_metrics:
     case TokenIdentity::dropdown_metrics:
     case TokenIdentity::select_metrics:
+    case TokenIdentity::qrcode_metrics:
     case TokenIdentity::carousel_metrics:
     case TokenIdentity::calendar_metrics:
     case TokenIdentity::mentions_metrics:

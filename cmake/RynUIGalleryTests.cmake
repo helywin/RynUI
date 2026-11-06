@@ -1,3 +1,12 @@
+add_executable(rynui_qrcode_tour_gallery_tests "${PROJECT_SOURCE_DIR}/tests/qrcode_tour_gallery_tests.cpp")
+rynui_configure_cpp_target(rynui_qrcode_tour_gallery_tests)
+target_include_directories(rynui_qrcode_tour_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")
+target_link_libraries(rynui_qrcode_tour_gallery_tests PRIVATE rynui_token_gallery_definition rynui_components)
+target_compile_definitions(rynui_qrcode_tour_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.qrcode_gallery COMMAND rynui_qrcode_tour_gallery_tests qrcode)
+
 add_executable(rynui_status_gallery_tests status_gallery_tests.cpp)
 rynui_configure_cpp_target(rynui_status_gallery_tests)
 target_include_directories(rynui_status_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery")

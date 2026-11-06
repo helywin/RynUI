@@ -113,6 +113,8 @@ public:
     [[nodiscard]] const SegmentedThemeToken& segmented_colors() const;
     [[nodiscard]] const SegmentedThemeToken& segmented_metrics() const;
     [[nodiscard]] const SegmentedThemeToken& segmented_effects() const;
+    [[nodiscard]] const QRCodeThemeToken& qrcode_colors() const;
+    [[nodiscard]] const QRCodeThemeToken& qrcode_metrics() const;
     [[nodiscard]] const CarouselThemeToken& carousel_colors() const;
     [[nodiscard]] const CarouselThemeToken& carousel_metrics() const;
     [[nodiscard]] const CarouselThemeToken& carousel_effects() const;

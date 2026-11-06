@@ -9669,7 +9669,105 @@ void add_time_range_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 1;
 }
 
+void add_qrcode_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<String> content{String{u8"RynUI native QRCode 107"}};
+    Signal<QRCodeStatus> status{QRCodeStatus::Active};
+    Signal<QRCodeErrorLevel> level{QRCodeErrorLevel::M};
+    Signal<bool> accept{true};
+    Signal<bool> invalid{false};
+    Signal<bool> logo{false};
+    Signal<String> feedback{String{u8"编辑内容可立即重新编码；PNG/SVG 导出为应用持有的数据"}};
+    const auto artifact = std::make_shared<std::vector<std::byte>>();
+    const auto svg = std::make_shared<std::string>();
+    QRCodeRef reference;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[=] {
+             Text(u8"标准 QR Model 2 · UTF-8/ECI · 4 模块 quiet zone · 无网络请求");
+             Input(InputProps{}
+                       .value(content)
+                       .onChange([=](String v) { content.set(v); })
+                       .layout(LayoutStyle{}.width(dp(300))));
+             remember_target(state, "gallery.qrcode.content");
+             QRCode(QRCodeProps{}
+                        .value(bind([=] { return invalid.get() ? QRCodeValue{} : QRCodeValue{content.get()}; }))
+                        .status(status)
+                        .errorLevel(level)
+                        .boostLevel(false)
+                        .size(224)
+                        .ref(reference)
+                        .color(Color{0, 0, 0, 1})
+                        .bgColor(Color{1, 1, 1, 1})
+                        .icon(bind([=] { return logo.get() ? ImageSource{media_fixture_source()} : ImageSource{}; }))
+                        .iconSize(QRCodeIconSize{20, 20})
+                        .onRefresh([=] {
+                            feedback.set(u8"onRefresh 已触发");
+                            if (accept.get()) {
+                                status.set(QRCodeStatus::Active);
+                            }
+                        })
+                        .onError([=](const QRCodeError& e) { feedback.set(String::from_utf8(e.message).value()); }));
+             remember_target(state, "gallery.qrcode.main");
+             Flex(FlexProps{}.wrap(true).gap(dp(8)), FlexContent{[=] {
+                      Button(ButtonProps{}.onClick([=] { status.set(QRCodeStatus::Expired); }),
+                             ButtonContent{[] { Text(u8"过期 / 显示真实刷新操作"); }});
+                      remember_target(state, "gallery.qrcode.expire");
+                      Button(ButtonProps{}.onClick([=] {
+                          status.set(static_cast<QRCodeStatus>((static_cast<int>(status.get()) + 1) % 4));
+                      }),
+                             ButtonContent{[] { Text(u8"切换 Active/Expired/Loading/Scanned"); }});
+                      remember_target(state, "gallery.qrcode.status");
+                      Button(ButtonProps{}.onClick([=] {
+                          level.set(static_cast<QRCodeErrorLevel>((static_cast<int>(level.get()) + 1) % 4));
+                          feedback.set(u8"纠错级别已改变，boost 关闭");
+                      }),
+                             ButtonContent{[] { Text(u8"L / M / Q / H"); }});
+                      remember_target(state, "gallery.qrcode.level");
+                      Button(ButtonProps{}.onClick([=] {
+                          accept.set(!accept.get());
+                          feedback.set(accept.get() ? String{u8"刷新请求会被应用接受"}
+                                                    : String{u8"刷新请求会被应用拒绝"});
+                      }),
+                             ButtonContent{[] { Text(u8"接受 / 拒绝刷新请求"); }});
+                      remember_target(state, "gallery.qrcode.refuse");
+                      Button(ButtonProps{}.onClick([=] { invalid.set(!invalid.get()); }),
+                             ButtonContent{[] { Text(u8"空内容错误 / 恢复"); }});
+                      remember_target(state, "gallery.qrcode.invalid");
+                      Button(ButtonProps{}.onClick([=] { logo.set(!logo.get()); }),
+                             ButtonContent{[] { Text(u8"共享 RGBA logo / 无 logo"); }});
+                      remember_target(state, "gallery.qrcode.logo");
+                      Button(ButtonProps{}.onClick([=] {
+                          try {
+                              *artifact = reference.exportPng(464);
+                              *svg = reference.exportSvg();
+                              feedback.set(String::from_utf8("PNG " + std::to_string(artifact->size()) +
+                                                             " bytes; SVG " + std::to_string(svg->size()) +
+                                                             " bytes ready in application memory")
+                                               .value());
+                          } catch (const std::exception& e) {
+                              feedback.set(String::from_utf8(e.what()).value());
+                          }
+                      }),
+                             ButtonContent{[] { Text(u8"导出实际 PNG + SVG 数据"); }});
+                      remember_target(state, "gallery.qrcode.export");
+                  }});
+             Text(TextProps{}.content(feedback).layout(LayoutStyle{}.width(state->document_width)));
+         }});
+    state->telemetry.live_samples += 1;
+}
+
 constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
+    {{"gallery.sample.qr-code.native",
+      "ant.component.qr-code",
+      {},
+      "标准编码、状态请求、共享图标与 PNG/SVG 数据导出",
+      "add_qrcode_samples",
+      "include/ryn/qrcode.hpp"},
+     add_qrcode_samples},
     {{"gallery.sample.carousel.panels",
       "ant.component.carousel",
       {},

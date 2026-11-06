@@ -9,6 +9,7 @@ add_library(rynui_theme STATIC
     theme/theme_snapshot.cpp
     theme/segmented_theme.cpp
     theme/carousel_theme.cpp
+    theme/qrcode_theme.cpp
     theme/calendar_theme.cpp
     theme/date_picker_theme.cpp
     theme/form_theme.cpp
@@ -236,6 +237,7 @@ rynui_assert_core_link_closure(rynui_upload_model)
 
 add_library(rynui_components STATIC
     component/carousel_component.cpp
+    component/qrcode_component.cpp
     component/calendar_component.cpp
     component/date_picker_model.cpp
     component/date_picker_component.cpp
@@ -346,6 +348,7 @@ target_link_libraries(rynui_components PRIVATE
     rynui_graphics
     rynui_image
     rynui_upload_model
+    rynui_qrcode_model
     rynui_interaction
     rynui_layout
     rynui_motion
@@ -469,6 +472,7 @@ rynui_assert_direct_dependencies(
     rynui_graphics
     rynui_image
     rynui_upload_model
+    rynui_qrcode_model
     rynui_interaction
     rynui_layout
     rynui_motion

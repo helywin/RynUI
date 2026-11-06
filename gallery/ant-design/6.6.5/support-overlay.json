@@ -1446,16 +1446,30 @@
     },
     {
       "identity": "ant.component.qr-code",
-      "status": "planned",
-      "summary": "二维码（QRCode）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 QRCode 已实现标准 Model 2 编码、typed 响应 API、Theme、四类状态操作、共享 logo 与确定性 PNG/SVG/RGBA 导出；实际 Gallery、独立解码及 Linux 私有 Wayland/Vulkan 像素验证通过。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "QR Model 2 versions 1–40, numeric/alphanumeric/UTF8 ECI/binary/segmented payloads, L/M/Q/H, boost and standard masks",
+        "reactive value/size/margin/colors/status, typed status slot/context and generation-safe ref",
+        "Active/Expired/Loading/Scanned overlays and controlled application refresh requests",
+        "shared ImageSource/ImagePixels logo loading, owner-thread completion/cancellation and clipping",
+        "deterministic actual PNG/SVG/RGBA data export with colors, quiet zone and logo alpha",
+        "owned QRCode Theme tokens and real interactive Gallery controls"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Web DOM/CSS/React/HTML/canvas refs、URL icon fetching 与兼容别名不属于原生合同；canvas/svg 类型映射为原生数据导出 API",
+        "Windows/MSVC/D3D12、物理 IME/AT 与真实跨显示器未验证"
       ],
       "evidence_identifiers": [
-        "source:components/qr-code/index.en-US.md"
+        "source:components/qr-code/index.en-US.md",
+        "header:include/ryn/qrcode.hpp",
+        "header:include/ryn/qrcode_data.hpp",
+        "test:rynui.qrcode_model",
+        "test:rynui.qrcode_independent_decode",
+        "test:rynui.qrcode_component_basic",
+        "test:rynui.qrcode_gallery",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "docs:docs/qrcode.md"
       ]
     },
     {

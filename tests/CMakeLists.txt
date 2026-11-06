@@ -1,3 +1,17 @@
+add_library(rynui_qrcode_public_api_compile OBJECT qrcode_public_api_compile.cpp)
+rynui_configure_cpp_target(rynui_qrcode_public_api_compile)
+target_link_libraries(rynui_qrcode_public_api_compile PRIVATE rynui_components)
+
+add_executable(rynui_qrcode_component_tests qrcode_component_tests.cpp)
+rynui_configure_cpp_target(rynui_qrcode_component_tests)
+target_link_libraries(rynui_qrcode_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_qrcode_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS basic geometry async errors idle theme rich form_scope paint_errors throwing_callbacks)
+    add_test(NAME rynui.qrcode_component_${case} COMMAND rynui_qrcode_component_tests ${case})
+endforeach()
+
 add_executable(rynui_qrcode_model_tests qrcode_model_tests.cpp)
 rynui_configure_cpp_target(rynui_qrcode_model_tests)
 target_link_libraries(rynui_qrcode_model_tests PRIVATE rynui_qrcode_model)
@@ -220,6 +234,7 @@ if(RYNUI_QRCODE_ZBAR AND RYNUI_QRCODE_RSVG)
         "${RYNUI_QRCODE_ZBAR}" "${RYNUI_QRCODE_RSVG}" "${CMAKE_BINARY_DIR}/qrcode-exports/$<CONFIG>")
 endif()
 
+add_test(NAME rynui.qrcode_tour_theme_baseline COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_qrcode_tour_theme_baseline.py")
 add_test(NAME rynui.calendar_carousel_theme_baseline COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_calendar_carousel_theme_baseline.py")
 add_test(NAME rynui.mentions_theme_baseline COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_mentions_theme_baseline.py")
 

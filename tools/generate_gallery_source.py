@@ -125,7 +125,7 @@ def generate(root: Path) -> list[SampleSource]:
         methods = list(dict.fromkeys(re.findall(r'\b(?:\w+Props(?:Base)?(?:<[^>]+>)?|Derived)\s*&\s*(\w+)\s*\(', api)))
         component = re.search(r'"ant\.component\.([^"]+)"', fields)
         key = component[1].replace('-', '_') if component else ''
-        key = {'switch': 'switch_', 'icon': 'text'}.get(key, key)
+        key = {'switch': 'switch_', 'icon': 'text', 'qr_code': 'qrcode'}.get(key, key)
         theme_path = ''
         token_names = ''
         if key in config_types:

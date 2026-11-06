@@ -189,8 +189,8 @@
 
 ## 38. 数据展示：QRCode
 
-- [ ] 38.1 按对应 spec 与 design 矩阵实现 QRCode 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 38.2 为 QRCode 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 38.1 按对应 spec 与 design 矩阵实现 QRCode 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 38.2 为 QRCode 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 39. 数据展示：Segmented
 

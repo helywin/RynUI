@@ -1,11 +1,14 @@
 # QRCode Linux 来源验收
 
-这是隔离来源 `cee72c95f57deb307effb7a12d9a3978f12acb4b` 的模型阶段记录，当前 main 验证见 [model 集成](qrcode-model-integration.md)。
+这是来源 `cee72c95` / `041b3de820332ce363ca29ba2498904b4714173e` 的独立记录，不代替当前 main 复测；见 [model 集成](qrcode-model-integration.md) 与 [component 集成](qrcode-integration.md)。
 
-基线 `20e67d510535d5accd23c1ef70989fa1ef7a3aa0`，当前阶段仅为标准编码模型与 CPU 导出，38.1/38.2 尚未关闭。
+基线 `20e67d510535d5accd23c1ef70989fa1ef7a3aa0`。标准编码/导出阶段 `cee72c95`；Gallery 清理精确依赖本地 `28e508753556caf93f4339a9bfdf3b058e3f1917`，来源 `dee82175bb49e877c879d09c1380416dfcec8bd8`，只导入 Collapse body unblock 局部补丁与独立 fixture，未导入父链或 Listy phase。QRCode 原生合同与实际 Gallery 已完成；Tour/分类/Windows 任务独立。
 
-- Linux GCC，`linux-gcc-headless`，Ninja Multi-Config，Debug/Release，构建 `rynui_qrcode_model_tests -j2`。
-- `ctest --preset linux-gcc-headless-{debug,release} -R '^rynui.qrcode_(model|independent_decode)$' --output-on-failure`：每配置 2/2 通过；模型 89432 个断言，独立 ZBar 7/7 PNG/SVG 解码（ASCII、UTF-8、含 NUL 的 binary、透明 logo）；SVG 由 librsvg 渲染，PNG 的 chunk CRC/zlib 由独立 Python 标准库验证。
-- 独立 Segno 1.6.6 固定 v1/Q/mask0、v7/M/mask4、v40/H/mask7 全矩阵指纹，覆盖 numeric/alphanumeric 与 version/format/mask；byte 路径以 ZBar 实际解码验证。Segno 对恰好字节对齐的数据额外插入一个 zero pad byte，故该情形不要求两个有效实现有相同矩阵，未修改编码器或参考库。
-- CPU 导出为应用持有的 RGBA8、确定性 PNG 与 SVG；无文件读写、网络、renderer 或 SDL。PNG 使用整数 module pitch、额外空间居中填充，保留 quiet zone；SVG 保留 logical 模块。图标不保证任意尺寸/透明背景/纠错/对比度组合均可扫描。
-- 原始日志、上游源、独立工具及导出仅在忽略的 `out/qrcode-tour` 与本工作树 `out/build`。未以此阶段证明原生窗口/GPU/组件生命周期；Windows/MSVC/D3D12、实体 IME/AT/跨显示器未验证。
+- Linux GCC，`linux-gcc-headless`，Ninja Multi-Config，Debug/Release，相关 targets `-j2`；QRCode 模型/10 类组件合同、公开 typed API compile、Theme、Gallery/source、Collapse 清理、Form/Input/Modal 与实际 HEADLESS Core include/link guard，定向每配置 **25/25**。最后 Gallery 独立清理断言与 catalog 更新后，仅重跑受影响 Gallery/source/Theme 合同，每配置 **6/6**。没有重复全量 CTest/旧窗口矩阵。
+- 模型 **89432** 个断言；独立 Segno 1.6.6 的固定 v1/Q/mask0、v7/M/mask4、v40/H/mask7 全矩阵指纹，覆盖 numeric/alphanumeric、format/version/mask。Segno 对恰好字节对齐数据多写一个 zero pad byte，因此 byte 路径以独立 ZBar 解码证明，未改编码器或参考库。独立 ZBar **7/7** PNG/SVG：ASCII、UTF-8/ECI、含 NUL binary、透明 logo；SVG 经 librsvg，PNG CRC/zlib 经独立 Python 标准库验证。
+- 组件合同覆盖响应式编码/EC/metric/颜色错误恢复、0/极窄/分数 logical 几何、像素/quiet zone、logo alpha/取消/过时代际/重复/foreign-thread completion、状态 callback/受控拒绝、富 Input 草稿/ref/工厂 revision、Form 私有/显式嵌套绑定、回调抛出/self-destroy、无 idle frame/deadline 与精确资源/input-block 清理。公开示例使用真实 `Signal`/`Prop`。
+- `linux-gcc` Release：`python tools/run_gallery_page_acceptance.py out/build/linux-gcc/examples/Release/rynui_token_gallery --preset linux-gcc --configuration Release --timeout 120 --log-dir out/qrcode-tour/native-qrcode --page ant.component.qr-code --page ant.component.button`。独立 headless Mutter/private DBus/Wayland，**Vulkan/SPIR-V、2 cases / 1400 checks / 30 submitted frames、fallback=false**。真实 GPU readback 验证每个模块中心和 quiet zone；真实点击验证四状态、刷新接受/拒绝、EC、错误恢复、共享 logo 与数据导出，保持既有 frame-callback pacing/SDL pump。
+- 实际 native 导出的 PNG 与 SVG（librsvg rasterization）分别经独立 ZBar 解码，**2/2** 精确等于 `RynUI native QRCode 107`。导出包含模型/colors/quiet zone/logo/excavation/alpha，PNG 为整数 pitch，SVG 为 logical 模块；排除容器 padding/border 和 status overlay，文件 IO 归应用。
+- 实际 inventory **98 samples**，保留基线 97 与 458 frozen IDs；catalog/source write/check/self-test 通过。QRCode Theme 为 append-only 新域：5 FULL goldens 的全部 **66** 旧 top-level fields 均保留（含 Image/Calendar/Carousel；除全局 identity 外值不变），旧 TokenIdentity 名称/ordinal 与 ThemeConfig aggregate 顺序不变。父主线 writer 合并时须保护另行交接的 Card/Empty `fca61e7e46e9afc55b14970a9900a18ebcf0c6a0` 增量并重新生成并集，不能用本分支旧完整快照覆盖。
+- clang-format 22.1.3 检查 **1036** 自有源文件、0 failures；`openspec doctor --json` healthy，`openspec validate --all --strict --no-interactive` **107/107**，`git diff --check` 通过。
+- 依赖显式 BUNDLED|SYSTEM，qrcodegen 1.8.0/MIT 的版本/source SHA256/license 集中锁定；无 React、submodule、隐式 fallback 或未跟踪 vendoring。原始日志、源码副本、JSON/images/exports/binaries 只在忽略的 `out/qrcode-tour`/`out/build`。Windows/MSVC/D3D12、物理 IME/AT 与真实跨显示器未验证；logo/低对比/透明背景等扫描限制见 [API](../../../../docs/qrcode.md)。
