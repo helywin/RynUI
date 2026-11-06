@@ -97,12 +97,13 @@
 - native 颜色在既有 Color 编码数值域内做 premultiplied RGBA 插值；两场在同一 fragment source-over，再统一乘 coverage、material 与祖先 opacity，最后输出 straight RGBA。它是明确的 native 合同，不声称浏览器跨版本一致。真实 rail/foreground/success 层仍保留有序 source-over。
 - steps 与 gradient 共用同一 paint domain，只对 coverage 留 step gap，不在每段重启场，也不复制 rc circle-steps 缺少 gradient 定义的缺陷或静默退回纯色。重复 stop 右连续、域外 stop 端点保持；至少两个有限 stop，不设置任意固定少量上限。零面积发布空 coverage，不创建退化 field。
 - renderer 保留基础 scene ABI v2 与 112-byte Effect，新增独立 Effect Paint ABI v1 的 link/field/stop 三表；布局、storage、capability、limits 与事务详见 `docs/renderer-contract.md`。旧全 solid 场景保持旧 pipeline/零新增资源；任何新 paint 或 cap 在 begin 前验证实际支持范围，不能被旧 pack 静默丢弃。Quad/Glyph/Image、输入、Registry、WindowServices、Modal、Form 与其他组件不扩展。
+- B2 数值研究已证明现有 physical float 编码存在完整 bytes 碰撞，非 Round 因此采用独立 Cap Geometry ABI v1 的 32-byte 第三实例流，保存 translated logical Rect、stroke 与 device scale 的原始 float bits，通过两个整数属性传递。原 base/paint 三表不变，PS 仍两个 storage；保守 bounds、query-local 补偿、有界指数/精度路径与整个资源事务同步推进。详细布局与验收在 renderer 合同中单列；这是待实施决策，不能沿用既有 A/B1 通过结果宣称完成。非 Round capability 在实际数值/GPU 验证前关闭。
 
 53.1/53.2 下的独立本地阶段按依赖顺序推进，各阶段只运行对应自动检查；不新增人工门槛，不提前勾选原任务：
 
-1. A：logical immutable paint、cap 数学/验证、旧路径兼容、共同接口与 unsupported preflight；Linux GCC HEADLESS Debug/Release 的 gradient/math/store/拒绝合同。
+1. A：logical immutable paint、cap 数学/验证、旧路径兼容、共同接口与 unsupported preflight；平台通用 HEADLESS Debug/Release 的 gradient/math/store/拒绝合同，记录实际使用平台。
 2. B1：三表 pack 与独立 packed reference、共同资源事务及 Recording 实际 bytes/order/owner/epoch/失败重试；只有已实现的 Recording opt in。
-3. B2：SDL 双实例流、两个 PS storage、共同 HLSL source closure、锁与反射；私有 Wayland 上真实 Vulkan 数值 readback，覆盖 alpha/caps/DPI/clip/nonzero first。生成 DXIL 不计为 Windows/D3D12 实跑。
+3. B2：SDL paint 双实例流及非 Round cap 第三实例流、两个 PS storage、共同 HLSL source closure、锁与反射；Windows/D3D12 与私有 Wayland/Vulkan 的真实数值 readback 分开记录，覆盖 alpha/caps/DPI/clip/nonzero first。生成 DXIL/SPIR-V 不计为对应平台 GPU 实跑。
 4. C：Progress typed Props/slots、active、steps、success、gap、Theme、reactivity、生命周期、实际 Gallery 与支持说明。仅在共同 A/B 可用后消费；静态渐变零新增 deadline，hidden/reduced motion/window inactive/off-page 停止 active。
 
 ## Risks / Trade-offs

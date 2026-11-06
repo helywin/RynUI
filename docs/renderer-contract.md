@@ -90,6 +90,18 @@ RoundedEffectGpuResources 一次 compact 并读取同一份 geometry/material di
 
 共同 draw_binding(first,count) 同时提供实际 base/link byte offset（`first*112`、`first*16`）及 field/stop handles 和有效 count；B2 必须对两个 instance stream 使用同一个 first/count，两个 storage 从表起点绑定，不以 draw 的 first 重定位 field/stop。Recording 从实际 buffer 的 draw subrange 读取 link，并记录实际引用的 field/stop 索引与 bytes；多 draw 保持相同全局表索引。Card rounded descendant clip 将使用独立 clip ABI，不增加第四张 paint table。B1 不实现 SDL/HLSL 或 Progress 消费，不代表任何 GPU/OS 验收。
 
+### Cap Geometry ABI v1（107 B2 数值修复，待实施）
+
+大半径细弧存在 physical float 打包碰撞：不同 logical 输入可产生完全相同的 base/link/field/stop bytes，而正确覆盖率不同；shader 无法从已丢失的信息恢复。非 Round 接入因此另增显式 `cap_geometry_abi_version=1`，不得复用 paint ABI、重解释 reserved 字段、收紧合法输入范围或改变既有 112/48/96-byte ABI。已完成的 A/B1 验证不包含此新增合同；SDL 非 Round 在数值与原生验证通过前保持关闭。
+
+独立 cap instance stream 每记录 32 bytes、16-byte alignment：offset 0 的四个 uint32 保存当前 logical reference 定义下 translated shape 的 x/y/width/height 原始 float bits；offset 16 的四个 uint32 保存 stroke_width/display_scale 原始 float bits及两个零。start/sweep 保留 base 原字段。使用两个整数 vertex attributes 与不插值传递，在 bit 解码前完成零/正值判断，避免 float vertex fetch 或 FTZ 先丢失正 subnormal。保留全部 Rect 分量，不把已舍入的 physical center 当作原始因子。
+
+仅可见 nonRound 场景需要第三 instance stream；与同一次 compact 的 base/link 一一对应，其他 Effect 行写零。draw 的三个流 offset 分别为 first×112/16/32，first_instance=0；PS storage 仍为 field/stop 两个，不增加第四张 paint 表。纯 solid/default-Round 零额外资源，只有 Round paint 的场景保持两个流。缺失或未知 cap ABI 的 backend 在 begin 前拒绝全部 live nonRound 需求。
+
+cap buffer 纳入同一 capacity/limits、owner/epoch、失败失效、无新增 CPU dirty 重试、retire 与 idle 合同；任何表或后续资源失败均一起重试。保守 CPU bounds/cull/draw envelope 必须覆盖合法 AA 片元，不改变实际 shape 或 ancestor hard clip。数值求解分离 R/H，以 query-local 补偿及有界指数/精度路径处理运算，保持暴露联合外边界、单次 coverage 和固定一物理像素 AA；不得以任意 epsilon 填平正宽 gap、无限细分或让 NaN 静默清空。
+
+实施必须分别验证独立 scalar 期望、真实 packed bits/draw domain 和真实 GPU RGBA；完整碰撞反例要求新 stream 保留差异并输出各自正确结果。检查 shader roundtrip 中的算术保持性、实际编译/运行成本、nonzero first、混排、失败/重试与旧 Round/dash/Tooltip。Windows/D3D12 与 Linux/Vulkan 分别记录，不能用生成二进制或 CPU reference 代替实际 GPU；cap 修复不构成 paint field 全域无损精度声明。
+
 ## 后续组件与 backend 的接入清单
 
 - 组件：typed Props/slots、Prop<T> 与 Theme/Component Token；只发布 logical scene 和最小 dirty 范围，通过共同 SceneResources/SceneBackend 上传呈现；不得读取 GPU capability 或设置 transfer layout。
