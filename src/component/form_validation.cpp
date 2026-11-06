@@ -80,10 +80,15 @@ FormFieldMeta form_field_meta(const std::shared_ptr<FormFieldState>& field) {
 }
 
 std::function<void()> form_blur_handler(const std::shared_ptr<FormFieldState>& field) {
-    return [weak = std::weak_ptr{field}, generation = FormRegistrationScope::generation(field)] {
+    return form_blur_handler(field, {});
+}
+
+std::function<void()> form_blur_handler(const std::shared_ptr<FormFieldState>& field,
+                                        const std::shared_ptr<FormControlConnection>& connection) {
+    return [weak = std::weak_ptr{field}, generation = FormRegistrationScope::generation(field), connection] {
         const auto field = weak.lock();
         if (!field || !field->registered || field->generation != generation || form_field_disabled(field) ||
-            form_field_read_only(field)) {
+            form_field_read_only(field) || !form_control_event_admitted(field, connection)) {
             return;
         }
         if (const auto model = field->owner.lock();

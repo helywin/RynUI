@@ -22,8 +22,10 @@ class InputRef;
 namespace detail {
 struct FormAutoControlAccess;
 struct FormFocusContext;
+struct FormNativeControl;
 std::pair<std::function<bool(const FormFocusContext&)>, std::function<void()>> capture_form_input(const InputRef&);
 std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> capture_form_input_geometry(const InputRef&);
+FormNativeControl capture_form_native_input(const InputRef&);
 struct InputPropsAccess;
 struct PasswordPropsAccess;
 struct SearchPropsAccess;
@@ -87,6 +89,7 @@ private:
     detail::capture_form_input(const InputRef&);
     friend std::function<std::optional<FormControlGeometry>(const detail::FormFocusContext&)>
     detail::capture_form_input_geometry(const InputRef&);
+    friend detail::FormNativeControl detail::capture_form_native_input(const InputRef&);
     friend struct detail::FormAutoControlAccess;
     std::shared_ptr<detail::InputRefState> state_;
 };

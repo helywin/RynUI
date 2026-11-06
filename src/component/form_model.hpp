@@ -6,6 +6,15 @@
 namespace ryn::detail {
 
 class FormModel;
+struct FormFieldState;
+bool form_control_event_admitted(const std::shared_ptr<FormFieldState>&, const std::shared_ptr<FormControlConnection>&);
+
+struct FormEditTransaction final {
+    std::uint64_t revision{};
+    std::optional<FormValue> published;
+    bool writing{};
+    bool superseded{};
+};
 
 struct FormFieldState final {
     explicit FormFieldState(FormValue value) : initial(value), value(std::move(value)) {}
@@ -39,6 +48,9 @@ struct FormFieldState final {
     std::optional<animation::AnimationTime> due;
     std::optional<animation::AnimationTime> timeout;
     std::function<bool()> eligible;
+    std::function<bool()> direct_eligible;
+    std::weak_ptr<FormControlConnection> connection;
+    std::weak_ptr<FormEditTransaction> edit;
 };
 
 // A callback created while mounting an old item must keep that item's registration ticket.
@@ -102,7 +114,7 @@ public:
     std::function<bool(FormNamePath, FormScrollOptions)> scroll;
     std::function<std::optional<FormControlTarget>(FormNamePath)> control;
     bool scroll_first{};
-    void notify_change(const std::shared_ptr<FormFieldState>&);
+    void notify_change(const std::shared_ptr<FormFieldState>&, const std::function<bool()>& authorized = {});
 
     std::uint64_t add(String name, const std::shared_ptr<FormFieldState>& field, std::function<bool()> eligible = {},
                       std::function<bool()> focus = {}, std::function<void()> reset = {});
@@ -120,7 +132,7 @@ public:
     Signal<std::uint64_t> topology{0};
     void remove(const std::shared_ptr<FormFieldState>& field, std::uint64_t generation);
     void dispose();
-    void value_changed(const std::shared_ptr<FormFieldState>& field);
+    void value_changed(const std::shared_ptr<FormFieldState>& field, const FormValue* observation = nullptr);
     [[nodiscard]] bool available() const;
     [[nodiscard]] std::optional<FormResult> validate();
     bool submit();

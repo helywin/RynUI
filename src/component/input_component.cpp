@@ -1,5 +1,6 @@
 #include "component/input_component.hpp"
 #include "component/form_focus_context.hpp"
+#include "component/form_native_control.hpp"
 #include <ryn/form.hpp>
 #include "component/form_control_binding.hpp"
 #include "component/input_affix_action.hpp"
@@ -28,6 +29,9 @@ struct InputRefState final {
     std::thread::id owner{std::this_thread::get_id()};
     std::optional<runtime::ComponentId> binding;
     std::uint64_t generation{};
+    const WindowComponentServices* form_window{};
+    bool form_enter_capable{};
+    std::function<void()> form_connection_cleanup;
     std::function<bool(InputFocusOptions)> focus;
     std::function<bool(const FormFocusContext&)> form_focus;
     std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> form_geometry;
@@ -588,7 +592,7 @@ struct InputPropsAccess {
         state.on_change = props.common_.on_change_;
         state.on_submit = props.common_.on_submit_;
         if (!state.textarea && !props.common_.on_submit_) {
-            state.on_form_submit = form_enter_handler();
+            state.on_form_submit = form_enter_handler(component);
         }
         state.on_focus = props.common_.on_focus_;
         state.on_blur = props.common_.on_blur_;
@@ -600,7 +604,11 @@ struct InputPropsAccess {
         build.on_resource_cleanup(component, [&owner, component] {
             auto& host = *owner.host_;
             if (auto* current = host.components().state<InputState>(component)) {
+                std::function<void()> form_cleanup;
                 if (const auto reference = current->reference; reference && reference->binding == component) {
+                    form_cleanup = std::exchange(reference->form_connection_cleanup, {});
+                    reference->form_window = nullptr;
+                    reference->form_enter_capable = false;
                     reference->binding.reset();
                     reference->focus = {};
                     reference->form_focus = {};
@@ -633,11 +641,16 @@ struct InputPropsAccess {
                 static_cast<void>(host.layout().remove_intrinsic_measure(current->viewport));
                 static_cast<void>(host.layout().remove_layout(mounted.node));
                 std::erase_if(owner.mounted_, [component](const auto& item) { return item.component == component; });
+                if (form_cleanup) {
+                    form_cleanup();
+                }
             }
         });
         if (state.reference) {
             // Reserve before prefix/suffix content can reuse the same reference.
             state.reference->binding = component;
+            state.reference->form_window = &host;
+            state.reference->form_enter_capable = bool(state.on_form_submit);
             ++state.reference->generation;
         }
         state.mounted.editor = owner.editors_.create(
@@ -1200,7 +1213,9 @@ struct InputPropsAccess {
                 auto geometry = context.geometry(*owner.host_, component);
                 const auto* state = owner.host_->components().state<InputState>(component);
                 if (geometry) {
-                    geometry->eligible &= state && state->active && !state->disabled && !state->read_only;
+                    const auto* record = state ? owner.host_->interactions().find(state->mounted.interaction) : nullptr;
+                    geometry->eligible &=
+                        state && state->active && !state->disabled && !state->read_only && record && record->eligible;
                 }
                 return geometry;
             };
@@ -3352,6 +3367,42 @@ capture_form_input_geometry(const InputRef& reference) {
         state->ensure_owner();
         return state->form_geometry ? state->form_geometry(context) : std::nullopt;
     };
+}
+
+FormNativeControl capture_form_native_input(const InputRef& reference) {
+    if (!reference.state_ || !reference.state_->binding) {
+        return {};
+    }
+    reference.state_->ensure_owner();
+    const auto binding = reference.state_->binding;
+    const auto generation = reference.state_->generation;
+    const auto window = reference.state_->form_window;
+    const auto weak = std::weak_ptr{reference.state_};
+    const auto current = [weak, binding, generation, window] {
+        const auto state = weak.lock();
+        return state && state->owner == std::this_thread::get_id() && state->binding == binding &&
+               state->generation == generation && window && state->form_window == window;
+    };
+    auto callbacks = capture_form_input(reference);
+    return {window,
+            *binding,
+            generation,
+            reference.state_->form_enter_capable,
+            current,
+            capture_form_input_geometry(reference),
+            std::move(callbacks.first),
+            std::move(callbacks.second),
+            [weak, current](std::function<void()> cleanup) {
+                if (!current()) {
+                    return false;
+                }
+                const auto state = weak.lock();
+                if (state->form_connection_cleanup) {
+                    return false;
+                }
+                state->form_connection_cleanup = std::move(cleanup);
+                return true;
+            }};
 }
 
 void InputComponentHost::finish_number(runtime::ComponentId component) {

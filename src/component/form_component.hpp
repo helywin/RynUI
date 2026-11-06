@@ -4,6 +4,7 @@
 #include "component/window_component_services.hpp"
 
 namespace ryn::detail {
+struct FormHostLifetime;
 
 struct FormItemSnapshot final {
     runtime::ComponentId label;
@@ -51,6 +52,7 @@ private:
     bool interactive(runtime::ComponentId) const;
     void refresh(runtime::ComponentId, bool geometry);
     WindowComponentServices* services_;
+    std::shared_ptr<FormHostLifetime> lifetime_;
     std::vector<runtime::ComponentId> forms_;
     std::vector<runtime::ComponentId> items_;
     runtime::Size viewport_;

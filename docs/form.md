@@ -68,7 +68,9 @@ void DeviceForm(std::function<void(ryn::FormResult)> save) {
 
 命名 FormItem 的 control slot 中，首个兼容的 Input、TextArea、InputNumber、Select、Checkbox 或 Switch 自动接入 typed value/change、disabled/readOnly、status、ref 与表单上下文。InputNumber 根据 field 类型选择 double 或 exact decimal；SelectValues 对应 Multiple/Tags。已有显式 value/onChange 接线保持其权威，并占用首控件位置；后续兄弟控件不自动接线。Mentions、AutoComplete、日期时间、Cascader、Transfer、Upload 与 ColorPicker 的私有输入/选择控件不占用外层 Item 的自动位置或 Enter；popup 内建立的独立 FormItem 保留自己的绑定作用域。嵌套 FormItem 建立自己的控件位置；嵌套 Form 建立新的表单作用域。
 
-Image 等组件的私有 Modal 保留逻辑 Form 归属。Form 根位于 Modal 外时，同一 Form/model 在当前活动 Modal 内的显式命名 Item，只有挂载票据与当前字段注册代际一致且仍可交互，才维持该 Form 的字段更新、Enter、提交与校验资格。整表仍采集和校验自己的背景字段；背景控件继续受原生输入域约束。私有 Input、无字段布局 Item、另一 Form 的 Item 与失效注册不提供该资格，最后一个合格 Item 退役后立即撤回。程序 set/reset 保持既有显式命令语义；disabled/readOnly、字段资格、受控权威、重入和异步事务检查继续生效。
+Image 等组件的私有 Modal 保留逻辑 Form 归属。Form 根位于完整输入域外时，同一 Form/model 的显式命名 Item，只有挂载票据与当前字段注册代际一致且仍合法，才维持该 Form 的字段更新、Enter、提交与校验资格。完整输入域同时考虑 legacy、owned restriction/block 与当前 Modal/companion 的交集，不要求一定存在 Modal。整表仍采集和校验自己的背景字段；背景控件继续受原生接收门约束。私有 Input、无字段布局 Item、另一 Form 的 Item 与失效注册不提供该资格，最后一个合格 Item 退役后立即撤回。
+
+当 Item 祖先也位于域外时，自动绑定或 `FormControlBinding<T>.control(nativeRef)` 建立的精确原生连接可维持该注册：窗口、Form/Item/control region、字段注册代际、连接 epoch、控件与 ref 代际必须仍匹配，实际控件通过完整输入域且 enabled、可见并与 clip 相交。这个维护资格不授予 Form/Item 接收权；typed change/blur/Enter 仍携带本连接票。裸 field callback、旧连接、私有或 sibling 控件、仅指定 focus 的 `props.control(ref)`、应用 `FormControlTarget`/geometry 均不能借用域外资格。连接退役先撤销身份并取消旧异步校验；迟到结果和旧 focus/reset 目标不能作用于新连接。程序 set/reset 保持既有显式命令语义，受控 setter 已发生的副作用不伪装回滚；回调重入后重新核验注册、完整域和事务。
 
 ```cpp
 void AutomaticForm() {

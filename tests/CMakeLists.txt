@@ -48,7 +48,7 @@ rynui_configure_cpp_target(rynui_image_rounding_tests)
 target_link_libraries(rynui_image_rounding_tests PRIVATE rynui_image rynui_renderer_common)
 add_test(NAME rynui.image_rounding COMMAND rynui_image_rounding_tests)
 
-foreach(native_display_test IN ITEMS select_declaration image_lazy_preview form_modal_scope form_input_domain)
+foreach(native_display_test IN ITEMS select_declaration image_lazy_preview form_modal_scope form_input_domain form_bound_control)
     add_executable(rynui_${native_display_test}_tests ${native_display_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${native_display_test}_tests)
     target_link_libraries(rynui_${native_display_test}_tests PRIVATE rynui_components)

@@ -23,11 +23,20 @@ namespace ryn {
 namespace detail {
 struct FormFieldState;
 struct FormRefState;
+struct FormControlConnection;
+struct FormAutoControlAccess;
 class FormComponentHost;
 std::shared_ptr<FormFieldState> active_form_control(std::size_t);
+std::shared_ptr<FormControlConnection> capture_form_control_connection(const std::shared_ptr<FormFieldState>&);
 void attach_form_control(const std::shared_ptr<FormFieldState>&, const InputRef&);
+void attach_form_control(const std::shared_ptr<FormFieldState>&, const std::shared_ptr<FormControlConnection>&,
+                         const InputRef&);
 void attach_form_control(const std::shared_ptr<FormFieldState>&, const CheckboxRef&);
+void attach_form_control(const std::shared_ptr<FormFieldState>&, const std::shared_ptr<FormControlConnection>&,
+                         const CheckboxRef&);
 void attach_form_control(const std::shared_ptr<FormFieldState>&, const SwitchRef&);
+void attach_form_control(const std::shared_ptr<FormFieldState>&, const std::shared_ptr<FormControlConnection>&,
+                         const SwitchRef&);
 void attach_form_control(const std::shared_ptr<FormFieldState>&, FormControlTarget);
 FormPresentation active_form_presentation();
 Binding<FormPresentation> form_control_presentation(const std::shared_ptr<FormFieldState>&);
@@ -62,9 +71,13 @@ void configure_form_triggers(const std::shared_ptr<FormFieldState>&, FormValidat
 InputStatus form_field_status(const std::shared_ptr<FormFieldState>&);
 FormFieldMeta form_field_meta(const std::shared_ptr<FormFieldState>&);
 std::function<void()> form_blur_handler(const std::shared_ptr<FormFieldState>&);
+std::function<void()> form_blur_handler(const std::shared_ptr<FormFieldState>&,
+                                        const std::shared_ptr<FormControlConnection>&);
 void configure_form_required(const std::shared_ptr<FormFieldState>&, String);
 void configure_form_validator(const std::shared_ptr<FormFieldState>&, std::function<String(const FormValue&)>);
 std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFieldState>&);
+std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFieldState>&,
+                                                   const std::shared_ptr<FormControlConnection>&);
 String form_field_error(const std::shared_ptr<FormFieldState>&);
 bool form_field_disabled(const std::shared_ptr<FormFieldState>&);
 bool form_field_read_only(const std::shared_ptr<FormFieldState>&);
@@ -701,14 +714,16 @@ using FormItemContent = SlotContent<FormItemContentSlot>;
 
 template <FormFieldType T> class FormControlBinding final {
 public:
-    explicit FormControlBinding() : state_(detail::active_form_control(FormValue{T{}}.index())) {}
+    explicit FormControlBinding()
+        : state_(detail::active_form_control(FormValue{T{}}.index())),
+          connection_(detail::capture_form_control_connection(state_)) {}
 
     [[nodiscard]] Prop<T> value() const {
         return bind([state = state_] { return std::get<T>(detail::read_form_field(state)); });
     }
 
     [[nodiscard]] std::function<void(T)> onChange() const {
-        return [change = detail::form_change_handler(state_)](T value) {
+        return [change = detail::form_change_handler(state_, connection_)](T value) {
             change(FormValue{std::move(value)});
         };
     }
@@ -731,7 +746,7 @@ public:
     }
 
     [[nodiscard]] std::function<void()> onBlur() const {
-        return detail::form_blur_handler(state_);
+        return detail::form_blur_handler(state_, connection_);
     }
 
     [[nodiscard]] Binding<FormPresentation> presentation() const {
@@ -739,23 +754,28 @@ public:
     }
 
     void control(const InputRef& ref) const {
-        detail::attach_form_control(state_, ref);
+        detail::attach_form_control(state_, connection_, ref);
     }
 
     void control(const CheckboxRef& ref) const {
-        detail::attach_form_control(state_, ref);
+        detail::attach_form_control(state_, connection_, ref);
     }
 
     void control(const SwitchRef& ref) const {
-        detail::attach_form_control(state_, ref);
+        detail::attach_form_control(state_, connection_, ref);
     }
 
     void control(FormControlTarget target) const {
+        if (detail::capture_form_control_connection(state_) != connection_) {
+            throw std::invalid_argument("Form adapter connection was superseded");
+        }
         detail::attach_form_control(state_, std::move(target));
     }
 
 private:
+    friend struct detail::FormAutoControlAccess;
     std::shared_ptr<detail::FormFieldState> state_;
+    std::shared_ptr<detail::FormControlConnection> connection_;
 };
 
 template <FormFieldType T> struct FormControlAdapter final {

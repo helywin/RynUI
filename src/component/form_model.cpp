@@ -145,6 +145,10 @@ FormValue read_form_field(const std::shared_ptr<FormFieldState>& state) {
 }
 
 void write_form_field(const std::shared_ptr<FormFieldState>& state, FormValue value) {
+    // A programmatic write/reset is a different transaction, including a same-value reset.
+    if (const auto edit = state->edit.lock()) {
+        edit->superseded = true;
+    }
     valid_value(value);
     if (value.index() != state->initial.index()) {
         throw std::invalid_argument("Form field value type mismatch");
@@ -201,8 +205,13 @@ void configure_form_validator(const std::shared_ptr<FormFieldState>& state,
 }
 
 std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFieldState>& state) {
+    return form_change_handler(state, {});
+}
+
+std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFieldState>& state,
+                                                   const std::shared_ptr<FormControlConnection>& connection) {
     const auto generation = FormRegistrationScope::generation(state);
-    return [weak = std::weak_ptr{state}, generation](FormValue value) {
+    return [weak = std::weak_ptr{state}, generation, connection](FormValue value) {
         const auto current = weak.lock();
         if (!current || !current->registered || current->generation != generation || form_field_disabled(current) ||
             form_field_read_only(current)) {
@@ -210,14 +219,27 @@ std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFie
         }
         const auto owner = current->owner.lock();
         const auto eligible = current->eligible;
-        if (!owner || !owner->available() || (eligible && !eligible())) {
+        if (!owner || !owner->available() || (eligible && !eligible()) ||
+            !form_control_event_admitted(current, connection)) {
             return;
         }
+        if (const auto prior = current->edit.lock()) {
+            prior->superseded = true;
+        }
+        const auto edit = std::make_shared<FormEditTransaction>();
+        edit->revision = owner->revision();
+        current->edit = edit;
         const auto authorized = [&] {
-            return current->registered && current->generation == generation && current->owner.lock() == owner &&
-                   owner->alive;
+            return !edit->superseded && owner->revision() == edit->revision && current->registered &&
+                   current->generation == generation && current->owner.lock() == owner && owner->available() &&
+                   !form_field_disabled(current) && !form_field_read_only(current) &&
+                   (!current->eligible || current->eligible()) && form_control_event_admitted(current, connection);
         };
         try {
+            valid_value(value);
+            if (value.index() != current->initial.index()) {
+                throw std::invalid_argument("Form field value type mismatch");
+            }
             auto meta = current->meta.get();
             meta.touched = true;
             current->meta.set(meta);
@@ -228,9 +250,28 @@ std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFie
             if (!authorized()) {
                 return;
             }
-            write_form_field(current, std::move(value));
-            if (authorized() && previous != read_form_field(current) && authorized()) {
-                owner->notify_change(current);
+            edit->published = value;
+            edit->writing = true;
+            if (current->source) {
+                const auto callback = current->change;
+                if (callback) {
+                    callback(std::move(value));
+                }
+            } else if (current->value.get() != value) {
+                batch([&] {
+                    owner->value_changed(current, &value);
+                    if (authorized()) {
+                        current->value.set(std::move(value));
+                    }
+                });
+            }
+            edit->writing = false;
+            if (!authorized()) {
+                return;
+            }
+            const auto accepted = read_form_field(current);
+            if (authorized() && previous != accepted) {
+                owner->notify_change(current, authorized);
             }
         } catch (...) {
             // Consumer observers/setters can already have changed other fields.
@@ -360,6 +401,8 @@ void FormModel::remove(const std::shared_ptr<FormFieldState>& field, std::uint64
     field->registered = false;
     field->owner.reset();
     field->eligible = {};
+    field->direct_eligible = {};
+    field->connection.reset();
     field->due.reset();
     field->timeout.reset();
     field->validated = false;
@@ -447,28 +490,53 @@ void FormModel::dispose() {
     clock = {};
 }
 
-void FormModel::value_changed(const std::shared_ptr<FormFieldState>& field) {
+void FormModel::value_changed(const std::shared_ptr<FormFieldState>& field, const FormValue* observation) {
     const auto generation = field->generation;
     ++revision_;
+    // Only this edit's actual value observation may advance its revision ticket.
+    // Other fields, reset and callback reentry invalidate the old event instead.
+    if (const auto edit = field->edit.lock(); edit && edit->writing && !edit->superseded && observation &&
+                                              edit->published == *observation && edit->revision + 1 == revision_) {
+        edit->revision = revision_;
+    }
+    const auto revision = revision_;
+    const auto current = [&] {
+        return alive && revision_ == revision && field->registered && field->owner.lock().get() == this &&
+               field->generation == generation;
+    };
     cancel_validation();
-    if (!alive || !field->registered || field->owner.lock().get() != this || field->generation != generation) {
+    if (!current()) {
         return;
     }
     field->error.set(String{});
+    if (!current()) {
+        return;
+    }
     auto meta = field->meta.get();
     meta.errors.clear();
     meta.warnings.clear();
     field->meta.set(meta);
+    if (!current()) {
+        return;
+    }
     schedule(field);
+    if (!current()) {
+        return;
+    }
     const auto changed = std::ranges::find(fields_, field, &Registration::field);
     if (changed != fields_.end()) {
         const auto path = changed->path;
-        for (const auto& item : fields_) {
-            if (std::ranges::any_of(item.field->dependencies,
+        const auto fields = fields_;
+        for (const auto& item : fields) {
+            if (!current()) {
+                return;
+            }
+            if (item.field->registered && item.field->generation == item.generation &&
+                std::ranges::any_of(item.field->dependencies,
                                     [&](const auto& dependency) { return path.startsWith(dependency); })) {
                 item.field->due = now_ + animation::AnimationDuration::milliseconds(item.field->debounce_ms);
-                if (wake) {
-                    wake();
+                if (const auto callback = wake) {
+                    callback();
                 }
             }
         }
@@ -1038,9 +1106,9 @@ void FormModel::forget(const FormNamePath& prefix) {
 } // namespace ryn::detail
 
 namespace ryn::detail {
-void FormModel::notify_change(const std::shared_ptr<FormFieldState>& field) {
+void FormModel::notify_change(const std::shared_ptr<FormFieldState>& field, const std::function<bool()>& authorized) {
     const auto keep = shared_from_this();
-    if (!alive) {
+    if (!alive || (authorized && !authorized())) {
         return;
     }
     const auto it = std::ranges::find(fields_, field, &Registration::field);
@@ -1048,12 +1116,32 @@ void FormModel::notify_change(const std::shared_ptr<FormFieldState>& field) {
         return;
     }
     const auto item = *it;
+    const auto current = [&] {
+        return alive && field->registered && field->generation == item.generation &&
+               field->owner.lock().get() == this && (!authorized || authorized());
+    };
     if (const auto callback = changed) {
-        callback({item.name, read_form_field(field), item.path}, get_values());
+        const auto value = read_form_field(field);
+        if (!current()) {
+            return;
+        }
+        const auto values = get_values();
+        if (!current()) {
+            return;
+        }
+        callback({item.name, value, item.path}, values);
     }
-    if (alive && field->registered && field->generation == item.generation && field->owner.lock().get() == this) {
+    if (current()) {
         if (const auto callback = fields_changed) {
-            callback({{item.path, read_form_field(field), field->meta.get()}}, get_fields());
+            const auto value = read_form_field(field);
+            if (!current()) {
+                return;
+            }
+            const auto fields = get_fields();
+            if (!current()) {
+                return;
+            }
+            callback({{item.path, value, field->meta.get()}}, fields);
         }
     }
 }

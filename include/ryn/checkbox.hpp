@@ -17,6 +17,8 @@ namespace ryn {
 class CheckboxRef;
 
 namespace detail {
+struct FormNativeControl;
+FormNativeControl capture_form_native_checkbox(const CheckboxRef&);
 struct FormAutoControlAccess;
 struct FormFocusContext;
 std::function<bool(const FormFocusContext&)> capture_form_checkbox(const CheckboxRef&);
@@ -50,6 +52,7 @@ public:
     [[nodiscard]] bool blur() const;
 
 private:
+    friend detail::FormNativeControl detail::capture_form_native_checkbox(const CheckboxRef&);
     friend struct detail::CheckboxPropsAccess;
     friend std::function<bool(const detail::FormFocusContext&)> detail::capture_form_checkbox(const CheckboxRef&);
     friend std::function<std::optional<FormControlGeometry>(const detail::FormFocusContext&)>

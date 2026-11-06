@@ -1,5 +1,6 @@
 #include "component/selection_component.hpp"
 #include "component/form_focus_context.hpp"
+#include "component/form_native_control.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/space_compact.hpp"
 
@@ -20,6 +21,9 @@
 namespace ryn::detail {
 
 struct SwitchRefState final {
+    const WindowComponentServices* form_window{};
+    runtime::ComponentId form_component;
+    std::function<void()> form_connection_cleanup;
     std::uint64_t generation{};
     std::function<bool(const FormFocusContext&)> form_focus;
     std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> form_geometry;
@@ -36,6 +40,9 @@ struct SwitchRefState final {
 };
 
 struct CheckboxRefState final {
+    const WindowComponentServices* form_window{};
+    runtime::ComponentId form_component;
+    std::function<void()> form_connection_cleanup;
     std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> form_geometry;
     std::thread::id owner{std::this_thread::get_id()};
     bool binding{};
@@ -594,6 +601,7 @@ void SelectionComponentHost::attach_interaction(SelectionState& state) {
 }
 
 void SelectionComponentHost::release_selection(SelectionState& state) {
+    std::function<void()> form_cleanup;
     if (state.radio && state.group.valid()) {
         if (auto* group = services_->components().state<RadioGroupState>(state.group); group && !group->reconciling) {
             std::erase(group->options, state.component);
@@ -614,14 +622,20 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
             }
         }
     }
-    if (state.ref) {
+    if (state.ref && state.ref->form_component == state.component) {
+        form_cleanup = std::exchange(state.ref->form_connection_cleanup, {});
+        state.ref->form_window = nullptr;
+        state.ref->form_component = {};
         state.ref->binding = false;
         state.ref->focus = {};
         state.ref->form_focus = {};
         state.ref->form_geometry = {};
         state.ref->blur = {};
     }
-    if (state.checkbox_ref) {
+    if (state.checkbox_ref && state.checkbox_ref->form_component == state.component) {
+        form_cleanup = std::exchange(state.checkbox_ref->form_connection_cleanup, {});
+        state.checkbox_ref->form_window = nullptr;
+        state.checkbox_ref->form_component = {};
         state.checkbox_ref->binding = false;
         state.checkbox_ref->focus = {};
         state.checkbox_ref->form_focus = {};
@@ -656,6 +670,9 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
     static_cast<void>(services_->interactions().remove(state.interaction));
     static_cast<void>(services_->surfaces().destroy(state.surface));
     static_cast<void>(services_->layout().remove_layout(state.node));
+    if (form_cleanup) {
+        form_cleanup();
+    }
     if (focus_error) {
         std::rethrow_exception(focus_error);
     }
@@ -2231,6 +2248,8 @@ struct SwitchPropsAccess {
         });
         if (reference) {
             reference->binding = true;
+            reference->form_window = host.services_;
+            reference->form_component = component;
             ++reference->generation;
         }
         host.update_layout(state);
@@ -2351,7 +2370,9 @@ struct SwitchPropsAccess {
                 auto result = context.geometry(*host.services_, component);
                 const auto* state = host.find(component);
                 if (result) {
-                    result->eligible &= state && !state->disabled && !state->loading;
+                    result->eligible &= state && !state->disabled && !state->loading &&
+                                        (host.services_->interactions().find(state->interaction) &&
+                                         host.services_->interactions().find(state->interaction)->eligible);
                 }
                 return result;
             };
@@ -2442,6 +2463,8 @@ struct CheckboxPropsAccess {
         });
         if (reference) {
             reference->binding = true;
+            reference->form_window = host.services_;
+            reference->form_component = component;
             ++reference->generation;
         }
         host.update_layout(state);
@@ -2525,7 +2548,9 @@ struct CheckboxPropsAccess {
                 auto result = context.geometry(*host.services_, component);
                 const auto* state = host.find(component);
                 if (result) {
-                    result->eligible &= state && !state->disabled;
+                    result->eligible &= state && !state->disabled &&
+                                        (host.services_->interactions().find(state->interaction) &&
+                                         host.services_->interactions().find(state->interaction)->eligible);
                 }
                 return result;
             };
@@ -3205,6 +3230,56 @@ void SelectionComponentHost::apply_radio_options(runtime::ComponentId id, std::v
     services_->dirty().invalidate(group->node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                    runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     services_->mark_scene_structure_dirty();
+}
+
+namespace {
+template <typename State>
+FormNativeControl
+capture_boolean_native(const std::shared_ptr<State>& reference, std::function<bool(const FormFocusContext&)> focus,
+                       std::function<std::optional<FormControlGeometry>(const FormFocusContext&)> geometry) {
+    if (!reference || !reference->binding || !reference->form_window) {
+        return {};
+    }
+    reference->ensure_owner();
+    const auto generation = reference->generation;
+    const auto component = reference->form_component;
+    const auto window = reference->form_window;
+    const auto weak = std::weak_ptr{reference};
+    const auto current = [weak, generation, component, window] {
+        const auto ref = weak.lock();
+        return ref && ref->owner == std::this_thread::get_id() && ref->binding && ref->generation == generation &&
+               ref->form_component == component && ref->form_window == window;
+    };
+    return {window,
+            component,
+            generation,
+            false,
+            current,
+            std::move(geometry),
+            std::move(focus),
+            {},
+            [weak, current](std::function<void()> cleanup) {
+                if (!current()) {
+                    return false;
+                }
+                const auto ref = weak.lock();
+                if (ref->form_connection_cleanup) {
+                    return false;
+                }
+                ref->form_connection_cleanup = std::move(cleanup);
+                return true;
+            }};
+}
+} // namespace
+
+FormNativeControl capture_form_native_checkbox(const CheckboxRef& reference) {
+    return capture_boolean_native(reference.state_, capture_form_checkbox(reference),
+                                  capture_form_checkbox_geometry(reference));
+}
+
+FormNativeControl capture_form_native_switch(const SwitchRef& reference) {
+    auto target = capture_form_switch(reference);
+    return capture_boolean_native(reference.state_, std::move(target.first), std::move(target.second));
 }
 
 std::function<bool(const FormFocusContext&)> capture_form_checkbox(const CheckboxRef& reference) {

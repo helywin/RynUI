@@ -1,5 +1,6 @@
 #include "component/form_component.hpp"
 #include "component/form_focus_context.hpp"
+#include "component/form_native_control.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/responsive_layout.hpp"
 #include "component/input_component.hpp"
@@ -12,8 +13,31 @@
 #include <algorithm>
 #include <array>
 #include <stdexcept>
+#include <thread>
+#include <utility>
 
 namespace ryn::detail {
+struct FormHostLifetime final {
+    WindowComponentServices* window{};
+    std::thread::id owner{std::this_thread::get_id()};
+    runtime::Size viewport;
+    runtime::Rect clip;
+};
+
+struct FormControlConnection final {
+    std::weak_ptr<FormHostLifetime> lifetime;
+    std::weak_ptr<FormModel> model;
+    std::weak_ptr<FormFieldState> field;
+    runtime::ComponentId form;
+    runtime::ComponentId item;
+    runtime::ComponentId region;
+    std::uint64_t registration_generation{};
+    std::uint64_t epoch{};
+    FormNativeControl native;
+    bool connected{};
+    bool retired{};
+};
+
 struct FormListRow final {
     std::uint64_t key{};
     Signal<std::size_t> index{0};
@@ -74,6 +98,10 @@ struct FormItemState final {
     runtime::ComponentId form;
     std::shared_ptr<FormFieldState> field;
     std::uint64_t registration_generation{};
+    std::uint64_t binding_epoch{};
+    std::shared_ptr<FormControlConnection> connection;
+    std::weak_ptr<FormHostLifetime> lifetime;
+    runtime::ComponentId native_enter_claimant;
     bool control_claimed{};
     bool native_enter_claimed{};
     bool no_style{};
@@ -120,8 +148,146 @@ struct FormItemState final {
     std::function<void()> reset;
 };
 
-bool form_scope_interactive(WindowComponentServices& services, runtime::ComponentId id,
+bool current_lifetime(const std::shared_ptr<FormHostLifetime>& life) {
+    return life && life->window && life->owner == std::this_thread::get_id();
+}
+
+bool descendant(WindowComponentServices& services, runtime::ComponentId child, runtime::ComponentId parent) {
+    for (auto id = std::optional{child}; id; id = services.components().parent(*id)) {
+        if (!services.components().contains(*id)) {
+            return false;
+        }
+        if (*id == parent) {
+            return true;
+        }
+    }
+    return false;
+}
+
+FormItemState* registered_item(const std::shared_ptr<FormHostLifetime>& life, runtime::ComponentId id) {
+    if (!current_lifetime(life)) {
+        return nullptr;
+    }
+    auto& components = life->window->components();
+    auto* item = components.state<FormItemState>(id);
+    if (!item || !components.scope(id).active() || !item->registration_generation || !item->field ||
+        !item->field->registered || item->field->generation != item->registration_generation) {
+        return nullptr;
+    }
+    const auto* form = components.state<FormState>(item->form);
+    const auto model = item->field->owner.lock();
+    if (!form || !components.scope(item->form).active() || !model || !model->alive || form->model != model ||
+        !descendant(*life->window, id, item->form)) {
+        return nullptr;
+    }
+    const bool current = std::ranges::any_of(model->fields(), [&](const auto& registration) {
+        return registration.field == item->field && registration.generation == item->registration_generation;
+    });
+    return current ? item : nullptr;
+}
+
+bool item_receives(const std::shared_ptr<FormHostLifetime>& life, runtime::ComponentId id) {
+    const auto* item = registered_item(life, id);
+    return item && !item->hidden && life->window->focus().state().window_active &&
+           life->window->interactions().component_active(id) &&
+           life->window->interactions().subtree_intersects_input_domain(id);
+}
+
+bool connection_current(const std::shared_ptr<FormControlConnection>& connection) {
+    if (!connection || connection->retired) {
+        return false;
+    }
+    const auto life = connection->lifetime.lock();
+    const auto* item = registered_item(life, connection->item);
+    const auto field = connection->field.lock();
+    return item && field && item->form == connection->form && item->field == field &&
+           field->owner.lock() == connection->model.lock() &&
+           item->registration_generation == connection->registration_generation &&
+           item->binding_epoch == connection->epoch && item->regions.control == connection->region &&
+           item->connection == connection && field->connection.lock() == connection;
+}
+
+bool native_admitted(const std::shared_ptr<FormControlConnection>& connection) {
+    if (!connection_current(connection) || !connection->connected || !connection->native.current ||
+        !connection->native.current()) {
+        return false;
+    }
+    const auto life = connection->lifetime.lock();
+    const auto* item = registered_item(life, connection->item);
+    const auto field = connection->field.lock();
+    const auto& native = connection->native;
+    if (!item || item->hidden || !field || form_field_disabled(field) || form_field_read_only(field) ||
+        native.window != life->window || !descendant(*life->window, native.component, connection->region) ||
+        !life->window->interactions().subtree_intersects_input_domain(native.component)) {
+        return false;
+    }
+    for (auto id = std::optional{native.component}; id; id = life->window->components().parent(*id)) {
+        if (life->window->components().state<FormItemState>(*id)) {
+            if (*id != connection->item) {
+                return false;
+            }
+            break;
+        }
+    }
+    const auto geometry =
+        native.geometry ? native.geometry(FormFocusContext{*life->window, life->viewport, life->clip}) : std::nullopt;
+    if (!geometry || !geometry->eligible) {
+        return false;
+    }
+    const auto& bounds = geometry->bounds;
+    const auto& clip = geometry->clip;
+    return bounds.width > 0 && bounds.height > 0 && clip.width > 0 && clip.height > 0 &&
+           bounds.x < clip.x + clip.width && bounds.x + bounds.width > clip.x && bounds.y < clip.y + clip.height &&
+           bounds.y + bounds.height > clip.y;
+}
+
+bool item_maintainable(const std::shared_ptr<FormHostLifetime>& life, runtime::ComponentId id) {
+    const auto* item = registered_item(life, id);
+    return item && (item_receives(life, id) || native_admitted(item->connection));
+}
+
+void retire_connection(std::shared_ptr<FormControlConnection> connection) noexcept {
+    if (!connection || std::exchange(connection->retired, true)) {
+        return;
+    }
+    connection->connected = false;
+    const auto life = connection->lifetime.lock();
+    const auto field = connection->field.lock();
+    const auto model = connection->model.lock();
+    if (!current_lifetime(life)) {
+        return;
+    }
+    if (auto* item = life->window->components().state<FormItemState>(connection->item);
+        item && item->connection == connection && item->binding_epoch == connection->epoch) {
+        item->connection.reset();
+        item->control_claimed = false;
+        if (!connection->native.component.valid() || item->native_enter_claimant == connection->native.component) {
+            item->native_enter_claimant = {};
+            item->native_enter_claimed = false;
+        }
+    }
+    if (field && field->connection.lock() == connection) {
+        field->connection.reset();
+        field->due.reset();
+        field->timeout.reset();
+    }
+    if (model && model->alive) {
+        try {
+            model->cancel_validation();
+        } catch (...) {
+            // Scope cleanup is noexcept. Use the same ComponentHost retirement
+            // transaction; never reconcile WindowServices from inside retirement.
+            static_cast<void>(life->window->components().destroy(connection->form));
+        }
+    }
+}
+
+bool form_scope_interactive(const std::shared_ptr<FormHostLifetime>& life, runtime::ComponentId id,
                             const std::shared_ptr<FormModel>& model, std::span<const runtime::ComponentId> items) {
+    if (!current_lifetime(life)) {
+        return false;
+    }
+    auto& services = *life->window;
     auto& components = services.components();
     const auto* form = components.state<FormState>(id);
     if (!model || !model->alive || !form || form->model != model || !components.scope(id).active() ||
@@ -131,29 +297,9 @@ bool form_scope_interactive(WindowComponentServices& services, runtime::Componen
     if (services.interactions().component_active(id)) {
         return true;
     }
-    const auto descendant = [&](runtime::ComponentId child) {
-        for (auto current = std::optional{child}; current; current = components.parent(*current)) {
-            if (*current == id) {
-                return true;
-            }
-        }
-        return false;
-    };
-    // Keep a Form's commands available through its exact active Item registrations.
-    // An owned restriction or a Modal companion can admit the Item while its
-    // logical Form ancestor remains outside the complete input domain.
     for (auto item_id : items) {
-        const auto* item = components.state<FormItemState>(item_id);
-        if (!item || item->form != id || item->hidden || !item->registration_generation || !item->field ||
-            !item->field->registered || item->field->owner.lock() != model ||
-            item->field->generation != item->registration_generation || !descendant(item_id) ||
-            !services.interactions().component_active(item_id) ||
-            !services.interactions().subtree_intersects_input_domain(item_id)) {
-            continue;
-        }
-        if (std::ranges::any_of(model->fields(), [&](const auto& registration) {
-                return registration.field == item->field && registration.generation == item->registration_generation;
-            })) {
+        const auto* item = registered_item(life, item_id);
+        if (item && item->form == id && item->field->owner.lock() == model && item_maintainable(life, item_id)) {
             return true;
         }
     }
@@ -206,11 +352,14 @@ runtime::SemanticForeground foreground(Color value) {
 }
 } // namespace
 
-FormComponentHost::FormComponentHost(WindowComponentServices& services) : services_(&services) {
+FormComponentHost::FormComponentHost(WindowComponentServices& services)
+    : services_(&services), lifetime_(std::make_shared<FormHostLifetime>()) {
+    lifetime_->window = &services;
     services.attach(*this);
 }
 
 FormComponentHost::~FormComponentHost() {
+    lifetime_->window = nullptr;
     services_->detach(*this);
 }
 
@@ -259,7 +408,7 @@ void FormComponentHost::mount(const FormProps& props, const FormContent& content
     runtime::connect_layout_style(build.scope(id), props.layout_, node, services.nodes(), services.dirty());
     services.layout().set_layout(node, layout::FlexLayout{layout::FlexDirection::vertical, 0, {}, true});
     model->eligible = [this, id, weak = std::weak_ptr{model}] {
-        return form_scope_interactive(*services_, id, weak.lock(), items_);
+        return form_scope_interactive(lifetime_, id, weak.lock(), items_);
     };
     model->preserve = props.preserve_;
     model->clear_on_destroy = props.clear_on_destroy_;
@@ -420,6 +569,7 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
     state.custom_help = props.help_slot_.has_value();
     state.custom_extra = props.extra_slot_.has_value();
     state.form = parent->id;
+    state.lifetime = lifetime_;
     state.presentation = resolve_presentation();
     state.field = props.field_ ? props.field_ : make_form_field(String{});
     state.label.set(read_prop(props.label_));
@@ -461,26 +611,31 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
             field->value.set(*initial);
         }
     }
-    const auto generation = props.field_
-                                ? model->add(
-                                      path, field, [this, id] { return interactive(id); },
-                                      [this, id] {
-                                          const auto* item = services_->components().state<FormItemState>(id);
-                                          if (!item || !interactive(id)) {
-                                              return false;
-                                          }
-                                          const auto callback = item->focus;
-                                          return callback && callback(FormFocusContext{*services_, viewport_, clip_});
-                                      },
-                                      [this, id] {
-                                          if (const auto* item = services_->components().state<FormItemState>(id)) {
-                                              const auto callback = item->reset;
-                                              if (callback) {
-                                                  callback();
-                                              }
-                                          }
-                                      })
-                                : 0;
+    const auto generation =
+        props.field_
+            ? model->add(
+                  path, field, [weak = std::weak_ptr{lifetime_}, id] { return item_maintainable(weak.lock(), id); },
+                  [weak = std::weak_ptr{lifetime_}, id] {
+                      const auto life = weak.lock();
+                      const auto* item = registered_item(life, id);
+                      if (!item || !item_maintainable(life, id)) {
+                          return false;
+                      }
+                      const auto connection = item->connection;
+                      const auto callback = item_receives(life, id) ? item->focus : connection->native.focus;
+                      const bool focused =
+                          callback && callback(FormFocusContext{*life->window, life->viewport, life->clip});
+                      return focused && item_maintainable(life, id) && (!connection || connection_current(connection));
+                  },
+                  [this, id] {
+                      if (const auto* item = services_->components().state<FormItemState>(id)) {
+                          const auto callback = item->reset;
+                          if (callback) {
+                              callback();
+                          }
+                      }
+                  })
+            : 0;
     auto* registered_item = services_->components().state<FormItemState>(id);
     if (!registered_item) {
         if (generation) {
@@ -489,8 +644,16 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
         return;
     }
     registered_item->registration_generation = generation;
+    if (generation) {
+        field->direct_eligible = [weak = std::weak_ptr{lifetime_}, id] {
+            return item_receives(weak.lock(), id);
+        };
+    }
     auto& services = *services_;
-    build.on_resource_cleanup(id, [model, field, generation, &services, node = state.node] {
+    build.on_resource_cleanup(id, [model, field, generation, &services, id, node = state.node] {
+        if (const auto* item = services.components().state<FormItemState>(id)) {
+            retire_connection(item->connection);
+        }
         if (generation) {
             model->remove(field, generation);
         } else {
@@ -711,7 +874,7 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
                      if (previous != value) {
                          previous = std::move(value);
                          if (const auto owner = weak.lock()) {
-                             owner->value_changed(field);
+                             owner->value_changed(field, &previous);
                          }
                      }
                  });
@@ -1016,6 +1179,8 @@ FormItemSnapshot FormComponentHost::snapshot(runtime::ComponentId id) const {
 }
 
 void FormComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
+    lifetime_->viewport = viewport;
+    lifetime_->clip = clip;
     viewport_ = viewport;
     clip_ = clip;
     const auto forms = forms_;
@@ -1479,12 +1644,140 @@ namespace ryn::detail {
 std::shared_ptr<FormFieldState> active_form_control(std::size_t type) {
     auto& build = runtime::require_component_build_context();
     auto* item = build.nearest_state<FormItemState>();
-    if (!item || !item->field->registered || item->control_claimed || item->field->initial.index() != type) {
+    if (!item || !item->field->registered || item->control_claimed || item->field->initial.index() != type ||
+        !build.has_ancestor(item->regions.control) ||
+        (private_editor_host == &build.host() && private_editor_item == item->id)) {
         throw std::invalid_argument(
             "FormControl needs one compatible registered FormItem field and an unclaimed control slot");
     }
+    if (item->binding_epoch == std::numeric_limits<std::uint64_t>::max()) {
+        throw std::length_error("Form native connection epoch exhausted");
+    }
+    auto connection = std::make_shared<FormControlConnection>();
+    connection->lifetime = item->lifetime;
+    connection->model = item->field->owner;
+    connection->field = item->field;
+    connection->form = item->form;
+    connection->item = item->id;
+    connection->region = item->regions.control;
+    connection->registration_generation = item->registration_generation;
+    connection->epoch = ++item->binding_epoch;
+    item->connection = connection;
+    item->field->connection = connection;
     item->control_claimed = true;
     return item->field;
+}
+
+std::shared_ptr<FormControlConnection> capture_form_control_connection(const std::shared_ptr<FormFieldState>& field) {
+    const auto connection = field ? field->connection.lock() : nullptr;
+    if (!connection_current(connection) || connection->field.lock() != field) {
+        throw std::invalid_argument("Form binding reservation was superseded");
+    }
+    return connection;
+}
+
+bool form_control_event_admitted(const std::shared_ptr<FormFieldState>& field,
+                                 const std::shared_ptr<FormControlConnection>& connection) {
+    if (!connection) {
+        return !field->direct_eligible || field->direct_eligible();
+    }
+    if (connection->field.lock() != field || !connection_current(connection)) {
+        return false;
+    }
+    if (connection->connected && (!connection->native.current || !connection->native.current())) {
+        return false;
+    }
+    return item_receives(connection->lifetime.lock(), connection->item) || native_admitted(connection);
+}
+
+FormControlMount::FormControlMount(std::shared_ptr<FormControlConnection> connection, std::function<void()> attach)
+    : connection_(std::move(connection)), attach_(std::move(attach)) {}
+
+FormControlMount::~FormControlMount() {
+    if (!complete_ && connection_ && !connection_->connected) {
+        retire_connection(connection_);
+    }
+}
+
+FormControlMount::operator bool() const noexcept {
+    return bool(attach_);
+}
+
+void FormControlMount::operator()() const {
+    attach_();
+    complete_ = true;
+}
+
+namespace {
+void connect_native_control(const std::shared_ptr<FormFieldState>& field,
+                            const std::shared_ptr<FormControlConnection>& connection, FormNativeControl native) {
+    auto& build = runtime::require_component_build_context();
+    const auto life = connection ? connection->lifetime.lock() : nullptr;
+    if (!connection_current(connection) || connection->field.lock() != field || !current_lifetime(life) ||
+        &build.host() != &life->window->components() || native.window != life->window || !native.component.valid() ||
+        !native.current || !native.current() || !life->window->components().scope(native.component).active() ||
+        !descendant(*life->window, native.component, connection->region)) {
+        throw std::invalid_argument("Form native receiver must match its exact registration and window");
+    }
+    for (auto id = std::optional{native.component}; id; id = life->window->components().parent(*id)) {
+        if (life->window->components().state<FormItemState>(*id)) {
+            if (*id != connection->item) {
+                throw std::invalid_argument("Form native receiver crossed a nested Item");
+            }
+            break;
+        }
+    }
+    if (connection->connected) {
+        if (connection->native.component != native.component ||
+            connection->native.ref_generation != native.ref_generation) {
+            throw std::invalid_argument("A Form binding has one exact native connection");
+        }
+        return;
+    }
+    const auto cleanup = [weak = std::weak_ptr{connection}] {
+        retire_connection(weak.lock());
+    };
+    if (!native.connect_cleanup || !native.connect_cleanup(cleanup)) {
+        throw std::invalid_argument("Form native ref already has a connection");
+    }
+    build.scope(native.component).on_cleanup(cleanup);
+    connection->native = std::move(native);
+    connection->connected = true;
+    auto* item = registered_item(life, connection->item);
+    item->focus = connection->native.focus;
+    if (connection->native.reset) {
+        item->reset = connection->native.reset;
+    }
+    item->geometry = connection->native.geometry;
+    field->due.reset();
+    field->timeout.reset();
+    if (const auto model = field->owner.lock()) {
+        model->cancel_validation();
+    }
+    if (!connection_current(connection)) {
+        return;
+    }
+    item = registered_item(life, connection->item);
+    if (connection->native.enter_capable) {
+        item->native_enter_claimed = true;
+        item->native_enter_claimant = connection->native.component;
+    }
+}
+} // namespace
+
+void attach_form_control(const std::shared_ptr<FormFieldState>& field,
+                         const std::shared_ptr<FormControlConnection>& connection, const InputRef& ref) {
+    connect_native_control(field, connection, capture_form_native_input(ref));
+}
+
+void attach_form_control(const std::shared_ptr<FormFieldState>& field,
+                         const std::shared_ptr<FormControlConnection>& connection, const CheckboxRef& ref) {
+    connect_native_control(field, connection, capture_form_native_checkbox(ref));
+}
+
+void attach_form_control(const std::shared_ptr<FormFieldState>& field,
+                         const std::shared_ptr<FormControlConnection>& connection, const SwitchRef& ref) {
+    connect_native_control(field, connection, capture_form_native_switch(ref));
 }
 
 void attach_form_control(const std::shared_ptr<FormFieldState>& field, const InputRef& ref) {
@@ -1553,26 +1846,45 @@ FormPrivateEditorScope::~FormPrivateEditorScope() {
     private_editor_host = previous_host_;
 }
 
-std::function<void()> form_enter_handler() {
+std::function<void()> form_enter_handler(runtime::ComponentId caller) {
     auto& build = runtime::require_component_build_context();
     auto* item = build.nearest_state<FormItemState>(true);
     auto* form = build.nearest_state<FormState>();
     if (!item || !form || item->form != form->id ||
-        (private_editor_host == &build.host() && private_editor_item == item->id) || item->native_enter_claimed ||
-        !build.has_ancestor(item->regions.control)) {
+        (private_editor_host == &build.host() && private_editor_item == item->id) ||
+        !build.has_ancestor(item->regions.control) || (item->native_enter_claimed && !item->connection)) {
         return {};
     }
-    item->native_enter_claimed = true;
-    const auto model = form->model;
-    return [weak = std::weak_ptr{model}, field = std::weak_ptr{item->field}, generation = item->field->generation] {
-        const auto model = weak.lock();
+    if (item->native_enter_claimed && item->connection && item->connection->connected &&
+        item->connection->native.component != caller) {
+        return {};
+    }
+    if (!item->native_enter_claimed) {
+        item->native_enter_claimed = true;
+        item->native_enter_claimant = caller;
+    }
+    return [weak = item->lifetime, id = item->id, caller, field = std::weak_ptr{item->field},
+            generation = item->registration_generation, connection = item->connection] {
+        const auto life = weak.lock();
+        const auto* item = registered_item(life, id);
         const auto current = field.lock();
-        if (model && current && current->registered && current->generation == generation &&
-            !form_field_disabled(current) && !form_field_read_only(current) &&
-            (!current->eligible || current->eligible())) {
+        if (!item || !current || item->field != current || current->generation != generation ||
+            item->native_enter_claimant != caller || form_field_disabled(current) || form_field_read_only(current) ||
+            !form_control_event_admitted(current, connection)) {
+            return;
+        }
+        if (!item_receives(life, id) && (!caller.valid() || !connection || connection->native.component != caller)) {
+            return;
+        }
+        const auto model = current->owner.lock();
+        if (model && (!current->eligible || current->eligible())) {
             static_cast<void>(model->submit());
         }
     };
+}
+
+std::function<void()> form_enter_handler() {
+    return form_enter_handler(runtime::ComponentId{});
 }
 
 std::optional<FormControlTarget> FormComponentHost::field_control(runtime::ComponentId form_id, FormNamePath path) {
@@ -1586,48 +1898,53 @@ std::optional<FormControlTarget> FormComponentHost::field_control(runtime::Compo
         return std::nullopt;
     }
     for (const auto id : items_) {
-        const auto* item = services_->components().state<FormItemState>(id);
+        const auto* item = registered_item(lifetime_, id);
         if (!item || item->form != form_id || item->field != found->field) {
             continue;
         }
-        const auto current = [this, weak = std::weak_ptr{model}, id, generation = found->generation,
-                              owner = std::this_thread::get_id()]() -> FormItemState* {
-            if (std::this_thread::get_id() != owner) {
-                return nullptr;
-            }
-            const auto model = weak.lock();
-            if (!model || !model->alive) {
-                return nullptr;
-            }
-            auto* item = services_->components().state<FormItemState>(id);
-            return item && item->field->registered && item->field->generation == generation &&
-                           item->field->owner.lock() == model
+        const auto current = [weak = std::weak_ptr{lifetime_}, model = std::weak_ptr{model}, id,
+                              generation = found->generation, epoch = item->binding_epoch]() -> FormItemState* {
+            const auto life = weak.lock();
+            auto* item = registered_item(life, id);
+            return item && item->binding_epoch == epoch && item->registration_generation == generation &&
+                           item->field->owner.lock() == model.lock()
                        ? item
                        : nullptr;
         };
-        return FormControlTarget{[this, current] {
-                                     const auto* item = current();
-                                     if (!item || !interactive(item->id) || form_field_disabled(item->field) ||
-                                         form_field_read_only(item->field)) {
-                                         return false;
-                                     }
-                                     const auto callback = item->focus;
-                                     return callback && callback(FormFocusContext{*services_, viewport_, clip_});
-                                 },
-                                 [current] {
-                                     if (const auto* item = current()) {
-                                         const auto callback = item->reset;
-                                         if (callback) {
-                                             callback();
-                                         }
-                                     }
-                                 },
-                                 [this, current] {
-                                     const auto* item = current();
-                                     const auto callback = item ? item->geometry : nullptr;
-                                     return callback ? callback(FormFocusContext{*services_, viewport_, clip_})
-                                                     : std::nullopt;
-                                 }};
+        return FormControlTarget{
+            [weak = std::weak_ptr{lifetime_}, current] {
+                const auto life = weak.lock();
+                const auto* item = current();
+                if (!item || !item_maintainable(life, item->id) || form_field_disabled(item->field) ||
+                    form_field_read_only(item->field)) {
+                    return false;
+                }
+                const auto callback = item_receives(life, item->id) ? item->focus : item->connection->native.focus;
+                const bool focused = callback && callback(FormFocusContext{*life->window, life->viewport, life->clip});
+                item = current();
+                return focused && item && item_maintainable(life, item->id);
+            },
+            [current] {
+                if (const auto* item = current()) {
+                    const auto callback = item->reset;
+                    if (callback) {
+                        callback();
+                    }
+                }
+            },
+            [weak = std::weak_ptr{lifetime_}, current]() -> std::optional<FormControlGeometry> {
+                const auto life = weak.lock();
+                const auto* item = current();
+                if (!item || !item_maintainable(life, item->id)) {
+                    return std::nullopt;
+                }
+                const auto callback =
+                    item_receives(life, item->id) ? item->geometry : item->connection->native.geometry;
+                const auto result =
+                    callback ? callback(FormFocusContext{*life->window, life->viewport, life->clip}) : std::nullopt;
+                item = current();
+                return item && item_maintainable(life, item->id) ? result : std::nullopt;
+            }};
     }
     return std::nullopt;
 }
@@ -1639,75 +1956,77 @@ bool FormComponentHost::scroll_field(runtime::ComponentId form_id, FormNamePath 
     }
     runtime::ComponentId item_id;
     for (const auto id : items_) {
-        const auto* item = services_->components().state<FormItemState>(id);
-        if (!item || item->form != form_id || !item->field->registered) {
+        const auto* item = registered_item(lifetime_, id);
+        if (!item || item->form != form_id) {
             continue;
         }
-        const auto& fields = form->model->fields();
-        const auto found = std::ranges::find(fields, item->field, &FormModel::Registration::field);
-        if (found != fields.end() && found->path == path) {
+        const auto found = std::ranges::find(form->model->fields(), item->field, &FormModel::Registration::field);
+        if (found != form->model->fields().end() && found->path == path) {
             item_id = id;
             break;
         }
     }
-    const auto* item = services_->components().state<FormItemState>(item_id);
-    if (!item || item->hidden || form_field_disabled(item->field) || form_field_read_only(item->field) ||
-        !interactive(item_id) || !item->geometry) {
+    const auto* item = registered_item(lifetime_, item_id);
+    if (!item || !item_maintainable(lifetime_, item_id) || form_field_disabled(item->field) ||
+        form_field_read_only(item->field)) {
         return false;
     }
-    const auto geometry_callback = item->geometry;
-    const auto geometry = geometry_callback(FormFocusContext{*services_, viewport_, clip_});
+    const auto field_generation = item->registration_generation;
+    const auto epoch = item->binding_epoch;
+    const auto model = form->model;
+    const auto revision = model->revision();
+    const auto current = [weak = std::weak_ptr{lifetime_}, model = std::weak_ptr{model}, item_id, field_generation,
+                          epoch, revision]() -> FormItemState* {
+        const auto life = weak.lock();
+        const auto owner = model.lock();
+        auto* item = registered_item(life, item_id);
+        return owner && owner->available() && owner->revision() == revision && item &&
+                       item->registration_generation == field_generation && item->binding_epoch == epoch &&
+                       item_maintainable(life, item_id) && !form_field_disabled(item->field) &&
+                       !form_field_read_only(item->field)
+                   ? item
+                   : nullptr;
+    };
+    const auto geometry_callback =
+        item_receives(lifetime_, item_id) ? item->geometry : item->connection->native.geometry;
+    const auto geometry =
+        geometry_callback ? geometry_callback(FormFocusContext{*services_, viewport_, clip_}) : std::nullopt;
+    item = current();
     form = services_->components().state<FormState>(form_id);
-    item = services_->components().state<FormItemState>(item_id);
-    if (!form || !item || !form->model->available() || !item->field->registered) {
-        return false;
-    }
-    if (!geometry || !geometry->eligible || geometry->bounds.width <= 0 || geometry->bounds.height <= 0) {
+    if (!form || !item || !geometry || !geometry->eligible || geometry->bounds.width <= 0 ||
+        geometry->bounds.height <= 0) {
         return false;
     }
     const auto generation = ++form->scroll_generation;
-    const auto field_generation = item->field->generation;
-    const auto model = form->model;
-    const auto revision = model->revision();
     const auto callback = form->scroll;
-    const auto owner = std::this_thread::get_id();
     const auto delivered = std::make_shared<std::atomic_bool>(false);
-    callback({path, *geometry}, [this, weak = std::weak_ptr{model}, form_id, item_id, options, generation,
-                                 field_generation, owner, revision, delivered](bool revealed) {
-        if (std::this_thread::get_id() != owner || delivered->exchange(true)) {
+    callback({path, *geometry}, [weak = std::weak_ptr{lifetime_}, form_id, options, generation, current,
+                                 delivered](bool revealed) {
+        const auto life = weak.lock();
+        if (!current_lifetime(life) || delivered->exchange(true) || !revealed || !current()) {
             return;
         }
-        const auto model = weak.lock();
-        if (!revealed || !model || !model->available() || model->revision() != revision) {
+        auto* form = life->window->components().state<FormState>(form_id);
+        if (!form || form->scroll_generation != generation) {
             return;
         }
-        const auto* form = services_->components().state<FormState>(form_id);
-        const auto* item = services_->components().state<FormItemState>(item_id);
-        if (!form || form->scroll_generation != generation || !item || item->field->generation != field_generation ||
-            item->hidden || !interactive(item_id) || form_field_disabled(item->field) ||
-            form_field_read_only(item->field)) {
-            return;
-        }
-        if (options.focus && item->focus) {
-            auto* mutable_form = services_->components().state<FormState>(form_id);
-            mutable_form->pending_scroll_focus = [this, weak, form_id, item_id, generation, field_generation,
-                                                  revision] {
-                const auto model = weak.lock();
-                if (!model || !model->available() || model->revision() != revision) {
+        if (options.focus) {
+            form->pending_scroll_focus = [weak, form_id, generation, current] {
+                const auto life = weak.lock();
+                const auto* item = current();
+                if (!current_lifetime(life) || !item) {
                     return;
                 }
-                const auto* form = services_->components().state<FormState>(form_id);
-                const auto* item = services_->components().state<FormItemState>(item_id);
-                if (form && form->scroll_generation == generation && item && item->field->registered &&
-                    item->field->generation == field_generation && !item->hidden && !form_field_disabled(item->field) &&
-                    !form_field_read_only(item->field) && interactive(item_id)) {
-                    const auto focus = item->focus;
-                    if (focus) {
-                        static_cast<void>(focus(FormFocusContext{*services_, viewport_, clip_}));
-                    }
+                const auto* form = life->window->components().state<FormState>(form_id);
+                if (!form || form->scroll_generation != generation) {
+                    return;
+                }
+                const auto focus = item_receives(life, item->id) ? item->focus : item->connection->native.focus;
+                if (focus) {
+                    static_cast<void>(focus(FormFocusContext{*life->window, life->viewport, life->clip}));
                 }
             };
-            services_->request_frame();
+            life->window->request_frame();
         }
     });
     return model->alive;
@@ -1911,7 +2230,7 @@ template <class Props, class Binding> void automatic_input(Props& props, const B
 }
 } // namespace
 
-std::function<void()> FormAutoControlAccess::bind(InputProps& props) {
+FormControlMount FormAutoControlAccess::bind(InputProps& props) {
     if (const auto context = automatic_context()) {
         const auto disabled = props.common_.disabled_;
         const auto readonly = props.common_.read_only_;
@@ -1955,12 +2274,10 @@ std::function<void()> FormAutoControlAccess::bind(InputProps& props) {
         .readOnly(ryn::bind([readonly, gate = binding.readOnly()] {
             return FormPropBridge::read(readonly) || FormPropBridge::read(gate);
         }));
-    return [binding, ref] {
-        binding.control(ref);
-    };
+    return FormControlMount{binding.connection_, [binding, ref] { binding.control(ref); }};
 }
 
-std::function<void()> FormAutoControlAccess::bind(TextAreaProps& props) {
+FormControlMount FormAutoControlAccess::bind(TextAreaProps& props) {
     if (const auto context = automatic_context()) {
         const auto disabled = props.common_.disabled_;
         const auto readonly = props.common_.read_only_;
@@ -2004,12 +2321,10 @@ std::function<void()> FormAutoControlAccess::bind(TextAreaProps& props) {
         .readOnly(ryn::bind([local_readonly, gate = binding.readOnly()] {
             return FormPropBridge::read(local_readonly) || FormPropBridge::read(gate);
         }));
-    return [binding, ref] {
-        binding.control(ref);
-    };
+    return FormControlMount{binding.connection_, [binding, ref] { binding.control(ref); }};
 }
 
-std::function<void()> FormAutoControlAccess::bind(InputNumberProps& props) {
+FormControlMount FormAutoControlAccess::bind(InputNumberProps& props) {
     if (const auto context = automatic_context()) {
         const auto disabled = props.input_.common_.disabled_;
         const auto readonly = props.input_.common_.read_only_;
@@ -2057,9 +2372,7 @@ std::function<void()> FormAutoControlAccess::bind(InputNumberProps& props) {
             .readOnly(ryn::bind([local_readonly, gate = binding.readOnly()] {
                 return FormPropBridge::read(local_readonly) || FormPropBridge::read(gate);
             }));
-        return [binding, ref] {
-            binding.control(ref);
-        };
+        return FormControlMount{binding.connection_, [binding, ref] { binding.control(ref); }};
     }
     FormControlBinding<InputNumberValue> binding;
     props.value(binding.value())
@@ -2079,12 +2392,10 @@ std::function<void()> FormAutoControlAccess::bind(InputNumberProps& props) {
         .readOnly(ryn::bind([local_readonly, gate = binding.readOnly()] {
             return FormPropBridge::read(local_readonly) || FormPropBridge::read(gate);
         }));
-    return [binding, ref] {
-        binding.control(ref);
-    };
+    return FormControlMount{binding.connection_, [binding, ref] { binding.control(ref); }};
 }
 
-std::function<void()> FormAutoControlAccess::bind(SelectProps& props) {
+FormControlMount FormAutoControlAccess::bind(SelectProps& props) {
     if (const auto context = automatic_context()) {
         const auto disabled = props.disabled_;
         props.status(context->status()).disabled(ryn::bind([disabled, gate = context->uneditable()] {
@@ -2126,9 +2437,7 @@ std::function<void()> FormAutoControlAccess::bind(SelectProps& props) {
                 next();
             })
             .ref(ref);
-        return [binding, ref] {
-            binding.control(ref);
-        };
+        return FormControlMount{binding.connection_, [binding, ref] { binding.control(ref); }};
     }
     FormControlBinding<SelectSelection> binding;
     props.value(binding.value())
@@ -2144,12 +2453,10 @@ std::function<void()> FormAutoControlAccess::bind(SelectProps& props) {
             next();
         })
         .ref(ref);
-    return [binding, ref] {
-        binding.control(ref);
-    };
+    return FormControlMount{binding.connection_, [binding, ref] { binding.control(ref); }};
 }
 
-std::function<void()> FormAutoControlAccess::bind(CheckboxProps& props) {
+FormControlMount FormAutoControlAccess::bind(CheckboxProps& props) {
     if (const auto context = automatic_context()) {
         const auto disabled = props.disabled_;
         props.disabled(ryn::bind([disabled, gate = context->uneditable()] {
@@ -2180,12 +2487,10 @@ std::function<void()> FormAutoControlAccess::bind(CheckboxProps& props) {
             return FormPropBridge::read(local_disabled) || FormPropBridge::read(gate);
         }))
         .ref(ref);
-    return [binding, ref] {
-        binding.control(ref);
-    };
+    return FormControlMount{binding.connection_, [binding, ref] { binding.control(ref); }};
 }
 
-std::function<void()> FormAutoControlAccess::bind(SwitchProps& props) {
+FormControlMount FormAutoControlAccess::bind(SwitchProps& props) {
     if (const auto context = automatic_context()) {
         const auto disabled = props.disabled_;
         props.disabled(ryn::bind([disabled, gate = context->uneditable()] {
@@ -2224,9 +2529,7 @@ std::function<void()> FormAutoControlAccess::bind(SwitchProps& props) {
             return FormPropBridge::read(local_disabled) || FormPropBridge::read(gate);
         }))
         .ref(ref);
-    return [binding, ref] {
-        binding.control(ref);
-    };
+    return FormControlMount{binding.connection_, [binding, ref] { binding.control(ref); }};
 }
 } // namespace ryn::detail
 

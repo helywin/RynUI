@@ -14,6 +14,8 @@ namespace ryn {
 class SwitchRef;
 
 namespace detail {
+struct FormNativeControl;
+FormNativeControl capture_form_native_switch(const SwitchRef&);
 struct FormFocusContext;
 std::pair<std::function<bool(const FormFocusContext&)>,
           std::function<std::optional<FormControlGeometry>(const FormFocusContext&)>>
@@ -35,6 +37,7 @@ public:
     [[nodiscard]] bool blur() const;
 
 private:
+    friend detail::FormNativeControl detail::capture_form_native_switch(const SwitchRef&);
     friend struct detail::SwitchPropsAccess;
     friend std::pair<std::function<bool(const detail::FormFocusContext&)>,
                      std::function<std::optional<FormControlGeometry>(const detail::FormFocusContext&)>>
