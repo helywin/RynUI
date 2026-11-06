@@ -291,6 +291,93 @@ void CarouselComponentHost::cancel_gesture(runtime::ComponentId id) {
     }
 }
 
+namespace {
+bool slide_receives_input(WindowComponentServices& services, const CarouselState& s, runtime::ComponentId owner,
+                          runtime::ComponentId slide, std::size_t index) {
+    if (!s.visible || s.disabled || !services.components().branch_active(owner) || s.current != index ||
+        s.viewport_bounds.width <= 0 || s.viewport_bounds.height <= 0 || !services.focus().state().window_active ||
+        !services.components().contains(slide)) {
+        return false;
+    }
+    const auto& node = services.nodes().require(services.components().root(slide));
+    const auto bounds = graphics::intersect_effect_bounds(
+        {node.bounds.x + node.translation.x, node.bounds.y + node.translation.y, node.bounds.width, node.bounds.height},
+        s.clip);
+    return bounds.width > 0 && bounds.height > 0 && node.paint_opacity > 0;
+}
+} // namespace
+
+void CarouselComponentHost::refresh_clip(runtime::ComponentId id, runtime::Size viewport, runtime::Rect clip) {
+    if (auto* owner = services_->components().state<CarouselState>(id)) {
+        const auto& node = services_->nodes().require(owner->node);
+        const auto r = owner->viewport_bounds;
+        owner->clip =
+            graphics::intersect_effect_bounds({r.x + node.translation.x, r.y + node.translation.y, r.width, r.height},
+                                              services_->component_clip(id, viewport, clip));
+    }
+}
+
+bool CarouselComponentHost::refresh_target_admission(runtime::ComponentId target, runtime::Size viewport,
+                                                     runtime::Rect document_clip) {
+    auto& host = services_->components();
+    std::optional<runtime::ComponentId> ceiling;
+    const auto bound = host.component_count();
+    // Two bounded ancestry walks per nested producer avoid copying mounted/slides or allocating a per-query path.
+    for (std::size_t pass = 0; pass <= bound; ++pass) {
+        if (!host.contains(target) || !services_->interactions().component_lifetime_active(target)) {
+            return false;
+        }
+        std::optional<runtime::ComponentId> owner;
+        std::optional<runtime::ComponentId> slide;
+        for (auto current = std::optional{target}; current && current != ceiling; current = host.parent(*current)) {
+            if (!host.contains(*current)) {
+                return false;
+            }
+            if (!host.state<Slide>(*current)) {
+                continue;
+            }
+            const auto parent = host.parent(*current);
+            const auto candidate = parent ? host.parent(*parent) : std::nullopt;
+            if (candidate && candidate != ceiling && host.state<CarouselState>(*candidate)) {
+                owner = candidate;
+                slide = current;
+            }
+        }
+        if (!owner) {
+            return true;
+        }
+        auto* state = host.state<CarouselState>(*owner);
+        if (!host.scope(*owner).active()) {
+            return false;
+        }
+        const auto found = std::ranges::find(state->slides, *slide);
+        if (found == state->slides.end()) {
+            return false;
+        }
+        const auto index = static_cast<std::size_t>(found - state->slides.begin());
+        const auto generation = state->items_generation;
+        const auto current = state->current;
+        const auto property = state->property;
+        const auto transition = state->transition;
+        const auto visible = state->visible;
+        const auto disabled = state->disabled;
+        refresh_clip(*owner, viewport, document_clip);
+        const bool blocked = !slide_receives_input(*services_, *state, *owner, *slide, index);
+        services_->set_input_blocked(*slide, blocked);
+        // The setter reconciles boundaries and may run callbacks, retire a producer, or accept new state.
+        state = host.state<CarouselState>(*owner);
+        if (!host.contains(target) || !services_->interactions().component_lifetime_active(target) || !state ||
+            !host.scope(*owner).active() || state->items_generation != generation || state->current != current ||
+            state->property != property || state->transition != transition || state->visible != visible ||
+            state->disabled != disabled || index >= state->slides.size() || state->slides[index] != *slide ||
+            !host.contains(*slide)) {
+            return false;
+        }
+        ceiling = owner;
+    }
+    throw std::logic_error("Carousel target ancestry did not converge");
+}
+
 void CarouselComponentHost::gates(runtime::ComponentId id) {
     auto* s = services_->components().state<CarouselState>(id);
     if (!s) {
@@ -300,8 +387,6 @@ void CarouselComponentHost::gates(runtime::ComponentId id) {
     const auto current = s->current;
     const auto previous = s->previous;
     const bool shown = s->visible && services_->components().branch_active(id);
-    const bool interactive = shown && !s->disabled && s->viewport_bounds.width > 0 && s->viewport_bounds.height > 0 &&
-                             services_->focus().state().window_active;
     for (std::size_t i = 0; i < slides.size(); ++i) {
         if (!services_->components().contains(id) || !services_->components().contains(slides[i])) {
             return;
@@ -311,13 +396,7 @@ void CarouselComponentHost::gates(runtime::ComponentId id) {
         if (services_->components().set_branch_active(slides[i], paint)) {
             services_->mark_scene_structure_dirty();
         }
-        const auto& node = services_->nodes().require(services_->components().root(slides[i]));
-        const auto bounds =
-            graphics::intersect_effect_bounds({node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
-                                               node.bounds.width, node.bounds.height},
-                                              s->clip);
-        const bool visible = bounds.width > 0 && bounds.height > 0 && node.paint_opacity > 0;
-        services_->set_input_blocked(slides[i], !interactive || current != i || !visible);
+        services_->set_input_blocked(slides[i], !slide_receives_input(*services_, *s, id, slides[i], i));
         s = services_->components().state<CarouselState>(id);
         if (!s) {
             return;
@@ -576,7 +655,10 @@ runtime::ComponentId CarouselComponentHost::slide(runtime::ComponentId id, const
         row.node = b.root(result);
         services_->nodes().require(row.node).clip_content = true;
         services_->layout().set_layout(row.node, layout::BoxLayout{{}, true});
-        b.on_resource_cleanup(result, [this, node = row.node] { services_->layout().remove_layout(node); });
+        b.on_resource_cleanup(result, [this, root = result, node = row.node] {
+            services_->interactions().set_input_blocked(root, false);
+            services_->layout().remove_layout(node);
+        });
         b.mount_slot(result, Content{[content] { SlotContentAccess::function (*content)(); }});
     }};
     const auto viewport = services_->components().state<CarouselState>(id)->viewport;
@@ -618,7 +700,8 @@ runtime::ComponentId CarouselComponentHost::dot(runtime::ComponentId id, String 
         services_->layout().set_layout(d.node, layout::BoxLayout{{}, true});
         auto fragment = b.register_scene_fragment(result, runtime::SceneFragmentPlacement::before_children);
         d.surface = services_->surfaces().create_content_range(fragment, {});
-        b.on_resource_cleanup(result, [this, node = d.node, surface = d.surface] {
+        b.on_resource_cleanup(result, [this, root = result, node = d.node, surface = d.surface] {
+            services_->interactions().set_input_blocked(root, false);
             services_->layout().remove_layout(node);
             services_->surfaces().destroy_content_range(surface);
         });
@@ -842,8 +925,9 @@ void CarouselComponentHost::mount(const CarouselProps& props) {
     s.background = services_->surfaces().create_content_range(background, {});
     auto fragment = b.register_scene_fragment(id, runtime::SceneFragmentPlacement::after_children);
     s.surface = services_->surfaces().create_content_range(fragment, {});
-    b.on_resource_cleanup(id, [this, node = s.node, interaction = s.interaction, hit, surface = s.surface,
+    b.on_resource_cleanup(id, [this, id, node = s.node, interaction = s.interaction, hit, surface = s.surface,
                                background = s.background, reference, generation] {
+        services_->interactions().set_input_blocked(id, false);
         if (reference->generation == generation) {
             ++reference->generation;
             reference->go = {};
@@ -978,7 +1062,10 @@ void CarouselComponentHost::mount(const CarouselProps& props) {
                 auto& a = c.state<Arrow>(arrow);
                 a.info.set({i == 1, false});
                 services_->layout().set_layout(node, layout::BoxLayout{{}, true});
-                c.on_resource_cleanup(arrow, [this, node] { services_->layout().remove_layout(node); });
+                c.on_resource_cleanup(arrow, [this, arrow, node] {
+                    services_->interactions().set_input_blocked(arrow, false);
+                    services_->layout().remove_layout(node);
+                });
                 c.mount_slot_with_semantic_text_style(
                     arrow, Content{[this, id, i, info = a.info, disabled = a.disabled] {
                         FormPrivateEditorScope private_control;
@@ -1561,13 +1648,7 @@ bool CarouselComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
 void CarouselComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
     const auto ids = mounted_;
     for (auto id : ids) {
-        if (auto* owner = services_->components().state<CarouselState>(id)) {
-            const auto& node = services_->nodes().require(owner->node);
-            const auto r = owner->viewport_bounds;
-            owner->clip = graphics::intersect_effect_bounds(
-                {r.x + node.translation.x, r.y + node.translation.y, r.width, r.height},
-                services_->component_clip(id, viewport, clip));
-        }
+        refresh_clip(id, viewport, clip);
         auto* pending = services_->components().state<CarouselState>(id);
         if (pending && pending->after_pending) {
             CarouselFlagGuard callback_guard{*services_, id, &CarouselState::dispatching};

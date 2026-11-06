@@ -28,6 +28,9 @@ public:
     }
 
     CarouselSnapshot snapshot(runtime::ComponentId) const;
+    // Refresh only actual Carousel slide ancestors before consuming target input admission.
+    // False means callbacks superseded this exact producer path; callers must stop old work.
+    bool refresh_target_admission(runtime::ComponentId target, runtime::Size, runtime::Rect document_clip);
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
@@ -59,6 +62,7 @@ private:
     bool paused(runtime::ComponentId) const;
     void schedule(runtime::ComponentId, bool = false);
     void gates(runtime::ComponentId);
+    void refresh_clip(runtime::ComponentId, runtime::Size, runtime::Rect);
     void refresh(runtime::ComponentId, bool geometry = true);
     void items(runtime::ComponentId, runtime::ComponentBuildContext* = nullptr);
     runtime::ComponentId slide(runtime::ComponentId, const CarouselSlide&, runtime::ComponentBuildContext*);

@@ -1,3 +1,11 @@
+add_executable(rynui_carousel_target_admission_tests carousel_target_admission_tests.cpp)
+rynui_configure_cpp_target(rynui_carousel_target_admission_tests)
+target_link_libraries(rynui_carousel_target_admission_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_carousel_target_admission_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.carousel_target_admission COMMAND rynui_carousel_target_admission_tests)
+
 add_executable(rynui_input_constraint_tests input_constraint_tests.cpp)
 rynui_configure_cpp_target(rynui_input_constraint_tests)
 target_link_libraries(rynui_input_constraint_tests PRIVATE rynui_components)
