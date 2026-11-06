@@ -217,19 +217,39 @@ std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFie
             return current->registered && current->generation == generation && current->owner.lock() == owner &&
                    owner->alive;
         };
-        auto meta = current->meta.get();
-        meta.touched = true;
-        current->meta.set(meta);
-        if (!authorized()) {
-            return;
-        }
-        const auto previous = read_form_field(current);
-        if (!authorized()) {
-            return;
-        }
-        write_form_field(current, std::move(value));
-        if (authorized() && previous != read_form_field(current) && authorized()) {
-            owner->notify_change(current);
+        try {
+            auto meta = current->meta.get();
+            meta.touched = true;
+            current->meta.set(meta);
+            if (!authorized()) {
+                return;
+            }
+            const auto previous = read_form_field(current);
+            if (!authorized()) {
+                return;
+            }
+            write_form_field(current, std::move(value));
+            if (authorized() && previous != read_form_field(current) && authorized()) {
+                owner->notify_change(current);
+            }
+        } catch (...) {
+            // Consumer observers/setters can already have changed other fields.
+            // Retire this exact Form rather than leave a partially published UI.
+            const auto error = std::current_exception();
+            try {
+                const auto action = owner->retire;
+                if (owner->alive && action) {
+                    action();
+                }
+            } catch (...) {
+            }
+            if (owner->alive) {
+                try {
+                    owner->dispose();
+                } catch (...) {
+                }
+            }
+            std::rethrow_exception(error);
         }
     };
 }

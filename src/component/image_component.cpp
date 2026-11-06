@@ -1,4 +1,5 @@
 #include "component/image_component.hpp"
+#include "component/form_control_binding.hpp"
 #include "component/image_model.hpp"
 #include "component/modal_component.hpp"
 #include "component/popover_component.hpp"
@@ -736,6 +737,7 @@ void ImageComponentHost::replace_actions(runtime::ComponentId id,
 
             b.mount_slot(
                 replacement, Content{[&, renderer] {
+                    FormPrivateEditorScope private_actions;
                     if (renderer && renderer->render) {
                         renderer->render(actions);
                         return;

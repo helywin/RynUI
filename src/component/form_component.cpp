@@ -3,6 +3,7 @@
 #include "component/form_control_binding.hpp"
 #include "component/responsive_layout.hpp"
 #include "component/input_component.hpp"
+#include "component/modal_component.hpp"
 #include <ryn/tooltip.hpp>
 #include <ryn/flex.hpp>
 #include <limits>
@@ -73,6 +74,7 @@ struct FormItemState final {
     runtime::ComponentId id;
     runtime::ComponentId form;
     std::shared_ptr<FormFieldState> field;
+    std::uint64_t registration_generation{};
     bool control_claimed{};
     bool native_enter_claimed{};
     bool no_style{};
@@ -118,6 +120,56 @@ struct FormItemState final {
     std::function<bool(const FormFocusContext&)> focus;
     std::function<void()> reset;
 };
+
+bool form_scope_interactive(WindowComponentServices& services, runtime::ComponentId id,
+                            const std::shared_ptr<FormModel>& model, std::span<const runtime::ComponentId> items) {
+    auto& components = services.components();
+    const auto* form = components.state<FormState>(id);
+    if (!model || !model->alive || !form || form->model != model || !components.scope(id).active() ||
+        !components.branch_active(id) || !services.focus().state().window_active) {
+        return false;
+    }
+    if (services.interactions().component_active(id)) {
+        return true;
+    }
+    const auto descendant = [&](runtime::ComponentId child) {
+        for (auto current = std::optional{child}; current; current = components.parent(*current)) {
+            if (*current == id) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto boundary = services.interactions().input_boundary();
+    if (!boundary || !components.contains(*boundary) || !descendant(*boundary)) {
+        return false;
+    }
+    // A Modal's overlay is its input domain; its logical Form ancestor is not
+    // itself an input target. Only that Form's exact active registrations can
+    // keep whole-Form commands/validation available inside the overlay.
+    const bool modal_domain = std::ranges::any_of(services.modal().mounted(), [&](auto owner) {
+        const auto view = services.modal().snapshot(owner);
+        return view.visible && view.overlay == *boundary;
+    });
+    if (!modal_domain) {
+        return false;
+    }
+    for (auto item_id : items) {
+        const auto* item = components.state<FormItemState>(item_id);
+        if (!item || item->form != id || item->hidden || !item->registration_generation || !item->field ||
+            !item->field->registered || item->field->owner.lock() != model ||
+            item->field->generation != item->registration_generation || !descendant(item_id) ||
+            !services.interactions().component_active(item_id)) {
+            continue;
+        }
+        if (std::ranges::any_of(model->fields(), [&](const auto& registration) {
+                return registration.field == item->field && registration.generation == item->registration_generation;
+            })) {
+            return true;
+        }
+    }
+    return false;
+}
 
 void validate_presentation(const FormPresentation& value) {
     if (value.layout != FormLayout::Horizontal && value.layout != FormLayout::Vertical &&
@@ -217,8 +269,8 @@ void FormComponentHost::mount(const FormProps& props, const FormContent& content
     auto& services = *services_;
     runtime::connect_layout_style(build.scope(id), props.layout_, node, services.nodes(), services.dirty());
     services.layout().set_layout(node, layout::FlexLayout{layout::FlexDirection::vertical, 0, {}, true});
-    model->eligible = [this, id] {
-        return interactive(id);
+    model->eligible = [this, id, weak = std::weak_ptr{model}] {
+        return form_scope_interactive(*services_, id, weak.lock(), items_);
     };
     model->preserve = props.preserve_;
     model->clear_on_destroy = props.clear_on_destroy_;
@@ -440,6 +492,14 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
                                           }
                                       })
                                 : 0;
+    auto* registered_item = services_->components().state<FormItemState>(id);
+    if (!registered_item) {
+        if (generation) {
+            model->remove(field, generation);
+        }
+        return;
+    }
+    registered_item->registration_generation = generation;
     auto& services = *services_;
     build.on_resource_cleanup(id, [model, field, generation, &services, node = state.node] {
         if (generation) {

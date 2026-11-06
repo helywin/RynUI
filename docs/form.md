@@ -68,6 +68,8 @@ void DeviceForm(std::function<void(ryn::FormResult)> save) {
 
 命名 FormItem 的 control slot 中，首个兼容的 Input、TextArea、InputNumber、Select、Checkbox 或 Switch 自动接入 typed value/change、disabled/readOnly、status、ref 与表单上下文。InputNumber 根据 field 类型选择 double 或 exact decimal；SelectValues 对应 Multiple/Tags。已有显式 value/onChange 接线保持其权威，并占用首控件位置；后续兄弟控件不自动接线。Mentions、AutoComplete、日期时间、Cascader、Transfer、Upload 与 ColorPicker 的私有输入/选择控件不占用外层 Item 的自动位置或 Enter；popup 内建立的独立 FormItem 保留自己的绑定作用域。嵌套 FormItem 建立自己的控件位置；嵌套 Form 建立新的表单作用域。
 
+Image 等组件的私有 Modal 保留逻辑 Form 归属。Form 根位于 Modal 外时，同一 Form/model 在当前活动 Modal 内的显式命名 Item，只有挂载票据与当前字段注册代际一致且仍可交互，才维持该 Form 的字段更新、Enter、提交与校验资格。整表仍采集和校验自己的背景字段；背景控件继续受原生输入域约束。私有 Input、无字段布局 Item、另一 Form 的 Item 与失效注册不提供该资格，最后一个合格 Item 退役后立即撤回。程序 set/reset 保持既有显式命令语义；disabled/readOnly、字段资格、受控权威、重入和异步事务检查继续生效。
+
 ```cpp
 void AutomaticForm() {
     using namespace ryn;

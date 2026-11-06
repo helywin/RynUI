@@ -168,6 +168,54 @@ void run() {
     check(threw && failing.services.image().mounted().empty() && failing.services.modal().mounted().empty() &&
               failing.inputs.mounted_inputs().empty() && !failing.services.interactions().input_boundary(),
           "failed lazy Modal append retained a partial owner/boundary");
+    ryn_test::input_component::Fixture form;
+    FormField<String> field{String{u8"public authority"}};
+    InputRef tail;
+    InputRef private_editor;
+    InputRef explicit_editor;
+    FormField<String> explicit_field{String{u8"explicit authority"}};
+    ImageRef private_image;
+    int submitted = 0;
+    form.services.mount(Content{[&] {
+        Form(FormProps{}.onFinish([&](FormResult) { ++submitted; }), FormContent{[&] {
+                 FormItem(
+                     FormItemProps{}.field(u8"public", field), FormItemContent{[&] {
+                         Image(ImageProps{}
+                                   .source(source)
+                                   .ref(private_image)
+                                   .actionsRender(
+                                       std::make_shared<const ImageActionsRenderer>([&](const ImagePreviewActions&) {
+                                           Input(InputProps{}.defaultValue(u8"private actions").ref(private_editor));
+                                           FormItem(FormItemProps{}.field(u8"explicit", explicit_field),
+                                                    FormItemContent{[&] { Input(InputProps{}.ref(explicit_editor)); }});
+                                       })));
+                         Input(InputProps{}.ref(tail));
+                     }});
+             }});
+    }});
+    form.synchronize();
+    check(tail.focus() &&
+              form.inputs.editors().require(form.inputs.sessions().active().owner).value() == "public authority",
+          "Image preview actions claimed outer FormItem automatic binding");
+    check(private_image.preview(), "private Image preview failed inside FormItem");
+    form.synchronize();
+    check(explicit_editor.focus() &&
+              form.inputs.editors().require(form.inputs.sessions().active().owner).value() == "explicit authority",
+          "explicit Image actions FormItem lost its independent automatic binding");
+    form.inputs.editors().require(form.inputs.sessions().active().owner).select_all();
+    const auto explicit_result =
+        form.inputs.dispatch(input::TextCommitted{String{u8"explicit draft"}, form.inputs.sessions().active()});
+    check(bool(explicit_result) && explicit_field.get() == String{u8"explicit draft"} &&
+              field.get() == String{u8"public authority"},
+          "explicit nested actions FormItem edited the outer field");
+    check(private_editor.focus(), "private Image actions editor failed to focus");
+    form.inputs.editors().require(form.inputs.sessions().active().owner).select_all();
+    form.inputs.dispatch(input::TextCommitted{String{u8"private draft"}, form.inputs.sessions().active()});
+    form.services.focus().dispatch(input::KeyboardInputEvent{input::Key::enter, input::KeyAction::down});
+    check(field.get() == String{u8"public authority"} && submitted == 0,
+          "private Image preview actions edited or submitted outer Form");
+    check(private_image.preview(false), "private Image preview close failed");
+    form.synchronize();
     ryn_test::input_component::Fixture transaction;
     Signal<ImagePreviewOptions> during{ImagePreviewOptions{false}};
     transaction.services.mount(Content{[&] {

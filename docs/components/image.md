@@ -29,3 +29,5 @@ API 对照基线为 Ant Design 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e7
 107 通过语义吸收 `0cd4817b` 的 RoundedRectangle 与预览懒挂载接口（源基线 `135ba70b`），保留当前 paint opacity 合同。`ImageShape::RoundedRectangle` 使用 Image Theme 的 radius，Rectangle/Circle 的序号不变；不提供公开 radius/style setter。圆角图像由共同 logical 几何分片与 UV 子范围表达，片段共享 renderer/common 的不可变像素纹理 lease；同一资源域中只分配/上传一次源纹理，片段退休不使其他 lease 失效。Image ABI v2/112 bytes 与 shader 不变。
 
 `preview(false)` 初始不创建 Modal、工具栏或焦点边界；响应更新 enabled 后惰性挂载并复用。禁用会关闭预览和清理 capture。Card 封面可向直接 Image 子组件传内部上角策略，来自 Card token；显式 Circle/RoundedRectangle shape 优先。自有背景、hover 和边框遵循同一上角策略；它不裁剪 slot 中的任意后代。这个策略不进入预览，不传播到任意后代，替换区域后不泄漏到别的 owner。
+
+预览 actionsRender 在私有 Form 编辑作用域内执行，工具栏内部 Input 不认领外层 FormItem 的自动 value/Enter 绑定；调用者显式声明的嵌套 FormItem 仍使用自己的绑定。

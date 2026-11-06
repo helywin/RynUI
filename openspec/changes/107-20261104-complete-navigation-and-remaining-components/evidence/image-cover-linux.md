@@ -13,3 +13,4 @@
 - 原始日志和读回仅在忽略的 out。Windows/MSVC/D3D12、物理 IME/AT/跨实际显示器未验证；不关闭分类平台汇总项。
 
 - 来源 `f757e13c97b2342fc82d3670456e8556b7590664` 的后续独立 test-only 扩展在透明 FBO 上逐像素核对 RGB 与 alpha（128/64/0/恢复），防止不透明背景掩盖重复 blend。相同四个缩放与透明度序列的真实 Vulkan 合计 **2,581,848 检查**，`ctest --test-dir out/build/linux-gcc -C Debug -R '^rynui.image_rounding_vulkan_private$'` **1/1**；不修改 shader、ABI 或资源实现。
+- 来源 `071f6132718a7cfcd3556440cc7e4bd6d5629fa4` 的实现分支在 `7dab3ea5 → f757e13c → 8e6151b8` 共同实现上补跑现有默认 preview=true 的独立 Image→Button 原生序列：`tools/run_gallery_page_acceptance.py <linux-gcc Debug Gallery> --preset linux-gcc --configuration Debug --timeout 120 --log-dir <out> --page ant.component.image --page ant.component.button`。私有 Wayland/Vulkan **2 页、120 检查、23 提交帧通过**，实际图片/预览工具栏、变换/键盘和页面退休合同保持；不是 Card preview=false 或 HEADLESS 的替代计数。
