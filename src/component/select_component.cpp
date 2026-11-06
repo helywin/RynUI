@@ -112,6 +112,7 @@ struct SelectState final {
     std::shared_ptr<Scope> bindings{std::make_shared<Scope>()};
     std::uint64_t model_revision{};
     bool mounting{true};
+    bool declaring{true};
     bool reconciling{};
     bool tags_reconciling{};
     bool tags_dirty{};
@@ -2169,6 +2170,12 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
         live->subscriptions[i] = std::move(subscription);
     }
     refresh(id);
+    if (auto* live = select_state(services, id)) {
+        // Own row/popup gates may reconcile while the initial declaration is
+        // still on the application's stack. A subsequent external boundary or
+        // prepare_auxiliary_layout delivers any ancestor-block close intent.
+        live->declaring = false;
+    }
     rollback.complete = true;
 }
 
@@ -2187,6 +2194,9 @@ void SelectComponentHost::on_window_active(bool active) {
 void SelectComponentHost::on_input_boundary_changed() {
     const auto ids = mounted_;
     for (auto id : ids) {
+        if (const auto* s = select_state(*services_, id); s && s->declaring) {
+            continue;
+        }
         if (auto* s = select_state(*services_, id);
             s && s->open && !s->suppressed && !services_->interactions().component_active(id)) {
             s->suppressed = true;
