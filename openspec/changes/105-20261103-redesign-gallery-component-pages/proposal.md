@@ -18,6 +18,8 @@
 
 ## Capabilities
 
+2026-11-06 用户在全目录巡检完成后明确要求修复已报告的问题。本次后续实施覆盖 [巡检报告](../../../docs/reviews/2026-11-06-gallery-visual-audit.md) 的 B01–B03、V01–V14，并核对 S01–S04；以共用栈、布局、呈现和样例组合的实际原因修复，不升级 catalog、不新增组件。第 10 阶段的只读验收约束仅对应已经完成的巡检阶段，第 11 阶段已获实施授权。
+
 ### New Capabilities
 
 - `gallery-component-pages`：离线 catalog 驱动的组件页面、真实支持范围、样例归属、响应式文档 shell、页面状态与生命周期隔离。
