@@ -634,10 +634,9 @@ bool contains(std::span<const TokenIdentity> identities, TokenIdentity identity)
     return std::find(identities.begin(), identities.end(), identity) != identities.end();
 }
 
-// Keep the large resolved snapshot temporary out of the recursive validation frame.
-std::shared_ptr<const ThemeSnapshot> resolve_validation_snapshot(const ThemeConfig& config,
-                                                                 const ThemeSnapshot& parent) {
-    return std::make_shared<ThemeSnapshot>(resolve_theme(config, &parent));
+// Construct the returned prvalue directly in its heap destination.
+std::shared_ptr<const ThemeSnapshot> resolve_snapshot(const ThemeConfig& config, const ThemeSnapshot* parent) {
+    return std::shared_ptr<const ThemeSnapshot>(new ThemeSnapshot(resolve_theme(config, parent)));
 }
 
 } // namespace
@@ -697,8 +696,7 @@ std::shared_ptr<ThemeScope> ThemeScope::create(std::shared_ptr<ThemeScope> paren
 
 ThemeScope::ThemeScope(std::shared_ptr<ThemeScope> parent, const ThemeConfig& config)
     : parent_(std::move(parent)), config_(config),
-      snapshot_(std::make_shared<ThemeSnapshot>(
-          resolve_theme(config_, config_.inherit && parent_ ? &parent_->snapshot() : nullptr))),
+      snapshot_(resolve_snapshot(config_, config_.inherit && parent_ ? &parent_->snapshot() : nullptr)),
       owner_thread_(std::this_thread::get_id()) {}
 
 bool ThemeScope::update(const ThemeConfig& config) {
@@ -710,9 +708,9 @@ bool ThemeScope::update(const ThemeConfig& config) {
         diagnostics_.dirty_phase = DirtyPhase::none;
         return false;
     }
-    ThemeSnapshot next = resolve_theme(config, config.inherit && parent_ ? &parent_->snapshot() : nullptr);
-    if (next != *snapshot_) {
-        validate_children(next);
+    auto next = resolve_snapshot(config, config.inherit && parent_ ? &parent_->snapshot() : nullptr);
+    if (*next != *snapshot_) {
+        validate_children(*next);
     }
     commit_snapshot(config, std::move(next));
     return true;
@@ -1146,7 +1144,7 @@ void ThemeScope::validate_children(const ThemeSnapshot& parent_snapshot) const {
         if (!child || !child->config_.inherit) {
             continue;
         }
-        const auto next = resolve_validation_snapshot(child->config_, parent_snapshot);
+        const auto next = resolve_snapshot(child->config_, &parent_snapshot);
         if (*next != *child->snapshot_) {
             child->validate_children(*next);
         }
@@ -1158,23 +1156,23 @@ void ThemeScope::recompute_from_parent() {
     if (!config_.inherit) {
         return;
     }
-    ThemeSnapshot next = resolve_theme(config_, &parent_->snapshot());
+    auto next = resolve_snapshot(config_, &parent_->snapshot());
     commit_snapshot(config_, std::move(next));
 }
 
-void ThemeScope::commit_snapshot(const ThemeConfig& config, ThemeSnapshot&& next) {
-    const auto changed = collect_changed(*snapshot_, next, changed_identities_);
+void ThemeScope::commit_snapshot(const ThemeConfig& config, std::shared_ptr<const ThemeSnapshot> next) {
+    const auto changed = collect_changed(*snapshot_, *next, changed_identities_);
     if (&config != &config_) {
         config_ = config;
     }
-    if (next == *snapshot_) {
+    if (*next == *snapshot_) {
         ++diagnostics_.snapshot_reuses;
         changed_identity_count_ = 0;
         diagnostics_.changed_identity_count = 0;
         diagnostics_.dirty_phase = DirtyPhase::none;
         return;
     }
-    snapshot_ = std::make_shared<ThemeSnapshot>(std::move(next));
+    snapshot_ = std::move(next);
     ++diagnostics_.snapshot_allocations;
     ++diagnostics_.generation;
     changed_identity_count_ = changed;

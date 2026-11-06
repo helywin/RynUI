@@ -153,7 +153,7 @@ struct SelectState final {
     std::function<bool(SelectKeyEvent)> on_key;
     Signal<IconSource> arrow{IconSource{IconName::DownOutlined}};
     Signal<bool> spinning{false};
-    Signal<ThemeConfig> selector_theme{ThemeConfig{}};
+    Signal<InputTokenOverride> selector_theme{InputTokenOverride{}};
     std::array<theme_runtime::Subscription, 5> subscriptions;
     bool show_search{};
     bool allow_clear{};
@@ -790,19 +790,19 @@ void SelectComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
     }
     const auto& theme = services_->components().theme_scope(id)->snapshot();
     const auto& token = theme.select();
-    ThemeConfig config;
-    config.input.tokens.background = token.colors.selector_background;
-    config.input.tokens.hover_background = token.colors.selector_background;
-    config.input.tokens.active_background = token.colors.selector_background;
-    config.input.tokens.hover_border_color = token.colors.hover_border_color;
-    config.input.tokens.active_border_color = token.colors.active_border_color;
+    InputTokenOverride input_tokens;
+    input_tokens.background = token.colors.selector_background;
+    input_tokens.hover_background = token.colors.selector_background;
+    input_tokens.active_background = token.colors.selector_background;
+    input_tokens.hover_border_color = token.colors.hover_border_color;
+    input_tokens.active_border_color = token.colors.active_border_color;
     const auto& original = InputTokenAccess::get(theme).active_shadow;
     std::array<ShadowLayer, ShadowList::capacity> shadow{};
     std::copy(original.layers().begin(), original.layers().end(), shadow.begin());
     for (std::size_t i = 0; i < original.size(); ++i) {
         shadow[i].color = token.colors.active_outline_color;
     }
-    config.input.tokens.active_shadow = ShadowList{std::span<const ShadowLayer>{shadow.data(), original.size()}};
+    input_tokens.active_shadow = ShadowList{std::span<const ShadowLayer>{shadow.data(), original.size()}};
     auto tag_gap = s->tag_gap;
     tag_gap.set(LayoutGap{dp(token.metrics.gap)});
     s = select_state(*services_, id);
@@ -820,7 +820,7 @@ void SelectComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
         services_->layout().set_layout(services_->components().root(*prefix), flex);
     }
     auto selector_theme = s->selector_theme;
-    selector_theme.set(std::move(config));
+    selector_theme.set(std::move(input_tokens));
     s = select_state(*services_, id);
     if (!s) {
         return;
@@ -1702,7 +1702,10 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
     runtime::connect_layout_style(*bindings, props.layout_, s.node, services.nodes(), services.dirty());
     build.mount_slot(
         id, Content{[&] {
-            Theme(ThemeProps{}.config(s.selector_theme), ThemeContent{[&] {
+            Theme(ThemeProps{}.config(bind([input_tokens = s.selector_theme] {
+                return ThemeConfig{.input = InputThemeConfig{.tokens = input_tokens.get()}};
+            })),
+                  ThemeContent{[&] {
                       FormPrivateEditorScope private_editor;
                       const std::optional<InputPrefix> input_prefix = InputPrefix{[&] {
                           const auto prefix_root = select_group(services);

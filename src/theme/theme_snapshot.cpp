@@ -4255,27 +4255,29 @@ Color detail::semantic_status_background(const ThemeSnapshot& theme, InputStatus
 }
 
 ThemeSnapshot::ThemeSnapshot(
-    FloatButtonThemeToken float_button, AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
-    ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
-    RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
-    TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-    DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu, DropdownThemeToken dropdown,
-    std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag,
-    BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
-    InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-    CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result,
-    DatePickerThemeToken date_picker, FormThemeToken form, BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor,
-    TransferThemeToken transfer, ColorPickerThemeToken color_picker, CascaderThemeToken cascader, StepsThemeToken steps,
-    std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
-    DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
-    std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
-    std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
-    std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
-    std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
+    FloatButtonThemeToken&& float_button, AntDesignDefaultSeed&& seed, ThemeMapToken&& map, ThemeAliasToken&& alias,
+    ButtonThemeToken&& button, TextThemeToken&& text, SwitchThemeToken&& switch_token, CheckboxThemeToken&& checkbox,
+    RadioThemeToken&& radio, TypographyThemeToken&& typography, DividerThemeToken&& divider, SliderThemeToken&& slider,
+    TooltipThemeToken&& tooltip, SelectThemeToken&& select, CardThemeToken&& card, TabsThemeToken&& tabs,
+    ModalThemeToken&& modal, DrawerThemeToken&& drawer, PopconfirmThemeToken&& popconfirm, MenuThemeToken&& menu,
+    DropdownThemeToken&& dropdown, std::shared_ptr<const detail::InputTokenSet> input,
+    std::vector<ThemeAlgorithm> algorithms, TagThemeToken&& tag, BadgeThemeToken&& badge, AlertThemeToken&& alert,
+    SpinThemeToken&& spin, ProgressThemeToken&& progress, InputNumberThemeToken&& input_number,
+    PaginationThemeToken&& pagination, TableThemeToken&& table, CollapseThemeToken&& collapse,
+    SegmentedThemeToken&& segmented, EmptyThemeToken&& empty, ResultThemeToken&& result,
+    DatePickerThemeToken&& date_picker, FormThemeToken&& form, BreadcrumbThemeToken&& breadcrumb,
+    AnchorThemeToken&& anchor, TransferThemeToken&& transfer, ColorPickerThemeToken&& color_picker,
+    CascaderThemeToken&& cascader, StepsThemeToken&& steps, std::shared_ptr<const TimePickerThemeToken> time_picker,
+    std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken&& descriptions,
+    std::shared_ptr<const PopoverThemeToken> popover, std::shared_ptr<const NoticeThemeToken> message,
+    std::shared_ptr<const NoticeThemeToken> notification, std::shared_ptr<const TimelineThemeToken> timeline,
+    std::shared_ptr<const AvatarThemeToken> avatar, std::shared_ptr<const RateThemeToken> rate,
+    std::shared_ptr<const StatisticThemeToken> statistic, std::shared_ptr<const TreeThemeToken> tree,
+    std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
     std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
     std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
-    ImageThemeToken image, UploadThemeToken upload, CalendarThemeToken calendar, CarouselThemeToken carousel,
-    QRCodeThemeToken qrcode)
+    ImageThemeToken&& image, UploadThemeToken&& upload, CalendarThemeToken&& calendar, CarouselThemeToken&& carousel,
+    QRCodeThemeToken&& qrcode)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), float_button_(std::move(float_button)),
@@ -5344,11 +5346,85 @@ const ThemeConfig& detail::default_theme_config() {
     return config;
 }
 
+namespace {
+
+struct ResolveState final {
+    AntDesignDefaultSeed seed;
+    ThemeMapToken map;
+    ThemeAliasToken alias;
+    std::vector<ThemeAlgorithm> algorithms;
+    FloatButtonThemeToken float_button;
+    ButtonThemeToken button;
+    TextThemeToken text;
+    detail::InputTokenSet input;
+    SwitchThemeToken switch_token;
+    CheckboxThemeToken checkbox;
+    RadioThemeToken radio;
+    TypographyThemeToken typography;
+    DividerThemeToken divider;
+    SliderThemeToken slider;
+    TooltipThemeToken tooltip;
+    SelectThemeToken select;
+    CardThemeToken card;
+    TabsThemeToken tabs;
+    CollapseThemeToken collapse;
+    ModalThemeToken modal;
+    TagThemeToken tag;
+    BadgeThemeToken badge;
+    DrawerThemeToken drawer;
+    PopconfirmThemeToken popconfirm;
+    AlertThemeToken alert;
+    SpinThemeToken spin;
+    ProgressThemeToken progress;
+    MenuThemeToken menu;
+    DropdownThemeToken dropdown;
+    InputNumberThemeToken input_number;
+    PaginationThemeToken pagination;
+    TableThemeToken table;
+    EmptyThemeToken empty;
+    ResultThemeToken result;
+    SegmentedThemeToken segmented;
+    DatePickerThemeToken date_picker;
+    FormThemeToken form;
+    BreadcrumbThemeToken breadcrumb;
+    AnchorThemeToken anchor;
+    TransferThemeToken transfer;
+    ImageThemeToken image;
+    UploadThemeToken upload;
+    ColorPickerThemeToken color_picker;
+    CascaderThemeToken cascader;
+    StepsThemeToken steps;
+    std::shared_ptr<TimePickerThemeToken> time_picker;
+    std::shared_ptr<SkeletonThemeToken> skeleton;
+    DescriptionsThemeToken descriptions;
+    std::shared_ptr<PopoverThemeToken> popover;
+    std::shared_ptr<NoticeThemeToken> message;
+    std::shared_ptr<NoticeThemeToken> notification;
+    std::shared_ptr<TimelineThemeToken> timeline;
+    std::shared_ptr<AvatarThemeToken> avatar;
+    std::shared_ptr<RateThemeToken> rate;
+    std::shared_ptr<StatisticThemeToken> statistic;
+    std::shared_ptr<TreeThemeToken> tree;
+    std::shared_ptr<AutoCompleteThemeToken> auto_complete;
+    std::shared_ptr<TreeSelectThemeToken> tree_select;
+    std::shared_ptr<LayoutThemeToken> layout;
+    std::shared_ptr<SplitterThemeToken> splitter;
+    std::shared_ptr<MentionsThemeToken> mentions;
+    CalendarThemeToken calendar;
+    CarouselThemeToken carousel;
+    QRCodeThemeToken qrcode;
+};
+
+} // namespace
+
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
-    AntDesignDefaultSeed seed = parent != nullptr && config.inherit ? parent->seed() : ant_design_default_seed();
+    const auto workspace = std::make_unique<ResolveState>();
+    auto& seed = workspace->seed;
+    seed = parent != nullptr && config.inherit ? parent->seed() : ant_design_default_seed();
     apply_seed_override(seed, config.seed);
 
-    std::vector<ThemeAlgorithm> algorithms = config.algorithms;
+    auto& algorithms = workspace->algorithms;
+    algorithms = config.algorithms;
     if (algorithms.empty()) {
         if (parent != nullptr && config.inherit) {
             algorithms.assign(parent->algorithms().begin(), parent->algorithms().end());
@@ -5360,17 +5436,19 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         throw std::invalid_argument("theme algorithm chain exceeds eight entries");
     }
 
-    ThemeMapToken map = derive_map(seed, algorithms);
-    ThemeAliasToken alias = derive_alias(seed, map, algorithms);
+    auto& map = workspace->map;
+    map = derive_map(seed, algorithms);
+    auto& alias = workspace->alias;
+    alias = derive_alias(seed, map, algorithms);
     if (parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} && config.algorithms.empty()) {
         alias = parent->alias();
     }
     apply_alias_override(alias, config.alias);
 
-    // Resolve components in separate calls so Debug builds do not reserve every
-    // seed/map/alias temporary in this frame at once.
-    auto button = [&] {
-        ButtonThemeToken button;
+    // Keep resolved values in one per-call workspace. Void calls isolate each
+    // component's derivation temporaries without reserving return slots here.
+    [&]() -> void {
+        auto& button = workspace->button;
         const bool inherit_parent_button = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                            config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                            !config.button.algorithm && config.button.seed == SeedTokenOverride{};
@@ -5386,11 +5464,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             button = derive_button(seed, map, alias, algorithms);
         }
         apply_button_override(button, config.button.tokens);
-        return button;
     }();
 
-    auto text = [&] {
-        TextThemeToken text;
+    [&]() -> void {
+        auto& text = workspace->text;
         const bool inherit_parent_text = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                          config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                          !config.text.algorithm && config.text.seed == SeedTokenOverride{};
@@ -5406,10 +5483,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             text = derive_text(seed, map, alias);
         }
         apply_text_override(text, config.text.tokens);
-        return text;
     }();
-    auto input = [&] {
-        detail::InputTokenSet input;
+    [&]() -> void {
+        auto& input = workspace->input;
         const bool inherit_parent_input = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                           config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                           !config.input.algorithm && config.input.seed == SeedTokenOverride{};
@@ -5425,10 +5501,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             input = derive_input_theme(seed, map, alias, algorithms);
         }
         detail::apply_input_override(input, config.input.tokens);
-        return input;
     }();
-    auto switch_token = [&] {
-        SwitchThemeToken switch_token;
+    [&]() -> void {
+        auto& switch_token = workspace->switch_token;
         const bool inherit_parent_switch = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                            config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                            !config.switch_.algorithm && config.switch_.seed == SeedTokenOverride{};
@@ -5445,10 +5520,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             switch_token = derive_switch(map, alias);
         }
         apply_switch_override(switch_token, config.switch_.tokens);
-        return switch_token;
     }();
-    auto checkbox = [&] {
-        CheckboxThemeToken checkbox;
+    [&]() -> void {
+        auto& checkbox = workspace->checkbox;
         const bool inherit_checkbox = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                       config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                       !config.checkbox.algorithm && config.checkbox.seed == SeedTokenOverride{};
@@ -5464,10 +5538,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             checkbox = derive_checkbox(seed, map, alias);
         }
         apply_checkbox_override(checkbox, config.checkbox.tokens);
-        return checkbox;
     }();
-    auto radio = [&] {
-        RadioThemeToken radio;
+    [&]() -> void {
+        auto& radio = workspace->radio;
         const bool inherit_radio = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                    config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                    !config.radio.algorithm && config.radio.seed == SeedTokenOverride{};
@@ -5483,14 +5556,13 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             radio = derive_radio(seed, map, alias, algorithms);
         }
         apply_radio_override(radio, config.radio.tokens);
-        return radio;
     }();
     const bool inherit_parent_typography = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                            config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                            !config.typography.algorithm &&
                                            config.typography.seed == SeedTokenOverride{};
-    auto typography = [&] {
-        TypographyThemeToken typography;
+    [&]() -> void {
+        auto& typography = workspace->typography;
         if (inherit_parent_typography) {
             typography = parent->typography();
         } else if (config.typography.algorithm) {
@@ -5503,13 +5575,12 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             typography = derive_typography(seed, map, alias);
         }
         apply_typography_override(typography, config.typography.tokens);
-        return typography;
     }();
     const bool inherit_parent_divider = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                         config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                         !config.divider.algorithm && config.divider.seed == SeedTokenOverride{};
-    auto divider = [&] {
-        DividerThemeToken divider;
+    [&]() -> void {
+        auto& divider = workspace->divider;
         if (inherit_parent_divider) {
             divider = parent->divider();
         } else if (config.divider.algorithm) {
@@ -5522,10 +5593,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             divider = derive_divider(seed, map, alias);
         }
         apply_divider_override(divider, config.divider.tokens);
-        return divider;
     }();
-    auto slider = [&] {
-        SliderThemeToken slider;
+    [&]() -> void {
+        auto& slider = workspace->slider;
         const bool inherit_slider = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                     config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                     !config.slider.algorithm && config.slider.seed == SeedTokenOverride{};
@@ -5541,10 +5611,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             slider = derive_slider(seed, map, alias, algorithms);
         }
         apply_slider_override(slider, config.slider.tokens);
-        return slider;
     }();
-    auto tooltip = [&] {
-        TooltipThemeToken tooltip;
+    [&]() -> void {
+        auto& tooltip = workspace->tooltip;
         const bool inherit_tooltip = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                      config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                      !config.tooltip.algorithm && config.tooltip.seed == SeedTokenOverride{};
@@ -5560,10 +5629,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             tooltip = derive_tooltip(seed, map, alias, algorithms);
         }
         apply_tooltip_override(tooltip, config.tooltip.tokens);
-        return tooltip;
     }();
-    auto select = [&] {
-        SelectThemeToken select;
+    [&]() -> void {
+        auto& select = workspace->select;
         const bool inherit_select = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                     config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                     !config.select.algorithm && config.select.seed == SeedTokenOverride{};
@@ -5579,10 +5647,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             select = derive_select(seed, map, alias, algorithms);
         }
         apply_select_override(select, config.select.tokens);
-        return select;
     }();
-    auto card = [&] {
-        CardThemeToken card;
+    [&]() -> void {
+        auto& card = workspace->card;
         const bool inherit_card = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                   !config.card.algorithm && config.card.seed == SeedTokenOverride{};
@@ -5597,10 +5664,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             card = derive_card(seed, map, alias);
         }
         apply_card_override(card, config.card.tokens);
-        return card;
     }();
-    auto tabs = [&] {
-        TabsThemeToken tabs;
+    [&]() -> void {
+        auto& tabs = workspace->tabs;
         const bool inherit_tabs = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                   !config.tabs.algorithm && config.tabs.seed == SeedTokenOverride{};
@@ -5616,10 +5682,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             tabs = derive_tabs(seed, map, alias, algorithms);
         }
         apply_tabs_override(tabs, config.tabs.tokens);
-        return tabs;
     }();
-    auto collapse = [&] {
-        CollapseThemeToken collapse;
+    [&]() -> void {
+        auto& collapse = workspace->collapse;
         const bool inherit_collapse = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                       config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                       !config.collapse.algorithm && config.collapse.seed == SeedTokenOverride{};
@@ -5635,10 +5700,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             collapse = derive_collapse(seed, map, alias, algorithms);
         }
         apply_collapse_override(collapse, config.collapse.tokens);
-        return collapse;
     }();
-    auto modal = [&] {
-        ModalThemeToken modal;
+    [&]() -> void {
+        auto& modal = workspace->modal;
         const bool inherit_modal = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                    config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                    !config.modal.algorithm && config.modal.seed == SeedTokenOverride{};
@@ -5654,10 +5718,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             modal = derive_modal(seed, map, alias, algorithms);
         }
         apply_modal_override(modal, config.modal.tokens);
-        return modal;
     }();
-    auto tag = [&] {
-        TagThemeToken tag;
+    [&]() -> void {
+        auto& tag = workspace->tag;
         const bool inherit_tag = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                  !config.tag.algorithm && config.tag.seed == SeedTokenOverride{};
@@ -5673,10 +5736,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             tag = derive_tag(seed, map, alias, algorithms);
         }
         apply_tag_override(tag, config.tag.tokens);
-        return tag;
     }();
-    auto badge = [&] {
-        BadgeThemeToken badge;
+    [&]() -> void {
+        auto& badge = workspace->badge;
         const bool inherit_badge = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                    config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                    !config.badge.algorithm && config.badge.seed == SeedTokenOverride{};
@@ -5692,10 +5754,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             badge = derive_badge(seed, map, alias);
         }
         apply_badge_override(badge, config.badge.tokens);
-        return badge;
     }();
-    auto drawer = [&] {
-        DrawerThemeToken drawer;
+    [&]() -> void {
+        auto& drawer = workspace->drawer;
         const bool inherit_drawer = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                     config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                     !config.drawer.algorithm && config.drawer.seed == SeedTokenOverride{};
@@ -5711,10 +5772,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             drawer = derive_drawer(seed, map, alias, algorithms);
         }
         apply_drawer_override(drawer, config.drawer.tokens);
-        return drawer;
     }();
-    auto popconfirm = [&] {
-        PopconfirmThemeToken popconfirm;
+    [&]() -> void {
+        auto& popconfirm = workspace->popconfirm;
         const bool inherit_popconfirm = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                         config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                         !config.popconfirm.algorithm && config.popconfirm.seed == SeedTokenOverride{};
@@ -5730,10 +5790,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             popconfirm = derive_popconfirm(seed, map, alias);
         }
         apply_popconfirm_override(popconfirm, config.popconfirm.tokens);
-        return popconfirm;
     }();
-    auto alert = [&] {
-        AlertThemeToken alert;
+    [&]() -> void {
+        auto& alert = workspace->alert;
         const bool inherit_alert = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                    config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                    !config.alert.algorithm && config.alert.seed == SeedTokenOverride{};
@@ -5749,10 +5808,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             alert = derive_alert(seed, map, alias, algorithms);
         }
         apply_alert_override(alert, config.alert.tokens);
-        return alert;
     }();
-    auto spin = [&] {
-        SpinThemeToken spin;
+    [&]() -> void {
+        auto& spin = workspace->spin;
         const bool inherit_spin = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                   !config.spin.algorithm && config.spin.seed == SeedTokenOverride{};
@@ -5767,10 +5825,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             spin = derive_spin(seed, map, alias);
         }
         apply_spin_override(spin, config.spin.tokens);
-        return spin;
     }();
-    auto progress = [&] {
-        ProgressThemeToken progress;
+    [&]() -> void {
+        auto& progress = workspace->progress;
         const bool inherit_progress = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                       config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                       !config.progress.algorithm && config.progress.seed == SeedTokenOverride{};
@@ -5786,11 +5843,11 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             progress = derive_progress(seed, map, alias, algorithms);
         }
         apply_progress_override(progress, config.progress.tokens);
-        return progress;
     }();
     const bool inherit_navigation = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                     config.alias == AliasTokenOverride{} && config.algorithms.empty();
-    auto menu = inherit_navigation ? parent->menu() : derive_menu(seed, map, alias, algorithms);
+    auto& menu = workspace->menu;
+    menu = inherit_navigation ? parent->menu() : derive_menu(seed, map, alias, algorithms);
     if (!inherit_navigation) {
         const auto palette = [&](ThemeAlgorithm algorithm) {
             const std::array variant{algorithm};
@@ -5803,7 +5860,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         menu.dark_colors = palette(ThemeAlgorithm::Dark);
     }
     apply_menu_override(menu, config.menu.tokens);
-    DropdownThemeToken dropdown;
+    auto& dropdown = workspace->dropdown;
     if (inherit_navigation) {
         dropdown = parent->dropdown();
     } else {
@@ -5816,8 +5873,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         dropdown.z_index_popup = seed.z_index_popup_base + 50;
     }
     apply_dropdown_override(dropdown, config.dropdown.tokens);
-    auto input_number = [&] {
-        InputNumberThemeToken input_number;
+    [&]() -> void {
+        auto& input_number = workspace->input_number;
         const bool inherit_number = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                     config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                     !config.input_number.algorithm && config.input_number.seed == SeedTokenOverride{};
@@ -5833,9 +5890,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             input_number = derive_input_number(seed, map, alias, algorithms);
         }
         apply_input_number_override(input_number, config.input_number.tokens);
-        return input_number;
     }();
-    PaginationThemeToken pagination;
+    auto& pagination = workspace->pagination;
     if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
         config.algorithms.empty()) {
         pagination = parent->pagination();
@@ -5883,7 +5939,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                        pagination.metrics.gap * 10)) {
         throw std::invalid_argument("Pagination combined extents must be finite");
     }
-    TableThemeToken table;
+    auto& table = workspace->table;
     if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
         config.algorithms.empty()) {
         table = parent->table();
@@ -5962,43 +6018,44 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                        table.metrics.padding_inline * 2)) {
         throw std::invalid_argument("Table combined extents must be finite");
     }
-    EmptyThemeToken empty;
+    auto& empty = workspace->empty;
     const bool inherit_empty = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                !config.empty.algorithm && config.empty.seed == SeedTokenOverride{};
     if (inherit_empty) {
         empty = parent->empty();
     } else if (config.empty.algorithm) {
-        empty = [&] {
+        [&]() -> void {
             auto component_seed = seed;
             apply_seed_override(component_seed, config.empty.seed);
             const auto component_map = derive_map(component_seed, algorithms);
-            return derive_empty(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+            empty =
+                derive_empty(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
         }();
     } else {
         empty = derive_empty(seed, map, alias);
     }
     apply_empty_override(empty, config.empty.tokens);
-    ResultThemeToken result;
+    auto& result = workspace->result;
     const bool inherit_result = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                 config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                 !config.result.algorithm && config.result.seed == SeedTokenOverride{};
     if (inherit_result) {
         result = parent->result();
     } else if (config.result.algorithm) {
-        result = [&] {
+        [&]() -> void {
             auto component_seed = seed;
             apply_seed_override(component_seed, config.result.seed);
             const auto component_map = derive_map(component_seed, algorithms);
-            return derive_result(component_seed, component_map,
-                                 derive_alias(component_seed, component_map, algorithms));
+            result =
+                derive_result(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
         }();
     } else {
         result = derive_result(seed, map, alias);
     }
     apply_result_override(result, config.result.tokens);
-    auto segmented = [&] {
-        SegmentedThemeToken segmented;
+    [&]() -> void {
+        auto& segmented = workspace->segmented;
         const bool inherit_segmented = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                        config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                        !config.segmented.algorithm && config.segmented.seed == SeedTokenOverride{};
@@ -6014,10 +6071,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             segmented = detail::derive_segmented(seed, map, alias, algorithms);
         }
         detail::apply_segmented_override(segmented, config.segmented.tokens);
-        return segmented;
     }();
-    auto date_picker = [&] {
-        DatePickerThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->date_picker;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.date_picker.algorithm;
@@ -6033,10 +6089,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_date_picker(seed, map, alias);
         }
         detail::apply_date_picker_override(token, config.date_picker.tokens);
-        return token;
     }();
-    auto form = [&] {
-        FormThemeToken form;
+    [&]() -> void {
+        auto& form = workspace->form;
         const bool inherit_form = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                   !config.form.algorithm;
@@ -6052,10 +6107,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             form = detail::derive_form(seed, map, alias);
         }
         detail::apply_form_override(form, config.form.tokens);
-        return form;
     }();
-    auto breadcrumb = [&] {
-        BreadcrumbThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->breadcrumb;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.breadcrumb.algorithm;
@@ -6071,10 +6125,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_breadcrumb(seed, map, alias);
         }
         detail::apply_breadcrumb_override(token, config.breadcrumb.tokens);
-        return token;
     }();
-    auto anchor = [&] {
-        AnchorThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->anchor;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.anchor.algorithm;
@@ -6090,10 +6143,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_anchor(seed, map, alias);
         }
         detail::apply_anchor_override(token, config.anchor.tokens);
-        return token;
     }();
-    auto transfer = [&] {
-        TransferThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->transfer;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.transfer.algorithm;
@@ -6109,10 +6161,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_transfer(seed, map, alias);
         }
         detail::apply_transfer_override(token, config.transfer.tokens);
-        return token;
     }();
-    auto image = [&] {
-        ImageThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->image;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.image.algorithm;
@@ -6128,10 +6179,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_image(seed, map, alias);
         }
         detail::apply_image_override(token, config.image.tokens);
-        return token;
     }();
-    auto upload = [&] {
-        UploadThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->upload;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.upload.algorithm;
@@ -6147,9 +6197,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_upload(seed, map, alias);
         }
         detail::apply_upload_override(token, config.upload.tokens);
-        return token;
     }();
-    auto color_picker = [&] {
+    [&]() -> void {
         auto component_seed = seed;
         if (config.color_picker.algorithm) {
             apply_seed_override(component_seed, config.color_picker.seed);
@@ -6157,7 +6206,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         const auto component_map = config.color_picker.algorithm ? derive_map(component_seed, algorithms) : map;
         const auto component_alias =
             config.color_picker.algorithm ? derive_alias(component_seed, component_map, algorithms) : alias;
-        ColorPickerThemeToken token;
+        auto& token = workspace->color_picker;
         if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
             config.algorithms.empty() && !config.color_picker.algorithm) {
             token = parent->color_picker();
@@ -6199,9 +6248,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         if (o.focus) {
             token.focus = *o.focus;
         }
-        return token;
     }();
-    auto cascader = [&] {
+    [&]() -> void {
         const auto derive = [&](const auto& local_seed, const auto& local_map, const auto& local_alias) {
             auto result = detail::derive_cascader(local_seed, local_map, local_alias);
             const auto recipe = derive_select(local_seed, local_map, local_alias, algorithms);
@@ -6209,7 +6257,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             result.colors.option_hover_background = recipe.colors.option_active_background;
             return result;
         };
-        CascaderThemeToken token;
+        auto& token = workspace->cascader;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.cascader.algorithm;
@@ -6224,10 +6272,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = derive(seed, map, alias);
         }
         detail::apply_cascader_override(token, config.cascader.tokens);
-        return token;
     }();
-    auto steps = [&] {
-        StepsThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->steps;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.steps.algorithm;
@@ -6243,10 +6290,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_steps(seed, map, alias);
         }
         detail::apply_steps_override(token, config.steps.tokens);
-        return token;
     }();
-    auto time_picker = [&] {
-        auto token = std::make_shared<TimePickerThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->time_picker;
+        token = std::make_shared<TimePickerThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.time_picker.algorithm;
@@ -6262,10 +6309,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_time_picker(seed, map, alias);
         }
         detail::apply_time_picker_override(*token, config.time_picker.tokens);
-        return token;
     }();
-    auto skeleton = [&] {
-        auto token = std::make_shared<SkeletonThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->skeleton;
+        token = std::make_shared<SkeletonThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.skeleton.algorithm;
@@ -6280,10 +6327,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_skeleton(seed, map);
         }
         detail::apply_skeleton_override(*token, config.skeleton.tokens);
-        return token;
     }();
-    auto descriptions = [&] {
-        DescriptionsThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->descriptions;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.descriptions.algorithm;
@@ -6299,9 +6345,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_descriptions(seed, map, alias, algorithms);
         }
         detail::apply_descriptions_override(token, config.descriptions.tokens);
-        return token;
     }();
-    auto popover = std::make_shared<PopoverThemeToken>();
+    auto& popover = workspace->popover;
+    popover = std::make_shared<PopoverThemeToken>();
     const bool inherit_popover = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                  !config.popover.algorithm;
@@ -6317,8 +6363,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         *popover = detail::derive_popover(seed, map, alias);
     }
     detail::apply_popover_override(*popover, config.popover.tokens);
-    auto message = [&] {
-        auto token = std::make_shared<NoticeThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->message;
+        token = std::make_shared<NoticeThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.message.algorithm;
@@ -6334,10 +6381,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_notice(seed, map, alias, true);
         }
         detail::apply_notice_override(*token, config.message.tokens);
-        return token;
     }();
-    auto notification = [&] {
-        auto token = std::make_shared<NoticeThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->notification;
+        token = std::make_shared<NoticeThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.notification.algorithm;
@@ -6353,10 +6400,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_notice(seed, map, alias, false);
         }
         detail::apply_notice_override(*token, config.notification.tokens);
-        return token;
     }();
-    auto timeline = [&] {
-        auto token = std::make_shared<TimelineThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->timeline;
+        token = std::make_shared<TimelineThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.timeline.algorithm;
@@ -6372,10 +6419,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_timeline(seed, map, alias);
         }
         detail::apply_timeline_override(*token, config.timeline.tokens);
-        return token;
     }();
-    auto avatar = [&] {
-        auto token = std::make_shared<AvatarThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->avatar;
+        token = std::make_shared<AvatarThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.avatar.algorithm;
@@ -6391,10 +6438,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_avatar(seed, map, alias);
         }
         detail::apply_avatar_override(*token, config.avatar.tokens);
-        return token;
     }();
-    auto rate = [&] {
-        auto token = std::make_shared<RateThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->rate;
+        token = std::make_shared<RateThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.rate.algorithm;
@@ -6411,10 +6458,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_rate(seed, map, alias, dark);
         }
         detail::apply_rate_override(*token, config.rate.tokens);
-        return token;
     }();
-    auto statistic = [&] {
-        auto token = std::make_shared<StatisticThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->statistic;
+        token = std::make_shared<StatisticThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.statistic.algorithm;
@@ -6430,10 +6477,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_statistic(seed, map, alias);
         }
         detail::apply_statistic_override(*token, config.statistic.tokens);
-        return token;
     }();
-    auto tree = [&] {
-        auto token = std::make_shared<TreeThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->tree;
+        token = std::make_shared<TreeThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.tree.algorithm;
@@ -6450,10 +6497,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             *token = detail::derive_tree(seed, map, alias, derive_select(seed, map, alias, algorithms));
         }
         detail::apply_tree_override(*token, config.tree.tokens);
-        return token;
     }();
-    auto auto_complete = [&] {
-        auto token = std::make_shared<AutoCompleteThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->auto_complete;
+        token = std::make_shared<AutoCompleteThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.auto_complete.algorithm;
@@ -6480,10 +6527,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             !std::isfinite(extents) || extents > std::numeric_limits<float>::max()) {
             throw std::invalid_argument("AutoComplete final font or combined extent is not renderable");
         }
-        return token;
     }();
-    auto tree_select = [&] {
-        auto token = std::make_shared<TreeSelectThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->tree_select;
+        token = std::make_shared<TreeSelectThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.tree_select.algorithm;
@@ -6556,9 +6603,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             throw std::invalid_argument("TreeSelect combined extents or popup order are invalid");
         }
         detail::apply_tree_override(token->tree, config.tree_select.tokens.tree);
-        return token;
     }();
-    auto float_button = parent && config.inherit ? parent->float_button() : FloatButtonThemeToken{};
+    auto& float_button = workspace->float_button;
+    float_button = parent && config.inherit ? parent->float_button() : FloatButtonThemeToken{};
     if (!parent || !config.inherit || config.seed != SeedTokenOverride{} || config.alias != AliasTokenOverride{} ||
         !config.algorithms.empty()) {
         float_button.size = map.control_height_large;
@@ -6571,7 +6618,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         float_button.background = alias.color_background_elevated;
         float_button.primary_background = map.color_primary;
         float_button.color = alias.color_text;
-        float_button.primary_color = button.primary_color;
+        float_button.primary_color = workspace->button.primary_color;
         float_button.shadow = alias.box_shadow_secondary;
     }
     const auto& fo = config.float_button.tokens;
@@ -6602,8 +6649,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     if (fo.shadow) {
         float_button.shadow = *fo.shadow;
     }
-    auto layout = [&] {
-        auto token = std::make_shared<LayoutThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->layout;
+        token = std::make_shared<LayoutThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.layout.algorithm;
@@ -6721,10 +6769,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         if (!std::isfinite(extent) || extent > std::numeric_limits<float>::max()) {
             throw std::invalid_argument("Layout combined extents overflow");
         }
-        return token;
     }();
-    auto splitter = [&] {
-        auto token = std::make_shared<SplitterThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->splitter;
+        token = std::make_shared<SplitterThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.splitter.algorithm;
@@ -6800,10 +6848,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         if (!std::isfinite(extent) || extent > std::numeric_limits<float>::max()) {
             throw std::invalid_argument("Splitter combined extents overflow");
         }
-        return token;
     }();
-    auto mentions = [&] {
-        auto token = std::make_shared<MentionsThemeToken>();
+    [&]() -> void {
+        auto& token = workspace->mentions;
+        token = std::make_shared<MentionsThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.mentions.algorithm;
@@ -6866,10 +6914,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
              suggestions.typography.font_family != SystemFontFamily::ui_monospace)) {
             throw std::invalid_argument("Mentions final font or combined extent is not renderable");
         }
-        return token;
     }();
-    auto calendar = [&] {
-        CalendarThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->calendar;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.calendar.algorithm && config.calendar.seed == SeedTokenOverride{};
@@ -6885,10 +6932,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_calendar(seed, map, alias);
         }
         detail::apply_calendar_override(token, config.calendar.tokens);
-        return token;
     }();
-    auto carousel = [&] {
-        CarouselThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->carousel;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.carousel.algorithm && config.carousel.seed == SeedTokenOverride{};
@@ -6904,10 +6950,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_carousel(seed, map, alias);
         }
         detail::apply_carousel_override(token, config.carousel.tokens);
-        return token;
     }();
-    auto qrcode = [&] {
-        QRCodeThemeToken token;
+    [&]() -> void {
+        auto& token = workspace->qrcode;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                              !config.qrcode.algorithm && config.qrcode.seed == SeedTokenOverride{};
@@ -6923,22 +6968,28 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             token = detail::derive_qrcode(seed, map, alias);
         }
         detail::apply_qrcode_override(token, config.qrcode.tokens);
-        return token;
     }();
     return ThemeSnapshot(
-        std::move(float_button), std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
-        std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography), std::move(divider),
-        std::move(slider), std::move(tooltip), std::move(select), std::move(card), std::move(tabs), std::move(modal),
-        std::move(drawer), std::move(popconfirm), std::move(menu), std::move(dropdown),
-        std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms), std::move(tag),
-        std::move(badge), std::move(alert), std::move(spin), std::move(progress), std::move(input_number),
-        std::move(pagination), std::move(table), std::move(collapse), std::move(segmented), std::move(empty),
-        std::move(result), std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(anchor),
-        std::move(transfer), std::move(color_picker), std::move(cascader), std::move(steps), std::move(time_picker),
-        std::move(skeleton), std::move(descriptions), std::move(popover), std::move(message), std::move(notification),
-        std::move(timeline), std::move(avatar), std::move(rate), std::move(statistic), std::move(tree),
-        std::move(auto_complete), std::move(tree_select), std::move(layout), std::move(splitter), std::move(mentions),
-        std::move(image), std::move(upload), std::move(calendar), std::move(carousel), std::move(qrcode));
+        std::move(workspace->float_button), std::move(seed), std::move(map), std::move(alias),
+        std::move(workspace->button), std::move(workspace->text), std::move(workspace->switch_token),
+        std::move(workspace->checkbox), std::move(workspace->radio), std::move(workspace->typography),
+        std::move(workspace->divider), std::move(workspace->slider), std::move(workspace->tooltip),
+        std::move(workspace->select), std::move(workspace->card), std::move(workspace->tabs),
+        std::move(workspace->modal), std::move(workspace->drawer), std::move(workspace->popconfirm), std::move(menu),
+        std::move(dropdown), std::make_shared<const detail::InputTokenSet>(std::move(workspace->input)),
+        std::move(algorithms), std::move(workspace->tag), std::move(workspace->badge), std::move(workspace->alert),
+        std::move(workspace->spin), std::move(workspace->progress), std::move(workspace->input_number),
+        std::move(pagination), std::move(table), std::move(workspace->collapse), std::move(workspace->segmented),
+        std::move(empty), std::move(result), std::move(workspace->date_picker), std::move(workspace->form),
+        std::move(workspace->breadcrumb), std::move(workspace->anchor), std::move(workspace->transfer),
+        std::move(workspace->color_picker), std::move(workspace->cascader), std::move(workspace->steps),
+        std::move(workspace->time_picker), std::move(workspace->skeleton), std::move(workspace->descriptions),
+        std::move(popover), std::move(workspace->message), std::move(workspace->notification),
+        std::move(workspace->timeline), std::move(workspace->avatar), std::move(workspace->rate),
+        std::move(workspace->statistic), std::move(workspace->tree), std::move(workspace->auto_complete),
+        std::move(workspace->tree_select), std::move(workspace->layout), std::move(workspace->splitter),
+        std::move(workspace->mentions), std::move(workspace->image), std::move(workspace->upload),
+        std::move(workspace->calendar), std::move(workspace->carousel), std::move(workspace->qrcode));
 }
 
 } // namespace ryn

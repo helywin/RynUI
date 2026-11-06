@@ -292,7 +292,7 @@ private:
     void record(TokenIdentity identity) const;
     void validate_children(const ThemeSnapshot& parent_snapshot) const;
     void recompute_from_parent();
-    void commit_snapshot(const ThemeConfig& config, ThemeSnapshot&& next);
+    void commit_snapshot(const ThemeConfig& config, std::shared_ptr<const ThemeSnapshot> next);
     void notify_subscribers();
     void notify_children();
     [[nodiscard]] std::size_t live_subscriber_count() const noexcept;

@@ -2627,28 +2627,29 @@ private:
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
 
     ThemeSnapshot(
-        FloatButtonThemeToken float_button, AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
-        ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
-        RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
-        TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs,
-        ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
-        DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
-        std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert,
-        SpinThemeToken spin, ProgressThemeToken progress, InputNumberThemeToken input_number,
-        PaginationThemeToken pagination, TableThemeToken table, CollapseThemeToken collapse,
-        SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result, DatePickerThemeToken date_picker,
-        FormThemeToken form, BreadcrumbThemeToken breadcrumb, AnchorThemeToken anchor, TransferThemeToken transfer,
-        ColorPickerThemeToken color_picker, CascaderThemeToken cascader, StepsThemeToken steps,
+        FloatButtonThemeToken&& float_button, AntDesignDefaultSeed&& seed, ThemeMapToken&& map, ThemeAliasToken&& alias,
+        ButtonThemeToken&& button, TextThemeToken&& text, SwitchThemeToken&& switch_token,
+        CheckboxThemeToken&& checkbox, RadioThemeToken&& radio, TypographyThemeToken&& typography,
+        DividerThemeToken&& divider, SliderThemeToken&& slider, TooltipThemeToken&& tooltip, SelectThemeToken&& select,
+        CardThemeToken&& card, TabsThemeToken&& tabs, ModalThemeToken&& modal, DrawerThemeToken&& drawer,
+        PopconfirmThemeToken&& popconfirm, MenuThemeToken&& menu, DropdownThemeToken&& dropdown,
+        std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms, TagThemeToken&& tag,
+        BadgeThemeToken&& badge, AlertThemeToken&& alert, SpinThemeToken&& spin, ProgressThemeToken&& progress,
+        InputNumberThemeToken&& input_number, PaginationThemeToken&& pagination, TableThemeToken&& table,
+        CollapseThemeToken&& collapse, SegmentedThemeToken&& segmented, EmptyThemeToken&& empty,
+        ResultThemeToken&& result, DatePickerThemeToken&& date_picker, FormThemeToken&& form,
+        BreadcrumbThemeToken&& breadcrumb, AnchorThemeToken&& anchor, TransferThemeToken&& transfer,
+        ColorPickerThemeToken&& color_picker, CascaderThemeToken&& cascader, StepsThemeToken&& steps,
         std::shared_ptr<const TimePickerThemeToken> time_picker, std::shared_ptr<const SkeletonThemeToken> skeleton,
-        DescriptionsThemeToken descriptions, std::shared_ptr<const PopoverThemeToken> popover,
+        DescriptionsThemeToken&& descriptions, std::shared_ptr<const PopoverThemeToken> popover,
         std::shared_ptr<const NoticeThemeToken> message, std::shared_ptr<const NoticeThemeToken> notification,
         std::shared_ptr<const TimelineThemeToken> timeline, std::shared_ptr<const AvatarThemeToken> avatar,
         std::shared_ptr<const RateThemeToken> rate, std::shared_ptr<const StatisticThemeToken> statistic,
         std::shared_ptr<const TreeThemeToken> tree, std::shared_ptr<const AutoCompleteThemeToken> auto_complete,
         std::shared_ptr<const TreeSelectThemeToken> tree_select, std::shared_ptr<const LayoutThemeToken> layout,
         std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
-        ImageThemeToken image, UploadThemeToken upload, CalendarThemeToken calendar, CarouselThemeToken carousel,
-        QRCodeThemeToken qrcode);
+        ImageThemeToken&& image, UploadThemeToken&& upload, CalendarThemeToken&& calendar,
+        CarouselThemeToken&& carousel, QRCodeThemeToken&& qrcode);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;

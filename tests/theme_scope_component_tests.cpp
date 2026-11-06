@@ -182,6 +182,54 @@ void test_nested_themes_release_configuration_frames_before_content() {
     require(nodes.size() == 0, "deep Theme content survived host disposal");
 }
 
+void test_binding_rejects_repeated_invalid_config_and_recovers() {
+    ryn::runtime::NodeStore nodes;
+    ryn::runtime::ComponentHost host(nodes);
+    const auto config = std::make_unique<ryn::ThemeConfig>();
+    ryn::Signal<int> revision{0};
+    int evaluations = 0;
+    const auto binding = ryn::bind([&] {
+        static_cast<void>(revision.get());
+        ++evaluations;
+        return *config;
+    });
+    ryn::runtime::ComponentId component;
+    host.mount(ryn::Content{
+        [&] { ryn::Theme(ryn::ThemeProps{}.config(binding), ryn::ThemeContent{[&] { component = mount_dummy(); }}); }});
+    const auto scope = host.theme_scope(component);
+    const auto* before = &scope->snapshot();
+    const auto generation = scope->generation();
+    int notifications = 0;
+    auto subscription = scope->capture([&](ryn::theme_runtime::DirtyPhase) { ++notifications; },
+                                       [&] { static_cast<void>(scope->card_metrics()); });
+    config->card.tokens.body_padding = ryn::dp(-1);
+    for (int attempt = 1; attempt <= 2; ++attempt) {
+        const auto evaluations_before = evaluations;
+        bool rejected = false;
+        try {
+            static_cast<void>(revision.set(attempt));
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        require(rejected && evaluations == evaluations_before + 1,
+                "Theme binding skipped a repeated invalid configuration");
+        require(&scope->snapshot() == before && scope->generation() == generation && notifications == 0,
+                "rejected Theme binding published a snapshot or notification");
+    }
+    config->card.tokens.body_padding = ryn::dp(30);
+    require(revision.set(3) && scope->snapshot().card().metrics.body_padding == 30 &&
+                scope->generation() == generation + 1 && notifications == 1,
+            "Theme binding did not recover after repeated invalid configurations");
+    const auto recovered_generation = scope->generation();
+    const auto recovered_evaluations = evaluations;
+    host.dispose();
+    config->card.tokens.body_padding = ryn::dp(32);
+    require(revision.set(4) && scope->generation() == recovered_generation &&
+                scope->snapshot().card().metrics.body_padding == 30 && notifications == 1 &&
+                evaluations == recovered_evaluations,
+            "disposed Theme binding retained an active observer");
+}
+
 } // namespace
 
 int main() {
@@ -191,6 +239,7 @@ int main() {
         test_exception_destroy_reuse_and_scope_lifetime();
         test_cross_thread_and_disposal();
         test_nested_themes_release_configuration_frames_before_content();
+        test_binding_rejects_repeated_invalid_config_and_recovers();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

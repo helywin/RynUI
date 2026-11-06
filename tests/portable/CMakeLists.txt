@@ -47,6 +47,7 @@ target_compile_definitions(rynui_portable_theme_algorithm PRIVATE
     "RYNUI_THEME_GOLDEN_DIRECTORY=\"${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.6.5/golden\"")
 
 rynui_portable_test(rounded_effect_allocation "rounded_effect_allocation_benchmark.cpp")
+rynui_portable_test(theme_allocation "theme_allocation_benchmark.cpp")
 rynui_portable_test(input_scene_allocation "input_scene_allocation_benchmark.cpp")
 rynui_portable_test(text_editor_allocation "text_editor_allocation_benchmark.cpp")
 

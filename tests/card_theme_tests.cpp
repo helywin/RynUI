@@ -1,6 +1,7 @@
 #include "theme/theme_runtime.hpp"
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 
 namespace {
@@ -79,47 +80,51 @@ void groups_and_atomic_failure() {
     auto m = scope->capture([&](DirtyPhase) { ++metrics; }, [&] { static_cast<void>(scope->card_metrics()); });
     auto t = scope->capture([&](DirtyPhase) { ++typography; }, [&] { static_cast<void>(scope->card_typography()); });
     auto e = scope->capture([&](DirtyPhase) { ++effects; }, [&] { static_cast<void>(scope->card_effects()); });
-    ThemeConfig config;
-    config.card.tokens.header_background = Color::rgba8(10, 20, 30);
-    check(scope->update(config) && colors == 1 && metrics == 0 && typography == 0 && effects == 0 &&
+    const auto config = std::make_unique<ThemeConfig>();
+    config->card.tokens.header_background = Color::rgba8(10, 20, 30);
+    check(scope->update(*config) && colors == 1 && metrics == 0 && typography == 0 && effects == 0 &&
               scope->changed_identities().size() == 1 && scope->changed_identities()[0] == TokenIdentity::card_colors,
           "Card color notification leaked");
-    config.card.tokens.body_padding = dp(30);
-    scope->update(config);
-    config.card.tokens.header_font_size = dp(18);
-    scope->update(config);
-    config.card.tokens.hover_shadow = ShadowList{};
-    scope->update(config);
+    config->card.tokens.body_padding = dp(30);
+    scope->update(*config);
+    config->card.tokens.header_font_size = dp(18);
+    scope->update(*config);
+    config->card.tokens.hover_shadow = ShadowList{};
+    scope->update(*config);
     check(colors == 1 && metrics == 1 && typography == 1 && effects == 1, "Card dirty groups drifted");
     check(has_any(dirty_phase_for(TokenIdentity::card_metrics), DirtyPhase::hit_test | DirtyPhase::measure_layout) &&
               has_any(dirty_phase_for(TokenIdentity::card_typography), DirtyPhase::text | DirtyPhase::measure_layout) &&
               dirty_phase_for(TokenIdentity::card_effects) == (DirtyPhase::geometry | DirtyPhase::paint_material),
           "Card dirty domains drifted");
-    const auto before = scope->snapshot();
-    const auto reject = [&](ThemeConfig invalid) {
+    const auto before = std::make_unique<ThemeSnapshot>(scope->snapshot());
+    const auto reject = [&](const ThemeConfig& invalid) {
         bool rejected = false;
         try {
             scope->update(invalid);
         } catch (const std::invalid_argument&) {
             rejected = true;
         }
-        check(rejected && scope->snapshot() == before, "Card invalid config partially published");
+        check(rejected && scope->snapshot() == *before, "Card invalid config partially published");
     };
-    auto invalid = config;
-    invalid.card.tokens.body_padding = dp(-1);
-    reject(invalid);
-    invalid = config;
-    invalid.card.tokens.header_height = dp(std::numeric_limits<float>::infinity());
-    reject(invalid);
-    invalid = config;
-    invalid.card.tokens.font_size = dp(0);
-    reject(invalid);
-    invalid = config;
-    invalid.card.tokens.header_font_weight = 99;
-    reject(invalid);
-    invalid = config;
-    invalid.card.tokens.header_height = dp(std::numeric_limits<float>::max());
-    reject(invalid);
+    const auto invalid = std::make_unique<ThemeConfig>(*config);
+    invalid->card.tokens.body_padding = dp(-1);
+    reject(*invalid);
+    *invalid = *config;
+    invalid->card.tokens.header_height = dp(std::numeric_limits<float>::infinity());
+    reject(*invalid);
+    *invalid = *config;
+    invalid->card.tokens.font_size = dp(0);
+    reject(*invalid);
+    *invalid = *config;
+    invalid->card.tokens.header_font_weight = 99;
+    reject(*invalid);
+    *invalid = *config;
+    invalid->card.tokens.header_height = dp(std::numeric_limits<float>::max());
+    reject(*invalid);
+    config->card.tokens.body_padding = dp(32);
+    check(scope->update(*config) && scope->snapshot().card().metrics.body_padding == 32 && colors == 1 &&
+              metrics == 2 && typography == 1 && effects == 1,
+          "Card valid update did not recover after rejected configs");
 }
 } // namespace
 

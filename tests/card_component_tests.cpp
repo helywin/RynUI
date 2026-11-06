@@ -2,6 +2,7 @@
 #include "component/select_component.hpp"
 #include "support/input_fixture.hpp"
 #include <iostream>
+#include <memory>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
 #endif
@@ -30,19 +31,28 @@ void click(Fixture& f, runtime::ComponentId id) {
     f.synchronize();
 }
 
+Signal<ThemeConfig> make_theme_signal() {
+    return Signal<ThemeConfig>{ThemeConfig{}};
+}
+
+void set_theme(Signal<ThemeConfig>& theme, const ThemeConfig& config) {
+    theme.set(config);
+}
+
 void regions_loading_and_nested_controls() {
     Signal<bool> loading{false};
     Signal<CardSize> size{CardSize::Default};
     Signal<CardVariant> variant{CardVariant::Outlined};
     Signal<String> title{String{u8"Profile / 账户"}};
-    Signal<ThemeConfig> theme{ThemeConfig{}};
+    auto theme = make_theme_signal();
     int root_runs{};
     int body_runs{};
     int extra_runs{};
     int cover_runs{};
     int action_runs{};
     int clicks{};
-    Fixture f;
+    const auto fixture = std::make_unique<Fixture>();
+    auto& f = *fixture;
     f.services.set_motion_preference(animation::MotionPreference::reduced);
     f.services.mount(Content{[&] {
         ++root_runs;
@@ -147,15 +157,15 @@ void regions_loading_and_nested_controls() {
     const auto root_node = f.services.components().root(id);
     const auto measures = f.nodes.require(root_node).measure_count;
     const auto body_measures = f.nodes.require(f.services.components().root(initial.body)).measure_count;
-    ThemeConfig custom;
-    custom.card.tokens.background = Color::rgba8(30, 50, 80);
-    theme.set(custom);
+    const auto custom = std::make_unique<ThemeConfig>();
+    custom->card.tokens.background = Color::rgba8(30, 50, 80);
+    set_theme(theme, *custom);
     f.synchronize();
     check(f.nodes.require(root_node).measure_count == measures &&
               f.nodes.require(f.services.components().root(initial.body)).measure_count == body_measures,
           "Card color change remeasured content");
-    custom.card.tokens.border_width = dp(0);
-    theme.set(custom);
+    custom->card.tokens.border_width = dp(0);
+    set_theme(theme, *custom);
     f.synchronize();
     check(root_runs == 1 && body_runs == 1 && extra_runs == 1 && cover_runs == 1 && action_runs == 1,
           "Card ordinary update reran slots");
