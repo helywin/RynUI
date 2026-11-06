@@ -795,6 +795,14 @@ target_compile_definitions(rynui_empty_result_component_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.empty_result_component COMMAND rynui_empty_result_component_tests)
 
+add_executable(rynui_collapse_block_cleanup_tests collapse_block_cleanup_tests.cpp)
+rynui_configure_cpp_target(rynui_collapse_block_cleanup_tests)
+target_link_libraries(rynui_collapse_block_cleanup_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_collapse_block_cleanup_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.collapse_block_cleanup COMMAND rynui_collapse_block_cleanup_tests)
+
 foreach(collapse_test IN ITEMS collapse_public_api collapse_theme collapse_component)
     add_executable(rynui_${collapse_test}_tests ${collapse_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${collapse_test}_tests)

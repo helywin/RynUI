@@ -491,6 +491,9 @@ void CollapseComponentHost::mount_panel(runtime::ComponentId id, std::size_t ind
                                     }},
                                     row.foreground, s.header_font);
         row.snapshot.body = region(id, Content{[] {}}, s.body_color, s.body_font, true);
+        const auto body = row.snapshot.body;
+        context.on_resource_cleanup(body,
+                                    [&services, body] { services.interactions().set_input_blocked(body, false); });
         services.layout().set_layout(context.root(row.snapshot.body), layout::LeafLayout{});
         row.body_content = region(row.snapshot.body, Content{[] {}}, s.body_color, s.body_font);
         const auto active_keys = normalized(s);
