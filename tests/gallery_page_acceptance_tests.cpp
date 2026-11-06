@@ -17,6 +17,20 @@ int main(int argc, char** argv) {
             throw std::runtime_error("finite page options did not preserve explicit routes/family/geometry");
         }
         const auto defaults = gallery_page_options(std::array<std::string_view, 1>{"--page-acceptance"}, root);
+        const auto visual = gallery_page_options(
+            std::array<std::string_view, 3>{"--page-acceptance", "--page-visual", "--page=button"}, root);
+        if (!visual.visual || visual.pages.size() != 1) {
+            throw std::runtime_error("hidden visual options did not preserve the selected page");
+        }
+        bool visual_rejected{};
+        try {
+            static_cast<void>(gallery_page_options(std::array<std::string_view, 1>{"--page-visual"}, root));
+        } catch (const std::invalid_argument&) {
+            visual_rejected = true;
+        }
+        if (!visual_rejected) {
+            throw std::runtime_error("visual automation accidentally started an interactive product");
+        }
         if (defaults.pages.size() != 11 || !defaults.output.lexically_relative(root / "out").native().size()) {
             throw std::runtime_error("default finite matrix is incomplete");
         }

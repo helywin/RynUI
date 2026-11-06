@@ -30,6 +30,7 @@ struct PlatformConfig {
     int width{960};
     int height{640};
     bool high_pixel_density{true};
+    bool hidden{false};
 };
 
 struct PlatformWindowMetrics {
@@ -187,7 +188,8 @@ public:
 
     virtual bool init_video() = 0;
     virtual void quit() noexcept = 0;
-    virtual PlatformWindowHandle create_window(const char* title, int width, int height, bool high_pixel_density) = 0;
+    virtual PlatformWindowHandle create_window(const char* title, int width, int height, bool high_pixel_density,
+                                               bool hidden) = 0;
     virtual void destroy_window(PlatformWindowHandle window) noexcept = 0;
     [[nodiscard]] virtual const char* last_error() const noexcept = 0;
     [[nodiscard]] virtual PlatformWindowMetrics window_metrics(PlatformWindowHandle window) const noexcept = 0;

@@ -129,7 +129,7 @@ struct FakeApi final : PlatformApi {
 
     void quit() noexcept override {}
 
-    PlatformWindowHandle create_window(const char*, int, int, bool) override {
+    PlatformWindowHandle create_window(const char*, int, int, bool, bool) override {
         return &token;
     }
 

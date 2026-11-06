@@ -281,8 +281,12 @@ public:
         SDL_Quit();
     }
 
-    PlatformWindowHandle create_window(const char* title, int width, int height, bool high_pixel_density) override {
+    PlatformWindowHandle create_window(const char* title, int width, int height, bool high_pixel_density,
+                                       bool hidden) override {
         SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+        if (hidden) {
+            flags |= SDL_WINDOW_HIDDEN;
+        }
         if (high_pixel_density) {
             flags = static_cast<SDL_WindowFlags>(flags | SDL_WINDOW_HIGH_PIXEL_DENSITY);
         }
@@ -410,7 +414,8 @@ PlatformCreateResult PlatformState::create(PlatformApi& api, const PlatformConfi
     }
     state->sdl_initialized_ = true;
 
-    state->window_ = api.create_window(config.title.c_str(), config.width, config.height, config.high_pixel_density);
+    state->window_ =
+        api.create_window(config.title.c_str(), config.width, config.height, config.high_pixel_density, config.hidden);
     if (state->window_ == nullptr) {
         return failed_create(std::move(state), api, PlatformStage::window);
     }

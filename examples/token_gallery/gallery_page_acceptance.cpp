@@ -93,6 +93,9 @@ GalleryPageOptions gallery_page_options(std::span<const std::string_view> argume
     for (const auto argument : arguments) {
         if (argument == "--page-acceptance") {
             result.acceptance = true;
+        } else if (argument == "--page-visual") {
+            result.visual = true;
+            acceptance_argument = true;
         } else if (argument == "--motion-disabled") {
             result.motion_disabled = true;
         } else if (argument.starts_with("--page=")) {

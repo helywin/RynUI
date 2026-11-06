@@ -1,4 +1,5 @@
 #include "gallery_pages_runtime.hpp"
+#include "gallery_visual_capture.hpp"
 #include "gallery_existing_data_entry_acceptance.hpp"
 #include "gallery_status_acceptance.hpp"
 #include "gallery_page_acceptance.hpp"
@@ -213,6 +214,7 @@ public:
     std::string error;
     std::uint64_t cursor_syncs{};
     bool trace{};
+    std::filesystem::path offscreen_frame;
 #ifdef __linux__
     std::unique_ptr<AcceptanceFrameBoundary> frame_boundary;
 #endif
@@ -237,14 +239,17 @@ public:
             if (metrics.pixel_width <= 0 || metrics.pixel_height <= 0) {
                 return runtime::FrameSubmissionResult::deferred;
             }
-            if (!inputs.synchronize_input_area(double(metrics.coordinate_width) / events.viewport.width,
+            if (offscreen_frame.empty() &&
+                !inputs.synchronize_input_area(double(metrics.coordinate_width) / events.viewport.width,
                                                metrics.coordinate_width, metrics.coordinate_height)) {
                 throw std::runtime_error("Gallery host input area synchronization failed");
             }
-            if (!events.platform.synchronize_pointer_cursor()) {
+            if (offscreen_frame.empty() && !events.platform.synchronize_pointer_cursor()) {
                 throw std::runtime_error("Gallery host cursor synchronization failed");
             }
-            ++cursor_syncs;
+            if (offscreen_frame.empty()) {
+                ++cursor_syncs;
+            }
             if (!resources.synchronize({&app.services().surfaces().instances(),
                                         text_scene.atlas(),
                                         text_scene.glyph_scene().instances(),
@@ -263,6 +268,10 @@ public:
                 throw std::runtime_error("Gallery scene attachment failed");
             }
             renderer.set_clear_color(resolve_theme(pages.theme()).alias().color_background_container);
+            if (!offscreen_frame.empty()) {
+                return renderer.save_frame_bmp(offscreen_frame) ? runtime::FrameSubmissionResult::submitted
+                                                                : runtime::FrameSubmissionResult::failed;
+            }
             if (trace) {
                 std::cout << "page_acceptance_submit_begin\n" << std::flush;
 #ifdef __linux__
@@ -321,40 +330,44 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 result.host_cursor_sync = submitter.cursor_syncs > 0;
                 write_gallery_page_acceptance(options.output, result);
 #ifdef __linux__
-                check(bool(submitter.frame_boundary), "Wayland page frame boundary was not armed");
-                const auto frame_deadline =
-                    std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(5));
-                while (!submitter.frame_boundary->done()) {
-                    if (std::chrono::steady_clock::now() >= frame_deadline) {
-                        throw std::runtime_error("Wayland page frame callback deadline exceeded");
+                if (!options.visual) {
+                    check(bool(submitter.frame_boundary), "Wayland page frame boundary was not armed");
+                    const auto frame_deadline =
+                        std::min(deadline, std::chrono::steady_clock::now() + std::chrono::seconds(5));
+                    while (!submitter.frame_boundary->done()) {
+                        if (std::chrono::steady_clock::now() >= frame_deadline) {
+                            throw std::runtime_error("Wayland page frame callback deadline exceeded");
+                        }
+                        events.consume(events.platform.wait_events(10));
+                        if (!events.error.empty() || events.quit) {
+                            throw std::runtime_error(events.error.empty() ? "Wayland page window closed"
+                                                                          : events.error);
+                        }
                     }
-                    events.consume(events.platform.wait_events(10));
-                    if (!events.error.empty() || events.quit) {
-                        throw std::runtime_error(events.error.empty() ? "Wayland page window closed" : events.error);
+                    submitter.frame_boundary.reset();
+                    // A frame callback permits rendering the next frame; it is not
+                    // a presentation fence. Pace the finite host's next input/action
+                    // to the display refresh interval instead of bursting actions
+                    // into the same compositor refresh cycle.
+                    const auto* mode = SDL_GetCurrentDisplayMode(
+                        SDL_GetDisplayForWindow(static_cast<SDL_Window*>(events.platform.window())));
+                    check(mode && std::isfinite(mode->refresh_rate) && mode->refresh_rate > 0,
+                          "native acceptance display has no refresh rate");
+                    const auto next_action =
+                        std::min(frame_deadline, std::chrono::steady_clock::now() +
+                                                     std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                                         std::chrono::duration<double>{1.0 / mode->refresh_rate}));
+                    while (std::chrono::steady_clock::now() < next_action) {
+                        events.consume(events.platform.wait_events(1));
+                        if (!events.error.empty() || events.quit) {
+                            throw std::runtime_error(events.error.empty() ? "Wayland page window closed"
+                                                                          : events.error);
+                        }
                     }
+                    ++result.checks;
+                    write_gallery_page_acceptance(options.output, result);
+                    std::cout << "page_acceptance_frame_callback\n" << std::flush;
                 }
-                submitter.frame_boundary.reset();
-                // A frame callback permits rendering the next frame; it is not
-                // a presentation fence. Pace the finite host's next input/action
-                // to the display refresh interval instead of bursting actions
-                // into the same compositor refresh cycle.
-                const auto* mode = SDL_GetCurrentDisplayMode(
-                    SDL_GetDisplayForWindow(static_cast<SDL_Window*>(events.platform.window())));
-                check(mode && std::isfinite(mode->refresh_rate) && mode->refresh_rate > 0,
-                      "native acceptance display has no refresh rate");
-                const auto next_action =
-                    std::min(frame_deadline, std::chrono::steady_clock::now() +
-                                                 std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                                     std::chrono::duration<double>{1.0 / mode->refresh_rate}));
-                while (std::chrono::steady_clock::now() < next_action) {
-                    events.consume(events.platform.wait_events(1));
-                    if (!events.error.empty() || events.quit) {
-                        throw std::runtime_error(events.error.empty() ? "Wayland page window closed" : events.error);
-                    }
-                }
-                ++result.checks;
-                write_gallery_page_acceptance(options.output, result);
-                std::cout << "page_acceptance_frame_callback\n" << std::flush;
 #endif
                 return;
             }
@@ -529,13 +542,169 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         std::cout << "page_acceptance_stage=" << i << " page=" << route.component_identity << " width=" << width << '\n'
                   << std::flush;
         resize(width);
+        if (options.visual && i > 0) {
+            pages.request({});
+            pages.process();
+            render();
+        }
         auto config = pages.theme();
         config.algorithms = i % 3 == 0   ? std::vector{ThemeAlgorithm::Default}
                             : i % 3 == 1 ? std::vector{ThemeAlgorithm::Dark}
                                          : std::vector{ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
+        if (options.visual && route.component_identity == "ant.component.switch") {
+            config.seed.motion = true;
+        }
         pages.set_theme(config);
         check(pages.request(route), "finite page route rejected");
         static_cast<void>(pages.process());
+        if (options.visual) {
+            render();
+            capture_gallery_visuals(
+                route, i, app, pages, events.viewport, events.scale, options.output.parent_path(), render,
+                [&](float delta) {
+                    const auto lane = pages.snapshot().layout.document;
+                    events.inject_scroll_at(lane.x + lane.width - 8, lane.y + lane.height / 2, delta);
+                },
+                [&] {
+                    std::vector<runtime::ComponentId> targets;
+                    const auto root = pages.snapshot().page;
+                    const auto gather = [&](auto& host, auto trigger) {
+                        for (const auto id : host.mounted()) {
+                            if (owns(app, id, root)) {
+                                targets.push_back(trigger(id, host.snapshot(id)));
+                            }
+                        }
+                    };
+                    const auto name = route.component_identity;
+                    if (name == "ant.component.input" || name == "ant.component.mentions") {
+                        for (const auto& editor : inputs.mounted_inputs()) {
+                            if (owns(app, editor.component, root) &&
+                                app.interactions().branch_active(editor.interaction)) {
+                                targets.push_back(editor.component);
+                            }
+                        }
+                    } else if (name == "ant.component.switch") {
+                        for (const auto& item : selections.mounted()) {
+                            if (!item.checkbox && !item.radio && owns(app, item.component, root)) {
+                                targets.push_back(item.component);
+                            }
+                        }
+                    } else if (name == "ant.component.select") {
+                        gather(app.services().select(), [](auto, const auto& s) { return s.selector; });
+                    } else if (name == "ant.component.tree-select") {
+                        gather(app.services().tree_select(), [](auto, const auto& s) { return s.selector; });
+                    } else if (name == "ant.component.cascader") {
+                        gather(app.services().cascader(), [](auto, const auto& s) { return s.selector; });
+                    } else if (name == "ant.component.date-picker") {
+                        gather(app.services().date_picker(), [](auto, const auto& s) { return s.input; });
+                    } else if (name == "ant.component.time-picker") {
+                        gather(app.services().time_picker(), [](auto, const auto& s) { return s.selector; });
+                    } else if (name == "ant.component.auto-complete") {
+                        gather(app.services().auto_complete(), [](auto, const auto& s) { return s.input; });
+                    } else if (name == "ant.component.color-picker") {
+                        gather(app.services().color_picker(), [](auto id, const auto&) { return id; });
+                    } else if (name == "ant.component.dropdown") {
+                        gather(app.services().dropdown(), [](auto, const auto& s) { return s.trigger; });
+                    } else if (name == "ant.component.popover") {
+                        const auto trigger = pages.target("gallery.popover.trigger");
+                        if (trigger.valid()) {
+                            targets.push_back(trigger);
+                        }
+                    } else if (name == "ant.component.tooltip") {
+                        gather(app.services().tooltip(), [](auto id, const auto&) { return id; });
+                    } else {
+                        const auto add = [&](std::string_view identity) {
+                            const auto id = pages.target(identity);
+                            if (id.valid()) {
+                                targets.push_back(id);
+                            }
+                        };
+                        if (name == "ant.component.modal") {
+                            for (const auto id : {"gallery.modal.basic", "gallery.modal.confirm-loading",
+                                                  "gallery.modal.centered", "gallery.modal.long-body"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.popconfirm") {
+                            add("gallery.popconfirm.single");
+                            add("gallery.popconfirm.controlled");
+                        } else if (name == "ant.component.drawer") {
+                            const auto owner = pages.target("gallery.sample.drawer.account");
+                            for (const auto& button : app.mounted_buttons()) {
+                                if (owns(app, button.component, owner) &&
+                                    app.interactions().branch_active(button.interaction)) {
+                                    targets.push_back(button.component);
+                                    if (targets.size() == 4) {
+                                        break;
+                                    }
+                                }
+                            }
+                        } else if (name == "ant.component.qr-code") {
+                            for (const auto id :
+                                 {"gallery.qrcode.expire", "gallery.qrcode.status", "gallery.qrcode.status",
+                                  "gallery.qrcode.status", "gallery.qrcode.logo", "gallery.qrcode.invalid"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.upload") {
+                            for (const auto id :
+                                 {"gallery.upload.fixture", "gallery.upload.progress", "gallery.upload.success",
+                                  "gallery.upload.list", "gallery.upload.list", "gallery.upload.custom"}) {
+                                add(id);
+                            }
+                        } else if (name == "ant.component.image") {
+                            add("gallery.image.preview");
+                        } else if (name == "ant.component.spin" || name == "ant.component.progress") {
+                            const auto owner =
+                                pages.target(name == "ant.component.spin" ? "gallery.sample.spin.loading"
+                                                                          : "gallery.sample.progress.values");
+                            for (const auto& button : app.mounted_buttons()) {
+                                if (owns(app, button.component, owner) &&
+                                    app.interactions().branch_active(button.interaction)) {
+                                    targets.push_back(button.component);
+                                    break;
+                                }
+                            }
+                        } else if (name == "ant.component.message") {
+                            for (const auto id : {"gallery.message.open", "gallery.message.update",
+                                                  "gallery.notification.open", "gallery.notification.update",
+                                                  "gallery.notification.placement", "gallery.notification.status"}) {
+                                add(id);
+                            }
+                        }
+                    }
+                    return targets;
+                },
+                [&](runtime::ComponentId id) {
+                    if (route.component_identity == "ant.component.color-picker") {
+                        const auto order = app.interactions().declaration_order();
+                        const bool eligible = std::ranges::any_of(order, [&](auto interaction) {
+                            const auto* record = app.interactions().find(interaction);
+                            return record && record->focusable && record->eligible &&
+                                   app.interactions().branch_active(interaction) && owns(app, record->component, id);
+                        });
+                        if (eligible) {
+                            activate(id);
+                        }
+                        return;
+                    }
+                    const auto rect = bounds(id);
+                    pointer(input::PointerAction::move, {rect.x + rect.width / 2, rect.y + rect.height / 2});
+                    click(id);
+                    if (route.component_identity == "ant.component.mentions" && inputs.sessions().active().valid()) {
+                        pages.dispatch(input::TextCommitted{String{u8" @a"}, inputs.sessions().active()});
+                    }
+                    if (route.component_identity == "ant.component.tooltip" ||
+                        route.component_identity == "ant.component.dropdown") {
+                        SDL_Delay(350);
+                    }
+                },
+                [&] {
+                    pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::down});
+                    pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::up});
+                });
+            ++result.cases;
+            write_gallery_page_acceptance(options.output, result);
+            continue;
+        }
         const bool replaced = previous_root.valid() && (route.kind != previous_route.kind ||
                                                         route.component_identity != previous_route.component_identity ||
                                                         route.family != previous_route.family);
@@ -3454,8 +3623,9 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
     check(result.system_fonts, "native default font chain did not resolve any system face");
     // Focus/area coverage is required in the default matrix; an explicitly selected
     // non-input page reports that narrower scope without claiming an input check.
-    if (std::ranges::any_of(options.pages,
-                            [](const auto& route) { return route.component_identity == "ant.component.input"; })) {
+    if (!options.visual && std::ranges::any_of(options.pages, [](const auto& route) {
+            return route.component_identity == "ant.component.input";
+        })) {
         check(result.host_input_area && result.host_cursor_sync,
               "native input area/cursor synchronization was not exercised");
     }
@@ -3490,9 +3660,14 @@ int run_gallery_pages(int argc, char** argv) {
         config.title = "RynUI · Components";
         config.width = 1440;
         config.height = 900;
+        config.hidden = options.visual;
         auto platform = ryn::detail::PlatformState::create(config);
         if (!platform) {
             throw std::runtime_error(platform.error->message);
+        }
+        if (options.visual &&
+            !(SDL_GetWindowFlags(static_cast<SDL_Window*>(platform.state->window())) & SDL_WINDOW_HIDDEN)) {
+            throw std::runtime_error("Visual acceptance requires a hidden native window");
         }
         auto font_runtime = font::FontRuntime::create();
         if (!font_runtime) {
@@ -3538,6 +3713,9 @@ int run_gallery_pages(int argc, char** argv) {
         ryn::detail::SceneResources resources(renderer);
         resources.glyphs().set_sparse_upload_coalescing_limit(512 * 1024);
         GalleryPageSubmitter submitter(events, pages, app, inputs, scene, resources, renderer);
+        if (options.visual) {
+            submitter.offscreen_frame = options.output.parent_path() / "current.bmp";
+        }
         runtime::OnDemandFrameLoop loop(frames, events, submitter, app, 10);
         frames.request_frame();
         if (options.acceptance) {

@@ -42,9 +42,10 @@ public:
         calls.emplace_back("quit");
     }
 
-    PlatformWindowHandle create_window(const char*, int, int, bool high_pixel_density) override {
+    PlatformWindowHandle create_window(const char*, int, int, bool high_pixel_density, bool hidden) override {
         calls.emplace_back("create_window");
         high_pixel_density_requested = high_pixel_density;
+        hidden_requested = hidden;
         return failure_ == FailurePoint::window ? nullptr : &window_token_;
     }
 
@@ -119,6 +120,7 @@ public:
 
     std::vector<std::string> calls;
     bool high_pixel_density_requested{false};
+    bool hidden_requested{false};
     bool device_live{};
     std::optional<ryn::runtime::Point> mouse;
     bool text_cursor{};
@@ -176,10 +178,15 @@ void test_success_cleanup() {
         require(result.state->display_scale() == 1.25F, "display scale differs");
         require(result.state->window_metrics().logical_width() == 960.0F, "logical viewport width differs");
         require(api.high_pixel_density_requested, "platform did not request a high-pixel-density window");
+        require(!api.hidden_requested, "ordinary windows unexpectedly started hidden");
         require(result.state->is_owner_thread(), "lifecycle lost its owner thread");
         require_calls(api.calls, {"init", "create_window"});
     }
     require_calls(api.calls, {"init", "create_window", "destroy_window", "quit"});
+    PlatformConfig hidden;
+    hidden.hidden = true;
+    auto hidden_result = PlatformState::create(api, hidden);
+    require(bool(hidden_result) && api.hidden_requested, "hidden creation flag was not forwarded atomically");
 }
 
 void test_text_pointer_cursor() {
