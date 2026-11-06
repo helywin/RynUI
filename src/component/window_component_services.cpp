@@ -339,6 +339,19 @@ bool WindowComponentServices::set_input_blocked(runtime::ComponentId root, bool 
     return reconcile_input_boundary() || changed;
 }
 
+void WindowComponentServices::enqueue_retained_translation(runtime::ComponentId owner, std::function<void()> compose) {
+    if (!collecting_retained_translations_ || !compose) {
+        throw std::logic_error("Retained translation callbacks require the collection phase");
+    }
+    if (!components().contains(owner)) {
+        return;
+    }
+    if (std::ranges::any_of(retained_translation_work_, [&](const auto& entry) { return entry.first == owner; })) {
+        throw std::logic_error("Duplicate retained translation owner");
+    }
+    retained_translation_work_.emplace_back(owner, std::move(compose));
+}
+
 void WindowComponentServices::request_frame() noexcept {
     frame_requests_->request_frame();
 }
@@ -598,6 +611,40 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
         if (!text_.layout_and_synchronize(viewport, clip, origin, gap, false, unbounded_root_height, [this, viewport] {
                 for (auto* participant : participants_) {
                     participant->position_window_layers(viewport, {0, 0, viewport.width, viewport.height});
+                }
+                retained_translation_work_.clear();
+                collecting_retained_translations_ = true;
+                try {
+                    for (auto* participant : participants_) {
+                        participant->synchronize_retained_translations();
+                    }
+                } catch (...) {
+                    collecting_retained_translations_ = false;
+                    retained_translation_work_.clear();
+                    throw;
+                }
+                collecting_retained_translations_ = false;
+                auto work = std::move(retained_translation_work_);
+                const auto depth = [this](runtime::ComponentId id) {
+                    std::size_t result{};
+                    for (auto parent = components().parent(id); parent; parent = components().parent(*parent)) {
+                        ++result;
+                    }
+                    return result;
+                };
+                std::erase_if(work, [this](const auto& entry) { return !components().contains(entry.first); });
+                std::stable_sort(work.begin(), work.end(),
+                                 [&](const auto& a, const auto& b) { return depth(a.first) < depth(b.first); });
+                for (auto& [owner, compose] : work) {
+                    if (!components().contains(owner)) {
+                        continue;
+                    }
+                    try {
+                        compose();
+                    } catch (...) {
+                        retire_failed_component(owner);
+                        throw;
+                    }
                 }
             })) {
             return false;

@@ -1,3 +1,11 @@
+add_executable(rynui_retained_translation_phase_tests retained_translation_phase_tests.cpp)
+rynui_configure_cpp_target(rynui_retained_translation_phase_tests)
+target_link_libraries(rynui_retained_translation_phase_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_retained_translation_phase_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.retained_translation_phase COMMAND rynui_retained_translation_phase_tests)
+
 add_executable(rynui_image_rounding_tests image_rounding_tests.cpp)
 rynui_configure_cpp_target(rynui_image_rounding_tests)
 target_link_libraries(rynui_image_rounding_tests PRIVATE rynui_image rynui_renderer_common)

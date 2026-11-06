@@ -108,6 +108,9 @@ public:
 
     virtual void position_window_layers(runtime::Size, runtime::Rect) {}
 
+    // Resolve owner-composed descendant translations after all ancestor layer writers, before glyph sync.
+    virtual void synchronize_retained_translations() {}
+
     virtual void prepare_auxiliary_layout() {}
 
     virtual void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) = 0;
@@ -166,6 +169,8 @@ public:
     // Unwind cleanup: release one exact generation without delivering new boundary callbacks.
     bool retire_failed_component(runtime::ComponentId id) noexcept;
     void append_slot(runtime::ComponentId parent, const Content& content);
+    // Called only by the retained-translation collection phase; applied in actual owner ancestry order.
+    void enqueue_retained_translation(runtime::ComponentId owner, std::function<void()> compose);
     void dispose() noexcept;
     void set_window_active(bool active);
     bool dispatch_scroll(const input::ScrollInputEvent& event);
@@ -534,6 +539,8 @@ private:
     animation::AnimationTime animation_time_;
     animation::MotionPreference motion_preference_{animation::MotionPreference::normal};
     std::vector<WindowComponentParticipant*> participants_;
+    std::vector<std::pair<runtime::ComponentId, std::function<void()>>> retained_translation_work_;
+    bool collecting_retained_translations_{};
     std::vector<WindowComponentParticipant*> pointer_participants_scratch_;
     WindowComponentParticipant* input_host_{nullptr};
     bool scene_structure_dirty_{true};
