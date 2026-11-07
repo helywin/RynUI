@@ -50,6 +50,14 @@
 - **WHEN** Modal 被禁用、隐藏、移除，或回调中销毁宿主
 - **THEN** 失效内容不再消费输入、捕获或提交异步结果；清理焦点、浮层与动画资源，后续挂载可正常使用。
 
+#### Scenario: Modal 真实背景模糊
+- **WHEN** enabled 的 ModalMask 显式设置 blur，或背景、Theme sigma、窗口尺寸及 DPI 改变
+- **THEN** 共享 backdrop 操作对真实前序 framebuffer 的 PM RGBA 做有界两遍 Gaussian，并一次 replacement 合成 tint；自身 dialog 和后层保持锐利，下层变化在正常下一帧可见；不使用形状阴影或打开时截图代替背景采样，服务入口走同一消费路径。
+
+#### Scenario: Modal 背景滤波透明度和失败
+- **WHEN** 背景包含透明像素、sigma=0、mask disabled，或 backend 不支持请求及资源事务失败
+- **THEN** replacement 保留背景 alpha 的合同，零滤波与禁用路径维持相应 identity；不支持请求在上传 begin 前明确拒绝，失败按共同资源协议重试，不改变输入域、业务请求或关闭 future；默认 blur=false 与旧 ModalMask aggregate 前缀保持兼容。
+
 ### Requirement: Notification 原生合同
 系统 SHALL 为 Notification 提供 typed Props、响应属性、Theme 视觉和可操作 Gallery。保留已实现的原生合同，并补齐设计矩阵所列原生缺口；与该组件相关的 Web 专用接口和平台实测边界分开说明。
 

@@ -106,6 +106,24 @@
 3. B2：SDL paint 双实例流及非 Round cap 第三实例流、两个 PS storage、共同 HLSL source closure、锁与反射；Windows/D3D12 与私有 Wayland/Vulkan 的真实数值 readback 分开记录，覆盖 alpha/caps/DPI/clip/nonzero first。生成 DXIL/SPIR-V 不计为对应平台 GPU 实跑。
 4. C：Progress typed Props/slots、active、steps、success、gap、Theme、reactivity、生命周期、实际 Gallery 与支持说明。仅在共同 A/B 可用后消费；静态渐变零新增 deadline，hidden/reduced motion/window inactive/off-page 停止 active。
 
+## Card 圆角组与 Modal 背景模糊
+
+本节细化已有 arbitrary descendant mask / mask blur 目标，不代表能力已实现。固定 Ant Design 6.6.5 的普通 Card 没有整体 overflow hidden，loading 才裁剪；因此增加原生 `CardProps::clipContent(Prop<bool>)`，默认 false，effective mask 为 loading OR clipContent。显式开启后覆盖 header、extra、Tabs、cover、body、actions 的全部普通后代。自身 outer shadow 在组外；子阴影、焦点环及所有 Quad/Glyph/Image/Effect 在组内。窗口层浮层按既有 clip boundary 逃逸，但不改变 owner、Theme/Config、祖先 opacity 或 Modal/Spin 输入权威。
+
+`ModalMask` 在 enabled/closable 后追加 `bool blur{false}`；Theme 在 ModalEffectToken 尾部追加 native `mask_blur_sigma`，默认 4 logical units，override 使用 LogicalLength。sigma 为有限非负的离散 Gaussian 标准差，不沿用 shadow blur/2，也不加入冻结上游 token catalog。blur 关闭保持旧 tint 路径；开启时共享 Backdrop 操作独占 tint 与滤波，原 shield 仍负责输入。
+
+共同能力限定为内部 Scene Composition v1：DrawRange、BeginMaskedGroup、EndMaskedGroup、Backdrop；保留 logical scene v3、基础 packed ABI v2 和 Quad48/Glyph96/Effect112/Image112。圆角 clip ABI v1 与 backdrop filter ABI v1 独立版本、capability、预算和事务，不借用 Effect Paint 三表或 cap 字段。Core 只保存 logical 几何、保留式 ID 与有序 program，不 include/link renderer 或 SDL；组件不按 backend 降级或私自上传。
+
+- composition barrier 不改四种 primitive 命令前缀，不用 count=0 哨兵；正常 before/after fragments、窗口层 paint rank 和每个 draw 的 first/count 保持。组只覆盖实际 painter 子树，逃逸窗口层在祖先组结束后输出。SceneCpuData 与 attachment 以尾部可选字段保留旧 aggregate 调用；未知版本和不支持的 live 请求在 begin_upload_batch 前拒绝。
+- primitive 的 straight RGBA 经既有 source-over 写入透明 target 后为 premultiplied RGBA；组输出将 PM 同时乘 mask coverage，再用 ONE/ONE_MINUS_SRC_ALPHA 合成。既有祖先 opacity 已在 primitive 上应用，不在组输出再次乘，不改成 CSS isolated group opacity。self surface 使用受限 coverage role，由组唯一拥有外轮廓，fill/outline/inset 不重复乘同一个圆角 AA。
+- 不同嵌套 mask 各自一次有序 alpha-mask 合成，交叠 AA 过渡带相乘；不是几何交集重新求一次 SDF。规范化后完全相同且无独立组操作的冗余 mask 可去重。hit 使用全部 rounded shapes 的几何交集，不接受 AA fringe；保留现有 capture、Tab、编辑会话和 eligibility 语义。
+- 所有 instance 仍按完整窗口 device metrics 打包。独立 pass viewport 保存整数 crop 原点和尺寸；VS/PS 恢复完整窗口坐标，glyph/UV/Effect/paint 不因 crop 重排或重打包。draw guard 为一物理像素，真实 ancestor hard clip 不扩大；可见裁剪不能只靠组件 AABB+32 丢弃组内阴影。
+- blur 只采样该操作之前已完成的 framebuffer prefix，包含较低层，不包含自身 tint/dialog 和后层。冻结 source 与写目标分离；两遍 normalized Gaussian 处理 PM RGBA，半径 ceil(3*sigma_pixels)，源 ROI 含 halo，窗口外 clamp-to-edge，内部 crop 不成为新滤波边界。不做降采样或静默 clamp sigma；权重、实际 target capacity、深度及 overflow 都参加 preflight。
+- 设 B 为冻结背景、F 为滤波背景、T 为 PM tint、m 为 maskCoverage*activationOpacity，先算 E=T over F，再关闭硬件 blending 写回 `(1-m)*B+m*E`。因此 B/F alpha=.5、无 tint、m=1 时结果 alpha=.5，不能用 F over B 得到 .75。sigma=0 与 m=0 保持相应 identity；下层内容改变后正常下一帧重新采样，不缓存打开时画面。
+- mask/blur 的 target、weights、program 与旧资源共享 begin/upload/commit 失败失效及无新 dirty 重试；frame fence 完成前不复用 target，resize 后旧容量仍计预算。冷场景保持零新增 target/pipeline/上传。业务关闭及 future 与 GPU frame lease 分离，不改 WindowOverlayStack 或服务权威。
+
+按依赖独立验证：G0 logical clip/program/barrier/hit；G1 common pack/preflight/Recording/共同事务；G2 SDL masked groups 与真实 RGBA；G3 Card 消费；G4 framebuffer Gaussian/replacement；G5 Modal 与服务消费。每阶段相关 MSVC HEADLESS Debug/Release 通用合同通过后可独立提交；Windows D3D12 和 Linux 私有 Wayland/Vulkan 的实际 GPU 验证分别记录。原 29/50 任务只有完整消费者及其余组件合同完成后才能勾选；本节不把方案或 Recording 当成视觉证据，不增加人工门槛。
+
 ## Risks / Trade-offs
 
 - 动态结构与输入生命周期交叉 → 测试删除活动项、富子控件、回调销毁、异常、隐藏恢复及子浮层，不依赖单纯静态截图。

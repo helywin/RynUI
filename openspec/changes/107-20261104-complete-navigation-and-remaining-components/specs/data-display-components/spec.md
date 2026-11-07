@@ -50,6 +50,14 @@
 - **WHEN** Card 被禁用、隐藏、移除，或回调中销毁宿主
 - **THEN** 失效内容不再消费输入、捕获或提交异步结果；清理焦点、浮层与动画资源，后续挂载可正常使用。
 
+#### Scenario: Card 显式圆角裁剪保留后代
+- **WHEN** Card 的 clipContent 或 loading 状态启用圆角裁剪，或在保留子树上动态改变该状态、尺寸及 Theme radius
+- **THEN** 普通后代的 Quad、Glyph、Image、Effect 与子阴影通过共同圆角组合成且命中同一几何交集；自身 outer shadow 保留，窗口层浮层遵循既有逃逸与输入权威；未变化的 slots、编辑会话和焦点身份不重建，普通 Card 默认保留溢出行为。
+
+#### Scenario: Card 嵌套透明边缘
+- **WHEN** 半透明内容穿过 Card 圆角，或存在嵌套 rounded masks 和祖先 opacity
+- **THEN** 每个不同组只应用一次 mask coverage，self surface 不重复 AA，PM 合成不重复乘 alpha 或祖先 opacity；不同嵌套过渡带遵循有序 alpha-mask 合同，硬裁剪与物理像素 guard 保持独立。
+
 ### Requirement: Carousel 原生合同
 系统 SHALL 为 Carousel 提供 typed Props、响应属性、Theme 视觉和可操作 Gallery。保留面板、切换/拖动/键盘、方向、指示器、自动播放及暂停、有限动画。
 
