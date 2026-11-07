@@ -31,6 +31,7 @@ bool needs_paint_transport(std::span<const graphics::RoundedEffectInstance> sour
 RoundedEffectGpuResources::RoundedEffectGpuResources(RoundedEffectGpuApi& api) noexcept : api_(&api) {}
 
 RoundedEffectGpuResources::~RoundedEffectGpuResources() {
+    release_cap_buffer();
     release_paint_buffers();
     if (buffer_ != nullptr) {
         api_->release_effect_buffer(buffer_);
@@ -48,6 +49,15 @@ void RoundedEffectGpuResources::release_paint_buffers() noexcept {
     paint_tables_.links.clear();
     paint_tables_.fields.clear();
     paint_tables_.stops.clear();
+}
+
+void RoundedEffectGpuResources::release_cap_buffer() noexcept {
+    if (cap_buffer_) {
+        api_->release_cap_geometry_buffer(cap_buffer_);
+    }
+    cap_buffer_ = nullptr;
+    cap_capacity_ = 0;
+    cap_geometry_.clear();
 }
 
 void RoundedEffectGpuResources::preflight(const graphics::RoundedEffectStore* store, SceneDeviceMetrics metrics,
@@ -102,6 +112,10 @@ void RoundedEffectGpuResources::preflight(const graphics::RoundedEffectStore* st
         static_cast<void>(effect_buffer_capacity(required[index], current ? current->paint_capacities_[index] : 0,
                                                  table_strides[index], capabilities.maximum_buffer_bytes));
     }
+    if (requirements.nonround_caps) {
+        static_cast<void>(effect_buffer_capacity(store->live_count(), current ? current->cap_capacity_ : 0,
+                                                 sizeof(CapGeometryGpuV1), capabilities.maximum_buffer_bytes));
+    }
 }
 
 void RoundedEffectGpuResources::invalidate_upload() noexcept {
@@ -123,9 +137,11 @@ void RoundedEffectGpuResources::synchronize(graphics::RoundedEffectStore& store,
 
 void RoundedEffectGpuResources::synchronize_validated(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics,
                                                       bool paint_transport) {
-    const bool compacted = store.compact(scene_logical_viewport(metrics));
+    const bool compacted =
+        store.compact(scene_logical_viewport(metrics), std::max(1.0, double(1.0F / metrics.display_scale)));
     const auto source = store.packed_instances();
     if (source.empty()) {
+        release_cap_buffer();
         release_paint_buffers();
         instances_.clear();
         instance_count_ = 0;
@@ -139,6 +155,7 @@ void RoundedEffectGpuResources::synchronize_validated(graphics::RoundedEffectSto
     }
 
     const bool active_paint = needs_paint_transport(source);
+    const bool active_caps = std::ranges::any_of(source, needs_cap_geometry);
     if (active_paint && !paint_transport) {
         throw std::invalid_argument("Legacy Effect resources cannot encode paint/caps");
     }
@@ -170,11 +187,19 @@ void RoundedEffectGpuResources::synchronize_validated(graphics::RoundedEffectSto
     if (active_paint) {
         pack_effect_paint_tables(source, metrics, paint_tables_);
     }
+    if (active_caps) {
+        cap_geometry_.resize(source.size());
+        for (std::size_t index = 0; index < source.size(); ++index) {
+            cap_geometry_[index] = pack_cap_geometry(source[index], metrics);
+        }
+    }
 
     RoundedEffectGpuBufferHandle upload_buffer = buffer_;
     std::uint32_t upload_capacity = capacity_;
     auto upload_tables = paint_buffers_;
     auto table_capacities = paint_capacities_;
+    auto upload_caps = cap_buffer_;
+    auto cap_capacity = cap_capacity_;
     try {
         if (needs_growth) {
             upload_capacity = effect_buffer_capacity(source.size(), capacity_, sizeof(RoundedEffectGpuInstance),
@@ -202,6 +227,14 @@ void RoundedEffectGpuResources::synchronize_validated(graphics::RoundedEffectSto
                 }
             }
         }
+        if (active_caps && source.size() > cap_capacity) {
+            cap_capacity = effect_buffer_capacity(source.size(), cap_capacity, sizeof(CapGeometryGpuV1),
+                                                  std::numeric_limits<std::size_t>::max());
+            upload_caps = api_->create_cap_geometry_buffer(std::size_t(cap_capacity) * sizeof(CapGeometryGpuV1));
+            if (!upload_caps) {
+                throw gpu_failure(*api_, "Failed to create Cap Geometry buffer");
+            }
+        }
         for (const auto range : dirty_ranges_) {
             const auto bytes = std::as_bytes(std::span(instances_).subspan(range.first, range.count));
             const auto offset = static_cast<std::size_t>(range.first) * sizeof(RoundedEffectGpuInstance);
@@ -227,7 +260,19 @@ void RoundedEffectGpuResources::synchronize_validated(graphics::RoundedEffectSto
                 ++counters_.full_uploads;
             }
         }
+        if (active_caps) {
+            const auto bytes = std::as_bytes(std::span(cap_geometry_));
+            if (!api_->upload_cap_geometry_buffer(upload_caps, 0, bytes)) {
+                throw gpu_failure(*api_, "Failed to upload Cap Geometry buffer");
+            }
+            ++counters_.buffer_uploads;
+            counters_.uploaded_bytes += bytes.size();
+            ++counters_.full_uploads;
+        }
     } catch (...) {
+        if (upload_caps && upload_caps != cap_buffer_) {
+            api_->release_cap_geometry_buffer(upload_caps);
+        }
         if (upload_buffer && upload_buffer != buffer_) {
             api_->release_effect_buffer(upload_buffer);
         }
@@ -237,6 +282,18 @@ void RoundedEffectGpuResources::synchronize_validated(graphics::RoundedEffectSto
             }
         }
         throw;
+    }
+    if (active_caps) {
+        if (upload_caps != cap_buffer_) {
+            if (cap_buffer_) {
+                api_->release_cap_geometry_buffer(cap_buffer_);
+            }
+            ++counters_.buffer_reallocations;
+        }
+        cap_buffer_ = upload_caps;
+        cap_capacity_ = cap_capacity;
+    } else {
+        release_cap_buffer();
     }
     if (active_paint) {
         for (std::size_t index = 0; index < upload_tables.size(); ++index) {
@@ -336,7 +393,9 @@ RoundedEffectDrawBinding RoundedEffectGpuResources::draw_binding(std::uint32_t f
             std::size_t(first) * sizeof(EffectPaintGpuLink),
             count,
             static_cast<std::uint32_t>(paint_tables_.fields.size()),
-            static_cast<std::uint32_t>(paint_tables_.stops.size())};
+            static_cast<std::uint32_t>(paint_tables_.stops.size()),
+            cap_buffer_,
+            cap_buffer_ ? std::size_t(first) * sizeof(CapGeometryGpuV1) : 0};
 }
 
 } // namespace ryn::detail

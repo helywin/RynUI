@@ -19,6 +19,7 @@ enum class RecordingFailure { none, begin, create, upload, commit, upload_except
     value.effect_linear_fields = true;
     value.effect_conic_fields = true;
     value.effect_underlays = true;
+    value.cap_geometry_abi_version = cap_geometry_abi_version;
     return value;
 }
 
@@ -34,6 +35,7 @@ struct RecordedDraw final {
     std::vector<std::byte> effect_field_bytes;
     std::vector<std::uint32_t> effect_stop_indices;
     std::vector<std::byte> effect_stop_bytes;
+    std::vector<std::byte> cap_geometry_bytes;
 };
 
 struct RecordingCounters final {
@@ -110,6 +112,9 @@ public:
     bool upload_effect_paint_buffer(EffectPaintBufferKind kind, void* handle, std::size_t offset,
                                     std::span<const std::byte> bytes) override;
     void release_effect_paint_buffer(EffectPaintBufferKind kind, void* handle) noexcept override;
+    void* create_cap_geometry_buffer(std::size_t size) override;
+    bool upload_cap_geometry_buffer(void* handle, std::size_t offset, std::span<const std::byte> bytes) override;
+    void release_cap_geometry_buffer(void* handle) noexcept override;
 
     [[nodiscard]] const char* last_error() const noexcept override {
         return error_.c_str();
@@ -139,7 +144,8 @@ private:
         image_buffer,
         effect_link,
         effect_field,
-        effect_stop
+        effect_stop,
+        cap_geometry
     };
     [[nodiscard]] static Kind paint_kind(EffectPaintBufferKind kind) noexcept;
 

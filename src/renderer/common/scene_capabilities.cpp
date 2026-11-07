@@ -1,5 +1,6 @@
 #include "renderer/common/scene_capabilities.hpp"
 #include "renderer/common/effect_paint_packing.hpp"
+#include "renderer/common/cap_geometry_packing.hpp"
 
 #include <bit>
 #include <stdexcept>
@@ -47,6 +48,9 @@ void validate_scene_effect_requirements(const SceneBackendCapabilities& capabili
     if ((requirements.paint || requirements.nonround_caps) &&
         capabilities.effect_paint_abi_version != effect_paint_abi_version) {
         throw std::invalid_argument("Backend Effect paint ABI is incompatible");
+    }
+    if (requirements.nonround_caps && capabilities.cap_geometry_abi_version != cap_geometry_abi_version) {
+        throw std::invalid_argument("Backend Cap Geometry ABI is incompatible");
     }
 }
 

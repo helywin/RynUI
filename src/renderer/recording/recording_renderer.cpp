@@ -232,6 +232,22 @@ void RecordingRenderer::release_effect_paint_buffer(EffectPaintBufferKind kind, 
     release(handle, paint_kind(kind));
 }
 
+void* RecordingRenderer::create_cap_geometry_buffer(std::size_t size) {
+    if (!capabilities_.effect_arc_caps || capabilities_.cap_geometry_abi_version != cap_geometry_abi_version) {
+        error_ = "Recording Cap Geometry ABI unsupported";
+        return nullptr;
+    }
+    return create(Kind::cap_geometry, size);
+}
+
+bool RecordingRenderer::upload_cap_geometry_buffer(void* handle, std::size_t offset, std::span<const std::byte> bytes) {
+    return upload_buffer(handle, Kind::cap_geometry, offset, bytes);
+}
+
+void RecordingRenderer::release_cap_geometry_buffer(void* handle) noexcept {
+    release(handle, Kind::cap_geometry);
+}
+
 void* RecordingRenderer::create_glyph_sampler() {
     return create(Kind::sampler, 0);
 }
@@ -349,6 +365,7 @@ void RecordingRenderer::record(graphics::SceneDrawKind kind, void* handle, Kind 
                       {},
                       {},
                       {},
+                      {},
                       {}});
 }
 
@@ -394,6 +411,15 @@ void RecordingRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t c
     }
     draw.effect_link_bytes.assign(links.begin() + binding.link_byte_offset,
                                   links.begin() + binding.link_byte_offset + link_size);
+    if (binding.cap_geometry) {
+        const auto& caps = require(binding.cap_geometry, Kind::cap_geometry).bytes;
+        const auto cap_size = std::size_t(count) * sizeof(CapGeometryGpuV1);
+        if (binding.cap_byte_offset > caps.size() || cap_size > caps.size() - binding.cap_byte_offset) {
+            throw std::out_of_range("Recording Cap Geometry binding exceeds buffer bytes");
+        }
+        draw.cap_geometry_bytes.assign(caps.begin() + binding.cap_byte_offset,
+                                       caps.begin() + binding.cap_byte_offset + cap_size);
+    }
     std::vector<EffectPaintGpuField> packed_fields(binding.field_count);
     std::vector<EffectPaintGpuStop> packed_stops(binding.stop_count);
     std::memcpy(packed_fields.data(), fields.data(), packed_fields.size() * sizeof(EffectPaintGpuField));
@@ -409,6 +435,18 @@ void RecordingRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t c
         EffectPaintGpuLink link;
         std::memcpy(&link, draw.effect_link_bytes.data() + std::size_t(index) * sizeof(link), sizeof(link));
         validate_effect_paint_link(link, packed_fields, packed_stops);
+        if (link.arc_cap && !binding.cap_geometry) {
+            throw std::invalid_argument("Recording non-round link lacks Cap Geometry stream");
+        }
+        if (binding.cap_geometry) {
+            CapGeometryGpuV1 cap;
+            std::memcpy(&cap, draw.cap_geometry_bytes.data() + std::size_t(index) * sizeof(cap), sizeof(cap));
+            if (link.arc_cap) {
+                validate_cap_geometry(cap);
+            } else if (cap != CapGeometryGpuV1{}) {
+                throw std::invalid_argument("Recording non-cap row has nonzero Cap Geometry bytes");
+            }
+        }
         for (const auto field : {link.foreground_field, link.underlay_field}) {
             if (field == effect_paint_no_field) {
                 continue;

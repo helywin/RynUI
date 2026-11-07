@@ -1,15 +1,120 @@
-schema_version: 1
-source: shaders/rounded_effect.hlsl
-sha256: 3f1f0685f447c683f038365725490913c2a3499aaa8ec81e1bd45ccb81552379
-hash_normalization: lf
-instance_size_bytes: 112
-entry_points:
-  vertex: VSMain
-  fragment: PSMain
-artifacts:
-  - rounded_effect.vertex.dxil
-  - rounded_effect.fragment.dxil
-  - rounded_effect.vertex.spv
-  - rounded_effect.fragment.spv
-  - rounded_effect.vertex.json
-  - rounded_effect.fragment.json
+{
+  "schema_version": 2,
+  "hash_normalization": "lf",
+  "instance_size_bytes": 112,
+  "effect_paint_abi": 1,
+  "link_stride": 16,
+  "field_stride": 32,
+  "stop_stride": 32,
+  "cap_geometry_abi": 1,
+  "cap_geometry_stride": 32,
+  "entry_points": {
+    "vertex": "VSMain",
+    "fragment": "PSMain"
+  },
+  "files": {
+    "shaders/cap_number.hlsli": {
+      "sha256": "e621159c85fe8230f6bf15c94d1372fbebea72b2c74d692d8436314fd4697c23",
+      "bytes": 12347
+    },
+    "shaders/effect_conic_candidate.hlsli": {
+      "sha256": "3e79cfc3664b3af0e5d87019d3a8538be5fbc19dbc704cdea050bde6696cbfa2",
+      "bytes": 2571
+    },
+    "shaders/effect_linear_exact.hlsli": {
+      "sha256": "5945ec62a1f1b84fd204a59e37dc513adf9298786e54e334a4b33ec0bcaf8486",
+      "bytes": 4855
+    },
+    "shaders/effect_paint_sampling.hlsli": {
+      "sha256": "78a12c0d67246299a56bffc229f18d473edbc4bb46b84e4fd975553684bb571f",
+      "bytes": 2783
+    },
+    "shaders/rounded_effect.hlsl": {
+      "sha256": "10a80468497744b01c9be86fa6840f984c57f33fcc3f1e9d64c016b2d741a6fd",
+      "bytes": 1746
+    },
+    "shaders/rounded_effect_coverage.hlsli": {
+      "sha256": "e4095044db1cc20c875879b5b385d085d88069a98b1c2616aae67493631489a6",
+      "bytes": 12247
+    },
+    "shaders/rounded_effect_paint.hlsl": {
+      "sha256": "c8aea1e70bbd15949fad11b1dd417c12ffb2797a1f09731c4ea3c25c99cfc1f1",
+      "bytes": 3298
+    }
+  },
+  "pipelines": {
+    "rounded_effect": {
+      "entry": "shaders/rounded_effect.hlsl",
+      "closure": [
+        "shaders/rounded_effect.hlsl",
+        "shaders/rounded_effect_coverage.hlsli"
+      ],
+      "closure_sha256": "82f22e0bad0609afd6bc22bd5eea9d3ff164a54fbc42dd1e93ea2f7849157ce6",
+      "vertex_inputs": [
+        "float4",
+        "float4",
+        "float4",
+        "float4",
+        "float4",
+        "float4",
+        "float4"
+      ],
+      "fragment_storage_buffers": 0,
+      "stage_defines": {
+        "vertex": [
+          "RYNUI_VERTEX_SHADER=1"
+        ],
+        "fragment": [
+          "RYNUI_FRAGMENT_SHADER=1"
+        ]
+      },
+      "artifacts": [
+        "rounded_effect.vertex.dxil",
+        "rounded_effect.vertex.spv",
+        "rounded_effect.vertex.json",
+        "rounded_effect.fragment.dxil",
+        "rounded_effect.fragment.spv",
+        "rounded_effect.fragment.json"
+      ]
+    },
+    "rounded_effect_paint": {
+      "entry": "shaders/rounded_effect_paint.hlsl",
+      "closure": [
+        "shaders/cap_number.hlsli",
+        "shaders/effect_conic_candidate.hlsli",
+        "shaders/effect_linear_exact.hlsli",
+        "shaders/effect_paint_sampling.hlsli",
+        "shaders/rounded_effect_coverage.hlsli",
+        "shaders/rounded_effect_paint.hlsl"
+      ],
+      "closure_sha256": "30a5ea8a109da7011f57ed60997d4ce71e546410b0b2ee5da9ddaa4ea39b596e",
+      "vertex_inputs": [
+        "float4",
+        "float4",
+        "float4",
+        "float4",
+        "float4",
+        "float4",
+        "float4",
+        "uint4"
+      ],
+      "fragment_storage_buffers": 2,
+      "stage_defines": {
+        "vertex": [
+          "RYNUI_VERTEX_SHADER=1"
+        ],
+        "fragment": [
+          "RYNUI_FRAGMENT_SHADER=1"
+        ]
+      },
+      "artifacts": [
+        "rounded_effect_paint.vertex.dxil",
+        "rounded_effect_paint.vertex.spv",
+        "rounded_effect_paint.vertex.json",
+        "rounded_effect_paint.fragment.dxil",
+        "rounded_effect_paint.fragment.spv",
+        "rounded_effect_paint.fragment.json"
+      ]
+    }
+  }
+}

@@ -181,6 +181,13 @@ public:
     void enqueue_retained_translation(runtime::ComponentId owner, std::function<void()> compose);
     void dispose() noexcept;
     void set_window_active(bool active);
+    // Host scalar, set before compose using the same scale as the resource upload.
+    void set_display_scale(float scale);
+
+    [[nodiscard]] float display_scale() const noexcept {
+        return display_scale_;
+    }
+
     bool dispatch_scroll(const input::ScrollInputEvent& event);
     bool dispatch_file_drop(const input::FileDropEvent& event);
 
@@ -599,8 +606,7 @@ private:
     std::unique_ptr<WindowTextEditServices> text_edit_;
     input::TextClipboard* clipboard_{};
     InputComponentHost* input_runtime_{};
-    std::optional<font::FontIdentity> clipping_density_font_;
-    std::optional<float> clipping_antialias_guard_;
+    float display_scale_{1.0F};
     std::unique_ptr<FloatButtonComponentHost> float_button_;
     std::unique_ptr<ShellLayoutComponentHost> shell_layout_;
     std::unique_ptr<SplitterComponentHost> splitter_;

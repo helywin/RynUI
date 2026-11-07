@@ -17,7 +17,8 @@ int main(int argc, char** argv) {
         }
         const std::filesystem::path directory{argv[1]};
         std::size_t total_bytes{};
-        for (const auto name : std::array{"quad", "glyph", "rounded_effect"}) {
+        std::size_t shader_count{};
+        for (const auto name : std::array{"quad", "glyph", "rounded_effect", "rounded_effect_paint", "image"}) {
             for (const auto stage : std::array{"vertex", "fragment"}) {
                 for (const auto format : std::array{"dxil", "spv"}) {
                     const auto filename = std::string{name} + "." + stage + "." + format;
@@ -37,6 +38,7 @@ int main(int argc, char** argv) {
                         throw std::runtime_error("Embedded shader storage is not stable");
                     }
                     total_bytes += actual.size();
+                    ++shader_count;
                 }
             }
         }
@@ -49,7 +51,7 @@ int main(int argc, char** argv) {
         if (!rejected) {
             throw std::runtime_error("Missing embedded shader was accepted");
         }
-        std::cout << "embedded_shaders=12 bytes=" << total_bytes << " comparison=exact\n";
+        std::cout << "embedded_shaders=" << shader_count << " bytes=" << total_bytes << " comparison=exact\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

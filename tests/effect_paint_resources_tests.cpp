@@ -91,6 +91,13 @@ void projection(Fixture& f, SceneDeviceMetrics metrics = {100, 100, 1}) {
     same_bytes(f.backend.buffer_bytes(binding.link), std::span<const EffectPaintGpuLink>{tables.links});
     same_bytes(f.backend.buffer_bytes(binding.field), std::span<const EffectPaintGpuField>{tables.fields});
     same_bytes(f.backend.buffer_bytes(binding.stop), std::span<const EffectPaintGpuStop>{tables.stops});
+    if (binding.cap_geometry) {
+        std::vector<CapGeometryGpuV1> caps;
+        for (const auto& instance : source) {
+            caps.push_back(pack_cap_geometry(instance, metrics));
+        }
+        same_bytes(f.backend.buffer_bytes(binding.cap_geometry), std::span<const CapGeometryGpuV1>{caps});
+    }
     const auto caps = f.resources.effects().paint_capacities();
     require(f.backend.buffer_bytes(binding.link).size() == std::size_t(caps[0]) * sizeof(EffectPaintGpuLink) &&
                 f.backend.buffer_bytes(binding.field).size() == std::size_t(caps[1]) * sizeof(EffectPaintGpuField) &&
@@ -258,7 +265,7 @@ void old_solid_cap_placeholders_epoch_and_retire() {
     const auto arc = make_arc_effect({20, 20}, 10, 4, 0, 90, ArcCap::Square, Color{1, 0, 0});
     require(f.effects.update_geometry(id, arc.geometry) && f.sync(), "cap-only sync failed");
     projection(f);
-    require(f.backend.live_resources() == old_resources + 3 &&
+    require(f.backend.live_resources() == old_resources + 4 &&
                 f.resources.effects().paint_capacities() == std::array<std::uint32_t, 3>{1, 1, 1} &&
                 f.resources.effects().paint_tables().fields == std::vector<EffectPaintGpuField>(1) &&
                 f.resources.effects().paint_tables().stops == std::vector<EffectPaintGpuStop>(1),

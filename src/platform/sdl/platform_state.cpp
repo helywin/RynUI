@@ -274,11 +274,12 @@ public:
     }
 
     bool init_video() override {
-        return SDL_Init(SDL_INIT_VIDEO);
+        return SDL_InitSubSystem(SDL_INIT_VIDEO);
     }
 
     void quit() noexcept override {
-        SDL_Quit();
+        // Each PlatformState owns one video reference, not global SDL lifetime.
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
     }
 
     PlatformWindowHandle create_window(const char* title, int width, int height, bool high_pixel_density,

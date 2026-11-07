@@ -25,13 +25,14 @@ struct SceneBackendCapabilities final {
     std::uint32_t image_abi_version{};
     bool images{};
     bool rgba8_sampling{};
-    // Optional capabilities; baseline/SDL remain off. Recording opts in explicitly.
+    // Optional capabilities; baseline stays off. Backends opt in explicitly.
     bool effect_paints{};
     bool effect_arc_caps{};
     std::uint32_t effect_paint_abi_version{};
     bool effect_linear_fields{};
     bool effect_conic_fields{};
     bool effect_underlays{};
+    std::uint32_t cap_geometry_abi_version{};
 };
 
 [[nodiscard]] constexpr SceneBackendCapabilities baseline_scene_capabilities() noexcept {

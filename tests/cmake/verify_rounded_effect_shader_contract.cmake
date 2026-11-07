@@ -1,23 +1,22 @@
 cmake_minimum_required(VERSION 3.25)
 
-foreach(required_variable IN ITEMS SHADER_SOURCE SHADER_LOCK SHADER_DIRECTORY)
+foreach(required_variable IN ITEMS SHADER_SOURCE SHADER_LOCK SHADER_DIRECTORY PYTHON_EXECUTABLE)
     if(NOT DEFINED ${required_variable} OR "${${required_variable}}" STREQUAL "")
         message(FATAL_ERROR "${required_variable} is required")
     endif()
 endforeach()
 
-file(READ "${SHADER_LOCK}" shader_lock)
-string(REGEX MATCH "sha256: ([0-9a-f]+)" hash_match "${shader_lock}")
-if(NOT hash_match OR NOT CMAKE_MATCH_1)
-    message(FATAL_ERROR "Rounded-effect shader lock has no SHA256")
+get_filename_component(shader_root "${SHADER_SOURCE}" DIRECTORY)
+get_filename_component(project_root "${shader_root}" DIRECTORY)
+execute_process(COMMAND "${PYTHON_EXECUTABLE}" -B "${project_root}/tools/effect_shader_closure.py"
+    --root "${project_root}" --lock "${SHADER_LOCK}"
+    RESULT_VARIABLE lock_result OUTPUT_VARIABLE lock_output ERROR_VARIABLE lock_error)
+if(NOT lock_result EQUAL 0)
+    message(FATAL_ERROR "Effect shader closure validation failed: ${lock_error}")
 endif()
 file(READ "${SHADER_SOURCE}" shader_source)
-string(REPLACE "\r\n" "\n" normalized_shader_source "${shader_source}")
-string(SHA256 actual_hash "${normalized_shader_source}")
-if(NOT actual_hash STREQUAL CMAKE_MATCH_1)
-    message(FATAL_ERROR
-        "Rounded-effect shader source hash drifted: ${actual_hash} != ${CMAKE_MATCH_1}")
-endif()
+file(READ "${shader_root}/rounded_effect_coverage.hlsli" coverage_source)
+string(APPEND shader_source "\n${coverage_source}")
 
 foreach(contract IN ITEMS
         "nointerpolation float4 shapeRect"
@@ -88,9 +87,11 @@ foreach(artifact IN ITEMS
     if(NOT EXISTS "${artifact_path}")
         message(FATAL_ERROR "Rounded-effect shader artifact is missing: ${artifact}")
     endif()
-    file(TIMESTAMP "${SHADER_SOURCE}" source_time "%s")
     file(TIMESTAMP "${artifact_path}" artifact_time "%s")
-    if(artifact_time LESS source_time)
-        message(FATAL_ERROR "Rounded-effect shader artifact is stale: ${artifact}")
-    endif()
+    foreach(source IN ITEMS "${SHADER_SOURCE}" "${shader_root}/rounded_effect_coverage.hlsli" "${SHADER_LOCK}")
+        file(TIMESTAMP "${source}" source_time "%s")
+        if(artifact_time LESS source_time)
+            message(FATAL_ERROR "Rounded-effect shader artifact is stale: ${artifact} vs ${source}")
+        endif()
+    endforeach()
 endforeach()

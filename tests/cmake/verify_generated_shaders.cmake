@@ -16,7 +16,15 @@ foreach(shader_name IN ITEMS
         rounded_effect.vertex.dxil
         rounded_effect.fragment.dxil
         rounded_effect.vertex.spv
-        rounded_effect.fragment.spv)
+        rounded_effect.fragment.spv
+        rounded_effect_paint.vertex.dxil
+        rounded_effect_paint.fragment.dxil
+        rounded_effect_paint.vertex.spv
+        rounded_effect_paint.fragment.spv
+        image.vertex.dxil
+        image.fragment.dxil
+        image.vertex.spv
+        image.fragment.spv)
     set(shader_path "${SHADER_DIRECTORY}/${shader_name}")
     if(NOT EXISTS "${shader_path}")
         message(FATAL_ERROR "Generated shader is missing: ${shader_path}")
@@ -37,8 +45,9 @@ foreach(shader_name IN ITEMS
     endif()
 endforeach()
 
+foreach(shader_name IN ITEMS glyph rounded_effect rounded_effect_paint image)
 foreach(glyph_stage IN ITEMS vertex fragment)
-    set(glyph_reflection "${SHADER_DIRECTORY}/glyph.${glyph_stage}.json")
+    set(glyph_reflection "${SHADER_DIRECTORY}/${shader_name}.${glyph_stage}.json")
     if(NOT EXISTS "${glyph_reflection}")
         message(FATAL_ERROR "Generated glyph reflection is missing: ${glyph_reflection}")
     endif()
@@ -46,4 +55,5 @@ foreach(glyph_stage IN ITEMS vertex fragment)
     if(glyph_reflection_size LESS 16)
         message(FATAL_ERROR "Generated glyph reflection is unexpectedly small")
     endif()
+endforeach()
 endforeach()

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace ryn::detail {
@@ -112,8 +113,13 @@ RoundedEffectGpuInstance pack_effect_paint_base_instance(const RoundedEffectInst
     validate_rounded_effect(instance);
     const auto viewport = scene_logical_viewport(metrics);
     const float scale = metrics.display_scale;
-    const auto logical_bounds = intersect_effect_bounds(rounded_effect_bounds(instance, 1.0F / scale), viewport);
-    if (logical_bounds.width <= 0.0F || logical_bounds.height <= 0.0F) {
+    const auto* arc_path = std::get_if<graphics::RoundedArcPath>(&instance.geometry.path);
+    const bool nonround = arc_path && arc_path->cap != graphics::ArcCap::Round;
+    const auto logical_bounds =
+        nonround ? runtime::Rect{} : intersect_effect_bounds(rounded_effect_bounds(instance, 1.0F / scale), viewport);
+    const auto endpoints = nonround ? graphics::nonround_arc_draw_bounds(instance, viewport, 1.0 / double(scale))
+                                    : graphics::EffectBounds64{};
+    if (nonround ? endpoints.empty() : logical_bounds.width <= 0.0F || logical_bounds.height <= 0.0F) {
         // The retained store culls with a conservative logical AA guard. At
         // fractional DPI its bound may overlap the clip while the one-pixel
         // device bound does not. Keep the slot so composed draw indices stay
@@ -122,12 +128,24 @@ RoundedEffectGpuInstance pack_effect_paint_base_instance(const RoundedEffectInst
     }
     // The rasterizer quantizes vertices to a subpixel grid. Keep its domain
     // conservative at hard clip edges; the pixel shader owns the exact clip.
-    const float pixel_left = std::max(0.0F, std::floor(logical_bounds.x * scale));
-    const float pixel_top = std::max(0.0F, std::floor(logical_bounds.y * scale));
-    const float pixel_right =
-        std::min(static_cast<float>(metrics.pixel_width), std::ceil((logical_bounds.x + logical_bounds.width) * scale));
-    const float pixel_bottom = std::min(static_cast<float>(metrics.pixel_height),
-                                        std::ceil((logical_bounds.y + logical_bounds.height) * scale));
+    const auto down_pixel = [scale](double value) {
+        return std::floor(std::nextafter(value * scale, -std::numeric_limits<double>::infinity()));
+    };
+    const auto up_pixel = [scale](double value) {
+        return std::ceil(std::nextafter(value * scale, std::numeric_limits<double>::infinity()));
+    };
+    const float pixel_left = nonround ? static_cast<float>(std::max(0.0, down_pixel(endpoints.left)))
+                                      : std::max(0.0F, std::floor(logical_bounds.x * scale));
+    const float pixel_top = nonround ? static_cast<float>(std::max(0.0, down_pixel(endpoints.top)))
+                                     : std::max(0.0F, std::floor(logical_bounds.y * scale));
+    const float pixel_right = nonround
+                                  ? static_cast<float>(std::min(double(metrics.pixel_width), up_pixel(endpoints.right)))
+                                  : std::min(static_cast<float>(metrics.pixel_width),
+                                             std::ceil((logical_bounds.x + logical_bounds.width) * scale));
+    const float pixel_bottom =
+        nonround ? static_cast<float>(std::min(double(metrics.pixel_height), up_pixel(endpoints.bottom)))
+                 : std::min(static_cast<float>(metrics.pixel_height),
+                            std::ceil((logical_bounds.y + logical_bounds.height) * scale));
     const runtime::Rect pixel_bounds{pixel_left, pixel_top, pixel_right - pixel_left, pixel_bottom - pixel_top};
 
     auto logical_shape = instance.geometry.shape.rect;

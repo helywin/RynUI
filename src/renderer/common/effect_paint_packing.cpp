@@ -89,25 +89,15 @@ std::array<double, 4> sample_field(runtime::Point point, const EffectPaintGpuFie
     return result;
 }
 
-float coverage(runtime::Point point, const RoundedEffectGpuInstance& base, std::uint32_t cap) {
+float coverage(runtime::Point point, const RoundedEffectGpuInstance& base, std::uint32_t cap,
+               const CapGeometryGpuV1* geometry) {
     if (!cap) {
         return rounded_effect_gpu_coverage_reference(point, base);
     }
-    if (point.x < base.clip_bounds[0] || point.y < base.clip_bounds[1] || point.x >= base.clip_bounds[2] ||
-        point.y >= base.clip_bounds[3]) {
-        return 0;
+    if (!geometry) {
+        throw std::invalid_argument("Non-round packed reference requires Cap Geometry ABI v1 bytes");
     }
-    if (base.effect_params[3] != 3) {
-        throw std::invalid_argument("Effect paint non-round cap requires an arc base");
-    }
-    const graphics::LogicalRoundedRect shape{
-        {base.shape_rect[0], base.shape_rect[1], base.shape_rect[2], base.shape_rect[3]}, base.shadow_params[0]};
-    const auto distance = graphics::arc_signed_distance(
-        point, shape, base.effect_params[1],
-        {base.shadow_params[1], base.shadow_params[2], static_cast<graphics::ArcCap>(cap)});
-    const auto half_aa = base.material_params[1] / 2;
-    const auto t = std::clamp((distance + half_aa) / (2 * half_aa), 0.0F, 1.0F);
-    return 1 - t * t * (3 - 2 * t);
+    return cap_geometry_coverage_reference(point, base, cap, *geometry);
 }
 
 } // namespace
@@ -228,16 +218,15 @@ void validate_effect_paint_link(const EffectPaintGpuLink& link, std::span<const 
     }
 }
 
-std::array<float, 4> effect_paint_gpu_fragment_reference(runtime::Point point_pixels,
-                                                         const RoundedEffectGpuInstance& base,
-                                                         const EffectPaintGpuLink& link,
-                                                         std::span<const EffectPaintGpuField> fields,
-                                                         std::span<const EffectPaintGpuStop> stops) {
+std::array<float, 4>
+effect_paint_gpu_fragment_reference(runtime::Point point_pixels, const RoundedEffectGpuInstance& base,
+                                    const EffectPaintGpuLink& link, std::span<const EffectPaintGpuField> fields,
+                                    std::span<const EffectPaintGpuStop> stops, const CapGeometryGpuV1* cap_geometry) {
     if (!std::isfinite(point_pixels.x) || !std::isfinite(point_pixels.y)) {
         throw std::invalid_argument("Effect paint packed sample point is invalid");
     }
     validate_effect_paint_link(link, fields, stops);
-    const auto factor = coverage(point_pixels, base, link.arc_cap) * base.material_params[0];
+    const auto factor = coverage(point_pixels, base, link.arc_cap, cap_geometry) * base.material_params[0];
     if (link.foreground_field == effect_paint_no_field) {
         return {base.color[0], base.color[1], base.color[2], base.color[3] * factor};
     }

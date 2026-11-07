@@ -41,8 +41,9 @@ void compare(const RoundedEffectInstance& effect, runtime::Point point, float sc
     const SceneDeviceMetrics metrics{200, 200, scale};
     pack_effect_paint_tables(source, metrics, tables);
     const auto base = pack_effect_paint_base_instance(effect, metrics);
+    const auto cap = pack_cap_geometry(effect, metrics);
     const auto packed = effect_paint_gpu_fragment_reference({point.x * scale, point.y * scale}, base,
-                                                            tables.links.front(), tables.fields, tables.stops);
+                                                            tables.links.front(), tables.fields, tables.stops, &cap);
     const auto expected = rounded_effect_fragment_reference(point, effect, 1 / scale);
     const std::array color{expected.red(), expected.green(), expected.blue(), expected.alpha()};
     for (std::size_t channel = 0; channel < color.size(); ++channel) {

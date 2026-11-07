@@ -68,7 +68,7 @@ SceneBackend 必须显式提供 SceneBackendCapabilities：logical scene v3、pa
 
 ### Effect paint / cap preflight（107 A2）
 
-SceneResources 在 begin_upload_batch 前检查全部 live effects 的需求，隐藏、窗口外、ancestor clip 外、零 coverage 和零 opacity 均不能绕过；拒绝失效附件并保留原子重试数据。旧单记录 pack 在任何裁剪早退前拒绝 paint 或非 Round cap，不能降级成 solid/Round。baseline_scene_capabilities 的新能力始终关闭；B1 只由 Recording 声明支持，SDL 的接入与真实 shader 验证属于 B2。
+SceneResources 在 begin_upload_batch 前检查全部 live effects 的需求，隐藏、窗口外、ancestor clip 外、零 coverage 和零 opacity 均不能绕过；拒绝失效附件并保留原子重试数据。旧单记录 pack 在任何裁剪早退前拒绝 paint 或非 Round cap，不能降级成 solid/Round。baseline_scene_capabilities 的新能力始终关闭；Recording 独立 opt in，SDL 的 paint/Linear/Conic/underlay 与非 Round 产品能力均保持关闭；BUILD_TESTING 的 owner-local scope 仅用于显式候选验证。能力声明不代表完成平台验收。
 
 ### Effect Paint ABI v1（107 B1）
 
@@ -101,6 +101,20 @@ RoundedEffectGpuResources 一次 compact 并读取同一份 geometry/material di
 cap buffer 纳入同一 capacity/limits、owner/epoch、失败失效、无新增 CPU dirty 重试、retire 与 idle 合同；任何表或后续资源失败均一起重试。保守 CPU bounds/cull/draw envelope 必须覆盖合法 AA 片元，不改变实际 shape 或 ancestor hard clip。数值求解分离 R/H，以 query-local 补偿及有界指数/精度路径处理运算，保持暴露联合外边界、单次 coverage 和固定一物理像素 AA；不得以任意 epsilon 填平正宽 gap、无限细分或让 NaN 静默清空。
 
 实施必须分别验证独立 scalar 期望、真实 packed bits/draw domain 和真实 GPU RGBA；完整碰撞反例要求新 stream 保留差异并输出各自正确结果。检查 shader roundtrip 中的算术保持性、实际编译/运行成本、nonzero first、混排、失败/重试与旧 Round/dash/Tooltip。Windows/D3D12 与 Linux/Vulkan 分别记录，不能用生成二进制或 CPU reference 代替实际 GPU；cap 修复不构成 paint field 全域无损精度声明。
+
+共同源码已加入独立 cap packing/buffer/Recording 及回归源码；非 Round bounds 使用向外包络的 double endpoints，在 viewport/ancestor clip 截取后才转换 draw 坐标，Square 使用保守 R+2H envelope。公开 Rect 的向外转换也检查实际 float origin+extent，store 的 compact/update 使用宽 endpoints。compose 与 upload 必须传同一个 nonRound logical AA guard（至少 max(1,1/display_scale)），尤其 scale 小于 1 的 fractional ancestor clip；不得在 OrderedScene 生成后改变 compact 映射。它只改变 draw/cull envelope，不扩大 shape 或 hard clip。该源码阶段尚未编译运行，既有 A/B1 数量不包含新增合同；53.1/53.2 继续未完成。
+
+### SDL/HLSL B2 候选与验证边界
+
+SDL 的 link 为 VERTEX buffer，field/stop 为 GRAPHICS_STORAGE_READ buffer；typed tombstone、owner/epoch、范围与源 bytes ownership 归同一 upload batch。Round paint 候选使用 base112/link16 两条实例流、七 float4 加 uint4 属性与两个 fragment storage；field/stop 从表起点绑定，draw first_instance=0。冷启动旧 solid/default Round 不创建新 pipeline/表，恢复旧场景释放三表，已创建 pipeline 缓存至析构。新 pipeline 创建失败使事务失败。
+
+新旧 entry 共用 `rounded_effect_coverage.hlsli` 的旧 Round/dash/Tooltip/阴影/outline 和一物理像素 AA；hard clip 保持左上包含、右下排除。paint 两场在 premultiplied 域插值和 source-over 后，仅乘一次 coverage/opacity，再输出 straight RGBA。Linear 以 896-bit 有界 dyadic 整数精确比较 N-stop*D，并在相同表达式上求插值分数，避免先舍入两个大坐标差；任意有限、相邻和重复 stop 不设新范围限制。Conic 候选使用 224-bit 坐标同时选择 stop 和求分数，保留 true-tau wrap/full sentinel/center0；其全域算术误差、跨 stop 判定与 unresolved 的有界处置仍未认证，因此不能据此打开产品 paint。cap union 源码保留为独立候选，本阶段不生成、反射或嵌入 cap entry；SDL 明确拒绝 cap pipeline，disabled cap suite 不属于本阶段可执行 GPU 验收。
+
+`tools/effect_shader_closure.py --write-lock` 显式生成 schema2 JSON/YAML-subset lock，包含每文件 LF SHA256、长度、排序 closure SHA256 及各 stage 的编译定义。vertex/fragment 分别显式定义 `RYNUI_VERTEX_SHADER=1` / `RYNUI_FRAGMENT_SHADER=1`；paint storage 与采样入口只编入 fragment，避免 vertex 模块留下未使用的 descriptor 声明。验证递归 quoted includes，拒绝循环、越界、漏锁、stage recipe 与 CMake DEPENDS 漂移；新旧各 stage 编译依赖完整 closure、lock、validator。交接不生成 lock/binary，父在最终格式化后用锁定 BUNDLED shadercross/DXC 生成。JSON 核对 IO/资源数量，`tools/verify_effect_paint_spirv.py` 从真实 SPIR-V 检查整数/Flat、set2 storage0/1、stride/offset；不将其描述为 DXIL reflection。
+
+`read_frame_rgba` 返回 offscreen render/download/fence 后的 tight owned RGBA framebuffer，BGRA 显式 swizzle、保留 alpha、不解预乘，失败清空输出、RAII 清理；正常 frame tick 不等待 fence。native fixture hidden/no-focus 并核验真实 driver/format。BUILD_TESTING 的 field-upload 与 finish 一次性故障 seam 只验证真实 adapter 的取消和完整重传，不是 SDK OOM/device-loss 证明。Windows/D3D12 与 Linux/private Wayland/Vulkan 均须实际执行；生成另一格式不算对应平台通过。原始 RGBA/log 只写 ignored out。
+
+测试构建提供 owner-local pending paint/cap validation scope，退出后恢复产品默认拒绝；paint scope 不声明 cap。cap entry 本阶段未生成，scope 不绕过 SDL 的明确 pipeline 拒绝。Conic 任意窄/重复 stop 的误差分段判定、224-bit cap 谓词及暴露边界认证、实际编译与 GPU 仍分别追踪；普通矩阵通过不能开启产品能力。宿主通过内部 WindowComponentServices 的 display_scale scalar setter/accessor 在 compose 前发布实际上传 scale，DPI 变化重发 projection，Core 不依赖 renderer/SDL/SceneDeviceMetrics。
 
 ## 后续组件与 backend 的接入清单
 

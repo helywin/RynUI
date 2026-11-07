@@ -384,6 +384,7 @@ target_link_libraries(rynui_components PRIVATE
 )
 
 add_library(rynui_renderer_common STATIC
+    renderer/common/cap_geometry_packing.cpp
     renderer/common/effect_paint_packing.cpp
     renderer/common/image_gpu_resources.cpp
     renderer/common/scene_capabilities.cpp
@@ -431,6 +432,9 @@ add_library(rynui_renderer_sdl STATIC
     renderer/sdl/scene_renderer.cpp
 )
 rynui_configure_cpp_target(rynui_renderer_sdl)
+if(BUILD_TESTING)
+    target_compile_definitions(rynui_renderer_sdl PUBLIC RYNUI_SDL_TEST_HOOKS=1)
+endif()
 target_include_directories(rynui_renderer_sdl PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/common/rounded_effect_packing.hpp"
+#include "renderer/common/cap_geometry_packing.hpp"
 
 #include <limits>
 #include <span>
@@ -72,6 +73,7 @@ void validate_effect_paint_link(const EffectPaintGpuLink& link, std::span<const 
                                                                        const RoundedEffectGpuInstance& base,
                                                                        const EffectPaintGpuLink& link,
                                                                        std::span<const EffectPaintGpuField> fields,
-                                                                       std::span<const EffectPaintGpuStop> stops);
+                                                                       std::span<const EffectPaintGpuStop> stops,
+                                                                       const CapGeometryGpuV1* cap_geometry = nullptr);
 
 } // namespace ryn::detail

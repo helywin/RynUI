@@ -2890,6 +2890,19 @@ if(TARGET rynui_renderer_recording)
     rynui_configure_cpp_target(rynui_effect_paint_resources_tests)
     target_link_libraries(rynui_effect_paint_resources_tests PRIVATE rynui_renderer_common rynui_renderer_recording)
     add_test(NAME rynui.effect_paint_resources COMMAND rynui_effect_paint_resources_tests)
+
+    add_executable(rynui_cap_geometry_tests cap_geometry_tests.cpp)
+    rynui_configure_cpp_target(rynui_cap_geometry_tests)
+    target_link_libraries(rynui_cap_geometry_tests PRIVATE rynui_renderer_common rynui_renderer_recording)
+    add_test(NAME rynui.cap_geometry COMMAND rynui_cap_geometry_tests)
+
+    add_executable(rynui_effect_compose_guard_tests effect_compose_guard_tests.cpp)
+    rynui_configure_cpp_target(rynui_effect_compose_guard_tests)
+    target_link_libraries(rynui_effect_compose_guard_tests PRIVATE
+        rynui_components rynui_renderer_common rynui_renderer_recording)
+    target_compile_definitions(rynui_effect_compose_guard_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\"")
+    add_test(NAME rynui.effect_compose_guard COMMAND rynui_effect_compose_guard_tests)
 endif()
 
 add_executable(rynui_binding_quad_integration_tests binding_quad_integration_tests.cpp)
@@ -3158,11 +3171,27 @@ add_test(
 add_test(
     NAME rynui.rounded_effect_shader_contract
     COMMAND ${CMAKE_COMMAND}
+        "-DPYTHON_EXECUTABLE=${Python3_EXECUTABLE}"
         "-DSHADER_SOURCE=${PROJECT_SOURCE_DIR}/shaders/rounded_effect.hlsl"
         "-DSHADER_LOCK=${PROJECT_SOURCE_DIR}/shaders/rounded_effect.lock.yaml"
         "-DSHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_rounded_effect_shader_contract.cmake"
 )
+
+add_test(NAME rynui.effect_paint_shader_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DPYTHON_EXECUTABLE=${Python3_EXECUTABLE}"
+        "-DPROJECT_ROOT=${PROJECT_SOURCE_DIR}"
+        "-DSHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_effect_paint_shader_contract.cmake")
+add_test(NAME rynui.effect_paint_shader_layout
+    COMMAND "${Python3_EXECUTABLE}" -B "${PROJECT_SOURCE_DIR}/tools/verify_effect_paint_spirv.py"
+        "${RYNUI_GENERATED_SHADER_DIRECTORY}"
+        --negative-test "${PROJECT_SOURCE_DIR}/out/107-progress-b2/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/layout")
+add_test(NAME rynui.effect_paint_shader_closure
+    COMMAND "${Python3_EXECUTABLE}" -B "${PROJECT_SOURCE_DIR}/tools/effect_shader_closure.py"
+        --root "${PROJECT_SOURCE_DIR}"
+        --negative-test "${PROJECT_SOURCE_DIR}/out/107-progress-b2/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/closure")
 
 add_test(
     NAME rynui.prop_reference_compile_fail
@@ -3310,6 +3339,47 @@ if(TARGET shadercross)
 endif()
 
 if(RYNUI_HAS_SDL_GPU)
+    add_executable(rynui_effect_paint_native_readback_tests effect_paint_native_readback_tests.cpp)
+    rynui_configure_cpp_target(rynui_effect_paint_native_readback_tests)
+    target_link_libraries(rynui_effect_paint_native_readback_tests PRIVATE
+        rynui_renderer_sdl rynui_renderer_common SDL3::SDL3)
+    target_compile_definitions(rynui_effect_paint_native_readback_tests PRIVATE
+        "RYNUI_EFFECT_SHADER_LOCK=\"${PROJECT_SOURCE_DIR}/shaders/rounded_effect.lock.yaml\""
+        "RYNUI_TEST_CONFIG=\"$<CONFIG>\"")
+    rynui_embed_target_shaders(rynui_effect_paint_native_readback_tests)
+    if(WIN32)
+        add_test(NAME rynui.effect_paint_d3d12_hidden
+            COMMAND rynui_effect_paint_native_readback_tests --expect-driver direct3d12
+                --suite transport
+                --output "${PROJECT_SOURCE_DIR}/out/107-progress-b2/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/rgba")
+        set_tests_properties(rynui.effect_paint_d3d12_hidden PROPERTIES
+            ENVIRONMENT "SDL_GPU_DRIVER=direct3d12" LABELS "windows;gpu;hidden" TIMEOUT 60 RUN_SERIAL TRUE)
+        add_test(NAME rynui.effect_cap_d3d12_hidden
+            COMMAND rynui_effect_paint_native_readback_tests --expect-driver direct3d12 --suite caps
+                --output "${PROJECT_SOURCE_DIR}/out/107-progress-b2/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/caps-rgba")
+        # Parent/Astra must resolve the finite large-radius counterexample before
+        # enabling the capability and this independent numerical acceptance.
+        set_tests_properties(rynui.effect_cap_d3d12_hidden PROPERTIES DISABLED TRUE
+            ENVIRONMENT "SDL_GPU_DRIVER=direct3d12" LABELS "windows;gpu;hidden;pending-cap-numerics" TIMEOUT 60 RUN_SERIAL TRUE)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME rynui.effect_paint_vulkan_private
+            COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_background_wayland.py"
+                --timeout 60
+                --log-dir "${PROJECT_SOURCE_DIR}/out/107-progress-b2/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/wayland"
+                -- "$<TARGET_FILE:rynui_effect_paint_native_readback_tests>" --expect-driver vulkan
+                --suite transport
+                --output "${PROJECT_SOURCE_DIR}/out/107-progress-b2/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/rgba")
+        set_tests_properties(rynui.effect_paint_vulkan_private PROPERTIES
+            ENVIRONMENT "SDL_GPU_DRIVER=vulkan" LABELS "linux;gpu;private-wayland" TIMEOUT 80 RUN_SERIAL TRUE)
+        add_test(NAME rynui.effect_cap_vulkan_private
+            COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_background_wayland.py"
+                --timeout 60
+                --log-dir "${PROJECT_SOURCE_DIR}/out/107-progress-b2/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/caps-wayland"
+                -- "$<TARGET_FILE:rynui_effect_paint_native_readback_tests>" --expect-driver vulkan --suite caps
+                --output "${PROJECT_SOURCE_DIR}/out/107-progress-b2/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/caps-rgba")
+        set_tests_properties(rynui.effect_cap_vulkan_private PROPERTIES DISABLED TRUE
+            ENVIRONMENT "SDL_GPU_DRIVER=vulkan" LABELS "linux;gpu;private-wayland;pending-cap-numerics" TIMEOUT 80 RUN_SERIAL TRUE)
+    endif()
     add_executable(rynui_image_rounding_gpu_tests image_rounding_gpu_tests.cpp)
     rynui_configure_cpp_target(rynui_image_rounding_gpu_tests)
     target_link_libraries(rynui_image_rounding_gpu_tests PRIVATE rynui_components rynui_renderer_sdl rynui_renderer_common rynui_image SDL3::SDL3)

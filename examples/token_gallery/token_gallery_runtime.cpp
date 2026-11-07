@@ -340,6 +340,7 @@ private:
             if (event.width > 0 && event.height > 0) {
                 const auto metrics = platform_->window_metrics();
                 const float next_render_scale = fixed_render_scale_ ? *render_scale_ : metrics.display_scale;
+                application_->services().set_display_scale(next_render_scale);
                 static_cast<void>(platform_->set_pointer_display_scale(next_render_scale));
                 if (std::abs(next_render_scale - *render_scale_) > 0.0001F) {
                     auto resolver =
@@ -464,6 +465,7 @@ public:
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto document_translated = std::chrono::steady_clock::now();
+            application_->services().set_display_scale(*render_scale_);
             if (!application_->layout_and_synchronize(*viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
                 last_error_ = "Token Gallery layout or scene sync failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
@@ -1135,6 +1137,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::detail::WindowComponentServices services(nodes, layout, dirty, text_scene, std::move(font_resolver),
                                                       frame_requests);
         services.bind_file_services(&native_files, SDL_GetWindowID(static_cast<SDL_Window*>(platform.window())));
+        services.set_display_scale(render_scale);
         ryn::detail::ButtonComponentHost application(services);
         ReferenceSurfaceHost reference_surfaces(application);
         ryn::detail::InputComponentHost inputs(services, platform, platform);

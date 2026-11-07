@@ -41,6 +41,16 @@ struct SceneRendererCounters {
     std::uint64_t atlas_page_bindings{};
     std::uint64_t frame_submissions{};
     std::uint64_t no_texture_frames{};
+    std::uint64_t effect_paint_pipeline_creations{};
+    std::uint64_t effect_cap_pipeline_creations{};
+};
+
+struct SceneRgbaReadback final {
+    std::uint32_t width{};
+    std::uint32_t height{};
+    std::uint32_t row_pitch{};
+    // Owned, top-left RGBA framebuffer bytes, without unpremultiplication.
+    std::vector<std::byte> pixels;
 };
 
 class SdlSceneRenderer final : public SceneBackend {
@@ -57,6 +67,17 @@ public:
     }
 
     [[nodiscard]] SceneBackendCapabilities capabilities() const noexcept override {
+#if defined(RYNUI_SDL_TEST_HOOKS)
+        if (pending_paint_validation_ || pending_cap_validation_) {
+            auto candidate = capabilities_;
+            candidate.effect_paints = true;
+            candidate.effect_linear_fields = true;
+            candidate.effect_conic_fields = true;
+            candidate.effect_underlays = true;
+            candidate.effect_arc_caps = pending_cap_validation_;
+            return candidate;
+        }
+#endif
         return capabilities_;
     }
 
@@ -94,6 +115,14 @@ public:
                               std::span<const std::byte> bytes) override;
     void release_effect_buffer(RoundedEffectGpuBufferHandle buffer) noexcept override;
     [[nodiscard]] const char* effect_gpu_error() const noexcept override;
+    RoundedEffectGpuBufferHandle create_effect_paint_buffer(EffectPaintBufferKind kind, std::size_t size) override;
+    bool upload_effect_paint_buffer(EffectPaintBufferKind kind, RoundedEffectGpuBufferHandle buffer, std::size_t offset,
+                                    std::span<const std::byte> bytes) override;
+    void release_effect_paint_buffer(EffectPaintBufferKind kind, RoundedEffectGpuBufferHandle buffer) noexcept override;
+    RoundedEffectGpuBufferHandle create_cap_geometry_buffer(std::size_t size) override;
+    bool upload_cap_geometry_buffer(RoundedEffectGpuBufferHandle buffer, std::size_t offset,
+                                    std::span<const std::byte> bytes) override;
+    void release_cap_geometry_buffer(RoundedEffectGpuBufferHandle buffer) noexcept override;
 
     void draw_quad(std::uint32_t first, std::uint32_t count) override;
     void draw_glyph(std::uint32_t atlas_page, std::uint32_t first, std::uint32_t count) override;
@@ -101,6 +130,19 @@ public:
     runtime::FrameSubmissionResult submit_frame(animation::AnimationTime frame_time) override;
     // Render the attached scene into a matching offscreen target for visual QA.
     bool save_frame_bmp(const std::filesystem::path& path);
+    bool read_frame_rgba(SceneRgbaReadback& output);
+
+#if defined(RYNUI_SDL_TEST_HOOKS)
+    // Two owner-local, one-shot failure seams. Only compiled in test builds.
+    bool fail_next_effect_field_upload_for_test() noexcept;
+    bool fail_next_cap_geometry_upload_for_test() noexcept;
+    bool fail_next_upload_finish_for_test() noexcept;
+    bool begin_pending_paint_validation_for_test() noexcept;
+    void end_pending_paint_validation_for_test() noexcept;
+    // Explicit validation scope only; the production capability stays false.
+    bool begin_pending_cap_validation_for_test() noexcept;
+    void end_pending_cap_validation_for_test() noexcept;
+#endif
 
     [[nodiscard]] const char* shader_format() const noexcept;
 
@@ -120,7 +162,21 @@ private:
     bool flush_buffer_upload_chunk();
     bool flush_texture_upload_chunk();
     bool upload_buffer(void* buffer, std::size_t offset, std::span<const std::byte> bytes, const char* label);
-    enum class ResourceKind { quad, glyph, effect, texture, sampler, image_texture, image_buffer };
+    enum class ResourceKind {
+        quad,
+        glyph,
+        effect,
+        effect_link,
+        effect_field,
+        effect_stop,
+        cap_geometry,
+        texture,
+        sampler,
+        image_texture,
+        image_buffer
+    };
+    static ResourceKind effect_paint_resource_kind(EffectPaintBufferKind kind);
+    bool ensure_effect_paint_pipeline(bool cap_geometry = false);
 
     struct Resource final {
         void* native{};
@@ -147,6 +203,8 @@ private:
     void* image_pipeline_{nullptr};
     void* image_sampler_{nullptr};
     void* effect_pipeline_{nullptr};
+    void* effect_paint_pipeline_{nullptr};
+    void* effect_cap_pipeline_{nullptr};
     void* quad_buffer_{nullptr};
     const GlyphGpuResources* glyph_resources_{nullptr};
     const RoundedEffectGpuResources* effect_resources_{nullptr};
@@ -166,6 +224,13 @@ private:
     std::string last_error_;
     Color clear_color_{Color::rgba8(255, 255, 255)};
     SceneRendererCounters counters_;
+#if defined(RYNUI_SDL_TEST_HOOKS)
+    bool fail_effect_field_upload_{};
+    bool fail_cap_geometry_upload_{};
+    bool fail_upload_finish_{};
+    bool pending_cap_validation_{};
+    bool pending_paint_validation_{};
+#endif
     // Opaque handles are tombstone addresses, never reusable native SDK pointers.
     std::unordered_map<void*, std::unique_ptr<Resource>> resources_;
 };

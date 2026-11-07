@@ -83,6 +83,97 @@ void validate_rect(runtime::Rect rect, const char* message) {
 constexpr float pi = std::numbers::pi_v<float>;
 constexpr float turn = 2 * pi;
 
+double bound_down(double value) noexcept {
+    return std::nextafter(value, -std::numeric_limits<double>::infinity());
+}
+
+double bound_up(double value) noexcept {
+    return std::nextafter(value, std::numeric_limits<double>::infinity());
+}
+
+EffectBounds64 nonround_bounds64(const RoundedEffectInstance& instance, double guard) {
+    validate_rounded_effect(instance);
+    if (!std::isfinite(guard) || guard < 0) {
+        throw std::invalid_argument("Rounded effect antialias guard must be non-negative");
+    }
+    const auto& geometry = instance.geometry;
+    const auto* arc = std::get_if<RoundedArcPath>(&geometry.path);
+    if (!arc || arc->cap == ArcCap::Round) {
+        throw std::invalid_argument("Non-round bounds require a non-round arc");
+    }
+    const auto rect = translated(geometry.shape, geometry.translation).rect;
+    if (geometry.outline_width == 0 || arc->sweep_radians == 0 || geometry.shape.radius == 0) {
+        return {rect.x, rect.y, rect.x, rect.y};
+    }
+    // The body fits in R+H. Every Square corner fits in R+2H;
+    // this conservative envelope needs no rounded world-space cap corners.
+    const auto reach =
+        bound_up((arc->cap == ArcCap::Square && arc->sweep_radians < turn ? double(geometry.outline_width)
+                                                                          : double(geometry.outline_width) / 2) +
+                 guard);
+    return {bound_down(double(rect.x) - reach), bound_down(double(rect.y) - reach),
+            bound_up(bound_up(double(rect.x) + rect.width) + reach),
+            bound_up(bound_up(double(rect.y) + rect.height) + reach)};
+}
+
+EffectBounds64 clip_bounds64(EffectBounds64 bounds, runtime::Rect clip) noexcept {
+    if (clip.width == 0 || clip.height == 0) {
+        return {clip.x, clip.y, clip.x, clip.y};
+    }
+    // Also enclose the established float hard-clip endpoint if it rounded out.
+    const auto right = std::max(bound_up(double(clip.x) + clip.width), double(clip.x + clip.width));
+    const auto bottom = std::max(bound_up(double(clip.y) + clip.height), double(clip.y + clip.height));
+    return {std::max(bounds.left, double(clip.x)), std::max(bounds.top, double(clip.y)), std::min(bounds.right, right),
+            std::min(bounds.bottom, bottom)};
+}
+
+float outward_origin(double value) noexcept {
+    const auto maximum = double(std::numeric_limits<float>::max());
+    value = std::clamp(value, -maximum, maximum);
+    auto result = static_cast<float>(value);
+    if (double(result) > value) {
+        result = std::nextafter(result, -std::numeric_limits<float>::infinity());
+    }
+    return result;
+}
+
+float outward_extent(float origin, double endpoint) noexcept {
+    const auto distance = std::max(0.0, bound_up(endpoint - double(origin)));
+    auto result = distance > std::numeric_limits<float>::max() ? std::numeric_limits<float>::infinity()
+                                                               : static_cast<float>(distance);
+    if (double(result) < distance || double(origin + result) < endpoint) {
+        result = std::nextafter(result, std::numeric_limits<float>::infinity());
+    }
+    if (double(origin + result) < endpoint) {
+        auto target = endpoint > std::numeric_limits<float>::max() ? std::numeric_limits<float>::infinity()
+                                                                   : static_cast<float>(endpoint);
+        if (double(target) < endpoint) {
+            target = std::nextafter(target, std::numeric_limits<float>::infinity());
+        }
+        const auto extent = double(target) - origin;
+        result = static_cast<float>(extent);
+        if (double(result) < extent || double(origin + result) < endpoint) {
+            result = std::nextafter(result, std::numeric_limits<float>::infinity());
+        }
+    }
+    return result;
+}
+
+runtime::Rect outward_rect(EffectBounds64 bounds) noexcept {
+    const auto left = outward_origin(bounds.left);
+    const auto top = outward_origin(bounds.top);
+    if (bounds.empty()) {
+        return {left, top, 0, 0};
+    }
+    return {left, top, outward_extent(left, bounds.right), outward_extent(top, bounds.bottom)};
+}
+
+bool intersects_draw_clip(const RoundedEffectInstance& instance, runtime::Rect clip, double nonround_guard) {
+    const auto* arc = std::get_if<RoundedArcPath>(&instance.geometry.path);
+    return arc && arc->cap != ArcCap::Round ? !nonround_arc_draw_bounds(instance, clip, nonround_guard).empty()
+                                            : !empty(intersect_effect_bounds(rounded_effect_bounds(instance), clip));
+}
+
 float positive_mod(float value, float period) noexcept {
     const auto result = std::fmod(value, period);
     return result < 0 ? result + period : result;
@@ -563,6 +654,13 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
         throw std::invalid_argument("Rounded effect antialias guard must be non-negative");
     }
     const auto& geometry = instance.geometry;
+    if (const auto* arc = std::get_if<RoundedArcPath>(&geometry.path); arc && arc->cap != ArcCap::Round) {
+        auto endpoints = nonround_bounds64(instance, antialias_guard);
+        if (geometry.ancestor_clip) {
+            endpoints = clip_bounds64(endpoints, geometry.ancestor_clip->bounds);
+        }
+        return outward_rect(endpoints);
+    }
     runtime::Rect bounds = translate(geometry.shape.rect, geometry.translation);
     if (empty(bounds) && geometry.kind != RoundedEffectKind::arc) {
         return bounds;
@@ -591,37 +689,7 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
         bounds = expand(bounds, geometry.outline_offset + geometry.outline_width + antialias_guard);
         break;
     case RoundedEffectKind::arc: {
-        const auto half_width = geometry.outline_width / 2;
-        const auto& arc = std::get<RoundedArcPath>(geometry.path);
-        if (arc.cap != ArcCap::Square || arc.sweep_radians >= turn) {
-            bounds = expand(bounds, half_width + antialias_guard);
-            break;
-        }
-        const auto center_x = bounds.x + geometry.shape.radius;
-        const auto center_y = bounds.y + geometry.shape.radius;
-        bounds = expand(bounds, half_width);
-        // A thick square cap can extend past radius + half_width on both
-        // axes. Include all actual cap corners before adding the AA guard.
-        for (const auto end : {false, true}) {
-            const auto angle = double(arc.start_radians) + (end ? arc.sweep_radians : 0);
-            const auto nx = std::cos(angle);
-            const auto ny = std::sin(angle);
-            for (const auto radial : {-half_width, half_width}) {
-                for (const auto along : {0.0F, end ? half_width : -half_width}) {
-                    const auto x =
-                        static_cast<float>(center_x + (double(geometry.shape.radius) + radial) * nx - along * ny);
-                    const auto y =
-                        static_cast<float>(center_y + (double(geometry.shape.radius) + radial) * ny + along * nx);
-                    const auto right = std::max(bounds.x + bounds.width, x);
-                    const auto bottom = std::max(bounds.y + bounds.height, y);
-                    bounds.x = std::min(bounds.x, x);
-                    bounds.y = std::min(bounds.y, y);
-                    bounds.width = right - bounds.x;
-                    bounds.height = bottom - bounds.y;
-                }
-            }
-        }
-        bounds = expand(bounds, antialias_guard);
+        bounds = expand(bounds, geometry.outline_width / 2 + antialias_guard);
         break;
     }
     case RoundedEffectKind::dashed_outline:
@@ -648,6 +716,16 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
         bounds = intersect_effect_bounds(bounds, geometry.ancestor_clip->bounds);
     }
     return bounds;
+}
+
+EffectBounds64 nonround_arc_draw_bounds(const RoundedEffectInstance& instance, runtime::Rect clip,
+                                        double antialias_guard) {
+    validate_rect(clip, "Rounded effect draw clip is invalid");
+    auto bounds = nonround_bounds64(instance, antialias_guard);
+    if (instance.geometry.ancestor_clip) {
+        bounds = clip_bounds64(bounds, instance.geometry.ancestor_clip->bounds);
+    }
+    return clip_bounds64(bounds, clip);
 }
 
 std::array<RoundedEffectInstance, 4> make_corner_outline_effects(LogicalRoundedRect shape,
@@ -853,7 +931,7 @@ bool RoundedEffectStore::update_geometry(RoundedEffectId id, RoundedEffectGeomet
     if (!compact_dirty_ && compact_clip_.has_value()) {
         const bool was_packed = slot.packed_index.has_value();
         const bool remains_drawable =
-            drawable(candidate) && !empty(intersect_effect_bounds(rounded_effect_bounds(candidate), *compact_clip_));
+            drawable(candidate) && intersects_draw_clip(candidate, *compact_clip_, nonround_antialias_guard_);
         if (was_packed == remains_drawable) {
             needs_compaction = false;
             patch_packed = was_packed;
@@ -873,9 +951,12 @@ bool RoundedEffectStore::update_geometry(RoundedEffectId id, RoundedEffectGeomet
     return true;
 }
 
-bool RoundedEffectStore::compact(runtime::Rect window_clip) {
+bool RoundedEffectStore::compact(runtime::Rect window_clip, double nonround_antialias_guard) {
     validate_clip(window_clip);
-    if (!compact_dirty_ && compact_clip_ == window_clip) {
+    if (!std::isfinite(nonround_antialias_guard) || nonround_antialias_guard < 0) {
+        throw std::invalid_argument("Rounded effect compact AA guard is invalid");
+    }
+    if (!compact_dirty_ && compact_clip_ == window_clip && nonround_antialias_guard_ == nonround_antialias_guard) {
         ++diagnostics_.idle_compactions;
         return false;
     }
@@ -891,8 +972,7 @@ bool RoundedEffectStore::compact(runtime::Rect window_clip) {
             ++diagnostics_.culled_instances;
             continue;
         }
-        const auto bounds = intersect_effect_bounds(rounded_effect_bounds(*slot->instance), window_clip);
-        if (empty(bounds)) {
+        if (!intersects_draw_clip(*slot->instance, window_clip, nonround_antialias_guard)) {
             ++diagnostics_.culled_instances;
             continue;
         }
@@ -914,6 +994,7 @@ bool RoundedEffectStore::compact(runtime::Rect window_clip) {
         });
     }
     compact_clip_ = window_clip;
+    nonround_antialias_guard_ = nonround_antialias_guard;
     compact_dirty_ = false;
     ++diagnostics_.compactions;
     diagnostics_.packed_instances = packed_instances_.size();

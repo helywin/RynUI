@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/common/effect_paint_packing.hpp"
+#include "renderer/common/cap_geometry_packing.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -35,6 +36,16 @@ public:
     }
 
     virtual void release_effect_paint_buffer(EffectPaintBufferKind, RoundedEffectGpuBufferHandle) noexcept {}
+
+    virtual RoundedEffectGpuBufferHandle create_cap_geometry_buffer(std::size_t) {
+        return nullptr;
+    }
+
+    virtual bool upload_cap_geometry_buffer(RoundedEffectGpuBufferHandle, std::size_t, std::span<const std::byte>) {
+        return false;
+    }
+
+    virtual void release_cap_geometry_buffer(RoundedEffectGpuBufferHandle) noexcept {}
 };
 
 struct RoundedEffectDrawBinding final {
@@ -47,6 +58,8 @@ struct RoundedEffectDrawBinding final {
     std::uint32_t instance_count{};
     std::uint32_t field_count{};
     std::uint32_t stop_count{};
+    RoundedEffectGpuBufferHandle cap_geometry{};
+    std::size_t cap_byte_offset{};
 };
 
 struct RoundedEffectGpuResourceCounters final {
@@ -79,6 +92,9 @@ public:
         paint_tables_.links.clear();
         paint_tables_.fields.clear();
         paint_tables_.stops.clear();
+        cap_buffer_ = nullptr;
+        cap_capacity_ = 0;
+        cap_geometry_.clear();
     }
 
     static void preflight(const graphics::RoundedEffectStore* store, SceneDeviceMetrics metrics,
@@ -97,6 +113,14 @@ public:
         return paint_capacities_;
     }
 
+    [[nodiscard]] std::span<const CapGeometryGpuV1> cap_geometry() const noexcept {
+        return cap_geometry_;
+    }
+
+    [[nodiscard]] std::uint32_t cap_capacity() const noexcept {
+        return cap_capacity_;
+    }
+
     [[nodiscard]] RoundedEffectGpuBufferHandle buffer() const noexcept;
     [[nodiscard]] std::uint32_t capacity() const noexcept;
     [[nodiscard]] std::uint32_t instance_count() const noexcept;
@@ -106,6 +130,7 @@ public:
 private:
     void synchronize_validated(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics, bool paint_transport);
     void release_paint_buffers() noexcept;
+    void release_cap_buffer() noexcept;
     void merge_dirty_ranges(std::span<const graphics::RoundedEffectInstanceRange> geometry,
                             std::span<const graphics::RoundedEffectInstanceRange> material);
     void convert_range(std::span<const graphics::RoundedEffectInstance> source,
@@ -121,6 +146,9 @@ private:
     std::array<RoundedEffectGpuBufferHandle, 3> paint_buffers_{};
     std::array<std::uint32_t, 3> paint_capacities_{};
     EffectPaintPackedTables paint_tables_;
+    RoundedEffectGpuBufferHandle cap_buffer_{};
+    std::uint32_t cap_capacity_{};
+    std::vector<CapGeometryGpuV1> cap_geometry_;
     RoundedEffectGpuResourceCounters counters_;
 };
 

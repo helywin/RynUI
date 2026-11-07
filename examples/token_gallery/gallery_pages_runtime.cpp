@@ -185,6 +185,7 @@ public:
                                     if (metrics.pixel_width > 0 && metrics.pixel_height > 0) {
                                         if (std::abs(metrics.display_scale - scale) > 0.0001F) {
                                             scale = metrics.display_scale;
+                                            app.services().set_display_scale(scale);
                                             static_cast<void>(app.text().set_font_resolver(
                                                 ryn::detail::make_default_ui_font_resolver(fonts, font_chain, scale)));
                                             inputs.set_display_scale(scale);
@@ -3914,6 +3915,7 @@ int run_gallery_pages(int argc, char** argv) {
         ReferenceSurfaceHost surfaces(app);
         ryn::detail::InputComponentHost inputs(services, *platform.state, *platform.state);
         ryn::detail::SelectionComponentHost selections(services);
+        services.set_display_scale(scale);
         inputs.set_display_scale(scale);
         static_cast<void>(platform.state->set_pointer_display_scale(scale));
         GalleryPagesHost pages(surfaces, inputs, frames, [&platform](const String& value) {

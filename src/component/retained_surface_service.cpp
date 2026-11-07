@@ -725,7 +725,8 @@ bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip, std::opt
     // Visit previous conversions after clipping or layer ownership changes too.
     const bool fills_changed =
         synchronize_clipped_fills(window_clip, document_clip.value_or(window_clip), logical_antialias_guard);
-    const bool packed_changed = effect_scene_.store().compact(window_clip);
+    const bool packed_changed =
+        effect_scene_.store().compact(window_clip, std::max(1.0, double(logical_antialias_guard.value_or(1.0F))));
     if (!fills_changed && !packed_changed) {
         return false;
     }

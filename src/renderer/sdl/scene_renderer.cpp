@@ -39,7 +39,8 @@ struct ShaderSelection {
 }
 
 [[nodiscard]] SDL_GPUShader* create_shader(SDL_GPUDevice* device, std::string_view filename, SDL_GPUShaderFormat format,
-                                           SDL_GPUShaderStage stage, Uint32 sampler_count, Uint32 uniform_count = 0) {
+                                           SDL_GPUShaderStage stage, Uint32 sampler_count, Uint32 uniform_count = 0,
+                                           Uint32 storage_buffer_count = 0) {
     const auto code = builtin_shader_bytes(filename);
     SDL_GPUShaderCreateInfo info{};
     info.code_size = code.size();
@@ -49,6 +50,7 @@ struct ShaderSelection {
     info.stage = stage;
     info.num_samplers = sampler_count;
     info.num_uniform_buffers = uniform_count;
+    info.num_storage_buffers = storage_buffer_count;
     return SDL_CreateGPUShader(device, &info);
 }
 
@@ -68,22 +70,16 @@ struct ShaderSelection {
     return target;
 }
 
-template <std::size_t AttributeCount>
-[[nodiscard]] SDL_GPUGraphicsPipeline*
-create_pipeline(SDL_GPUDevice* device, SDL_Window* window, SDL_GPUShader* vertex, SDL_GPUShader* fragment, Uint32 pitch,
-                const std::array<SDL_GPUVertexAttribute, AttributeCount>& attributes) {
-    const SDL_GPUVertexBufferDescription buffer_description{
-        0,
-        pitch,
-        SDL_GPU_VERTEXINPUTRATE_INSTANCE,
-        0,
-    };
+[[nodiscard]] SDL_GPUGraphicsPipeline* create_pipeline(SDL_GPUDevice* device, SDL_Window* window, SDL_GPUShader* vertex,
+                                                       SDL_GPUShader* fragment,
+                                                       std::span<const SDL_GPUVertexBufferDescription> buffers,
+                                                       std::span<const SDL_GPUVertexAttribute> attributes) {
     const auto target = color_target(device, window);
     SDL_GPUGraphicsPipelineCreateInfo info{};
     info.vertex_shader = vertex;
     info.fragment_shader = fragment;
-    info.vertex_input_state.vertex_buffer_descriptions = &buffer_description;
-    info.vertex_input_state.num_vertex_buffers = 1;
+    info.vertex_input_state.vertex_buffer_descriptions = buffers.data();
+    info.vertex_input_state.num_vertex_buffers = static_cast<Uint32>(buffers.size());
     info.vertex_input_state.vertex_attributes = attributes.data();
     info.vertex_input_state.num_vertex_attributes = static_cast<Uint32>(attributes.size());
     info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
@@ -100,6 +96,15 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
     capabilities_ = baseline_scene_capabilities();
+    capabilities_.effect_paints = false;
+    // Integer geometry/union is still a candidate. Numerical certification and
+    // actual platform readback must precede production capability opt-in.
+    capabilities_.effect_arc_caps = false;
+    capabilities_.cap_geometry_abi_version = cap_geometry_abi_version;
+    capabilities_.effect_linear_fields = false;
+    capabilities_.effect_conic_fields = false;
+    capabilities_.effect_underlays = false;
+    capabilities_.effect_paint_abi_version = effect_paint_abi_version;
     capabilities_.r8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8_UNORM,
                                                              SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
     capabilities_.rgba8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
@@ -121,7 +126,8 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
             SDL_ReleaseGPUShader(device, vertex);
             throw std::runtime_error(sdl_error("Failed to create fragment shader"));
         }
-        auto* pipeline = create_pipeline(device, window, vertex, fragment, pitch, attributes);
+        const std::array buffers{SDL_GPUVertexBufferDescription{0, pitch, SDL_GPU_VERTEXINPUTRATE_INSTANCE, 0}};
+        auto* pipeline = create_pipeline(device, window, vertex, fragment, buffers, attributes);
         SDL_ReleaseGPUShader(device, vertex);
         SDL_ReleaseGPUShader(device, fragment);
         if (pipeline == nullptr) {
@@ -172,6 +178,10 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
         effect_pipeline_ =
             build_pipeline("rounded_effect", sizeof(detail::RoundedEffectGpuInstance), effect_attributes, 0);
     } catch (...) {
+        if (effect_pipeline_) {
+            SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
+            effect_pipeline_ = nullptr;
+        }
         if (image_pipeline_) {
             SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(image_pipeline_));
             image_pipeline_ = nullptr;
@@ -200,6 +210,12 @@ SdlSceneRenderer::~SdlSceneRenderer() {
                                        static_cast<SDL_GPUGraphicsPipeline*>(image_pipeline_));
     }
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
+    if (effect_paint_pipeline_ != nullptr) {
+        SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(effect_paint_pipeline_));
+    }
+    if (effect_cap_pipeline_ != nullptr) {
+        SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(effect_cap_pipeline_));
+    }
     if (effect_pipeline_ != nullptr) {
         SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
     }
@@ -472,6 +488,181 @@ const char* SdlSceneRenderer::effect_gpu_error() const noexcept {
     return last_error();
 }
 
+bool SdlSceneRenderer::ensure_effect_paint_pipeline(bool cap_geometry) {
+    if (cap_geometry) {
+        last_error_ = "Cap shader is excluded from this Round transport stage pending numerical certification";
+        return false;
+    }
+    auto& pipeline = cap_geometry ? effect_cap_pipeline_ : effect_paint_pipeline_;
+    if (pipeline) {
+        return true;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
+    const auto selection = select_shader_format(device);
+    const std::string shader = cap_geometry ? "rounded_effect_cap" : "rounded_effect_paint";
+    auto* vertex = create_shader(device, shader + ".vertex." + selection.extension, selection.format,
+                                 SDL_GPU_SHADERSTAGE_VERTEX, 0);
+    if (!vertex) {
+        last_error_ = sdl_error("Failed to create effect-paint vertex shader");
+        return false;
+    }
+    SDL_GPUShader* fragment = nullptr;
+    SDL_GPUGraphicsPipeline* candidate = nullptr;
+    try {
+        fragment = create_shader(device, shader + ".fragment." + selection.extension, selection.format,
+                                 SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 0, 2);
+        if (fragment) {
+            const std::array buffers{
+                SDL_GPUVertexBufferDescription{0, sizeof(RoundedEffectGpuInstance), SDL_GPU_VERTEXINPUTRATE_INSTANCE,
+                                               0},
+                SDL_GPUVertexBufferDescription{1, sizeof(EffectPaintGpuLink), SDL_GPU_VERTEXINPUTRATE_INSTANCE, 0},
+                SDL_GPUVertexBufferDescription{2, sizeof(CapGeometryGpuV1), SDL_GPU_VERTEXINPUTRATE_INSTANCE, 0}};
+            const std::array attributes{SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
+                                        SDL_GPUVertexAttribute{1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
+                                        SDL_GPUVertexAttribute{2, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32},
+                                        SDL_GPUVertexAttribute{3, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 48},
+                                        SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 64},
+                                        SDL_GPUVertexAttribute{5, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 80},
+                                        SDL_GPUVertexAttribute{6, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 96},
+                                        SDL_GPUVertexAttribute{7, 1, SDL_GPU_VERTEXELEMENTFORMAT_UINT4, 0},
+                                        SDL_GPUVertexAttribute{8, 2, SDL_GPU_VERTEXELEMENTFORMAT_UINT4, 0},
+                                        SDL_GPUVertexAttribute{9, 2, SDL_GPU_VERTEXELEMENTFORMAT_UINT4, 16}};
+            candidate = create_pipeline(device, static_cast<SDL_Window*>(platform_->window()), vertex, fragment,
+                                        std::span(buffers).first(cap_geometry ? 3 : 2),
+                                        std::span(attributes).first(cap_geometry ? 10 : 8));
+        }
+    } catch (...) {
+        if (fragment) {
+            SDL_ReleaseGPUShader(device, fragment);
+        }
+        SDL_ReleaseGPUShader(device, vertex);
+        throw;
+    }
+    SDL_ReleaseGPUShader(device, vertex);
+    if (fragment) {
+        SDL_ReleaseGPUShader(device, fragment);
+    }
+    if (!candidate) {
+        last_error_ = sdl_error("Failed to create effect-paint pipeline");
+        return false;
+    }
+    pipeline = candidate;
+    if (cap_geometry) {
+        ++counters_.effect_cap_pipeline_creations;
+    } else {
+        ++counters_.effect_paint_pipeline_creations;
+    }
+    return true;
+}
+
+SdlSceneRenderer::ResourceKind SdlSceneRenderer::effect_paint_resource_kind(EffectPaintBufferKind kind) {
+    switch (kind) {
+    case EffectPaintBufferKind::link:
+        return ResourceKind::effect_link;
+    case EffectPaintBufferKind::field:
+        return ResourceKind::effect_field;
+    case EffectPaintBufferKind::stop:
+        return ResourceKind::effect_stop;
+    }
+    throw std::invalid_argument("Unknown effect-paint buffer kind");
+}
+
+RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_paint_buffer(EffectPaintBufferKind kind,
+                                                                          std::size_t size) {
+    const auto resource_kind = effect_paint_resource_kind(kind);
+    const auto stride = kind == EffectPaintBufferKind::link ? sizeof(EffectPaintGpuLink) : sizeof(EffectPaintGpuField);
+    if (!platform_->is_owner_thread() || size == 0 || size % stride != 0 || size > capabilities_.maximum_buffer_bytes ||
+        size > std::numeric_limits<Uint32>::max()) {
+        last_error_ = "Effect-paint buffer violates owner, stride or size contract";
+        return nullptr;
+    }
+    if (!ensure_effect_paint_pipeline()) {
+        return nullptr;
+    }
+    const SDL_GPUBufferCreateInfo info{kind == EffectPaintBufferKind::link ? SDL_GPU_BUFFERUSAGE_VERTEX
+                                                                           : SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                                       static_cast<Uint32>(size), 0};
+    auto* buffer = SDL_CreateGPUBuffer(static_cast<SDL_GPUDevice*>(binding_.device()), &info);
+    if (!buffer) {
+        last_error_ = sdl_error("Failed to create effect-paint buffer");
+    }
+    return track_resource(buffer, resource_kind, size);
+}
+
+bool SdlSceneRenderer::upload_effect_paint_buffer(EffectPaintBufferKind kind, RoundedEffectGpuBufferHandle buffer,
+                                                  std::size_t offset, std::span<const std::byte> bytes) {
+    auto* owned = resource(buffer, effect_paint_resource_kind(kind));
+    if (!owned || offset > owned->size || bytes.size() > owned->size - offset) {
+        last_error_ = "Foreign, stale, wrong-kind or out-of-range effect-paint buffer";
+        return false;
+    }
+#if defined(RYNUI_SDL_TEST_HOOKS)
+    if (kind == EffectPaintBufferKind::field && std::exchange(fail_effect_field_upload_, false)) {
+        last_error_ = "Test-only effect field upload failure";
+        return false;
+    }
+#endif
+    return upload_buffer(owned->native, offset, bytes, "Effect paint");
+}
+
+void SdlSceneRenderer::release_effect_paint_buffer(EffectPaintBufferKind kind,
+                                                   RoundedEffectGpuBufferHandle buffer) noexcept {
+    switch (kind) {
+    case EffectPaintBufferKind::link:
+        release_resource(buffer, ResourceKind::effect_link);
+        break;
+    case EffectPaintBufferKind::field:
+        release_resource(buffer, ResourceKind::effect_field);
+        break;
+    case EffectPaintBufferKind::stop:
+        release_resource(buffer, ResourceKind::effect_stop);
+        break;
+    }
+}
+
+RoundedEffectGpuBufferHandle SdlSceneRenderer::create_cap_geometry_buffer(std::size_t size) {
+    if (!platform_->is_owner_thread() || !size || size % sizeof(CapGeometryGpuV1) ||
+        size > capabilities_.maximum_buffer_bytes || size > std::numeric_limits<Uint32>::max() ||
+        capabilities_.cap_geometry_abi_version != cap_geometry_abi_version) {
+        last_error_ = "Cap Geometry buffer violates owner, ABI, stride or size contract";
+        return nullptr;
+    }
+    if (!ensure_effect_paint_pipeline(true)) {
+        return nullptr;
+    }
+    const SDL_GPUBufferCreateInfo info{SDL_GPU_BUFFERUSAGE_VERTEX, static_cast<Uint32>(size), 0};
+    auto* buffer = SDL_CreateGPUBuffer(static_cast<SDL_GPUDevice*>(binding_.device()), &info);
+    if (!buffer) {
+        last_error_ = sdl_error("Failed to create Cap Geometry buffer");
+    }
+    return track_resource(buffer, ResourceKind::cap_geometry, size);
+}
+
+bool SdlSceneRenderer::upload_cap_geometry_buffer(RoundedEffectGpuBufferHandle buffer, std::size_t offset,
+                                                  std::span<const std::byte> bytes) {
+    auto* owned = resource(buffer, ResourceKind::cap_geometry);
+    if (!owned || offset > owned->size || bytes.size() > owned->size - offset) {
+        last_error_ = "Foreign, stale, wrong-kind or out-of-range Cap Geometry buffer";
+        return false;
+    }
+#if defined(RYNUI_SDL_TEST_HOOKS)
+    if (std::exchange(fail_cap_geometry_upload_, false)) {
+        // Exercise cancellation after the preceding four real copies were
+        // recorded, without submitting the common transaction.
+        if (!flush_buffer_upload_chunk()) {
+            return false;
+        }
+        last_error_ = "Test-only cap geometry upload failure";
+        return false;
+    }
+#endif
+    return upload_buffer(owned->native, offset, bytes, "Cap Geometry");
+}
+
+void SdlSceneRenderer::release_cap_geometry_buffer(RoundedEffectGpuBufferHandle buffer) noexcept {
+    release_resource(buffer, ResourceKind::cap_geometry);
+}
+
 SdlSceneRenderer::Resource::~Resource() {
     release();
 }
@@ -489,7 +680,14 @@ void SdlSceneRenderer::Resource::release() noexcept {
     case ResourceKind::image_texture:
         SDL_ReleaseGPUTexture(gpu, static_cast<SDL_GPUTexture*>(native));
         break;
-    default:
+    case ResourceKind::quad:
+    case ResourceKind::glyph:
+    case ResourceKind::effect:
+    case ResourceKind::effect_link:
+    case ResourceKind::effect_field:
+    case ResourceKind::effect_stop:
+    case ResourceKind::cap_geometry:
+    case ResourceKind::image_buffer:
         SDL_ReleaseGPUBuffer(gpu, static_cast<SDL_GPUBuffer*>(native));
         break;
     }
@@ -515,6 +713,9 @@ void* SdlSceneRenderer::track_resource(void* native, ResourceKind kind, std::siz
 }
 
 SdlSceneRenderer::Resource* SdlSceneRenderer::resource(void* handle, ResourceKind kind) const noexcept {
+    if (!platform_->is_owner_thread()) {
+        return nullptr;
+    }
     const auto found = resources_.find(handle);
     if (found == resources_.end() || !found->second->native || found->second->kind != kind ||
         found->second->device != binding_.device()) {
@@ -578,22 +779,50 @@ void SdlSceneRenderer::draw_glyph(std::uint32_t atlas_page, std::uint32_t first,
 }
 
 void SdlSceneRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t count) {
-    const auto end = static_cast<std::uint64_t>(first) + count;
-    if (active_render_pass_ == nullptr || effect_resources_ == nullptr || effect_resources_->buffer() == nullptr ||
-        end > effect_resources_->instance_count()) {
+    if (!platform_->is_owner_thread() || !attached_scene_ready() || active_render_pass_ == nullptr ||
+        effect_resources_ == nullptr) {
         throw std::logic_error("Rounded effect draw resources are not attached");
     }
-    const auto byte_offset = static_cast<std::uint64_t>(first) * sizeof(detail::RoundedEffectGpuInstance);
-    if (byte_offset > std::numeric_limits<Uint32>::max()) {
-        throw std::length_error("Rounded effect draw offset exceeds uint32_t");
-    }
-    auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
-    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
-    const SDL_GPUBufferBinding binding{
-        static_cast<SDL_GPUBuffer*>(native_resource(effect_resources_->buffer(), ResourceKind::effect)),
-        static_cast<Uint32>(byte_offset),
+    const auto binding = effect_resources_->draw_binding(first, count);
+    const auto checked = [&](void* handle, ResourceKind kind, std::size_t offset, std::size_t elements,
+                             std::size_t stride) {
+        auto* owned = resource(handle, kind);
+        if (!owned || offset > owned->size || elements > (owned->size - offset) / stride ||
+            offset > std::numeric_limits<Uint32>::max()) {
+            throw std::invalid_argument("Effect draw binding violates typed resource or byte range contract");
+        }
+        return SDL_GPUBufferBinding{static_cast<SDL_GPUBuffer*>(owned->native), static_cast<Uint32>(offset)};
     };
-    SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+    const auto base =
+        checked(binding.base, ResourceKind::effect, binding.base_byte_offset, count, sizeof(RoundedEffectGpuInstance));
+    auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
+    if (binding.link) {
+        auto* pipeline = binding.cap_geometry ? effect_cap_pipeline_ : effect_paint_pipeline_;
+        if (!pipeline || !binding.field_count || !binding.stop_count) {
+            throw std::logic_error("Effect paint pipeline or storage is not ready");
+        }
+        const auto link = checked(binding.link, ResourceKind::effect_link, binding.link_byte_offset, count,
+                                  sizeof(EffectPaintGpuLink));
+        const auto field =
+            checked(binding.field, ResourceKind::effect_field, 0, binding.field_count, sizeof(EffectPaintGpuField));
+        const auto stop =
+            checked(binding.stop, ResourceKind::effect_stop, 0, binding.stop_count, sizeof(EffectPaintGpuStop));
+        const std::array storage{field.buffer, stop.buffer};
+        SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(pipeline));
+        if (binding.cap_geometry) {
+            const auto cap = checked(binding.cap_geometry, ResourceKind::cap_geometry, binding.cap_byte_offset, count,
+                                     sizeof(CapGeometryGpuV1));
+            const std::array streams{base, link, cap};
+            SDL_BindGPUVertexBuffers(pass, 0, streams.data(), static_cast<Uint32>(streams.size()));
+        } else {
+            const std::array streams{base, link};
+            SDL_BindGPUVertexBuffers(pass, 0, streams.data(), static_cast<Uint32>(streams.size()));
+        }
+        SDL_BindGPUFragmentStorageBuffers(pass, 0, storage.data(), static_cast<Uint32>(storage.size()));
+    } else {
+        SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
+        SDL_BindGPUVertexBuffers(pass, 0, &base, 1);
+    }
     SDL_DrawGPUPrimitives(pass, detail::rounded_effect_vertex_count, count, 0, 0);
     ++counters_.effect_draws;
     counters_.effect_instances += count;
@@ -668,7 +897,8 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(animation::Animati
     return runtime::FrameSubmissionResult::submitted;
 }
 
-bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
+bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
+    output = {};
     if (!platform_->is_owner_thread() || !attached_scene_ready() || upload_batch_active_) {
         last_error_ = "Frame export requires an attached scene on the Window owner thread";
         return false;
@@ -683,99 +913,135 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
         last_error_ = "Frame export requires an SDR RGBA8 or BGRA8 target of valid size";
         return false;
     }
-    SDL_GPUTextureCreateInfo texture_info{};
-    texture_info.type = SDL_GPU_TEXTURETYPE_2D;
-    texture_info.format = format;
-    texture_info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
-    texture_info.width = width;
-    texture_info.height = height;
-    texture_info.layer_count_or_depth = 1;
-    texture_info.num_levels = 1;
-    texture_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
-    auto* texture = SDL_CreateGPUTexture(device, &texture_info);
-    const Uint32 pitch = (width * 4U + 255U) & ~255U;
-    const SDL_GPUTransferBufferCreateInfo transfer_info{SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, pitch * height, 0};
-    auto* transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
-    SDL_GPUCommandBuffer* command = nullptr;
-    SDL_GPUFence* fence = nullptr;
-    const auto cleanup = [&] {
-        if (command) {
-            SDL_CancelGPUCommandBuffer(command);
-        }
-        if (fence) {
-            SDL_ReleaseGPUFence(device, fence);
-        }
-        if (transfer) {
-            SDL_ReleaseGPUTransferBuffer(device, transfer);
-        }
-        if (texture) {
-            SDL_ReleaseGPUTexture(device, texture);
+
+    struct ReadbackScope final {
+        SDL_GPUDevice* device;
+        void*& active;
+        SDL_GPUTexture* texture{};
+        SDL_GPUTransferBuffer* transfer{};
+        SDL_GPUCommandBuffer* command{};
+        SDL_GPUFence* fence{};
+        SDL_GPURenderPass* render{};
+        SDL_GPUCopyPass* copy{};
+        bool mapped{};
+
+        ~ReadbackScope() {
+            active = nullptr;
+            if (render) {
+                SDL_EndGPURenderPass(render);
+            }
+            if (copy) {
+                SDL_EndGPUCopyPass(copy);
+            }
+            if (command) {
+                SDL_CancelGPUCommandBuffer(command);
+            }
+            if (mapped) {
+                SDL_UnmapGPUTransferBuffer(device, transfer);
+            }
+            if (fence) {
+                SDL_ReleaseGPUFence(device, fence);
+            }
+            if (transfer) {
+                SDL_ReleaseGPUTransferBuffer(device, transfer);
+            }
+            if (texture) {
+                SDL_ReleaseGPUTexture(device, texture);
+            }
         }
     };
-    if (!texture || !transfer || !(command = SDL_AcquireGPUCommandBuffer(device))) {
-        last_error_ = sdl_error("Failed to allocate frame export resources");
-        cleanup();
-        return false;
-    }
-    const auto viewport = quad_viewport_uniform(width, height);
-    SDL_PushGPUVertexUniformData(command, 0, &viewport, sizeof(viewport));
-    SDL_GPUColorTargetInfo target{};
-    target.texture = texture;
-    target.clear_color = {clear_color_.red(), clear_color_.green(), clear_color_.blue(), clear_color_.alpha()};
-    target.load_op = SDL_GPU_LOADOP_CLEAR;
-    target.store_op = SDL_GPU_STOREOP_STORE;
-    auto* pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);
-    if (!pass) {
-        last_error_ = sdl_error("Failed to begin frame export render pass");
-        cleanup();
-        return false;
-    }
-    active_render_pass_ = pass;
+
+    ReadbackScope scope{device, active_render_pass_};
     try {
-        draw_ordered_scene(*scene_, *this);
-    } catch (const std::exception& error) {
-        active_render_pass_ = nullptr;
-        SDL_EndGPURenderPass(pass);
-        last_error_ = error.what();
-        cleanup();
-        return false;
-    }
-    active_render_pass_ = nullptr;
-    SDL_EndGPURenderPass(pass);
-    auto* copy = SDL_BeginGPUCopyPass(command);
-    if (!copy) {
-        last_error_ = sdl_error("Failed to begin frame export readback");
-        cleanup();
-        return false;
-    }
-    const SDL_GPUTextureRegion source{texture, 0, 0, 0, 0, 0, width, height, 1};
-    const SDL_GPUTextureTransferInfo destination{transfer, 0, pitch / 4U, height};
-    SDL_DownloadFromGPUTexture(copy, &source, &destination);
-    SDL_EndGPUCopyPass(copy);
-    fence = SDL_SubmitGPUCommandBufferAndAcquireFence(command);
-    command = nullptr;
-    if (!fence || !SDL_WaitForGPUFences(device, true, &fence, 1)) {
-        last_error_ = sdl_error("Failed to complete frame export readback");
-        cleanup();
-        return false;
-    }
-    void* pixels = SDL_MapGPUTransferBuffer(device, transfer, false);
-    bool saved = false;
-    if (pixels) {
-        auto* surface = SDL_CreateSurfaceFrom(width, height,
-                                              format == SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM ? SDL_PIXELFORMAT_RGBA32
-                                                                                             : SDL_PIXELFORMAT_BGRA32,
-                                              pixels, pitch);
-        if (surface) {
-            saved = SDL_SaveBMP(surface, path.string().c_str());
-            SDL_DestroySurface(surface);
+        SceneRgbaReadback candidate{width, height, width * 4U, {}};
+        candidate.pixels.resize(static_cast<std::size_t>(candidate.row_pitch) * height);
+        SDL_GPUTextureCreateInfo texture_info{};
+        texture_info.type = SDL_GPU_TEXTURETYPE_2D;
+        texture_info.format = format;
+        texture_info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+        texture_info.width = width;
+        texture_info.height = height;
+        texture_info.layer_count_or_depth = 1;
+        texture_info.num_levels = 1;
+        texture_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+        scope.texture = SDL_CreateGPUTexture(device, &texture_info);
+        const Uint32 pitch = (width * 4U + 255U) & ~255U;
+        const SDL_GPUTransferBufferCreateInfo transfer_info{SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, pitch * height, 0};
+        scope.transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
+        scope.command = SDL_AcquireGPUCommandBuffer(device);
+        if (!scope.texture || !scope.transfer || !scope.command) {
+            last_error_ = sdl_error("Failed to allocate frame export resources");
+            return false;
         }
-        SDL_UnmapGPUTransferBuffer(device, transfer);
+        const auto viewport = quad_viewport_uniform(width, height);
+        SDL_PushGPUVertexUniformData(scope.command, 0, &viewport, sizeof(viewport));
+        SDL_GPUColorTargetInfo target{};
+        target.texture = scope.texture;
+        target.clear_color = {clear_color_.red(), clear_color_.green(), clear_color_.blue(), clear_color_.alpha()};
+        target.load_op = SDL_GPU_LOADOP_CLEAR;
+        target.store_op = SDL_GPU_STOREOP_STORE;
+        scope.render = SDL_BeginGPURenderPass(scope.command, &target, 1, nullptr);
+        if (!scope.render) {
+            last_error_ = sdl_error("Failed to begin frame export render pass");
+            return false;
+        }
+        active_render_pass_ = scope.render;
+        draw_ordered_scene(*scene_, *this);
+        active_render_pass_ = nullptr;
+        SDL_EndGPURenderPass(scope.render);
+        scope.render = nullptr;
+        scope.copy = SDL_BeginGPUCopyPass(scope.command);
+        if (!scope.copy) {
+            last_error_ = sdl_error("Failed to begin frame export readback");
+            return false;
+        }
+        const SDL_GPUTextureRegion source{scope.texture, 0, 0, 0, 0, 0, width, height, 1};
+        const SDL_GPUTextureTransferInfo destination{scope.transfer, 0, pitch / 4U, height};
+        SDL_DownloadFromGPUTexture(scope.copy, &source, &destination);
+        SDL_EndGPUCopyPass(scope.copy);
+        scope.copy = nullptr;
+        scope.fence = SDL_SubmitGPUCommandBufferAndAcquireFence(scope.command);
+        scope.command = nullptr;
+        if (!scope.fence || !SDL_WaitForGPUFences(device, true, &scope.fence, 1)) {
+            last_error_ = sdl_error("Failed to complete frame export readback");
+            return false;
+        }
+        const auto* pixels = static_cast<const std::byte*>(SDL_MapGPUTransferBuffer(device, scope.transfer, false));
+        if (!pixels) {
+            last_error_ = sdl_error("Failed to map frame RGBA readback");
+            return false;
+        }
+        scope.mapped = true;
+        for (Uint32 row = 0; row < height; ++row) {
+            auto* destination_row = candidate.pixels.data() + static_cast<std::size_t>(row) * candidate.row_pitch;
+            std::memcpy(destination_row, pixels + static_cast<std::size_t>(row) * pitch, candidate.row_pitch);
+            if (format == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM) {
+                for (Uint32 column = 0; column < width; ++column) {
+                    std::swap(destination_row[column * 4U], destination_row[column * 4U + 2U]);
+                }
+            }
+        }
+        output = std::move(candidate);
+        return true;
+    } catch (const std::exception& error) {
+        last_error_ = error.what();
+        return false;
     }
+}
+
+bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
+    SceneRgbaReadback frame;
+    if (!read_frame_rgba(frame)) {
+        return false;
+    }
+    const auto surface = std::unique_ptr<SDL_Surface, decltype(&SDL_DestroySurface)>(
+        SDL_CreateSurfaceFrom(static_cast<int>(frame.width), static_cast<int>(frame.height), SDL_PIXELFORMAT_RGBA32,
+                              frame.pixels.data(), static_cast<int>(frame.row_pitch)),
+        &SDL_DestroySurface);
+    const bool saved = surface && SDL_SaveBMP(surface.get(), path.string().c_str());
     if (!saved) {
         last_error_ = sdl_error("Failed to save exported frame");
     }
-    cleanup();
     return saved;
 }
 
@@ -812,6 +1078,13 @@ bool SdlSceneRenderer::finish_upload_batch() {
         SDL_EndGPUCopyPass(static_cast<SDL_GPUCopyPass*>(upload_pass_));
         upload_pass_ = nullptr;
     }
+#if defined(RYNUI_SDL_TEST_HOOKS)
+    if (std::exchange(fail_upload_finish_, false)) {
+        cancel_upload_batch();
+        last_error_ = "Test-only upload finish failure before submission";
+        return false;
+    }
+#endif
     bool submitted = true;
     if (upload_command_ != nullptr) {
         submitted = SDL_SubmitGPUCommandBuffer(static_cast<SDL_GPUCommandBuffer*>(upload_command_));
@@ -829,6 +1102,62 @@ bool SdlSceneRenderer::finish_upload_batch() {
     upload_batch_active_ = false;
     return submitted;
 }
+
+#if defined(RYNUI_SDL_TEST_HOOKS)
+bool SdlSceneRenderer::fail_next_effect_field_upload_for_test() noexcept {
+    if (!platform_->is_owner_thread()) {
+        return false;
+    }
+    fail_effect_field_upload_ = true;
+    return true;
+}
+
+bool SdlSceneRenderer::fail_next_upload_finish_for_test() noexcept {
+    if (!platform_->is_owner_thread()) {
+        return false;
+    }
+    fail_upload_finish_ = true;
+    return true;
+}
+
+bool SdlSceneRenderer::begin_pending_cap_validation_for_test() noexcept {
+    if (!platform_->is_owner_thread() || pending_cap_validation_ || pending_paint_validation_ || upload_batch_active_ ||
+        active_render_pass_) {
+        return false;
+    }
+    pending_cap_validation_ = true;
+    return true;
+}
+
+bool SdlSceneRenderer::begin_pending_paint_validation_for_test() noexcept {
+    if (!platform_->is_owner_thread() || pending_paint_validation_ || pending_cap_validation_ || upload_batch_active_ ||
+        active_render_pass_) {
+        return false;
+    }
+    pending_paint_validation_ = true;
+    return true;
+}
+
+bool SdlSceneRenderer::fail_next_cap_geometry_upload_for_test() noexcept {
+    if (!platform_->is_owner_thread() || upload_batch_active_ || active_render_pass_) {
+        return false;
+    }
+    fail_cap_geometry_upload_ = true;
+    return true;
+}
+
+void SdlSceneRenderer::end_pending_paint_validation_for_test() noexcept {
+    if (platform_->is_owner_thread()) {
+        pending_paint_validation_ = false;
+    }
+}
+
+void SdlSceneRenderer::end_pending_cap_validation_for_test() noexcept {
+    if (platform_->is_owner_thread()) {
+        pending_cap_validation_ = false;
+    }
+}
+#endif
 
 void SdlSceneRenderer::cancel_upload_batch() noexcept {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());

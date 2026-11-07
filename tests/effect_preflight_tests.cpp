@@ -52,6 +52,8 @@ void capabilities_are_independent_and_default_off() {
     rejects([&] { validate_scene_effect_requirements(caps, {false, true}); }, "cap");
     caps.effect_paints = false;
     caps.effect_arc_caps = true;
+    rejects([&] { validate_scene_effect_requirements(caps, {false, true}); }, "Cap Geometry ABI");
+    caps.cap_geometry_abi_version = cap_geometry_abi_version;
     validate_scene_effect_requirements(caps, {false, true});
     rejects([&] { validate_scene_effect_requirements(caps, {true, false}); }, "paint");
 }

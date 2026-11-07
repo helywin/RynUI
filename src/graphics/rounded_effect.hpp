@@ -182,6 +182,22 @@ struct RoundedPathSample final {
 
 [[nodiscard]] runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float antialias_guard = 1.0F);
 
+// Non-round draw/cull endpoints remain wide until after clipping. Converting a
+// huge expanded LTWH to float first can erase a visible stroke and its AA guard.
+struct EffectBounds64 final {
+    double left{};
+    double top{};
+    double right{};
+    double bottom{};
+
+    [[nodiscard]] bool empty() const noexcept {
+        return right <= left || bottom <= top;
+    }
+};
+
+[[nodiscard]] EffectBounds64 nonround_arc_draw_bounds(const RoundedEffectInstance& instance, runtime::Rect clip,
+                                                      double antialias_guard = 1);
+
 [[nodiscard]] runtime::Rect intersect_effect_bounds(runtime::Rect bounds, runtime::Rect clip) noexcept;
 
 struct RoundedEffectId final {
@@ -244,7 +260,7 @@ public:
     [[nodiscard]] bool update_material(RoundedEffectId id, RoundedEffectMaterial material);
     [[nodiscard]] bool update_geometry(RoundedEffectId id, RoundedEffectGeometry geometry);
 
-    [[nodiscard]] bool compact(runtime::Rect window_clip);
+    [[nodiscard]] bool compact(runtime::Rect window_clip, double nonround_antialias_guard = 1);
     [[nodiscard]] std::optional<std::uint32_t> packed_index(RoundedEffectId id) const;
     [[nodiscard]] std::span<const RoundedEffectInstance> packed_instances() const noexcept;
     [[nodiscard]] std::span<const std::byte> bytes(RoundedEffectInstanceRange range) const;
@@ -279,6 +295,7 @@ private:
     DirtyRangeAccumulator<RoundedEffectInstanceRange> material_dirty_ranges_;
     DirtyRangeAccumulator<RoundedEffectInstanceRange> geometry_dirty_ranges_;
     std::optional<runtime::Rect> compact_clip_;
+    double nonround_antialias_guard_{1};
     RoundedEffectStoreDiagnostics diagnostics_;
     bool compact_dirty_{true};
 };

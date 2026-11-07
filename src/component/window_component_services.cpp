@@ -89,6 +89,17 @@ private:
 
 } // namespace
 
+void WindowComponentServices::set_display_scale(float scale) {
+    if (!std::isfinite(scale) || scale <= 0) {
+        throw std::invalid_argument("Window display scale must be finite and positive");
+    }
+    if (display_scale_ != scale) {
+        display_scale_ = scale;
+        scene_structure_dirty_ = true;
+        request_frame();
+    }
+}
+
 WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layout::LayoutEngine& layout,
                                                  runtime::DirtyQueues& dirty, TextSceneService& text_scene,
                                                  std::vector<font::FontIdentity> default_font_chain,
@@ -819,30 +830,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
         text_scene.finish_ordered_scene_batch();
-        std::optional<float> logical_antialias_guard;
-        const auto read_density = [&](TextSceneId scene) {
-            // Inspect the current chain, including a DPI update that has not
-            // reshaped an offscreen scene yet. This does not invoke a resolver
-            // or allocate another font-chain vector on every scroll frame.
-            const auto reference = text_scene.text_state(scene).font_chain();
-            if (reference.empty()) {
-                return;
-            }
-            if (clipping_density_font_ != reference.front()) {
-                clipping_antialias_guard_.reset();
-                const auto metrics = text_scene.font_metrics(reference.front());
-                if (metrics && std::isfinite(metrics.metrics.display_scale) && metrics.metrics.display_scale > 0) {
-                    clipping_antialias_guard_ = 1 / metrics.metrics.display_scale;
-                }
-                clipping_density_font_ = reference.front();
-            }
-            logical_antialias_guard = clipping_antialias_guard_;
-        };
-        if (!text_.mounted_texts().empty()) {
-            read_density(text_.mounted_texts().front().scene);
-        } else if (input_runtime_ && !input_runtime_->mounted_inputs().empty()) {
-            read_density(input_runtime_->text_scene(input_runtime_->mounted_inputs().front().component));
-        }
+        const float logical_antialias_guard = 1.0F / display_scale_;
         static_cast<void>(surfaces_.synchronize_paint_opacity());
         if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height}, clip, logical_antialias_guard)) {
             scene_structure_dirty_ = true;

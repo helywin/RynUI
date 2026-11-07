@@ -33,7 +33,7 @@ python scripts/format-code.py --check --clang-format $formatter
 
 Visual Studio 版本、edition 与安装目录因机器而异，应使用实际路径。VS Code 的 C/C++ 扩展读取 `file` 样式，并显示 120 列参考线；若扩展内置 formatter 版本不同，可在个人设置中指定 `C_Cpp.clang_format_path` 指向 22.x。
 
-修改 `rounded_effect.hlsl` 后需要同步 `rounded_effect.lock.yaml` 的 LF 归一化 SHA256，并重新生成、验证 shader。格式变更完成后运行 `git diff --check` 及受影响 preset 的 build / CTest。
+`.hlsli` 与 `.hlsl` 使用同一格式；未跟踪的新文件须额外显式传给 clang-format 22.x 检查，因为脚本只枚举 tracked paths。修改 effect entry 或 include 后，先完成格式化，再显式运行 `python tools/effect_shader_closure.py --write-lock` 更新 `rounded_effect.lock.yaml` 的完整 LF source closure，随后重新生成和验证 shader。源码交接阶段可把锁和二进制生成留给集成者，不把未生成的合同称为通过。格式变更完成后运行 `git diff --check` 及受影响 preset 的 build / CTest。
 
 ## 2026-10-02 格式基线验证
 

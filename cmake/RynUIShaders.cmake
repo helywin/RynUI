@@ -1,19 +1,46 @@
 include_guard(GLOBAL)
 
 function(rynui_add_shader_targets shadercross_command shadercross_dependency)
+    find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
     set(shader_output_directory "${CMAKE_BINARY_DIR}/generated/shaders")
+    set(effect_lock "${PROJECT_SOURCE_DIR}/shaders/rounded_effect.lock.yaml")
+    set(effect_validator "${PROJECT_SOURCE_DIR}/tools/effect_shader_closure.py")
 
     set(shader_outputs)
     set(shader_filenames)
-    foreach(shader_name IN ITEMS quad glyph rounded_effect image)
+    foreach(shader_name IN ITEMS quad glyph rounded_effect rounded_effect_paint image)
         set(shader_source "${PROJECT_SOURCE_DIR}/shaders/${shader_name}.hlsl")
+        set(shader_dependencies "${shader_source}")
+        set(shader_validation ${CMAKE_COMMAND} -E true)
+        if(shader_name MATCHES "^rounded_effect")
+            list(APPEND shader_dependencies "${PROJECT_SOURCE_DIR}/shaders/rounded_effect_coverage.hlsli")
+            if(shader_name STREQUAL "rounded_effect_paint")
+                list(APPEND shader_dependencies
+                    "${PROJECT_SOURCE_DIR}/shaders/cap_number.hlsli"
+                    "${PROJECT_SOURCE_DIR}/shaders/effect_linear_exact.hlsli"
+                    "${PROJECT_SOURCE_DIR}/shaders/effect_conic_candidate.hlsli"
+                    "${PROJECT_SOURCE_DIR}/shaders/effect_paint_sampling.hlsli")
+            endif()
+            set(shader_validation "${Python3_EXECUTABLE}" -B "${effect_validator}"
+                --root "${PROJECT_SOURCE_DIR}" --lock "${effect_lock}" --entry "${shader_name}")
+            foreach(dependency IN LISTS shader_dependencies)
+                list(APPEND shader_validation --dependency "${dependency}")
+            endforeach()
+            list(APPEND shader_dependencies "${effect_lock}" "${effect_validator}")
+        endif()
         foreach(shader_stage IN ITEMS vertex fragment)
             if(shader_stage STREQUAL "vertex")
                 set(entry_point VSMain)
                 set(stage_argument vertex)
+                set(stage_define RYNUI_VERTEX_SHADER=1)
             else()
                 set(entry_point PSMain)
                 set(stage_argument fragment)
+                set(stage_define RYNUI_FRAGMENT_SHADER=1)
+            endif()
+            set(shader_stage_validation ${shader_validation})
+            if(shader_name MATCHES "^rounded_effect")
+                list(APPEND shader_stage_validation --stage "${shader_stage}" --define "${stage_define}")
             endif()
 
             foreach(shader_format IN ITEMS dxil spirv)
@@ -30,14 +57,17 @@ function(rynui_add_shader_targets shadercross_command shadercross_dependency)
                 add_custom_command(
                     OUTPUT "${shader_output}"
                     COMMAND ${CMAKE_COMMAND} -E make_directory "${shader_output_directory}"
+                    COMMAND ${shader_stage_validation}
                     COMMAND "${shadercross_command}"
                         "${shader_source}"
                         -s HLSL
                         -d "${destination_argument}"
                         -t "${stage_argument}"
                         -e "${entry_point}"
+                        "-D${stage_define}"
+                        -I "${PROJECT_SOURCE_DIR}/shaders"
                         -o "${shader_output}"
-                    DEPENDS "${shader_source}" ${shadercross_dependency}
+                    DEPENDS ${shader_dependencies} ${shadercross_dependency}
                     COMMENT
                         "Compiling ${shader_name} ${shader_stage} shader to ${destination_argument}"
                     VERBATIM
@@ -48,7 +78,7 @@ function(rynui_add_shader_targets shadercross_command shadercross_dependency)
         endforeach()
     endforeach()
 
-    foreach(shader_name IN ITEMS glyph rounded_effect image)
+    foreach(shader_name IN ITEMS glyph rounded_effect rounded_effect_paint image)
         foreach(shader_stage IN ITEMS vertex fragment)
             if(shader_stage STREQUAL "vertex")
                 set(entry_point VSMain)
