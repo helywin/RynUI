@@ -108,6 +108,14 @@ target_compile_definitions(rynui_i18n_components_form_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.i18n_components_form COMMAND rynui_i18n_components_form_tests)
 
+add_executable(rynui_i18n_components_formatting_tests i18n_components_formatting_tests.cpp)
+rynui_configure_cpp_target(rynui_i18n_components_formatting_tests)
+target_link_libraries(rynui_i18n_components_formatting_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_i18n_components_formatting_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_components_formatting COMMAND rynui_i18n_components_formatting_tests)
+
 add_executable(rynui_overlay_descendant_maintenance_tests overlay_descendant_maintenance_tests.cpp)
 rynui_configure_cpp_target(rynui_overlay_descendant_maintenance_tests)
 target_link_libraries(rynui_overlay_descendant_maintenance_tests PRIVATE rynui_components)

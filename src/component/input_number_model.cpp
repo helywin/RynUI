@@ -254,6 +254,9 @@ InputNumberValue InputNumberModel::stepped(InputNumberStepDirection direction) c
 }
 
 String InputNumberModel::format(InputNumberValue value) {
+    if (value && *value == 0 && std::signbit(*value)) {
+        return String{u8"-0"};
+    }
     return value ? String::from_utf8(text(decimal(*value))).value() : String{};
 }
 

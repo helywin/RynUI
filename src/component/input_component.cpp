@@ -12,6 +12,8 @@
 #include "theme/input_tokens.hpp"
 #include "component/otp_input_cell.hpp"
 #include "component/input_number_actions.hpp"
+#include "i18n/number_format.hpp"
+#include "runtime/config_context.hpp"
 #include <ryn/password.hpp>
 #include <ryn/text.hpp>
 #include <ryn/text_area.hpp>
@@ -94,10 +96,16 @@ struct TextAreaState {
 struct InputNumberState final {
     explicit InputNumberState(std::shared_ptr<InputNumberConfig> config)
         : config(std::move(config)),
-          model(read_prop(this->config->options), this->config->initial, this->config->value.has_value()) {}
+          model(read_prop(this->config->options), this->config->initial, this->config->value.has_value()),
+          locale(read_prop(this->config->locale)), edit_locale(locale) {}
 
     std::shared_ptr<InputNumberConfig> config;
     NumberModel model;
+    StatisticLocale locale;
+    StatisticLocale edit_locale;
+    std::uint64_t revision{};
+    std::uint64_t edit_generation{};
+    bool format_frozen{};
     InputNumberActions actions;
     InputNumberActions spinner_up;
     InputNumberActions spinner_down;
@@ -125,7 +133,21 @@ template <class F> void number_callback(const std::function<void()>& cleanup, F&
 
 String format_number(const InputNumberState& state, bool typing, String draft) {
     auto plain = NumberModel::format(state.model.value());
-    const auto separator = read_prop(state.config->separator);
+    const auto config = state.config;
+    const auto formatter = config->formatter;
+    const auto explicit_separator = state.edit_locale.decimal_separator;
+    const auto cleanup = state.failure_cleanup;
+    const auto context = state.input_context;
+    if (!formatter) {
+        if (plain.empty()) {
+            return plain;
+        }
+        NumberFormatOptions options;
+        options.grouping = false;
+        return format_decimal_text(plain, state.edit_locale, options);
+    }
+    // Explicit formatters retain their original canonical input and explicit separator contract.
+    const auto separator = config->separator ? explicit_separator : String{u8"."};
     if (separator != String{u8"."}) {
         auto text = std::string{plain.bytes()};
         const auto dot = text.find('.');
@@ -134,13 +156,7 @@ String format_number(const InputNumberState& state, bool typing, String draft) {
             plain = String::from_utf8(text).value();
         }
     }
-    const auto formatter = state.config->formatter;
-    if (!formatter) {
-        return plain;
-    }
-    const auto cleanup = state.failure_cleanup;
     if (!typing) {
-        const auto context = state.input_context;
         draft = context ? context() : plain;
     }
     try {
@@ -167,15 +183,7 @@ std::optional<NumberValue> parse_number(const InputNumberState& state, String dr
             throw;
         }
     } else {
-        const auto separator = read_prop(state.config->separator);
-        if (separator != String{u8"."}) {
-            auto text = std::string{draft.bytes()};
-            const auto dot = text.find(separator.bytes());
-            if (dot != text.npos) {
-                text.replace(dot, separator.bytes().size(), ".");
-                draft = String::from_utf8(text).value();
-            }
-        }
+        draft = parse_decimal_text(draft, state.edit_locale);
     }
     return model.parse(draft.bytes(), finish);
 }
@@ -715,9 +723,23 @@ struct InputPropsAccess {
                 owner.invalidate(component, runtime::DirtyFlags::Material);
                 auto focus_callback = !was_focused && focus.focused ? current->on_focus : std::function<void()>{};
                 auto blur_callback = was_focused && !focus.focused ? current->on_blur : std::function<void()>{};
-                if (was_focused && !focus.focused && current->number &&
-                    read_prop(current->number->config->change_on_blur)) {
-                    owner.finish_number(component);
+                if (was_focused && !focus.focused && current->number) {
+                    const auto config = current->number->config;
+                    const auto edit_generation = current->number->edit_generation;
+                    const auto change_on_blur = read_prop(config->change_on_blur);
+                    current = owner.host_->components().state<InputState>(component);
+                    if (!current || !current->number || current->focused ||
+                        current->number->edit_generation != edit_generation) {
+                        return;
+                    }
+                    if (change_on_blur) {
+                        owner.finish_number(component);
+                    } else {
+                        // End the format session without committing a disabled changeOnBlur draft.
+                        current->number->edited = false;
+                        current->number->format_frozen = false;
+                        owner.localize_number(component, current->number->locale);
+                    }
                     current = owner.host_->components().state<InputState>(component);
                     if (!current) {
                         return;
@@ -1129,6 +1151,7 @@ struct InputPropsAccess {
             const auto config = state.number->config;
             connect(config->options, [](auto& owner, auto& current, NumberOptions value) {
                 current.number->model.configure(value);
+                ++current.number->revision;
                 owner.refresh_number(current.mounted.component);
             });
             connect(config->controls, [](auto& owner, auto& current, bool value) {
@@ -1142,11 +1165,8 @@ struct InputPropsAccess {
                 current.number->mode = value;
                 owner.refresh_number(current.mounted.component);
             });
-            connect(config->separator, [](auto&, auto&, String value) {
-                if (value.empty() || value.bytes().size() > 8 ||
-                    value.bytes().find_first_of("0123456789+-eE") != std::string_view::npos) {
-                    throw std::invalid_argument("Invalid decimal separator");
-                }
+            connect(config->locale, [](auto& owner, auto& current, StatisticLocale value) {
+                owner.localize_number(current.mounted.component, std::move(value));
             });
             connect(config->keyboard, [](auto&, auto& current, bool value) { current.number->keyboard = value; });
             if (config->value) {
@@ -1154,11 +1174,14 @@ struct InputPropsAccess {
                     const auto component = current.mounted.component;
                     auto& number = *current.number;
                     number.model.reconcile(value);
+                    const auto revision = ++number.revision;
                     const bool echo = current.focused && number.edited && number.emitted && *number.emitted == value;
                     if (!echo) {
+                        number.format_frozen = false;
+                        number.edit_locale = number.locale;
                         const auto formatted = format_number(number, false, {});
                         auto* live = owner.host_->components().template state<InputState>(component);
-                        if (!live || !live->number) {
+                        if (!live || !live->number || live->number->revision != revision) {
                             return;
                         }
                         check(owner.editors_.require(live->mounted.editor).reconcile(formatted.bytes()).edit);
@@ -1322,6 +1345,19 @@ struct InputNumberPropsAccess final {
         });
         config->mode = props.mode_;
         config->separator = props.separator_;
+        config->locale =
+            bind([scope = runtime::require_component_build_context().config_scope(), separator = props.separator_] {
+                auto locale = scope->snapshot().format_locale.pack.data().statistic;
+                if (separator) {
+                    auto value = read_prop(*separator);
+                    if (value.empty() || value.bytes().size() > 8 ||
+                        value.bytes().find_first_of("0123456789+-eE") != std::string_view::npos) {
+                        throw std::invalid_argument("Invalid decimal separator");
+                    }
+                    locale.decimal_separator = std::move(value);
+                }
+                return locale;
+            });
         config->icons = std::move(props.icons_);
         config->formatter = std::move(props.formatter_);
         config->parser = std::move(props.parser_);
@@ -3184,6 +3220,42 @@ std::array<runtime::ComponentId, 2> InputComponentHost::number_actions(runtime::
     return state->number->actions.buttons;
 }
 
+void InputComponentHost::localize_number(runtime::ComponentId component, StatisticLocale locale) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state || !state->number || !host_->components().scope(component).active()) {
+        return;
+    }
+    auto& number = *state->number;
+    if (number.locale == locale && number.edit_locale == locale) {
+        return;
+    }
+    number.locale = std::move(locale);
+    const auto revision = ++number.revision;
+    auto& editor = editors_.require(state->mounted.editor);
+    const auto selection = editor.selection();
+    if (number.format_frozen || number.edited || editor.composition().active ||
+        (state->focused && selection.anchor != selection.caret)) {
+        number.format_frozen = true;
+        return;
+    }
+    number.edit_locale = number.locale;
+    // Locale defaults never invoke an explicit presentation callback.
+    if (number.config->formatter && !number.config->separator) {
+        return;
+    }
+    const auto formatted = format_number(number, false, {});
+    state = host_->components().state<InputState>(component);
+    if (!state || !state->number || state->number->revision != revision) {
+        return;
+    }
+    auto& live_editor = editors_.require(state->mounted.editor);
+    const auto result = live_editor.reformat(formatted.bytes());
+    check(result);
+    if (result.value_changed) {
+        update_text(component, false);
+    }
+}
+
 void InputComponentHost::refresh_number(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);
     if (!state || !state->number || !host_->components().scope(component).active()) {
@@ -3235,6 +3307,7 @@ void InputComponentHost::publish_number(runtime::ComponentId component, NumberVa
         return;
     }
     number.model.accept(candidate);
+    ++number.revision;
     number.emitted = candidate;
     const auto cleanup = number.failure_cleanup;
     auto callback = number.config->on_change;
@@ -3304,13 +3377,16 @@ bool InputComponentHost::reset_form_draft(runtime::ComponentId component) {
     if (state->number) {
         auto& number = *state->number;
         number.edited = false;
+        number.format_frozen = false;
+        number.edit_locale = number.locale;
         number.emitted.reset();
         if (number.config->value) {
             number.model.reconcile(read_prop(*number.config->value));
         }
+        const auto revision = ++number.revision;
         const auto formatted = format_number(number, false, {});
         state = host_->components().state<InputState>(component);
-        if (!state || !state->number) {
+        if (!state || !state->number || state->number->revision != revision) {
             return false;
         }
         check(editors_.require(state->mounted.editor).reconcile(formatted.bytes()).edit);
@@ -3422,16 +3498,18 @@ void InputComponentHost::finish_number(runtime::ComponentId component) {
         return;
     }
     auto& number = *state->number;
+    const auto edit_generation = number.edit_generation;
     auto& editor = editors_.require(state->mounted.editor);
     if (editor.composition().active) {
         return;
     }
     if (number.edited && !state->disabled && !state->read_only && state->active) {
+        const auto revision = number.revision;
         const auto candidate = parse_number(number, String::from_utf8(editor.value()).value(), true);
         // A complete value already proposed while typing must not emit twice
         // merely because a controlled owner refused it.
         state = host_->components().state<InputState>(component);
-        if (!state || !state->number) {
+        if (!state || !state->number || state->number->revision != revision) {
             return;
         }
         if (candidate && (!state->number->emitted || *state->number->emitted != *candidate)) {
@@ -3439,15 +3517,18 @@ void InputComponentHost::finish_number(runtime::ComponentId component) {
         }
     }
     state = host_->components().state<InputState>(component);
-    if (!state || !state->number) {
+    if (!state || !state->number || state->number->edit_generation != edit_generation) {
         return;
     }
     auto& current = *state->number;
     current.edited = false;
+    current.format_frozen = false;
+    current.edit_locale = current.locale;
     current.emitted.reset();
+    const auto revision = ++current.revision;
     const auto formatted = format_number(current, false, {});
     state = host_->components().state<InputState>(component);
-    if (!state || !state->number) {
+    if (!state || !state->number || state->number->revision != revision) {
         return;
     }
     check(editors_.require(state->mounted.editor).reconcile(formatted.bytes()).edit);
@@ -3480,16 +3561,20 @@ void InputComponentHost::step_number(runtime::ComponentId component, InputNumber
     auto exact_callback = state->number->config->string_step;
     const auto cleanup = state->number->failure_cleanup;
     auto callback = state->number->config->on_step;
+    const auto edit_generation = state->number->edit_generation;
     publish_number(component, candidate);
     state = host_->components().state<InputState>(component);
-    if (!state || !state->number) {
+    if (!state || !state->number || state->number->edit_generation != edit_generation) {
         return;
     }
     state->number->edited = false;
+    state->number->format_frozen = false;
+    state->number->edit_locale = state->number->locale;
     state->number->emitted.reset();
+    const auto revision = ++state->number->revision;
     const auto formatted = format_number(*state->number, false, {});
     state = host_->components().state<InputState>(component);
-    if (!state || !state->number) {
+    if (!state || !state->number || state->number->revision != revision) {
         return;
     }
     check(editors_.require(state->mounted.editor).reconcile(formatted.bytes()).edit);
@@ -3524,10 +3609,13 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
     update_text(component);
     if (state->number) {
         state->number->edited = true;
+        state->number->format_frozen = true;
+        const auto edit_generation = ++state->number->edit_generation;
+        const auto revision = ++state->number->revision;
         const auto on_input = state->number->config->on_input;
         const auto candidate = parse_number(*state->number, value);
         state = host_->components().state<InputState>(component);
-        if (!state || !state->number) {
+        if (!state || !state->number || state->number->revision != revision) {
             return;
         }
         if (candidate) {
@@ -3536,10 +3624,14 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
             refresh_number(component);
         }
         state = host_->components().state<InputState>(component);
+        if (state && state->number && state->number->edit_generation != edit_generation) {
+            return;
+        }
         if (state && state->number && state->number->config->formatter) {
+            const auto format_revision = state->number->revision;
             const auto formatted = format_number(*state->number, true, value);
             state = host_->components().state<InputState>(component);
-            if (state && state->number) {
+            if (state && state->number && state->number->revision == format_revision) {
                 check(editors_.require(state->mounted.editor).reconcile(formatted.bytes()).edit);
                 update_text(component);
             }

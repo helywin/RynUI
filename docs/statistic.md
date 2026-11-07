@@ -25,7 +25,7 @@ inline void StatisticExample() {
 
 | Props | 合同 |
 | --- | --- |
-| `value` | `StatisticValue`，保存 int64、uint64、double 或 String，默认 0；接受对应静态值、Signal、Binding 及 `Prop<StatisticValue>` |
+| `value` | `StatisticValue`，保存 int64、uint64、double 或 String，默认 0；Decimal 使用其精确文本进入既有 String alternative，formatter/storage 合同保持；接受对应静态值、Signal、Binding 及 `Prop<StatisticValue>` |
 | `title/prefix/suffix` | `Prop<String>`，默认空；UTF-8 literal 有便捷重载 |
 | `precision` | `Prop<std::optional<int>>` 或 int；默认保留原小数，负数按 0，超过 100 拒绝 |
 | `decimalSeparator/groupSeparator` | `Prop<String>`，默认 `.` / `,`，允许空和多字符 |
@@ -34,7 +34,7 @@ inline void StatisticExample() {
 | `loading/visible` | `Prop<bool>`，默认 false / true；loading 使用 Skeleton 并暂停值区域输入，标题保留；visible=false 移除 flow 与 gap |
 | `layout` | 仅控制外部布局 |
 
-整数不经过 double；浮点通过 `to_chars` 最短可往返格式输出，不限制为六位小数。内置十进制格式化使用上游的 `-?digits(.digits)?` 识别规则：小数按 precision 截断或补零，`.5` 补零整数；非十进制字符串（例如 `1e3`、`12.`、`-`）原样展示。C++ 浮点转换若产生指数形式，也原样显示。需要固定十进制位或超出 double 精度的数据时使用 String。数值 NaN/Infinity 在 formatter 前拒绝；字符串内容不按数值强制转换。失败更新保留上一有效显示，后续合法更新可恢复。
+整数和 Decimal 不经过 double；浮点通过 `to_chars` 最短可往返格式输出，保留负零，不限制为六位小数。内置十进制格式化使用上游的 `-?digits(.digits)?` 识别规则：小数按 precision 截断或补零，`.5` 补零整数；非十进制字符串（例如 `1e3`、`12.`、`-`）原样展示。C++ 浮点转换若产生指数形式，也原样显示。需要固定十进制位或超出 double 精度的数据时使用 String 或 Decimal。数值 NaN/Infinity 在 formatter 前拒绝；字符串内容不按数值强制转换。失败更新保留上一有效显示，后续合法更新可恢复。
 
 富内容通过自己的 Signal/Binding 响应数据，不会因普通 value/formatter 更新重建。隐藏、loading 和零尺寸恢复保留草稿、refs 与子控件身份。有限宽按 prefix、value、suffix 顺序分配剩余宽度，各区域裁剪内容，短高裁剪字形，不缩小字体。输入与文档裁剪沿用窗口、Modal、Spin 和 Popup 的既有边界。
 
@@ -45,6 +45,8 @@ rich slot 挂载期间更新的 value、precision、分隔符与 formatter 会�
 `ThemeConfig::statistic` 提供 `tokens`、`seed`、`algorithm`。colors 为 `title/content`；metrics 为 `title_font_size/content_font_size/title_line_height/content_line_height/title_gap/affix_gap/loading_padding/font_family`。默认标题 14、内容 24、间距 4、loading 顶部 padding 16 logical dp；尺寸随 Theme 派生，字体最终值至少 0.5 dp，round 后的逻辑像素字号不得超过 `INT_MAX / 64`；非法最终字号在 Theme 发布前拒绝。支持继承、Dark/Compact、独立 seed、identity、诊断和颜色/尺寸独立 dirty 订阅。
 
 `locale(Prop<StatisticLocale>)` 提供 decimal/group separators、primary/secondary group 位数和十个 UTF-8 digits；primary/secondary 均须大于零，digit 不得为空。显式 decimalSeparator/groupSeparator 分别覆盖 locale 对应字段，formatter 和非数字字符串保持原合同。locale 更新只更新保留文本。比如 primary=3、secondary=2 可得到 `12,34,567`。
+
+未显式指定 locale 时，数字和 Timer 的 digits 继承最近 ConfigProvider 的 formatLocale，与翻译语言独立；显式完整 StatisticLocale（包括默认英文值）继续优先。数字显示算法与公开 i18n formatNumber 共用，不增加 ICU/货币功能；精确 Decimal 不参与 double 数值动画。新增国际化接入的回归源码等待父集成验证，不扩大历史验收范围。
 
 `animated(Prop<bool>)` 默认 false。开启后，安全数值更新从当前显示插值到新值，使用 Theme slow duration 和 motion policy；结束发布原始 typed 值，不把大整数或高精度 String 经由 double 转换。自定义 formatter 与 richValue 不驱动内置数值动画。隐藏、loading、离页、零可见区域、窗口失活或 reduced motion 收敛到目标并停止 deadline。
 

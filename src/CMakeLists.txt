@@ -9,9 +9,9 @@ rynui_configure_cpp_target(rynui_decimal)
 target_include_directories(rynui_decimal PUBLIC "${PROJECT_SOURCE_DIR}/include" PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_decimal PUBLIC rynui_string)
 
-add_library(rynui_i18n STATIC i18n/locales.cpp i18n/messages.cpp)
+add_library(rynui_i18n STATIC i18n/locales.cpp i18n/messages.cpp i18n/number_format.cpp)
 rynui_configure_cpp_target(rynui_i18n)
-target_include_directories(rynui_i18n PUBLIC "${PROJECT_SOURCE_DIR}/include")
+target_include_directories(rynui_i18n PUBLIC "${PROJECT_SOURCE_DIR}/include" PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_i18n PUBLIC rynui_string rynui_decimal)
 
 add_library(rynui_theme STATIC

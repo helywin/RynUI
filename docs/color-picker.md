@@ -19,6 +19,8 @@ ryn::ColorPicker(ryn::ColorPickerProps{}
 
 `ColorPickerSlots` 支持保留 trigger、text_render、panel_render 和 extra。`text_render` 接收 typed `ColorPickerTextContext`，其 value/text/format 均为响应属性，可将 text 直接交给 `TextProps::content`。`panel_render` 接收 typed `ColorPickerPanelParts`，可通过公开 `renderPicker()/renderPresets()` 各挂载一次 picker 与 presets，组合自定义布局和富子控件；普通色值更新不重新执行这些 slots。浮层关闭、禁用、窗口失活、输入边界变化及卸载取消捕获/焦点/编辑会话。
 
+默认 Color/Single/Gradient/Clear/Add stop/Remove 文案继承 ConfigProvider 的 locale；`.locale(Prop<ColorPickerLocale>)` 是显式完整覆盖，包含与默认英文相同的值。自定义 slots、preset label 和业务字符串保持原文。通道/色标 InputNumber 与默认 HSB 触发文字的数字消费独立 formatLocale；CSS/Hex 和完整格式文本 Input 保持协议语法。切换语言保留弹层、色值和子编辑器身份，不发送业务变化。此接入已提供国际化回归源码，尚不增加平台验收结论。
+
 `ThemeConfig::color_picker.tokens` 提供 panel_width、saturation_height、rail_height、gap、thumb_size 与 checker_light/checker_dark/thumb/focus。颜色与尺寸独立失效，支持继承、Dark/Compact 和 component algorithm。面板本身没有持续动画或 idle 帧；Popover/Button 的 reduced motion 策略继续适用。LayoutStyle 只控制外部布局。
 
 颜色场由共同 `graphics::sampled_color_field` 生成 logical CPU scene v3 quads，经 RetainedSurfaceService 和既有 SceneResources 事务上传；不新增 shader、GPU ABI、SDL 路径或第三方依赖。色带使用有限采样，精确值独立于视觉采样。

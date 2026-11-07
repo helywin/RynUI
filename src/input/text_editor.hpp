@@ -124,6 +124,9 @@ public:
     [[nodiscard]] TextEditResult note_emitted_value();
     [[nodiscard]] TextEditEcho edit_echo() const;
     [[nodiscard]] TextReconcileResult reconcile(std::string_view text, std::optional<TextEditEcho> echo = {});
+    // Presentation-only replacement for a clean numeric display. Keeps history and scalar caret positions.
+    // Callers must freeze dirty/composing/selected sessions until commit or blur.
+    [[nodiscard]] TextEditResult reformat(std::string_view text);
 
     // Authoritative value replacement bypasses edit eligibility, but uses the
     // same normalization/limits/atomic publication as a committed edit.

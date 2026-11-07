@@ -3,6 +3,7 @@
 #include <ryn/input_types.hpp>
 #include <ryn/text_direction.hpp>
 #include <ryn/popover.hpp>
+#include <ryn/component_locales.hpp>
 #include <span>
 #include <vector>
 
@@ -132,6 +133,11 @@ struct ColorPickerSlots final {
 
 class ColorPickerProps final {
 public:
+    ColorPickerProps& locale(Prop<ColorPickerLocale> value) {
+        locale_ = std::move(value);
+        return *this;
+    }
+
     ColorPickerProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
         return *this;
@@ -269,6 +275,7 @@ public:
 
 private:
     friend class detail::ColorPickerComponentHost;
+    std::optional<Prop<ColorPickerLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
     std::optional<Prop<ColorPickerValue>> value_;
     std::optional<ColorPickerValue> initial_;

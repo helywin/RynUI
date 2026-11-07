@@ -1,21 +1,14 @@
 #include "component/statistic_model.hpp"
+#include "i18n/number_format.hpp"
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <cmath>
 #include <stdexcept>
 #include <limits>
 
 namespace ryn::detail {
 void validate_statistic_locale(const StatisticLocale& locale) {
-    if (locale.primary_group == 0 || locale.secondary_group == 0) {
-        throw std::invalid_argument("Statistic locale groups must be positive");
-    }
-    for (const auto& digit : locale.digits) {
-        if (digit.empty()) {
-            throw std::invalid_argument("Statistic locale digits must not be empty");
-        }
-    }
+    validate_number_locale(locale);
 }
 
 namespace {
@@ -118,57 +111,21 @@ String format_statistic(const StatisticModel& model) {
                         throw std::invalid_argument("Statistic numeric value must be finite");
                     }
                 }
-                std::array<char, 128> buffer{};
-                const auto result = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
-                if (result.ec != std::errc{}) {
-                    throw std::invalid_argument("Statistic value cannot be formatted");
-                }
-                return String::from_utf8(std::string_view{buffer.data(), result.ptr}).value();
+                return number_to_text(I18nNumber{value});
             }
         },
         model.value.storage());
     if (model.formatter) {
         return model.formatter(model.value);
     }
-    const auto text = raw.bytes();
-    const bool negative = text.starts_with('-');
-    const auto start = negative ? std::size_t{1} : 0;
-    auto end = start;
-    while (end < text.size() && text[end] >= '0' && text[end] <= '9') {
-        ++end;
+    NumberFormatOptions options;
+    options.precision = model.precision;
+    if (model.explicit_decimal) {
+        options.decimal_separator = model.decimal_separator;
     }
-    auto decimal_start = end;
-    if (decimal_start < text.size() && text[decimal_start] == '.') {
-        ++decimal_start;
-        if (decimal_start == text.size()) {
-            return raw;
-        }
-        for (auto i = decimal_start; i < text.size(); ++i) {
-            if (text[i] < '0' || text[i] > '9') {
-                return raw;
-            }
-        }
-    } else if (end != text.size() || (negative && end == start)) {
-        return raw;
+    if (model.explicit_group) {
+        options.group_separator = model.group_separator;
     }
-    const auto integer = end == start ? std::string_view{"0"} : text.substr(start, end - start);
-    std::string decimal{text.substr(decimal_start)};
-    if (model.precision) {
-        decimal.resize(static_cast<std::size_t>(std::max(0, *model.precision)), '0');
-    }
-    std::string formatted = negative ? "-" : "";
-    for (std::size_t i = 0; i < integer.size(); ++i) {
-        const auto trailing = integer.size() - i;
-        if (i > 0 && trailing >= model.locale.primary_group &&
-            (trailing - model.locale.primary_group) % model.locale.secondary_group == 0) {
-            formatted += (model.explicit_group ? model.group_separator : model.locale.group_separator).bytes();
-        }
-        formatted += model.locale.digits[std::size_t(integer[i] - '0')].bytes();
-    }
-    if (!decimal.empty()) {
-        formatted += (model.explicit_decimal ? model.decimal_separator : model.locale.decimal_separator).bytes();
-        append_digits(formatted, decimal, model.locale);
-    }
-    return String::from_utf8(formatted).value();
+    return format_decimal_text(raw, model.locale, options);
 }
 } // namespace ryn::detail

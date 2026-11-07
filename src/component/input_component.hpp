@@ -4,6 +4,7 @@
 #include "component/input_display.hpp"
 #include <ryn/input.hpp>
 #include <ryn/input_number.hpp>
+#include <ryn/component_locales.hpp>
 #include "component/input_number_value.hpp"
 
 namespace ryn::detail {
@@ -135,6 +136,7 @@ private:
     bool reset_form_draft(runtime::ComponentId);
     void notify_change(input::TextInputOwnerId);
     void refresh_number(runtime::ComponentId);
+    void localize_number(runtime::ComponentId, StatisticLocale);
     void finish_number(runtime::ComponentId);
     void publish_number(runtime::ComponentId, NumberValue);
     void step_number(runtime::ComponentId, InputNumberStepDirection, InputNumberStepSource);

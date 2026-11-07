@@ -1,5 +1,6 @@
 #include "component/statistic_component.hpp"
 #include "component/skeleton_component.hpp"
+#include "runtime/config_context.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
@@ -570,7 +571,9 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
     if (!valid_mount(true)) {
         return;
     }
-    connect(id, props.locale_, &StatisticModel::locale);
+    const auto locale = props.locale_.value_or(Prop<StatisticLocale>{
+        bind([config = build.config_scope()] { return config->snapshot().format_locale.pack.data().statistic; })});
+    connect(id, locale, &StatisticModel::locale);
     if (!valid_mount(true)) {
         return;
     }
@@ -604,6 +607,9 @@ void StatisticComponentHost::mount(const StatisticProps& props) {
             }
         }
         current->timer = std::move(value);
+        if (current->timer) {
+            current->snapshot.timer_value = current->timer->value;
+        }
         ++current->timer_revision;
         current->timer_origin = clock_.observe(services_->animation_time()).effective;
         current->timer_finished = false;
@@ -741,7 +747,11 @@ void StatisticComponentHost::update_dynamic(runtime::ComponentId id, animation::
     s->deadline.reset();
     s->snapshot.timer_running = false;
     if (!dynamic_allowed(id)) {
-        if (s->value_start) {
+        if (s->timer) {
+            // A paused Timer still projects new locale digits without advancing time or calling users.
+            auto text = format_statistic_timer(s->snapshot.timer_value, s->timer->format, s->model.locale);
+            publish_text(id, std::move(text));
+        } else if (s->value_start) {
             s->value_start.reset();
             s->snapshot.animating = false;
             s->displayed = s->model.value;

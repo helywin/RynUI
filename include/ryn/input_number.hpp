@@ -304,7 +304,7 @@ private:
     friend struct detail::FormAutoControlAccess;
     friend struct detail::InputNumberPropsAccess;
     Prop<InputNumberMode> mode_{InputNumberMode::Input};
-    Prop<String> separator_{String{u8"."}};
+    std::optional<Prop<String>> separator_;
     InputNumberControls icons_;
     bool explicit_min_{};
     bool explicit_max_{};

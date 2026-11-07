@@ -1,5 +1,6 @@
 #pragma once
 #include <ryn/component_locales.hpp>
+#include <ryn/decimal.hpp>
 
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -36,6 +37,9 @@ public:
     StatisticValue(double value) : value_(value) {}
 
     StatisticValue(String value) : value_(std::move(value)) {}
+
+    // Reuse the existing exact text alternative, preserving the public storage/formatter contract.
+    StatisticValue(const Decimal& value) : value_(value.text()) {}
 
     template <std::size_t N> StatisticValue(const char8_t (&value)[N]) : value_(String{value}) {}
 
@@ -240,7 +244,7 @@ private:
     Prop<String> group_separator_{String{u8","}};
     bool explicit_decimal_{};
     bool explicit_group_{};
-    Prop<StatisticLocale> locale_{StatisticLocale{}};
+    std::optional<Prop<StatisticLocale>> locale_;
     Prop<bool> animated_{false};
     Prop<std::optional<StatisticTimer>> timer_{std::nullopt};
     std::function<void(Duration)> on_change_;

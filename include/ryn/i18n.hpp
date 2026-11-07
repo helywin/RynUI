@@ -146,6 +146,20 @@ private:
     std::shared_ptr<const Data> data_;
 };
 
+// Finite decimal display only. Precision pads/truncates as Statistic does; it does not round business values.
+using I18nNumber = std::variant<std::int64_t, std::uint64_t, double, Decimal>;
+
+struct NumberFormatOptions final {
+    std::optional<int> precision;
+    std::optional<String> decimal_separator;
+    std::optional<String> group_separator;
+    bool grouping{true};
+    friend bool operator==(const NumberFormatOptions&, const NumberFormatOptions&) = default;
+};
+
+[[nodiscard]] String formatNumber(const LocaleCatalog& catalog, const LocaleId& requested, const I18nNumber& value,
+                                  const NumberFormatOptions& options = {});
+
 enum class MessageArgType { Text, Int, UInt, Decimal };
 
 struct MessageParameter final {
@@ -230,6 +244,7 @@ public:
     [[nodiscard]] bool active() const noexcept;
     [[nodiscard]] LocaleResolution locale() const;
     [[nodiscard]] LocaleResolution formatLocale() const;
+    [[nodiscard]] String formatNumber(const I18nNumber& value, const NumberFormatOptions& options = {}) const;
     [[nodiscard]] TranslationResult tryTranslate(const MessageKey& key, const MessageArgs& args = {}) const;
     [[nodiscard]] String translate(const MessageKey& key, const MessageArgs& args = {}) const;
     [[nodiscard]] Binding<String> text(MessageKey key, Prop<MessageArgs> args = MessageArgs{}) const;

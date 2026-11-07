@@ -10,7 +10,8 @@ struct InputNumberConfig final {
     NumberValue initial;
     Prop<NumberOptions> options{NumberOptions{}};
     Prop<InputNumberMode> mode{InputNumberMode::Input};
-    Prop<String> separator{String{u8"."}};
+    Prop<StatisticLocale> locale{StatisticLocale{}};
+    std::optional<Prop<String>> separator;
     InputNumberControls icons;
     Prop<bool> controls{true};
     Prop<bool> keyboard{true};

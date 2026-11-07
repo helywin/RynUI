@@ -1,5 +1,7 @@
 #include "component/color_picker_component.hpp"
 #include "component/form_control_binding.hpp"
+#include "component/localized_prop.hpp"
+#include "i18n/number_format.hpp"
 #include "graphics/color_field.hpp"
 #include "runtime/prop_connection.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -14,11 +16,11 @@ namespace ryn::detail {
 namespace {
 thread_local ColorPickerComponentHost* active_picker{};
 
-String display_label(const ColorPickerValue& value, ColorFormat format) {
+String display_label(const ColorPickerValue& value, ColorFormat format, const StatisticLocale& locale) {
     if (format != ColorFormat::Hsb || !value.solid()) {
         return value.format(format);
     }
-    const auto number = [](double value) {
+    const auto number = [&locale](double value) {
         std::array<char, 64> buffer;
         const auto result =
             std::to_chars(buffer.data(), buffer.data() + buffer.size(), value, std::chars_format::fixed, 2);
@@ -29,7 +31,9 @@ String display_label(const ColorPickerValue& value, ColorFormat format) {
         if (text.back() == '.') {
             text.pop_back();
         }
-        return text;
+        NumberFormatOptions options;
+        options.grouping = false;
+        return std::string(format_decimal_text(String::from_utf8(text).value(), locale, options).bytes());
     };
     const auto hsb = value.solid()->hsb();
     const bool alpha = hsb.a < 1;
@@ -74,7 +78,7 @@ struct PickerState final {
     Signal<bool> mode_disabled{true};
     Signal<bool> stop_disabled{true};
     Signal<bool> remove_disabled{true};
-    Signal<String> mode_text{String{u8"Single"}};
+    Signal<ColorPickerLocale> locale{ColorPickerLocale{}};
     std::array<Signal<InputNumberValue>, 4> channels{Signal<InputNumberValue>{{}}, Signal<InputNumberValue>{{}},
                                                      Signal<InputNumberValue>{{}}, Signal<InputNumberValue>{{}}};
     Signal<InputNumberValue> stop_percent{InputNumberValue{0}};
@@ -208,7 +212,6 @@ void ColorPickerComponentHost::refresh(runtime::ComponentId id) {
     s->mode_disabled.set(disabled || s->modes.size() < 2);
     s->stop_disabled.set(disabled || !value.gradient());
     s->remove_disabled.set(disabled || !value.gradient() || value.stops().size() <= 2);
-    s->mode_text.set(value.gradient() ? String{u8"Gradient"} : String{u8"Single"});
     const auto color = selected_color(*s);
     const auto rgb = color.rgb();
     const auto hsb = color.hsb();
@@ -517,7 +520,7 @@ void ColorPickerComponentHost::mount_picker(runtime::ComponentId id) {
                     callback();
                 }
             }),
-                   [] { Text(TextProps{}.content(u8"Clear")); });
+                   [locale = s.locale] { Text(TextProps{}.content(bind([locale] { return locale.get().clear; }))); });
             Button(ButtonProps{}.disabled(s.mode_disabled).onClick([this, id] {
                 auto* s = services_->components().state<PickerState>(id);
                 if (!s) {
@@ -539,7 +542,12 @@ void ColorPickerComponentHost::mount_picker(runtime::ComponentId id) {
                             true);
                 }
             }),
-                   [mode = s.mode_text] { Text(TextProps{}.content(mode)); });
+                   [locale = s.locale, value = s.value] {
+                       Text(TextProps{}.content(bind([locale, value] {
+                           const auto labels = locale.get();
+                           return value.get().gradient() ? labels.gradient : labels.single;
+                       })));
+                   });
         });
         Flex(FlexProps{}.gap(SpaceSize::Small), [this, id] {
             auto& s = *services_->components().state<PickerState>(id);
@@ -554,25 +562,26 @@ void ColorPickerComponentHost::mount_picker(runtime::ComponentId id) {
                                 }
                             })
                             .layout(LayoutStyle{}.width(dp(72))));
-            Button(ButtonProps{}.disabled(s.stop_disabled).onClick([this, id] {
-                auto* s = services_->components().state<PickerState>(id);
-                if (!s) {
-                    return;
-                }
-                const auto value = s->value.get();
-                if (value.stops().size() >= 64) {
-                    return;
-                }
-                auto key = String::from_utf8("stop-" + std::to_string(s->next_stop++)).value();
-                while (std::ranges::find(value.stops(), key, &ColorStop::key) != value.stops().end()) {
-                    key = String::from_utf8("stop-" + std::to_string(s->next_stop++)).value();
-                }
-                std::vector<ColorStop> stops{value.stops().begin(), value.stops().end()};
-                stops.push_back({key, value.sample(50), 50});
-                s->selected = key;
-                publish(id, ColorPickerValue{std::move(stops)}, true);
-            }),
-                   [] { Text(TextProps{}.content(u8"Add stop")); });
+            Button(
+                ButtonProps{}.disabled(s.stop_disabled).onClick([this, id] {
+                    auto* s = services_->components().state<PickerState>(id);
+                    if (!s) {
+                        return;
+                    }
+                    const auto value = s->value.get();
+                    if (value.stops().size() >= 64) {
+                        return;
+                    }
+                    auto key = String::from_utf8("stop-" + std::to_string(s->next_stop++)).value();
+                    while (std::ranges::find(value.stops(), key, &ColorStop::key) != value.stops().end()) {
+                        key = String::from_utf8("stop-" + std::to_string(s->next_stop++)).value();
+                    }
+                    std::vector<ColorStop> stops{value.stops().begin(), value.stops().end()};
+                    stops.push_back({key, value.sample(50), 50});
+                    s->selected = key;
+                    publish(id, ColorPickerValue{std::move(stops)}, true);
+                }),
+                [locale = s.locale] { Text(TextProps{}.content(bind([locale] { return locale.get().add_stop; }))); });
             Button(ButtonProps{}.disabled(s.remove_disabled).onClick([this, id] {
                 auto* s = services_->components().state<PickerState>(id);
                 if (!s) {
@@ -586,7 +595,7 @@ void ColorPickerComponentHost::mount_picker(runtime::ComponentId id) {
                 std::erase_if(stops, [&](auto& stop) { return stop.key == s->selected; });
                 publish(id, ColorPickerValue{std::move(stops)}, true);
             }),
-                   [] { Text(TextProps{}.content(u8"Remove")); });
+                   [locale = s.locale] { Text(TextProps{}.content(bind([locale] { return locale.get().remove; }))); });
         });
     });
     (void)build;
@@ -724,6 +733,8 @@ void ColorPickerComponentHost::mount(const ColorPickerProps& p, ColorPickerSlots
     auto& b = runtime::require_component_build_context();
     const auto id = b.mount_component<PickerState>();
     auto& s = b.state<PickerState>(id);
+    const auto locale = localized_prop(p.locale_, b.config_scope(), [](const LocaleData& d) { return d.color_picker; });
+    s.locale.set(read_prop(locale));
     s.node = b.root(id);
     s.controlled = p.value_.has_value();
     s.format_controlled = p.format_.has_value();
@@ -781,82 +792,94 @@ void ColorPickerComponentHost::mount(const ColorPickerProps& p, ColorPickerSlots
                                      callback(open);
                                  }
                              });
-            Popover(
-                std::move(props), PopoverTrigger{[this, id, p, slots] {
-                    auto& s = *services_->components().state<PickerState>(id);
-                    if (slots.trigger) {
-                        SlotContentAccess::function (*slots.trigger)();
-                        return;
-                    }
-                    Button(
-                        ButtonProps{}.size(p.size_).disabled(s.disabled).color(bind([status = p.status_] {
+            Popover(std::move(props), PopoverTrigger{[this, id, p, slots] {
+                        auto& s = *services_->components().state<PickerState>(id);
+                        if (slots.trigger) {
+                            SlotContentAccess::function (*slots.trigger)();
+                            return;
+                        }
+                        Button(ButtonProps{}.size(p.size_).disabled(s.disabled).color(bind([status = p.status_] {
                             const auto value = read_prop(status);
                             return value == InputStatus::Error     ? ButtonColor::Danger
                                    : value == InputStatus::Warning ? ButtonColor::Orange
                                                                    : ButtonColor::Default;
                         })),
-                        [this, id, slots] {
-                            auto& s = *services_->components().state<PickerState>(id);
-                            if (slots.text_render) {
-                                slots.text_render({Prop<ColorPickerValue>{s.value},
-                                                   Prop<String>{bind([value = s.value, format = s.format] {
-                                                       return value.get().format(format.get());
-                                                   })},
-                                                   Prop<ColorFormat>{s.format}});
-                            } else {
-                                Text(TextProps{}.content(bind([value = s.value, show = s.show_text, format = s.format] {
-                                    return show.get() ? display_label(value.get(), format.get()) : String{u8"Color"};
-                                })));
-                            }
-                            // Retained preview surface: the trigger displays alpha and gradients.
-                            auto& b = runtime::require_component_build_context();
-                            s.swatch = b.mount_component<int>(0);
-                            const auto node = b.root(s.swatch);
-                            services_->nodes().require(node).external_layout.width = 24;
-                            services_->nodes().require(node).external_layout.height = 20;
-                            services_->layout().set_layout(node, layout::BoxLayout{});
-                            b.on_resource_cleanup(s.swatch, [this, node] { services_->layout().remove_layout(node); });
-                            const auto fragment =
-                                b.register_scene_fragment(s.swatch, runtime::SceneFragmentPlacement::before_children);
-                            const auto surface = services_->surfaces().create_content_range(fragment, {});
-                            s.preview = Field{s.swatch, node, {}, surface, {}, {}};
-                            b.on_resource_cleanup(
-                                s.swatch, [this, surface] { services_->surfaces().destroy_content_range(surface); });
-                        });
-                }},
-                PopoverSlots{.content = PopoverContent{[this, id, slots] {
-                                 const auto weak =
-                                     std::weak_ptr{services_->components().state<PickerState>(id)->render_alive};
-                                 ColorPickerPanelParts parts{
-                                     ColorPickerPanel{[this, id, weak] {
-                                         const auto alive = weak.lock();
-                                         if (alive && *alive && services_->components().scope(id).active()) {
-                                             mount_picker(id);
+                               [this, id, slots] {
+                                   auto& s = *services_->components().state<PickerState>(id);
+                                   if (slots.text_render) {
+                                       slots.text_render({Prop<ColorPickerValue>{s.value},
+                                                          Prop<String>{bind([value = s.value, format = s.format] {
+                                                              return value.get().format(format.get());
+                                                          })},
+                                                          Prop<ColorFormat>{s.format}});
+                                   } else {
+                                       Text(TextProps{}.content(bind(
+                                           [value = s.value, show = s.show_text, format = s.format, locale = s.locale,
+                                            config = runtime::require_component_build_context().config_scope()] {
+                                               return show.get()
+                                                          ? display_label(
+                                                                value.get(), format.get(),
+                                                                config->snapshot().format_locale.pack.data().statistic)
+                                                          : locale.get().color;
+                                           })));
+                                   }
+                                   // Retained preview surface: the trigger displays alpha and gradients.
+                                   auto& b = runtime::require_component_build_context();
+                                   s.swatch = b.mount_component<int>(0);
+                                   const auto node = b.root(s.swatch);
+                                   services_->nodes().require(node).external_layout.width = 24;
+                                   services_->nodes().require(node).external_layout.height = 20;
+                                   services_->layout().set_layout(node, layout::BoxLayout{});
+                                   b.on_resource_cleanup(s.swatch,
+                                                         [this, node] { services_->layout().remove_layout(node); });
+                                   const auto fragment = b.register_scene_fragment(
+                                       s.swatch, runtime::SceneFragmentPlacement::before_children);
+                                   const auto surface = services_->surfaces().create_content_range(fragment, {});
+                                   s.preview = Field{s.swatch, node, {}, surface, {}, {}};
+                                   b.on_resource_cleanup(s.swatch, [this, surface] {
+                                       services_->surfaces().destroy_content_range(surface);
+                                   });
+                               });
+                    }},
+                    PopoverSlots{.content = PopoverContent{[this, id, slots] {
+                                     const auto weak =
+                                         std::weak_ptr{services_->components().state<PickerState>(id)->render_alive};
+                                     ColorPickerPanelParts parts{
+                                         ColorPickerPanel{[this, id, weak] {
+                                             const auto alive = weak.lock();
+                                             if (alive && *alive && services_->components().scope(id).active()) {
+                                                 mount_picker(id);
+                                             }
+                                         }},
+                                         ColorPickerPresets{[this, id, weak] {
+                                             const auto alive = weak.lock();
+                                             if (alive && *alive && services_->components().scope(id).active()) {
+                                                 mount_presets(id);
+                                             }
+                                         }}};
+                                     Flex(FlexProps{}.vertical(true).gap(SpaceSize::Small), [parts, slots] {
+                                         if (slots.panel_render) {
+                                             slots.panel_render(parts);
+                                         } else {
+                                             parts.renderPicker();
+                                             parts.renderPresets();
                                          }
-                                     }},
-                                     ColorPickerPresets{[this, id, weak] {
-                                         const auto alive = weak.lock();
-                                         if (alive && *alive && services_->components().scope(id).active()) {
-                                             mount_presets(id);
+                                         if (slots.extra) {
+                                             SlotContentAccess::function (*slots.extra)();
                                          }
-                                     }}};
-                                 Flex(FlexProps{}.vertical(true).gap(SpaceSize::Small), [parts, slots] {
-                                     if (slots.panel_render) {
-                                         slots.panel_render(parts);
-                                     } else {
-                                         parts.renderPicker();
-                                         parts.renderPresets();
-                                     }
-                                     if (slots.extra) {
-                                         SlotContentAccess::function (*slots.extra)();
-                                     }
-                                 });
-                             }}});
+                                     });
+                                 }}});
         }});
     // Preview is kept outside the indexed interactive fields.
 
     mounted_.push_back(id);
     s.ready = true;
+    connect_prop(b.scope(id), locale, [this, id](ColorPickerLocale value) {
+        if (const auto* current = services_->components().state<PickerState>(id)) {
+            const auto signal = current->locale;
+            signal.set(std::move(value));
+        }
+    });
     auto connect = [&](const auto& prop, auto apply) {
         connect_prop(b.scope(id), prop, [this, id, apply](auto value) {
             if (auto* s = services_->components().state<PickerState>(id)) {

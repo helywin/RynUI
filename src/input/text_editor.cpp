@@ -745,4 +745,23 @@ TextReconcileResult TextEditorState::reconcile(std::string_view text, std::optio
     return {set_value(text), false, false};
 }
 
+TextEditResult TextEditorState::reformat(std::string_view text) {
+    ensure_owner_thread();
+    if (composition().active) {
+        return reject(TextEditError::revision_conflict);
+    }
+    const auto anchor = boundaries_.byte_to_scalar(selection_.anchor).value();
+    const auto caret = boundaries_.byte_to_scalar(selection_.caret).value();
+    auto result = replace({0, value_.size()}, text, true);
+    if (result && result.value_changed) {
+        const auto moved = publish_selection(
+            {boundaries_.floor(*boundaries_.scalar_to_byte(std::min(anchor, boundaries_.scalar_count()))),
+             boundaries_.floor(*boundaries_.scalar_to_byte(std::min(caret, boundaries_.scalar_count())))});
+        result.selection_changed |= moved.selection_changed;
+        emitted_echo_.reset();
+        emitted_value_.clear();
+    }
+    return result;
+}
+
 } // namespace ryn::input

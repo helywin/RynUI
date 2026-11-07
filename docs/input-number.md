@@ -35,7 +35,9 @@ Decimal 支持符号、小数、指数与任意精度十进制加减/比较/量�
 
 `.mode(InputNumberMode::Spinner)` 使用左右独立减/加按钮，默认 Input 模式保留上下按钮；mode 可响应更新。`controls(InputNumberControls)` 支持 typed up_icon/down_icon，与既有 InputPrefix/InputSuffix 一同保留。`.direction()` 传递文本方向。
 
-文本语法为 ASCII 数字、可选正负号和 `.` 小数点；不解析指数、分组符或本地化小数点。此类草稿暂存并在提交时恢复权威值。格式化数值不补齐尾零；precision 表达最大小数位数。
+默认数字显示和 parser 采用 ConfigProvider 的 formatLocale 数字/小数点映射；无 Provider 时保持 ASCII 数字和 `.`。显式 decimalSeparator 优先，包括显式 `.`，不通过与英文默认值比较推断来源。double 模式仍不解析指数或分组符，exact 模式保留原有指数支持。格式化数值不补齐尾零；precision 表达最大小数位数，double 负零的默认显示保留符号。
+
+语言/格式语言切换不设置业务 value 或触发 onChange。dirty、composition 或活动真实选区冻结当前解析与格式快照直到明确提交或 blur；清洁显示更新保留 editor、会话、scalar 选区和 undo。显式 formatter/parser 保留原合同，custom parser 自行输出标准 ASCII 数字。changeOnBlur(false) 不因格式更新提交草稿；发生格式切换时 blur 结束旧格式会话并显示当前权威值。新增国际化回归处于源码交接阶段，实际平台通过数量见后续父集成结果。
 
 步进先计算十进制候选，再按 precision 最近舍入；如果舍入会跨过当前权威值并反向，则沿请求方向量化。边界夹取也不得让非空值反向；该方向没有合法值时保持原值，不发 change/step。这同样适用于外部 value、precision 或范围动态变更后尚未位于精度网格的值；空值仍按 0 起步再夹取到范围。
 

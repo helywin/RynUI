@@ -45,6 +45,12 @@ LocaleResolution I18n::formatLocale() const {
     return lock_scope(scope_, lifetime_)->snapshot().format_locale;
 }
 
+String I18n::formatNumber(const I18nNumber& value, const NumberFormatOptions& options) const {
+    const auto scope = lock_scope(scope_, lifetime_);
+    const auto& snapshot = scope->snapshot();
+    return ryn::formatNumber(snapshot.catalog, snapshot.format_locale.requested, value, options);
+}
+
 TranslationResult I18n::tryTranslate(const MessageKey& key, const MessageArgs& args) const {
     try {
         const auto scope = lock_scope(scope_, lifetime_);
