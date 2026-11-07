@@ -73,7 +73,7 @@ FormFieldMeta form_field_meta(const std::shared_ptr<FormFieldState>&);
 std::function<void()> form_blur_handler(const std::shared_ptr<FormFieldState>&);
 std::function<void()> form_blur_handler(const std::shared_ptr<FormFieldState>&,
                                         const std::shared_ptr<FormControlConnection>&);
-void configure_form_required(const std::shared_ptr<FormFieldState>&, String);
+void configure_form_required(const std::shared_ptr<FormFieldState>&, std::optional<String>);
 void configure_form_validator(const std::shared_ptr<FormFieldState>&, std::function<String(const FormValue&)>);
 std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFieldState>&);
 std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFieldState>&,
@@ -103,7 +103,12 @@ public:
                                              }
                                          })) {}
 
-    FormField& required(String message = String{u8"This field is required"}) {
+    FormField& required() {
+        detail::configure_form_required(state_, std::nullopt);
+        return *this;
+    }
+
+    FormField& required(String message) {
         detail::configure_form_required(state_, std::move(message));
         return *this;
     }
@@ -379,6 +384,7 @@ public:
 
     FormProps& locale(FormLocale value) {
         options_.locale = std::move(value);
+        locale_explicit_ = true;
         return *this;
     }
 
@@ -451,6 +457,7 @@ private:
     bool preserve_{true};
     bool clear_on_destroy_{};
     FormPresentation options_;
+    bool locale_explicit_{};
     std::optional<Prop<FormPresentation>> presentation_;
     FormScrollTarget scroll_;
     bool scroll_first_{};

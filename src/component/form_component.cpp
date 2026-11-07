@@ -1,4 +1,5 @@
 #include "component/form_component.hpp"
+#include "component/localized_prop.hpp"
 #include "component/form_focus_context.hpp"
 #include "component/form_native_control.hpp"
 #include "component/form_control_binding.hpp"
@@ -87,6 +88,7 @@ struct FormState final {
     runtime::ComponentId id;
     std::shared_ptr<FormModel> model{std::make_shared<FormModel>()};
     Signal<FormPresentation> presentation{FormPresentation{}};
+    bool locale_explicit{};
     FormScrollTarget scroll;
     std::uint64_t scroll_generation{};
     std::function<void()> pending_scroll_focus;
@@ -395,13 +397,22 @@ void FormComponentHost::mount(const FormProps& props, const FormContent& content
             throw std::invalid_argument("FormRef is already bound");
         }
     }
-    const auto initial_presentation = props.presentation_ ? read_prop(*props.presentation_) : props.options_;
+    const auto resolve_presentation = [props, config = build.config_scope()] {
+        auto value = props.presentation_ ? read_prop(*props.presentation_) : props.options_;
+        if (!props.presentation_ && !props.locale_explicit_) {
+            const auto& snapshot = config->snapshot();
+            value.locale = snapshot.catalog.pack(snapshot.locale.effective).data().form;
+        }
+        return value;
+    };
+    const auto initial_presentation = resolve_presentation();
     validate_presentation(initial_presentation);
     const auto id = build.mount_component<FormState>();
     auto& state = build.state<FormState>(id);
     state.id = id;
     state.scroll = props.scroll_;
     state.presentation.set(initial_presentation);
+    state.locale_explicit = props.presentation_.has_value() || props.locale_explicit_;
     const auto model = state.model;
     const auto node = build.root(id);
     auto& services = *services_;
@@ -499,29 +510,31 @@ void FormComponentHost::mount(const FormProps& props, const FormContent& content
     connect_prop(scope, props.disabled_, [model](bool value) { model->disabled.set(value); });
     connect_prop(scope, props.read_only_, [model](bool value) { model->read_only.set(value); });
     connect_prop(scope, props.focus_first_invalid_, [model](bool value) { model->focus_first_invalid = value; });
-    connect_prop(scope, props.presentation_.value_or(Prop<FormPresentation>{props.options_}),
-                 [this, id](FormPresentation value) {
-                     auto* form = services_->components().state<FormState>(id);
-                     if (!form) {
-                         return;
-                     }
-                     validate_presentation(value);
-                     form->presentation.set(value);
-                     const auto& token = services_->components().theme_scope(id)->snapshot().form();
-                     auto layout =
-                         layout::FlexLayout{value.layout == FormLayout::Inline ? layout::FlexDirection::horizontal
-                                                                               : layout::FlexDirection::vertical,
-                                            value.layout == FormLayout::Inline ? token.metrics.item_margin_bottom : 0,
-                                            {},
-                                            true};
-                     layout.wrap =
-                         value.layout == FormLayout::Inline ? layout::FlexWrap::wrap : layout::FlexWrap::no_wrap;
-                     layout.right_to_left = value.direction == TextDirection::RightToLeft;
-                     services_->layout().set_layout(services_->components().root(id), layout);
-                     services_->dirty().invalidate(services_->components().root(id),
-                                                   runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
-                                                       runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
-                 });
+    connect_prop(scope, Prop<FormPresentation>{bind(resolve_presentation)}, [this, id](FormPresentation value) {
+        auto* form = services_->components().state<FormState>(id);
+        if (!form) {
+            return;
+        }
+        validate_presentation(value);
+        form->presentation.set(value);
+        form = services_->components().state<FormState>(id);
+        if (!form) {
+            return;
+        }
+        value = form->presentation.get();
+        const auto& token = services_->components().theme_scope(id)->snapshot().form();
+        auto layout = layout::FlexLayout{value.layout == FormLayout::Inline ? layout::FlexDirection::horizontal
+                                                                            : layout::FlexDirection::vertical,
+                                         value.layout == FormLayout::Inline ? token.metrics.item_margin_bottom : 0,
+                                         {},
+                                         true};
+        layout.wrap = value.layout == FormLayout::Inline ? layout::FlexWrap::wrap : layout::FlexWrap::no_wrap;
+        layout.right_to_left = value.direction == TextDirection::RightToLeft;
+        services_->layout().set_layout(services_->components().root(id), layout);
+        services_->dirty().invalidate(services_->components().root(id),
+                                      runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                          runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    });
     forms_.push_back(id);
     build.mount_slot(id, content);
     if (props.reference_ && props.reference_->model.lock() == model) {
@@ -537,8 +550,13 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
     }
     const auto* containing_item = build.nearest_state<FormItemState>();
     const auto containing_field = containing_item ? containing_item->field : std::shared_ptr<FormFieldState>{};
-    const auto resolve_presentation = [props, inherited = parent->presentation] {
+    const auto resolve_presentation = [props, inherited = parent->presentation,
+                                       explicit_locale = parent->locale_explicit, config = build.config_scope()] {
         auto value = props.presentation_ ? read_prop(*props.presentation_) : inherited.get();
+        if (!props.presentation_ && !explicit_locale) {
+            const auto& snapshot = config->snapshot();
+            value.locale = snapshot.catalog.pack(snapshot.locale.effective).data().form;
+        }
         if (props.form_layout_) {
             value.layout = *props.form_layout_;
         }
@@ -818,15 +836,15 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
                              if (!read_prop(no_style)) {
                                  return {};
                              }
-                             if (!field->meta.get().errors.empty()) {
+                             if (!form_field_meta(field).errors.empty()) {
                                  return FormValidateStatus::Error;
                              }
                              const auto explicit_status = containing_field->status_override.get();
                              if (explicit_status) {
                                  return explicit_status;
                              }
-                             const auto meta = containing_field->meta.get();
-                             return !containing_field->error.get().empty() || !meta.errors.empty()
+                             const auto meta = form_field_meta(containing_field);
+                             return !form_field_error(containing_field).empty() || !meta.errors.empty()
                                         ? FormValidateStatus::Error
                                     : !meta.warnings.empty() ? FormValidateStatus::Warning
                                                              : FormValidateStatus::None;
@@ -854,7 +872,8 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
             refresh(id, true);
         }
     });
-    connect_prop(scope, Prop<FormFieldMeta>{field->meta}, [this, id](FormFieldMeta) { refresh(id, true); });
+    connect_prop(scope, Prop<FormFieldMeta>{bind([field] { return form_field_meta(field); })},
+                 [this, id](FormFieldMeta) { refresh(id, true); });
     connect_prop(scope, props.label_, [this, id](String value) {
         if (auto* item = services_->components().state<FormItemState>(id)) {
             item->label.set(std::move(value));
@@ -867,7 +886,8 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
             refresh(id, true);
         }
     });
-    connect_prop(scope, Prop<String>{field->error}, [this, id](String) { refresh(id, true); });
+    connect_prop(scope, Prop<String>{bind([field] { return form_field_error(field); })},
+                 [this, id](String) { refresh(id, true); });
     // Observe authoritative values as well as internal writes; an unrelated field never reruns this slot.
     connect_prop(scope, Prop<FormValue>{bind([field] { return read_form_field(field); })},
                  [weak = std::weak_ptr{model}, field, previous = read_form_field(field)](FormValue value) mutable {
@@ -897,8 +917,8 @@ void FormComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     }
     const auto& token = services_->components().theme_scope(id)->snapshot().form();
     const auto& metrics = token.metrics;
-    const auto error = state->field->error.get();
-    const auto meta = state->field->meta.get();
+    const auto error = form_field_error(state->field);
+    const auto meta = form_field_meta(state->field);
     auto status = state->explicit_status.value_or(
         meta.validating          ? FormValidateStatus::Validating
         : !error.empty()         ? FormValidateStatus::Error
@@ -1176,7 +1196,7 @@ FormItemSnapshot FormComponentHost::snapshot(runtime::ComponentId id) const {
         throw std::out_of_range("FormItem component is stale");
     }
     auto result = state->regions;
-    result.error = state->field->error.get();
+    result.error = form_field_error(state->field);
     return result;
 }
 
@@ -1522,7 +1542,7 @@ FormNamePath FormListField::path() const {
 
 FormFieldMeta FormListRef::meta() const {
     const auto list = state_->list.lock();
-    return list && list->alive ? list->validation->meta.get() : FormFieldMeta{};
+    return list && list->alive ? form_field_meta(list->validation) : FormFieldMeta{};
 }
 
 FormListRef::FormListRef() : state_(std::make_shared<detail::FormListRefState>()) {}
@@ -2117,7 +2137,7 @@ bool FormRef::scrollToFirstError(FormScrollOptions options) const {
         return false;
     }
     for (const auto& field : model->fields()) {
-        if ((!field.field->error.get().empty() || !field.field->meta.get().errors.empty()) &&
+        if ((!form_field_error(field.field).empty() || !form_field_meta(field.field).errors.empty()) &&
             model->scroll(field.path, options)) {
             return true;
         }

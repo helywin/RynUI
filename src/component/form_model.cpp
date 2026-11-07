@@ -95,7 +95,7 @@ void discard_errors(const std::vector<FormModel::Registration>& fields) {
         for (const auto& item : fields) {
             if (item.field->registered && item.field->generation == item.generation) {
                 item.field->error.set(String{});
-                auto meta = item.field->meta.get();
+                auto meta = form_field_meta(item.field);
                 meta.errors.clear();
                 meta.warnings.clear();
                 meta.out_of_date = true;
@@ -188,8 +188,8 @@ void write_form_field(const std::shared_ptr<FormFieldState>& state, FormValue va
     }
 }
 
-void configure_form_required(const std::shared_ptr<FormFieldState>& state, String message) {
-    if (state->registered || message.empty()) {
+void configure_form_required(const std::shared_ptr<FormFieldState>& state, std::optional<String> message) {
+    if (state->registered || (message && message->empty())) {
         throw std::invalid_argument("Form required rule needs an unregistered field and a nonempty message");
     }
     state->required = true;
@@ -240,7 +240,7 @@ std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFie
             if (value.index() != current->initial.index()) {
                 throw std::invalid_argument("Form field value type mismatch");
             }
-            auto meta = current->meta.get();
+            auto meta = form_field_meta(current);
             meta.touched = true;
             current->meta.set(meta);
             if (!authorized()) {
@@ -296,7 +296,8 @@ std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFie
 }
 
 String form_field_error(const std::shared_ptr<FormFieldState>& state) {
-    return state->error.get();
+    const auto meta = form_field_meta(state);
+    return meta.errors.empty() ? state->error.get() : meta.errors.front();
 }
 
 bool form_field_disabled(const std::shared_ptr<FormFieldState>& state) {
@@ -512,7 +513,7 @@ void FormModel::value_changed(const std::shared_ptr<FormFieldState>& field, cons
     if (!current()) {
         return;
     }
-    auto meta = field->meta.get();
+    auto meta = form_field_meta(field);
     meta.errors.clear();
     meta.warnings.clear();
     field->meta.set(meta);
@@ -562,6 +563,7 @@ FormResult FormModel::validate_transaction() {
     const auto revision = revision_;
     const auto fields = fields_;
     FormResult result{values(), {}, false};
+    std::vector<FormPendingIssue> pending_issues;
     result.structure = get_values();
     const auto validation_values = get_values(true);
     if (!alive || revision != revision_ || result.values.size() != fields.size()) {
@@ -571,26 +573,32 @@ FormResult FormModel::validate_transaction() {
     for (std::size_t i = 0; i < fields.size(); ++i) {
         const auto& field = fields[i].field;
         const auto& value = result.values[i].value;
-        String error;
+        std::optional<FormStoredIssue> error;
         if (field->required && empty(value)) {
-            error = field->required_message == String{u8"This field is required"}
-                        ? field->presentation.get().locale.required
-                        : field->required_message;
+            error = field->required_message ? FormStoredIssue{*field->required_message}
+                                            : FormStoredIssue{{}, false, FormMessageSource::Required};
         } else if (const auto validator = field->validator) {
-            error = validator(value);
+            const auto message = validator(value);
+            if (!message.empty()) {
+                error = FormStoredIssue{message};
+            }
         }
-        const auto issues = !error.empty() && field->validate_first ? std::vector<FormIssue>{}
-                                                                    : validate_rules(field, value, validation_values);
+        if (!alive || revision != revision_ || !field->registered || field->generation != fields[i].generation ||
+            values() != result.values || !available()) {
+            result.out_of_date = true;
+            return result;
+        }
+        const auto issues = error && field->validate_first ? std::vector<FormStoredIssue>{}
+                                                           : validate_rules(field, value, validation_values);
         for (const auto& issue : issues) {
-            (issue.warning ? result.warnings : result.errors)
-                .push_back({fields[i].name, issue.message, fields[i].path});
+            pending_issues.push_back({fields[i].name, fields[i].path, field, issue});
         }
         if (!alive || revision != revision_ || values() != result.values || !available()) {
             result.out_of_date = true;
             return result;
         }
-        if (!error.empty()) {
-            result.errors.push_back({fields[i].name, std::move(error), fields[i].path});
+        if (error) {
+            pending_issues.push_back({fields[i].name, fields[i].path, field, std::move(*error)});
         }
     }
     const auto collections_snapshot = collections;
@@ -599,7 +607,7 @@ FormResult FormModel::validate_transaction() {
             continue;
         }
         for (const auto& issue : validate_rules(collection.validation, FormValue{String{}}, validation_values)) {
-            (issue.warning ? result.warnings : result.errors).push_back({{}, issue.message, collection.path()});
+            pending_issues.push_back({{}, collection.path(), collection.validation, issue});
         }
         if (!alive || revision != revision_ || values() != result.values || !available()) {
             result.out_of_date = true;
@@ -609,45 +617,16 @@ FormResult FormModel::validate_transaction() {
     // Publish only after all user validators have completed against the same snapshot.
     batch([&] {
         for (const auto& item : fields) {
-            const auto error = std::find_if(result.errors.begin(), result.errors.end(),
-                                            [&](const auto& value) { return value.path == item.path; });
-            item.field->error.set(error == result.errors.end() ? String{} : error->message);
-            auto meta = item.field->meta.get();
-            meta.validating = false;
-            meta.out_of_date = false;
-            meta.errors.clear();
-            meta.warnings.clear();
-            for (const auto& error : result.errors) {
-                if (error.path == item.path) {
-                    meta.errors.push_back(error.message);
-                }
-            }
-            for (const auto& warning : result.warnings) {
-                if (warning.path == item.path) {
-                    meta.warnings.push_back(warning.message);
-                }
-            }
-            item.field->validated = true;
-            item.field->meta.set(meta);
+            publish_form_issues(item.field, pending_issues, item.path);
         }
     });
     for (const auto& collection : collections_snapshot) {
-        if (!collection.active() || !collection.validation) {
+        if (!alive || revision != revision_ || !collection.active() || !collection.validation) {
             continue;
         }
-        FormFieldMeta meta;
-        for (const auto& error : result.errors) {
-            if (error.path == collection.path()) {
-                meta.errors.push_back(error.message);
-            }
-        }
-        for (const auto& warning : result.warnings) {
-            if (warning.path == collection.path()) {
-                meta.warnings.push_back(warning.message);
-            }
-        }
-        collection.validation->meta.set(meta);
+        publish_form_issues(collection.validation, pending_issues, collection.path());
     }
+    project_form_result(result, pending_issues);
     result.out_of_date = !alive || revision != revision_ || values() != result.values || !available();
     if (result.out_of_date) {
         discard_errors(fields);
@@ -867,7 +846,7 @@ bool FormModel::set(const FormNamePath& path, FormValue value) {
         if (alive && item.field->registered && item.field->generation == item.generation) {
             batch([&] {
                 item.field->error.set({});
-                auto meta = item.field->meta.get();
+                auto meta = form_field_meta(item.field);
                 meta.errors.clear();
                 meta.warnings.clear();
                 item.field->meta.set(meta);
@@ -1141,7 +1120,7 @@ void FormModel::notify_change(const std::shared_ptr<FormFieldState>& field, cons
             if (!current()) {
                 return;
             }
-            callback({{item.path, value, field->meta.get()}}, fields);
+            callback({{item.path, value, form_field_meta(field)}}, fields);
         }
     }
 }
@@ -1151,6 +1130,6 @@ namespace ryn::detail {
 std::optional<FormFieldMeta> FormModel::get_meta(const FormNamePath& path) const {
     static_cast<void>(topology.get());
     const auto it = std::ranges::find(fields_, path, &Registration::path);
-    return it == fields_.end() ? std::nullopt : std::optional{it->field->meta.get()};
+    return it == fields_.end() ? std::nullopt : std::optional{form_field_meta(it->field)};
 }
 } // namespace ryn::detail

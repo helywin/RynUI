@@ -9,10 +9,16 @@ static_assert(!FormFieldType<int> && !FormFieldType<double>);
 static_assert(std::same_as<decltype(std::declval<FormField<String>>().value()), Prop<String>>);
 static_assert(std::same_as<decltype(std::declval<FormField<bool>>().onChange()), std::function<void(bool)>>);
 static_assert(!std::is_convertible_v<FormContent, FormItemContent>);
+static_assert(std::same_as<decltype(FormRule{}.message), std::optional<String>>);
 
 int main() {
     FormRef form;
     FormField<String> name{String{u8"initial"}};
+    FormRule literal_rule;
+    literal_rule.message = String{u8"Invalid field value"};
+    literal_rule.message = u8"Invalid field value";
+    const String literal_message = literal_rule.message.value_or(String{});
+    static_cast<void>(literal_message);
     name.required().validator([](String value) { return value.empty() ? String{u8"empty"} : String{}; });
     FormField<InputNumberValue> count{2.0};
     FormField<bool> agree{false};

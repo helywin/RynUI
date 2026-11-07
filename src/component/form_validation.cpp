@@ -44,7 +44,8 @@ void ensure_configurable(const std::shared_ptr<FormFieldState>& field) {
 void configure_form_rules(const std::shared_ptr<FormFieldState>& field, std::vector<FormRule> rules, bool first) {
     ensure_configurable(field);
     for (const auto& rule : rules) {
-        if (rule.message.empty() || (rule.min_length && rule.max_length && *rule.min_length > *rule.max_length)) {
+        if ((rule.message && rule.message->empty()) ||
+            (rule.min_length && rule.max_length && *rule.min_length > *rule.max_length)) {
             throw std::invalid_argument("Invalid Form rule message or length range");
         }
         if (rule.minimum && rule.maximum &&
@@ -75,8 +76,68 @@ void configure_form_triggers(const std::shared_ptr<FormFieldState>& field, FormV
     field->dependencies = std::move(dependencies);
 }
 
+String project_form_issue(const FormStoredIssue& issue, const FormLocale& locale) {
+    switch (issue.source) {
+    case FormMessageSource::Required:
+        return locale.required;
+    case FormMessageSource::Invalid:
+        return locale.invalid;
+    case FormMessageSource::Literal:
+        return issue.message;
+    }
+    return {};
+}
+
 FormFieldMeta form_field_meta(const std::shared_ptr<FormFieldState>& field) {
-    return field->meta.get();
+    auto meta = field->meta.get();
+    const auto issues = field->issues.get();
+    // Empty metadata is authoritative after edit/reset/removal. setFields explicitly
+    // replaces the sources with literals, even when its text equals a builtin.
+    if ((meta.errors.empty() && meta.warnings.empty()) ||
+        std::ranges::none_of(issues, [](const auto& issue) { return issue.source != FormMessageSource::Literal; })) {
+        return meta;
+    }
+    const auto locale = field->presentation.get().locale;
+    meta.errors.clear();
+    meta.warnings.clear();
+    for (const auto& issue : issues) {
+        (issue.warning ? meta.warnings : meta.errors).push_back(project_form_issue(issue, locale));
+    }
+    return meta;
+}
+
+void project_form_result(FormResult& result, const std::vector<FormPendingIssue>& issues) {
+    result.errors.clear();
+    result.warnings.clear();
+    for (const auto& entry : issues) {
+        (entry.issue.warning ? result.warnings : result.errors)
+            .push_back(
+                {entry.name, project_form_issue(entry.issue, entry.field->presentation.get().locale), entry.path});
+    }
+}
+
+void publish_form_issues(const std::shared_ptr<FormFieldState>& field, const std::vector<FormPendingIssue>& issues,
+                         const FormNamePath& path) {
+    auto meta = field->meta.get();
+    meta.validating = false;
+    meta.out_of_date = false;
+    meta.errors.clear();
+    meta.warnings.clear();
+    std::vector<FormStoredIssue> sources;
+    const auto locale = field->presentation.get().locale;
+    for (const auto& entry : issues) {
+        if (entry.path == path && entry.field == field) {
+            sources.push_back(entry.issue);
+            (entry.issue.warning ? meta.warnings : meta.errors).push_back(project_form_issue(entry.issue, locale));
+        }
+    }
+    field->validated = true;
+    // Publish together: observers can retire the registration at the batch boundary.
+    batch([&] {
+        field->issues.set(std::move(sources));
+        field->error.set(meta.errors.empty() ? String{} : meta.errors.front());
+        field->meta.set(meta);
+    });
 }
 
 std::function<void()> form_blur_handler(const std::shared_ptr<FormFieldState>& field) {
@@ -98,11 +159,21 @@ std::function<void()> form_blur_handler(const std::shared_ptr<FormFieldState>& f
     };
 }
 
-std::vector<FormIssue> FormModel::validate_rules(const std::shared_ptr<FormFieldState>& field,
-                                                 const FormValue& original, const FormData& snapshot) {
-    std::vector<FormIssue> result;
-    for (const auto& rule : field->rules) {
+std::vector<FormStoredIssue> FormModel::validate_rules(const std::shared_ptr<FormFieldState>& field,
+                                                       const FormValue& original, const FormData& snapshot) {
+    std::vector<FormStoredIssue> result;
+    const auto revision = revision_;
+    const auto generation = field->generation;
+    const auto registered = field->registered;
+    const auto current = [&] {
+        return alive && revision_ == revision && field->generation == generation && field->registered == registered;
+    };
+    const auto rules = field->rules;
+    for (const auto& rule : rules) {
         const auto value = rule.transform ? rule.transform(original) : original;
+        if (!current()) {
+            return result;
+        }
         const auto* string = std::get_if<String>(&value);
         const auto* array = std::get_if<SelectValues>(&value);
         const auto numeric = number(value);
@@ -126,16 +197,23 @@ std::vector<FormIssue> FormModel::validate_rules(const std::shared_ptr<FormField
             invalid |=
                 !rule.enumeration.empty() && std::ranges::find(rule.enumeration, value) == rule.enumeration.end();
             invalid |= rule.pattern && (!string || !rule.pattern(*string));
+            if (!current()) {
+                return result;
+            }
         }
         if (invalid) {
-            result.push_back({rule.message, rule.warning_only});
+            result.push_back(rule.message ? FormStoredIssue{*rule.message, rule.warning_only}
+                                          : FormStoredIssue{{}, rule.warning_only, FormMessageSource::Invalid});
         }
         if (rule.validator) {
             auto issues = rule.validator(value, {snapshot, validation_generation_, {}});
+            if (!current()) {
+                return result;
+            }
             for (auto& issue : issues) {
                 issue.warning |= rule.warning_only;
                 if (!issue.message.empty()) {
-                    result.push_back(std::move(issue));
+                    result.push_back({std::move(issue.message), issue.warning});
                 }
             }
         }
@@ -153,6 +231,7 @@ struct FormModel::ValidationRun final {
     std::vector<bool> eligibility;
     std::vector<Collection> collections;
     FormResult result;
+    std::vector<FormPendingIssue> issues;
     FormData context_values;
     FormValidateOptions options;
     std::size_t remaining{};
@@ -168,6 +247,7 @@ bool FormModel::cancel_validation(bool notify) {
         return false;
     }
     run->result.out_of_date = true;
+    project_form_result(run->result, run->issues);
     std::vector<AsyncOptionsCancel> cancellations;
     for (const auto& item : run->fields) {
         if (auto cancel = item.field->session->detach_cancel()) {
@@ -188,7 +268,7 @@ bool FormModel::cancel_validation(bool notify) {
                 if (!item.field->registered || item.field->generation != item.generation) {
                     continue;
                 }
-                auto meta = item.field->meta.get();
+                auto meta = form_field_meta(item.field);
                 meta.validating = false;
                 meta.out_of_date = true;
                 item.field->timeout.reset();
@@ -198,7 +278,7 @@ bool FormModel::cancel_validation(bool notify) {
                 if (!collection.validation) {
                     continue;
                 }
-                auto meta = collection.validation->meta.get();
+                auto meta = form_field_meta(collection.validation);
                 meta.validating = false;
                 meta.out_of_date = true;
                 collection.validation->timeout.reset();
@@ -257,9 +337,9 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
         const bool named = run->options.names.empty() || std::ranges::any_of(run->options.names, [&](const auto& path) {
                                return run->options.recursive ? item.path.startsWith(path) : item.path == path;
                            });
-        const auto meta = item.field->meta.get();
+        const auto meta = form_field_meta(item.field);
         if (named && (!run->options.dirty || meta.touched || item.field->validated || !meta.errors.empty() ||
-                      !item.field->error.get().empty())) {
+                      !form_field_error(item.field).empty())) {
             run->fields.push_back(item);
             run->eligibility.push_back(!item.eligible || item.eligible());
         }
@@ -280,24 +360,33 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
         busy = true;
         const auto snapshot = run->context_values;
         for (const auto& item : run->fields) {
-            String error;
+            std::optional<FormStoredIssue> error;
             const auto value = read_form_field(item.field);
             if (item.field->required && empty_value(value)) {
-                error = item.field->required_message == String{u8"This field is required"}
-                            ? item.field->presentation.get().locale.required
-                            : item.field->required_message;
+                error = item.field->required_message ? FormStoredIssue{*item.field->required_message}
+                                                     : FormStoredIssue{{}, false, FormMessageSource::Required};
             } else if (const auto validator = item.field->validator) {
-                error = validator(value);
+                const auto message = validator(value);
+                if (!message.empty()) {
+                    error = FormStoredIssue{message};
+                }
             }
-            if (!error.empty()) {
-                run->result.errors.push_back({item.name, error, item.path});
+            if (pending_ != run || !available() || revision_ != run->revision || !item.field->registered ||
+                item.field->generation != item.generation || values() != run->result.values) {
+                busy = false;
+                if (pending_ == run) {
+                    cancel_validation();
+                }
+                return alive;
             }
-            for (auto issue :
-                 (!error.empty() && item.field->validate_first ? std::vector<FormIssue>{}
-                                                               : validate_rules(item.field, value, snapshot))) {
-                (issue.warning ? run->result.warnings : run->result.errors)
-                    .push_back({item.name, std::move(issue.message), item.path});
+            if (error) {
+                run->issues.push_back({item.name, item.path, item.field, *error});
             }
+            for (auto issue : (error && item.field->validate_first ? std::vector<FormStoredIssue>{}
+                                                                   : validate_rules(item.field, value, snapshot))) {
+                run->issues.push_back({item.name, item.path, item.field, std::move(issue)});
+            }
+            project_form_result(run->result, run->issues);
             if (pending_ != run || !available() || revision_ != run->revision || values() != run->result.values) {
                 busy = false;
                 if (pending_ == run) {
@@ -308,9 +397,9 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
         }
         for (const auto& collection : run->collections) {
             for (auto issue : validate_rules(collection.validation, FormValue{String{}}, snapshot)) {
-                (issue.warning ? run->result.warnings : run->result.errors)
-                    .push_back({{}, std::move(issue.message), collection.path()});
+                run->issues.push_back({{}, collection.path(), collection.validation, std::move(issue)});
             }
+            project_form_result(run->result, run->issues);
             if (pending_ != run || !available() || revision_ != run->revision || values() != run->result.values) {
                 busy = false;
                 if (pending_ == run) {
@@ -339,7 +428,7 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
                 ++run->remaining;
                 collection.validation->timeout = now_ + animation::AnimationDuration::milliseconds(30000);
                 if (!run->options.validate_only) {
-                    auto meta = collection.validation->meta.get();
+                    auto meta = form_field_meta(collection.validation);
                     meta.validating = true;
                     meta.out_of_date = false;
                     collection.validation->meta.set(meta);
@@ -355,7 +444,7 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
                 ++run->remaining;
                 item.field->timeout = now_ + animation::AnimationDuration::milliseconds(30000);
                 if (!run->options.validate_only) {
-                    auto meta = item.field->meta.get();
+                    auto meta = form_field_meta(item.field);
                     meta.validating = true;
                     meta.out_of_date = false;
                     item.field->meta.set(meta);
@@ -389,8 +478,8 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
                     }
                     for (auto& issue : result.options) {
                         if (!issue.message.empty()) {
-                            (issue.warning ? run->result.warnings : run->result.errors)
-                                .push_back({item.name, std::move(issue.message), item.path});
+                            run->issues.push_back(
+                                {item.name, item.path, item.field, {std::move(issue.message), issue.warning}});
                         }
                     }
                     item.field->timeout.reset();
@@ -425,8 +514,10 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
                     }
                     for (auto& issue : result.options) {
                         if (!issue.message.empty()) {
-                            (issue.warning ? run->result.warnings : run->result.errors)
-                                .push_back({{}, std::move(issue.message), collection.path()});
+                            run->issues.push_back({{},
+                                                   collection.path(),
+                                                   collection.validation,
+                                                   {std::move(issue.message), issue.warning}});
                         }
                     }
                     collection.validation->timeout.reset();
@@ -478,46 +569,19 @@ void FormModel::complete_async(const std::shared_ptr<ValidationRun>& run) {
         if (!run->options.validate_only) {
             batch([&] {
                 for (const auto& item : run->fields) {
-                    auto meta = item.field->meta.get();
-                    meta.validating = false;
-                    meta.out_of_date = false;
-                    meta.errors.clear();
-                    meta.warnings.clear();
-                    for (const auto& error : run->result.errors) {
-                        if (error.path == item.path) {
-                            meta.errors.push_back(error.message);
-                        }
-                    }
-                    for (const auto& warning : run->result.warnings) {
-                        if (warning.path == item.path) {
-                            meta.warnings.push_back(warning.message);
-                        }
-                    }
-                    item.field->validated = true;
-                    item.field->meta.set(meta);
-                    item.field->error.set(meta.errors.empty() ? String{} : meta.errors.front());
+                    publish_form_issues(item.field, run->issues, item.path);
                 }
             });
         }
         if (!run->options.validate_only) {
             for (const auto& collection : run->collections) {
-                if (!collection.active()) {
+                if (!alive || revision_ != run->revision || !collection.active()) {
                     continue;
                 }
-                FormFieldMeta meta;
-                for (const auto& error : run->result.errors) {
-                    if (error.path == collection.path()) {
-                        meta.errors.push_back(error.message);
-                    }
-                }
-                for (const auto& warning : run->result.warnings) {
-                    if (warning.path == collection.path()) {
-                        meta.warnings.push_back(warning.message);
-                    }
-                }
-                collection.validation->meta.set(meta);
+                publish_form_issues(collection.validation, run->issues, collection.path());
             }
         }
+        project_form_result(run->result, run->issues);
         run->result.out_of_date = !available() || revision_ != run->revision || values() != run->result.values;
         if (run->result.out_of_date) {
             for (const auto& item : run->fields) {
@@ -526,7 +590,7 @@ void FormModel::complete_async(const std::shared_ptr<ValidationRun>& run) {
                     continue;
                 }
                 item.field->error.set({});
-                auto meta = item.field->meta.get();
+                auto meta = form_field_meta(item.field);
                 meta.errors.clear();
                 meta.warnings.clear();
                 meta.out_of_date = true;
@@ -649,7 +713,7 @@ std::vector<FormFieldData> FormModel::get_fields() const {
     std::vector<FormFieldData> result;
     const auto fields = fields_;
     for (const auto& item : fields) {
-        result.push_back({item.path, read_form_field(item.field), item.field->meta.get()});
+        result.push_back({item.path, read_form_field(item.field), form_field_meta(item.field)});
     }
     return result;
 }
@@ -681,6 +745,7 @@ bool FormModel::set_fields(const std::vector<FormFieldData>& data) {
                 }
                 auto meta = data[i].meta;
                 meta.validating = false;
+                item.field->issues.set({});
                 item.field->meta.set(meta);
                 item.field->error.set(meta.errors.empty() ? String{} : meta.errors.front());
             }
@@ -746,10 +811,10 @@ InputStatus form_field_status(const std::shared_ptr<FormFieldState>& field) {
                : *status == FormValidateStatus::Warning ? InputStatus::Warning
                                                         : InputStatus::Default;
     }
-    const auto meta = field->meta.get();
-    return !field->error.get().empty() || !meta.errors.empty() ? InputStatus::Error
-           : !meta.warnings.empty()                            ? InputStatus::Warning
-                                                               : InputStatus::Default;
+    const auto meta = form_field_meta(field);
+    return !form_field_error(field).empty() || !meta.errors.empty() ? InputStatus::Error
+           : !meta.warnings.empty()                                 ? InputStatus::Warning
+                                                                    : InputStatus::Default;
 }
 } // namespace ryn::detail
 

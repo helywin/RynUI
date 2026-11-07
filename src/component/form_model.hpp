@@ -16,6 +16,28 @@ struct FormEditTransaction final {
     bool superseded{};
 };
 
+enum class FormMessageSource { Literal, Required, Invalid };
+
+// Current builtin messages have no arguments. Business validators only produce literals.
+struct FormStoredIssue final {
+    String message;
+    bool warning{};
+    FormMessageSource source{FormMessageSource::Literal};
+    friend bool operator==(const FormStoredIssue&, const FormStoredIssue&) = default;
+};
+
+struct FormPendingIssue final {
+    String name;
+    FormNamePath path;
+    std::shared_ptr<FormFieldState> field;
+    FormStoredIssue issue;
+};
+
+String project_form_issue(const FormStoredIssue&, const FormLocale&);
+void project_form_result(FormResult&, const std::vector<FormPendingIssue>&);
+void publish_form_issues(const std::shared_ptr<FormFieldState>&, const std::vector<FormPendingIssue>&,
+                         const FormNamePath&);
+
 struct FormFieldState final {
     explicit FormFieldState(FormValue value) : initial(value), value(std::move(value)) {}
 
@@ -24,7 +46,7 @@ struct FormFieldState final {
     std::optional<Binding<FormValue>> source;
     std::function<void(FormValue)> change;
     bool required{};
-    String required_message;
+    std::optional<String> required_message;
     std::function<String(const FormValue&)> validator;
     Signal<String> error{String{}};
     Signal<bool> disabled{false};
@@ -39,6 +61,7 @@ struct FormFieldState final {
     std::function<AsyncOptionsSource<FormIssue>(FormValue, FormValidationContext)> async;
     std::shared_ptr<AsyncOptionsSession<FormIssue>> session{std::make_shared<AsyncOptionsSession<FormIssue>>()};
     Signal<FormFieldMeta> meta{FormFieldMeta{}};
+    Signal<std::vector<FormStoredIssue>> issues{std::vector<FormStoredIssue>{}};
     Signal<FormValidateStatus> display_status{FormValidateStatus::None};
     Signal<FormPresentation> presentation{FormPresentation{}};
     Signal<std::optional<FormValidateStatus>> status_override{std::nullopt};
@@ -164,7 +187,8 @@ private:
     animation::AnimationTime now_;
     std::uint64_t validation_generation_{};
     void complete_async(const std::shared_ptr<ValidationRun>&);
-    std::vector<FormIssue> validate_rules(const std::shared_ptr<FormFieldState>&, const FormValue&, const FormData&);
+    std::vector<FormStoredIssue> validate_rules(const std::shared_ptr<FormFieldState>&, const FormValue&,
+                                                const FormData&);
     std::vector<FormFieldValue> values() const;
     std::vector<Registration> fields_;
     std::uint64_t revision_{};

@@ -52,7 +52,8 @@ struct FormRule final {
     std::optional<Decimal> minimum;
     std::optional<Decimal> maximum;
     std::vector<FormValue> enumeration;
-    String message{u8"Invalid field value"};
+    // Unset uses the current builtin locale. Every explicit String is literal.
+    std::optional<String> message;
     std::function<bool(String)> pattern;
     std::function<FormValue(FormValue)> transform;
     std::function<std::vector<FormIssue>(const FormValue&, const FormValidationContext&)> validator;

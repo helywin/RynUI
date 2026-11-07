@@ -134,6 +134,37 @@ void PeopleForm() {
 
 FormRule 支持 required、Unicode whitespace/长度、String/Number/Boolean/Array 类型、枚举、pattern、transform、精确 Decimal 范围、自定义跨字段 validator 与 warning-only。规则可以汇总，也可 validate-first。`FormValidationContext.values/get(path)` 是事务快照，跨字段读取不会混用新旧值。
 
+### 内置消息、literal 与国际化迁移
+
+`.required()` 使用内置 required 来源；`.required(String)` 总是 literal，即使传入的文字恰好是 `This field is required`。`FormRule.message` 现在是 `optional<String>`：缺省或 `reset()` 使用内置 `FormLocale.invalid`；显式 String 使用原文。显式空 String 仍是非法规则配置，不能以空串表示缺省。现有 String 赋值和 aggregate 指定 message 的形式继续适用。
+
+```cpp
+void LocalizedRules() {
+    using namespace ryn;
+    FormField<String> name;
+    name.required();
+    FormField<String> literal;
+    literal.required(u8"This field is required");
+    FormRule rule;
+    rule.min_length = 3;
+    name.rules({rule}); // 缺省 message：当前语言包的 invalid。
+    rule.message = String{u8"Use at least three characters"};
+    rule.message = u8"Use at least three characters";
+    // 旧的 String message = rule.message; / rule.message.empty() 需要迁移。
+    if (rule.message) {
+        const String message = *rule.message;
+        static_cast<void>(message.view());
+    }
+    rule.message.reset(); // 恢复 builtin；value_or(String{}) 仅用于应用自己的读取。
+}
+```
+
+未显式设置 `FormProps.locale` / `presentation` 时，Form 和 Item 从调用处的 ConfigProvider 继承 FormLocale；`locale(FormLocale{})` 是显式完整英文覆盖，`presentation(...)` 的 locale 也保留其明确来源。默认无 Provider 时为英文。嵌套 Provider 逐作用域解析，窗口之间独立。
+
+内部 issue 保存 required/invalid code 或 literal；目前两个 builtin 均没有参数，不自动插入业务 label。FormItem 反馈、field.error/meta、getFieldError/getFieldWarning/getFields/getFieldsError 和 useFormStatus 按当前语言重新投影。已经返回的 FormResult（包括异步回调参数）拥有独立 String 快照，后续切语言不会改变它；尚未交付的异步结果在完成时采用最新语言。业务 validator、asyncValidator 和 setFields 提供的错误/警告保持原文。
+
+语言更新不重新执行 validator，不变更值、touched、验证资格或有效异步请求，不触发 onValuesChange/onFieldsChange/FormProvider change，也不增加校验 deadline。现有受控 setter authority、回调重入、过期结果和注册代际规则继续有效。`rynui.i18n_components_form`、两个独立公开头编译 TU 及受影响旧合同已通过 Windows/MSVC HEADLESS Debug/Release 验证，数量与平台边界见 [阶段结果](../openspec/changes/108-20261107-add-native-i18n/evidence/form-windows.md)。
+
 `field.validation(trigger, debounce_ms, dependencies)` 支持 Change/Blur/ChangeAndBlur；旧字段默认 Manual，保持同步调用时机。onBlur 同 onChange 一样捕获注册代际。依赖路径是当前 Form 内的显式完整路径。Debounce 使用宿主单调时钟与下一截止时间，空闲时不持续请求帧。
 
 `asyncValidator(FormAsyncValidator<T>, OwnerThreadPost)` 接受应用服务及 owner-thread dispatcher；Core 不进行网络调用。请求提供 snapshot/generation/cancelled；worker 只调用 completion，由 dispatcher 投递到创建线程。旧、重复及错误线程结果不能写 Signal。应用 dispatcher 应无异常地接受任务并唤醒 owner event loop；不返回/错误投递的服务有 30 秒有界取消，避免永久 validating。
