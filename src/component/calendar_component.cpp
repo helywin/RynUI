@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/calendar_component.hpp"
 #include "component/picker_i18n.hpp"
 #include "component/date_picker_model.hpp"
@@ -1345,6 +1346,7 @@ bool CalendarRef::changeMode(CalendarMode mode) const {
 }
 
 void Calendar(CalendarProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_calendar) {
         throw std::logic_error("Calendar requires an active window component host");
     }

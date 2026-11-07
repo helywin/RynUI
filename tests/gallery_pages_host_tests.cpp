@@ -42,7 +42,8 @@ struct Fixture final : ryn_test::input_component::Fixture {
             throw std::runtime_error("Gallery pages sync failed");
         }
         if (host.snapshot().failed) {
-            throw std::runtime_error("Gallery page factory failed");
+            throw std::runtime_error("Gallery page factory failed: " +
+                                     std::string{host.snapshot().route.component_identity});
         }
     }
 
@@ -62,7 +63,7 @@ struct Fixture final : ryn_test::input_component::Fixture {
 bool within(Fixture&, runtime::ComponentId, runtime::ComponentId);
 
 void test_color_number_pages() {
-    require(gallery_samples().size() == gallery_sample_sources().size() && gallery_legacy_test_ids().size() == 458,
+    require(gallery_samples().size() == gallery_sample_sources().size() && gallery_legacy_test_ids().size() == 476,
             "Gallery sample/legacy inventories drifted");
     for (const auto& target : gallery_legacy_test_targets()) {
         require(std::ranges::find(gallery_samples(), target.sample_identity, &GallerySampleDescriptor::identity) !=
@@ -259,6 +260,28 @@ void test_header_controls() {
             "header settings close replaced active page");
 }
 
+void test_header_geometry() {
+    Fixture f;
+    for (const auto& language : {locales::zh_CN, locales::en_US}) {
+        f.host.set_locale(language);
+        for (const float width : {360.0F, 480.0F, 640.0F, 728.0F, 960.0F, 1440.0F}) {
+            f.viewport.width = width;
+            f.sync();
+            const auto target = f.host.target("gallery.shell.settings");
+            const auto& node = f.nodes.require(f.services.components().root(target));
+            const auto header = f.host.snapshot().layout.header;
+            if (node.bounds.y + node.bounds.height > header.y + header.height + .1F) {
+                std::cerr << "header width=" << width << " language=" << language.value()
+                          << " settings bottom=" << node.bounds.y + node.bounds.height
+                          << " header bottom=" << header.y + header.height << '\n';
+            }
+            require(node.bounds.width < width / 2 && node.bounds.y >= header.y &&
+                        node.bounds.y + node.bounds.height <= header.y + header.height + .1F,
+                    "Gallery settings trigger fills the row or escapes the multilingual header");
+        }
+    }
+}
+
 void test_keyboard_theme_and_boundaries() {
     Fixture f;
     f.show("ant.component.input");
@@ -360,6 +383,34 @@ void test_focus_and_independent_scroll() {
     f.key(input::Key::end);
     require(f.host.snapshot().document.offset <= f.host.snapshot().document.maximum_offset,
             "page keyboard offset escaped clamp");
+}
+
+void test_config_provider_sample_is_mounted() {
+    Fixture f;
+    f.show("ant.component.config-provider");
+    const auto page = f.host.snapshot().page;
+    for (const auto identity :
+         {"gallery.config-provider.size", "gallery.config-provider.disabled", "gallery.config-provider.direction",
+          "gallery.config-provider.inherited", "gallery.config-provider.draft", "gallery.config-provider.explicit",
+          "gallery.config-provider.nested"}) {
+        const auto target = f.host.target(identity);
+        require(f.services.components().contains(target) && within(f, target, page),
+                "public i18n example hid the real ConfigProvider consumer sample");
+    }
+    const auto inherited = interaction(f, f.host.target("gallery.config-provider.inherited"));
+    const auto explicit_value = interaction(f, f.host.target("gallery.config-provider.explicit"));
+    const auto nested = interaction(f, f.host.target("gallery.config-provider.nested"));
+    const auto toggle = interaction(f, f.host.target("gallery.config-provider.disabled"));
+    require(f.services.focus().request_focus(toggle, input::FocusModality::keyboard), "Provider toggle focus failed");
+    f.key(input::Key::space);
+    require(!f.services.interactions().require(inherited).eligible &&
+                f.services.interactions().require(explicit_value).eligible &&
+                f.services.interactions().require(nested).eligible,
+            "actual Gallery Provider defaults ignored explicit or nested false");
+    f.key(input::Key::space);
+    require(f.services.interactions().require(inherited).eligible && f.host.snapshot().page == page &&
+                f.host.sample_runs("gallery.sample.config-provider.context") == 1,
+            "actual Gallery Provider update rebuilt the sample or failed to reenable it");
 }
 
 void test_all_pages() {
@@ -507,6 +558,11 @@ void test_source_paragraph_flow() {
 
 int main(int argc, char** argv) {
     try {
+        if (argc > 1 && std::string_view(argv[1]) == "header-only") {
+            test_header_geometry();
+            test_header_controls();
+            return 0;
+        }
         if (argc > 1 && std::string_view(argv[1]) == "color-number") {
             test_color_number_pages();
             std::cout << "ColorPicker/InputNumber Gallery page contracts passed\n";
@@ -517,8 +573,10 @@ int main(int argc, char** argv) {
         test_failed_page_viewport_and_focus();
         test_empty_overview_reflow();
         test_header_controls();
+        test_header_geometry();
         test_keyboard_theme_and_boundaries();
         test_focus_and_independent_scroll();
+        test_config_provider_sample_is_mounted();
         test_all_pages();
         test_navigation_left_alignment();
         test_document_focus_gutters();

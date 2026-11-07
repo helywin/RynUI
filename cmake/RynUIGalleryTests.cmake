@@ -281,6 +281,19 @@ target_link_libraries(
 add_test(NAME rynui.token_gallery_benchmark COMMAND rynui_token_gallery_benchmark)
 
 
+add_executable(rynui_i18n_gallery_tests "${PROJECT_SOURCE_DIR}/tests/i18n_gallery_tests.cpp")
+rynui_configure_cpp_target(rynui_i18n_gallery_tests)
+target_include_directories(rynui_i18n_gallery_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_i18n_gallery_tests PRIVATE rynui_gallery_pages_host rynui_components)
+target_compile_definitions(rynui_i18n_gallery_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.i18n_gallery COMMAND rynui_i18n_gallery_tests)
+add_test(NAME rynui.gallery_i18n_source
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_gallery_i18n.py")
+add_test(NAME rynui.gallery_i18n_source_contract
+    COMMAND "${Python3_EXECUTABLE}" -B "${PROJECT_SOURCE_DIR}/tests/gallery_i18n_source_checker_tests.py")
+
 add_executable(rynui_gallery_pages_host_tests gallery_pages_host_tests.cpp)
 rynui_configure_cpp_target(rynui_gallery_pages_host_tests)
 target_include_directories(rynui_gallery_pages_host_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

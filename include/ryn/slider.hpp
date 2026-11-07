@@ -13,6 +13,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 struct SliderPropsAccess;
 struct SliderRefState;
 } // namespace detail
@@ -91,6 +95,7 @@ public:
 
     Derived& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return self();
     }
 
@@ -181,6 +186,7 @@ public:
 
 private:
     friend struct detail::SliderPropsAccess;
+    friend struct detail::ConfigDefaults;
     friend Derived;
 
     Derived& self() {
@@ -191,6 +197,7 @@ private:
     std::optional<Value> default_value_;
     Prop<SliderLimits> limits_{SliderLimits{}};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<SliderDisabledHandles> handle_disabled_{SliderDisabledHandles{}};
     Prop<bool> keyboard_{true};
     Prop<bool> reverse_{false};

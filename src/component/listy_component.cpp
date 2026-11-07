@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/listy_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -242,6 +243,7 @@ void ListyComponentHost::refresh(runtime::ComponentId id) {
 }
 
 void ListyComponentHost::mount(ListyOptions options, Prop<std::vector<ListyRecord>> source, ListyRenderer renderer) {
+    ConfigDefaults::apply(options);
     const auto records = read_prop(source);
     validate(records);
     if (!renderer && !records.empty()) {

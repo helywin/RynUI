@@ -5,6 +5,8 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <ryn/i18n.hpp>
+#include <ryn/text_direction.hpp>
 
 namespace rynui::example {
 struct GalleryPageOptions final {
@@ -15,6 +17,10 @@ struct GalleryPageOptions final {
     std::vector<GalleryPageRoute> pages;
     int width{};
     int timeout_seconds{30};
+    bool i18n{};
+    ryn::LocaleId locale{ryn::locales::zh_CN};
+    ryn::LocaleId format_locale{ryn::locales::zh_CN};
+    ryn::TextDirection direction{ryn::TextDirection::LeftToRight};
 };
 
 struct GalleryPageAcceptanceResult final {

@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/input_component.hpp"
 #include "component/form_focus_context.hpp"
 #include "component/form_native_control.hpp"
@@ -1045,13 +1046,23 @@ struct InputPropsAccess {
                 current.hovering_pointers = 0;
                 static_cast<void>(owner.sessions_.blur());
             }
-            owner.editors_.require(current.mounted.editor)
-                .set_eligibility(current.disabled || !current.active, current.read_only);
-            owner.host_->interactions().set_eligible(current.mounted.interaction, current.active && !current.disabled);
-            if (current.disabled) {
-                owner.host_->pointer().cancel_interaction(current.mounted.interaction);
+            auto* live = owner.host_->components().template state<InputState>(component);
+            if (!live) {
+                return;
+            }
+            owner.editors_.require(live->mounted.editor)
+                .set_eligibility(live->disabled || !live->active, live->read_only);
+            owner.host_->interactions().set_eligible(live->mounted.interaction, live->active && !live->disabled);
+            if (live->disabled) {
+                owner.host_->pointer().cancel_interaction(live->mounted.interaction);
+            }
+            if (!owner.host_->components().contains(component)) {
+                return;
             }
             owner.host_->focus().synchronize();
+            if (!owner.host_->components().contains(component)) {
+                return;
+            }
             owner.update_clear_visibility(component);
             owner.refresh_number(component);
             owner.invalidate(component, runtime::DirtyFlags::Material | runtime::DirtyFlags::HitTest);
@@ -2175,7 +2186,8 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
         host_->layout().set_intrinsic_revision(state->viewport, revisions.content + revisions.layout);
         invalidate(component, text_dirty);
     }
-    state->slot_typography.set(typography);
+    const auto slot_typography = state->slot_typography;
+    slot_typography.set(typography);
     refresh_number(component);
     invalidate(component, runtime::DirtyFlags::Material);
 }
@@ -3845,6 +3857,7 @@ bool InputRef::bound() const {
 }
 
 void Input(InputProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_input_host) {
         throw std::logic_error("Input requires an active InputComponentHost");
     }
@@ -3856,6 +3869,7 @@ void Input(InputProps props, std::optional<InputPrefix> prefix, std::optional<In
 }
 
 void InputNumber(InputNumberProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {
+    detail::ConfigDefaults::apply(props);
     const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::InputNumberPropsAccess::mount(std::move(props), std::move(prefix), std::move(suffix));
     if (attach) {
@@ -3864,6 +3878,7 @@ void InputNumber(InputNumberProps props, std::optional<InputPrefix> prefix, std:
 }
 
 void TextArea(TextAreaProps props) {
+    detail::ConfigDefaults::apply(props);
     const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::TextAreaPropsAccess::mount(std::move(props));
     if (attach) {
@@ -3872,6 +3887,7 @@ void TextArea(TextAreaProps props) {
 }
 
 void Password(PasswordProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {
+    detail::ConfigDefaults::apply(props);
     detail::PasswordPropsAccess::mount(std::move(props), std::move(prefix), std::move(suffix));
 }
 } // namespace ryn

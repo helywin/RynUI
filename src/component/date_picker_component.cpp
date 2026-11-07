@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/date_picker_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/date_picker_model.hpp"
@@ -1787,7 +1788,12 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                                         }
                                     });
                                 }),
-                                       ButtonContent{[label = preset.label] { Text(label); }});
+                                       ButtonContent{[label = preset.label, message = preset.label_message,
+                                                      args = preset.label_args] {
+                                           Text(TextProps{}.content(message
+                                                                        ? Prop<String>{useI18n().text(*message, args)}
+                                                                        : Prop<String>{label}));
+                                       }});
                             }
                             for (const auto& preset : props.date_time_presets_) {
                                 Button(ButtonProps{}.size(ControlSize::Small).onClick([this, id, fn = preset.value] {
@@ -1800,7 +1806,12 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                                         }
                                     });
                                 }),
-                                       ButtonContent{[label = preset.label] { Text(label); }});
+                                       ButtonContent{[label = preset.label, message = preset.label_message,
+                                                      args = preset.label_args] {
+                                           Text(TextProps{}.content(message
+                                                                        ? Prop<String>{useI18n().text(*message, args)}
+                                                                        : Prop<String>{label}));
+                                       }});
                             }
                             for (const auto& preset : props.presets_) {
                                 Button(ButtonProps{}.size(ControlSize::Small).onClick([this, id, fn = preset.value] {
@@ -1822,7 +1833,12 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                                         throw;
                                     }
                                 }),
-                                       ButtonContent{[label = preset.label] { Text(label); }});
+                                       ButtonContent{[label = preset.label, message = preset.label_message,
+                                                      args = preset.label_args] {
+                                           Text(TextProps{}.content(message
+                                                                        ? Prop<String>{useI18n().text(*message, args)}
+                                                                        : Prop<String>{label}));
+                                       }});
                             }
                             if (props.clock_) {
                                 Button(ButtonProps{}
@@ -2313,7 +2329,11 @@ void DatePickerComponentHost::mount_range(const DateRangePickerProps& props,
                             Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state, preset] {
                                 state->preset(preset, range_candidate(*services_, state));
                             }),
-                                   ButtonContent{[label = preset.label] { Text(label); }});
+                                   ButtonContent{[label = preset.label, message = preset.label_message,
+                                                  args = preset.label_args] {
+                                       Text(TextProps{}.content(message ? Prop<String>{useI18n().text(*message, args)}
+                                                                        : Prop<String>{label}));
+                                   }});
                         }
                         Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
                             state->clear(range_candidate(*services_, state));
@@ -2596,7 +2616,11 @@ void DatePickerComponentHost::mount_range(const DateTimeRangePickerProps& props,
                             Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state, preset] {
                                 state->preset(preset, range_candidate(*services_, state));
                             }),
-                                   ButtonContent{[label = preset.label] { Text(label); }});
+                                   ButtonContent{[label = preset.label, message = preset.label_message,
+                                                  args = preset.label_args] {
+                                       Text(TextProps{}.content(message ? Prop<String>{useI18n().text(*message, args)}
+                                                                        : Prop<String>{label}));
+                                   }});
                         }
                         Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
                             state->clear(range_candidate(*services_, state));
@@ -3122,6 +3146,7 @@ void DatePickerComponentHost::synchronize_auxiliary_geometry(runtime::Size, runt
 
 namespace ryn {
 void DatePicker(DatePickerProps props, std::optional<DatePickerFooter> footer) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_dates) {
         throw std::logic_error("DatePicker requires window component services");
     }
@@ -3129,6 +3154,7 @@ void DatePicker(DatePickerProps props, std::optional<DatePickerFooter> footer) {
 }
 
 void DateRangePicker(DateRangePickerProps props, std::optional<DatePickerFooter> footer) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_dates) {
         throw std::logic_error("DateRangePicker requires window component services");
     }
@@ -3136,6 +3162,7 @@ void DateRangePicker(DateRangePickerProps props, std::optional<DatePickerFooter>
 }
 
 void DateRangePicker(DateTimeRangePickerProps props, std::optional<DatePickerFooter> footer) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_dates) {
         throw std::logic_error("DateRangePicker requires window component services");
     }

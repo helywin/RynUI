@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TourComponentHost;
 struct TourTargetState;
 } // namespace detail
@@ -181,10 +185,12 @@ public:
 
     TourProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TourComponentHost;
     Prop<std::vector<TourStep>> steps_{std::vector<TourStep>{}};
     std::optional<Prop<bool>> open_;
@@ -197,6 +203,7 @@ private:
     Prop<bool> disabled_{false};
     std::optional<Prop<TourLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     std::function<void(std::size_t)> on_change_;
     std::function<void(bool)> on_open_;
     std::function<void(TourCloseReason)> on_close_;

@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/image_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/image_model.hpp"
@@ -1974,6 +1975,7 @@ bool ImageRef::action(ImageAction v) const {
 }
 
 void Image(ImageProps p, ImageSlots slots) {
+    detail::ConfigDefaults::apply(p);
     if (!detail::active_image) {
         throw std::logic_error("Image requires WindowComponentServices");
     }
@@ -1981,6 +1983,7 @@ void Image(ImageProps p, ImageSlots slots) {
 }
 
 void PreviewGroup(PreviewGroupProps p) {
+    detail::ConfigDefaults::apply(p);
     if (!detail::active_image) {
         throw std::logic_error("PreviewGroup requires WindowComponentServices");
     }

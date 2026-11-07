@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class ImageComponentHost;
 struct ImageRefState;
 } // namespace detail
@@ -173,6 +177,7 @@ public:
 
     ImageProps& rtl(Prop<bool> v = true) {
         rtl_ = std::move(v);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -217,6 +222,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::ImageComponentHost;
     Prop<ImageSource> source_{ImageSource{}};
     Prop<ImageSource> preview_source_{ImageSource{}};
@@ -232,6 +238,7 @@ private:
     Prop<bool> disabled_{false};
     Prop<bool> visible_{true};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     std::optional<Prop<ImageLocale>> locale_;
     Prop<std::shared_ptr<const ImageActionsRenderer>> actions_{std::shared_ptr<const ImageActionsRenderer>{}};
     std::optional<ImageRef> ref_;
@@ -303,6 +310,7 @@ public:
 
     PreviewGroupProps& rtl(Prop<bool> v = true) {
         rtl_ = std::move(v);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -337,6 +345,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::ImageComponentHost;
     Prop<bool> thumbnails_{true};
     Prop<std::vector<ImagePreviewItem>> items_{std::vector<ImagePreviewItem>{}};
@@ -349,6 +358,7 @@ private:
     Prop<bool> visible_{true};
     Prop<bool> disabled_{false};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     std::optional<Prop<ImageLocale>> locale_;
     Prop<std::shared_ptr<const ImageActionsRenderer>> actions_{std::shared_ptr<const ImageActionsRenderer>{}};
     std::function<void(bool, std::size_t)> on_open_;

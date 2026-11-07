@@ -10,6 +10,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class PaginationComponentHost;
 }
 
@@ -38,6 +42,7 @@ public:
 
     PaginationProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -123,6 +128,7 @@ public:
 
     PaginationProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -133,6 +139,7 @@ public:
 
     PaginationProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -147,9 +154,11 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::PaginationComponentHost;
     std::optional<Prop<PaginationLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<bool> less_{false};
     Prop<std::size_t> total_{0};
     std::optional<Prop<std::size_t>> current_;
@@ -167,8 +176,10 @@ private:
     std::function<void(PaginationItemContext)> item_render_;
     std::function<void(std::size_t, std::size_t)> on_size_change_;
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> hide_single_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     std::function<void(std::size_t, std::size_t)> on_change_;
     LayoutStyle layout_;
 };

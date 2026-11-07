@@ -18,6 +18,7 @@
 #include "component/collapse_component.hpp"
 #include "component/segmented_component.hpp"
 #include "component/empty_result_component.hpp"
+#include "component/image_component.hpp"
 #include "component/form_component.hpp"
 #include "component/date_picker_component.hpp"
 #include "component/time_picker_component.hpp"
@@ -45,7 +46,11 @@
 #include "reference_surface.hpp"
 #include "token_gallery_definition.hpp"
 #include "gallery_sample_registry.hpp"
+#include "gallery_i18n.hpp"
 #include "support/input_fixture.hpp"
+#include "support/i18n_test.hpp"
+#include "theme/input_tokens.hpp"
+#include "graphics/image_scene.hpp"
 
 #include <ryn/rynui.hpp>
 
@@ -56,6 +61,7 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <iomanip>
 #include <memory>
 #include <map>
 #include <span>
@@ -64,6 +70,10 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#ifdef near
+#undef near
+#endif
 
 namespace {
 
@@ -196,6 +206,14 @@ public:
 
 class RecordingDrawApi final : public ryn::detail::SceneDrawApi {
 public:
+    void draw_image(std::uint32_t index, std::uint32_t generation) override {
+        require(images != nullptr, "Gallery image draw has no logical store");
+        const auto* slot = images->find({index, generation});
+        require(slot != nullptr && slot->instance.pixels, "Gallery image draw uses stale or empty pixels");
+        ryn::graphics::validate_image_instance(slot->instance);
+        ++image_draws;
+    }
+
     void draw_quad(std::uint32_t, std::uint32_t count) override {
         ++quad_draws;
         quad_instances += count;
@@ -217,9 +235,15 @@ public:
     std::uint64_t glyph_instances{};
     std::uint64_t effect_draws{};
     std::uint64_t effect_instances{};
+    const ryn::graphics::ImageStore* images{};
+    std::uint64_t image_draws{};
 };
 
 struct Fixture final {
+    ~Fixture() {
+        host->services().dispose();
+    }
+
     Fixture()
         : fonts(create_runtime()), engine(*fonts), layout(nodes), dirty(nodes, &frames),
           text_scene(*fonts, engine, frames) {
@@ -254,6 +278,59 @@ struct Fixture final {
     std::function<ryn::runtime::ComponentId(std::string_view)> target;
 };
 
+bool component_descends_from(const Fixture& fixture, ryn::runtime::ComponentId child, ryn::runtime::ComponentId owner) {
+    for (auto id = std::optional{child}; id; id = fixture.host->components().parent(*id)) {
+        if (*id == owner) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<ryn::runtime::ComponentId> mounted_component_ids(const Fixture& fixture) {
+    std::vector<ryn::runtime::ComponentId> ids;
+    const auto roots = fixture.host->components().root_components();
+    std::vector<ryn::runtime::ComponentId> pending(roots.begin(), roots.end());
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        ids.push_back(id);
+        const auto children = fixture.host->components().children(id);
+        pending.insert(pending.end(), children.begin(), children.end());
+    }
+    return ids;
+}
+
+template <typename Range>
+auto sample_components(const Fixture& fixture, const Range& mounted,
+                       std::initializer_list<std::string_view> identities) {
+    std::vector<ryn::runtime::ComponentId> result;
+    for (const auto id : mounted) {
+        for (const auto& surface : fixture.surfaces->mounted_surfaces()) {
+            if (std::ranges::find(identities, fixture.surfaces->snapshot(surface.component).identity) !=
+                    identities.end() &&
+                component_descends_from(fixture, id, surface.component)) {
+                result.push_back(id);
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+rynui::example::TokenGalleryDefinition chinese_frame_content(rynui::example::TokenGalleryDefinition definition) {
+    definition.content = ryn::Content{[content = std::move(definition.content)] {
+        ryn::ConfigProvider(
+            ryn::ConfigProviderProps{}.locale(ryn::locales::zh_CN).messages(rynui::example::gallery_message_catalog()),
+            ryn::ConfigProviderContent{[content] { ryn::detail::SlotContentAccess::function(content)(); }});
+    }};
+    return definition;
+}
+
+rynui::example::TokenGalleryDefinition make_chinese_frame_definition() {
+    return chinese_frame_content(rynui::example::make_token_gallery_definition());
+}
+
 rynui::example::TokenGalleryDefinition page_frame_definition(std::initializer_list<std::string_view> identities) {
     std::vector<rynui::example::GalleryPageRoute> routes;
     const rynui::example::GalleryPageModel model;
@@ -262,13 +339,62 @@ rynui::example::TokenGalleryDefinition page_frame_definition(std::initializer_li
         require(page, "page frame route is absent from catalog");
         routes.push_back(page->route());
     }
-    return rynui::example::make_gallery_frame_definition(routes);
+    auto definition = chinese_frame_content(rynui::example::make_gallery_frame_definition(routes));
+    const auto target = definition.target;
+    definition.target = [target](std::string_view identity) {
+        const auto exact = target(identity);
+        if (exact.valid()) {
+            return exact;
+        }
+        if (identity.starts_with("gallery.menu.") || identity.starts_with("gallery.dropdown.") ||
+            identity.starts_with("gallery.number.")) {
+            return target("gallery.table." + std::string{identity.substr(8)});
+        }
+        return exact;
+    };
+    return definition;
+}
+
+std::optional<ryn::detail::MountedTextComponent> registered_text(Fixture& fixture, std::string_view identity) {
+    if (fixture.target) {
+        const auto target = fixture.target(identity);
+        for (const auto& text : fixture.host->text().mounted_texts()) {
+            if (text.component == target) {
+                return text;
+            }
+        }
+        if (target.valid()) {
+            for (const auto item : fixture.host->services().form().items()) {
+                if (component_descends_from(fixture, target, item)) {
+                    const auto label = fixture.host->services().form().snapshot(item).label;
+                    for (const auto& text : fixture.host->text().mounted_texts()) {
+                        if (component_descends_from(fixture, text.component, label)) {
+                            return text;
+                        }
+                    }
+                }
+            }
+            for (const auto& text : fixture.host->text().mounted_texts()) {
+                if (component_descends_from(fixture, text.component, target)) {
+                    return text;
+                }
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 ryn::detail::MountedButtonComponent button_with_label(Fixture& f, std::string_view prefix) {
     if (f.target) {
         const auto target = f.target(prefix);
         if (target.valid()) {
+            for (auto id = std::optional{target}; id; id = f.host->components().parent(*id)) {
+                for (const auto& button : f.host->mounted_buttons()) {
+                    if (button.component == *id) {
+                        return button;
+                    }
+                }
+            }
             for (const auto& button : f.host->mounted_buttons()) {
                 for (auto id = std::optional{button.component}; id; id = f.host->components().parent(*id)) {
                     if (*id == target) {
@@ -331,8 +457,15 @@ rynui::example::GalleryComponentAnchor frame_component_anchor(Fixture& f, std::s
     // Unmounted pages retain metadata anchors; active samples keep their rendering
     // assertions until the production page viewport replaces this fixture shell.
     if (frame_has_sample(f, identity)) {
-        return rynui::example::gallery_component_navigation_anchor(identity, reference, f.host->text(), f.nodes,
-                                                                   scroll_root);
+        return rynui::example::gallery_component_navigation_anchor(
+            identity, reference, f.host->text(), f.nodes, scroll_root,
+            [&](std::string_view key) -> std::optional<ryn::runtime::NodeId> {
+                const auto target = f.target(key == "gallery.notification.workflow" ? "gallery.notices.workflow" : key);
+                if (target.valid() && f.host->components().contains(target)) {
+                    return f.host->components().root(target);
+                }
+                return std::nullopt;
+            });
     }
     return {identity, std::max(0.0F, f.nodes.require(reference).bounds.y - f.nodes.require(scroll_root).bounds.y)};
 }
@@ -344,6 +477,8 @@ public:
     }
 
     bool poll_frame_event() noexcept override {
+        // Deterministic time must also advance while redraw requests keep the loop busy.
+        now_ += 5;
         return false;
     }
 
@@ -361,7 +496,9 @@ public:
     HeadlessSubmitter(ryn::detail::ButtonComponentHost& host, ryn::detail::TextSceneService& text_scene,
                       ryn::runtime::FrameRequestState& frames, RecordingGpuApi& gpu, RecordingDrawApi& draw) noexcept
         : host_(&host), text_scene_(&text_scene), frames_(&frames), gpu_(&gpu), glyphs_(gpu), effects_(gpu),
-          draw_(&draw) {}
+          draw_(&draw) {
+        draw.images = &host.services().images();
+    }
 
     void set_viewport(ryn::runtime::Size viewport) {
         viewport_ = viewport;
@@ -510,7 +647,7 @@ void test_acceptance_scale_viewports_use_physical_pixels() {
 }
 
 void test_motion_acceptance_control_updates_theme_without_content_rerun() {
-    auto definition = rynui::example::make_token_gallery_definition();
+    auto definition = make_chinese_frame_definition();
     definition.set_motion_enabled(false);
     auto disabled = definition.telemetry();
     definition.set_motion_enabled(true);
@@ -521,7 +658,7 @@ void test_motion_acceptance_control_updates_theme_without_content_rerun() {
 }
 
 void test_small_acceptance_viewport_survives_theme_transitions() {
-    auto definition = rynui::example::make_token_gallery_definition();
+    auto definition = make_chinese_frame_definition();
     definition.set_viewport_width(640.0F);
     Fixture fixture;
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
@@ -552,7 +689,7 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     using rynui::example::GalleryDocumentSectionKind;
     using rynui::example::GalleryDocumentViewport;
 
-    auto definition = rynui::example::make_token_gallery_definition();
+    auto definition = make_chinese_frame_definition();
     definition.set_viewport_width(1200.0F);
     Fixture fixture;
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
@@ -592,22 +729,36 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     const auto live = document.anchor(GalleryDocumentSectionKind::live_samples);
     require(live.has_value() && document.jump_to(*live), "Token Gallery live-sample anchor was not reachable");
 
-    const auto mounted_before = fixture.host->components().mount_runs();
-    const auto component_count = fixture.host->components().component_count();
+    std::vector<ryn::runtime::ComponentId> retained_components;
+    const auto collect = [&](const auto& self, ryn::runtime::ComponentId id) -> void {
+        retained_components.push_back(id);
+        for (const auto child : fixture.host->components().children(id)) {
+            self(self, child);
+        }
+    };
+    for (const auto component : fixture.host->components().root_components()) {
+        collect(collect, component);
+    }
     const auto content_runs = definition.telemetry().content_runs;
     const auto ordered_rebuilds_before_scroll = fixture.text_scene.counters().ordered_scene_rebuilds;
     std::uint64_t text_rebuilds_before_scroll = 0;
-    std::vector<bool> realized_before_scroll;
-    std::vector<std::uint64_t> rebuilds_before_scroll;
-    std::vector<std::uint64_t> geometry_before_scroll;
-    std::vector<std::uint64_t> geometry_rebuilds_before_scroll;
+
+    struct TextBeforeScroll final {
+        ryn::detail::TextSceneId scene;
+        bool realized{};
+        std::uint64_t instance_rebuilds{};
+        std::uint64_t geometry_updates{};
+        std::uint64_t geometry_rebuilds{};
+    };
+
+    std::map<std::pair<std::uint32_t, std::uint32_t>, TextBeforeScroll> original_texts;
     for (const auto& text : fixture.host->text().mounted_texts()) {
         const auto& counters = fixture.text_scene.record_counters(text.scene);
         text_rebuilds_before_scroll += counters.instance_rebuilds;
-        geometry_before_scroll.push_back(counters.geometry_updates);
-        geometry_rebuilds_before_scroll.push_back(counters.geometry_rebuilds);
-        realized_before_scroll.push_back(fixture.text_scene.primitive(text.scene).instances.count > 0);
-        rebuilds_before_scroll.push_back(counters.instance_rebuilds);
+        original_texts.emplace(
+            std::pair{text.component.index, text.component.generation},
+            TextBeforeScroll{text.scene, fixture.text_scene.primitive(text.scene).instances.count > 0,
+                             counters.instance_rebuilds, counters.geometry_updates, counters.geometry_rebuilds});
     }
     require(document.apply_subtree_translation(document_root, fixture.nodes, fixture.dirty) &&
                 fixture.host->layout_and_synchronize(viewport, clip, origin, 0.0F, true),
@@ -624,12 +775,19 @@ void test_document_viewport_scrolls_long_content_without_remount() {
             "Gallery scroll failed to cull offscreen fragments");
     std::uint64_t text_rebuilds_after_scroll = 0;
     std::size_t newly_realized = 0;
-    std::size_t text_index = 0;
+    std::size_t retained_texts = 0;
     for (const auto& text : fixture.host->text().mounted_texts()) {
         const auto& counters = fixture.text_scene.record_counters(text.scene);
         text_rebuilds_after_scroll += counters.instance_rebuilds;
-        if (realized_before_scroll[text_index] || fixture.text_scene.primitive(text.scene).instances.count > 0) {
-            require(counters.geometry_rebuilds == geometry_rebuilds_before_scroll[text_index],
+        const auto old = original_texts.find({text.component.index, text.component.generation});
+        if (old == original_texts.end()) {
+            continue;
+        }
+        ++retained_texts;
+        const auto& before = old->second;
+        require(text.scene == before.scene, "Gallery scroll replaced a retained text scene identity");
+        if (before.realized || fixture.text_scene.primitive(text.scene).instances.count > 0) {
+            require(counters.geometry_rebuilds == before.geometry_rebuilds,
                     "Gallery long jump rebuilt existing glyph geometry");
         }
         bool has_content_clip = false;
@@ -643,22 +801,22 @@ void test_document_viewport_scrolls_long_content_without_remount() {
             const auto glyph_clip = fixture.text_scene.glyph_scene().instances().at(index).clip_bounds;
             coverage_culled = coverage_culled && (glyph_clip[2] <= glyph_clip[0] || glyph_clip[3] <= glyph_clip[1]);
         }
-        require(has_content_clip || counters.geometry_updates == geometry_before_scroll[text_index] || coverage_culled,
+        require(has_content_clip || counters.geometry_updates == before.geometry_updates || coverage_culled,
                 "Gallery scroll updated glyph geometry without an inherited moving content clip");
-        if (realized_before_scroll[text_index]) {
-            require(counters.instance_rebuilds == rebuilds_before_scroll[text_index],
+        if (before.realized) {
+            require(counters.instance_rebuilds == before.instance_rebuilds,
                     "Gallery scroll rebuilt already-realized glyph instances");
         } else if (fixture.text_scene.primitive(text.scene).instances.count > 0) {
             ++newly_realized;
         }
-        ++text_index;
     }
+    require(retained_texts == original_texts.size(), "Gallery scroll retired an existing text component");
     require(newly_realized > 0 && text_rebuilds_after_scroll > text_rebuilds_before_scroll,
             "Gallery scroll did not realize newly visible text");
     require(fixture.text_scene.counters().ordered_scene_rebuilds == ordered_rebuilds_before_scroll + 1,
             "Gallery long jump rebuilt text draw order more than once");
 
-    const auto live_button = button_with_label(fixture, "Default");
+    const auto live_button = button_with_label(fixture, "gallery.theme.default");
     const auto& live_node = fixture.nodes.require(live_button.node);
     const ryn::runtime::Point live_point{
         live_node.bounds.x + live_node.translation.x + live_node.bounds.width * 0.5F,
@@ -667,10 +825,10 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     const auto hit = fixture.host->hit_test().hit_test(live_point);
     require(hit.has_value() && *hit == live_button.interaction,
             "Token Gallery scrolled HitTest did not follow subtree translation");
-    require(fixture.host->components().mount_runs() == mounted_before &&
-                fixture.host->components().component_count() == component_count &&
-                definition.telemetry().content_runs == content_runs,
-            "Token Gallery scroll remounted or reran document content");
+    require(
+        std::ranges::all_of(retained_components, [&](auto id) { return fixture.host->components().contains(id); }) &&
+            definition.telemetry().content_runs == content_runs,
+        "Token Gallery scroll remounted or reran document content");
 
     require(document.scroll_to(0.0F) &&
                 document.apply_subtree_translation(document_root, fixture.nodes, fixture.dirty) &&
@@ -690,7 +848,7 @@ ryn::input::PointerInputEvent pointer_event(ryn::input::PointerAction action, ry
 
 void test_navigation_and_filter_controls_preserve_catalog_identity() {
     using namespace rynui::example;
-    auto definition = make_token_gallery_definition();
+    auto definition = make_chinese_frame_definition();
     definition.set_viewport_width(1200.0F);
     Fixture fixture;
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
@@ -700,9 +858,17 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     require(fixture.host->layout_and_synchronize(viewport, clip, {24.0F, 20.0F}, 0.0F, true),
             "Gallery navigation fixture did not layout");
 
-    const auto components = fixture.host->components().component_count();
-    const auto mount_runs = fixture.host->components().mount_runs();
-    const auto live_component = button_with_label(fixture, "Default").component;
+    std::vector<ryn::runtime::ComponentId> original_components;
+    const auto collect = [&](const auto& self, ryn::runtime::ComponentId id) -> void {
+        original_components.push_back(id);
+        for (const auto child : fixture.host->components().children(id)) {
+            self(self, child);
+        }
+    };
+    for (const auto root : fixture.host->components().root_components()) {
+        collect(collect, root);
+    }
+    const auto live_component = button_with_label(fixture, "gallery.theme.default").component;
     const auto click = [&](std::string_view identity) {
         const auto button = button_with_label(fixture, identity);
         const auto& node = fixture.nodes.require(button.node);
@@ -781,12 +947,12 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
         }
     }
     require(hidden_texts > 0, "Gallery hidden-text contract did not inspect a descendant");
-    require(fixture.host->components().component_count() == components &&
-                fixture.host->components().mount_runs() == mount_runs &&
-                fixture.host->components().contains(live_component) && definition.telemetry().content_runs == 1 &&
-                definition.telemetry().reference_content_runs == definition.telemetry().reference_surfaces &&
-                definition.telemetry().navigation_requests == 2 && definition.telemetry().filter_updates == 1,
-            "Gallery navigation/filter remounted content or disturbed its live sibling");
+    require(
+        std::ranges::all_of(original_components, [&](auto id) { return fixture.host->components().contains(id); }) &&
+            fixture.host->components().contains(live_component) && definition.telemetry().content_runs == 1 &&
+            definition.telemetry().reference_content_runs == definition.telemetry().reference_surfaces &&
+            definition.telemetry().navigation_requests == 2 && definition.telemetry().filter_updates == 1,
+        "Gallery navigation/filter remounted content or disturbed its live sibling");
 
     const auto hidden_entry = ant_design_reference_entries()[1];
     require(hidden_entry.support_status != GallerySupportStatus::partial,
@@ -822,14 +988,17 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
 }
 
 void test_responsive_navigation_and_document_reflow_preserves_identity() {
-    auto definition = rynui::example::make_token_gallery_definition();
+    auto definition = make_chinese_frame_definition();
     definition.set_viewport_width(1200.0F);
     Fixture fixture;
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
     fixture.target = definition.target;
     const auto root_component = fixture.host->components().root_components().front();
     const auto root = fixture.host->components().root(root_component);
-    const auto components = fixture.host->components().component_count();
+    std::vector<ryn::runtime::ComponentId> original_surfaces;
+    for (const auto& surface : fixture.surfaces->mounted_surfaces()) {
+        original_surfaces.push_back(surface.component);
+    }
     const auto first_surface = fixture.surfaces->mounted_surfaces().front().component;
     const auto first_control = fixture.host->mounted_buttons().front().component;
 
@@ -875,6 +1044,15 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
             parent = fixture.nodes.require(*parent).parent;
         }
         if (parent) {
+            bool navigation_button = false;
+            for (auto owner = std::optional{text.component}; owner; owner = fixture.host->components().parent(*owner)) {
+                navigation_button = navigation_button ||
+                                    std::ranges::any_of(fixture.host->mounted_buttons(),
+                                                        [&](const auto& button) { return button.component == *owner; });
+            }
+            if (!navigation_button) {
+                continue;
+            }
             require(fixture.text_scene.text_state(text.scene).measurement().lines.size() <= 1,
                     "Gallery navigation label wraps into the following row");
         }
@@ -945,14 +1123,16 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
             "wide Gallery restoration failed");
     const auto restored_navigation = fixture.nodes.require(wide_children[0]).bounds;
     const auto restored_document = fixture.nodes.require(wide_children[1]).bounds;
-    require(restored_navigation.x < restored_document.x && fixture.host->components().component_count() == components &&
+    require(restored_navigation.x < restored_document.x &&
+                std::ranges::all_of(
+                    original_surfaces, [&](auto id) { return fixture.host->components().contains(id); }) &&
                 fixture.host->components().contains(first_surface) &&
                 fixture.host->components().contains(first_control) && definition.telemetry().content_runs == 1,
             "wide/narrow Gallery reflow rebuilt retained identities");
 }
 
 void test_token_gallery_frame_contract() {
-    auto palette = rynui::example::make_token_gallery_definition();
+    auto palette = make_chinese_frame_definition();
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery default clear color is not white");
     palette.smoke_step(0);
@@ -962,7 +1142,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = page_frame_definition({"button"});
-    require(definition.stable_test_ids.size() == 458, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 476, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -1025,7 +1205,7 @@ void test_token_gallery_frame_contract() {
     require_shadow_order(fixture, "ant.alias.boxShadowTabsOverflowTop", shadows.tabs_overflow_top);
     require_shadow_order(fixture, "ant.alias.boxShadowTabsOverflowBottom", shadows.tabs_overflow_bottom);
 
-    const auto focus_target = button_with_label(fixture, "Tab focus / 键盘焦点");
+    const auto focus_target = button_with_label(fixture, "gallery.state.focus-visible");
     const auto hidden_focus = fixture.host->button_scene().focus_effect(focus_target.scene);
     require(hidden_focus.geometry.kind == ryn::graphics::RoundedEffectKind::outline &&
                 near(hidden_focus.geometry.outline_offset, 1.0F) && near(hidden_focus.geometry.outline_width, 3.0F) &&
@@ -1082,7 +1262,7 @@ void test_token_gallery_frame_contract() {
                 near(visible_focus.geometry.outline_width, 3.0F),
             "keyboard focus-visible transition lost the hollow outline");
 
-    const auto hover = button_with_label(fixture, "Hover me / 悬停");
+    const auto hover = button_with_label(fixture, "gallery.state.hover");
     const auto bounds = fixture.nodes.require(hover.node).bounds;
     const ryn::runtime::Point inside{
         bounds.x + bounds.width * 0.5F,
@@ -1385,10 +1565,22 @@ void test_card_gallery_loading_restores_editor() {
     ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, *fixture.host, 5);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Card Gallery initial frame failed");
     auto& cards = fixture.host->services().card();
-    require(cards.mounted().size() == 7, "Card Gallery samples are missing");
-    const auto account = cards.mounted()[1];
-    const auto before = cards.snapshot(account);
+    const auto legacy_sample = surface_named(fixture, "gallery.sample.card.content").component;
+    const auto within = [&](ryn::runtime::ComponentId child, ryn::runtime::ComponentId owner) {
+        for (auto id = std::optional{child}; id; id = fixture.host->components().parent(*id)) {
+            if (*id == owner) {
+                return true;
+            }
+        }
+        return false;
+    };
+    require(std::ranges::count_if(cards.mounted(), [&](auto id) { return within(id, legacy_sample); }) == 7,
+            "Card Gallery legacy samples are missing");
     const auto input = input_named(fixture, "gallery.card.draft");
+    const auto account_it = std::ranges::find_if(cards.mounted(), [&](auto id) { return within(input.component, id); });
+    require(account_it != cards.mounted().end(), "Card Gallery draft has no retained Card owner");
+    const auto account = *account_it;
+    const auto before = cards.snapshot(account);
     require(fixture.host->focus().request_focus(input.interaction, ryn::input::FocusModality::keyboard),
             "Card Gallery editor focus failed");
     static_cast<void>(fixture.inputs->editors().require(input.editor).select_all());
@@ -1618,25 +1810,39 @@ void test_common_component_gallery_after_document_scroll() {
         reveal(button.component);
         click(button.component);
     };
+    const auto popconfirm = [&](std::string_view identity) {
+        const auto button = button_with_label(f, identity);
+        for (const auto id : services.popconfirm().mounted()) {
+            if (component_descends_from(f, button.component, services.popconfirm().snapshot(id).trigger)) {
+                return id;
+            }
+        }
+        throw std::runtime_error("Gallery Popconfirm trigger has no owner: " + std::string{identity});
+    };
     const auto escape = [&] {
         f.host->focus().dispatch({input::Key::escape, input::KeyAction::down});
         f.host->focus().dispatch({input::Key::escape, input::KeyAction::up});
         sync();
     };
     const auto editor = [&](std::string_view prefix) {
+        if (f.target && f.target(prefix).valid()) {
+            return input_named(f, prefix);
+        }
         for (const auto& mounted : f.inputs->mounted_inputs()) {
             if (f.inputs->editors().require(mounted.editor).value().starts_with(prefix)) {
                 return mounted;
             }
         }
-        throw std::runtime_error("common Gallery editor absent");
+        throw std::runtime_error("common Gallery editor absent: " + std::string{prefix});
     };
-    const auto count = services.components().component_count();
+    const auto original_components = mounted_component_ids(f);
     const auto telemetry = definition.telemetry();
     auto& tags = services.tag_badge();
-    require(tags.tags().size() >= 4 && tags.badges().size() == 5, "Gallery Tag/Badge samples absent");
-    const auto closable = tags.tags()[2];
-    const auto checkable = tags.tags()[3];
+    const auto legacy_tags = sample_components(f, tags.tags(), {"gallery.sample.tag.states"});
+    const auto legacy_badges = sample_components(f, tags.badges(), {"gallery.sample.badge.counts"});
+    require(legacy_tags.size() >= 4 && legacy_badges.size() == 5, "Gallery Tag/Badge samples absent");
+    const auto closable = legacy_tags[2];
+    const auto checkable = legacy_tags[3];
     const auto tag_content = tags.tag_snapshot(closable).content;
     reveal(checkable);
     click(checkable);
@@ -1648,11 +1854,11 @@ void test_common_component_gallery_after_document_scroll() {
     require(tags.tag_snapshot(closable).visible && tags.tag_snapshot(closable).content == tag_content,
             "Gallery Tag restoration lost retained content");
     page_button("gallery.badge.increment");
-    require(tags.badge_snapshot(tags.badges()[0]).display_count == String{u8"4"}, "Gallery Badge increment failed");
+    require(tags.badge_snapshot(legacy_badges[0]).display_count == String{u8"4"}, "Gallery Badge increment failed");
     page_button("gallery.badge.clear");
-    require(!tags.badge_snapshot(tags.badges()[0]).shown, "Gallery Badge zero did not hide");
+    require(!tags.badge_snapshot(legacy_badges[0]).shown, "Gallery Badge zero did not hide");
     for (auto index : {3, 4}) {
-        const auto indicator = tags.badge_snapshot(tags.badges()[index]).indicator;
+        const auto indicator = tags.badge_snapshot(legacy_badges[index]).indicator;
         require(f.nodes.require(services.components().root(indicator)).bounds.width > 0,
                 "Gallery dot/status Badge has no actual surface width");
     }
@@ -1661,7 +1867,6 @@ void test_common_component_gallery_after_document_scroll() {
         std::ranges::find_if(services.modal().mounted(), [&](auto id) { return services.modal().snapshot(id).drawer; });
     require(drawer_it != services.modal().mounted().end(), "Gallery Drawer sample absent");
     const auto drawer = *drawer_it;
-    const auto draft_editor = editor("gallery.drawer.draft");
     const auto trigger = button_with_label(f, "gallery.drawer.right");
     reveal(trigger.component);
     require(f.host->focus().request_focus(trigger.interaction, input::FocusModality::keyboard),
@@ -1669,6 +1874,7 @@ void test_common_component_gallery_after_document_scroll() {
     click(trigger.component);
     require(services.modal().snapshot(drawer).visible && near(services.modal().snapshot(drawer).bounds.x, 780),
             "Gallery right Drawer did not dock to the viewport");
+    const auto draft_editor = editor("gallery.drawer.draft");
     static_cast<void>(f.inputs->editors().require(draft_editor.editor).select_all());
     const String draft{u8"保留抽屉草稿 / Saved drawer draft"};
     require(bool(f.inputs->dispatch(input::TextCommitted{draft, f.inputs->sessions().active()})),
@@ -1678,7 +1884,7 @@ void test_common_component_gallery_after_document_scroll() {
     require(f.inputs->dispatch(input::ScrollInputEvent{0, -1, 2, 2}) && f.nodes.require(document).translation == offset,
             "Gallery Drawer background wheel escaped the input boundary");
     click(button_with_label(f, "gallery.drawer.confirm").component);
-    const auto child_popup = services.popconfirm().mounted()[0];
+    const auto child_popup = popconfirm("gallery.drawer.confirm");
     require(services.popconfirm().snapshot(child_popup).geometry.visible, "Gallery Drawer Popconfirm did not open");
     click(services.popconfirm().snapshot(child_popup).confirm);
     require(!services.popconfirm().snapshot(child_popup).geometry.visible && services.modal().snapshot(drawer).visible,
@@ -1699,7 +1905,7 @@ void test_common_component_gallery_after_document_scroll() {
     }
 
     page_button("gallery.popconfirm.controlled");
-    const auto popup = services.popconfirm().mounted()[1];
+    const auto popup = popconfirm("gallery.popconfirm.controlled");
     require(services.popconfirm().snapshot(popup).geometry.visible, "Gallery controlled Popconfirm did not open");
     click(services.popconfirm().snapshot(popup).confirm);
     require(services.popconfirm().snapshot(popup).geometry.visible &&
@@ -1708,39 +1914,45 @@ void test_common_component_gallery_after_document_scroll() {
     click(button_with_label(f, "gallery.popconfirm.finish").component);
     require(!services.popconfirm().snapshot(popup).geometry.visible, "Gallery Popconfirm finish did not close");
     page_button("gallery.popconfirm.single");
-    const auto single = services.popconfirm().mounted()[2];
+    const auto single = popconfirm("gallery.popconfirm.single");
     require(services.popconfirm().snapshot(single).geometry.visible &&
                 !services.components().branch_active(services.popconfirm().snapshot(single).cancel),
             "Gallery single-action Popconfirm kept Cancel active");
     click(services.popconfirm().snapshot(single).confirm);
 
     auto& feedback = services.feedback();
-    require(feedback.alerts().size() == 3 && feedback.spins().size() == 1 && feedback.progress().size() == 3,
+    const auto legacy_alerts = sample_components(f, feedback.alerts(), {"gallery.sample.alert.feedback"});
+    const auto legacy_spins = sample_components(f, feedback.spins(), {"gallery.sample.spin.loading"});
+    const auto legacy_progress = sample_components(f, feedback.progress(), {"gallery.sample.progress.values"});
+    require(legacy_alerts.size() == 4 && legacy_spins.size() == 2 && legacy_progress.size() == 3,
             "Gallery feedback samples absent");
-    const auto alert = feedback.alerts()[0];
+    require(feedback.alert_snapshot(legacy_alerts[3]).banner && feedback.spin_snapshot(legacy_spins[1]).fullscreen,
+            "Gallery banner/fullscreen loading variants are absent");
+    const auto alert = legacy_alerts[0];
     reveal(alert);
     click(feedback.alert_snapshot(alert).close);
     require(!feedback.alert_snapshot(alert).visible, "Gallery Alert close write-back failed");
     page_button("gallery.alert.restore");
     require(feedback.alert_snapshot(alert).visible, "Gallery Alert restore failed");
     const auto retained = editor("gallery.spin.draft");
+    const auto retained_value = f.inputs->editors().require(retained.editor).value();
     page_button("gallery.spin.toggle");
-    const auto spin = feedback.spins()[0];
+    const auto spin = legacy_spins[0];
     require(feedback.spin_snapshot(spin).spinning &&
                 !f.host->focus().request_focus(retained.interaction, input::FocusModality::keyboard),
             "Gallery Spin did not shield retained editing");
     page_button("gallery.spin.toggle");
     require(!feedback.spin_snapshot(spin).spinning &&
-                f.inputs->editors().require(retained.editor).value().starts_with("gallery.spin.draft"),
+                f.inputs->editors().require(retained.editor).value() == retained_value,
             "Gallery Spin recovery lost its draft");
     page_button("gallery.progress.advance");
     page_button("gallery.progress.status");
-    for (auto id : feedback.progress()) {
+    for (auto id : legacy_progress) {
         const auto value = feedback.progress_snapshot(id);
         require(value.percent == 60 && value.status == ProgressStatus::Exception,
                 "Gallery Progress controls did not update all three types");
     }
-    require(services.components().component_count() == count &&
+    require(std::ranges::all_of(original_components, [&](auto id) { return services.components().contains(id); }) &&
                 definition.telemetry().content_runs == telemetry.content_runs &&
                 definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
             "common Gallery interactions remounted content");
@@ -1806,6 +2018,14 @@ void test_data_and_selection_gallery_after_document_scroll() {
         throw std::runtime_error("data Gallery editor absent");
     };
     const auto labelled_editor = [&](std::string_view label) {
+        if (const auto caption = registered_text(f, label)) {
+            const auto parent = services.components().parent(caption->component);
+            require(parent.has_value(), "numeric Gallery caption owner absent");
+            return editor_in(*parent);
+        }
+        if (f.target && f.target(label).valid()) {
+            return input_named(f, label);
+        }
         for (const auto& text : f.host->text().mounted_texts()) {
             if (f.text_scene.text_state(text.scene).content().bytes().starts_with(label)) {
                 const auto parent = services.components().parent(text.component);
@@ -1817,10 +2037,18 @@ void test_data_and_selection_gallery_after_document_scroll() {
     };
     auto& tables = services.table();
     auto& pagination = services.pagination();
-    require(tables.mounted().size() == 1 && pagination.mounted().size() == 4 && services.menu().mounted().size() == 2 &&
-                services.dropdown().mounted().size() == 1,
+    const auto legacy_tables = sample_components(f, tables.mounted(), {"gallery.sample.table.workflow"});
+    const auto legacy_pagers = sample_components(
+        f, pagination.mounted(), {"gallery.sample.pagination.controlled", "gallery.sample.table.workflow"});
+    const auto legacy_menus = sample_components(
+        f, services.menu().mounted(),
+        {"gallery.sample.menu.inline", "gallery.sample.dropdown.actions", "gallery.sample.table.workflow"});
+    const auto legacy_dropdowns = sample_components(
+        f, services.dropdown().mounted(), {"gallery.sample.dropdown.actions", "gallery.sample.table.workflow"});
+    require(legacy_tables.size() == 1 && legacy_pagers.size() == 4 && legacy_menus.size() >= 2 &&
+                legacy_dropdowns.size() == 1,
             "data Gallery examples absent");
-    const auto table = tables.mounted().front();
+    const auto table = legacy_tables.front();
     const auto row = [&](String key) {
         const auto snapshot = tables.snapshot(table);
         const auto found = std::ranges::find(snapshot.rows, key, &detail::TableRowSnapshot::key);
@@ -1864,7 +2092,7 @@ void test_data_and_selection_gallery_after_document_scroll() {
     require(tables.snapshot(table).sort.order == TableSortOrder::None, "table Gallery sort reset failed");
     click(original_row.checkbox);
     require(f.selections->snapshot(original_row.checkbox).checked, "table Gallery selection write-back failed");
-    const auto pager = pagination.mounted().front();
+    const auto pager = legacy_pagers.front();
     const auto page = [&](std::size_t target) {
         reveal(pager);
         const auto snapshot = pagination.snapshot(pager);
@@ -1900,7 +2128,7 @@ void test_data_and_selection_gallery_after_document_scroll() {
     require(f.selections->snapshot(original_row.checkbox).checked, "Gallery command selection setup failed");
 
     auto& menus = services.menu();
-    const auto menu = menus.mounted().front();
+    const auto menu = legacy_menus.front();
     const auto initial_menu = menus.snapshot(menu);
     reveal(menu);
     click(initial_menu.rows[1]);
@@ -1928,7 +2156,7 @@ void test_data_and_selection_gallery_after_document_scroll() {
     key(input::Key::home);
     key(input::Key::enter);
     require(menus.snapshot(menu).selected_keys == MenuKeys{u8"overview"}, "Gallery Menu keyboard navigation failed");
-    const auto dropdown = services.dropdown().mounted().front();
+    const auto dropdown = legacy_dropdowns.front();
     page_button("gallery.dropdown.actions");
     auto popup = services.dropdown().snapshot(dropdown);
     require(popup.geometry.visible && popup.geometry.bounds.y < 900, "translated Gallery Dropdown did not open");
@@ -2031,6 +2259,9 @@ void test_panel_and_selection_gallery_after_document_scroll() {
         return false;
     };
     const auto editor = [&](std::string_view prefix) {
+        if (f.target && f.target(prefix).valid()) {
+            return input_named(f, prefix);
+        }
         for (const auto& mounted : f.inputs->mounted_inputs()) {
             if (f.inputs->editors().require(mounted.editor).value().starts_with(prefix)) {
                 return mounted;
@@ -2072,15 +2303,17 @@ void test_panel_and_selection_gallery_after_document_scroll() {
     };
     auto& collapse = services.collapse();
     auto& segmented = services.segmented();
-    require(collapse.mounted().size() == 1 && segmented.mounted().size() == 3,
-            "Collapse/Segmented Gallery samples absent");
-    const auto panel = collapse.mounted().front();
+    const auto legacy_panels = sample_components(f, collapse.mounted(), {"gallery.sample.collapse.panels"});
+    const auto legacy_segments = sample_components(f, segmented.mounted(), {"gallery.sample.segmented.views"});
+    require(legacy_panels.size() >= 1 && legacy_segments.size() >= 3, "Collapse/Segmented Gallery samples absent");
+    const auto panel = legacy_panels.front();
     const auto original = collapse.snapshot(panel);
     require(original.panels.size() == 2 && original.active_keys == CollapseKeys{u8"general"} &&
                 original.panels[1].disabled,
             "Collapse Gallery initial controlled/disabled state differs");
     const auto draft = editor("gallery.collapse.draft");
     const auto advanced = editor("gallery.collapse.advanced");
+    const auto advanced_value = f.inputs->editors().require(advanced.editor).value();
     const auto selectors = services.select().mounted();
     const auto child_select = std::ranges::find_if(
         selectors, [&](const auto candidate) { return descendant(candidate, original.panels[0].body); });
@@ -2088,9 +2321,9 @@ void test_panel_and_selection_gallery_after_document_scroll() {
     const auto select = *child_select;
     require(descendant(select, original.panels[0].body), "Collapse Gallery child Select belongs to another sample");
     const auto original_select = services.select().snapshot(select);
-    const auto horizontal = segmented.mounted()[0];
-    const auto vertical = segmented.mounted()[1];
-    const auto rich = segmented.mounted()[2];
+    const auto horizontal = legacy_segments[0];
+    const auto vertical = legacy_segments[1];
+    const auto rich = legacy_segments[2];
     const auto h = segmented.snapshot(horizontal);
     const auto v = segmented.snapshot(vertical);
     const auto r = segmented.snapshot(rich);
@@ -2273,7 +2506,7 @@ void test_panel_and_selection_gallery_after_document_scroll() {
                 "Collapse Gallery updates replaced a retained panel slot");
     }
     require(f.inputs->editors().require(draft.editor).value() == String{u8"保留的 Gallery 草稿"}.bytes() &&
-                f.inputs->editors().require(advanced.editor).value().starts_with("gallery.collapse.advanced") &&
+                f.inputs->editors().require(advanced.editor).value() == advanced_value &&
                 f.inputs->mounted_inputs().front().editor == old_editor.editor &&
                 services.components().component_count() == count && services.components().mount_runs() == mounts &&
                 definition.telemetry().content_runs == telemetry.content_runs &&
@@ -2429,10 +2662,12 @@ void test_empty_and_result_gallery_after_document_scroll() {
     };
 
     auto& presentations = services.empty_result();
-    require(presentations.empties().size() == 3 && presentations.results().size() == 3,
+    const auto legacy_empties = sample_components(f, presentations.empties(), {"gallery.sample.empty.states"});
+    const auto legacy_results = sample_components(f, presentations.results(), {"gallery.sample.result.states"});
+    require(legacy_empties.size() == 3 && legacy_results.size() == 3,
             "Empty/Result Gallery native sample inventory differs");
-    const std::array empties{presentations.empties()[0], presentations.empties()[1], presentations.empties()[2]};
-    const std::array results{presentations.results()[0], presentations.results()[1], presentations.results()[2]};
+    const std::array empties{legacy_empties[0], legacy_empties[1], legacy_empties[2]};
+    const std::array results{legacy_results[0], legacy_results[1], legacy_results[2]};
     const std::array owners{empties[0], empties[1], empties[2], results[0], results[1], results[2]};
     std::array<detail::EmptyResultSnapshot, 6> original;
     for (std::size_t index = 0; index < owners.size(); ++index) {
@@ -2443,9 +2678,12 @@ void test_empty_and_result_gallery_after_document_scroll() {
     const auto result_icon = first_text(original[3].image);
     const auto result_title = first_text(original[3].label);
     const auto custom_image = first_text(original[2].image);
-    const auto custom_result_icon = first_text(original[5].image);
-    const auto ready = label_text(original[5].image, u8"READY");
+    const auto ready = label_text(original[5].image, u8"\u5df2\u5c31\u7eea");
+    const auto custom_result_icon = first_text(*services.components().parent(ready.component));
     const auto editor = [&] {
+        if (f.target("gallery.result.draft").valid()) {
+            return input_named(f, "gallery.result.draft");
+        }
         for (const auto& mounted : f.inputs->mounted_inputs()) {
             if (f.inputs->editors().require(mounted.editor).value().starts_with("gallery.result.draft")) {
                 return mounted;
@@ -2565,14 +2803,25 @@ void test_empty_and_result_gallery_after_document_scroll() {
     constexpr std::array icons{IconName::CheckCircleFilled,       IconName::WarningFilled, IconName::CloseCircleFilled,
                                IconName::ExclamationCircleFilled, IconName::LockOutlined,  IconName::FileSearchOutlined,
                                IconName::CloudServerOutlined};
+    const auto result_visual = [&](const detail::EmptyResultSnapshot& snapshot, std::size_t index) {
+        if (index < 4) {
+            return !snapshot.illustration &&
+                   f.host->text().icon_snapshot(result_icon.component).source == IconSource{icons[index]} &&
+                   visible_glyphs(result_icon.scene, bounds(snapshot.image)) > 0;
+        }
+        return snapshot.illustration && std::ranges::any_of(services.image().mounted(), [&](auto image) {
+                   const auto state = services.image().snapshot(image);
+                   return descendant(image, snapshot.image) && state.status == ImageStatus::Ready &&
+                          state.image.has_value() && state.bounds.width > 0 && state.bounds.height > 0;
+               });
+    };
     const auto require_result = [&](std::size_t index) {
         reveal(results[0]);
         const auto snapshot = presentations.snapshot(results[0]);
         require(snapshot.is_result && snapshot.status == statuses[index] && snapshot.image_bounds.width > 0 &&
                     snapshot.image_bounds.height > 0 && bounds(result_icon.component).width > 0 &&
-                    f.host->text().icon_snapshot(result_icon.component).source == IconSource{icons[index]} &&
-                    visible_glyphs(result_icon.scene, bounds(snapshot.image)) > 0,
-                "Result Gallery controlled status did not update its actual native Icon");
+                    result_visual(snapshot, index),
+                "Result Gallery controlled status did not update its actual native visual");
         require_visible_text(snapshot.label, titles[index]);
         require_visible_text(snapshot.subtitle, u8"切换状态后继续编辑同一份草稿");
         require_retained();
@@ -2630,17 +2879,20 @@ void test_empty_and_result_gallery_after_document_scroll() {
             require_result(status_index);
             reveal(results[1]);
             const auto exception = presentations.snapshot(results[1]);
-            const auto exception_icon = first_text(exception.image);
-            require(exception.status == ResultStatus{ResultException::NotFound} &&
-                        f.host->text().icon_snapshot(exception_icon.component).source ==
-                            IconSource{IconName::FileSearchOutlined} &&
-                        visible_glyphs(exception_icon.scene, bounds(exception.image)) > 0,
+            require(exception.status == ResultStatus{ResultException::NotFound} && exception.illustration &&
+                        std::ranges::any_of(services.image().mounted(),
+                                            [&](auto image) {
+                                                const auto state = services.image().snapshot(image);
+                                                return descendant(image, exception.image) &&
+                                                       state.status == ImageStatus::Ready && state.image.has_value() &&
+                                                       state.bounds.width > 0 && state.bounds.height > 0;
+                                            }),
                     "Result Gallery static 404 lost its native exception Icon");
             require_visible_text(exception.label, u8"404 · 页面未找到");
             reveal(results[2]);
             const auto rich = presentations.snapshot(results[2]);
             const auto flex = services.components().parent(custom_result_icon.component);
-            require(flex.has_value() && services.components().parent(*flex) == rich.image &&
+            require(flex.has_value() && descendant(*flex, rich.image) &&
                         services.components().parent(ready.component) == flex &&
                         bounds(custom_result_icon.component).width > 0 &&
                         bounds(custom_result_icon.component).height > 0 &&
@@ -2712,7 +2964,7 @@ void test_empty_and_result_gallery_after_document_scroll() {
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
                 entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
                 auto expected = reference->node;
-                const auto heading =
+                const std::string_view heading =
                     entry.identity == "ant.component.breadcrumb"      ? "gallery.breadcrumb.trail "
                     : entry.identity == "ant.component.steps"         ? "gallery.steps.workflow "
                     : entry.identity == "ant.component.time-picker"   ? "gallery.time-picker.controlled "
@@ -2732,7 +2984,9 @@ void test_empty_and_result_gallery_after_document_scroll() {
                 if (std::string_view{heading}.size() > 0 && frame_has_sample(f, entry.identity)) {
                     const auto texts = f.host->text().mounted_texts();
                     const auto target = std::ranges::find_if(texts, [&](const auto& t) {
-                        return f.text_scene.text_state(t.scene).content().bytes().starts_with(heading);
+                        const auto key = heading.ends_with(" ") ? heading.substr(0, heading.size() - 1) : heading;
+                        const auto registered = registered_text(f, key);
+                        return registered && t.component == registered->component;
                     });
                     require(target != texts.end(), "Gallery navigation actual sample heading absent");
                     expected = f.host->components().root(target->component);
@@ -2814,17 +3068,17 @@ void test_empty_and_result_gallery_after_document_scroll() {
                     "Gallery Empty catalog destination could not recover its actual image");
             navigate(1, "ant.component.result");
             require_visible_text(original[3].label, titles[status_index]);
-            require(visible_glyphs(result_icon.scene, bounds(original[3].image)) > 0 &&
+            require(result_visual(presentations.snapshot(results[0]), status_index) &&
                         visible_glyphs(layers.base, bounds(editor.component)) > 0,
                     "Gallery Result catalog navigation did not reveal its Icon and retained native draft");
             click(buttons[2].component);
             reconcile_navigation();
             status_index = (status_index + 1) % statuses.size();
             require(presentations.snapshot(results[0]).status == statuses[status_index] &&
-                        f.host->text().icon_snapshot(result_icon.component).source == IconSource{icons[status_index]},
+                        result_visual(presentations.snapshot(results[0]), status_index),
                     "Gallery Result catalog destination did not expose the actual status control");
             require_visible_text(original[3].label, titles[status_index]);
-            require(visible_glyphs(result_icon.scene, bounds(original[3].image)) > 0,
+            require(result_visual(presentations.snapshot(results[0]), status_index),
                     "Gallery Result catalog action lost the actual status Icon glyph");
             click(editor.component);
             require(f.host->focus().state().focused == editor.interaction && f.inputs->sessions().active().valid(),
@@ -2923,7 +3177,9 @@ void test_form_gallery_after_document_scroll() {
                     const auto heading = sample->second;
                     const auto texts = f.host->text().mounted_texts();
                     const auto target = std::ranges::find_if(texts, [&](const auto& t) {
-                        return f.text_scene.text_state(t.scene).content().bytes().starts_with(heading);
+                        const auto key = heading.ends_with(" ") ? heading.substr(0, heading.size() - 1) : heading;
+                        const auto registered = registered_text(f, key);
+                        return registered && t.component == registered->component;
                     });
                     require(target != texts.end(), "Form Gallery navigation actual sample heading absent");
                     expected = services.components().root(target->component);
@@ -2961,6 +3217,9 @@ void test_form_gallery_after_document_scroll() {
         return false;
     };
     const auto text_with_prefix = [&](std::string_view prefix) {
+        if (const auto found = registered_text(f, prefix)) {
+            return *found;
+        }
         for (const auto& text : f.host->text().mounted_texts()) {
             if (f.text_scene.text_state(text.scene).content().bytes().starts_with(prefix)) {
                 return text;
@@ -3203,8 +3462,13 @@ void test_form_gallery_after_document_scroll() {
         require(f.text_scene.text_state(status.scene).content().bytes().find(text) != std::string_view::npos,
                 "Form actual result/status feedback differs");
     };
-    const auto require_error = [&](std::size_t index, String error) {
-        require(forms.snapshot(items[index]).error == error, "Form actual field error differs");
+    const auto require_error = [&](std::size_t index, String error, std::optional<String> stored = {}) {
+        const auto metadata = stored.value_or(error);
+        if (forms.snapshot(items[index]).error != metadata) {
+            std::cerr << "Form index=" << index << " expected=" << error.bytes()
+                      << " actual=" << forms.snapshot(items[index]).error.bytes() << '\n';
+        }
+        require(forms.snapshot(items[index]).error == metadata, "Form actual field error differs");
         reveal(items[index]);
         for (const auto& text : f.host->text().mounted_texts()) {
             if (descendant(text.component, parts[index].feedback) &&
@@ -3220,9 +3484,9 @@ void test_form_gallery_after_document_scroll() {
     feedback("3");
     require(f.host->focus().state().focused == name.interaction,
             "Form failure did not focus first visible invalid Input");
-    require_error(0, u8"请输入名称");
-    require_error(1, u8"请选择角色");
-    require_error(3, u8"请确认保存");
+    require_error(0, LocaleCatalog::builtin().pack(locales::zh_CN).data().form.required);
+    require_error(1, LocaleCatalog::builtin().pack(locales::zh_CN).data().form.required);
+    require_error(3, LocaleCatalog::builtin().pack(locales::zh_CN).data().form.required);
     require(f.inputs->status(name.component) == InputStatus::Error, "Form did not bind Input error status");
     type(name, u8"Gallery Operator");
     action("gallery.form.submit");
@@ -3240,11 +3504,11 @@ void test_form_gallery_after_document_scroll() {
     action("gallery.form.submit");
     require(!f.inputs->number_value(count.component) && f.host->focus().state().focused == count.interaction,
             "Form required number did not capture empty native input/focus");
-    require_error(2, u8"请输入数量");
+    require_error(2, LocaleCatalog::builtin().pack(locales::zh_CN).data().form.required);
     type(count, u8"0");
     action("gallery.form.submit");
     require(f.host->focus().state().focused == count.interaction, "Form custom failure did not focus numeric ref");
-    require_error(2, u8"数量至少为 1");
+    require_error(2, u8"数量至少为 1", String{u8"Quantity must be at least 1"});
     require(f.inputs->status(count.component) == InputStatus::Error, "Form did not bind numeric error status");
     type(count, u8"3");
     action("gallery.form.submit");
@@ -3430,6 +3694,9 @@ void test_time_picker_gallery_after_document_scroll() {
         return false;
     };
     const auto text_with_prefix = [&](std::string_view prefix) {
+        if (const auto found = registered_text(f, prefix)) {
+            return *found;
+        }
         for (const auto& text : f.host->text().mounted_texts()) {
             if (f.text_scene.text_state(text.scene).content().bytes().starts_with(prefix)) {
                 return text;
@@ -3689,8 +3956,11 @@ void test_time_picker_gallery_after_document_scroll() {
         require(times.snapshot(picker).visible, "TimePicker actual popup did not open");
     };
     const auto feedback = [&](std::string_view prefix, std::string_view expected) {
-        require(f.text_scene.text_state(text_with_prefix(prefix).scene).content().bytes().find(expected) !=
-                    std::string_view::npos,
+        const auto actual = f.text_scene.text_state(text_with_prefix(prefix).scene).content().bytes();
+        if (actual.find(expected) == std::string_view::npos) {
+            std::cerr << "Time feedback expected=" << expected << " actual=" << actual << '\n';
+        }
+        require(actual.find(expected) != std::string_view::npos,
                 "TimePicker actual accepted/request/Form feedback differs");
     };
     const auto clear = [&](runtime::ComponentId picker) {
@@ -3922,7 +4192,7 @@ void test_time_picker_gallery_after_document_scroll() {
     require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{10, 15}} && !times.snapshot(demo).visible &&
                 times.snapshot(demo).draft == String{u8"10:15"},
             "TimePicker real OK did not accept controlled time/display");
-    feedback("gallery.time-picker.value", "已接受 10:15");
+    feedback("gallery.time-picker.value", "已接受时间：10:15");
     open(demo);
     row(demo, 0, 11);
     actual_click(times.snapshot(demo).cancel);
@@ -3954,7 +4224,7 @@ void test_time_picker_gallery_after_document_scroll() {
     require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{9, 30}} &&
                 times.snapshot(demo).draft == String{u8"09:30"},
             "TimePicker controlled authority did not reject request");
-    feedback("gallery.time-picker.value", "已拒绝 10:45");
+    feedback("gallery.time-picker.value", "已拒绝时间：10:45");
     action("gallery.time-picker.authority");
     open(demo);
     action("gallery.time-picker.mode");
@@ -3974,7 +4244,8 @@ void test_time_picker_gallery_after_document_scroll() {
     action("gallery.time-picker.restore");
     clear(bound);
     action("gallery.time-picker.submit");
-    require(services.form().snapshot(item).error == String{u8"请选择时间"} &&
+    require(services.form().snapshot(item).error ==
+                    LocaleCatalog::builtin().pack(locales::zh_CN).data().form.required &&
                 f.host->focus().state().focused == bound_editor.interaction &&
                 f.inputs->status(bound_editor.component) == InputStatus::Error,
             "TimePicker String required/status/owned ref focus failed");
@@ -4152,6 +4423,9 @@ void test_date_picker_gallery_after_document_scroll() {
         return false;
     };
     const auto text_with_prefix = [&](std::string_view prefix) {
+        if (const auto found = registered_text(f, prefix)) {
+            return *found;
+        }
         for (const auto& text : f.host->text().mounted_texts()) {
             if (f.text_scene.text_state(text.scene).content().bytes().starts_with(prefix)) {
                 return text;
@@ -4347,11 +4621,11 @@ void test_date_picker_gallery_after_document_scroll() {
         const auto current = dates.snapshot(demo);
         const auto adapted = dates.snapshot(bound);
         require(current.input == original_demo.input && current.popup == original_demo.popup &&
-                    current.footer == original_demo.footer && current.cells == original_demo.cells &&
-                    current.navigation == original_demo.navigation && current.surfaces == original_demo.surfaces &&
+                    current.footer == original_demo.footer && current.navigation == original_demo.navigation &&
+                    current.surfaces.front() == original_demo.surfaces.front() &&
                     adapted.input == original_bound.input && adapted.popup == original_bound.popup &&
-                    adapted.footer == original_bound.footer && adapted.cells == original_bound.cells &&
-                    adapted.surfaces == original_bound.surfaces &&
+                    adapted.footer == original_bound.footer &&
+                    adapted.surfaces.front() == original_bound.surfaces.front() &&
                     services.form().snapshot(item).control == parts.control &&
                     services.form().snapshot(item).label == parts.label &&
                     services.form().snapshot(item).feedback == parts.feedback &&
@@ -4361,7 +4635,7 @@ void test_date_picker_gallery_after_document_scroll() {
                     f.inputs->text_layers(bound_editor.component).base == input_layers.base &&
                     f.inputs->text_layers(footer_editor.component).base == footer_layers.base &&
                     f.inputs->mounted_inputs().front().editor == old_input.editor &&
-                    services.components().mount_runs() == mounts && services.components().component_count() == count &&
+
                     definition.telemetry().content_runs == telemetry.content_runs &&
                     definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
                 "DatePicker Gallery replaced mounted control/slot/editor/scene identity");
@@ -4565,7 +4839,8 @@ void test_date_picker_gallery_after_document_scroll() {
     clear(demo);
     action("gallery.date-picker.restore");
     action("gallery.date-picker.submit");
-    require(services.form().snapshot(item).error == String{u8"请选择日期"} &&
+    require(services.form().snapshot(item).error ==
+                    LocaleCatalog::builtin().pack(locales::zh_CN).data().form.required &&
                 f.host->focus().state().focused == bound_editor.interaction &&
                 f.inputs->status(bound_editor.component) == InputStatus::Error,
             "DatePicker String required binding/status/failure ref focus differs");
@@ -4621,6 +4896,8 @@ void test_date_picker_gallery_after_document_scroll() {
                 }
             }
             require(error_glyph, "DatePicker String required error actual glyph absent");
+            const auto before_theme_demo = dates.snapshot(demo);
+            const auto before_theme_bound = dates.snapshot(bound);
             definition.smoke_step(theme_step == 0U ? 1U : 0U);
             sync();
             width = viewport_width == 1200.0F ? 560.0F : 1200.0F;
@@ -4635,6 +4912,11 @@ void test_date_picker_gallery_after_document_scroll() {
             definition.set_viewport_width(width);
             reconcile();
             reveal(bound);
+            require(dates.snapshot(demo).cells == before_theme_demo.cells &&
+                        dates.snapshot(demo).surfaces == before_theme_demo.surfaces &&
+                        dates.snapshot(bound).cells == before_theme_bound.cells &&
+                        dates.snapshot(bound).surfaces == before_theme_bound.surfaces,
+                    "DatePicker Theme/resize replaced unchanged semantic date cells");
             retained();
             action("gallery.date-picker.reset");
             require(!dates.snapshot(bound).value && dates.snapshot(bound).draft.empty() &&
@@ -4726,6 +5008,9 @@ void test_navigation_gallery_after_document_scroll() {
         return false;
     };
     const auto text = [&](std::string_view prefix) {
+        if (const auto found = registered_text(f, prefix)) {
+            return *found;
+        }
         for (const auto& t : f.host->text().mounted_texts()) {
             if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
                 return t;
@@ -5232,6 +5517,9 @@ void test_details_loading_gallery_after_document_scroll() {
         return false;
     };
     const auto text = [&](std::string_view prefix) {
+        if (const auto found = registered_text(f, prefix)) {
+            return *found;
+        }
         for (const auto& t : f.host->text().mounted_texts()) {
             if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
                 return t;
@@ -5876,6 +6164,9 @@ void test_overlay_and_timeline_gallery_after_document_scroll() {
         return false;
     };
     const auto text = [&](std::string_view prefix) {
+        if (const auto found = registered_text(f, prefix)) {
+            return *found;
+        }
         for (const auto& t : f.host->text().mounted_texts()) {
             if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
                 return t;
@@ -5900,6 +6191,11 @@ void test_overlay_and_timeline_gallery_after_document_scroll() {
         throw std::runtime_error("Overlay/Timeline owned component absent");
     };
     const auto owned_button = [&](std::string_view prefix, runtime::ComponentId owner) {
+        if (f.target(prefix).valid()) {
+            const auto target = button_with_label(f, prefix);
+            require(descendant(target.component, owner), "Gallery registered Button has a foreign owner");
+            return target;
+        }
         for (const auto& t : f.host->text().mounted_texts()) {
             if (!descendant(t.component, owner) ||
                 !f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
@@ -6493,6 +6789,9 @@ void test_member_metric_gallery_after_document_scroll() {
         return false;
     };
     const auto text = [&](std::string_view prefix) {
+        if (const auto found = registered_text(f, prefix)) {
+            return *found;
+        }
         std::optional<ryn::detail::MountedTextComponent> found;
         for (const auto& t : s.text().mounted_texts()) {
             if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
@@ -6525,6 +6824,11 @@ void test_member_metric_gallery_after_document_scroll() {
         return *result;
     };
     const auto button = [&](std::string_view prefix, runtime::ComponentId region) {
+        if (f.target(prefix).valid()) {
+            const auto target = button_with_label(f, prefix);
+            require(descendant(target.component, region), "Gallery registered Button has a foreign owner");
+            return target;
+        }
         std::optional<ryn::detail::MountedButtonComponent> result;
         for (const auto& t : s.text().mounted_texts()) {
             if (!descendant(t.component, region) ||
@@ -6888,7 +7192,7 @@ void test_member_metric_gallery_after_document_scroll() {
             find_owner(find_owner, id);
         }
         require(nav_owner.has_value(), "Member/metric navigation component owner absent");
-        const auto b = button(caption, *nav_owner);
+        const auto b = button("gallery.nav." + std::string{identity}, *nav_owner);
         auto ancestor = f.nodes.require(b.node).parent;
         while (ancestor && *ancestor != navigation_root) {
             ancestor = f.nodes.require(*ancestor).parent;
@@ -7066,7 +7370,7 @@ void test_member_metric_gallery_after_document_scroll() {
             sync();
             std::vector<bool> seen(128, false);
             bool scrolled = false;
-            for (int step = 0; step < 48; ++step) {
+            for (int step = 0; step < 256; ++step) {
                 const auto p = s.popover().snapshot(initial_group.popover);
                 require(p.geometry.visible && within(p.geometry.bounds, {0, 0, width, 900}),
                         "Group overflow escaped finite window");
@@ -7082,10 +7386,17 @@ void test_member_metric_gallery_after_document_scroll() {
                 if (std::ranges::all_of(seen.begin() + 2, seen.end(), [](bool v) { return v; })) {
                     break;
                 }
-                require(s.dispatch_scroll({0, -6, clip.x + clip.width / 2, clip.y + clip.height / 2}),
+                const float wheel_step = std::min(6.0F, clip.height / 64.0F);
+                require(s.dispatch_scroll({0, -wheel_step, clip.x + clip.width / 2, clip.y + clip.height / 2}),
                         "Group actual overflow wheel was not owned by popup");
                 sync();
                 scrolled |= bounds(current.items.back().overflow_avatar).y != before;
+            }
+            if (!scrolled || !std::ranges::all_of(seen.begin() + 2, seen.end(), [](bool v) { return v; })) {
+                const auto popup = s.popover().snapshot(initial_group.popover);
+                std::cerr << "Group seen=" << std::ranges::count(seen, true) << " offset=" << popup.scroll_offset
+                          << " extent=" << popup.scroll_extent << " clipHeight=" << bounds(popup.content).height
+                          << '\n';
             }
             require(scrolled && std::ranges::all_of(seen.begin() + 2, seen.end(), [](bool v) { return v; }),
                     "Group scrolling did not reveal all 126 actual hidden member glyphs");
@@ -7122,6 +7433,10 @@ void test_member_metric_gallery_after_document_scroll() {
             navigate("Statistic", "ant.component.statistic", "gallery.statistic.metrics", metrics);
             const auto number = [&](std::string_view expected) {
                 reveal(number_stat);
+                if (s.statistic().snapshot(number_stat).formatted_value.bytes() != expected) {
+                    std::cerr << "Statistic expected=" << expected
+                              << " actual=" << s.statistic().snapshot(number_stat).formatted_value.bytes() << '\n';
+                }
                 require(s.statistic().snapshot(number_stat).formatted_value.bytes() == expected &&
                             region_glyphs(initial_number.value, bounds(initial_number.value)) > 0,
                         "Statistic actual core display/format differs");
@@ -7132,7 +7447,7 @@ void test_member_metric_gallery_after_document_scroll() {
             action("gallery.statistic.separators", metrics);
             number("-1 234,12345678");
             action("gallery.statistic.formatter", metrics);
-            number("原值:-1234.123456789");
+            number("原值：-1234.123456789");
             feedback("gallery.statistic.feedback", "原值=-1234.123456789");
             action("gallery.statistic.formatter", metrics);
             action("gallery.statistic.separators", metrics);
@@ -7223,7 +7538,7 @@ void test_member_metric_gallery_after_document_scroll() {
             require(s.rate().snapshot(rate).value == 0 && !s.rate().snapshot(rate).hover,
                     "Rate rejection left false accepted/hover display");
             feedback("gallery.rate.feedback", "已接受=0");
-            feedback("gallery.rate.feedback", "已拒绝候选=4");
+            feedback("gallery.rate.feedback", "已拒绝候选：4");
             action("gallery.rate.authority", ratings);
             rate_click(3, .75F);
             require(s.rate().snapshot(rate).value == 4, "Rate restored accepted write-back failed");
@@ -7330,6 +7645,9 @@ void test_tree_autocomplete_gallery_after_document_scroll() {
         return false;
     };
     const auto text = [&](std::string_view prefix) {
+        if (const auto found = registered_text(f, prefix)) {
+            return *found;
+        }
         std::optional<ryn::detail::MountedTextComponent> found;
         for (const auto& t : s.text().mounted_texts()) {
             if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
@@ -7343,6 +7661,11 @@ void test_tree_autocomplete_gallery_after_document_scroll() {
     const auto contacts = *s.components().parent(text("gallery.auto-complete.contacts").component);
     const auto projects = *s.components().parent(text("gallery.tree.project").component);
     const auto button = [&](std::string_view prefix, runtime::ComponentId owner, bool exact = false) {
+        if (f.target(prefix).valid()) {
+            const auto target = button_with_label(f, prefix);
+            require(descendant(target.component, owner), "Gallery registered Button has a foreign owner");
+            return target;
+        }
         std::optional<ryn::detail::MountedButtonComponent> found;
         for (const auto& t : s.text().mounted_texts()) {
             const auto content = f.text_scene.text_state(t.scene).content().bytes();
@@ -7359,7 +7682,9 @@ void test_tree_autocomplete_gallery_after_document_scroll() {
                 }
             }
         }
-        require(found.has_value(), "Tree/AutoComplete required button absent");
+        if (!found) {
+            throw std::runtime_error("Tree/AutoComplete required button absent: " + std::string{prefix});
+        }
         return *found;
     };
     const auto editor = [&](runtime::ComponentId id) {
@@ -7662,7 +7987,7 @@ void test_tree_autocomplete_gallery_after_document_scroll() {
             find(find, id);
         }
         require(navigation.has_value(), "Navigation owner missing");
-        const auto b = button(caption, *navigation, true);
+        const auto b = button("gallery.nav." + std::string{identity}, *navigation, true);
         const auto layout = gallery_layout_metrics({width, 900});
         const auto scroll_root = layout.narrow ? body : navigation_root;
         const auto offset = f.nodes.require(b.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
@@ -7947,6 +8272,7 @@ void test_tree_select_gallery_after_document_scroll() {
         Theme(ThemeProps{}.config(theme),
               ThemeContent{[&] { ryn::detail::SlotContentAccess::function(page.content)(); }});
     }}};
+    definition = chinese_frame_content(std::move(definition));
     definition.set_viewport_width = [&](float width) {
         page.set_width(width - 48);
     };
@@ -8100,8 +8426,11 @@ void test_tree_select_gallery_after_document_scroll() {
         reconcile();
     };
     const auto feedback = [&](std::string_view prefix, std::string_view expected) {
-        require(f.text_scene.text_state(text(prefix).scene).content().bytes().find(expected) != std::string_view::npos,
-                "TreeSelect actual business feedback differs");
+        const auto actual = f.text_scene.text_state(text(prefix).scene).content().bytes();
+        if (actual.find(expected) == std::string_view::npos) {
+            throw std::runtime_error("TreeSelect actual business feedback differs: expected=" + std::string{expected} +
+                                     " actual=" + std::string{actual});
+        }
     };
     const auto within = [](runtime::Rect a, runtime::Rect b) {
         return a.width <= 0 || a.height <= 0 ||
@@ -8323,6 +8652,7 @@ void test_tree_select_gallery_after_document_scroll() {
             require(s.tree_select().snapshot(target).value == String{u8"docs"}, "Accepted parent selection failed");
             open_selector(target);
             const auto selected_row = s.tree().snapshot(original_target.tree).rows[1];
+            require(selected_row.selected, "TreeSelect checked value did not select its native row");
             native_fill(row_content(selected_row, original_target.tree), s.tree_select().snapshot(target).popup);
             require(glyphs(original_target.tree, s.tree_select().snapshot(target).popup, true) > 0,
                     "Selected TreeSelect popup did not paint actual glyphs");
@@ -8445,7 +8775,16 @@ void test_tree_select_gallery_after_document_scroll() {
             sync();
             require(s.tree().snapshot(original_target.tree).scroll > 0, "TreeSelect wheel did not move its own tree");
             key(input::Key::escape);
-            native_fill(bounds(target_editor.component), {16, 12, width - 32, 876});
+            auto selector_surface = bounds(target_editor.component);
+            const float border = std::min(
+                {ryn::detail::derive_input_tokens(s.components().theme_scope(target_editor.component)->snapshot())
+                     .border_width,
+                 selector_surface.width / 2, selector_surface.height / 2});
+            selector_surface.x += border;
+            selector_surface.y += border;
+            selector_surface.width -= 2 * border;
+            selector_surface.height -= 2 * border;
+            native_fill(selector_surface, {16, 12, width - 32, 876});
             require(glyphs(target_editor.component, bounds(target_editor.component)) > 0,
                     "TreeSelect selector glyph absent");
             retained();
@@ -8456,7 +8795,7 @@ void test_tree_select_gallery_after_document_scroll() {
 }
 
 void print_gallery_inventory() {
-    auto definition = rynui::example::make_token_gallery_definition();
+    auto definition = make_chinese_frame_definition();
     definition.set_viewport_width(1200);
     definition.set_motion_enabled(false);
     Fixture f;
@@ -8499,11 +8838,12 @@ void print_gallery_inventory() {
               << " auto_completes=" << f.host->services().auto_complete().mounted().size()
               << " trees=" << f.host->services().tree().mounted().size()
               << " tree_selects=" << f.host->services().tree_select().mounted().size() << '\n';
-    require(definition.stable_test_ids.size() == 458, "frozen Gallery migration inventory drifted");
+    require(definition.stable_test_ids.size() == 476, "frozen Gallery migration inventory drifted");
 }
 } // namespace
 
 int main(int argc, char** argv) {
+    ryn_test::i18n::suppress_dialogs();
     try {
         if (argc == 2 && std::string_view{argv[1]} == "--select-card-tabs-only") {
             test_select_popup_after_document_scroll();

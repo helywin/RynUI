@@ -17,6 +17,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 
 struct TypographyPropsAccess;
 class TypographyComponentHost;
@@ -145,6 +149,7 @@ public:
 
     TypographyProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -219,12 +224,14 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::TypographyPropsAccess;
     friend class detail::TypographyComponentHost;
 
     Prop<String> content_{String{}};
     std::optional<Prop<TypographyContent>> rich_content_;
     Prop<TextDirection> direction_{TextDirection::Auto};
+    bool explicit_direction_{};
     std::optional<Prop<TypographyType>> type_;
     std::optional<Prop<bool>> code_;
     std::optional<Prop<bool>> keyboard_;
@@ -346,6 +353,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::TypographyPropsAccess;
 
     TypographyProps typography_;

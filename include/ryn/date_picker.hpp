@@ -6,6 +6,9 @@
 #include <string_view>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
 
 // A date in the proleptic Gregorian calendar. Construction rejects invalid dates.
 class CivilDate final {
@@ -89,6 +92,8 @@ struct DatePickerPreset final {
     String key;
     String label;
     std::function<DatePickerValue()> value;
+    std::optional<MessageKey> label_message{};
+    MessageArgs label_args{};
 };
 
 using DatePickerRef = InputRef;
@@ -123,12 +128,16 @@ struct DatePickerMultiplePreset final {
     String key;
     String label;
     std::function<DatePickerMultipleValue()> value;
+    std::optional<MessageKey> label_message{};
+    MessageArgs label_args{};
 };
 
 struct DatePickerDateTimePreset final {
     String key;
     String label;
     std::function<DatePickerDateTimeValue()> value;
+    std::optional<MessageKey> label_message{};
+    MessageArgs label_args{};
 };
 
 namespace detail {
@@ -206,6 +215,7 @@ public:
 
     DatePickerProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -225,6 +235,7 @@ public:
 
     DatePickerProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -304,6 +315,7 @@ public:
 
     DatePickerProps& direction(Prop<TextDirection> v) {
         direction_ = std::move(v);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -433,6 +445,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::DatePickerComponentHost;
     std::optional<Prop<DatePickerValue>> value_;
     std::optional<DatePickerValue> default_value_;
@@ -444,9 +457,11 @@ private:
     std::optional<bool> default_open_;
     Prop<bool> allow_clear_{true};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     std::optional<Prop<String>> placeholder_;
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
     std::optional<DatePickerRef> ref_;
@@ -465,6 +480,7 @@ private:
     Prop<std::vector<String>> input_formats_{std::vector<String>{}};
     std::optional<Prop<PickerLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<PickerPlacement> placement_{PickerPlacement::BottomLeft};
     Prop<bool> multiple_{false};
     std::optional<Prop<bool>> need_confirm_;
@@ -554,6 +570,7 @@ public:
 
     DateRangePickerProps& disabled(Prop<bool> v = true) {
         disabled_ = std::move(v);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -588,6 +605,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::DatePickerComponentHost;
     std::optional<Prop<DatePickerRangeValue>> value_;
     std::optional<DatePickerRangeValue> default_value_;
@@ -596,6 +614,7 @@ private:
     std::optional<bool> default_open_;
     std::optional<Prop<PickerEndpoint>> endpoint_;
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     DatePickerProps picker_;
     DateRangePickerRef ref_;
     std::function<bool(CivilDate, PickerEndpoint, const DatePickerRangeValue&)> disabled_date_;
@@ -658,6 +677,7 @@ public:
 
     DateTimeRangePickerProps& disabled(Prop<bool> v = true) {
         disabled_ = std::move(v);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -693,6 +713,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::DatePickerComponentHost;
     std::optional<Prop<DateTimePickerRangeValue>> value_;
     std::optional<DateTimePickerRangeValue> default_value_;
@@ -701,6 +722,7 @@ private:
     std::optional<bool> default_open_;
     std::optional<Prop<PickerEndpoint>> endpoint_;
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     DatePickerProps picker_;
     DateRangePickerRef ref_;
     std::function<bool(CivilDateTime, PickerEndpoint, const DateTimePickerRangeValue&)> disabled_date_;

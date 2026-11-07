@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/float_button_component.hpp"
 #include "animation/motion_policy.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -975,6 +976,7 @@ std::optional<animation::AnimationTime> FloatButtonComponentHost::next_auxiliary
 
 namespace ryn {
 void FloatButton(FloatButtonProps props, FloatButtonSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_host) {
         throw std::logic_error("FloatButton requires an active component host");
     }
@@ -982,6 +984,7 @@ void FloatButton(FloatButtonProps props, FloatButtonSlots slots) {
 }
 
 void FloatButtonGroup(FloatButtonGroupProps props, FloatButtonGroupContent content) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_host) {
         throw std::logic_error("FloatButtonGroup requires an active component host");
     }

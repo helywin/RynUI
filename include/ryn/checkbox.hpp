@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/selection_option_disabled.hpp>
 
 #include <ryn/component.hpp>
 #include <ryn/form_geometry.hpp>
@@ -14,6 +15,10 @@
 #include <vector>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
+
 class CheckboxRef;
 
 namespace detail {
@@ -35,7 +40,7 @@ using CheckboxValues = std::vector<CheckboxValue>;
 struct CheckboxOption final {
     CheckboxValue value;
     String label;
-    bool disabled{};
+    SelectionOptionDisabled disabled{};
 
     friend bool operator==(const CheckboxOption&, const CheckboxOption&) = default;
 };
@@ -79,6 +84,7 @@ public:
 
     CheckboxProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -138,12 +144,14 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::FormAutoControlAccess;
     friend struct detail::CheckboxPropsAccess;
     std::optional<Prop<bool>> checked_;
     std::optional<bool> default_checked_;
     Prop<bool> indeterminate_{false};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     std::function<void(bool)> on_change_;
     std::optional<CheckboxValue> value_;
     bool skip_group_{};
@@ -182,6 +190,7 @@ public:
 
     CheckboxGroupProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -192,6 +201,7 @@ public:
 
     CheckboxGroupProps& direction(Prop<CheckboxDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -206,13 +216,16 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::CheckboxGroupPropsAccess;
     std::optional<Prop<std::vector<CheckboxOption>>> options_;
     std::optional<Prop<CheckboxValues>> value_;
     std::optional<CheckboxValues> default_value_;
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<CheckboxGroupOrientation> orientation_{CheckboxGroupOrientation::Horizontal};
     Prop<CheckboxDirection> direction_{CheckboxDirection::LeftToRight};
+    bool explicit_direction_{};
     std::function<void(const CheckboxValues&)> on_change_;
     LayoutStyle layout_;
 };

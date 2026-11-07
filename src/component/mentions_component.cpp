@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/mentions_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/mentions_model.hpp"
@@ -2549,6 +2550,7 @@ std::optional<animation::AnimationTime> MentionsComponentHost::next_auxiliary_de
 
 namespace ryn {
 void Mentions(MentionsProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_mentions) {
         throw std::logic_error("Mentions requires window component services");
     }

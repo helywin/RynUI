@@ -1,4 +1,5 @@
 #include <ryn/search.hpp>
+#include "component/config_defaults.hpp"
 
 #include "runtime/component_host.hpp"
 #include "runtime/prop_connection.hpp"
@@ -136,6 +137,7 @@ namespace ryn {
 
 void Search(SearchProps props, std::optional<SearchButtonContent> button, std::optional<InputPrefix> prefix,
             std::optional<InputSuffix> suffix) {
+    detail::ConfigDefaults::apply(props);
     if (detail::SearchPropsAccess::has_conflicting_value(props)) {
         throw std::invalid_argument("Search value and defaultValue are mutually exclusive");
     }

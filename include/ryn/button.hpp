@@ -15,6 +15,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 
 struct ButtonPropsAccess;
 struct SearchPropsAccess;
@@ -69,6 +73,7 @@ public:
 
     ButtonProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -123,6 +128,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::ButtonPropsAccess;
     friend struct detail::SearchPropsAccess;
 
@@ -134,6 +140,7 @@ private:
     Prop<ControlSize> size_{ControlSize::Middle};
     bool explicit_size_{};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> loading_{false};
     Prop<Duration> loading_delay_{Duration{}};
     Prop<ButtonIconPlacement> icon_placement_{ButtonIconPlacement::Start};

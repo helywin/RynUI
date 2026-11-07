@@ -36,6 +36,7 @@ add_library(
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_test_inventory.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_sample_source.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_source_panel.cpp"
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_i18n.cpp"
     "${rynui_gallery_source_output}"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/token_gallery_definition.cpp"
 )
@@ -83,7 +84,8 @@ target_link_libraries(
 )
 
 add_library(rynui_gallery_pages_host STATIC
-    "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_pages_host.cpp")
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_pages_host.cpp"
+    "${PROJECT_SOURCE_DIR}/examples/i18n_app/i18n_app.cpp")
 rynui_configure_cpp_target(rynui_gallery_pages_host)
 target_compile_options(rynui_gallery_pages_host PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 target_include_directories(rynui_gallery_pages_host PUBLIC "${PROJECT_SOURCE_DIR}/examples/token_gallery"

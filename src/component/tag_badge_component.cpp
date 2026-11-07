@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/tag_badge_component.hpp"
 #include "input/pressable_behavior.hpp"
 #include "component/retained_slot.hpp"
@@ -2242,6 +2243,7 @@ void TagBadgeComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
 
 namespace ryn {
 void Tag(TagProps props, TagContent content, TagSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_status_components) {
         throw std::logic_error("Tag requires window services");
     }
@@ -2249,6 +2251,7 @@ void Tag(TagProps props, TagContent content, TagSlots slots) {
 }
 
 void CheckableTag(CheckableTagProps props, TagContent content, TagSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_status_components) {
         throw std::logic_error("CheckableTag requires window services");
     }
@@ -2256,6 +2259,7 @@ void CheckableTag(CheckableTagProps props, TagContent content, TagSlots slots) {
 }
 
 void TagGroup(TagGroupProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_status_components) {
         throw std::logic_error("TagGroup requires window services");
     }
@@ -2267,6 +2271,7 @@ void CheckableTagGroup(TagGroupProps props) {
 }
 
 void BadgeRibbon(RibbonProps props, BadgeContent content) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_status_components) {
         throw std::logic_error("BadgeRibbon requires window services");
     }
@@ -2274,6 +2279,7 @@ void BadgeRibbon(RibbonProps props, BadgeContent content) {
 }
 
 void Badge(BadgeProps props, std::optional<BadgeContent> content) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_status_components) {
         throw std::logic_error("Badge requires window services");
     }

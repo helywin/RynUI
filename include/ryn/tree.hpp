@@ -11,6 +11,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TreeComponentHost;
 class TreeSelectComponentHost;
 } // namespace detail
@@ -307,6 +311,7 @@ public:
 
     TreeProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -405,6 +410,7 @@ public:
 
     TreeProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -434,6 +440,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TreeComponentHost;
     std::optional<Prop<std::vector<TreeItem>>> items_;
     Prop<bool> multiple_{false};
@@ -445,6 +452,7 @@ private:
     Prop<bool> icons_{true};
     Prop<bool> block_{false};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> draggable_{false};
     Prop<float> row_height_{24};
     std::function<float(const String&)> item_height_;
@@ -476,6 +484,7 @@ private:
     std::optional<TreeKeys> default_checked_;
     Prop<bool> checkable_{false};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> visible_{true};
     std::function<void(TreeExpandInfo)> on_expand_;
     std::function<void(TreeSelectInfo)> on_select_;

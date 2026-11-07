@@ -1,4 +1,5 @@
 #include "gallery_source_panel.hpp"
+#include "gallery_i18n.hpp"
 
 #include <ryn/rynui.hpp>
 
@@ -16,7 +17,7 @@ void gallery_source_panel(const GallerySampleSource& source, ryn::Signal<ryn::Lo
     Collapse(
         CollapseProps{}.layout(LayoutStyle{}.width(width)),
         {CollapsePanel{
-            String{u8"cpp"}, CollapseTitle{[] { Text(u8"C++ · 查看源码"); }},
+            String{u8"cpp"}, CollapseTitle{[] { gallery_label("gallery.shell.code"); }},
             CollapseBody{[source, inner, copy = std::move(copy)] {
                 const auto code = String::from_utf8(source.cpp).value();
                 const auto location = std::string{source.source_path} + ':' + std::to_string(source.source_line) +
@@ -28,7 +29,7 @@ void gallery_source_panel(const GallerySampleSource& source, ryn::Signal<ryn::Lo
                                   .tone(TextTone::Secondary)
                                   .layout(LayoutStyle{}.width(inner)));
                          Text(TextProps{}
-                                  .content(u8"实际样例源码；页面状态与辅助函数见对应文件。")
+                                  .content(gallery_text("gallery.shell.code-note"))
                                   .tone(TextTone::Secondary)
                                   .layout(LayoutStyle{}.width(inner)));
                          auto config = std::make_unique<ThemeConfig>();
@@ -47,7 +48,7 @@ void gallery_source_panel(const GallerySampleSource& source, ryn::Signal<ryn::Lo
                                }});
                          if (copy) {
                              Button(ButtonProps{}.size(ControlSize::Small).onClick([copy, code] { copy(code); }),
-                                    [] { Text(u8"复制代码"); });
+                                    [] { gallery_label("gallery.shell.copy"); });
                          }
                      }});
             }}}});

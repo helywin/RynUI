@@ -75,6 +75,10 @@ template <typename T> void gallery_draft_write(GalleryPageDraft& draft, const st
         draft.values[key] = std::string{value.bytes()};
     } else if constexpr (std::same_as<T, bool>) {
         draft.values[key] = value;
+    } else if constexpr (std::same_as<T, ryn::SelectionOptionDisabled>) {
+        // Keep the original bool slot and distinguish unset from explicit false.
+        draft.values[key] = static_cast<bool>(value);
+        draft.values[key + "/explicit"] = value.explicitValue().has_value();
     } else if constexpr (std::is_enum_v<T>) {
         draft.values[key] = static_cast<std::int64_t>(value);
     } else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
@@ -135,6 +139,13 @@ template <typename T> T gallery_draft_read(const GalleryPageDraft& draft, const 
         return ryn::String::from_utf8(draft.get<std::string>(key, std::string{fallback.bytes()})).value();
     } else if constexpr (std::same_as<T, bool>) {
         return draft.get<bool>(key, fallback);
+    } else if constexpr (std::same_as<T, ryn::SelectionOptionDisabled>) {
+        if (!draft.values.contains(key)) {
+            return fallback;
+        }
+        const auto value = draft.get<bool>(key, static_cast<bool>(fallback));
+        // An untagged legacy bool represents an explicit stored value.
+        return draft.get<bool>(key + "/explicit", true) ? T{value} : T{};
     } else if constexpr (std::is_enum_v<T>) {
         return static_cast<T>(draft.get<std::int64_t>(key, static_cast<std::int64_t>(fallback)));
     } else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {

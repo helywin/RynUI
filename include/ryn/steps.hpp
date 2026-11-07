@@ -10,6 +10,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class StepsComponentHost;
 }
 
@@ -153,6 +157,7 @@ public:
 
     StepsProps& size(Prop<StepsSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -173,6 +178,7 @@ public:
 
     StepsProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -206,15 +212,18 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::StepsComponentHost;
     std::optional<Prop<std::size_t>> current_;
     std::optional<std::size_t> default_current_;
     Prop<StepsStatus> status_{StepsStatus::Process};
     Prop<StepsSize> size_{StepsSize::Default};
+    bool explicit_size_{};
     Prop<bool> vertical_{false};
     Prop<StepsType> type_{StepsType::Default};
     Prop<bool> responsive_{true};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<std::optional<float>> percent_{std::nullopt};
     Prop<std::size_t> max_count_{0};
     Prop<bool> animated_{true};

@@ -17,6 +17,10 @@
 #include <utility>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
+
 class InputRef;
 
 namespace detail {
@@ -40,15 +44,18 @@ class OTPComponentHost;
 class AutoCompleteComponentHost;
 
 struct InputPropsData final {
+    bool config_resolved_{};
     std::optional<Prop<String>> value_;
     std::optional<String> default_value_;
     Prop<String> placeholder_{String{}};
     Prop<TextDirection> direction_{TextDirection::Auto};
+    bool explicit_direction_{};
     Prop<ControlSize> size_{ControlSize::Middle};
     bool explicit_size_{};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     std::optional<Prop<bool>> allow_clear_;
     Prop<bool> clear_disabled_{false};
@@ -90,6 +97,7 @@ private:
     friend std::function<std::optional<FormControlGeometry>(const detail::FormFocusContext&)>
     detail::capture_form_input_geometry(const InputRef&);
     friend detail::FormNativeControl detail::capture_form_native_input(const InputRef&);
+    friend struct detail::ConfigDefaults;
     friend struct detail::FormAutoControlAccess;
     std::shared_ptr<detail::InputRefState> state_;
 };
@@ -131,6 +139,7 @@ public:
 
     Derived& direction(Prop<TextDirection> value) {
         common_.direction_ = std::move(value);
+        common_.explicit_direction_ = true;
         return self();
     }
 
@@ -146,6 +155,7 @@ public:
 
     Derived& disabled(Prop<bool> value) {
         common_.disabled_ = std::move(value);
+        common_.explicit_disabled_ = true;
         return self();
     }
 
@@ -255,6 +265,7 @@ public:
     }
 
 protected:
+    friend struct detail::ConfigDefaults;
     friend struct detail::FormAutoControlAccess;
     friend class detail::AutoCompleteComponentHost;
     friend struct detail::InputPropsAccess;

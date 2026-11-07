@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/steps_component.hpp"
 #include "component/popover_component.hpp"
 #include "component/responsive_layout.hpp"
@@ -1304,7 +1305,11 @@ void StepsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
             }
             if (s->type == StepsType::Panel || s->type == StepsType::Navigation) {
                 const auto background = graphics::make_corner_fill_effects(
-                    {node.bounds, s->type == StepsType::Panel ? t.metrics.icon_gap : 0}, {true, true, true, true},
+                    {node.bounds,
+                     s->type == StepsType::Panel
+                         ? std::min(t.metrics.icon_gap, std::min(node.bounds.width, node.bounds.height) / 2)
+                         : 0},
+                    {true, true, true, true},
                     status == StepsStatus::Process ? t.colors.finish_background : t.colors.wait_background, opacity,
                     node.translation, clip);
                 if (s->type == StepsType::Panel) {
@@ -1379,6 +1384,7 @@ void StepsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
 
 namespace ryn {
 void Steps(StepsProps props, Prop<std::vector<StepsItem>> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_steps) {
         throw std::logic_error("Steps requires window component services");
     }
@@ -1386,6 +1392,7 @@ void Steps(StepsProps props, Prop<std::vector<StepsItem>> items) {
 }
 
 void Steps(StepsProps props, std::vector<StepsItem> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_steps) {
         throw std::logic_error("Steps requires window component services");
     }

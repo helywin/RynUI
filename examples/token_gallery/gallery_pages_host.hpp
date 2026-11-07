@@ -9,6 +9,8 @@
 #include "input/platform_input.hpp"
 
 #include <ryn/theme.hpp>
+#include <ryn/i18n.hpp>
+#include <ryn/text_direction.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -67,6 +69,11 @@ public:
     bool synchronize(ryn::runtime::Size viewport);
     void set_theme(const ryn::ThemeConfig& theme);
     [[nodiscard]] ryn::ThemeConfig theme() const;
+    void set_locale(const ryn::LocaleId& locale);
+    void set_format_locale(const ryn::LocaleId& locale);
+    void set_direction(ryn::TextDirection direction);
+    void set_messages(const ryn::MessageCatalog& messages);
+    [[nodiscard]] ryn::LocaleId locale() const;
     [[nodiscard]] GalleryPagesSnapshot snapshot() const;
     [[nodiscard]] const GalleryPagesWork& work() const noexcept;
     [[nodiscard]] const GalleryPageModel& model() const noexcept;

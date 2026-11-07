@@ -70,6 +70,7 @@ public:
     void place(layout::LayoutEngine& engine, runtime::Rect bounds);
 
     CompactMetadata metadata;
+    Signal<ControlSize> size_source{ControlSize::Middle};
     bool block{};
     bool explicit_size{};
     std::array<bool, 4> outer_corners{true, true, true, true};

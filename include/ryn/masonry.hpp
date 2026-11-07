@@ -148,6 +148,7 @@ struct MasonryOptions final {
     Prop<std::uint64_t> refresh{0};
     std::function<void(std::vector<MasonryPlacement>)> on_layout;
     LayoutStyle layout;
+    bool explicit_direction{};
 };
 
 using MasonryRenderer = std::function<void(MasonryKey, Binding<MasonryValue>, Binding<std::size_t>, Binding<int>)>;
@@ -235,6 +236,7 @@ public:
 
     MasonryProps& direction(Prop<FlexDirection> value) {
         options_.direction = std::move(value);
+        options_.explicit_direction = true;
         return *this;
     }
 

@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/text_component.hpp"
 
 #include "component/layout_component_context.hpp"
@@ -1958,6 +1959,7 @@ void mount_typography_component(const TypographyProps& props, TypographySemantic
 namespace ryn {
 
 void Text(TextProps props) {
+    detail::ConfigDefaults::apply(props);
     detail::mount_text_component(props, false);
 }
 
@@ -1966,6 +1968,7 @@ void Icon(IconProps props) {
 }
 
 void Title(TitleProps props) {
+    detail::ConfigDefaults::apply(props);
     if (detail::try_mount_typography_interactions(detail::TypographyPropsAccess::base(props),
                                                   detail::TypographySemantics::Role::heading,
                                                   detail::TypographyPropsAccess::level(props))) {
@@ -1977,6 +1980,7 @@ void Title(TitleProps props) {
 }
 
 void Text(TypographyProps props) {
+    detail::ConfigDefaults::apply(props);
     if (detail::try_mount_typography_interactions(props, detail::TypographySemantics::Role::body,
                                                   Prop<TypographyLevel>{TypographyLevel::H1})) {
         return;
@@ -1986,6 +1990,7 @@ void Text(TypographyProps props) {
 }
 
 void Paragraph(TypographyProps props) {
+    detail::ConfigDefaults::apply(props);
     if (detail::try_mount_typography_interactions(props, detail::TypographySemantics::Role::paragraph,
                                                   Prop<TypographyLevel>{TypographyLevel::H1})) {
         return;

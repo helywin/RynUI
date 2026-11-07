@@ -12,6 +12,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 struct FormAutoControlAccess;
 struct SelectPropsAccess;
 class SelectComponentHost;
@@ -420,6 +424,7 @@ public:
 
     SelectProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -508,6 +513,7 @@ public:
 
     SelectProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -518,6 +524,7 @@ public:
 
     SelectProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -596,6 +603,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::FormAutoControlAccess;
     friend struct detail::SelectPropsAccess;
     friend class detail::SelectComponentHost;
@@ -637,6 +645,7 @@ private:
     Prop<float> popup_width_{0};
     Prop<SelectPlacement> placement_{SelectPlacement::BottomLeft};
     Prop<TextDirection> direction_{TextDirection::Auto};
+    bool explicit_direction_{};
     Prop<bool> motion_{false};
     Prop<bool> read_only_prop_{false};
     std::function<void(SelectValues)> on_values_change_;
@@ -654,8 +663,10 @@ private:
     std::optional<Prop<bool>> show_search_;
     Prop<bool> allow_clear_{false};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> loading_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
     std::optional<Prop<bool>> open_;

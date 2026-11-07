@@ -10,6 +10,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TabsComponentHost;
 }
 
@@ -130,6 +134,7 @@ public:
 
     TabsProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -140,6 +145,7 @@ public:
 
     TabsProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -199,14 +205,17 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TabsComponentHost;
     std::optional<Prop<String>> active_key_;
     std::optional<String> default_key_;
     Prop<TabsType> type_{TabsType::Line};
     Prop<TabsPlacement> placement_{TabsPlacement::Top};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<bool> centered_{false};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> lazy_{false};
     Prop<bool> destroy_hidden_{false};
     Prop<bool> hide_add_{false};

@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/skeleton_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -513,6 +514,7 @@ void Skeleton(SkeletonProps props, SkeletonContent content) {
 }
 
 void SkeletonAvatar(SkeletonAvatarProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_skeleton) {
         throw std::logic_error("SkeletonAvatar requires window component services");
     }
@@ -520,6 +522,7 @@ void SkeletonAvatar(SkeletonAvatarProps props) {
 }
 
 void SkeletonButton(SkeletonButtonProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_skeleton) {
         throw std::logic_error("SkeletonButton requires window component services");
     }
@@ -527,6 +530,7 @@ void SkeletonButton(SkeletonButtonProps props) {
 }
 
 void SkeletonInput(SkeletonInputProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_skeleton) {
         throw std::logic_error("SkeletonInput requires window component services");
     }

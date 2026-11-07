@@ -8,6 +8,18 @@ rynui_configure_cpp_target(rynui_i18n_context_tests)
 target_link_libraries(rynui_i18n_context_tests PRIVATE rynui_components)
 add_test(NAME rynui.i18n_context COMMAND rynui_i18n_context_tests)
 
+add_executable(rynui_config_provider_consumers_tests config_provider_consumers_tests.cpp config_provider_families_tests.cpp
+    selection_option_disabled_public_api_compile.cpp)
+rynui_configure_cpp_target(rynui_config_provider_consumers_tests)
+target_compile_options(rynui_config_provider_consumers_tests PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
+target_link_libraries(rynui_config_provider_consumers_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_config_provider_consumers_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(config_case IN ITEMS sources compact_group input_gates reentry form_sources compound popup_service collections_idle getter_retirement boundary_rtl observer_retirement generated_options)
+    add_test(NAME rynui.config_provider_${config_case} COMMAND rynui_config_provider_consumers_tests ${config_case})
+endforeach()
+
 # The application definition has only public RynUI includes; the second TU is
 # the real CPU host/retained-text/editor test driver.
 add_executable(rynui_i18n_public_api_tests i18n_public_api_tests.cpp

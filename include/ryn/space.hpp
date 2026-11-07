@@ -12,6 +12,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 struct SpaceAddonPropsAccess;
 
 struct SpacePropsAccess;
@@ -40,6 +44,7 @@ public:
 
     SpaceProps& direction(Prop<FlexDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -85,11 +90,13 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::SpacePropsAccess;
 
     Prop<bool> vertical_{false};
     std::optional<Prop<SpaceOrientation>> orientation_;
     Prop<FlexDirection> direction_{FlexDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<bool> wrap_{false};
     Prop<SpaceAlign> align_{SpaceAlign::Auto};
     Prop<LayoutGap> size_{LayoutGap{SpaceSize::Small}};
@@ -112,6 +119,7 @@ public:
 
     SpaceCompactProps& direction(Prop<FlexDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -132,9 +140,11 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::SpaceCompactPropsAccess;
     Prop<SpaceOrientation> orientation_{SpaceOrientation::Horizontal};
     Prop<FlexDirection> direction_{FlexDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<ControlSize> size_{ControlSize::Middle};
     bool explicit_size_{};
     Prop<bool> block_{false};
@@ -166,6 +176,7 @@ public:
 
     SpaceAddonProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -175,11 +186,13 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::SpaceAddonPropsAccess;
     std::optional<Prop<ControlSize>> size_;
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     LayoutStyle layout_;
 };
 

@@ -52,6 +52,7 @@ add_executable(
     rynui_token_gallery
     token_gallery/main.cpp
     token_gallery/gallery_pages_runtime.cpp
+    token_gallery/gallery_i18n_acceptance.cpp
     token_gallery/gallery_existing_data_entry_acceptance.cpp
     token_gallery/gallery_status_acceptance.cpp
     token_gallery/gallery_table_tour_acceptance.cpp

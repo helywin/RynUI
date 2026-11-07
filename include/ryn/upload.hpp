@@ -10,6 +10,10 @@
 #include <optional>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
+
 struct FormControlGeometry;
 class UploadRef;
 
@@ -296,6 +300,7 @@ public:
 
     UploadProps& disabled(Prop<bool> v = true) {
         disabled_ = std::move(v);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -311,11 +316,13 @@ public:
 
     UploadProps& rtl(Prop<bool> v = true) {
         rtl_ = std::move(v);
+        explicit_rtl_ = true;
         return *this;
     }
 
     UploadProps& size(Prop<ControlSize> v) {
         size_ = std::move(v);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -345,6 +352,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::UploadComponentHost;
     std::optional<Prop<UploadFiles>> files_;
     UploadFiles default_files_;
@@ -370,10 +378,13 @@ private:
     Prop<UploadType> type_{UploadType::Select};
     Prop<UploadListActions> list_actions_{UploadListActions{}};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     Prop<bool> visible_{true};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputStatus> status_{InputStatus::Default};
     std::optional<Prop<UploadLocale>> locale_;
     Prop<bool> dialog_on_click_{true};

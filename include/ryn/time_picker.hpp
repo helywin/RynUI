@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 struct PickerCandidate;
 enum class PickerRequestDisposition;
 } // namespace detail
@@ -104,6 +108,8 @@ struct TimePickerPreset final {
     String key;
     String label;
     std::function<TimePickerValue()> value;
+    std::optional<MessageKey> label_message{};
+    MessageArgs label_args{};
 };
 
 namespace detail {
@@ -168,6 +174,7 @@ public:
 
     TimePickerProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -178,6 +185,7 @@ public:
 
     TimePickerProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -261,6 +269,7 @@ public:
 
     TimePickerProps& direction(Prop<TextDirection> v) {
         direction_ = std::move(v);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -300,6 +309,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TimePickerComponentHost;
     friend class detail::DatePickerComponentHost;
     std::optional<Prop<TimePickerValue>> value_;
@@ -312,8 +322,10 @@ private:
     Prop<bool> need_confirm_{true};
     Prop<bool> allow_clear_{true};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
     std::optional<Prop<String>> placeholder_;
@@ -328,6 +340,7 @@ private:
     Prop<bool> change_on_scroll_{false};
     Prop<bool> show_now_{false};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<PickerPlacement> placement_{PickerPlacement::BottomLeft};
     std::function<TimeOfDay()> clock_;
     std::vector<TimePickerPreset> presets_;
@@ -401,6 +414,7 @@ public:
 
     TimeRangePickerProps& disabled(Prop<bool> v = true) {
         disabled_ = std::move(v);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -435,6 +449,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TimePickerComponentHost;
     friend class detail::DatePickerComponentHost;
     std::optional<Prop<TimePickerRangeValue>> value_;
@@ -444,6 +459,7 @@ private:
     std::optional<bool> default_open_;
     std::optional<Prop<PickerEndpoint>> endpoint_;
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     TimePickerProps picker_;
     TimeRangePickerRef ref_;
     std::function<bool(TimeOfDay, PickerEndpoint, const TimePickerRangeValue&)> disabled_time_;

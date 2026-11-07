@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/space_addon.hpp"
 
 #include "runtime/layout_style_adapter.hpp"
@@ -289,6 +290,7 @@ void SpaceAddonHost::synchronize_auxiliary_geometry(runtime::Size viewport, runt
 
 namespace ryn {
 void SpaceAddon(SpaceAddonProps props, SpaceAddonContent content) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_addon) {
         throw std::logic_error("SpaceAddon requires an active component Host");
     }

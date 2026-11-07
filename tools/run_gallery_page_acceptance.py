@@ -44,7 +44,8 @@ def validate_result(value, expected_platform, preset, configuration):
     return value
 
 
-def run(binary, log_dir, preset, configuration="Release", timeout=30, pages=(), execute=subprocess.run, system=None):
+def run(binary, log_dir, preset, configuration="Release", timeout=30, pages=(), execute=subprocess.run, system=None,
+        visual=False, i18n=False):
     binary = Path(binary).resolve()
     log_dir = Path(log_dir).resolve()
     if not log_dir.is_relative_to(ROOT / "out") or log_dir == ROOT / "out":
@@ -58,6 +59,10 @@ def run(binary, log_dir, preset, configuration="Release", timeout=30, pages=(), 
     output = log_dir / "native-result.json"
     output.unlink(missing_ok=True)
     command = [str(binary), "--page-acceptance", f"--page-output={output}", f"--page-timeout={timeout}"]
+    if visual or i18n:
+        command.append("--page-visual")
+    if i18n:
+        command.append("--page-i18n")
     command += [f"--page={page}" for page in pages]
     if native_platform == "linux":
         command = [sys.executable, str(ROOT / "tools/run_background_wayland.py"), "--log-dir", str(log_dir / "wayland"),
@@ -74,7 +79,7 @@ def run(binary, log_dir, preset, configuration="Release", timeout=30, pages=(), 
         if completed.returncode:
             raise ValueError(f"Native test exited with {completed.returncode}")
         value = validate_result(json.loads(output.read_text(encoding="utf-8")), native_platform, preset, configuration)
-        if not pages and not (value["host_input_area"] and value["host_cursor_sync"]):
+        if not pages and not (visual or i18n) and not (value["host_input_area"] and value["host_cursor_sync"]):
             raise ValueError("Default matrix did not exercise host input area/cursor synchronization")
         summary["status"] = "passed"
     except subprocess.TimeoutExpired:
@@ -94,9 +99,12 @@ def main():
     parser.add_argument("--configuration", choices=("Debug", "Release"), default="Release")
     parser.add_argument("--timeout", type=int, default=30)
     parser.add_argument("--page", action="append", default=[])
+    parser.add_argument("--visual", action="store_true", help="Use the hidden offscreen native path")
+    parser.add_argument("--i18n", action="store_true", help="Run the bounded bilingual sequence (implies --visual)")
     args = parser.parse_args()
     try:
-        return run(args.binary, args.log_dir, args.preset, args.configuration, args.timeout, args.page)
+        return run(args.binary, args.log_dir, args.preset, args.configuration, args.timeout, args.page,
+                   visual=args.visual, i18n=args.i18n)
     except ValueError as error:
         parser.error(str(error))
 

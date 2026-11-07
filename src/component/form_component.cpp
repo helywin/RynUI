@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/form_component.hpp"
 #include "component/localized_prop.hpp"
 #include "component/form_focus_context.hpp"
@@ -89,6 +90,8 @@ struct FormState final {
     std::shared_ptr<FormModel> model{std::make_shared<FormModel>()};
     Signal<FormPresentation> presentation{FormPresentation{}};
     bool locale_explicit{};
+    bool local_size{};
+    bool local_direction{};
     FormScrollTarget scroll;
     std::uint64_t scroll_generation{};
     std::function<void()> pending_scroll_focus;
@@ -105,6 +108,8 @@ struct FormItemState final {
     std::weak_ptr<FormHostLifetime> lifetime;
     runtime::ComponentId native_enter_claimant;
     bool control_claimed{};
+    bool local_size{};
+    bool local_direction{};
     bool native_enter_claimed{};
     bool no_style{};
     bool hidden{};
@@ -113,6 +118,7 @@ struct FormItemState final {
     bool stacked_columns{};
     bool custom_label{};
     bool custom_help{};
+    bool custom_error{};
     bool custom_extra{};
     runtime::ComponentId feedback_text;
     runtime::ComponentId help_content;
@@ -140,6 +146,7 @@ struct FormItemState final {
     FormItemSnapshot regions;
     Signal<String> label{String{}};
     Signal<String> help{String{}};
+    Signal<String> error_text{String{}};
     Signal<String> feedback{String{}};
     Signal<runtime::SemanticForeground> label_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> required_color{{0, 0, 0, 1}};
@@ -399,9 +406,17 @@ void FormComponentHost::mount(const FormProps& props, const FormContent& content
     }
     const auto resolve_presentation = [props, config = build.config_scope()] {
         auto value = props.presentation_ ? read_prop(*props.presentation_) : props.options_;
-        if (!props.presentation_ && !props.locale_explicit_) {
+        if (!props.presentation_) {
             const auto& snapshot = config->snapshot();
-            value.locale = snapshot.catalog.pack(snapshot.locale.effective).data().form;
+            if (!props.locale_explicit_) {
+                value.locale = snapshot.catalog.pack(snapshot.locale.effective).data().form;
+            }
+            if (!props.explicit_size_ && snapshot.explicit_size) {
+                value.size = *snapshot.explicit_size;
+            }
+            if (!props.explicit_direction_ && snapshot.explicit_direction) {
+                value.direction = *snapshot.explicit_direction;
+            }
         }
         return value;
     };
@@ -413,6 +428,8 @@ void FormComponentHost::mount(const FormProps& props, const FormContent& content
     state.scroll = props.scroll_;
     state.presentation.set(initial_presentation);
     state.locale_explicit = props.presentation_.has_value() || props.locale_explicit_;
+    state.local_size = props.presentation_.has_value() || props.explicit_size_;
+    state.local_direction = props.presentation_.has_value() || props.explicit_direction_;
     const auto model = state.model;
     const auto node = build.root(id);
     auto& services = *services_;
@@ -585,13 +602,19 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
     state.id = id;
     state.custom_label = props.label_slot_.has_value();
     state.custom_help = props.help_slot_.has_value();
+    state.custom_error = props.error_text_.has_value();
     state.custom_extra = props.extra_slot_.has_value();
     state.form = parent->id;
+    state.local_size = props.presentation_.has_value() || parent->local_size;
+    state.local_direction = props.presentation_.has_value() || parent->local_direction;
     state.lifetime = lifetime_;
     state.presentation = resolve_presentation();
     state.field = props.field_ ? props.field_ : make_form_field(String{});
     state.label.set(read_prop(props.label_));
     state.help.set(read_prop(props.help_));
+    if (props.error_text_) {
+        state.error_text.set(read_prop(*props.error_text_));
+    }
     const auto field = state.field;
     field->preserve = props.preserve_.value_or(model->preserve);
     if (!props.field_) {
@@ -886,6 +909,14 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
             refresh(id, true);
         }
     });
+    if (props.error_text_) {
+        connect_prop(scope, *props.error_text_, [this, id](String value) {
+            if (auto* item = services_->components().state<FormItemState>(id)) {
+                item->error_text.set(std::move(value));
+                refresh(id, true);
+            }
+        });
+    }
     connect_prop(scope, Prop<String>{bind([field] { return form_field_error(field); })},
                  [this, id](String) { refresh(id, true); });
     // Observe authoritative values as well as internal writes; an unrelated field never reruns this slot.
@@ -936,12 +967,13 @@ void FormComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     if (!state || !services_->components().scope(id).active()) {
         return;
     }
-    const auto feedback = !error.empty()                             ? error
+    const auto display_error = !error.empty() && state->custom_error ? state->error_text.get() : error;
+    const auto feedback = !error.empty()                             ? display_error
                           : !state->help.get().empty()               ? state->help.get()
                           : !meta.warnings.empty()                   ? meta.warnings.front()
                           : status == FormValidateStatus::Validating ? state->presentation.locale.validating
                                                                      : String{};
-    state->feedback.set(state->custom_help ? error : feedback);
+    state->feedback.set(state->custom_help ? display_error : feedback);
     state->colon.set(state->custom_label && state->presentation.layout == FormLayout::Horizontal &&
                              state->presentation.colon
                          ? String{u8":"}
@@ -1545,6 +1577,11 @@ FormFieldMeta FormListRef::meta() const {
     return list && list->alive ? form_field_meta(list->validation) : FormFieldMeta{};
 }
 
+std::optional<FormIssueSource> FormListRef::errorSource() const {
+    const auto list = state_->list.lock();
+    return list && list->alive ? form_field_error_source(list->validation) : std::nullopt;
+}
+
 FormListRef::FormListRef() : state_(std::make_shared<detail::FormListRefState>()) {}
 
 bool FormListRef::bound() const {
@@ -2084,6 +2121,7 @@ void FormControl(InputNumberProps props) {
 }
 
 void FormControl(SelectProps props) {
+    detail::ConfigDefaults::apply(props);
     const auto attach = detail::FormAutoControlAccess::bind(props);
     if (!attach) {
         throw std::invalid_argument("FormControl requires an unclaimed typed field without another explicit binding");
@@ -2241,22 +2279,42 @@ std::optional<FormContextBinding> automatic_context() {
     return {};
 }
 
-template <class Props, class Binding> void automatic_input(Props& props, const Binding& binding) {
+Prop<ControlSize> form_size_default(Prop<FormPresentation> presentation) {
+    const auto* item = runtime::require_component_build_context().nearest_state<FormItemState>();
+    return config_default(Prop<ControlSize>{bind([presentation] { return read_prop(presentation).size; })},
+                          item && item->local_size,
+                          [](const runtime::ConfigSnapshot& value) { return value.explicit_size; });
+}
+
+Prop<TextDirection> form_direction_default(Prop<FormPresentation> presentation) {
+    const auto* item = runtime::require_component_build_context().nearest_state<FormItemState>();
+    return config_default(Prop<TextDirection>{bind([presentation] { return read_prop(presentation).direction; })},
+                          item && item->local_direction,
+                          [](const runtime::ConfigSnapshot& value) { return value.explicit_direction; });
+}
+
+template <class Props, class Binding>
+void automatic_input(Props& props, const Binding& binding, bool explicit_size, bool explicit_direction) {
     const auto presentation = binding.presentation();
     props.status(binding.status())
         .disabled(binding.disabled())
         .readOnly(binding.readOnly())
-        .size(bind([presentation] { return FormPropBridge::read(presentation).size; }))
-        .variant(bind([presentation] { return FormPropBridge::read(presentation).variant; }))
-        .direction(bind([presentation] { return FormPropBridge::read(presentation).direction; }));
+        .variant(bind([presentation] { return FormPropBridge::read(presentation).variant; }));
+    if (!explicit_size && !nearest_compact(runtime::require_component_build_context())) {
+        props.size(form_size_default(presentation));
+    }
+    if (!explicit_direction) {
+        props.direction(form_direction_default(presentation));
+    }
 }
 } // namespace
 
 FormControlMount FormAutoControlAccess::bind(InputProps& props) {
+    ConfigDefaults::apply(props);
     if (const auto context = automatic_context()) {
         const auto disabled = props.common_.disabled_;
         const auto readonly = props.common_.read_only_;
-        automatic_input(props, *context);
+        automatic_input(props, *context, props.common_.explicit_size_, props.common_.explicit_direction_);
         props
             .disabled(ryn::bind([disabled, gate = context->disabled()] {
                 return FormPropBridge::read(disabled) || FormPropBridge::read(gate);
@@ -2288,7 +2346,7 @@ FormControlMount FormAutoControlAccess::bind(InputProps& props) {
             next();
         })
         .ref(ref);
-    automatic_input(props, binding);
+    automatic_input(props, binding, props.common_.explicit_size_, props.common_.explicit_direction_);
     props
         .disabled(ryn::bind([disabled, gate = binding.disabled()] {
             return FormPropBridge::read(disabled) || FormPropBridge::read(gate);
@@ -2300,10 +2358,11 @@ FormControlMount FormAutoControlAccess::bind(InputProps& props) {
 }
 
 FormControlMount FormAutoControlAccess::bind(TextAreaProps& props) {
+    ConfigDefaults::apply(props);
     if (const auto context = automatic_context()) {
         const auto disabled = props.common_.disabled_;
         const auto readonly = props.common_.read_only_;
-        automatic_input(props, *context);
+        automatic_input(props, *context, props.common_.explicit_size_, props.common_.explicit_direction_);
         props
             .disabled(ryn::bind([disabled, gate = context->disabled()] {
                 return FormPropBridge::read(disabled) || FormPropBridge::read(gate);
@@ -2335,7 +2394,7 @@ FormControlMount FormAutoControlAccess::bind(TextAreaProps& props) {
             next();
         })
         .ref(ref);
-    automatic_input(props, binding);
+    automatic_input(props, binding, props.common_.explicit_size_, props.common_.explicit_direction_);
     props
         .disabled(ryn::bind([local_disabled, gate = binding.disabled()] {
             return FormPropBridge::read(local_disabled) || FormPropBridge::read(gate);
@@ -2347,10 +2406,11 @@ FormControlMount FormAutoControlAccess::bind(TextAreaProps& props) {
 }
 
 FormControlMount FormAutoControlAccess::bind(InputNumberProps& props) {
+    ConfigDefaults::apply(props);
     if (const auto context = automatic_context()) {
         const auto disabled = props.input_.common_.disabled_;
         const auto readonly = props.input_.common_.read_only_;
-        automatic_input(props, *context);
+        automatic_input(props, *context, props.input_.common_.explicit_size_, props.input_.common_.explicit_direction_);
         props
             .disabled(ryn::bind([disabled, gate = context->disabled()] {
                 return FormPropBridge::read(disabled) || FormPropBridge::read(gate);
@@ -2386,7 +2446,7 @@ FormControlMount FormAutoControlAccess::bind(InputNumberProps& props) {
                 next();
             })
             .ref(ref);
-        automatic_input(props, binding);
+        automatic_input(props, binding, props.input_.common_.explicit_size_, props.input_.common_.explicit_direction_);
         props
             .disabled(ryn::bind([local_disabled, gate = binding.disabled()] {
                 return FormPropBridge::read(local_disabled) || FormPropBridge::read(gate);
@@ -2406,7 +2466,7 @@ FormControlMount FormAutoControlAccess::bind(InputNumberProps& props) {
             next();
         })
         .ref(ref);
-    automatic_input(props, binding);
+    automatic_input(props, binding, props.input_.common_.explicit_size_, props.input_.common_.explicit_direction_);
     props
         .disabled(ryn::bind([local_disabled, gate = binding.disabled()] {
             return FormPropBridge::read(local_disabled) || FormPropBridge::read(gate);
@@ -2418,7 +2478,15 @@ FormControlMount FormAutoControlAccess::bind(InputNumberProps& props) {
 }
 
 FormControlMount FormAutoControlAccess::bind(SelectProps& props) {
+    ConfigDefaults::apply(props);
     if (const auto context = automatic_context()) {
+        const auto presentation = context->presentation();
+        if (!props.explicit_size_ && !nearest_compact(runtime::require_component_build_context())) {
+            props.size(form_size_default(presentation));
+        }
+        if (!props.explicit_direction_) {
+            props.direction(form_direction_default(presentation));
+        }
         const auto disabled = props.disabled_;
         props.status(context->status()).disabled(ryn::bind([disabled, gate = context->uneditable()] {
             return FormPropBridge::read(disabled) || FormPropBridge::read(gate);
@@ -2437,9 +2505,13 @@ FormControlMount FormAutoControlAccess::bind(SelectProps& props) {
     props.default_values_.reset();
     const auto* item = runtime::require_component_build_context().nearest_state<FormItemState>();
     const auto presentation = Prop<FormPresentation>{item->field->presentation};
-    props.size(ryn::bind([presentation] { return FormPropBridge::read(presentation).size; }))
-        .variant(ryn::bind([presentation] { return FormPropBridge::read(presentation).variant; }))
-        .direction(ryn::bind([presentation] { return FormPropBridge::read(presentation).direction; }));
+    if (!props.explicit_size_ && !nearest_compact(runtime::require_component_build_context())) {
+        props.size(form_size_default(presentation));
+    }
+    if (!props.explicit_direction_) {
+        props.direction(form_direction_default(presentation));
+    }
+    props.variant(ryn::bind([presentation] { return FormPropBridge::read(presentation).variant; }));
     const InputRef ref = props.ref_.value_or(InputRef{});
     if (std::holds_alternative<SelectValues>(item->field->initial)) {
         FormControlBinding<SelectValues> binding;
@@ -2479,7 +2551,14 @@ FormControlMount FormAutoControlAccess::bind(SelectProps& props) {
 }
 
 FormControlMount FormAutoControlAccess::bind(CheckboxProps& props) {
+    ConfigDefaults::apply(props);
     if (const auto context = automatic_context()) {
+        if (!props.direction_) {
+            props.direction(ryn::bind([direction = form_direction_default(context->presentation())] {
+                return read_prop(direction) == TextDirection::RightToLeft ? CheckboxDirection::RightToLeft
+                                                                          : CheckboxDirection::LeftToRight;
+            }));
+        }
         const auto disabled = props.disabled_;
         props.disabled(ryn::bind([disabled, gate = context->uneditable()] {
             return FormPropBridge::read(disabled) || FormPropBridge::read(gate);
@@ -2493,10 +2572,9 @@ FormControlMount FormAutoControlAccess::bind(CheckboxProps& props) {
     if (!props.direction_) {
         const auto* item = runtime::require_component_build_context().nearest_state<FormItemState>();
         const auto context = Prop<FormPresentation>{item->field->presentation};
-        props.direction(ryn::bind([context] {
-            return FormPropBridge::read(context).direction == TextDirection::RightToLeft
-                       ? CheckboxDirection::RightToLeft
-                       : CheckboxDirection::LeftToRight;
+        props.direction(ryn::bind([direction = form_direction_default(context)] {
+            return read_prop(direction) == TextDirection::RightToLeft ? CheckboxDirection::RightToLeft
+                                                                      : CheckboxDirection::LeftToRight;
         }));
     }
     const auto local_disabled = props.disabled_;
@@ -2513,7 +2591,20 @@ FormControlMount FormAutoControlAccess::bind(CheckboxProps& props) {
 }
 
 FormControlMount FormAutoControlAccess::bind(SwitchProps& props) {
+    ConfigDefaults::apply(props);
     if (const auto context = automatic_context()) {
+        const auto presentation = context->presentation();
+        if (!props.explicit_direction_) {
+            props.direction(ryn::bind([direction = form_direction_default(presentation)] {
+                return read_prop(direction) == TextDirection::RightToLeft ? SwitchDirection::RightToLeft
+                                                                          : SwitchDirection::LeftToRight;
+            }));
+        }
+        if (!props.explicit_size_) {
+            props.size(ryn::bind([size = form_size_default(presentation)] {
+                return read_prop(size) == ControlSize::Small ? SwitchSize::Small : SwitchSize::Middle;
+            }));
+        }
         const auto disabled = props.disabled_;
         props.disabled(ryn::bind([disabled, gate = context->uneditable()] {
             return FormPropBridge::read(disabled) || FormPropBridge::read(gate);
@@ -2526,21 +2617,17 @@ FormControlMount FormAutoControlAccess::bind(SwitchProps& props) {
     }
     const auto* item = runtime::require_component_build_context().nearest_state<FormItemState>();
     const auto context = Prop<FormPresentation>{item->field->presentation};
-    const auto direction = props.direction_;
-    const auto size = props.size_;
-    props
-        .direction(ryn::bind([context, direction] {
-            return FormPropBridge::read(direction) == SwitchDirection::RightToLeft ||
-                           FormPropBridge::read(context).direction == TextDirection::RightToLeft
-                       ? SwitchDirection::RightToLeft
-                       : SwitchDirection::LeftToRight;
-        }))
-        .size(ryn::bind([context, size] {
-            return FormPropBridge::read(size) == SwitchSize::Small ||
-                           FormPropBridge::read(context).size == ControlSize::Small
-                       ? SwitchSize::Small
-                       : SwitchSize::Middle;
+    if (!props.explicit_direction_) {
+        props.direction(ryn::bind([direction = form_direction_default(context)] {
+            return read_prop(direction) == TextDirection::RightToLeft ? SwitchDirection::RightToLeft
+                                                                      : SwitchDirection::LeftToRight;
         }));
+    }
+    if (!props.explicit_size_) {
+        props.size(ryn::bind([size = form_size_default(context)] {
+            return read_prop(size) == ControlSize::Small ? SwitchSize::Small : SwitchSize::Middle;
+        }));
+    }
     const auto local_disabled = props.disabled_;
     props.default_checked_.reset();
     FormControlBinding<bool> binding;

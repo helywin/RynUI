@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/color_picker_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/localized_prop.hpp"
@@ -1214,6 +1215,7 @@ void ColorPickerPanelParts::renderPresets() const {
 }
 
 void ColorPicker(ColorPickerProps props, ColorPickerSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_picker) {
         throw std::logic_error("ColorPicker requires a Window component host");
     }

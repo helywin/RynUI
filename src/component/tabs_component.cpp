@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/tabs_component.hpp"
 #include "component/tabs_model.hpp"
 #include "component/navigation_transition.hpp"
@@ -1666,6 +1667,7 @@ void TabsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
 
 namespace ryn {
 void Tabs(TabsProps props, Prop<std::vector<TabItem>> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_tabs) {
         throw std::logic_error("Tabs requires window component services");
     }
@@ -1673,6 +1675,7 @@ void Tabs(TabsProps props, Prop<std::vector<TabItem>> items) {
 }
 
 void Tabs(TabsProps props, std::vector<TabItem> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_tabs) {
         throw std::logic_error("Tabs requires window component services");
     }

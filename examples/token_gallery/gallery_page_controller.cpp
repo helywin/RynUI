@@ -1,4 +1,5 @@
 #include "gallery_page_controller.hpp"
+#include "gallery_i18n.hpp"
 
 #include <ryn/button.hpp>
 #include <ryn/flex.hpp>
@@ -207,19 +208,19 @@ bool GalleryPageController::process() {
         tickets_->accepting = true;
         const auto lease = ticket();
         mount(ryn::Content{[this, lease] {
-            ryn::Text(u8"此页暂时无法显示");
+            gallery_label("gallery.shell.failed");
             ryn::Button(ryn::ButtonProps{}.onClick([this, lease] {
                 if (lease.valid()) {
                     this->request(model_->current());
                 }
             }),
-                        [] { ryn::Text(u8"重试"); });
+                        [] { gallery_label("gallery.shell.retry"); });
             ryn::Button(ryn::ButtonProps{}.onClick([this, lease] {
                 if (lease.valid()) {
                     this->request({});
                 }
             }),
-                        [] { ryn::Text(u8"返回组件总览"); });
+                        [] { gallery_label("gallery.shell.return"); });
         }});
     }
     frames_->request_frame();

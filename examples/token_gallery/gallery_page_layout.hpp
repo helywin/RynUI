@@ -33,7 +33,7 @@ inline GalleryPageLayout gallery_page_layout(ryn::runtime::Size viewport) {
     GalleryPageLayout result;
     result.narrow = viewport.width < 640;
     result.wide = viewport.width >= 1200;
-    result.header_height = result.narrow ? 96.0F : 60.0F;
+    result.header_height = viewport.width < 480 ? 128.0F : viewport.width < 960 ? 96.0F : 60.0F;
     result.header = {0, 0, viewport.width, result.header_height};
     result.gap = result.wide ? 24.0F : 16.0F;
     const float outer = viewport.width >= 960 ? 24.0F : 16.0F;

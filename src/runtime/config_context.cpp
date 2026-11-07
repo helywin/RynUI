@@ -50,7 +50,9 @@ std::shared_ptr<const ConfigSnapshot> ConfigScope::resolve(const ConfigSnapshot*
     }
     return std::make_shared<const ConfigSnapshot>(
         ConfigSnapshot{catalog, locale, std::move(format), format_request, std::move(messages), direction, size,
-                       overrides.disabled.value_or(parent ? parent->disabled : false)});
+                       overrides.disabled.value_or(parent ? parent->disabled : false),
+                       overrides.direction ? overrides.direction : (parent ? parent->explicit_direction : std::nullopt),
+                       overrides.size ? overrides.size : (parent ? parent->explicit_size : std::nullopt)});
 }
 
 ConfigScope::ConfigScope(std::shared_ptr<ConfigScope> parent, ConfigOverrides overrides,

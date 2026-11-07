@@ -7,6 +7,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class ModalComponentHost;
 class AppPanelService;
 } // namespace detail
@@ -137,6 +141,7 @@ public:
 
     DrawerProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -161,6 +166,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::ModalComponentHost;
     friend class detail::AppPanelService;
     Prop<bool> open_{false};
@@ -176,6 +182,7 @@ private:
     Prop<bool> lazy_{false};
     Prop<bool> destroy_hidden_{false};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<DrawerResize> resize_{DrawerResize{false}};
     Prop<DrawerPush> push_{DrawerPush{}};
     std::function<void(float)> on_resize_;

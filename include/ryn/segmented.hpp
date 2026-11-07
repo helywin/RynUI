@@ -13,6 +13,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class SegmentedComponentHost;
 }
 
@@ -124,6 +128,7 @@ public:
 
     SegmentedProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -163,6 +168,7 @@ public:
 
     SegmentedProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -182,11 +188,13 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::SegmentedComponentHost;
     std::optional<Prop<SegmentedValue>> typed_value_;
     std::optional<SegmentedValue> typed_default_;
     std::function<void(SegmentedValue)> on_value_change_;
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> visible_{true};
     Prop<bool> animated_{true};
     Prop<SegmentedShape> shape_{SegmentedShape::Default};
@@ -196,6 +204,7 @@ private:
     Prop<bool> block_{false};
     Prop<bool> vertical_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     std::function<void(String)> on_change_;
     LayoutStyle layout_;
 };

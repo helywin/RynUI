@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/modal_component.hpp"
 #include "component/localized_prop.hpp"
 #include "component/confirm_action.hpp"
@@ -870,7 +871,7 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
                                             if (s.drawer) {
                                                 return;
                                             }
-                                            Button(ButtonProps{}.onClick([this, id] {
+                                            Button(ButtonProps{}.disabled(false).onClick([this, id] {
                                                 request_cancel(id, ModalCancelReason::CancelButton);
                                             }),
                                                    ButtonContent{
@@ -878,6 +879,7 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
                                             s.snapshot.cancel = services.components().children(s.default_footer).back();
                                             Button(
                                                 ButtonProps{}
+                                                    .disabled(false)
                                                     .type(ButtonType::Primary)
                                                     .loading(s.loading)
                                                     .onClick([this, id] { request_ok(id); }),
@@ -940,6 +942,23 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
                 }});
         }});
     auto& scope = build.scope(id);
+    if (!drawer) {
+        connect_prop(scope, config_rtl(Prop<bool>{false}, false), [this, id](bool rtl) {
+            const auto* state = services_->components().state<ModalState>(id);
+            if (!state || !state->default_footer.valid()) {
+                return;
+            }
+            layout::FlexLayout row;
+            row.main_gap = 8;
+            row.fill_width = true;
+            row.wrap = layout::FlexWrap::no_wrap;
+            row.justify = layout::FlexJustify::end;
+            row.align = layout::FlexAlign::center;
+            row.item_policy = layout::FlexItemPolicy::sequential;
+            row.right_to_left = rtl;
+            services_->layout().set_layout(services_->components().root(state->default_footer), row);
+        });
+    }
     const auto option = [&]<typename T>(const Prop<T>& prop, auto update, bool geometry = false) {
         connect_prop(scope, prop, [this, id, update, geometry](T value) {
             if (auto* s = services_->components().state<ModalState>(id)) {
@@ -1747,6 +1766,7 @@ void ModalComponentHost::on_window_active(bool) {}
 
 namespace ryn {
 void Drawer(DrawerProps props, DrawerContent content, DrawerSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_modals) {
         throw std::logic_error("Drawer requires window component services");
     }

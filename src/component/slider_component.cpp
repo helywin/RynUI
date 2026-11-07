@@ -1,4 +1,5 @@
 #include "component/slider_component.hpp"
+#include "component/config_defaults.hpp"
 #include "component/slider_value.hpp"
 #include "component/tooltip_component.hpp"
 #include "input/pressable_behavior.hpp"
@@ -1618,14 +1619,17 @@ bool SliderRef::bound() const {
 }
 
 void Slider(SliderProps props) {
+    detail::ConfigDefaults::apply(props);
     detail::SliderPropsAccess::mount(props);
 }
 
 void RangeSlider(RangeSliderProps props) {
+    detail::ConfigDefaults::apply(props);
     detail::SliderPropsAccess::mount(props);
 }
 
 void MultiSlider(MultiSliderProps props) {
+    detail::ConfigDefaults::apply(props);
     detail::SliderPropsAccess::mount(props);
 }
 } // namespace ryn

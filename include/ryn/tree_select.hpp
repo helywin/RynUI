@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TreeSelectComponentHost;
 }
 
@@ -231,6 +235,7 @@ public:
 
     TreeSelectProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -351,6 +356,7 @@ public:
 
     TreeSelectProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -366,6 +372,7 @@ public:
 
     TreeSelectProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -425,6 +432,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TreeSelectComponentHost;
     std::optional<Prop<std::vector<TreeSelectItem>>> items_;
     std::optional<Prop<TreeKeys>> values_;
@@ -437,6 +445,7 @@ private:
     Prop<bool> search_{false};
     Prop<bool> virtual_{false};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> lines_{false};
     Prop<float> row_height_{24};
     Prop<TreeSelectCheckedStrategy> strategy_{TreeSelectCheckedStrategy::ShowChild};
@@ -466,9 +475,11 @@ private:
     std::optional<Prop<String>> not_found_content_;
     Prop<bool> allow_clear_{false};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     Prop<bool> visible_{true};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<float> list_height_{256};

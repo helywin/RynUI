@@ -8,6 +8,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class FloatButtonComponentHost;
 }
 enum class FloatButtonType { Default, Primary };
@@ -52,6 +56,7 @@ public:
 
     FloatButtonProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -101,10 +106,12 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::FloatButtonComponentHost;
     Prop<FloatButtonType> type_{FloatButtonType::Default};
     Prop<FloatButtonShape> shape_{FloatButtonShape::Circle};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<String> tooltip_{String{}};
     std::optional<TooltipProps> tooltip_config_;
     Prop<bool> floating_{true};
@@ -129,6 +136,7 @@ public:
 
     FloatButtonGroupProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -193,10 +201,12 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::FloatButtonComponentHost;
     Prop<FloatButtonShape> shape_{FloatButtonShape::Circle};
     Prop<FloatButtonType> type_{FloatButtonType::Default};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<FloatButtonTrigger> trigger_{FloatButtonTrigger::None};
     Prop<FloatButtonPlacement> placement_{FloatButtonPlacement::Top};
     Prop<bool> floating_{true};

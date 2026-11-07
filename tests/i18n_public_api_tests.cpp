@@ -1,6 +1,8 @@
 #include "../examples/i18n_app/i18n_app.hpp"
 #include "support/i18n_test.hpp"
 #include "support/input_fixture.hpp"
+#include "component/modal_component.hpp"
+#include "component/select_component.hpp"
 
 namespace {
 using namespace ryn;
@@ -125,6 +127,50 @@ void reactive_argument_errors_keep_last_good_text() {
     require(reads == evaluations && !tr.active(), "disposed application retained message argument observers");
 }
 
+void public_rich_popup_exact_values_and_independent_overrides() {
+    ryn_test::input_component::Fixture fixture;
+    auto model = std::make_shared<i18n_example::Model>();
+    fixture.services.mount(i18n_example::content(model));
+    fixture.synchronize();
+    require(model->outer.formatNumber(std::uint64_t{18446744073709551615ULL}) == String{u8"18,446,744,073,709,551,615"},
+            "public application lost exact integer precision");
+    model->popup_open.set(true);
+    fixture.synchronize(800, {0, 0, 800, 600});
+    const auto modal = fixture.services.modal().mounted().front();
+    const auto before = fixture.services.modal().snapshot(modal);
+    require(before.visible && model->popup_editor.focus(), "public rich Modal did not mount an actual editor");
+    const auto session = fixture.inputs.sessions().active();
+    require(session.valid(), "public rich Modal has no real input session");
+    auto& editor = fixture.inputs.editors().require(session.owner);
+    require(static_cast<bool>(editor.replace_range({0, editor.value().size()}, "a中文z")), "rich draft setup failed");
+    require(model->popup_editor.select(7, 1), "rich reverse selection setup failed");
+    require(static_cast<bool>(editor.update_composition({String{u8"拼"}, {0, 1}, {}})), "rich preedit setup failed");
+    const auto selection = editor.selection();
+    const auto history = editor.history();
+    const auto runs = model->rich_mount_runs;
+    model->language.set(locales::en_US);
+    model->format_language.set(locales::en_US);
+    model->direction.set(TextDirection::RightToLeft);
+    fixture.synchronize(800, {0, 0, 800, 600});
+    const auto after = fixture.services.modal().snapshot(modal);
+    require(after.visible && after.body == before.body && model->rich_mount_runs == runs && model->mount_runs == 1 &&
+                editor.value() == "a中文z" && editor.selection() == selection && editor.composition().active &&
+                editor.history().undo_count == history.undo_count &&
+                model->outer.formatLocale().effective == locales::en_US &&
+                model->inner.formatLocale().effective == locales::zh_CN &&
+                model->inner.locale().effective == locales::en_US,
+            "public rich content lost popup, editor state or independent nested configuration");
+    model->language.set(locales::zh_CN);
+    fixture.synchronize(800, {0, 0, 800, 600});
+    require(fixture.services.modal().snapshot(modal).body == before.body && model->rich_mount_runs == runs,
+            "restoring Chinese rebuilt the retained public popup slot");
+    fixture.services.dispose();
+    model->language.set(locales::en_US);
+    model->popup_open.set(false);
+    require(!model->outer.active() && !model->inner.active() && fixture.inputs.mounted_inputs().empty(),
+            "public application retirement leaked locale observers or rich inputs");
+}
+
 void captured_append_uses_live_callsite_context() {
     ryn_test::input_component::Fixture fixture;
     const MessageKey key{u8"app.append", String{u8"English"}};
@@ -172,7 +218,8 @@ int main() {
         public_application_retains_real_text_and_editor();
         reactive_argument_errors_keep_last_good_text();
         captured_append_uses_live_callsite_context();
-        std::cout << "i18n public API: 3 contract groups passed\n";
+        public_rich_popup_exact_values_and_independent_overrides();
+        std::cout << "i18n public API: 4 contract groups passed\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

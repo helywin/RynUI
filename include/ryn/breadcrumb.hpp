@@ -12,6 +12,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class BreadcrumbComponentHost;
 }
 
@@ -137,6 +141,7 @@ public:
 
     BreadcrumbProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -156,10 +161,12 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::BreadcrumbComponentHost;
     Prop<std::vector<BreadcrumbItem>> items_{std::vector<BreadcrumbItem>{}};
     Prop<bool> wrap_{true};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     std::optional<BreadcrumbSeparator> separator_;
     std::function<void(BreadcrumbActivation)> on_activate_;
     LayoutStyle layout_;

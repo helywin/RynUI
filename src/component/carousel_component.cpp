@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/carousel_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "animation/easing.hpp"
@@ -1856,6 +1857,7 @@ bool CarouselRef::focus() const {
 }
 
 void Carousel(CarouselProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_carousel) {
         throw std::logic_error("Carousel requires an active window component host");
     }

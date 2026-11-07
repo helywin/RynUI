@@ -40,11 +40,26 @@ void test_values_and_authority() {
     round_trip(TableSort{String{u8"quantity"}, TableSortOrder::Descend});
     round_trip(std::vector<SelectOption>{{SelectValue{u8"desktop"}, String{u8"桌面"}, false},
                                          {SelectValue{std::int64_t{7}}, String{u8"七"}, true}});
+    round_trip(SelectionOptionDisabled{});
+    round_trip(SelectionOptionDisabled{false});
+    round_trip(SelectionOptionDisabled{true});
+    round_trip(std::vector<CheckboxOption>{{String{u8"unset"}, u8"Unset"},
+                                           {String{u8"enabled"}, u8"Enabled", false},
+                                           {String{u8"disabled"}, u8"Disabled", true}});
+    round_trip(std::vector<RadioOption>{{String{u8"unset"}, u8"Unset"},
+                                        {String{u8"enabled"}, u8"Enabled", false},
+                                        {String{u8"disabled"}, u8"Disabled", true}});
     GalleryPageDraft draft;
     const CheckboxValues original{String{u8"a"}, String{u8"b"}};
     gallery_draft_write(draft, "choices", original);
     gallery_draft_write(draft, "choices", CheckboxValues{});
     require(gallery_draft_read(draft, "choices", original).empty(), "empty selection restored stale entries");
+    draft.values["legacy-disabled"] = false;
+    const auto legacy = gallery_draft_read(draft, "legacy-disabled", SelectionOptionDisabled{});
+    require(legacy.explicitValue() == std::optional{false} && !legacy.valueOr(true),
+            "legacy bool draft lost its explicit enabled value");
+    require(gallery_draft_read(draft, "absent-disabled", SelectionOptionDisabled{}) == SelectionOptionDisabled{},
+            "missing draft made an unset source explicit");
 }
 
 void test_invalid_values_are_rejected() {

@@ -1,6 +1,7 @@
 #pragma once
 #include <ryn/component.hpp>
 #include <ryn/component_locales.hpp>
+#include <ryn/i18n.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
@@ -21,6 +22,8 @@ enum class TableFixed { None, Start, End };
 struct TableFilterItem final {
     String value;
     String label;
+    std::optional<MessageKey> label_message{};
+    MessageArgs label_args{};
     friend bool operator==(const TableFilterItem&, const TableFilterItem&) = default;
 };
 
@@ -133,6 +136,8 @@ struct TableOptions final {
     Prop<TextDirection> direction{TextDirection::LeftToRight};
     bool tree_rows{};
     bool selection_fixed{};
+    bool explicit_size{};
+    bool explicit_direction{};
 };
 
 void mount_table(TableOptions, Prop<std::vector<TableRecord>>, std::vector<TableColumnSchema>,
@@ -290,6 +295,7 @@ public:
 
     TableProps& size(Prop<ControlSize> value) {
         options_.size = std::move(value);
+        options_.explicit_size = true;
         return *this;
     }
 
@@ -325,6 +331,7 @@ public:
 
     TableProps& direction(Prop<TextDirection> value) {
         options_.direction = std::move(value);
+        options_.explicit_direction = true;
         return *this;
     }
 

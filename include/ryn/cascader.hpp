@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class CascaderComponentHost;
 }
 
@@ -131,6 +135,7 @@ public:
 
     CascaderProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -156,6 +161,7 @@ public:
 
     CascaderProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -171,6 +177,7 @@ public:
 
     CascaderProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -402,19 +409,23 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::CascaderComponentHost;
     Prop<std::vector<CascaderOption>> options_{std::vector<CascaderOption>{}};
     Prop<bool> multiple_{false};
     Prop<bool> change_on_select_{false};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     Prop<bool> visible_{true};
     Prop<bool> show_search_{false};
     Prop<bool> allow_clear_{true};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<PopoverPlacement> placement_{PopoverPlacement::BottomLeft};
     bool explicit_placement_{};
     bool explicit_expand_icon_{};

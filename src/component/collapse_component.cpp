@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/collapse_component.hpp"
 #include "input/pressable_behavior.hpp"
 #include "component/data_display_retained.hpp"
@@ -1149,6 +1150,7 @@ void CollapseComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
 
 namespace ryn {
 void Collapse(CollapseProps props, Prop<std::vector<CollapsePanel>> panels) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_collapse) {
         throw std::logic_error("Collapse requires window component services");
     }
@@ -1156,6 +1158,7 @@ void Collapse(CollapseProps props, Prop<std::vector<CollapsePanel>> panels) {
 }
 
 void Collapse(CollapseProps props, std::vector<CollapsePanel> panels) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_collapse) {
         throw std::logic_error("Collapse requires window component services");
     }

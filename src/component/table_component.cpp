@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/table_component.hpp"
 #include "component/localized_prop.hpp"
 #include "component/retained_slot_mount.hpp"
@@ -575,8 +576,14 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                                                                                  }
                                                                              }
                                                                          }),
-                                                                     CheckboxLabel{
-                                                                         [label = item.label] { Text(label); }});
+                                                                     CheckboxLabel{[label = item.label,
+                                                                                    message = item.label_message,
+                                                                                    args = item.label_args] {
+                                                                         Text(TextProps{}.content(
+                                                                             message ? Prop<String>{useI18n().text(
+                                                                                           *message, args)}
+                                                                                     : Prop<String>{label}));
+                                                                     }});
                                                              }
                                                          }});
                                                  }}});
@@ -1321,6 +1328,7 @@ void TableComponentHost::scroll_to(runtime::ComponentId id, float x, float y) {
 
 void TableComponentHost::mount(TableOptions options, const Prop<std::vector<TableRecord>>& source,
                                std::vector<TableColumnSchema> columns, const std::optional<TableEmpty>& empty) {
+    ConfigDefaults::apply(options);
     const auto records = read_prop(source);
     validate_records(records);
     if (columns.empty()) {

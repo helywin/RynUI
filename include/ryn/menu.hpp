@@ -11,6 +11,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class MenuComponentHost;
 class DropdownComponentHost;
 } // namespace detail
@@ -104,6 +108,7 @@ public:
 
     MenuProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -184,6 +189,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::MenuComponentHost;
     friend class detail::DropdownComponentHost;
     std::vector<MenuItem> items_;
@@ -191,6 +197,7 @@ private:
     Prop<MenuMode> mode_{MenuMode::Vertical};
     Prop<MenuTheme> theme_{MenuTheme::Inherit};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<bool> collapsed_{false};
     Prop<MenuSubMenuTrigger> submenu_trigger_{MenuSubMenuTrigger::Hover};
     Prop<float> open_delay_{0.0F};

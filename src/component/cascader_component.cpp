@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/cascader_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/input_component.hpp"
@@ -2613,6 +2614,7 @@ bool CascaderComponentHost::on_scroll_input(const input::ScrollInputEvent& event
 
 namespace ryn {
 void Cascader(CascaderProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_cascader) {
         throw std::logic_error("Cascader requires WindowComponentServices");
     }
@@ -2620,6 +2622,7 @@ void Cascader(CascaderProps props) {
 }
 
 void CascaderPanel(CascaderProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_cascader) {
         throw std::logic_error("CascaderPanel requires WindowComponentServices");
     }

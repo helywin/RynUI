@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/tree_select_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/tree_select_model.hpp"
@@ -1580,6 +1581,7 @@ void TreeSelectComponentHost::synchronize_auxiliary_geometry(runtime::Size, runt
 
 namespace ryn {
 void TreeSelect(TreeSelectProps props, std::vector<TreeSelectItem> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_tree_select) {
         throw std::logic_error("TreeSelect requires an active window component context");
     }

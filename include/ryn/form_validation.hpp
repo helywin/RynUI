@@ -7,6 +7,10 @@ enum class FormValidateTrigger { Manual, Change, Blur, ChangeAndBlur };
 enum class FormValidateStatus { None, Success, Warning, Error, Validating };
 enum class FormRuleType { Any, String, Number, Boolean, Array };
 
+// Provenance of the first current error. Literal includes explicit setFields
+// metadata even when its text equals a validator or builtin message.
+enum class FormIssueSource { Literal, Required, Invalid, Validator, RuleValidator, AsyncValidator };
+
 struct FormFieldMeta final {
     bool touched{};
     bool validating{};

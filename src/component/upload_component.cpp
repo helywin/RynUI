@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/upload_component.hpp"
 #include "component/upload_model.hpp"
 #include "component/form_focus_context.hpp"
@@ -1855,6 +1856,7 @@ bool UploadRef::abort(const UploadUid& v) const {
 }
 
 void Upload(UploadProps props, UploadSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_upload) {
         throw std::logic_error("Upload requires WindowComponentServices");
     }

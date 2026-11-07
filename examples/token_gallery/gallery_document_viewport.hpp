@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -34,11 +35,10 @@ struct GalleryComponentAnchor final {
     friend constexpr bool operator==(GalleryComponentAnchor, GalleryComponentAnchor) = default;
 };
 
-[[nodiscard]] GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view identity,
-                                                                         ryn::runtime::NodeId reference_node,
-                                                                         const ryn::detail::TextComponentHost& text,
-                                                                         const ryn::runtime::NodeStore& nodes,
-                                                                         ryn::runtime::NodeId scroll_root);
+[[nodiscard]] GalleryComponentAnchor gallery_component_navigation_anchor(
+    std::string_view identity, ryn::runtime::NodeId reference_node, const ryn::detail::TextComponentHost& text,
+    const ryn::runtime::NodeStore& nodes, ryn::runtime::NodeId scroll_root,
+    const std::function<std::optional<ryn::runtime::NodeId>(std::string_view)>& locate_heading = {});
 
 struct GalleryDocumentResizeAnchor final {
     GalleryDocumentSectionKind section{GalleryDocumentSectionKind::header_source};

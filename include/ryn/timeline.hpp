@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TimelineComponentHost;
 }
 
@@ -190,15 +194,18 @@ public:
 
     TimelineProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TimelineComponentHost;
     Prop<TimelineOrientation> orientation_{TimelineOrientation::Vertical};
     Prop<TimelineVariant> variant_{TimelineVariant::Outlined};
     Prop<TimelineTitleSpan> title_span_{TimelineTitleSpan{}};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<TimelineMode> mode_{TimelineMode::Start};
     Prop<bool> reverse_{false};
     Prop<bool> visible_{true};

@@ -11,6 +11,10 @@
 #include <optional>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
+
 enum class CarouselEffect { ScrollX, Fade };
 enum class CarouselDotPlacement { Top, Bottom, Start, End };
 enum class CarouselChangeSource { Arrow, Dot, Keyboard, Drag, Ref, Autoplay, Property, Items };
@@ -156,6 +160,7 @@ public:
 
     CarouselProps& direction(Prop<TextDirection> v) {
         direction_ = std::move(v);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -255,6 +260,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::CarouselComponentHost;
     Prop<std::vector<CarouselSlide>> slides_{std::vector<CarouselSlide>{}};
     std::optional<Prop<std::size_t>> current_;
@@ -270,6 +276,7 @@ private:
     Prop<bool> progress_{false};
     std::optional<Prop<bool>> vertical_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<bool> draggable_{false};
     Prop<bool> swipe_{true};
     Prop<float> threshold_{5};

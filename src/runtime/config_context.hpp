@@ -28,6 +28,8 @@ struct ConfigSnapshot final {
     TextDirection direction{TextDirection::LeftToRight};
     ControlSize size{ControlSize::Middle};
     bool disabled{};
+    std::optional<TextDirection> explicit_direction;
+    std::optional<ControlSize> explicit_size;
     friend bool operator==(const ConfigSnapshot&, const ConfigSnapshot&) = default;
 };
 

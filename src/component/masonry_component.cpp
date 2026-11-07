@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/masonry_component.hpp"
 
 #include "component/responsive_layout.hpp"
@@ -161,6 +162,7 @@ void MasonryComponentHost::on_destroy() noexcept {
 
 void MasonryComponentHost::mount(MasonryOptions options, Prop<std::vector<MasonryRecord>> source,
                                  MasonryRenderer render) {
+    ConfigDefaults::apply(options);
     auto& services = *services_;
     validate_columns(read_prop(options.columns));
     validate_gutter(read_prop(options.gutter));

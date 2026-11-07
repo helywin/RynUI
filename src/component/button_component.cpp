@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/button_component.hpp"
 #include "theme/input_tokens.hpp"
 #include "component/input_component.hpp"
@@ -132,6 +133,7 @@ struct ButtonComponentState final {
     std::optional<animation::AnimationTime> loading_deadline;
     ButtonShape shape{ButtonShape::Default};
     ButtonIconPlacement icon_placement{ButtonIconPlacement::Start};
+    bool rtl{};
     bool block{};
     bool wave{true};
     bool wave_active{};
@@ -180,6 +182,7 @@ struct ButtonComponentState final {
     runtime::SceneFragmentId compact_fragment;
     component::RetainedSurfaceId compact_spinner_range;
     runtime::SceneFragmentId compact_spinner_fragment;
+    std::uint64_t presentation_generation{};
 };
 
 namespace {
@@ -531,7 +534,7 @@ layout::HorizontalContentLayout content_layout(const ButtonThemeToken& button, c
         button.icon_gap,
         builtin_loading,
         button.loading_indicator_size,
-        state.icon_placement == ButtonIconPlacement::End,
+        (state.icon_placement == ButtonIconPlacement::End) != state.rtl,
         state.icon_wrapper.valid() && !visible_icon,
         state.icon_wrapper.valid(),
         state.icon_only || state.shape == ButtonShape::Circle ? size.control_height : 0.0F,
@@ -925,7 +928,9 @@ void ButtonComponentHost::apply_size(runtime::ComponentId component, ControlSize
     state->size = size;
     update_layout(*state);
     update_typography(*state);
-    update_visuals(*state);
+    if (auto* current = find_state(component)) {
+        update_visuals(*current);
+    }
 }
 
 void ButtonComponentHost::apply_disabled(runtime::ComponentId component, bool disabled) {
@@ -940,8 +945,17 @@ void ButtonComponentHost::apply_disabled(runtime::ComponentId component, bool di
         static_cast<void>(state->press.reset());
         pointer_.cancel_interaction(state->interaction);
     }
+    state = find_state(component);
+    if (!state || state->disabled != disabled) {
+        return;
+    }
     static_cast<void>(interactions_.set_eligible(state->interaction, !disabled));
+    dirty_->invalidate(state->node, runtime::DirtyFlags::HitTest);
     focus_.synchronize();
+    state = find_state(component);
+    if (!state || state->disabled != disabled) {
+        return;
+    }
     if (previous_border_box != solid_fills_border_box(*state)) {
         dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry);
     }
@@ -1271,6 +1285,7 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
 }
 
 void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool animation_update) {
+    const auto generation = ++state.presentation_generation;
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
     const auto& alias = theme.alias();
@@ -1336,14 +1351,21 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     }
     auto foreground = channels(state.presentation_foreground);
     foreground[3] *= layer_opacity;
-    static_cast<void>(state.foreground.set(foreground));
-    update_decoration_material(state);
-    synchronize_compact(state);
-    if (const auto context = state.compact_context.lock()) {
+    const auto component = state.component;
+    const auto signal = state.foreground;
+    static_cast<void>(signal.set(foreground));
+    auto* current = find_state(component);
+    if (!current || current->presentation_generation != generation) {
+        return;
+    }
+    update_decoration_material(*current);
+    synchronize_compact(*current);
+    if (const auto context = current->compact_context.lock()) {
         context->publish_seams();
     }
-    if (state.wave_active) {
-        publish_wave(state);
+    current = find_state(component);
+    if (current && current->wave_active) {
+        publish_wave(*current);
     }
 }
 
@@ -1532,7 +1554,8 @@ void ButtonComponentHost::completed(animation::AnimationId animation, animation:
 
 void ButtonComponentHost::update_typography(ButtonComponentState& state) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
-    static_cast<void>(state.typography.set(content_typography(theme, state)));
+    const auto typography = state.typography;
+    static_cast<void>(typography.set(content_typography(theme, state)));
 }
 
 void ButtonComponentHost::update_layout(ButtonComponentState& state) {
@@ -1799,7 +1822,10 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     }
 }
 
-void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) {
+void mount_button_component(const ButtonProps& source_props, const ButtonSlots& slots) {
+    auto props = source_props;
+    ConfigDefaults::apply(props);
+    const auto rtl = config_rtl(Prop<bool>{false}, false);
     if (active_button_host == nullptr) {
         throw std::logic_error("ryn::Button can only be declared inside an active ButtonComponentHost");
     }
@@ -1870,6 +1896,7 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     initial_state.loading = initial_loading;
     initial_state.shape = initial_shape;
     initial_state.icon_placement = initial_placement;
+    initial_state.rtl = read_prop(rtl);
     initial_state.block = read_prop(ButtonPropsAccess::block(props));
     initial_state.icon_only = !slots.content;
     initial_state.has_icon = slots.icon.has_value();
@@ -1911,6 +1938,7 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     state.loading_deadline = initial_deadline;
     state.shape = initial_shape;
     state.icon_placement = initial_placement;
+    state.rtl = initial_state.rtl;
     state.block = initial_state.block;
     state.wave = read_prop(ButtonPropsAccess::wave(props));
     state.icon_only = initial_state.icon_only;
@@ -2044,6 +2072,12 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
                  [&host, component](bool wave) { host.apply_wave(component, wave); });
     connect_prop(scope, ButtonPropsAccess::icon_placement(props), [&host, component](ButtonIconPlacement placement) {
         host.apply_icon_placement(component, placement);
+    });
+    connect_prop(scope, rtl, [&host, component](bool value) {
+        if (auto* current = host.find_state(component); current && current->rtl != value) {
+            current->rtl = value;
+            host.update_layout(*current);
+        }
     });
 
     host.subscribe_theme(state);

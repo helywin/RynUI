@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/grid_component.hpp"
 
 #include "component/responsive_layout.hpp"
@@ -542,6 +543,7 @@ std::vector<GridColumnSnapshot> grid_columns(const runtime::ComponentHost& host,
 namespace ryn {
 
 void Row(RowProps props, RowContent content) {
+    detail::ConfigDefaults::apply(props);
     detail::GridPropsAccess::mount_row(props, content);
 }
 

@@ -11,6 +11,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 
 struct TextPropsAccess;
 
@@ -40,6 +44,7 @@ public:
 
     TextProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -49,10 +54,12 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::TextPropsAccess;
 
     Prop<String> content_{String{}};
     Prop<TextDirection> direction_{TextDirection::Auto};
+    bool explicit_direction_{};
     std::optional<Prop<TextTone>> tone_;
     LayoutStyle layout_;
 };

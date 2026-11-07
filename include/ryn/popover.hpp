@@ -4,6 +4,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class PopoverComponentHost;
 }
 
@@ -89,6 +93,7 @@ public:
 
     PopoverProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -138,6 +143,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::PopoverComponentHost;
     Prop<String> title_{String{}};
     Prop<String> content_{String{}};
@@ -151,6 +157,7 @@ private:
     std::optional<Prop<PopoverTriggers>> triggers_;
     Prop<PopoverPlacement> placement_{PopoverPlacement::Top};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<bool> animated_{false};
     Prop<bool> content_scroll_{true};
     Prop<bool> arrow_{true};

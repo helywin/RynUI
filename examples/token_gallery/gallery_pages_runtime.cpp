@@ -4,6 +4,7 @@
 #include "gallery_status_acceptance.hpp"
 #include "gallery_table_tour_acceptance.hpp"
 #include "gallery_page_acceptance.hpp"
+#include "gallery_i18n_acceptance.hpp"
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
@@ -485,6 +486,12 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                 -(r.y - lane.y - lane.height / 3) / 48);
         render();
         const auto visible = bounds(id);
+        if (!(visible.y >= lane.y && visible.y + 30 < lane.y + lane.height)) {
+            std::cerr << "native_reveal route=" << pages.snapshot().route.component_identity
+                      << " component=" << id.index << ':' << id.generation << " rect=" << visible.x << ',' << visible.y
+                      << ',' << visible.width << ',' << visible.height << " lane=" << lane.x << ',' << lane.y << ','
+                      << lane.width << ',' << lane.height << '\n';
+        }
         check(visible.y >= lane.y && visible.y + 30 < lane.y + lane.height,
               "native sample target is outside document viewport");
     };
@@ -550,6 +557,45 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                    std::string_view::npos;
         });
     };
+    if (options.i18n) {
+        check(options.visual, "i18n native acceptance requires the hidden offscreen path");
+        pages.dispatch(input::WindowInputEvent{input::WindowInputAction::focus_gained});
+        render();
+        const auto capture = [&](std::string_view name, runtime::Rect area) {
+            const auto full = read_frame(std::string{name} + "-frame");
+            const int x = std::max(0, static_cast<int>(std::floor(area.x * events.scale)));
+            const int y = std::max(0, static_cast<int>(std::floor(area.y * events.scale)));
+            const int width = std::min(full->w - x, static_cast<int>(std::ceil(area.width * events.scale)));
+            const int height = std::min(full->h - y, static_cast<int>(std::ceil(area.height * events.scale)));
+            check(width > 0 && height > 0, "i18n local GPU readback area is empty");
+            std::unique_ptr<SDL_Surface, decltype(&SDL_DestroySurface)> local{
+                SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32), SDL_DestroySurface};
+            const SDL_Rect rectangle{x, y, width, height};
+            check(local && SDL_BlitSurface(full.get(), &rectangle, local.get(), nullptr),
+                  "i18n local GPU readback crop failed");
+            const auto path = options.output.parent_path() / (std::string{name} + "-local.bmp");
+            const auto encoded = path.u8string();
+            check(SDL_SaveBMP(local.get(), reinterpret_cast<const char*>(encoded.c_str())),
+                  "i18n local GPU readback write failed");
+            std::uint64_t hash{1469598103934665603ULL};
+            const auto* pixels = static_cast<const std::uint8_t*>(local->pixels);
+            for (int row = 0; row < height; ++row) {
+                for (int column = 0; column < width * 4; ++column) {
+                    hash = (hash ^ pixels[row * local->pitch + column]) * 1099511628211ULL;
+                }
+            }
+            return hash;
+        };
+        const auto captures = run_gallery_i18n_acceptance(pages, app.services(), inputs, frames,
+                                                          {render, click, reveal, resize, capture, check});
+        check(captures >= 14 && result.system_fonts, "i18n native capture/system-font coverage is incomplete");
+        result.cases = 7;
+        result.passed = true;
+        write_gallery_page_acceptance(options.output, result);
+        std::cout << "i18n_native=passed captures=" << captures << " scale=" << events.scale
+                  << " backend=" << result.backend << " shader=" << result.shader << "\n";
+        return;
+    }
     constexpr std::array widths{1440, 960, 728, 480, 360};
     input::TextInputSessionStamp previous_session;
     runtime::ComponentId previous_root;
@@ -3873,6 +3919,9 @@ int run_gallery_pages(int argc, char** argv) {
             arguments.emplace_back(argv[i]);
         }
         options = gallery_page_options(arguments, RYNUI_GALLERY_SOURCE_ROOT);
+        if (options.acceptance) {
+            gallery_suppress_native_errors();
+        }
         const bool motion_disabled = options.motion_disabled || options.acceptance;
         result.platform =
 #ifdef _WIN32
@@ -3929,6 +3978,9 @@ int run_gallery_pages(int argc, char** argv) {
         GalleryPagesHost pages(surfaces, inputs, frames, [&platform](const String& value) {
             static_cast<void>(platform.state->write_text(value.view()));
         });
+        pages.set_locale(options.locale);
+        pages.set_format_locale(options.format_locale);
+        pages.set_direction(options.direction);
         if (motion_disabled) {
             auto theme = pages.theme();
             theme.seed.motion = false;

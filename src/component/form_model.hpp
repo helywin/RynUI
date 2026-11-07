@@ -16,9 +16,10 @@ struct FormEditTransaction final {
     bool superseded{};
 };
 
-enum class FormMessageSource { Literal, Required, Invalid };
+using FormMessageSource = FormIssueSource;
 
-// Current builtin messages have no arguments. Business validators only produce literals.
+// Business validators still produce literal snapshots. Their origin is retained
+// separately so an application can explicitly project its own current error.
 struct FormStoredIssue final {
     String message;
     bool warning{};

@@ -149,6 +149,34 @@ void rich_title_and_actions() {
           "rich title rollback leaked resources");
 }
 
+void static_ellipsis_preserves_parent_activation() {
+    Fixture f;
+    Signal<String> label{String{u8"A long navigation label 中文"}};
+    int clicks{};
+    f.services.mount(Content{[&] {
+        Button(ButtonProps{}.layout(LayoutStyle{}.width(dp(120))).onClick([&] { ++clicks; }), ButtonContent{[&] {
+                   Text(TypographyProps{}
+                            .content(label)
+                            .ellipsis(TypographyEllipsis{.rows = 1})
+                            .layout(LayoutStyle{}.width(dp(96))));
+               }});
+    }});
+    f.synchronize();
+    const auto button = f.buttons.mounted_buttons().front();
+    const auto text = f.services.text().mounted_texts().front();
+    check(f.services.tooltip().mounted().empty(), "pure ellipsis installed an input-owning Tooltip");
+    check(f.scene.text_state(text.scene).measurement().lines.size() == 1, "navigation ellipsis wrapped");
+    click(f, f.nodes.require(button.node).bounds);
+    check(clicks == 1, "static ellipsis stole its parent Button activation");
+    label.set(u8"短标签");
+    f.synchronize();
+    check(f.services.components().contains(text.component) &&
+              f.services.text().mounted_texts().front().scene == text.scene,
+          "localized ellipsis replaced its retained text");
+    click(f, f.nodes.require(button.node).bounds);
+    check(clicks == 2, "localized ellipsis lost parent Button activation");
+}
+
 void context_composition_and_controlled_click() {
     Fixture f;
     Signal<bool> open{false};
@@ -686,6 +714,7 @@ int main() {
         theme_and_geometry_updates();
         joined_arrow_coverage_and_retirement();
         rich_title_and_actions();
+        static_ellipsis_preserves_parent_activation();
         context_composition_and_controlled_click();
         nested_and_destroyed_trigger_actions();
         std::cout << "Tooltip contracts passed\n";

@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/divider_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -514,6 +515,7 @@ void DividerComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport
 
 namespace ryn {
 void Divider(DividerProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_divider) {
         throw std::logic_error("Divider requires window component services");
     }
@@ -521,6 +523,7 @@ void Divider(DividerProps props) {
 }
 
 void Divider(DividerProps props, DividerText text) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_divider) {
         throw std::logic_error("Divider requires window component services");
     }

@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/selection_option_disabled.hpp>
 
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -14,6 +15,10 @@
 #include <vector>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
+
 namespace detail {
 struct RadioPropsAccess;
 struct RadioGroupPropsAccess;
@@ -57,6 +62,7 @@ public:
 
     RadioProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -111,10 +117,12 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::RadioPropsAccess;
     std::optional<Prop<bool>> checked_;
     std::optional<bool> default_checked_;
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     RadioSelection value_;
     std::function<void(bool)> on_change_;
     std::optional<Prop<RadioDirection>> direction_;
@@ -138,7 +146,7 @@ void RadioButton(RadioProps props, std::optional<RadioLabel> label = {});
 struct RadioOption final {
     RadioValue value;
     String label;
-    bool disabled{};
+    SelectionOptionDisabled disabled{};
 
     friend bool operator==(const RadioOption&, const RadioOption&) = default;
 };
@@ -173,6 +181,7 @@ public:
 
     RadioGroupProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -193,6 +202,7 @@ public:
 
     RadioGroupProps& direction(Prop<RadioDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -223,16 +233,19 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::RadioGroupPropsAccess;
     std::optional<Prop<std::vector<RadioOption>>> options_;
     std::optional<Prop<std::optional<String>>> value_;
     std::optional<Prop<RadioSelection>> selection_;
     RadioSelection default_value_;
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<RadioGroupOrientation> orientation_{RadioGroupOrientation::Horizontal};
     std::function<void(const String&)> on_change_;
     std::function<void(const RadioValue&)> on_value_change_;
     Prop<RadioDirection> direction_{RadioDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<RadioSize> size_{RadioSize::Middle};
     bool explicit_size_{};
     Prop<RadioOptionType> option_type_{RadioOptionType::Default};

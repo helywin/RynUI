@@ -513,6 +513,77 @@ void dirty_selection_and_rule_callback_retirement() {
     language.set(locales::zh_CN);
     clean(fixture);
 }
+
+void application_error_display_keeps_validation_provenance() {
+    Fixture fixture;
+    Signal<LocaleId> language{locales::en_US};
+    const MessageKey message{
+        u8"app.form.issue", String{u8"Application rule rejected {value}"}, {{u8"value", MessageArgType::Text}}};
+    const MessageCatalog messages{{{locales::zh_CN, message, String{u8"应用规则拒绝 {value}"}}}};
+    FormRef form;
+    FormField<String> field{u8"bad"};
+    int validators = 0;
+    int mounts = 0;
+    field.validator([&](String value) {
+        ++validators;
+        return value == String{u8"ok"} ? String{} : String{u8"literal server error"};
+    });
+    fixture.services.mount(Content{[&] {
+        ConfigProvider(ConfigProviderProps{}.locale(language).messages(messages), ConfigProviderContent{[&] {
+                           const auto tr = useI18n();
+                           Form(FormProps{}.ref(form), FormContent{[&, tr] {
+                                    FormItem(FormItemProps{}
+                                                 .field(u8"value", field)
+                                                 .label(String{u8"Value"})
+                                                 .required(true)
+                                                 .errorText(bind([=] {
+                                                     return field.errorSource() == FormIssueSource::Validator
+                                                                ? tr.translate(
+                                                                      message,
+                                                                      MessageArgs{{u8"value", String{u8"{payload}"}}})
+                                                                : field.error();
+                                                 })),
+                                             FormItemContent{[&] {
+                                                 ++mounts;
+                                                 Input(InputProps{});
+                                             }});
+                                }});
+                       }});
+    }});
+    sync(fixture);
+    const auto historical = form.validate();
+    sync(fixture);
+    require(historical && validators == 1, "application display test did not validate exactly once");
+    const auto owner = fixture.services.form().items().front();
+    const auto regions = fixture.services.form().snapshot(owner);
+    const auto input = fixture.inputs.mounted_inputs().front();
+    const auto meta = field.meta();
+    require(label_text(fixture, regions.feedback) == String{u8"Application rule rejected {payload}"},
+            "explicit application display did not use the public message binding");
+    language.set(locales::zh_CN);
+    sync(fixture);
+    const auto after = fixture.services.form().snapshot(owner);
+    require(label_text(fixture, regions.feedback) == String{u8"应用规则拒绝 {payload}"} &&
+                field.error() == String{u8"literal server error"} &&
+                result_error(*historical, FormNamePath{u8"value"}) == String{u8"literal server error"} &&
+                validators == 1 && mounts == 1 && field.meta() == meta && after.label == regions.label &&
+                after.feedback == regions.feedback && fixture.inputs.mounted_inputs().front().editor == input.editor,
+            "display projection mutated an issue/result, reran validation or replaced Form regions/editor");
+    auto explicit_fields = form.getFields();
+    explicit_fields.front().meta.errors = {u8"literal server error"};
+    require(form.setFields({explicit_fields.front()}), "explicit same-text issue update failed");
+    language.set(locales::en_US);
+    sync(fixture);
+    require(field.errorSource() == FormIssueSource::Literal &&
+                label_text(fixture, regions.feedback) == String{u8"literal server error"} && validators == 1,
+            "explicit same-text error inherited validator translation provenance");
+    field.set(u8"ok");
+    require(form.validate()->valid(), "application rule failed to recover");
+    sync(fixture);
+    require(label_text(fixture, regions.feedback).empty() && validators == 2,
+            "an error display override created an issue for a valid field");
+    clean(fixture);
+}
 } // namespace
 
 int main() {
@@ -526,6 +597,7 @@ int main() {
         validator_reentry_reads_latest_locale_and_controlled_authority();
         late_async_after_locale_retirement();
         dirty_selection_and_rule_callback_retirement();
+        application_error_display_keeps_validation_provenance();
         std::cout << "Form i18n source, snapshot, async and retained-host contracts passed\n";
         return 0;
     } catch (const std::exception& error) {

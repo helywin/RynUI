@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/tooltip_component.hpp"
 #include "component/popover_component.hpp"
 #include "component/popup_motion.hpp"
@@ -1050,6 +1051,7 @@ void TooltipComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime
 
 namespace ryn {
 void Tooltip(TooltipProps props, TooltipTrigger trigger) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_tooltips) {
         throw std::logic_error("Tooltip requires window component services");
     }
@@ -1057,6 +1059,7 @@ void Tooltip(TooltipProps props, TooltipTrigger trigger) {
 }
 
 void Tooltip(TooltipProps props, TooltipTrigger trigger, TooltipTitle title) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_tooltips) {
         throw std::logic_error("Tooltip requires window component services");
     }

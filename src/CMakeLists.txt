@@ -253,6 +253,7 @@ rynui_assert_core_link_closure(rynui_upload_model)
 
 add_library(rynui_components STATIC
     component/config_provider_component.cpp
+    component/config_defaults.cpp
     component/i18n_context.cpp
     component/carousel_component.cpp
     component/decoration_component.cpp

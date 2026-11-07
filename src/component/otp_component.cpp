@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/otp_component.hpp"
 #include "component/input_component.hpp"
 #include "component/otp_input_cell.hpp"
@@ -612,6 +613,7 @@ bool OTPRef::blur() const {
 }
 
 void OTP(OTPProps props, std::optional<OTPSeparator> separator) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_otp_host) {
         throw std::logic_error("OTP requires an active window component host");
     }

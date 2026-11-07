@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class SkeletonComponentHost;
 }
 
@@ -133,6 +137,7 @@ public:
 
     SkeletonAvatarProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -147,8 +152,10 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::SkeletonComponentHost;
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<SkeletonAvatarShape> shape_{SkeletonAvatarShape::Circle};
     Prop<bool> active_{false};
     LayoutStyle layout_;
@@ -163,6 +170,7 @@ public:
 
     SkeletonButtonProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -182,8 +190,10 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::SkeletonComponentHost;
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<SkeletonButtonShape> shape_{SkeletonButtonShape::Default};
     Prop<bool> block_{false};
     Prop<bool> active_{false};
@@ -199,6 +209,7 @@ public:
 
     SkeletonInputProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -213,8 +224,10 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::SkeletonComponentHost;
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<bool> block_{false};
     Prop<bool> active_{false};
     LayoutStyle layout_;

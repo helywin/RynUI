@@ -411,6 +411,7 @@ public:
                      const std::function<bool(const GalleryScrollbarGeometry&, const GalleryScrollbarGeometry&, bool)>&
                          set_scrollbars,
                      const std::function<bool()>& narrow_layout,
+                     const std::function<ryn::runtime::ComponentId(std::string_view)>& targets,
                      const std::function<bool(GalleryDocumentSectionKind)>& set_current_section,
                      std::optional<GalleryNavigationTarget>& deferred_navigation, ryn::runtime::NodeId body_root,
                      ryn::runtime::NodeId navigation_root, ryn::runtime::NodeId document_root,
@@ -419,9 +420,10 @@ public:
           resources_(&resources), renderer_(&renderer), background_color_(&background_color),
           reference_surfaces_(&reference_surfaces), document_viewport_(&document_viewport),
           navigation_scroll_(&navigation_scroll), scroll_presentation_(&scroll_presentation),
-          set_scrollbars_(&set_scrollbars), narrow_layout_(&narrow_layout), set_current_section_(&set_current_section),
-          deferred_navigation_(&deferred_navigation), body_root_(body_root), navigation_root_(navigation_root),
-          document_root_(document_root), viewport_(&viewport), render_scale_(&render_scale) {}
+          set_scrollbars_(&set_scrollbars), narrow_layout_(&narrow_layout), targets_(&targets),
+          set_current_section_(&set_current_section), deferred_navigation_(&deferred_navigation), body_root_(body_root),
+          navigation_root_(navigation_root), document_root_(document_root), viewport_(&viewport),
+          render_scale_(&render_scale) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime frame_time) override {
         try {
@@ -516,9 +518,15 @@ public:
                 for (std::size_t index = 0; index < catalog.size(); ++index) {
                     const auto& node = application_->nodes().require(component_nodes_[index]);
                     const auto offset = std::max(0.0F, node.bounds.y - root.bounds.y);
-                    component_anchors_[index] =
-                        gallery_component_navigation_anchor(catalog[index].identity, component_nodes_[index],
-                                                            application_->text(), application_->nodes(), scroll_root);
+                    component_anchors_[index] = gallery_component_navigation_anchor(
+                        catalog[index].identity, component_nodes_[index], application_->text(), application_->nodes(),
+                        scroll_root, [&](std::string_view key) -> std::optional<ryn::runtime::NodeId> {
+                            const auto target = (*targets_)(key);
+                            if (target.valid() && application_->components().contains(target)) {
+                                return application_->components().root(target);
+                            }
+                            return component_nodes_[index];
+                        });
                     const auto category = static_cast<std::size_t>(catalog[index].category);
                     if (category >= category_anchors.size()) {
                         throw std::logic_error("Token Gallery component category is invalid");
@@ -881,6 +889,7 @@ private:
     GalleryScrollPresentation* scroll_presentation_;
     const std::function<bool(const GalleryScrollbarGeometry&, const GalleryScrollbarGeometry&, bool)>* set_scrollbars_;
     const std::function<bool()>* narrow_layout_;
+    const std::function<ryn::runtime::ComponentId(std::string_view)>* targets_;
     const std::function<bool(GalleryDocumentSectionKind)>* set_current_section_;
     std::optional<GalleryNavigationTarget>* deferred_navigation_;
     std::vector<ryn::runtime::NodeId> component_nodes_;
@@ -1171,11 +1180,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::detail::SdlSceneRenderer renderer(platform);
         ryn::detail::SceneResources scene_resources(renderer);
         scene_resources.glyphs().set_sparse_upload_coalescing_limit(512 * 1024);
-        GallerySubmitter submitter(platform, application, inputs, text_scene, scene_resources, renderer,
-                                   definition.background_color, reference_surfaces, document_viewport,
-                                   navigation_scroll, scroll_presentation, definition.set_scrollbars,
-                                   definition.narrow_layout, definition.set_current_section, deferred_navigation,
-                                   body_root, navigation_root, document_root, viewport, render_scale);
+        GallerySubmitter submitter(
+            platform, application, inputs, text_scene, scene_resources, renderer, definition.background_color,
+            reference_surfaces, document_viewport, navigation_scroll, scroll_presentation, definition.set_scrollbars,
+            definition.narrow_layout, definition.target, definition.set_current_section, deferred_navigation, body_root,
+            navigation_root, document_root, viewport, render_scale);
         GalleryEvents events(platform, application, inputs, reference_surfaces, frame_requests, document_viewport,
                              navigation_scroll, scroll_presentation, site_children.back(), viewport, render_scale,
                              acceptance_scale.has_value(), *fonts, font_chain, definition.set_viewport_width,

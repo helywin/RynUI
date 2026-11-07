@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/rate_component.hpp"
 #include "component/rate_model.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -1062,6 +1063,7 @@ bool RateRef::blur() const {
 }
 
 void Rate(RateProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_rate) {
         throw std::logic_error("Rate requires window component services");
     }

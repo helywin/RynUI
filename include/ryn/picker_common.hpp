@@ -1,5 +1,6 @@
 #pragma once
 #include <ryn/component_locales.hpp>
+#include <ryn/i18n.hpp>
 
 #include <ryn/component.hpp>
 #include <ryn/string.hpp>
@@ -24,6 +25,8 @@ template <typename T> struct PickerRangePreset final {
     String key;
     String label;
     std::function<PickerRange<T>()> value;
+    std::optional<MessageKey> label_message{};
+    MessageArgs label_args{};
 };
 
 struct PickerRangePolicy final {

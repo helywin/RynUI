@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/timeline_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "component/data_display_retained.hpp"
@@ -1095,6 +1096,7 @@ void TimelineComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpor
 
 namespace ryn {
 void Timeline(TimelineProps props, Prop<std::vector<TimelineItem>> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_timeline) {
         throw std::logic_error("Timeline requires window component services");
     }
@@ -1102,6 +1104,7 @@ void Timeline(TimelineProps props, Prop<std::vector<TimelineItem>> items) {
 }
 
 void Timeline(TimelineProps props, std::vector<TimelineItem> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_timeline) {
         throw std::logic_error("Timeline requires window component services");
     }

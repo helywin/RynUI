@@ -11,6 +11,10 @@
 #include <utility>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
+
 class SwitchRef;
 
 namespace detail {
@@ -59,6 +63,7 @@ public:
 
     SwitchProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -69,6 +74,7 @@ public:
 
     SwitchProps& size(Prop<SwitchSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -79,6 +85,7 @@ public:
 
     SwitchProps& direction(Prop<SwitchDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -118,18 +125,22 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::FormAutoControlAccess;
     friend struct detail::SwitchPropsAccess;
     std::optional<Prop<bool>> checked_;
     std::optional<bool> default_checked_;
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> loading_{false};
     Prop<SwitchSize> size_{SwitchSize::Middle};
+    bool explicit_size_{};
     std::function<void(bool)> on_change_;
     std::function<void(bool)> on_click_;
     std::function<void()> on_focus_;
     std::function<void()> on_blur_;
     Prop<SwitchDirection> direction_{SwitchDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<bool> wave_{true};
     std::optional<SwitchRef> ref_;
     bool auto_focus_{};

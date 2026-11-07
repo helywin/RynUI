@@ -319,6 +319,14 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
     if (!props.ellipsis_ && !props.copyable_ && !props.editable_) {
         return false;
     }
+    if (props.ellipsis_ && !props.copyable_ && !props.editable_) {
+        const auto* ellipsis = PropAccess::static_value(*props.ellipsis_);
+        if (ellipsis && !ellipsis->expandable && !ellipsis->tooltip) {
+            // Pure static ellipsis is handled by the shared text scene. It does
+            // not need an interactive Tooltip wrapper inside its parent control.
+            return false;
+        }
+    }
     if (!text::valid_text_direction(read_prop(props.direction_))) {
         throw std::invalid_argument("Invalid Typography direction");
     }

@@ -11,6 +11,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 struct GridPropsAccess;
 }
 
@@ -118,6 +122,7 @@ public:
 
     RowProps& direction(Prop<FlexDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -132,12 +137,14 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::GridPropsAccess;
     Prop<Responsive<RowAlign>> align_{Responsive<RowAlign>{RowAlign::Top}};
     Prop<Responsive<RowJustify>> justify_{Responsive<RowJustify>{RowJustify::Start}};
     Prop<GridGutter> gutter_{GridGutter{}};
     Prop<bool> wrap_{true};
     Prop<FlexDirection> direction_{FlexDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<Breakpoints> breakpoints_{Breakpoints{}};
     LayoutStyle layout_;
 };

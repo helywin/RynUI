@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/flex_component.hpp"
 
 #include "component/layout_container_values.hpp"
@@ -264,6 +265,7 @@ void mount_flex_component(const FlexProps& props, const FlexContent& content) {
 namespace ryn {
 
 void Flex(FlexProps props, FlexContent content) {
+    detail::ConfigDefaults::apply(props);
     detail::mount_flex_component(props, content);
 }
 

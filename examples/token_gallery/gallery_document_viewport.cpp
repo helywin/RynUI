@@ -22,11 +22,10 @@ void advance_generation(std::uint32_t& generation) noexcept {
 
 } // namespace
 
-GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view identity,
-                                                           ryn::runtime::NodeId reference_node,
-                                                           const ryn::detail::TextComponentHost& text,
-                                                           const ryn::runtime::NodeStore& nodes,
-                                                           ryn::runtime::NodeId scroll_root) {
+GalleryComponentAnchor gallery_component_navigation_anchor(
+    std::string_view identity, ryn::runtime::NodeId reference_node, const ryn::detail::TextComponentHost& text,
+    const ryn::runtime::NodeStore& nodes, ryn::runtime::NodeId scroll_root,
+    const std::function<std::optional<ryn::runtime::NodeId>(std::string_view)>& locate_heading) {
     const std::string_view sample = identity == "ant.component.empty"           ? "gallery.empty.default "
                                     : identity == "ant.component.result"        ? "gallery.result.controlled "
                                     : identity == "ant.component.form"          ? "gallery.form.workflow "
@@ -48,7 +47,13 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                     : identity == "ant.component.tree-select"   ? "gallery.tree-select.destination "
                                                                                 : "";
     auto node = reference_node;
-    if (!sample.empty()) {
+    if (!sample.empty() && locate_heading) {
+        const auto found = locate_heading(sample.substr(0, sample.size() - 1));
+        if (!found || !nodes.find(*found)) {
+            throw std::logic_error("Token Gallery interactive component heading is missing");
+        }
+        node = *found;
+    } else if (!sample.empty()) {
         const auto mounted = text.mounted_texts();
         const auto found = std::ranges::find_if(mounted, [&](const auto& item) {
             return text.scene_service().text_state(item.scene).content().bytes().starts_with(sample);

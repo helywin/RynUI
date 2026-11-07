@@ -7,6 +7,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TagBadgeComponentHost;
 }
 
@@ -41,6 +45,7 @@ public:
 
     TagProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -94,6 +99,7 @@ public:
 
     TagProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -108,9 +114,11 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TagBadgeComponentHost;
     Prop<TagVariant> variant_{TagVariant::Outlined};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> animated_{true};
     bool destroy_on_close_{};
     bool controlled_visible_{};
@@ -120,6 +128,7 @@ private:
     Prop<bool> closable_{false};
     Prop<bool> visible_{true};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     std::function<void()> on_close_;
     LayoutStyle layout_;
 };
@@ -140,6 +149,7 @@ public:
 
     CheckableTagProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -150,6 +160,7 @@ public:
 
     CheckableTagProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -164,13 +175,16 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TagBadgeComponentHost;
     bool controlled_checked_{true};
     bool default_checked_{};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> animated_{true};
     Prop<bool> checked_{false};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     std::function<void(bool)> on_change_;
     LayoutStyle layout_;
 };
@@ -226,6 +240,7 @@ public:
 
     TagGroupProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -236,6 +251,7 @@ public:
 
     TagGroupProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -260,6 +276,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TagBadgeComponentHost;
     Prop<std::vector<TagGroupItem>> items_{std::vector<TagGroupItem>{}};
     std::optional<Prop<TagValues>> value_;
@@ -268,8 +285,10 @@ private:
     bool checkable_{};
     Prop<bool> draggable_{false};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> visible_{true};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     std::function<void(TagValues)> on_reorder_;
     std::function<void(TagValues)> on_change_;
     std::function<void(String, TagCloseEvent&)> on_close_;

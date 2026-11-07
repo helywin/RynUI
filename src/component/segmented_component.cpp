@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/segmented_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "component/data_display_retained.hpp"
@@ -1127,6 +1128,7 @@ void SegmentedComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpo
 
 namespace ryn {
 void Segmented(SegmentedProps props, Prop<std::vector<SegmentedOption>> options) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_segmented) {
         throw std::logic_error("Segmented requires window component services");
     }
@@ -1134,6 +1136,7 @@ void Segmented(SegmentedProps props, Prop<std::vector<SegmentedOption>> options)
 }
 
 void Segmented(SegmentedProps props, std::vector<SegmentedOption> options) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_segmented) {
         throw std::logic_error("Segmented requires window component services");
     }

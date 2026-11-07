@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/card_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -802,6 +803,7 @@ void CardMeta(CardMetaProps props, CardMetaSlots slots) {
 }
 
 void Card(CardProps props, CardContent content, CardSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_cards) {
         throw std::logic_error("Card requires window component services");
     }

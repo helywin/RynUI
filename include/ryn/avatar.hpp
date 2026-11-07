@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class AvatarComponentHost;
 }
 
@@ -42,6 +46,7 @@ public:
 
     AvatarProps& size(Prop<AvatarSizeValue> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -103,6 +108,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::AvatarComponentHost;
     Prop<ImageSource> source_{ImageSource{}};
     Prop<ImageSource> fallback_{ImageSource{}};
@@ -111,6 +117,7 @@ private:
     std::function<void()> on_load_;
     Prop<String> text_{String{}};
     Prop<AvatarSizeValue> size_{AvatarSizeValue{AvatarSize::Medium}};
+    bool explicit_size_{};
     Prop<AvatarShape> shape_{AvatarShape::Circle};
     Prop<float> gap_{4};
     Prop<bool> visible_{true};
@@ -190,6 +197,7 @@ class AvatarGroupProps final {
 public:
     AvatarGroupProps& size(Prop<AvatarSizeValue> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -212,6 +220,7 @@ public:
 
     AvatarGroupProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -250,12 +259,15 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::AvatarComponentHost;
     std::optional<Prop<std::vector<AvatarGroupItem>>> items_;
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<std::shared_ptr<const AvatarGroupPopoverRenderer>> popover_{nullptr};
     std::function<void(bool)> on_open_;
     Prop<AvatarSizeValue> size_{AvatarSizeValue{AvatarSize::Medium}};
+    bool explicit_size_{};
     Prop<AvatarShape> shape_{AvatarShape::Circle};
     Prop<AvatarGroupMax> max_{AvatarGroupMax{}};
     Prop<bool> visible_{true};

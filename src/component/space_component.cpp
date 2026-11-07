@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/space_component.hpp"
 
 #include "component/layout_container_values.hpp"
@@ -310,6 +311,7 @@ void mount_space_component(const SpaceProps& props, const SpaceContent& content)
 namespace ryn {
 
 void Space(SpaceProps props, SpaceContent content) {
+    detail::ConfigDefaults::apply(props);
     detail::mount_space_component(props, content);
 }
 

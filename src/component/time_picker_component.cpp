@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/time_picker_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/popover_component.hpp"
@@ -1072,7 +1073,12 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                                         throw;
                                     }
                                 }),
-                                       ButtonContent{[label = preset.label] { Text(label); }});
+                                       ButtonContent{[label = preset.label, message = preset.label_message,
+                                                      args = preset.label_args] {
+                                           Text(TextProps{}.content(message
+                                                                        ? Prop<String>{useI18n().text(*message, args)}
+                                                                        : Prop<String>{label}));
+                                       }});
                             }
                             if (props.clock_) {
                                 Button(ButtonProps{}
@@ -1420,7 +1426,11 @@ void TimePickerComponentHost::mount_range(const TimeRangePickerProps& props,
                             Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state, preset] {
                                 state->preset(preset, range_candidate(*services_, state));
                             }),
-                                   ButtonContent{[label = preset.label] { Text(label); }});
+                                   ButtonContent{[label = preset.label, message = preset.label_message,
+                                                  args = preset.label_args] {
+                                       Text(TextProps{}.content(message ? Prop<String>{useI18n().text(*message, args)}
+                                                                        : Prop<String>{label}));
+                                   }});
                         }
                         Button(ButtonProps{}.size(ControlSize::Small).onClick([this, state] {
                             state->clear(range_candidate(*services_, state));
@@ -1973,6 +1983,7 @@ void TimePickerComponentHost::synchronize_auxiliary_geometry(runtime::Size viewp
 
 namespace ryn {
 void TimePicker(TimePickerProps props, std::optional<TimePickerFooter> footer) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_time_pickers) {
         throw std::logic_error("TimePicker requires window component services");
     }
@@ -1980,6 +1991,7 @@ void TimePicker(TimePickerProps props, std::optional<TimePickerFooter> footer) {
 }
 
 void TimeRangePicker(TimeRangePickerProps props, std::optional<TimePickerFooter> footer) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_time_pickers) {
         throw std::logic_error("TimeRangePicker requires window component services");
     }

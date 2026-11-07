@@ -83,6 +83,9 @@ String project_form_issue(const FormStoredIssue& issue, const FormLocale& locale
     case FormMessageSource::Invalid:
         return locale.invalid;
     case FormMessageSource::Literal:
+    case FormMessageSource::Validator:
+    case FormMessageSource::RuleValidator:
+    case FormMessageSource::AsyncValidator:
         return issue.message;
     }
     return {};
@@ -213,7 +216,7 @@ std::vector<FormStoredIssue> FormModel::validate_rules(const std::shared_ptr<For
             for (auto& issue : issues) {
                 issue.warning |= rule.warning_only;
                 if (!issue.message.empty()) {
-                    result.push_back({std::move(issue.message), issue.warning});
+                    result.push_back({std::move(issue.message), issue.warning, FormMessageSource::RuleValidator});
                 }
             }
         }
@@ -368,7 +371,7 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
             } else if (const auto validator = item.field->validator) {
                 const auto message = validator(value);
                 if (!message.empty()) {
-                    error = FormStoredIssue{message};
+                    error = FormStoredIssue{message, false, FormMessageSource::Validator};
                 }
             }
             if (pending_ != run || !available() || revision_ != run->revision || !item.field->registered ||
@@ -479,7 +482,10 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
                     for (auto& issue : result.options) {
                         if (!issue.message.empty()) {
                             run->issues.push_back(
-                                {item.name, item.path, item.field, {std::move(issue.message), issue.warning}});
+                                {item.name,
+                                 item.path,
+                                 item.field,
+                                 {std::move(issue.message), issue.warning, FormMessageSource::AsyncValidator}});
                         }
                     }
                     item.field->timeout.reset();
@@ -514,10 +520,11 @@ bool FormModel::validate_async(std::function<void(FormResult)> callback, FormVal
                     }
                     for (auto& issue : result.options) {
                         if (!issue.message.empty()) {
-                            run->issues.push_back({{},
-                                                   collection.path(),
-                                                   collection.validation,
-                                                   {std::move(issue.message), issue.warning}});
+                            run->issues.push_back(
+                                {{},
+                                 collection.path(),
+                                 collection.validation,
+                                 {std::move(issue.message), issue.warning, FormMessageSource::AsyncValidator}});
                         }
                     }
                     collection.validation->timeout.reset();

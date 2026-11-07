@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/popover_component.hpp"
 #include "component/select_component.hpp"
 #include "component/auto_complete_component.hpp"
@@ -491,6 +492,7 @@ void PopoverComponentHost::mount(const PopoverProps& props, const PopoverTrigger
         id, Content{[&] {
             auto& children = runtime::require_component_build_context();
             s.view.trigger = group(services);
+            services.layout().set_layout(children.root(s.view.trigger), layout::BoxLayout{});
             children.mount_slot(s.view.trigger, trigger);
             if (!valid()) {
                 return;
@@ -1282,6 +1284,7 @@ void PopoverComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime
 
 namespace ryn {
 void Popover(PopoverProps props, PopoverTrigger trigger, PopoverSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_popovers) {
         throw std::logic_error("Popover requires window component services");
     }

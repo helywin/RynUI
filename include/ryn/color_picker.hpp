@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class ColorPickerComponentHost;
 }
 enum class ColorFormat { Hex, Rgb, Hsb };
@@ -140,6 +144,7 @@ public:
 
     ColorPickerProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -180,6 +185,7 @@ public:
 
     ColorPickerProps& disabled(Prop<bool> v) {
         disabled_ = std::move(v);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -205,6 +211,7 @@ public:
 
     ColorPickerProps& size(Prop<ControlSize> v) {
         size_ = std::move(v);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -274,9 +281,11 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::ColorPickerComponentHost;
     std::optional<Prop<ColorPickerLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     std::optional<Prop<ColorPickerValue>> value_;
     std::optional<ColorPickerValue> initial_;
     std::optional<Prop<ColorFormat>> format_;
@@ -284,11 +293,13 @@ private:
     Prop<std::vector<ColorPickerMode>> modes_{std::vector<ColorPickerMode>{ColorPickerMode::Single}};
     Prop<std::vector<ColorPreset>> presets_{std::vector<ColorPreset>{}};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> disabled_alpha_{false};
     Prop<bool> disabled_format_{false};
     Prop<bool> clear_{false};
     Prop<bool> show_text_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputStatus> status_{InputStatus::Default};
     std::optional<Prop<bool>> open_;
     std::optional<bool> initial_open_;

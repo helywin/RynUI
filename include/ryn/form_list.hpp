@@ -31,6 +31,7 @@ public:
     FormListRef();
     [[nodiscard]] bool bound() const;
     [[nodiscard]] FormFieldMeta meta() const;
+    [[nodiscard]] std::optional<FormIssueSource> errorSource() const;
     [[nodiscard]] std::vector<FormListField> fields() const;
     [[nodiscard]] bool add(FormData value = {}, std::optional<std::size_t> index = {}) const;
     [[nodiscard]] bool remove(std::vector<std::size_t> indices) const;

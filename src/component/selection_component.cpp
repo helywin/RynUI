@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/selection_component.hpp"
 #include "component/form_focus_context.hpp"
 #include "component/form_native_control.hpp"
@@ -287,6 +288,8 @@ struct SelectionState final {
     std::shared_ptr<CheckboxRefState> checkbox_ref;
     std::shared_ptr<RadioRefState> radio_ref;
     bool own_direction{};
+    bool own_radio_size{};
+    std::uint64_t visual_generation{};
     bool wave{true};
     bool wave_active{};
     float wave_progress{1};
@@ -309,7 +312,7 @@ struct SelectionState final {
 struct GeneratedRadioOption final {
     RadioValue value;
     Signal<String> label;
-    Signal<bool> disabled;
+    Signal<SelectionOptionDisabled> disabled;
     runtime::ComponentId component;
 
     explicit GeneratedRadioOption(const RadioOption& option)
@@ -333,6 +336,7 @@ struct RadioGroupState final {
     bool reconciling{};
     RadioGroupOrientation orientation{RadioGroupOrientation::Horizontal};
     RadioDirection direction{RadioDirection::LeftToRight};
+    bool explicit_direction{};
     RadioSize size{RadioSize::Middle};
     bool explicit_size{};
     std::optional<CompactMetadata> compact;
@@ -342,6 +346,7 @@ struct RadioGroupState final {
     bool block{};
     bool joined{};
     bool needs_refresh{};
+    std::uint64_t refresh_generation{};
     std::vector<runtime::Size> measured_options;
     float layout_gap{-1.0F};
     RadioGroupOrientation layout_orientation{RadioGroupOrientation::Vertical};
@@ -355,7 +360,7 @@ struct RadioGroupState final {
 struct GeneratedCheckboxOption final {
     CheckboxValue value;
     Signal<String> label;
-    Signal<bool> disabled;
+    Signal<SelectionOptionDisabled> disabled;
     runtime::ComponentId component;
 
     explicit GeneratedCheckboxOption(const CheckboxOption& option)
@@ -376,6 +381,7 @@ struct CheckboxGroupState final {
     bool reconciling{};
     CheckboxGroupOrientation orientation{CheckboxGroupOrientation::Horizontal};
     CheckboxDirection direction{CheckboxDirection::LeftToRight};
+    bool explicit_direction{};
     std::optional<CheckboxGroupOrientation> layout_orientation;
     float layout_gap{-1};
     std::function<void(const CheckboxValues&)> on_change;
@@ -827,10 +833,11 @@ void SelectionComponentHost::apply_radio_own_disabled(runtime::ComponentId id, b
         return;
     }
     state->own_disabled = value;
+    const auto group_id = state->group;
     const auto* group = state->group.valid() ? services_->components().state<RadioGroupState>(state->group) : nullptr;
     apply_disabled(id, value || (group && group->disabled));
-    if (group) {
-        update_radio_tab_stops(*services_->components().state<RadioGroupState>(state->group));
+    if (auto* current = services_->components().state<RadioGroupState>(group_id)) {
+        update_radio_tab_stops(*current);
     }
 }
 
@@ -982,11 +989,17 @@ void SelectionComponentHost::apply_group_disabled(runtime::ComponentId id, bool 
     group->disabled = value;
     const auto options = group->options;
     for (const auto option : options) {
+        group = services_->components().state<RadioGroupState>(id);
+        if (!group || group->disabled != value) {
+            return;
+        }
         if (const auto* state = find(option)) {
             apply_disabled(option, state->own_disabled || value);
         }
     }
-    update_radio_tab_stops(*group);
+    if (auto* current = services_->components().state<RadioGroupState>(id)) {
+        update_radio_tab_stops(*current);
+    }
 }
 
 void SelectionComponentHost::apply_group_orientation(runtime::ComponentId id, RadioGroupOrientation value) {
@@ -1157,6 +1170,12 @@ void SelectionComponentHost::place_radio_group(runtime::ComponentId id, layout::
 }
 
 void SelectionComponentHost::refresh_radio_group(RadioGroupState& group, bool measure) {
+    const auto id = group.component;
+    const auto retained = services_->components().retain_state<RadioGroupState>(id);
+    if (!retained || retained.get() != &group) {
+        return;
+    }
+    const auto generation = ++group.refresh_generation;
     group.backgrounds_dirty = true;
     group.joined =
         !group.options.empty() && services_->nodes().require(group.node).children.size() == group.options.size();
@@ -1172,7 +1191,9 @@ void SelectionComponentHost::refresh_radio_group(RadioGroupState& group, bool me
     for (std::size_t i = 0; i < group.options.size(); ++i) {
         if (auto* state = find(group.options[i])) {
             state->radio_button = state->own_radio_button || group.option_type == RadioOptionType::Button;
-            state->radio_size = group.size;
+            if (!state->own_radio_size) {
+                state->radio_size = group.size;
+            }
             state->button_style = group.button_style;
             state->block = group.block;
             state->joined_vertical = vertical;
@@ -1197,6 +1218,9 @@ void SelectionComponentHost::refresh_radio_group(RadioGroupState& group, bool me
             style.flex_basis = group.block && !vertical && !group.joined ? std::optional{0.0F} : std::nullopt;
             update_layout(*state);
             update_visuals(*state);
+            if (!services_->components().contains(id) || group.refresh_generation != generation) {
+                return;
+            }
         }
     }
     update_group_layout(group);
@@ -1402,13 +1426,16 @@ void SelectionComponentHost::apply_disabled(runtime::ComponentId id, bool value)
         static_cast<void>(state->press.reset());
         services_->pointer().cancel_interaction(state->interaction);
         state = find(id);
-        if (!state) {
+        if (!state || state->disabled != value) {
             return;
         }
     }
     static_cast<void>(services_->interactions().set_eligible(state->interaction, !value));
+    services_->dirty().invalidate(state->node, runtime::DirtyFlags::HitTest);
     services_->focus().synchronize();
-    update_visuals(*state);
+    if (auto* current = find(id)) {
+        update_visuals(*current);
+    }
 }
 
 void SelectionComponentHost::apply_loading(runtime::ComponentId id, bool value) {
@@ -1745,6 +1772,7 @@ void SelectionComponentHost::update_layout(SelectionState& state) {
 }
 
 void SelectionComponentHost::update_visuals(SelectionState& state) {
+    const auto generation = ++state.visual_generation;
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
     const auto token = resolve_tokens(theme, state.size);
     const bool faded = state.disabled || state.loading;
@@ -1879,21 +1907,32 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
                              : state.radio_button ? state.button_label
                              : state.disabled     ? theme.radio().disabled_foreground
                                                   : theme.radio().label;
-    static_cast<void>(state.label_foreground.set(channels(label_color)));
-    static_cast<void>(state.label_typography.set({theme.text().font_family, theme.text().font_weight, false,
-                                                  is_switch        ? theme.switch_token().content_font_size
-                                                  : state.checkbox ? theme.checkbox().font_size
-                                                  : state.radio_button && state.radio_size == RadioSize::Large
-                                                      ? theme.radio().button_font_size_large
-                                                      : theme.radio().font_size,
-                                                  is_switch            ? token.switch_height
-                                                  : state.checkbox     ? theme.checkbox().line_height
-                                                  : state.radio_button ? state.layout_height
-                                                                       : theme.radio().line_height}));
-    if (state.radio && state.radio_button && state.surface.valid()) {
-        publish_radio_button(state);
-        if (auto* group = services_->components().state<RadioGroupState>(state.group); group && group->joined) {
-            const auto found = std::ranges::find(group->options, state.component);
+    const auto component = state.component;
+    const auto foreground = state.label_foreground;
+    const auto typography = state.label_typography;
+    const runtime::SemanticTypography next_typography{theme.text().font_family, theme.text().font_weight, false,
+                                                      is_switch        ? theme.switch_token().content_font_size
+                                                      : state.checkbox ? theme.checkbox().font_size
+                                                      : state.radio_button && state.radio_size == RadioSize::Large
+                                                          ? theme.radio().button_font_size_large
+                                                          : theme.radio().font_size,
+                                                      is_switch            ? token.switch_height
+                                                      : state.checkbox     ? theme.checkbox().line_height
+                                                      : state.radio_button ? state.layout_height
+                                                                           : theme.radio().line_height};
+    static_cast<void>(foreground.set(channels(label_color)));
+    if (const auto* current = find(component); !current || current->visual_generation != generation) {
+        return;
+    }
+    static_cast<void>(typography.set(next_typography));
+    auto* current = find(component);
+    if (!current || current->visual_generation != generation) {
+        return;
+    }
+    if (current->radio && current->radio_button && current->surface.valid()) {
+        publish_radio_button(*current);
+        if (auto* group = services_->components().state<RadioGroupState>(current->group); group && group->joined) {
+            const auto found = std::ranges::find(group->options, current->component);
             if (found != group->options.end() && std::next(found) != group->options.end()) {
                 if (auto* next = find(*std::next(found)); next && next->surface.valid()) {
                     publish_radio_button(*next);
@@ -1901,7 +1940,7 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
             }
         }
     }
-    synchronize_switch_content(state);
+    synchronize_switch_content(*current);
 }
 
 void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Size viewport) {
@@ -2450,10 +2489,13 @@ struct CheckboxPropsAccess {
         state.on_focus = props.on_focus_;
         state.on_blur = props.on_blur_;
         state.checkbox_ref = reference;
-        state.own_direction = props.direction_.has_value();
-        const auto direction = props.direction_ ? read_prop(*props.direction_)
-                               : group          ? group->direction
-                                                : CheckboxDirection::LeftToRight;
+        const bool local_group_direction = group && group->explicit_direction;
+        state.own_direction = props.direction_.has_value() || !local_group_direction;
+        const auto inherited_direction =
+            config_binary_direction(Prop<CheckboxDirection>{CheckboxDirection::LeftToRight}, false);
+        const auto direction = props.direction_        ? read_prop(*props.direction_)
+                               : local_group_direction ? group->direction
+                                                       : read_prop(inherited_direction);
         state.direction = selection_direction(direction);
         state.wave = read_prop(props.wave_);
         build.on_resource_cleanup(component, [&host, component] {
@@ -2495,6 +2537,10 @@ struct CheckboxPropsAccess {
             static_cast<void>(connect_prop(scope, *props.direction_, [&host, component](CheckboxDirection value) {
                 host.apply_direction(component, selection_direction(value));
             }));
+        } else if (!local_group_direction) {
+            connect_prop(scope, inherited_direction, [&host, component](CheckboxDirection value) {
+                host.apply_direction(component, selection_direction(value));
+            });
         }
         const auto theme = host.services_->components().theme_scope(component);
         state.theme_subscription = theme->capture(
@@ -2605,6 +2651,7 @@ struct CheckboxGroupPropsAccess {
         state.orientation = orientation;
         state.direction = direction;
         state.on_change = props.on_change_;
+        state.explicit_direction = props.explicit_direction_;
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.services_->components().state<CheckboxGroupState>(component)) {
                 host.services_->pointer().cancel_interaction(current->anchor);
@@ -2627,7 +2674,7 @@ struct CheckboxGroupPropsAccess {
                                  for (const auto& option : options) {
                                      auto generated = std::make_unique<GeneratedCheckboxOption>(option);
                                      CheckboxProps child;
-                                     child.value(option.value).disabled(generated->disabled);
+                                     child.value(option.value).disabled(config_selection_disabled(generated->disabled));
                                      generated->component =
                                          CheckboxPropsAccess::mount(child, CheckboxLabel{[caption = generated->label] {
                                                                         Text(TextProps{}.content(caption));
@@ -2676,6 +2723,25 @@ void SelectionComponentHost::apply_checkbox_options(runtime::ComponentId id, std
     if (!group || group->source_options == options) {
         return;
     }
+    if (group->generated.size() == options.size() &&
+        std::ranges::equal(group->source_options, options, [](const auto& before, const auto& after) {
+            return before.value == after.value && before.label == after.label;
+        })) {
+        std::vector<Signal<SelectionOptionDisabled>> sources;
+        sources.reserve(group->generated.size());
+        for (const auto& option : group->generated) {
+            sources.push_back(option->disabled);
+        }
+        group->source_options = options;
+        for (std::size_t index = 0; index < sources.size(); ++index) {
+            sources[index].set(options[index].disabled);
+            group = services_->components().state<CheckboxGroupState>(id);
+            if (!group || group->source_options != options) {
+                return;
+            }
+        }
+        return;
+    }
     std::vector<std::size_t> matched(options.size(), group->generated.size());
     std::vector<std::unique_ptr<GeneratedCheckboxOption>> replacement(options.size());
     for (std::size_t i = 0; i < options.size(); ++i) {
@@ -2693,18 +2759,18 @@ void SelectionComponentHost::apply_checkbox_options(runtime::ComponentId id, std
     group->reconciling = true;
     try {
         if (std::ranges::any_of(replacement, [](const auto& option) { return bool(option); })) {
-            services_->append_slot(id, Content{[&] {
-                                       for (auto& option : replacement) {
-                                           if (option) {
-                                               CheckboxProps child;
-                                               child.value(option->value).disabled(option->disabled);
-                                               option->component = CheckboxPropsAccess::mount(
-                                                   child, CheckboxLabel{[caption = option->label] {
-                                                       Text(TextProps{}.content(caption));
-                                                   }});
-                                           }
-                                       }
-                                   }});
+            services_->append_slot(
+                id, Content{[&] {
+                    for (auto& option : replacement) {
+                        if (option) {
+                            CheckboxProps child;
+                            child.value(option->value).disabled(config_selection_disabled(option->disabled));
+                            option->component = CheckboxPropsAccess::mount(
+                                child,
+                                CheckboxLabel{[caption = option->label] { Text(TextProps{}.content(caption)); }});
+                        }
+                    }
+                }});
         }
     } catch (...) {
         if (auto* live = services_->components().state<CheckboxGroupState>(id)) {
@@ -2792,9 +2858,14 @@ struct RadioPropsAccess {
                 }
             }
         }
-        const auto direction = props.direction_ ? selection_direction(read_prop(*props.direction_))
-                               : group          ? selection_direction(group->direction)
-                                                : SwitchDirection::LeftToRight;
+        const auto inherited_direction =
+            config_binary_direction(Prop<RadioDirection>{RadioDirection::LeftToRight}, false);
+        const auto inherited_size = config_control_size(Prop<RadioSize>{RadioSize::Middle}, false);
+        const bool local_group_direction = group && group->explicit_direction;
+        const bool local_group_size = group && (group->explicit_size || group->compact.has_value());
+        const auto direction = props.direction_        ? selection_direction(read_prop(*props.direction_))
+                               : local_group_direction ? selection_direction(group->direction)
+                                                       : selection_direction(read_prop(inherited_direction));
         const auto reference = props.ref_ ? props.ref_->state_ : nullptr;
         if (reference) {
             reference->ensure_owner();
@@ -2808,7 +2879,8 @@ struct RadioPropsAccess {
         state.radio = true;
         state.own_radio_button = button;
         state.radio_button = button || (group && group->option_type == RadioOptionType::Button);
-        state.radio_size = group ? group->size : RadioSize::Middle;
+        state.radio_size = local_group_size ? group->size : read_prop(inherited_size);
+        state.own_radio_size = !local_group_size;
         if (compact && state.radio_button && !group) {
             compact->claim(component);
             build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
@@ -2835,7 +2907,7 @@ struct RadioPropsAccess {
         state.on_focus = props.on_focus_;
         state.on_blur = props.on_blur_;
         state.direction = direction;
-        state.own_direction = props.direction_.has_value();
+        state.own_direction = props.direction_.has_value() || !local_group_direction;
         state.radio_ref = reference;
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.find(component)) {
@@ -2873,6 +2945,19 @@ struct RadioPropsAccess {
             static_cast<void>(connect_prop(scope, *props.direction_, [&host, component](RadioDirection value) {
                 host.apply_direction(component, selection_direction(value));
             }));
+        } else if (!local_group_direction) {
+            connect_prop(scope, inherited_direction, [&host, component](RadioDirection value) {
+                host.apply_direction(component, selection_direction(value));
+            });
+        }
+        if (!local_group_size && !(compact && !group)) {
+            connect_prop(scope, inherited_size, [&host, component](RadioSize value) {
+                if (auto* current = host.find(component); current && current->radio_size != value) {
+                    current->radio_size = value;
+                    host.update_layout(*current);
+                    host.update_visuals(*current);
+                }
+            });
         }
         const auto theme = host.services_->components().theme_scope(component);
         state.theme_subscription = theme->capture(
@@ -3003,6 +3088,7 @@ struct RadioGroupPropsAccess {
         state.direction = direction;
         state.size = size;
         state.explicit_size = props.explicit_size_;
+        state.explicit_direction = props.explicit_direction_;
         if (compact) {
             compact->claim(component);
             state.compact = compact->metadata;
@@ -3055,7 +3141,7 @@ struct RadioGroupPropsAccess {
                                  for (const auto& option : options) {
                                      auto generated = std::make_unique<GeneratedRadioOption>(option);
                                      RadioProps child;
-                                     child.value(option.value).disabled(generated->disabled);
+                                     child.value(option.value).disabled(config_selection_disabled(generated->disabled));
                                      generated->component =
                                          RadioPropsAccess::mount(child, RadioLabel{[caption = generated->label] {
                                                                      Text(TextProps{}.content(caption));
@@ -3150,6 +3236,25 @@ void SelectionComponentHost::apply_radio_options(runtime::ComponentId id, std::v
     if (!group || group->source_options == options) {
         return;
     }
+    if (group->generated.size() == options.size() &&
+        std::ranges::equal(group->source_options, options, [](const auto& before, const auto& after) {
+            return before.value == after.value && before.label == after.label;
+        })) {
+        std::vector<Signal<SelectionOptionDisabled>> sources;
+        sources.reserve(group->generated.size());
+        for (const auto& option : group->generated) {
+            sources.push_back(option->disabled);
+        }
+        group->source_options = options;
+        for (std::size_t index = 0; index < sources.size(); ++index) {
+            sources[index].set(options[index].disabled);
+            group = services_->components().state<RadioGroupState>(id);
+            if (!group || group->source_options != options) {
+                return;
+            }
+        }
+        return;
+    }
     std::vector<std::size_t> matched(options.size(), group->generated.size());
     std::vector<std::unique_ptr<GeneratedRadioOption>> replacement(options.size());
     for (std::size_t i = 0; i < options.size(); ++i) {
@@ -3167,18 +3272,17 @@ void SelectionComponentHost::apply_radio_options(runtime::ComponentId id, std::v
     group->reconciling = true;
     try {
         if (std::ranges::any_of(replacement, [](const auto& option) { return bool(option); })) {
-            services_->append_slot(id, Content{[&] {
-                                       for (auto& option : replacement) {
-                                           if (option) {
-                                               RadioProps child;
-                                               child.value(option->value).disabled(option->disabled);
-                                               option->component =
-                                                   RadioPropsAccess::mount(child, RadioLabel{[caption = option->label] {
-                                                                               Text(TextProps{}.content(caption));
-                                                                           }});
-                                           }
-                                       }
-                                   }});
+            services_->append_slot(
+                id, Content{[&] {
+                    for (auto& option : replacement) {
+                        if (option) {
+                            RadioProps child;
+                            child.value(option->value).disabled(config_selection_disabled(option->disabled));
+                            option->component = RadioPropsAccess::mount(
+                                child, RadioLabel{[caption = option->label] { Text(TextProps{}.content(caption)); }});
+                        }
+                    }
+                }});
         }
     } catch (...) {
         if (auto* live = services_->components().state<RadioGroupState>(id)) {
@@ -3348,6 +3452,7 @@ capture_form_switch(const SwitchRef& reference) {
 
 namespace ryn {
 void Switch(SwitchProps props) {
+    detail::ConfigDefaults::apply(props);
     const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::SwitchPropsAccess::mount(props, {});
     if (attach) {
@@ -3356,6 +3461,7 @@ void Switch(SwitchProps props) {
 }
 
 void Switch(SwitchProps props, SwitchSlots slots) {
+    detail::ConfigDefaults::apply(props);
     const auto attach = detail::FormAutoControlAccess::bind(props);
     detail::SwitchPropsAccess::mount(props, slots);
     if (attach) {
@@ -3392,6 +3498,7 @@ bool SwitchRef::blur() const {
 }
 
 void Checkbox(CheckboxProps props, std::optional<CheckboxLabel> label) {
+    detail::ConfigDefaults::apply(props);
     const auto attach = detail::FormAutoControlAccess::bind(props);
     static_cast<void>(detail::CheckboxPropsAccess::mount(props, label));
     if (attach) {
@@ -3428,14 +3535,17 @@ bool CheckboxRef::blur() const {
 }
 
 void CheckboxGroup(CheckboxGroupProps props, std::optional<CheckboxGroupContent> content) {
+    detail::ConfigDefaults::apply(props);
     detail::CheckboxGroupPropsAccess::mount(props, content);
 }
 
 void Radio(RadioProps props, std::optional<RadioLabel> label) {
+    detail::ConfigDefaults::apply(props);
     static_cast<void>(detail::RadioPropsAccess::mount(props, label));
 }
 
 void RadioButton(RadioProps props, std::optional<RadioLabel> label) {
+    detail::ConfigDefaults::apply(props);
     static_cast<void>(detail::RadioPropsAccess::mount(props, label, true));
 }
 
@@ -3468,6 +3578,7 @@ bool RadioRef::blur() const {
 }
 
 void RadioGroup(RadioGroupProps props, std::optional<RadioGroupContent> content) {
+    detail::ConfigDefaults::apply(props);
     detail::RadioGroupPropsAccess::mount(props, content);
 }
 } // namespace ryn

@@ -5,6 +5,13 @@
 namespace rynui::example {
 namespace {
 constexpr auto targets = std::to_array<GalleryLegacyTestTarget>({
+    {"gallery.config-provider.size", "gallery.sample.config-provider.context", ""},
+    {"gallery.config-provider.disabled", "gallery.sample.config-provider.context", ""},
+    {"gallery.config-provider.direction", "gallery.sample.config-provider.context", ""},
+    {"gallery.config-provider.inherited", "gallery.sample.config-provider.context", ""},
+    {"gallery.config-provider.draft", "gallery.sample.config-provider.context", ""},
+    {"gallery.config-provider.explicit", "gallery.sample.config-provider.context", ""},
+    {"gallery.config-provider.nested", "gallery.sample.config-provider.context", ""},
     {"gallery.flex.baseline", "gallery.sample.flex.layouts", ""},
     {"gallery.flex.wrap-reverse", "gallery.sample.flex.layouts", ""},
     {"gallery.flex.vertical-rtl", "gallery.sample.flex.layouts", ""},

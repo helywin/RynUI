@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/menu_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -1735,6 +1736,7 @@ void MenuComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
 
 namespace ryn {
 void Menu(MenuProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_menus) {
         throw std::logic_error("Menu requires window component services");
     }

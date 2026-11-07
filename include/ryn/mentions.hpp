@@ -8,6 +8,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class MentionsComponentHost;
 }
 
@@ -307,6 +311,7 @@ public:
 
     MentionsProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -384,6 +389,7 @@ public:
 
     MentionsProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -394,6 +400,7 @@ public:
 
     MentionsProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -473,6 +480,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::MentionsComponentHost;
     std::optional<Prop<String>> single_prefix_;
     Prop<std::vector<String>> prefixes_{std::vector<String>{String{u8"@"}}};
@@ -495,6 +503,7 @@ private:
     Prop<MentionsSource> source_{MentionsSource{}};
     Prop<bool> virtual_{true};
     Prop<TextDirection> direction_{TextDirection::Auto};
+    bool explicit_direction_{};
     Prop<bool> motion_{false};
     Prop<MentionsPopupRenderer> popup_render_{MentionsPopupRenderer{}};
     Prop<MentionsEditor> editor_{MentionsEditor{}};
@@ -510,8 +519,10 @@ private:
     Prop<bool> active_first_{true};
     Prop<bool> allow_clear_{false};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
     std::optional<Prop<bool>> open_;

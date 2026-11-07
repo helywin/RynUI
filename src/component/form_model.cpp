@@ -300,6 +300,19 @@ String form_field_error(const std::shared_ptr<FormFieldState>& state) {
     return meta.errors.empty() ? state->error.get() : meta.errors.front();
 }
 
+std::optional<FormIssueSource> form_field_error_source(const std::shared_ptr<FormFieldState>& state) {
+    const auto meta = state->meta.get();
+    if (meta.errors.empty() && state->error.get().empty()) {
+        return std::nullopt;
+    }
+    for (const auto& issue : state->issues.get()) {
+        if (!issue.warning) {
+            return issue.source;
+        }
+    }
+    return FormIssueSource::Literal;
+}
+
 bool form_field_disabled(const std::shared_ptr<FormFieldState>& state) {
     const bool local = state->disabled.get();
     const auto owner = state->owner.lock();
@@ -580,7 +593,7 @@ FormResult FormModel::validate_transaction() {
         } else if (const auto validator = field->validator) {
             const auto message = validator(value);
             if (!message.empty()) {
-                error = FormStoredIssue{message};
+                error = FormStoredIssue{message, false, FormMessageSource::Validator};
             }
         }
         if (!alive || revision != revision_ || !field->registered || field->generation != fields[i].generation ||

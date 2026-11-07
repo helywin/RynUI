@@ -11,6 +11,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class DescriptionsComponentHost;
 }
 
@@ -98,6 +102,7 @@ public:
 
     DescriptionsProps& size(Prop<DescriptionsSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -138,6 +143,7 @@ public:
 
     DescriptionsProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -157,18 +163,21 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::DescriptionsComponentHost;
     Prop<int> column_{3};
     std::optional<Prop<Responsive<int>>> responsive_column_;
     Prop<Breakpoints> breakpoints_{Breakpoints{}};
     std::optional<Prop<DescriptionsLocale>> locale_;
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> visible_{true};
     std::optional<Prop<DescriptionsTitle>> dynamic_title_;
     std::optional<Prop<DescriptionsExtra>> dynamic_extra_;
     Prop<bool> bordered_{false};
     Prop<DescriptionsLabelPlacement> placement_{DescriptionsLabelPlacement::Horizontal};
     Prop<DescriptionsSize> size_{DescriptionsSize::Default};
+    bool explicit_size_{};
     Prop<bool> colon_{true};
     std::optional<DescriptionsTitle> title_;
     std::optional<DescriptionsExtra> extra_;

@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class DividerComponentHost;
 }
 enum class DividerType { Horizontal, Vertical };
@@ -84,6 +88,7 @@ public:
 
     DividerProps& direction(Prop<DividerDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -107,6 +112,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::DividerComponentHost;
     Prop<DividerType> type_{DividerType::Horizontal};
     Prop<DividerOrientation> orientation_{DividerOrientation::Center};
@@ -115,6 +121,7 @@ private:
     Prop<DividerVariant> variant_{DividerVariant::Solid};
     std::optional<Prop<ControlSize>> size_;
     Prop<DividerDirection> direction_{DividerDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<bool> plain_{false};
     Prop<String> content_{String{}};
     LayoutStyle layout_;

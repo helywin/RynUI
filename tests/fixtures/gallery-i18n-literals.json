@@ -1,0 +1,1542 @@
+[
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "gallery_records",
+    "literal": "任务 ",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "点击编辑 · 受控正文",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "标题编辑继承字号",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "Breadcrumb draft",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "Steps draft",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "晨间项目",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "今天整理项目资料",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "下次会议前补齐项目备注",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "请核对项目资料",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "记录发布后的跟进事项",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "江",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "核对本期指标",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "补充服务评价",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "在这里输入 @ 或 #\n",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "可编辑富建议草稿",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "联系人备注",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "项目处理备注",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "GalleryState",
+    "literal": "安排项目交付",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_catalog_samples",
+    "literal": "code: a += b; 中文回退",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_splitter_multiple_samples",
+    "literal": "B · 拖动保持草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_splitter_controlled_samples",
+    "literal": "自定义拖动图标",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_splitter_lazy_collapse_samples",
+    "literal": "折叠时按全局策略保留或销毁",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_splitter_nested_samples",
+    "literal": "嵌套下方草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_shell_structure_samples",
+    "literal": "调整侧栏时保留此草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_shell_responsive_samples",
+    "literal": "零宽折叠后仍保留",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_input_base_samples",
+    "literal": "32",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_input_base_samples",
+    "literal": "非受控 / Input",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_search_base_samples",
+    "literal": "RynUI",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_search_base_samples",
+    "literal": "Small / 小号",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_search_base_samples",
+    "literal": "loading",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_search_base_samples",
+    "literal": "disabled",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_password_base_samples",
+    "literal": "RynUI 密码",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_password_base_samples",
+    "literal": "禁用密码",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "原始全文保持完整：省略显示时复制仍写入全部内容；点击展开查看全文，再次点击收起。",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "多行省略保留字素边界，英文 Latin 和中文均复用同一文本测量通道。\n显式换行也计入行数。\n展开后显示全部行。",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "混合语义：",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "Strong ",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "Italic ",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "code <>&\" ",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "Ctrl+C ",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "Mark ",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "Underline ",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "Deleted\n",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_typography_features",
+    "literal": "אבג / 中文 é：缩窄后省略，HTML 与纯文本仍复制完整来源。",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_button_variant_samples",
+    "literal": "…",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_checkbox_samples",
+    "literal": "a",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_radio_samples",
+    "literal": "a",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_grid_samples",
+    "literal": "窗口变化保留草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_grid_samples",
+    "literal": "120 dp",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_grid_samples",
+    "literal": "flex 1",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_grid_samples",
+    "literal": "flex 2",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_grid_samples",
+    "literal": "隐藏后保持草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_masonry_samples",
+    "literal": "缩放后保留草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_masonry_samples",
+    "literal": "稳定 key",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_masonry_samples",
+    "literal": "独立挂载",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_space_samples",
+    "literal": "/",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_space_samples",
+    "literal": "Ag 输入",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_space_samples",
+    "literal": "https://",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_space_samples",
+    "literal": "输入",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_space_samples",
+    "literal": "秘密",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_space_samples",
+    "literal": "搜索",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tabs_samples",
+    "literal": "切换后保留 / Draft",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tabs_samples",
+    "literal": "另一份草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tabs_samples",
+    "literal": "重排后保留",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tabs_samples",
+    "literal": "按需挂载内容",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tabs_samples",
+    "literal": "新页草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_modal_samples",
+    "literal": "RynUI account",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_modal_samples",
+    "literal": "保留的多行备注\n中文 / English 🙂",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_modal_samples",
+    "literal": "末尾保留的输入",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_modal_samples",
+    "literal": "父层保留的草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_modal_samples",
+    "literal": "子层保留的草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_avatar_image_samples",
+    "literal": "显式模拟失败",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_badge_native_samples",
+    "literal": "NEW",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tag_native_samples",
+    "literal": "重排保留的草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tag_native_samples",
+    "literal": "one",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_drawer_samples",
+    "literal": "保留的抽屉草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_drawer_samples",
+    "literal": "抽屉中的多行备注\n关闭后重新打开仍然保留",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_drawer_samples",
+    "literal": "嵌套草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_drawer_samples",
+    "literal": "末尾编辑",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_drawer_samples",
+    "literal": "RTL",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_spin_samples",
+    "literal": "加载前后保留内容",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_table_samples",
+    "literal": "已更新任务",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_pagination_samples",
+    "literal": "›",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_pagination_samples",
+    "literal": "…",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_image_samples",
+    "literal": "Synthetic application source failure",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_image_samples",
+    "literal": "Retained toolbar draft",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_upload_samples",
+    "literal": "Retained file item draft",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_upload_samples",
+    "literal": "Synthetic fixture result",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_upload_samples",
+    "literal": "Synthetic transport failure; retry available",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_transfer_samples",
+    "literal": "RTL / LTR",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_transfer_samples",
+    "literal": "移动和重排时保留此草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_transfer_samples",
+    "literal": "保留的 footer 草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_cascader_samples",
+    "literal": "中国",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_cascader_samples",
+    "literal": "Europe",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_cascader_samples",
+    "literal": "Paris",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_cascader_samples",
+    "literal": "Local demo error",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_cascader_samples",
+    "literal": "Loaded child",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_cascader_samples",
+    "literal": "保留的标签草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_dropdown_samples",
+    "literal": "关闭再打开会保留草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_collapse_contract_samples",
+    "literal": "编辑后重排，草稿仍保留",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_collapse_contract_samples",
+    "literal": "首次展开才创建；收起后销毁",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_descriptions_contract_samples",
+    "literal": "保留的详情草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_timeline_contract_samples",
+    "literal": "重排后保留时间轴草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_collapse_samples",
+    "literal": "保留的设置草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_collapse_samples",
+    "literal": "高级草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_result_samples",
+    "literal": "保留的结果详情草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_form_layout_samples",
+    "literal": "custom initial",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_date_picker_samples",
+    "literal": "保留的日期备注",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_input_only_features",
+    "literal": "中文 / RynUI 🙂",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_input_only_features",
+    "literal": "é🙂中文",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_input_only_features",
+    "literal": "RynUI",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_input_only_features",
+    "literal": "desktop@example.com",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_input_only_features",
+    "literal": "自定义清空图标",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_password_features",
+    "literal": "秘密🙂",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_password_features",
+    "literal": "controlled",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_search_features",
+    "literal": "RynUI",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_search_features",
+    "literal": "Search",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_text_area_samples",
+    "literal": "中文 / RynUI 🙂\n第二行\nEnter 换行",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_text_area_samples",
+    "literal": "autoSize 随编辑与宽度换行扩展\n保留空行\n\n",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_text_area_samples",
+    "literal": "No wrap: abcdefghijklmnopqrstuvwxyz 0123456789\n第二行\n第三行\n第四行\n第五行\n第六行",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_text_area_samples",
+    "literal": "只读可以选择、复制和滚动\n中文 / Latin 🙂\n第三行\n第四行",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_text_area_samples",
+    "literal": "禁用输入\n不响应编辑或拖动",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_otp_samples",
+    "literal": "12",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_otp_samples",
+    "literal": "rYnUI!",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_otp_samples",
+    "literal": "1234",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_otp_samples",
+    "literal": "-",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_otp_samples",
+    "literal": "12345678",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_otp_samples",
+    "literal": "只读验证码",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_bidi_typography",
+    "literal": "مرحبا (12) אבג RynUI",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_bidi_typography",
+    "literal": "مرحبا 123 (אבג)\nאבג 12 مرحبا 中文",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_bidi_input",
+    "literal": "A אבג 12 مرحبا",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_bidi_text_area",
+    "literal": "אבג (12) مرحبا\nمرحبا 34 אבג 中文\n\n尾行",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_bidi_password",
+    "literal": "אבג مرحبا 👩‍💻",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_complete_select_samples",
+    "literal": " · synthetic",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_listy_samples",
+    "literal": "Account ",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_empty_completion_samples",
+    "literal": "填写创建内容",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_empty_completion_samples",
+    "literal": "Application rejected image",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_card_completion_samples",
+    "literal": "保留的 tab 草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_card_completion_samples",
+    "literal": "Member ",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_card_completion_samples",
+    "literal": "R",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_card_completion_samples",
+    "literal": "Grid 草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_card_samples",
+    "literal": "保留草稿 / Draft",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_breadcrumb_samples",
+    "literal": "›",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_breadcrumb_samples",
+    "literal": "Breadcrumb draft",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_breadcrumb_samples",
+    "literal": "Display draft",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_breadcrumb_dynamic_samples",
+    "literal": "›",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_steps_samples",
+    "literal": "Steps draft",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_steps_samples",
+    "literal": "保留步骤草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_steps_samples",
+    "literal": "步骤说明草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_time_picker_samples",
+    "literal": "保留的时间备注",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_descriptions_samples",
+    "literal": "晨间项目",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_skeleton_samples",
+    "literal": "今天整理项目资料",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_popover_samples",
+    "literal": "底部草稿保持不变",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_popover_samples",
+    "literal": "下次会议前补齐项目备注",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_app_samples",
+    "literal": "保留这份草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_app_samples",
+    "literal": "确认框中的草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_app_samples",
+    "literal": "抽屉中的草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_timeline_samples",
+    "literal": "记录发布后的跟进事项",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_member_avatar_samples",
+    "literal": "江",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_statistic_metric_samples",
+    "literal": "核对本期指标",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_service_rate_samples",
+    "literal": "好",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_service_rate_samples",
+    "literal": "补充服务评价",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_complete_autocomplete_samples",
+    "literal": "Ada",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_complete_autocomplete_samples",
+    "literal": "第一段",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_complete_autocomplete_samples",
+    "literal": "第二段",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_complete_autocomplete_samples",
+    "literal": " · synthetic",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_carousel_samples",
+    "literal": "保留面板草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_carousel_samples",
+    "literal": "子浮层备注",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_carousel_samples",
+    "literal": "RTL",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_carousel_controlled_samples",
+    "literal": "动态重排保留草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_carousel_controlled_samples",
+    "literal": "dot 草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_calendar_custom_samples",
+    "literal": "2024-12-31",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_calendar_custom_samples",
+    "literal": "保留 header 草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_calendar_custom_samples",
+    "literal": "保留日期备注",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_calendar_samples",
+    "literal": "日程备注",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_mentions_samples",
+    "literal": "Ada",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_mentions_samples",
+    "literal": "提及",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_mentions_samples",
+    "literal": "阿明",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_contact_autocomplete_samples",
+    "literal": "Ada",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_date_modes_samples",
+    "literal": "保留的面板备注",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_date_modes_samples",
+    "literal": "子浮层草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_date_time_samples",
+    "literal": "DD/MM/YYYY HH:mm:ss.SSS",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_time_precision_samples",
+    "literal": "保留的精确时间备注",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_qrcode_samples",
+    "literal": "RynUI native QRCode 107",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_qrcode_samples",
+    "literal": "L / M / Q / H",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_watermark_samples",
+    "literal": "Application source unavailable",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_watermark_samples",
+    "literal": "RynUI 原生水印\nConfidential",
+    "category": "text-fixture",
+    "reason": "确定性 Typography/CJK/bidi/复制或水印排版样本；此文本是被演示的数据。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_watermark_samples",
+    "literal": "旋转、切换水印或尺寸变化后草稿仍保留",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_affix_samples",
+    "literal": "滚动与切换目标不会重建这份草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_border_beam_samples",
+    "literal": "改变颜色与运动参数保留此输入",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_table_completion_samples",
+    "literal": "保留编辑行 ",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_table_completion_samples",
+    "literal": "树子行",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tour_samples",
+    "literal": "原生目标中的编辑草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tour_samples",
+    "literal": "切步后仍保留的步骤草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_tour_samples",
+    "literal": "最内层输入边界",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "make_gallery_frame_definition",
+    "literal": "RynUI",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "make_gallery_frame_definition",
+    "literal": "Ant Design 6.6.5",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "resolved_component_values",
+    "literal": " · rgba(",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": "input.font_size · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": "input.line_height · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": "input.padding_inline · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": "suggestions.option_height · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": "suggestions.font_size · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": "suggestions.line_height · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": "suggestions.shadow_layers · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": "suggestions.z_index_popup · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "component_values",
+    "literal": " · rgba(",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::build_header",
+    "literal": "RynUI",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::api",
+    "literal": "#include <ryn/rynui.hpp>",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::api",
+    "literal": "examples/i18n_app/i18n_app.cpp",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::token_values",
+    "literal": "colorPrimary · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::token_values",
+    "literal": "\ncolorText · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::token_values",
+    "literal": "\ncolorBgContainer · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::token_values",
+    "literal": "\nfontSize · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::token_values",
+    "literal": "\ncontrolHeight · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::token_values",
+    "literal": "\nborderRadius · ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/token_gallery/gallery_pages_host.cpp",
+    "function": "GalleryPagesHost::Impl::sources",
+    "literal": "Ant Design ",
+    "category": "code-or-api",
+    "reason": "精确数字、单位、分隔符、日期值或公开 API 枚举缩写，作为技术表示保留。"
+  },
+  {
+    "source": "examples/i18n_app/i18n_app.cpp",
+    "function": "retained_note",
+    "literal": "会议备注 / meeting note · مرحبا",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/i18n_app/i18n_app.cpp",
+    "function": "content",
+    "literal": "Literal business text",
+    "category": "business-payload",
+    "reason": "明确的业务文档、人员名、模型值、前缀或合成 IO 错误正文；保留其原始内容，不作为操作文案。"
+  },
+  {
+    "source": "examples/i18n_app/i18n_app.cpp",
+    "function": "content",
+    "literal": "业务草稿",
+    "category": "business-payload",
+    "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  }
+]

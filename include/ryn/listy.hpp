@@ -97,6 +97,8 @@ struct ListyOptions final {
     std::optional<ListyContent> footer;
     std::optional<ListyEmpty> empty;
     LayoutStyle layout;
+    bool explicit_rtl{};
+    bool explicit_disabled{};
 };
 
 using ListyRenderer = std::function<void(String, Binding<std::shared_ptr<const void>>, Binding<std::size_t>)>;
@@ -142,11 +144,13 @@ public:
 
     ListyProps& rtl(Prop<bool> value = true) {
         options_.rtl = std::move(value);
+        options_.explicit_rtl = true;
         return *this;
     }
 
     ListyProps& disabled(Prop<bool> value = true) {
         options_.disabled = std::move(value);
+        options_.explicit_disabled = true;
         return *this;
     }
 

@@ -12,6 +12,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TooltipComponentHost;
 }
 
@@ -90,6 +94,7 @@ public:
 
     TooltipProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -139,6 +144,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TooltipComponentHost;
     Prop<String> title_{String{}};
     bool explicit_title_{};
@@ -149,6 +155,7 @@ private:
     Prop<TooltipPlacement> placement_{TooltipPlacement::Top};
     Prop<TooltipTriggerMode> trigger_{TooltipTriggerMode::HoverFocus};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<bool> animated_{false};
     bool explicit_trigger_{};
     std::optional<Prop<TooltipTriggers>> triggers_;

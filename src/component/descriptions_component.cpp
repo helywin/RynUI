@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/descriptions_component.hpp"
 #include "component/localized_prop.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -947,6 +948,7 @@ void DescriptionsComponentHost::synchronize_auxiliary_geometry(runtime::Size vie
 
 namespace ryn {
 void Descriptions(DescriptionsProps props, Prop<std::vector<DescriptionsItem>> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_descriptions) {
         throw std::logic_error("Descriptions requires window component services");
     }
@@ -954,6 +956,7 @@ void Descriptions(DescriptionsProps props, Prop<std::vector<DescriptionsItem>> i
 }
 
 void Descriptions(DescriptionsProps props, std::vector<DescriptionsItem> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_descriptions) {
         throw std::logic_error("Descriptions requires window component services");
     }

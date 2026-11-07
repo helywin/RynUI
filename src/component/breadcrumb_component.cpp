@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/navigation_model.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -855,6 +856,7 @@ void BreadcrumbComponentHost::synchronize_auxiliary_geometry(runtime::Size viewp
 
 namespace ryn {
 void Breadcrumb(BreadcrumbProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_breadcrumb) {
         throw std::logic_error("Breadcrumb requires window component services");
     }

@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/avatar_component.hpp"
 #include "component/popover_component.hpp"
 #include "component/image_component.hpp"
@@ -1275,8 +1276,13 @@ bool AvatarComponentHost::on_scroll_input(const input::ScrollInputEvent& event) 
         if (event.x < clip.x || event.x >= clip.x + clip.width || event.y < clip.y || event.y >= clip.y + clip.height) {
             return false;
         }
-        const float next = std::clamp(s->popup_scroll - event.delta_y * 32.0F, 0.0F,
-                                      std::max(0.0F, s->popup_height - row.bounds.height));
+        const float extent = std::max(0.0F, s->popup_height - row.bounds.height);
+        if (extent == 0.0F) {
+            // The enclosing Popover owns scrolling when it allocated the whole
+            // member row and clips that row through its own content viewport.
+            return false;
+        }
+        const float next = std::clamp(s->popup_scroll - event.delta_y * 32.0F, 0.0F, extent);
         if (next != s->popup_scroll) {
             s->popup_scroll = next;
             services_->dirty().invalidate(node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
@@ -1290,6 +1296,7 @@ bool AvatarComponentHost::on_scroll_input(const input::ScrollInputEvent& event) 
 
 namespace ryn {
 void Avatar(AvatarProps p, AvatarSlots slots) {
+    detail::ConfigDefaults::apply(p);
     if (!detail::active_avatar) {
         throw std::logic_error("Avatar requires window component services");
     }
@@ -1301,6 +1308,7 @@ void AvatarGroup(AvatarGroupProps p) {
 }
 
 void AvatarGroup(AvatarGroupProps p, std::vector<AvatarGroupItem> items) {
+    detail::ConfigDefaults::apply(p);
     if (!detail::active_avatar) {
         throw std::logic_error("AvatarGroup requires window component services");
     }

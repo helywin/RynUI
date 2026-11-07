@@ -7,6 +7,36 @@
 namespace {
 using namespace ryn_test::navigation;
 
+void panel_small_allocations() {
+    Fixture f;
+    Signal<LogicalLength> width{dp(8)};
+    Signal<LogicalLength> height{dp(8)};
+    f.services.mount(Content{[&] {
+        Steps(StepsProps{}.type(StepsType::Panel).layout(LayoutStyle{}.width(width).height(height)),
+              std::vector<StepsItem>{{u8"first", u8"First"}});
+    }});
+    sync(f);
+    const auto id = f.services.steps().mounted().front();
+    const auto original = f.services.steps().snapshot(id).items;
+    bool compressed{};
+    for (const auto w : {1.0F, 8.0F, 32.0F, 320.0F}) {
+        for (const auto h : {0.0F, 1.0F, 8.0F, 100.0F}) {
+            width.set(dp(w));
+            height.set(dp(h));
+            sync(f);
+            const auto current = f.services.steps().snapshot(id);
+            check(current.items == original, "small Panel allocation replaced the retained step");
+            const auto rect = bounds(f, current.items.front());
+            compressed |= std::min(rect.width, rect.height) <
+                          2 * f.services.components().theme_scope(id)->snapshot().steps().metrics.icon_gap;
+            for (const auto& effect : f.services.rounded_effects().packed_instances()) {
+                graphics::validate_rounded_effect(effect);
+            }
+        }
+    }
+    check(compressed, "small Panel regression did not exercise a constrained corner");
+}
+
 void controlled_focus_and_retry() {
     Fixture f;
     Signal<std::size_t> current{0};
@@ -505,6 +535,7 @@ void dynamic_variants_and_motion() {
 
 int main() {
     try {
+        panel_small_allocations();
         dynamic_variants_and_motion();
         inline_child_popover_escape();
         controlled_focus_and_retry();

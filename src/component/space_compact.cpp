@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/space_compact.hpp"
 
 #include "layout/flex_distribution.hpp"
@@ -167,6 +168,12 @@ void CompactContext::refresh(bool measure) {
     }
     refreshing_ = true;
     try {
+        const auto size = size_source;
+        size.set(metadata.size);
+        if (!active_ || !host_->contains(component_)) {
+            refreshing_ = false;
+            return;
+        }
         const auto children = flow_children();
         for (std::size_t i = 0; i < members_.size(); ++i) {
             auto& member = members_[i];
@@ -498,6 +505,7 @@ void mount_space_compact(const SpaceCompactProps& props, const SpaceCompactConte
     context->metadata = {.size = parent && !context->explicit_size ? parent->metadata.size : size,
                          .orientation = orientation,
                          .right_to_left = right_to_left};
+    context->size_source.set(context->metadata.size);
     context->block = read_prop(SpaceCompactPropsAccess::block(props));
     const auto node = build.root(component);
     services.layout.set_layout(
@@ -561,6 +569,7 @@ void mount_space_compact(const SpaceCompactProps& props, const SpaceCompactConte
 
 namespace ryn {
 void SpaceCompact(SpaceCompactProps props, SpaceCompactContent content) {
+    detail::ConfigDefaults::apply(props);
     detail::mount_space_compact(props, content);
 }
 } // namespace ryn

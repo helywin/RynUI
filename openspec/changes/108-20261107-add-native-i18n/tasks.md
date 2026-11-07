@@ -26,14 +26,14 @@
 
 ## 4. 公开应用与 Gallery 双语
 
-- [ ] 4.1 交付仅公开 API 的真实应用例子，覆盖参数/复数/格式语言、嵌套 Provider、独立 direction 和 retained 富内容；运行 public API/例子编译及对应交互合同，完成 docs/i18n.md。
-- [ ] 4.2 将 Gallery 壳/导航/说明/示例操作文案接公共消息词典，保持稳定 ID/源引用及登记的 literal fixture；运行 `rynui.i18n_gallery` 校验中英 key/参数覆盖，且切换不 build_page/remount、不丢业务状态，并维护覆盖清单。
-- [ ] 4.3 完成上述 Gallery 实现的 source/catalog 生成检查及受影响 page/controller/host/frame 合同，保留原有参数入口；运行格式/doctor/strict/diff，记录精简结果并提交。
+- [x] 4.1 交付仅公开 API 的真实应用例子，覆盖参数/复数/格式语言、嵌套 Provider、独立 direction 和 retained 富内容；运行 public API/例子编译及对应交互合同，完成 docs/i18n.md。
+- [x] 4.2 将 Gallery 壳/导航/说明/示例操作文案接公共消息词典，保持稳定 ID/源引用及登记的 literal fixture；运行 `rynui.i18n_gallery` 校验中英 key/参数覆盖，且切换不 build_page/remount、不丢业务状态，并维护覆盖清单。
+- [x] 4.3 完成上述 Gallery 实现的 source/catalog 生成检查及受影响 page/controller/host/frame 合同，保留原有参数入口；运行格式/doctor/strict/diff，记录精简结果并提交。
 
 ## 5. Windows 自动平台集成
 
-- [ ] 5.1 正式 Windows/MSVC native preset 构建公开例子与 Gallery，后台 hidden D3D12 运行 zh/en 切换和局部 GPU readback，覆盖 Modal/Select/Picker/Form/Table/Empty 等实际路径及混合脚本/分数 DPI；记录有效捕获数量与实际 driver，不以 CPU 测试替代。
-- [ ] 5.2 同一后台序列验证打开弹层、输入/选区保留、resize/回滚重入、导航退役和 idle 零新增 deadline；错误框抑制、SDL hidden 和超时均生效，原始输出只在 out，精简记录 Windows 边界并提交。
+- [x] 5.1 正式 Windows/MSVC native preset 构建公开例子与 Gallery，后台 hidden D3D12 运行 zh/en 切换和局部 GPU readback，覆盖 Modal/Select/Picker/Form/Table/Empty 等实际路径及混合脚本/分数 DPI；记录有效捕获数量与实际 driver，不以 CPU 测试替代。
+- [x] 5.2 同一后台序列验证打开弹层、输入/选区保留、resize/回滚重入、导航退役和 idle 零新增 deadline；错误框抑制、SDL hidden 和超时均生效，原始输出只在 out，精简记录 Windows 边界并提交。
 
 ## 6. Linux 自动平台集成
 

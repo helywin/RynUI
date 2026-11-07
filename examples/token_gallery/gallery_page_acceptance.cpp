@@ -96,6 +96,24 @@ GalleryPageOptions gallery_page_options(std::span<const std::string_view> argume
         } else if (argument == "--page-visual") {
             result.visual = true;
             acceptance_argument = true;
+        } else if (argument == "--page-i18n") {
+            result.i18n = true;
+            acceptance_argument = true;
+        } else if (argument.starts_with("--locale=")) {
+            result.locale = ryn::LocaleId{argument.substr(9)};
+        } else if (argument.starts_with("--format-locale=")) {
+            result.format_locale = ryn::LocaleId{argument.substr(16)};
+        } else if (argument.starts_with("--direction=")) {
+            const auto direction = argument.substr(12);
+            if (direction == "ltr") {
+                result.direction = ryn::TextDirection::LeftToRight;
+            } else if (direction == "rtl") {
+                result.direction = ryn::TextDirection::RightToLeft;
+            } else if (direction == "auto") {
+                result.direction = ryn::TextDirection::Auto;
+            } else {
+                throw std::invalid_argument("--direction requires ltr, rtl or auto");
+            }
         } else if (argument == "--motion-disabled") {
             result.motion_disabled = true;
         } else if (argument.starts_with("--page=")) {
@@ -130,6 +148,9 @@ GalleryPageOptions gallery_page_options(std::span<const std::string_view> argume
     }
     if (!result.acceptance && acceptance_argument) {
         throw std::invalid_argument("Page automation arguments require --page-acceptance");
+    }
+    if (result.i18n && !result.visual) {
+        throw std::invalid_argument("--page-i18n requires --page-acceptance --page-visual");
     }
     if (result.acceptance) {
         const auto base = std::filesystem::weakly_canonical(repository / "out");

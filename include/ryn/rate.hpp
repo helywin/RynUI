@@ -14,6 +14,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class RateComponentHost;
 struct RateRefState;
 } // namespace detail
@@ -111,6 +115,7 @@ public:
 
     RateProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -131,6 +136,7 @@ public:
 
     RateProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -155,6 +161,7 @@ public:
 
     RateProps& direction(Prop<RateDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -204,6 +211,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::RateComponentHost;
     Prop<int> count_{5};
     std::optional<Prop<float>> value_;
@@ -211,14 +219,17 @@ private:
     Prop<bool> allow_half_{false};
     Prop<bool> allow_clear_{true};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     Prop<bool> keyboard_{true};
     Prop<bool> visible_{true};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<RateCharacter> character_{RateCharacter{}};
     std::function<RateCharacter(std::size_t)> character_for_;
     std::function<Prop<RateCharacter>(std::size_t)> reactive_character_for_;
     Prop<RateDirection> direction_{RateDirection::LeftToRight};
+    bool explicit_direction_{};
     std::optional<RateRef> ref_;
     bool auto_focus_{};
     std::function<void()> on_focus_;

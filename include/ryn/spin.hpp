@@ -9,6 +9,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class FeedbackComponentHost;
 }
 
@@ -61,6 +65,7 @@ public:
 
     SpinProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -79,9 +84,11 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::FeedbackComponentHost;
     Prop<bool> spinning_{true};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<String> description_{String{}};
     Prop<bool> fullscreen_{false};
     Prop<std::chrono::milliseconds> delay_{std::chrono::milliseconds{0}};

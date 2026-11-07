@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/pagination_component.hpp"
 #include "component/localized_prop.hpp"
 #include "component/responsive_layout.hpp"
@@ -747,6 +748,7 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
 
 namespace ryn {
 void Pagination(PaginationProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_pagination) {
         throw std::logic_error("Pagination requires window component services");
     }

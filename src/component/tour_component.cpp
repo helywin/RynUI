@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/tour_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/localized_prop.hpp"
@@ -974,6 +975,7 @@ void TourTarget(TourTargetRef ref, TourTargetContent content) {
 }
 
 void Tour(TourProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_tour) {
         throw std::logic_error("Tour requires window component services");
     }

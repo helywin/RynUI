@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/select_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/select_model.hpp"
@@ -2841,6 +2842,7 @@ void SelectPopupRenderer::operator()(std::function<void()> origin) const {
 }
 
 void Select(SelectProps props, std::optional<SelectPrefix> prefix, std::optional<SelectSuffix> suffix) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_selects) {
         throw std::logic_error("Select requires window component services");
     }

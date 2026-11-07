@@ -77,6 +77,26 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(runner.run(sys.executable, temp, "linux-gcc", execute=expired, system="Linux"), 1)
             self.assertEqual(json.loads((Path(temp) / "runner-result.json").read_text())["status"], "timeout")
 
+    def test_i18n_uses_hidden_native_path_inside_private_wayland(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "out", prefix="page-i18n-runner-test-") as temp:
+            def execute(command, **kwargs):
+                self.assertEqual(Path(command[1]).name, "run_background_wayland.py")
+                self.assertIn("--page-acceptance", command)
+                self.assertIn("--page-visual", command)
+                self.assertIn("--page-i18n", command)
+                output = next(item.split("=", 1)[1] for item in command if item.startswith("--page-output="))
+                Path(output).write_text(json.dumps(result() | {"host_input_area": False, "host_cursor_sync": False}), encoding="utf-8")
+                return types.SimpleNamespace(returncode=0, stdout="mock command check only\n", stderr="")
+            self.assertEqual(runner.run(sys.executable, temp, "linux-gcc", execute=execute, system="Linux", i18n=True), 0)
+
+    def test_default_onscreen_matrix_requires_host_input_integration(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "out", prefix="page-host-runner-test-") as temp:
+            def execute(command, **kwargs):
+                output = next(item.split("=", 1)[1] for item in command if item.startswith("--page-output="))
+                Path(output).write_text(json.dumps(result() | {"host_input_area": False, "host_cursor_sync": False}), encoding="utf-8")
+                return types.SimpleNamespace(returncode=0, stdout="mock host omission\n", stderr="")
+            self.assertEqual(runner.run(sys.executable, temp, "linux-gcc", execute=execute, system="Linux"), 1)
+
     def test_output_boundary(self):
         with self.assertRaises(ValueError):
             runner.run(sys.executable, ROOT / "docs", "linux-gcc", execute=lambda *_: self.fail("must reject before execution"))

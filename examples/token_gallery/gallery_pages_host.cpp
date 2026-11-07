@@ -5,6 +5,8 @@
 #include "gallery_sample_registry.hpp"
 #include "gallery_sample_source.hpp"
 #include "gallery_source_panel.hpp"
+#include "gallery_i18n.hpp"
+#include "../i18n_app/i18n_app.hpp"
 
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
@@ -45,16 +47,15 @@ bool has_algorithm(const ThemeConfig& theme, ThemeAlgorithm value) {
 struct Section final {
     GalleryPageSection kind;
     std::string_view identity;
-    std::string_view title;
 };
 
 constexpr std::array sections{
-    Section{GalleryPageSection::usage, "gallery.page.usage", "用途"},
-    Section{GalleryPageSection::examples, "gallery.page.examples", "示例"},
-    Section{GalleryPageSection::api, "gallery.page.api", "C++ 与 API"},
-    Section{GalleryPageSection::support, "gallery.page.support", "支持范围"},
-    Section{GalleryPageSection::tokens, "gallery.page.tokens", "Design Token"},
-    Section{GalleryPageSection::sources, "gallery.page.sources", "来源"},
+    Section{GalleryPageSection::usage, "gallery.page.usage"},
+    Section{GalleryPageSection::examples, "gallery.page.examples"},
+    Section{GalleryPageSection::api, "gallery.page.api"},
+    Section{GalleryPageSection::support, "gallery.page.support"},
+    Section{GalleryPageSection::tokens, "gallery.page.tokens"},
+    Section{GalleryPageSection::sources, "gallery.page.sources"},
 };
 
 const Section& section_info(GalleryPageSection kind) {
@@ -65,7 +66,24 @@ const Section& section_info(GalleryPageSection kind) {
     return *found;
 }
 
-void paragraph(String value, Prop<LogicalLength> width, TextTone tone = TextTone::Primary, float size = 14,
+constexpr std::array status_keys{"gallery.status.implemented", "gallery.status.partial",
+                                 "gallery.status.planned",     "gallery.status.web-only",
+                                 "gallery.status.deprecated",  "gallery.status.out-of-scope"};
+
+Binding<String> status_text(GallerySupportStatus status) {
+    return gallery_text(status_keys.at(static_cast<std::size_t>(status)));
+}
+
+Binding<String> category_text(AntDesignGalleryCategory category) {
+    for (const auto& value : ant_design_reference_categories()) {
+        if (value.category == category) {
+            return gallery_field(value.identity, "name");
+        }
+    }
+    throw std::invalid_argument("Gallery category is not registered");
+}
+
+void paragraph(Prop<String> value, Prop<LogicalLength> width, TextTone tone = TextTone::Primary, float size = 14,
                float line_height = 22, std::uint32_t weight = 400) {
     auto config = std::make_unique<ThemeConfig>();
     config->text.tokens.font_size = dp(size);
@@ -357,6 +375,7 @@ struct GalleryPagesHost::Impl final {
         GalleryPageTicket ticket;
         GallerySamplePage samples;
         Signal<LogicalLength> width{dp(880)};
+        std::shared_ptr<i18n_example::Model> public_example;
         std::vector<Section> sections;
     };
 
@@ -392,6 +411,10 @@ struct GalleryPagesHost::Impl final {
     runtime::NodeId navigation_node;
     InputRef search_ref;
     Signal<ThemeConfig> theme{ThemeConfig{}};
+    Signal<LocaleId> language{locales::zh_CN};
+    Signal<LocaleId> format_language{locales::zh_CN};
+    Signal<TextDirection> direction{TextDirection::LeftToRight};
+    Signal<MessageCatalog> messages{gallery_message_catalog()};
     Signal<String> query{String{}};
     Signal<std::uint64_t> navigation_revision{0};
     Signal<bool> narrow{false};
@@ -439,6 +462,7 @@ struct GalleryPagesHost::Impl final {
     void invalidate_navigation();
     void update_metrics(runtime::Size size);
     void build_shell();
+    void build_shell_content();
     void install_viewport(runtime::NodeId node);
     void build_header();
     void build_navigation();
@@ -533,6 +557,12 @@ void GalleryPagesHost::Impl::update_metrics(runtime::Size size) {
 }
 
 void GalleryPagesHost::Impl::build_shell() {
+    ConfigProvider(
+        ConfigProviderProps{}.locale(language).formatLocale(format_language).direction(direction).messages(messages),
+        ConfigProviderContent{[this] { build_shell_content(); }});
+}
+
+void GalleryPagesHost::Impl::build_shell_content() {
     auto props = std::make_unique<ThemeProps>();
     props->config(theme);
     Theme(std::move(*props), [this] {
@@ -612,111 +642,129 @@ void GalleryPagesHost::Impl::build_shell() {
 }
 
 void GalleryPagesHost::Impl::build_header() {
-    Flex(FlexProps{}
-             .wrap(true)
-             .align(FlexAlign::Center)
-             .gap(dp(8))
-             .layout(
-                 LayoutStyle{}
-                     .width(bind([w = window_width, x = outer] { return dp(w.get().value() - 2 * x.get().value()); }))
-                     .margin_left(outer)
-                     .margin_top(dp(12))),
-         FlexContent{[this] {
-             paragraph(String{u8"RynUI"}, dp(80), TextTone::Primary, 20, 28, 600);
-             const auto command = [this](std::string_view identity, String caption, std::function<void()> click,
-                                         Prop<bool> visible = true) {
-                 ReferenceSurface(
-                     ReferenceSurfaceProps{}
-                         .identity(identity)
-                         .role(ReferenceSurfaceRole::document_note)
-                         .visible(visible)
-                         .layout(LayoutStyle{}
-                                     .width(bind(
-                                         [visible] { return ryn::detail::read_prop(visible) ? auto_length : dp(0); }))
-                                     .height(bind(
-                                         [visible] { return ryn::detail::read_prop(visible) ? auto_length : dp(0); }))),
-                     [caption, click = std::move(click)] {
-                         Button(ButtonProps{}.type(ButtonType::Text).size(ControlSize::Small).onClick(click),
-                                [caption] { Text(caption); });
-                     });
-             };
-             command("gallery.shell.directory", String{u8"组件目录"}, [this] { directory_open.set(true); }, narrow);
-             command(
-                 "gallery.shell.components", String{u8"组件"}, [this] { request({}); },
-                 bind([value = narrow] { return !value.get(); }));
-             command(
-                 "gallery.shell.tokens", String{u8"Token"}, [this] { request({GalleryPageKind::tokens}); },
-                 bind([value = narrow] { return !value.get(); }));
-             ReferenceSurface(
-                 ReferenceSurfaceProps{}
-                     .role(ReferenceSurfaceRole::document_note)
-                     .visible(wide)
-                     .layout(LayoutStyle{}
-                                 .width(bind([value = wide] { return value.get() ? auto_length : dp(0); }))
-                                 .height(bind([value = wide] { return value.get() ? auto_length : dp(0); }))),
-                 [] { Text(TextProps{}.content(u8"Ant Design 6.6.5").tone(TextTone::Secondary)); });
-             command("gallery.shell.theme", String{u8"Default / Dark"}, [this] {
-                 auto config = theme.get();
-                 const bool dark = has_algorithm(config, ThemeAlgorithm::Dark);
-                 const bool compact = has_algorithm(config, ThemeAlgorithm::Compact);
-                 config.algorithms = {dark ? ThemeAlgorithm::Default : ThemeAlgorithm::Dark};
-                 if (compact) {
-                     config.algorithms.push_back(ThemeAlgorithm::Compact);
-                 }
-                 set_theme(config);
-             });
-             ReferenceSurface(
-                 ReferenceSurfaceProps{}.identity("gallery.shell.compact").role(ReferenceSurfaceRole::document_note),
-                 [this] {
-                     Checkbox(CheckboxProps{}
-                                  .checked(bind(
-                                      [value = theme] { return has_algorithm(value.get(), ThemeAlgorithm::Compact); }))
-                                  .onChange([this](bool compact) {
-                                      auto config = theme.get();
-                                      config.algorithms = {has_algorithm(config, ThemeAlgorithm::Dark)
-                                                               ? ThemeAlgorithm::Dark
-                                                               : ThemeAlgorithm::Default};
-                                      if (compact) {
-                                          config.algorithms.push_back(ThemeAlgorithm::Compact);
-                                      }
-                                      set_theme(config);
-                                  }),
-                              CheckboxLabel{[] { Text(u8"Compact"); }});
-                 });
-             Popover(
-                 PopoverProps{}.open(settings_open).trigger(PopoverTriggerMode::Click).onOpenChange([this](bool value) {
-                     settings_open.set(value);
-                 }),
-                 PopoverTrigger{[command] { command("gallery.shell.settings", String{u8"主题设置"}, [] {}); }},
-                 PopoverSlots{.content = PopoverContent{[this] {
-                                  Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), [this] {
-                                      Text(u8"品牌色");
-                                      Space(SpaceProps{}.wrap(true), [this] {
-                                          for (const auto& [label, color] :
-                                               std::array{std::pair{u8"蓝色", Color::rgba8(22, 119, 255)},
-                                                          std::pair{u8"紫色", Color::rgba8(114, 46, 209)},
-                                                          std::pair{u8"绿色", Color::rgba8(0, 153, 102)}}) {
-                                              Button(ButtonProps{}.size(ControlSize::Small).onClick([this, color] {
-                                                  auto config = theme.get();
-                                                  config.seed.color_primary = color;
-                                                  set_theme(config);
-                                              }),
-                                                     [label] { Text(String::from_utf8(label).value()); });
-                                          }
-                                      });
-                                      Checkbox(CheckboxProps{}
-                                                   .checked(bind([value = theme] {
-                                                       return value.get().seed.motion.value_or(true);
-                                                   }))
-                                                   .onChange([this](bool value) {
-                                                       auto config = theme.get();
-                                                       config.seed.motion = value;
-                                                       set_theme(config);
-                                                   }),
-                                               CheckboxLabel{[] { Text(u8"启用动效"); }});
-                                  });
-                              }}});
-         }});
+    Flex(
+        FlexProps{}
+            .wrap(true)
+            .align(FlexAlign::Center)
+            .gap(dp(8))
+            .layout(
+                LayoutStyle{}
+                    .width(bind([w = window_width, x = outer] { return dp(w.get().value() - 2 * x.get().value()); }))
+                    .margin_left(outer)
+                    .margin_top(dp(12))),
+        FlexContent{[this] {
+            paragraph(String{u8"RynUI"}, dp(80), TextTone::Primary, 20, 28, 600);
+            const auto command = [this](std::string_view identity, Prop<String> caption, std::function<void()> click,
+                                        Prop<bool> visible = true) {
+                ReferenceSurface(
+                    ReferenceSurfaceProps{}
+                        .identity(identity)
+                        .role(ReferenceSurfaceRole::document_note)
+                        .visible(visible)
+                        .layout(LayoutStyle{}
+                                    .width(bind(
+                                        [visible] { return ryn::detail::read_prop(visible) ? auto_length : dp(0); }))
+                                    .height(bind(
+                                        [visible] { return ryn::detail::read_prop(visible) ? auto_length : dp(0); }))),
+                    [caption, click = std::move(click)] {
+                        Button(ButtonProps{}.type(ButtonType::Text).size(ControlSize::Small).onClick(click),
+                               [caption] { Text(TextProps{}.content(caption)); });
+                    });
+            };
+            command(
+                "gallery.shell.directory", gallery_text("gallery.shell.directory"),
+                [this] { directory_open.set(true); }, narrow);
+            command(
+                "gallery.shell.components", gallery_text("gallery.shell.components"), [this] { request({}); },
+                bind([value = narrow] { return !value.get(); }));
+            command(
+                "gallery.shell.tokens", gallery_text("gallery.shell.tokens"),
+                [this] { request({GalleryPageKind::tokens}); }, bind([value = narrow] { return !value.get(); }));
+            ReferenceSurface(
+                ReferenceSurfaceProps{}
+                    .role(ReferenceSurfaceRole::document_note)
+                    .visible(wide)
+                    .layout(LayoutStyle{}
+                                .width(bind([value = wide] { return value.get() ? auto_length : dp(0); }))
+                                .height(bind([value = wide] { return value.get() ? auto_length : dp(0); }))),
+                [] {
+                    Text(
+                        TextProps{}.content(gallery_text("gallery.shell.reference-version")).tone(TextTone::Secondary));
+                });
+            command("gallery.shell.language", gallery_text("gallery.shell.language"),
+                    [this] { language.set(language.get() == locales::zh_CN ? locales::en_US : locales::zh_CN); });
+            command("gallery.shell.theme", gallery_text("gallery.shell.theme"), [this] {
+                auto config = theme.get();
+                const bool dark = has_algorithm(config, ThemeAlgorithm::Dark);
+                const bool compact = has_algorithm(config, ThemeAlgorithm::Compact);
+                config.algorithms = {dark ? ThemeAlgorithm::Default : ThemeAlgorithm::Dark};
+                if (compact) {
+                    config.algorithms.push_back(ThemeAlgorithm::Compact);
+                }
+                set_theme(config);
+            });
+            ReferenceSurface(
+                ReferenceSurfaceProps{}.identity("gallery.shell.compact").role(ReferenceSurfaceRole::document_note),
+                [this] {
+                    Checkbox(CheckboxProps{}
+                                 .checked(bind(
+                                     [value = theme] { return has_algorithm(value.get(), ThemeAlgorithm::Compact); }))
+                                 .onChange([this](bool compact) {
+                                     auto config = theme.get();
+                                     config.algorithms = {has_algorithm(config, ThemeAlgorithm::Dark)
+                                                              ? ThemeAlgorithm::Dark
+                                                              : ThemeAlgorithm::Default};
+                                     if (compact) {
+                                         config.algorithms.push_back(ThemeAlgorithm::Compact);
+                                     }
+                                     set_theme(config);
+                                 }),
+                             CheckboxLabel{[] { gallery_label("gallery.shell.compact"); }});
+                });
+            Popover(
+                PopoverProps{}.open(settings_open).trigger(PopoverTriggerMode::Click).onOpenChange([this](bool value) {
+                    settings_open.set(value);
+                }),
+                PopoverTrigger{
+                    [command] { command("gallery.shell.settings", gallery_text("gallery.shell.settings"), [] {}); }},
+                PopoverSlots{
+                    .content = PopoverContent{[this, command] {
+                        Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(8)), [this, command] {
+                            command("gallery.shell.format-language", gallery_text("gallery.shell.format"), [this] {
+                                format_language.set(format_language.get() == locales::zh_CN ? locales::en_US
+                                                                                            : locales::zh_CN);
+                            });
+                            command("gallery.shell.direction", gallery_text("gallery.shell.direction"), [this] {
+                                direction.set(direction.get() == TextDirection::LeftToRight
+                                                  ? TextDirection::RightToLeft
+                                                  : TextDirection::LeftToRight);
+                            });
+                            gallery_label("gallery.shell.brand");
+                            Space(SpaceProps{}.wrap(true), [this] {
+                                for (const auto& [label, color] :
+                                     std::array{std::pair{"gallery.shell.blue", Color::rgba8(22, 119, 255)},
+                                                std::pair{"gallery.shell.purple", Color::rgba8(114, 46, 209)},
+                                                std::pair{"gallery.shell.green", Color::rgba8(0, 153, 102)}}) {
+                                    Button(ButtonProps{}.size(ControlSize::Small).onClick([this, color] {
+                                        auto config = theme.get();
+                                        config.seed.color_primary = color;
+                                        set_theme(config);
+                                    }),
+                                           [label] { gallery_label(label); });
+                                }
+                            });
+                            Checkbox(
+                                CheckboxProps{}
+                                    .checked(bind([value = theme] { return value.get().seed.motion.value_or(true); }))
+                                    .onChange([this](bool value) {
+                                        auto config = theme.get();
+                                        config.seed.motion = value;
+                                        set_theme(config);
+                                    }),
+                                CheckboxLabel{[] { gallery_label("gallery.shell.motion"); }});
+                        });
+                    }}});
+        }});
 }
 
 void GalleryPagesHost::Impl::build_navigation() {
@@ -730,7 +778,7 @@ void GalleryPagesHost::Impl::build_navigation() {
             Input(InputProps{}
                       .value(query)
                       .ref(search_ref)
-                      .placeholder(u8"搜索组件 · Ctrl+K")
+                      .placeholder(gallery_text("gallery.shell.search"))
                       .allowClear(true)
                       .onChange([this](String value) {
                           query.set(value);
@@ -744,14 +792,20 @@ void GalleryPagesHost::Impl::build_navigation() {
                           }
                       })
                       .layout(LayoutStyle{}.width(width)));
-            std::vector<SelectOption> filters;
-            constexpr std::array<std::string_view, 7> labels{"全部状态", "已实现", "部分支持", "规划中",
-                                                             "仅 Web",   "已弃用", "不在范围"};
-            for (std::size_t i = 0; i < labels.size(); ++i) {
-                const auto count = i == 0 ? pages.pages().size() : pages.counts().status[i - 1];
-                filters.push_back(
-                    {static_cast<std::int64_t>(i), text(std::string{labels[i]} + " · " + std::to_string(count))});
-            }
+            const auto tr = useI18n();
+            const auto filters = bind([this, tr] {
+                std::vector<SelectOption> result;
+                for (std::size_t i = 0; i <= status_keys.size(); ++i) {
+                    const auto count = i == 0 ? pages.pages().size() : pages.counts().status[i - 1];
+                    const auto label =
+                        tr.translate(gallery_message(i == 0 ? "gallery.status.all" : status_keys[i - 1]));
+                    result.push_back({static_cast<std::int64_t>(i),
+                                      tr.translate(gallery_message("gallery.status.count"),
+                                                   MessageArgs{{u8"label", label},
+                                                               {u8"count", static_cast<std::uint64_t>(count)}})});
+                }
+                return result;
+            });
             Select(SelectProps{}
                        .options(std::move(filters))
                        .value(bind([this] {
@@ -768,7 +822,7 @@ void GalleryPagesHost::Impl::build_navigation() {
                            }
                        })
                        .layout(LayoutStyle{}.width(width)));
-            const auto link = [this, width](String label, GalleryPageRoute route) {
+            const auto link = [this, width](Prop<String> label, GalleryPageRoute route) {
                 Button(ButtonProps{}
                            .type(ButtonType::Text)
                            .size(ControlSize::Small)
@@ -779,12 +833,12 @@ void GalleryPagesHost::Impl::build_navigation() {
                                     .justify(FlexJustify::Start)
                                     .align(FlexAlign::Center)
                                     .layout(LayoutStyle{}.width(width)),
-                                [label] { Text(label); });
+                                [label] { Text(TextProps{}.content(label)); });
                        });
             };
-            link(String{u8"组件总览"}, {});
-            link(String{u8"设计介绍"}, {GalleryPageKind::introduction});
-            link(String{u8"Design Token"}, {GalleryPageKind::tokens});
+            link(gallery_text("gallery.shell.overview"), {});
+            link(gallery_text("gallery.shell.introduction"), {GalleryPageKind::introduction});
+            link(gallery_text("gallery.shell.tokens"), {GalleryPageKind::tokens});
             ReferenceSurface(
                 ReferenceSurfaceProps{}
                     .identity("gallery.navigation.unmatched")
@@ -797,7 +851,7 @@ void GalleryPagesHost::Impl::build_navigation() {
                         static_cast<void>(navigation_revision.get());
                         return pages.current_matches() ? dp(0) : auto_length;
                     }))),
-                [width] { paragraph(String{u8"当前页不在筛选结果中"}, width, TextTone::Secondary, 12, 20); });
+                [width] { paragraph(gallery_text("gallery.shell.unmatched"), width, TextTone::Secondary, 12, 20); });
             ReferenceSurface(ReferenceSurfaceProps{}
                                  .identity("gallery.navigation.empty")
                                  .role(ReferenceSurfaceRole::document_note)
@@ -810,14 +864,14 @@ void GalleryPagesHost::Impl::build_navigation() {
                                      return pages.results().empty() ? auto_length : dp(0);
                                  }))),
                              [this, width] {
-                                 paragraph(String{u8"没有匹配的组件"}, width, TextTone::Secondary);
+                                 paragraph(gallery_text("gallery.shell.empty"), width, TextTone::Secondary);
                                  Button(ButtonProps{}.size(ControlSize::Small).onClick([this] {
                                      query.set(String{});
                                      pages.set_query("");
                                      pages.set_filter(GallerySupportFilter::all);
                                      invalidate_navigation();
                                  }),
-                                        [] { Text(u8"清除条件"); });
+                                        [] { gallery_label("gallery.shell.clear"); });
                              });
             for (const auto& category : ant_design_reference_categories()) {
                 const auto index = static_cast<std::size_t>(category.category);
@@ -861,7 +915,7 @@ void GalleryPagesHost::Impl::build_navigation() {
                                                                                      : IconName::RightOutlined;
                                                      })));
                                                      Text(TextProps{}
-                                                              .content(text(category.chinese_name))
+                                                              .content(gallery_field(category.identity, "name"))
                                                               .tone(TextTone::Secondary));
                                                  });
                                         });
@@ -924,9 +978,8 @@ void GalleryPagesHost::Impl::build_navigation() {
                                                                   .layout(LayoutStyle{}.width(width)),
                                                               [entry] {
                                                                   Text(TextProps{}
-                                                                           .content(text(
-                                                                               std::string{entry->english_name} + " " +
-                                                                               std::string{entry->chinese_name}))
+                                                                           .content(
+                                                                               gallery_field(entry->identity, "name"))
                                                                            .layout(LayoutStyle{}.margin_left(dp(12))));
                                                               });
                                                      });
@@ -945,10 +998,14 @@ GalleryPageContent GalleryPagesHost::Impl::build_page(const GalleryPageRoute& ro
     doc->ticket = controller->ticket();
     doc->width.set(dp(metrics.document_width));
     doc->sections.push_back(section_info(GalleryPageSection::usage));
-    const bool examples = std::ranges::any_of(registry, [&route](const auto& sample) {
-        return sample.kind == route.kind && sample.component_identity == route.component_identity &&
-               sample.family == route.family;
-    });
+    if (route.component_identity == "ant.component.config-provider") {
+        doc->public_example = std::make_shared<i18n_example::Model>();
+    }
+    const bool examples = doc->public_example || std::ranges::any_of(registry, [&route](const auto& sample) {
+                              return sample.kind == route.kind &&
+                                     sample.component_identity == route.component_identity &&
+                                     sample.family == route.family;
+                          });
     if (examples) {
         doc->sections.push_back(section_info(GalleryPageSection::examples));
         doc->sections.push_back(section_info(GalleryPageSection::api));
@@ -998,7 +1055,10 @@ void GalleryPagesHost::Impl::heading(const std::shared_ptr<Document>& doc, Galle
                          .identity(section.identity)
                          .role(ReferenceSurfaceRole::document_heading)
                          .layout(LayoutStyle{}.width(doc->width).margin_top(dp(24)).margin_bottom(dp(8))),
-                     [doc, section] { paragraph(text(section.title), doc->width, TextTone::Primary, 22, 30, 600); });
+                     [doc, section] {
+                         paragraph(gallery_field(section.identity, "title"), doc->width, TextTone::Primary, 22, 30,
+                                   600);
+                     });
 }
 
 void GalleryPagesHost::Impl::build_document(const std::shared_ptr<Document>& doc) {
@@ -1024,7 +1084,7 @@ void GalleryPagesHost::Impl::build_document(const std::shared_ptr<Document>& doc
                                             navigation_requested = true;
                                         }
                                     }),
-                                [] { Text(u8"← 后退"); });
+                                [] { gallery_label("gallery.shell.back"); });
                          Button(ButtonProps{}
                                     .type(ButtonType::Text)
                                     .size(ControlSize::Small)
@@ -1034,28 +1094,27 @@ void GalleryPagesHost::Impl::build_document(const std::shared_ptr<Document>& doc
                                             navigation_requested = true;
                                         }
                                     }),
-                                [] { Text(u8"前进 →"); });
+                                [] { gallery_label("gallery.shell.forward"); });
                      });
                      if (doc->route.kind == GalleryPageKind::component) {
                          const auto* entry = pages.find(doc->route.component_identity)->entry;
-                         paragraph(text(gallery_category_title(entry->category)), doc->width, TextTone::Secondary, 12,
-                                   20);
-                         paragraph(text(std::string{entry->english_name} + " " + std::string{entry->chinese_name}),
-                                   doc->width, TextTone::Primary, metrics.narrow ? 28 : 32, 40, 600);
+                         paragraph(category_text(entry->category), doc->width, TextTone::Secondary, 12, 20);
+                         paragraph(gallery_field(entry->identity, "name"), doc->width, TextTone::Primary,
+                                   metrics.narrow ? 28 : 32, 40, 600);
                          Tag(TagProps{}.color(
                                  entry->support_status == GallerySupportStatus::implemented ? TagColor{Status::Success}
                                  : entry->support_status == GallerySupportStatus::partial   ? TagColor{Status::Warning}
                                                                                             : TagColor{}),
-                             TagContent{[entry] { Text(text(gallery_page_status_label(entry->support_status))); }});
-                         paragraph(String{u8"按声明的原生范围"}, doc->width, TextTone::Secondary, 12, 20);
-                         paragraph(text(entry->summary), doc->width);
+                             TagContent{[entry] { Text(TextProps{}.content(status_text(entry->support_status))); }});
+                         paragraph(gallery_text("gallery.shell.native-scope"), doc->width, TextTone::Secondary, 12, 20);
+                         paragraph(gallery_field(entry->identity, "summary"), doc->width);
                      } else {
-                         const auto title = doc->route.kind == GalleryPageKind::overview ? "组件总览"
-                                            : doc->route.kind == GalleryPageKind::tokens ? "Design Token"
-                                                                                         : "设计介绍";
-                         paragraph(text(title), doc->width, TextTone::Primary, metrics.narrow ? 28 : 32, 40, 600);
-                         paragraph(String{u8"RynUI · 基于 Ant Design 6.6.5 的原生 C++ 组件与设计约定"}, doc->width,
-                                   TextTone::Secondary);
+                         const auto title = doc->route.kind == GalleryPageKind::overview ? "gallery.shell.overview"
+                                            : doc->route.kind == GalleryPageKind::tokens ? "gallery.shell.tokens"
+                                                                                         : "gallery.shell.introduction";
+                         paragraph(gallery_text(title), doc->width, TextTone::Primary, metrics.narrow ? 28 : 32, 40,
+                                   600);
+                         paragraph(gallery_text("gallery.shell.baseline"), doc->width, TextTone::Secondary);
                      }
                  });
              ReferenceSurface(ReferenceSurfaceProps{}
@@ -1079,7 +1138,7 @@ void GalleryPagesHost::Impl::build_document(const std::shared_ptr<Document>& doc
                              request(route);
                          }
                      }),
-                            [] { Text(u8"进入页面内容 ↓"); });
+                            [] { gallery_label("gallery.shell.enter"); });
                  });
              switch (doc->route.kind) {
              case GalleryPageKind::overview:
@@ -1087,9 +1146,8 @@ void GalleryPagesHost::Impl::build_document(const std::shared_ptr<Document>& doc
                  break;
              case GalleryPageKind::introduction:
                  for (const auto& value : gallery_design_values()) {
-                     paragraph(text(std::string{value.english_name} + " / " + std::string{value.chinese_name}),
-                               doc->width, TextTone::Primary, 18, 28, 500);
-                     paragraph(text(value.summary), doc->width, TextTone::Secondary);
+                     paragraph(gallery_field(value.identity, "name"), doc->width, TextTone::Primary, 18, 28, 500);
+                     paragraph(gallery_field(value.identity, "summary"), doc->width, TextTone::Secondary);
                  }
                  break;
              case GalleryPageKind::tokens:
@@ -1105,17 +1163,20 @@ void GalleryPagesHost::Impl::build_document(const std::shared_ptr<Document>& doc
 }
 
 void GalleryPagesHost::Impl::build_overview(const std::shared_ptr<Document>& doc) {
-    std::string counts = "目录状态";
     for (std::size_t i = 0; i < pages.counts().status.size(); ++i) {
-        counts += " · " + std::string{gallery_page_status_label(static_cast<GallerySupportStatus>(i))} + " " +
-                  std::to_string(pages.counts().status[i]);
+        const auto tr = useI18n();
+        paragraph(gallery_text("gallery.status.count", bind([this, tr, i] {
+                                   return MessageArgs{
+                                       {u8"label", tr.translate(gallery_message(status_keys[i]))},
+                                       {u8"count", static_cast<std::uint64_t>(pages.counts().status[i])}};
+                               })),
+                  doc->width, TextTone::Secondary);
     }
-    paragraph(text(counts), doc->width, TextTone::Secondary);
-    paragraph(String{u8"状态来自声明范围，选择组件查看真实示例、公开 API 和缺失能力。"}, doc->width);
+    paragraph(gallery_text("gallery.shell.status-note"), doc->width);
     Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(0)).layout(LayoutStyle{}.width(doc->width)), [this,
                                                                                                                  doc] {
         for (const auto& category : ant_design_reference_categories()) {
-            paragraph(text(gallery_category_title(category.category)), doc->width, TextTone::Primary, 18, 28, 500);
+            paragraph(gallery_field(category.identity, "name"), doc->width, TextTone::Primary, 18, 28, 500);
             for (const auto& page : pages.pages()) {
                 const auto* entry = page.entry;
                 if (entry->category != category.category) {
@@ -1126,26 +1187,23 @@ void GalleryPagesHost::Impl::build_overview(const std::shared_ptr<Document>& doc
                     return std::ranges::any_of(pages.results(),
                                                [entry](const auto& result) { return result.page->entry == entry; });
                 });
-                ReferenceSurface(ReferenceSurfaceProps{}
-                                     .identity(entry->identity)
-                                     .role(ReferenceSurfaceRole::document_note)
-                                     .visible(shown)
-                                     .layout(LayoutStyle{}
-                                                 .width(doc->width)
-                                                 .margin_bottom(bind([shown] { return shown.get() ? dp(12) : dp(0); }))
-                                                 .height(bind([shown] { return shown.get() ? auto_length : dp(0); }))),
-                                 [this, doc, entry] {
-                                     Button(ButtonProps{}.type(ButtonType::Text).onClick([this, entry] {
-                                         request(pages.find(entry->identity)->route());
-                                     }),
-                                            [entry] {
-                                                Text(text(std::string{entry->english_name} + " " +
-                                                          std::string{entry->chinese_name}));
-                                            });
-                                     paragraph(text(std::string{gallery_page_status_label(entry->support_status)} +
-                                                    " · " + std::string{entry->summary}),
-                                               doc->width, TextTone::Secondary, 12, 20);
-                                 });
+                ReferenceSurface(
+                    ReferenceSurfaceProps{}
+                        .identity(entry->identity)
+                        .role(ReferenceSurfaceRole::document_note)
+                        .visible(shown)
+                        .layout(LayoutStyle{}
+                                    .width(doc->width)
+                                    .margin_bottom(bind([shown] { return shown.get() ? dp(12) : dp(0); }))
+                                    .height(bind([shown] { return shown.get() ? auto_length : dp(0); }))),
+                    [this, doc, entry] {
+                        Button(ButtonProps{}.type(ButtonType::Text).onClick([this, entry] {
+                            request(pages.find(entry->identity)->route());
+                        }),
+                               [entry] { Text(TextProps{}.content(gallery_field(entry->identity, "name"))); });
+                        paragraph(status_text(entry->support_status), doc->width, TextTone::Secondary, 12, 20);
+                        paragraph(gallery_field(entry->identity, "summary"), doc->width, TextTone::Secondary, 12, 20);
+                    });
             }
         }
     });
@@ -1169,7 +1227,12 @@ void GalleryPagesHost::Impl::build_component(const std::shared_ptr<Document>& do
                                    request(route);
                                }
                            }),
-                       [family] { Text(text(gallery_input_family_name(family))); });
+                       [family] {
+                           constexpr std::array names{"gallery.family.input", "gallery.family.search",
+                                                      "gallery.family.password", "gallery.family.text-area",
+                                                      "gallery.family.otp"};
+                           gallery_label(names.at(static_cast<std::size_t>(family)));
+                       });
             }
         });
     }
@@ -1177,6 +1240,14 @@ void GalleryPagesHost::Impl::build_component(const std::shared_ptr<Document>& do
         std::ranges::find(doc->sections, GalleryPageSection::examples, &Section::kind) != doc->sections.end();
     if (examples) {
         heading(doc, GalleryPageSection::examples);
+    }
+    if (doc->public_example) {
+        ReferenceSurface(
+            ReferenceSurfaceProps{}
+                .identity("gallery.i18n.app")
+                .role(ReferenceSurfaceRole::example)
+                .layout(LayoutStyle{}.width(doc->width)),
+            [doc] { ryn::detail::SlotContentAccess::function(i18n_example::content(doc->public_example))(); });
     }
     ryn::detail::SlotContentAccess::function(doc->samples.content)();
     related(doc);
@@ -1190,8 +1261,7 @@ void GalleryPagesHost::Impl::build_component(const std::shared_ptr<Document>& do
 }
 
 void GalleryPagesHost::Impl::build_tokens(const std::shared_ptr<Document>& doc) {
-    paragraph(String{u8"Default / Dark 决定颜色，Compact 可叠加为紧凑密度。品牌色与动效使用顶栏的主题设置。"},
-              doc->width);
+    paragraph(gallery_text("gallery.shell.theme-help"), doc->width);
     heading(doc, GalleryPageSection::examples);
     ryn::detail::SlotContentAccess::function(doc->samples.content)();
     api(doc);
@@ -1200,6 +1270,10 @@ void GalleryPagesHost::Impl::build_tokens(const std::shared_ptr<Document>& doc) 
 
 void GalleryPagesHost::Impl::api(const std::shared_ptr<Document>& doc) {
     heading(doc, GalleryPageSection::api);
+    if (doc->public_example) {
+        paragraph(String{u8"#include <ryn/rynui.hpp>"}, doc->width);
+        paragraph(String{u8"examples/i18n_app/i18n_app.cpp"}, doc->width, TextTone::Secondary);
+    }
     std::set<std::string_view> shown;
     for (const auto& descriptor : registry) {
         if (descriptor.kind != doc->route.kind || descriptor.component_identity != doc->route.component_identity ||
@@ -1214,29 +1288,28 @@ void GalleryPagesHost::Impl::api(const std::shared_ptr<Document>& doc) {
             text("#include <" + std::string{source->public_header.substr(std::string_view{"include/"}.size())} + ">"),
             doc->width, TextTone::Primary, 14, 22, 500);
         if (!source->public_props.empty()) {
-            paragraph(text("typed Props · " + std::string{source->public_props}), doc->width);
+            paragraph(gallery_text("gallery.api.props", MessageArgs{{u8"value", text(source->public_props)}}),
+                      doc->width);
         }
         if (!source->public_methods.empty()) {
-            paragraph(text("常用成员 · " + std::string{source->public_methods}), doc->width, TextTone::Secondary, 12,
-                      20);
+            paragraph(gallery_text("gallery.api.methods", MessageArgs{{u8"value", text(source->public_methods)}}),
+                      doc->width, TextTone::Secondary, 12, 20);
         }
         if (!source->public_slots.empty()) {
-            paragraph(text("typed slots · " + std::string{source->public_slots}), doc->width, TextTone::Secondary, 12,
-                      20);
+            paragraph(gallery_text("gallery.api.slots", MessageArgs{{u8"value", text(source->public_slots)}}),
+                      doc->width, TextTone::Secondary, 12, 20);
         }
     }
-    paragraph(String{u8"代码卡展示实际样例源码；完整约束以公开头文件与组件支持范围为准。"}, doc->width,
-              TextTone::Secondary);
+    paragraph(gallery_text("gallery.shell.api-note"), doc->width, TextTone::Secondary);
 }
 
 void GalleryPagesHost::Impl::support(const std::shared_ptr<Document>& doc) {
     heading(doc, GalleryPageSection::support);
     const auto* entry = pages.find(doc->route.component_identity)->entry;
-    paragraph(String{u8"已支持"}, doc->width, TextTone::Primary, 16, 24, 500);
-    paragraph(text(entry->supported_scope.empty() ? "尚无已声明的原生能力。" : entry->supported_scope), doc->width);
-    paragraph(String{u8"缺失与范围边界"}, doc->width, TextTone::Primary, 16, 24, 500);
-    paragraph(text(entry->missing_scope.empty() ? "没有额外登记项；状态按声明范围解释。" : entry->missing_scope),
-              doc->width);
+    paragraph(gallery_text("gallery.shell.supported"), doc->width, TextTone::Primary, 16, 24, 500);
+    paragraph(gallery_field(entry->identity, "supported"), doc->width);
+    paragraph(gallery_text("gallery.shell.unsupported"), doc->width, TextTone::Primary, 16, 24, 500);
+    paragraph(gallery_field(entry->identity, "missing"), doc->width);
 }
 
 void GalleryPagesHost::Impl::related(const std::shared_ptr<Document>& doc) {
@@ -1247,7 +1320,10 @@ void GalleryPagesHost::Impl::related(const std::shared_ptr<Document>& doc) {
                     request(route);
                 }
             }),
-                   [label = entry.title] { Text(text(std::string{label} + " →")); });
+                   [sample = entry.target_sample, kind = entry.target_kind] {
+                       Text(TextProps{}.content(kind == GalleryPageKind::tokens ? gallery_text("gallery.shell.tokens")
+                                                                                : gallery_field(sample, "title")));
+                   });
         }
     }
 }
@@ -1269,14 +1345,14 @@ void GalleryPagesHost::Impl::token_values(const std::shared_ptr<Document>& doc) 
     }
     if (doc->route.kind == GalleryPageKind::component &&
         !component_values(resolve_theme(theme.get()), doc->route.component_identity).empty()) {
-        paragraph(String{u8"当前有效组件 Token（常用字段）"}, doc->width, TextTone::Primary, 16, 24, 500);
+        paragraph(gallery_text("gallery.shell.component-tokens"), doc->width, TextTone::Primary, 16, 24, 500);
         Text(TextProps{}
                  .content(bind([this, identity = doc->route.component_identity] {
                      return text(component_values(resolve_theme(theme.get()), identity));
                  }))
                  .layout(LayoutStyle{}.width(doc->width)));
     }
-    paragraph(String{u8"当前有效全局 Token"}, doc->width, TextTone::Primary, 16, 24, 500);
+    paragraph(gallery_text("gallery.shell.global-tokens"), doc->width, TextTone::Primary, 16, 24, 500);
     Text(TextProps{}
              .content(bind([this] {
                  const auto snapshot = resolve_theme(theme.get());
@@ -1301,7 +1377,7 @@ void GalleryPagesHost::Impl::token_values(const std::shared_ptr<Document>& doc) 
             request({GalleryPageKind::tokens});
         }
     }),
-           [] { Text(u8"查看全局 Design Token →"); });
+           [] { gallery_label("gallery.shell.view-tokens"); });
 }
 
 void GalleryPagesHost::Impl::sources(const std::shared_ptr<Document>& doc) {
@@ -1316,7 +1392,7 @@ void GalleryPagesHost::Impl::sources(const std::shared_ptr<Document>& doc) {
             Collapse(
                 CollapseProps{}.layout(LayoutStyle{}.width(doc->width)),
                 {CollapsePanel{
-                    String{u8"source"}, CollapseTitle{[] { Text(u8"锁定版本与参考来源"); }},
+                    String{u8"source"}, CollapseTitle{[] { gallery_label("gallery.shell.sources"); }},
                     CollapseBody{[this, doc, inner] {
                         Flex(FlexProps{}
                                  .vertical(true)
@@ -1338,8 +1414,8 @@ void GalleryPagesHost::Impl::sources(const std::shared_ptr<Document>& doc) {
                                          paragraph(text(entry.official_url), inner, TextTone::Secondary, 12, 20);
                                      }
                                  }
-                                 paragraph(String{u8"目录声明与来源标识不代表当前平台的自动验收结果。"}, inner,
-                                           TextTone::Secondary, 12, 20);
+                                 paragraph(gallery_text("gallery.shell.source-note"), inner, TextTone::Secondary, 12,
+                                           20);
                              });
                     }}}});
         });
@@ -1384,7 +1460,7 @@ void GalleryPagesHost::Impl::rebuild_navigation() {
                              if (navigation_mode_narrow) {
                                  Drawer(DrawerProps{}
                                             .open(directory_open)
-                                            .title(u8"组件目录")
+                                            .title(gallery_text("gallery.shell.directory"))
                                             .placement(DrawerPlacement::Left)
                                             .width(drawer_width)
                                             .onCancel([this](DrawerCancelReason) { directory_open.set(false); }),
@@ -1423,7 +1499,7 @@ void GalleryPagesHost::Impl::toc_buttons(const std::shared_ptr<Document>& doc, b
                          request(std::move(route));
                      }
                  }),
-                        [section] { Text(text(section.title)); });
+                        [section] { Text(TextProps{}.content(gallery_field(section.identity, "title"))); });
              }
          });
 }
@@ -1915,6 +1991,34 @@ void GalleryPagesHost::set_theme(const ThemeConfig& theme) {
 
 ThemeConfig GalleryPagesHost::theme() const {
     return impl_->theme.get();
+}
+
+void GalleryPagesHost::set_locale(const LocaleId& locale) {
+    if (!impl_->stopped) {
+        impl_->language.set(locale);
+    }
+}
+
+void GalleryPagesHost::set_format_locale(const LocaleId& locale) {
+    if (!impl_->stopped) {
+        impl_->format_language.set(locale);
+    }
+}
+
+void GalleryPagesHost::set_direction(TextDirection direction) {
+    if (!impl_->stopped) {
+        impl_->direction.set(direction);
+    }
+}
+
+void GalleryPagesHost::set_messages(const MessageCatalog& messages) {
+    if (!impl_->stopped) {
+        impl_->messages.set(messages);
+    }
+}
+
+LocaleId GalleryPagesHost::locale() const {
+    return impl_->language.get();
 }
 
 GalleryPagesSnapshot GalleryPagesHost::snapshot() const {

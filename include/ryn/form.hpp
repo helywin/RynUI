@@ -79,6 +79,7 @@ std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFie
 std::function<void(FormValue)> form_change_handler(const std::shared_ptr<FormFieldState>&,
                                                    const std::shared_ptr<FormControlConnection>&);
 String form_field_error(const std::shared_ptr<FormFieldState>&);
+std::optional<FormIssueSource> form_field_error_source(const std::shared_ptr<FormFieldState>&);
 bool form_field_disabled(const std::shared_ptr<FormFieldState>&);
 bool form_field_read_only(const std::shared_ptr<FormFieldState>&);
 } // namespace detail
@@ -180,6 +181,10 @@ public:
 
     [[nodiscard]] String error() const {
         return detail::form_field_error(state_);
+    }
+
+    [[nodiscard]] std::optional<FormIssueSource> errorSource() const {
+        return detail::form_field_error_source(state_);
     }
 
     [[nodiscard]] Prop<InputStatus> status() const {
@@ -369,6 +374,7 @@ public:
 
     FormProps& size(ControlSize value) {
         options_.size = value;
+        explicit_size_ = true;
         return *this;
     }
 
@@ -379,6 +385,7 @@ public:
 
     FormProps& direction(TextDirection value) {
         options_.direction = value;
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -421,6 +428,7 @@ public:
 
     FormProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -458,6 +466,9 @@ private:
     bool clear_on_destroy_{};
     FormPresentation options_;
     bool locale_explicit_{};
+    bool explicit_size_{};
+    bool explicit_direction_{};
+    bool explicit_disabled_{};
     std::optional<Prop<FormPresentation>> presentation_;
     FormScrollTarget scroll_;
     bool scroll_first_{};
@@ -611,6 +622,13 @@ public:
         return *this;
     }
 
+    // Projects an existing error for display only. It does not create an issue,
+    // run validation or change FormResult/getFieldError snapshot provenance.
+    FormItemProps& errorText(Prop<String> value) {
+        error_text_ = std::move(value);
+        return *this;
+    }
+
     FormItemProps& disabled(Prop<bool> value = true) {
         disabled_ = std::move(value);
         return *this;
@@ -704,6 +722,7 @@ private:
     bool tooltip_configured_{};
     Prop<String> label_{String{}};
     Prop<String> help_{String{}};
+    std::optional<Prop<String>> error_text_;
     Prop<bool> disabled_{false};
     Prop<bool> read_only_{false};
     std::function<bool()> focus_;

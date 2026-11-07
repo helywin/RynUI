@@ -2,6 +2,10 @@
 #include <ryn/date_picker.hpp>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
+
 enum class CalendarMode { Month, Year };
 enum class CalendarSelectSource { Date, Month, Year, Customize };
 
@@ -171,6 +175,7 @@ public:
 
     CalendarProps& direction(Prop<TextDirection> v) {
         direction_ = std::move(v);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -249,6 +254,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::CalendarComponentHost;
     std::optional<Prop<CivilDate>> value_;
     std::optional<CivilDate> default_value_;
@@ -263,6 +269,7 @@ private:
     Prop<DisabledDate> disabled_date_{DisabledDate{}};
     std::optional<Prop<PickerLocale>> locale_;
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     CalendarRef ref_;
     std::function<CivilDate()> clock_;
     Prop<CalendarCellRenderer> cell_{CalendarCellRenderer{}};

@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/transfer_component.hpp"
 #include "component/localized_prop.hpp"
 #include "component/form_control_binding.hpp"
@@ -2254,6 +2255,7 @@ bool TransferComponentHost::on_scroll_input(const input::ScrollInputEvent& event
 
 namespace ryn {
 void Transfer(TransferProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_transfer) {
         throw std::logic_error("Transfer requires WindowComponentServices");
     }

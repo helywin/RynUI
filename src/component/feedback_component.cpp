@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/feedback_component.hpp"
 #include "component/window_overlay_stack.hpp"
 #include "input/pressable_behavior.hpp"
@@ -1485,6 +1486,7 @@ void Alert(AlertProps props, AlertSlots slots) {
 }
 
 void Spin(SpinProps props) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_feedback) {
         throw std::logic_error("Spin requires window component services");
     }
@@ -1492,6 +1494,7 @@ void Spin(SpinProps props) {
 }
 
 void Spin(SpinProps props, SpinSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_feedback) {
         throw std::logic_error("Spin requires window component services");
     }
@@ -1499,6 +1502,7 @@ void Spin(SpinProps props, SpinSlots slots) {
 }
 
 void Spin(SpinProps props, SpinContent content, SpinSlots slots) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_feedback) {
         throw std::logic_error("Spin requires window component services");
     }

@@ -4,6 +4,9 @@
 #include <ryn/decimal.hpp>
 
 namespace ryn {
+namespace detail {
+struct ConfigDefaults;
+}
 
 using InputNumberValue = std::optional<double>;
 using InputNumberStringValue = std::optional<Decimal>;
@@ -301,6 +304,7 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::FormAutoControlAccess;
     friend struct detail::InputNumberPropsAccess;
     Prop<InputNumberMode> mode_{InputNumberMode::Input};

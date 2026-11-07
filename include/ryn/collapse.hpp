@@ -10,6 +10,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class CollapseComponentHost;
 }
 
@@ -121,6 +125,7 @@ public:
 
     CollapseProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -146,6 +151,7 @@ public:
 
     CollapseProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -185,15 +191,18 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::CollapseComponentHost;
     std::optional<Prop<CollapseKeys>> active_keys_;
     std::optional<CollapseKeys> default_keys_;
     Prop<bool> accordion_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     std::function<void(CollapseKeys)> on_change_;
     Prop<bool> bordered_{true};
     Prop<bool> ghost_{false};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> visible_{true};
     Prop<bool> lazy_{false};
     Prop<bool> destroy_hidden_{false};

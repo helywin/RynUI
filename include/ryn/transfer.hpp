@@ -7,6 +7,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TransferComponentHost;
 }
 
@@ -135,6 +139,7 @@ public:
 
     TransferProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -194,6 +199,7 @@ public:
 
     TransferProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -204,6 +210,7 @@ public:
 
     TransferProps& direction(Prop<TextDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -369,9 +376,11 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TransferComponentHost;
     Prop<std::vector<TransferItem>> data_{std::vector<TransferItem>{}};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     Prop<bool> visible_{true};
     Prop<bool> show_search_{false};
@@ -380,8 +389,10 @@ private:
     Prop<bool> loading_{false};
     Prop<TransferPagination> pagination_{TransferPagination{}};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool explicit_direction_{};
     std::optional<Prop<float>> height_;
     std::optional<Prop<float>> width_;
     std::optional<Prop<String>> search_placeholder_;

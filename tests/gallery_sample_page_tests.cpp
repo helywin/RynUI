@@ -1,6 +1,7 @@
 #include "gallery_sample_registry.hpp"
 #include "gallery_sample_source.hpp"
 #include "gallery_test_inventory.hpp"
+#include "gallery_i18n.hpp"
 #include "gallery_page_controller.hpp"
 #include "component/otp_component.hpp"
 #include "component/float_button_component.hpp"
@@ -55,8 +56,13 @@ struct Fixture final : ryn_test::input_component::Fixture {
 
     explicit Fixture(bool readable_labels = false) : readable(readable_labels) {
         surfaces.mount(Content{[this] {
-                           Theme(ThemeProps{}.config(theme),
-                                 ThemeContent{[] { Flex(FlexProps{}.vertical(true).align(FlexAlign::Start), [] {}); }});
+                           ConfigProvider(
+                               ConfigProviderProps{}.locale(locales::zh_CN).messages(gallery_message_catalog()),
+                               ConfigProviderContent{[this] {
+                                   Theme(ThemeProps{}.config(theme), ThemeContent{[] {
+                                             Flex(FlexProps{}.vertical(true).align(FlexAlign::Start), [] {});
+                                         }});
+                               }});
                        }},
                        &inputs);
         const auto holder = services.components().root_components().front();
@@ -76,6 +82,11 @@ struct Fixture final : ryn_test::input_component::Fixture {
                 active.set_theme(theme.get());
                 return GalleryPageContent{active.content, active.save, {}};
             });
+    }
+
+    ~Fixture() {
+        pages.reset();
+        services.dispose();
     }
 
     void sync() {
@@ -214,7 +225,7 @@ void test_compiled_source_metadata() {
 void test_legacy_identity_ownership() {
     Fixture f;
     const auto targets = gallery_legacy_test_targets();
-    require(targets.size() == 458 && gallery_legacy_test_ids().size() == targets.size(),
+    require(targets.size() == 476 && gallery_legacy_test_ids().size() == targets.size(),
             "frozen legacy identity inventory was truncated");
     std::set<std::string_view> identities;
     for (const auto& target : targets) {

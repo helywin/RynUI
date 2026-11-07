@@ -8,6 +8,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class TagBadgeComponentHost;
 }
 enum class BadgeSize { Default, Small };
@@ -61,6 +65,7 @@ public:
 
     BadgeProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -128,11 +133,13 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TagBadgeComponentHost;
     std::optional<Prop<String>> string_count_;
     std::optional<Prop<BadgeCountValue>> value_count_;
     Prop<std::shared_ptr<const BadgeRenderer>> content_{nullptr};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> visible_{true};
     Prop<bool> animated_{true};
     Prop<std::optional<Color>> color_{std::nullopt};
@@ -174,6 +181,7 @@ public:
 
     RibbonProps& rtl(Prop<bool> value = true) {
         rtl_ = std::move(value);
+        explicit_rtl_ = true;
         return *this;
     }
 
@@ -206,11 +214,13 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::TagBadgeComponentHost;
     Prop<String> text_{String{}};
     Prop<std::optional<Color>> color_{std::nullopt};
     Prop<RibbonPlacement> placement_{RibbonPlacement::End};
     Prop<bool> rtl_{false};
+    bool explicit_rtl_{};
     Prop<bool> visible_{true};
     Prop<std::shared_ptr<const BadgeRenderer>> text_render_{nullptr};
     Prop<std::shared_ptr<const BadgeRenderer>> content_{nullptr};

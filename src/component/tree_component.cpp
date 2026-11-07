@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/tree_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/tree_model.hpp"
@@ -2382,6 +2383,7 @@ void TreeComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
 
 namespace ryn {
 void Tree(TreeProps props, std::vector<TreeItem> items) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_tree) {
         throw std::logic_error("Tree requires window component services");
     }

@@ -7,6 +7,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 class CardComponentHost;
 }
 
@@ -90,6 +94,7 @@ public:
 
     CardProps& size(Prop<CardSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -114,9 +119,11 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend class detail::CardComponentHost;
     Prop<String> title_{String{}};
     Prop<CardSize> size_{CardSize::Default};
+    bool explicit_size_{};
     Prop<CardVariant> variant_{CardVariant::Outlined};
     Prop<bool> hoverable_{false};
     Prop<bool> loading_{false};

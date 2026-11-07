@@ -11,6 +11,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 
 struct FlexPropsAccess;
 struct LayoutGapAccess;
@@ -125,6 +129,7 @@ public:
 
     FlexProps& direction(Prop<FlexDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -161,12 +166,14 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::FlexPropsAccess;
 
     Prop<bool> vertical_{false};
     Prop<bool> wrap_{false};
     std::optional<Prop<FlexWrap>> typed_wrap_;
     Prop<FlexDirection> direction_{FlexDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<FlexJustify> justify_{FlexJustify::Start};
     Prop<FlexAlign> align_{FlexAlign::Stretch};
     Prop<LayoutGap> gap_{LayoutGap{}};

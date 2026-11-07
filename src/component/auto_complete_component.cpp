@@ -1,3 +1,4 @@
+#include "component/config_defaults.hpp"
 #include "component/auto_complete_component.hpp"
 #include "component/form_control_binding.hpp"
 #include "component/auto_complete_model.hpp"
@@ -2252,6 +2253,7 @@ std::optional<animation::AnimationTime> AutoCompleteComponentHost::next_auxiliar
 namespace ryn {
 void AutoComplete(AutoCompleteProps props, std::optional<AutoCompletePrefix> prefix,
                   std::optional<AutoCompleteSuffix> suffix) {
+    detail::ConfigDefaults::apply(props);
     if (!detail::active_auto_complete) {
         throw std::logic_error("AutoComplete requires window component services");
     }

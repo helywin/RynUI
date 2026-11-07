@@ -4,6 +4,10 @@
 
 namespace ryn {
 namespace detail {
+struct ConfigDefaults;
+}
+
+namespace detail {
 struct OTPPropsAccess;
 struct OTPRefState;
 } // namespace detail
@@ -59,6 +63,7 @@ public:
 
     OTPProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -74,6 +79,7 @@ public:
 
     OTPProps& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        explicit_disabled_ = true;
         return *this;
     }
 
@@ -84,6 +90,7 @@ public:
 
     OTPProps& direction(Prop<OTPDirection> value) {
         direction_ = std::move(value);
+        explicit_direction_ = true;
         return *this;
     }
 
@@ -160,16 +167,20 @@ public:
     }
 
 private:
+    friend struct detail::ConfigDefaults;
     friend struct detail::OTPPropsAccess;
     std::optional<Prop<String>> value_;
     std::optional<String> default_value_;
     Prop<std::size_t> length_{6};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<bool> disabled_{false};
+    bool explicit_disabled_{};
     Prop<bool> read_only_{false};
     Prop<OTPDirection> direction_{OTPDirection::LeftToRight};
+    bool explicit_direction_{};
     Prop<OTPMask> mask_{OTPMask{}};
     Prop<InputPurpose> purpose_{InputPurpose::Number};
     Prop<InputCapitalization> capitalization_{InputCapitalization::None};
