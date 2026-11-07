@@ -1,6 +1,8 @@
 #include "component/app_component.hpp"
 #include "component/notice_component.hpp"
 #include "component/image_component.hpp"
+#include "component/modal_component.hpp"
+#include "component/popconfirm_component.hpp"
 #include "support/input_fixture.hpp"
 #include "support/i18n_test.hpp"
 
@@ -38,6 +40,20 @@ bool text_exists(Fixture& f, String text) {
     for (const auto& mounted : f.services.text().mounted_texts()) {
         if (f.scene.text_state(mounted.scene).content() == text.view()) {
             return true;
+        }
+    }
+    return false;
+}
+
+bool panel_text(Fixture& f, runtime::ComponentId root, String text) {
+    for (const auto& mounted : f.services.text().mounted_texts()) {
+        if (f.scene.text_state(mounted.scene).content() != text.view()) {
+            continue;
+        }
+        for (auto id = std::optional{mounted.component}; id; id = f.services.components().parent(*id)) {
+            if (*id == root) {
+                return true;
+            }
         }
     }
     return false;
@@ -168,10 +184,26 @@ void independent_windows() {
     require(text_exists(a, u8"Live notice") && text_exists(b, u8"Live notice") &&
                 ah.closed().wait_for(std::chrono::seconds(0)) != std::future_status::ready,
             "config revision invalidated a valid request/future");
+    const auto modal =
+        ar.modal().confirm(ModalProps{}.title(at.text(title)), ModalContent{[] { Input(InputProps{}); }});
+    const auto drawer =
+        br.drawer().open(DrawerProps{}.title(bt.text(title)), DrawerContent{[] { Input(InputProps{}); }});
+    const auto modal_root = a.services.modal().mounted().back();
+    const auto drawer_root = b.services.modal().mounted().back();
+    language.set(locales::zh_CN);
+    sync(a);
+    sync(b);
+    require(panel_text(a, modal_root, u8"实时通知") && panel_text(a, modal_root, u8"确定") &&
+                panel_text(b, drawer_root, u8"Live notice") && !panel_text(b, drawer_root, u8"实时通知"),
+            "panel Provider update crossed windows");
     a.services.dispose();
     require(ah.closed().get() == NoticeCloseResult::Cancelled && br.bound() &&
-                bh.closed().wait_for(std::chrono::seconds(0)) != std::future_status::ready,
+                bh.closed().wait_for(std::chrono::seconds(0)) != std::future_status::ready &&
+                modal.closed().wait_for(std::chrono::seconds(0)) == std::future_status::ready &&
+                modal.closed().get().kind == PanelCloseKind::OwnerDisposed && drawer.bound(),
             "window teardown settled another window's future");
+    require(drawer.destroy() && drawer.closed().get().kind == PanelCloseKind::Destroyed,
+            "other window Drawer cleanup failed");
     require(bh.close() && bh.closed().get() == NoticeCloseResult::Closed && !bh.close(),
             "remaining window future did not resolve exactly once");
 }
@@ -200,6 +232,151 @@ void motion_completion() {
     require(first.closed().get() == NoticeCloseResult::Closed && !first.close() && !f.services.next_frame_deadline(),
             "late exit/timer repeated settlement or retained a deadline");
 }
+
+void panel_context(int kind) {
+    Fixture f;
+    AppRef app;
+    AppRef captured;
+    AppRef from_service;
+    PopconfirmRef anchor;
+    Signal<LocaleId> language{locales::zh_CN};
+    const auto theme = std::make_shared<Signal<ThemeConfig>>(ThemeConfig{});
+    runtime::CapturedComponentContext context;
+    I18n tr;
+    InputRef ref;
+    int mounts{};
+    int cancels{};
+    int actions{};
+    ConfirmAction::Complete done;
+    std::vector<std::function<void()>> posted;
+    f.services.mount(Content{[&] {
+        App(AppProps{}.ref(app), AppContent{[&] {
+                Flex(FlexProps{}, FlexContent{[&] {
+                         ConfigProvider(ConfigProviderProps{}.locale(language).messages(dictionary()).theme(*theme),
+                                        ConfigProviderContent{[&] {
+                                            captured = useApp();
+                                            tr = useI18n();
+                                            context = runtime::require_component_build_context().capture_context();
+                                            Popconfirm(PopconfirmProps{}.ref(anchor), PopconfirmTrigger{[] {
+                                                           Button(ButtonProps{}, [] { Text(u8"Anchor"); });
+                                                       }});
+                                        }});
+                     }});
+            }});
+    }});
+    const auto content = [&] {
+        ++mounts;
+        from_service = useApp();
+        Text(TextProps{}.content(useI18n().text(action)));
+        Input(InputProps{}.ref(ref).defaultValue(u8"a中文z"));
+    };
+    const ConfirmAction source{[&](ConfirmActionRequest, ConfirmAction::Complete complete) {
+                                   ++actions;
+                                   done = std::move(complete);
+                                   return [&] {
+                                       ++cancels;
+                                   };
+                               },
+                               [&](std::function<void()> fn) { posted.push_back(std::move(fn)); }};
+    ModalHandle modal;
+    DrawerHandle drawer;
+    PopconfirmHandle pop;
+    std::shared_future<PanelCloseResult> future;
+    runtime::ComponentId root;
+    runtime::ComponentId confirm;
+    if (kind == 0) {
+        modal = captured.modal().confirm(ModalProps{}.title(tr.text(title)).onOkAsync(source), ModalContent{content});
+        root = f.services.modal().mounted().back();
+        confirm = f.services.modal().snapshot(root).ok;
+        future = modal.closed();
+    } else if (kind == 1) {
+        drawer = captured.drawer().open(DrawerProps{}.title(tr.text(title)), DrawerContent{content});
+        root = f.services.modal().mounted().back();
+        future = drawer.closed();
+    } else {
+        pop = captured.popconfirm().confirm(anchor, PopconfirmProps{}.title(tr.text(title)).onConfirmAsync(source),
+                                            {.description = PopconfirmDescription{content}});
+        root = f.services.popconfirm().mounted().back();
+        confirm = f.services.popconfirm().snapshot(root).confirm;
+        future = pop.closed();
+    }
+    sync(f);
+    require(from_service.bound() && mounts == 1 && f.services.components().config_scope(root) == context.config &&
+                panel_text(f, root, u8"实时通知") && panel_text(f, root, u8"继续") &&
+                (kind == 1 || (panel_text(f, root, u8"确定") && panel_text(f, root, u8"取消"))),
+            "panel lost captured Provider/App/default footer");
+    if (confirm.valid()) {
+        const auto& node = f.nodes.require(f.services.components().root(confirm));
+        const float x = node.bounds.x + node.translation.x + node.bounds.width / 2;
+        const float y = node.bounds.y + node.translation.y + node.bounds.height / 2;
+        for (const auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            f.services.pointer().dispatch(
+                {input::PointerIdentity::mouse(), action, input::PointerButton::primary, x, y});
+        }
+        if (actions != 1) {
+            std::cerr << "panel action kind=" << kind << " point=" << x << ',' << y << " confirm=" << confirm.index;
+            const auto pointer = f.services.pointer().state(input::PointerIdentity::mouse());
+            if (pointer && pointer->hover_target) {
+                const auto* hit = f.services.interactions().find(*pointer->hover_target);
+                if (hit) {
+                    std::cerr << " hit=" << hit->component.index;
+                }
+            }
+            std::cerr << '\n';
+        }
+        require(actions == 1, "actual panel footer did not start business action");
+    }
+    const auto mounted = f.inputs.mounted_inputs().back();
+    auto& editor = f.inputs.editors().require(mounted.editor);
+    require(ref.focus() && ref.select(7, 1), "panel editor selection setup failed");
+    const auto selection = editor.selection();
+    const auto stamp = f.inputs.sessions().active();
+    require(bool(f.inputs.dispatch(input::CompositionChanged{String{u8"拼"}, {0, 1}, stamp})),
+            "panel preedit setup failed");
+    const auto history = editor.history();
+    const auto draft = std::string(editor.value());
+    language.set(locales::en_US);
+    const auto next_theme = std::make_unique<ThemeConfig>();
+    next_theme->seed.color_primary = Color::rgba8(20, 130, 190);
+    theme->set(*next_theme);
+    if (kind == 0) {
+        require(modal.update({.cancel_text = Prop<String>{String{u8"Literal"}}}), "Modal update failed");
+    }
+    if (kind == 1) {
+        require(drawer.update({.title = tr.text(title)}), "Drawer update failed");
+    }
+    if (kind == 2) {
+        require(pop.update({.cancel_text = Prop<String>{String{u8"Literal"}}}), "Popconfirm update failed");
+    }
+    sync(f);
+    require(mounts == 1 && f.services.components().theme_scope(root) == context.theme &&
+                context.theme->snapshot().seed().color_primary == *next_theme->seed.color_primary &&
+                panel_text(f, root, u8"Live notice") && panel_text(f, root, u8"Continue") &&
+                (kind == 1 || (panel_text(f, root, u8"Literal") && panel_text(f, root, u8"OK"))) && cancels == 0 &&
+                editor.value() == draft && editor.selection() == selection && editor.composition().active &&
+                editor.history().undo_count == history.undo_count && f.inputs.sessions().active() == stamp &&
+                future.wait_for(std::chrono::seconds(0)) != std::future_status::ready,
+            "locale/update cancelled business action or lost editor identity/composition");
+    if (confirm.valid()) {
+        std::thread worker([&] {
+            done({ConfirmActionDecision::KeepOpen});
+            done({});
+        });
+        worker.join();
+        require(posted.size() == 1, "duplicate worker result posted twice");
+        posted.front()();
+        posted.clear();
+        require(future.wait_for(std::chrono::seconds(0)) != std::future_status::ready && cancels == 0,
+                "locale revision invalidated action or KeepOpen closed future");
+    }
+    require(f.services.destroy(*context.component_owner) && !captured.bound() && app.bound() && !ref.bound() &&
+                future.wait_for(std::chrono::seconds(0)) == std::future_status::ready &&
+                future.get().kind == PanelCloseKind::OwnerDisposed,
+            "panel source retirement did not settle once");
+    sync(f);
+    require(!f.services.next_frame_deadline() && !f.inputs.sessions().active().valid(),
+            "panel retained deadline/text route");
+}
 } // namespace
 
 int main() {
@@ -208,6 +385,9 @@ int main() {
         live_context();
         independent_windows();
         motion_completion();
+        for (int kind = 0; kind < 3; ++kind) {
+            panel_context(kind);
+        }
         std::cout << "Notice App live i18n/Theme, windows and late completion completed\n";
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

@@ -21,13 +21,15 @@ ryn::Popconfirm(
 
 `PopconfirmSlots` 提供 typed `PopconfirmTitle` 和 `PopconfirmDescription`。同一内容不能同时通过文字 Prop 与 slot 声明。全部 slots 首次挂载一次，关闭时保留组件身份和编辑状态；初始关闭的内容不自动获得焦点。普通属性和 Theme 变化不重新执行 slots。使用一个明确的操作入口作为 trigger；已有 Button 等入口沿用自身焦点，无交互内容则由 wrapper 提供键盘入口。
 
-108 默认文案接入（source-only，尚未编译或运行）：未设置 `okText/cancelText` 时使用最近活 ConfigProvider 的
+108 默认文案已接入：未设置 `okText/cancelText` 时使用最近活 ConfigProvider 的
 `common.confirm/cancel`，无 Provider 保持 OK/Cancel。`locale(Prop<CommonLocale>)` 接收完整组件覆盖；
 显式具体文字高于完整 Locale，完整 Locale 高于作用域包，英文同文案和空串/空字段均视为显式来源。
 title/description 业务 String 和原有 typed 富内容保留原意。已打开气泡随语言更新默认按钮和必要定位测量，
 保留 loading/open、富 Input 身份及编辑会话，不调用 onOpenChange/onConfirm/onCancel。
 新增真实 CPU host 源码入口为 `rynui.i18n_components_defaults` / `rynui.i18n_components_overrides`；
-尚未构建或运行，不提升既有支持状态或增加异步确认/静态服务合同。
+上述文案接入的实际结果另按 108 跟踪；不由其推导异步确认或服务验收。
+
+`onConfirmAsync(ConfirmAction)`、`onActionError` 和 `PopconfirmRef` 提供异步确认及保留锚点。Close 完成后通知 onConfirm 并请求关闭，controlled open 拒绝时保持原权威；KeepOpen/错误恢复 loading。pending 阻止普通取消与重复确认，隐藏/禁用/owner 退役使动作失效。`AppRef::popconfirm().confirm(ref, props, slots)` 通过同窗口/App 的真实 retained trigger 挂载服务，结果、调度合同及实际 Debug/Release 证据见 [App 服务](app.md)。完整 motion、hover/contextMenu、ButtonProps forwarding、RTL 与原生平台仍分别跟踪。
 
 打开后焦点移至确认按钮，关闭恢复有效触发入口；外部点击保持外部入口获得的焦点。弹层保持非模态，Tab 沿窗口或所属 Modal 的正常顺序移动。说明内可以放置 Select、Input 或 Tooltip；子浮层的逻辑归属保留，点击子菜单不关闭父层，Escape 优先由编辑器/子 Select/Tooltip 处理。关闭父层会清理子弹层输入。Modal 外部弹层不能越过其输入边界。
 

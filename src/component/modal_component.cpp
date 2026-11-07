@@ -1,5 +1,6 @@
 #include "component/modal_component.hpp"
 #include "component/localized_prop.hpp"
+#include "component/confirm_action.hpp"
 #include "component/modal_model.hpp"
 #include "component/drawer_model.hpp"
 #include "component/data_display_retained.hpp"
@@ -54,6 +55,12 @@ struct ModalState final {
     Signal<String> cancel_text{String{u8"Cancel"}};
     std::uint64_t label_revision{};
     Signal<bool> loading{false};
+    bool user_loading{};
+    bool action_starting{};
+    ConfirmAction action_source;
+    std::function<bool()> action_live;
+    std::shared_ptr<ConfirmActionSession> action;
+    std::function<void(ConfirmActionError)> action_error;
     Signal<runtime::SemanticForeground> text_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> title_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticTypography> body_font{runtime::SemanticTypography{}};
@@ -67,6 +74,7 @@ struct ModalState final {
     bool title_slot{};
     bool footer_slot{};
     bool centered{};
+    bool show_cancel{true};
     bool restore{true};
     bool focus_trap{true};
     bool ready{};
@@ -233,7 +241,7 @@ void ModalComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     s->body_font.set({fonts.font_family, fonts.font_weight, false, fonts.font_size, fonts.line_height});
     s->title_font.set(
         {fonts.font_family, fonts.title_font_weight, false, fonts.title_font_size, fonts.title_line_height});
-    s->loading.set(s->model.options().confirm_loading);
+    s->loading.set(s->model.options().confirm_loading || s->action_starting || (s->action && s->action->pending()));
     ThemeConfig close_theme;
     close_theme.button.seed.control_height = dp(token.metrics.close_size);
     close_theme.button.seed.font_size = dp(token.metrics.close_icon_size);
@@ -311,13 +319,37 @@ void ModalComponentHost::reconcile() {
     try {
         do {
             reconcile_again_ = false;
-            for (auto id : mounted_) {
+            std::optional<std::vector<runtime::ComponentId>> snapshot;
+            if (std::ranges::any_of(mounted_, [this](auto id) {
+                    const auto* state = services_->components().state<ModalState>(id);
+                    return state && state->action && state->action->pending() &&
+                           (!state->model.options().open || !services_->overlay_stack().logical_branch_active(id));
+                })) {
+                snapshot = mounted_;
+            }
+            const std::span<const runtime::ComponentId> ids = snapshot
+                                                                  ? std::span<const runtime::ComponentId>{*snapshot}
+                                                                  : std::span<const runtime::ComponentId>{mounted_};
+            for (auto id : ids) {
                 auto* s = services_->components().state<ModalState>(id);
                 if (!s || !s->ready || !services_->components().scope(id).active()) {
                     continue;
                 }
                 if (const auto change =
                         s->model.settle_visibility(services_->overlay_stack().logical_branch_active(id))) {
+                    if (!*change && s->action && s->action->pending()) {
+                        auto cancel = s->action->detach_cancel();
+                        s->loading.set(s->user_loading);
+                        ConfirmActionSession::run_cancel(std::move(cancel));
+                        if (life.expired()) {
+                            return;
+                        }
+                        s = services_->components().state<ModalState>(id);
+                        if (!s || !services_->components().scope(id).active()) {
+                            reconcile_again_ = true;
+                            break;
+                        }
+                    }
                     s->needs_layout = true;
                     s->reveal = true;
                     s->revealed_focus.reset();
@@ -383,10 +415,33 @@ void ModalComponentHost::on_input_boundary_changed() {
 void ModalComponentHost::request_ok(runtime::ComponentId id) {
     const auto* s = services_->components().state<ModalState>(id);
     if (!s || !services_->overlay_stack().is_top(id) || !services_->components().scope(id).active() ||
-        !s->model.request_ok()) {
+        !s->model.request_ok() || s->action_starting || (s->action && s->action->pending()) ||
+        (s->action_live && !s->action_live())) {
         return;
     }
     const auto callback = s->on_ok;
+    if (s->action_source) {
+        const auto action = s->action;
+        const auto source = s->action_source;
+        const auto loading = s->loading;
+        services_->components().state<ModalState>(id)->action_starting = true;
+        const auto life = std::weak_ptr{lifetime_};
+        loading.set(true);
+        if (life.expired()) {
+            return;
+        }
+        s = services_->components().state<ModalState>(id);
+        if (s && services_->components().scope(id).active()) {
+            services_->components().state<ModalState>(id)->action_starting = false;
+            if (s->model.visible()) {
+                services_->request_frame();
+                action->start(source, services_->animation_time());
+            } else {
+                loading.set(s->user_loading);
+            }
+        }
+        return;
+    }
     if (callback) {
         callback();
     }
@@ -395,13 +450,66 @@ void ModalComponentHost::request_ok(runtime::ComponentId id) {
 void ModalComponentHost::request_cancel(runtime::ComponentId id, ModalCancelReason reason) {
     const auto* s = services_->components().state<ModalState>(id);
     if (!s || !services_->overlay_stack().is_top(id) || !services_->components().scope(id).active() ||
-        !s->model.request_cancel(reason)) {
+        !s->model.request_cancel(reason) || (reason == ModalCancelReason::CancelButton && !s->show_cancel) ||
+        s->action_starting || (s->action && s->action->pending())) {
         return;
     }
     const auto callback = s->on_cancel;
     if (callback) {
         callback(reason);
     }
+}
+
+std::function<void()> ModalComponentHost::detach_action(runtime::ComponentId id) noexcept {
+    auto* state = services_->components().state<ModalState>(id);
+    return state && state->action ? state->action->detach_cancel() : ConfirmAction::Cancel{};
+}
+
+void ModalComponentHost::append_service_body(runtime::ComponentId id, runtime::ComponentId parent,
+                                             const Content& content, const runtime::CapturedComponentContext& context) {
+    const auto state = services_->components().retain_state<ModalState>(id);
+    if (!state || !services_->components().scope(id).active() || state->snapshot.body != parent) {
+        throw std::logic_error("App panel body is retired");
+    }
+    services_->append_slot(parent, Content{[state, parent, content] {
+                               auto& build = runtime::require_component_build_context();
+                               build.mount_slot_with_semantic_text_style(
+                                   parent, content, Prop<runtime::SemanticForeground>{state->text_color},
+                                   Prop<runtime::SemanticTypography>{state->body_font});
+                           }},
+                           context);
+}
+
+std::size_t ModalComponentHost::tick_auxiliary(animation::AnimationTime time) {
+    if (!next_auxiliary_deadline()) {
+        return 0;
+    }
+    const auto ids = mounted_;
+    const auto life = std::weak_ptr{lifetime_};
+    std::size_t count{};
+    for (const auto id : ids) {
+        const auto* state = services_->components().state<ModalState>(id);
+        const auto action = state ? state->action : nullptr;
+        if (action && action->tick(time)) {
+            ++count;
+        }
+        if (life.expired()) {
+            break;
+        }
+    }
+    return count;
+}
+
+std::optional<animation::AnimationTime> ModalComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> result;
+    for (const auto id : mounted_) {
+        const auto* state = services_->components().state<ModalState>(id);
+        const auto deadline = state && state->action ? state->action->deadline() : std::nullopt;
+        if (deadline && (!result || *deadline < *result)) {
+            result = deadline;
+        }
+    }
+    return result;
 }
 
 void ModalComponentHost::mount(const ModalProps& props, const ModalContent& content, const ModalSlots& slots) {
@@ -465,7 +573,8 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
     const auto cancel_text =
         props.cancel_text_ ? *props.cancel_text_ : bind([locale] { return read_prop(locale).cancel; });
     const auto id = build.mount_component<ModalState>(options);
-    auto& s = build.state<ModalState>(id);
+    const auto retained = build.host().retain_state<ModalState>(id);
+    auto& s = *retained;
     if (drawer) {
         s.drawer = DrawerGeometry{read_prop(drawer->placement_), read_prop(drawer->width_), read_prop(drawer->height_)};
         s.snapshot.drawer = true;
@@ -488,6 +597,40 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
     s.ok_text.set(read_prop(ok_text));
     s.cancel_text.set(read_prop(cancel_text));
     s.on_ok = props.on_ok_;
+    s.action_source = props.action_;
+    s.action_live = props.action_live_;
+    s.action_error = props.action_error_;
+    s.action = std::make_shared<ConfirmActionSession>([this, life = std::weak_ptr{lifetime_},
+                                                       id](ConfirmActionResult result) {
+        if (life.expired()) {
+            return;
+        }
+        auto* state = services_->components().state<ModalState>(id);
+        if (!state || !services_->components().scope(id).active() || (state->action_live && !state->action_live())) {
+            return;
+        }
+        const auto loading = state->loading;
+        const auto error = state->action_error;
+        const auto accepted = state->on_ok;
+        const auto generation = state->action->generation();
+        loading.set(state->user_loading);
+        if (life.expired()) {
+            return;
+        }
+        state = services_->components().state<ModalState>(id);
+        if (!state || !services_->components().scope(id).active() || state->action->generation() != generation ||
+            (state->action_live && !state->action_live())) {
+            return;
+        }
+        if (result.error) {
+            if (error) {
+                error(std::move(*result.error));
+            }
+        } else if (result.decision == ConfirmActionDecision::Close && accepted) {
+            accepted();
+        }
+    });
+    build.scope(id).on_cleanup([action = s.action] { action->cancel(); });
     s.on_cancel = props.on_cancel_;
     s.after_close = props.after_close_;
     s.after_open_change = props.after_open_change_;
@@ -811,7 +954,15 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
     option(props.closable_, [](auto& options, bool value) { options.closable = value; }, true);
     option(props.keyboard_, [](auto& options, bool value) { options.keyboard = value; });
     option(props.mask_, [](auto& options, ModalMask value) { options.mask = value; });
-    option(props.confirm_loading_, [](auto& options, bool value) { options.confirm_loading = value; });
+    connect_prop(scope, props.confirm_loading_, [this, id](bool value) {
+        if (auto* state = services_->components().state<ModalState>(id)) {
+            state->user_loading = value;
+            auto options = state->model.options();
+            options.confirm_loading = value;
+            state->model.reconcile(options);
+            state->loading.set(value || state->action->pending());
+        }
+    });
     option(props.footer_, [](auto& options, ModalFooterMode value) { options.footer = value; }, true);
     option(props.width_, [](auto& options, float value) { options.width = value; }, true);
     connect_prop(scope, props.title_, [this, id](String value) {
@@ -850,6 +1001,16 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
         if (auto* s = services_->components().state<ModalState>(id)) {
             s->centered = value;
             refresh(id, true);
+        }
+    });
+    connect_prop(scope, props.show_cancel_, [this, id](bool value) {
+        if (auto* state = services_->components().state<ModalState>(id)) {
+            state->show_cancel = value;
+            if (state->snapshot.cancel.valid()) {
+                services_->components().set_branch_active(state->snapshot.cancel, value);
+                services_->nodes().require(services_->components().root(state->snapshot.cancel)).out_of_flow = !value;
+                refresh(id, true);
+            }
         }
     });
     connect_prop(scope, props.focus_trap_, [this, id](bool value) {

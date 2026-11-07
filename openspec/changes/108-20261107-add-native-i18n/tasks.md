@@ -20,9 +20,9 @@
 
 ## 3. 真实 App 与服务上下文集成
 
-- [ ] 3.1 依赖 107 的实际 App/Notice/Modal/Drawer 服务与输入域合同，在 append/update/late completion 传递 captured theme/config/window owner generation；运行 `rynui.i18n_service` 的嵌套/双窗口/显式 String 与 Binding 场景，更新服务上下文文档。
-- [ ] 3.2 验证 Provider/App 销毁、跨窗口 ref、重入/抛错、future 只完成一次、晚到回调及输入租约释放，运行新服务失败/清理 cases 与 Notice/Modal/Drawer 既有边界回归；依赖未就绪不得勾选或用 Holder 替代。
-- [ ] 3.3 正式 HEADLESS Debug/Release 完成服务组合检查，运行格式/doctor/strict/diff，精简记录实际结果并提交；107/108 引用同一份实现证据，不重复造 Provider/App。
+- [x] 3.1 依赖 107 的实际 App/Notice/Modal/Drawer 服务与输入域合同，在 append/update/late completion 传递 captured theme/config/window owner generation；运行 `rynui.i18n_service` 的嵌套/双窗口/显式 String 与 Binding 场景，更新服务上下文文档。
+- [x] 3.2 验证 Provider/App 销毁、跨窗口 ref、重入/抛错、future 只完成一次、晚到回调及输入租约释放，运行新服务失败/清理 cases 与 Notice/Modal/Drawer 既有边界回归；依赖未就绪不得勾选或用 Holder 替代。
+- [x] 3.3 正式 HEADLESS Debug/Release 完成服务组合检查，运行格式/doctor/strict/diff，精简记录实际结果并提交；107/108 引用同一份实现证据，不重复造 Provider/App。
 
 ## 4. 公开应用与 Gallery 双语
 

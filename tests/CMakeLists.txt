@@ -66,6 +66,22 @@ target_compile_definitions(rynui_app_public_api_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.app_public_api COMMAND rynui_app_public_api_tests)
 
+add_executable(rynui_confirm_action_tests confirm_action_tests.cpp confirm_action_public_api_compile.cpp)
+rynui_configure_cpp_target(rynui_confirm_action_tests)
+target_link_libraries(rynui_confirm_action_tests PRIVATE rynui_components)
+add_test(NAME rynui.confirm_action COMMAND rynui_confirm_action_tests)
+
+add_executable(rynui_app_panel_service_tests app_panel_service_tests.cpp app_panel_public_api_compile.cpp)
+rynui_configure_cpp_target(rynui_app_panel_service_tests)
+target_link_libraries(rynui_app_panel_service_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_app_panel_service_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(panel_case IN ITEMS lifecycle actions controlled failures windows domain retirement dispatch)
+    add_test(NAME rynui.app_panel_${panel_case} COMMAND rynui_app_panel_service_tests ${panel_case})
+    set_tests_properties(rynui.app_panel_${panel_case} PROPERTIES TIMEOUT 30)
+endforeach()
+
 add_executable(rynui_i18n_components_selection_tests i18n_components_selection_tests.cpp)
 rynui_configure_cpp_target(rynui_i18n_components_selection_tests)
 target_link_libraries(rynui_i18n_components_selection_tests PRIVATE rynui_components)

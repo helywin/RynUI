@@ -1,4 +1,5 @@
 #include "component/app_component.hpp"
+#include "component/app_panel_service.hpp"
 #include "component/notice_model.hpp"
 #include "runtime/layout_style_adapter.hpp"
 
@@ -65,7 +66,10 @@ void AppComponentHost::mount(const AppProps& props, const AppContent& content) {
     binding->services = &services;
     binding->owner = id;
     binding->context = services.components().capture_context(id);
-    build.scope(id).on_cleanup([binding] { binding->alive = false; });
+    build.scope(id).on_cleanup([binding] {
+        binding->alive = false;
+        AppPanelService::retire_owner(binding);
+    });
     const auto node = build.root(id);
     services.layout().set_layout(node, layout::FlexLayout{layout::FlexDirection::vertical, 0, {}, true});
     build.on_resource_cleanup(id, [&services, node] { services.layout().remove_layout(node); });
@@ -126,6 +130,30 @@ NotificationRef AppRef::notification() const {
             const auto owner = weak.lock();
             return owner && detail::app_context_live(*owner, context);
         };
+    }
+    return result;
+}
+
+ModalServiceRef AppRef::modal() const {
+    ModalServiceRef result;
+    if (const auto target = detail::binding(state_)) {
+        result.context_ = std::make_shared<detail::PanelServiceContext>(target, *state_->context);
+    }
+    return result;
+}
+
+DrawerServiceRef AppRef::drawer() const {
+    DrawerServiceRef result;
+    if (const auto target = detail::binding(state_)) {
+        result.context_ = std::make_shared<detail::PanelServiceContext>(target, *state_->context);
+    }
+    return result;
+}
+
+PopconfirmServiceRef AppRef::popconfirm() const {
+    PopconfirmServiceRef result;
+    if (const auto target = detail::binding(state_)) {
+        result.context_ = std::make_shared<detail::PanelServiceContext>(target, *state_->context);
     }
     return result;
 }

@@ -2,11 +2,29 @@
 
 #include <ryn/tooltip.hpp>
 #include <ryn/component_locales.hpp>
+#include <ryn/confirm_action.hpp>
 
 namespace ryn {
 namespace detail {
 class PopconfirmComponentHost;
-}
+class AppPanelService;
+struct PopconfirmRefState;
+struct PopconfirmAnchorBinding;
+} // namespace detail
+
+class PopconfirmRef final {
+public:
+    PopconfirmRef();
+    PopconfirmRef(const PopconfirmRef&);
+    PopconfirmRef& operator=(const PopconfirmRef&);
+    [[nodiscard]] bool bound() const;
+
+private:
+    friend class PopconfirmProps;
+    friend class detail::PopconfirmComponentHost;
+    friend class detail::AppPanelService;
+    std::shared_ptr<detail::PopconfirmRefState> state_;
+};
 
 using PopconfirmPlacement = TooltipPlacement;
 
@@ -27,6 +45,29 @@ struct PopconfirmSlots final {
 
 class PopconfirmProps final {
 public:
+    PopconfirmProps& ref(const PopconfirmRef& value) {
+        reference_ = value.state_;
+        return *this;
+    }
+
+    // Reserve a real trigger for App service calls; native trigger buttons
+    // keep their own activation without opening a second declarative popup.
+    PopconfirmProps& serviceAnchor(const PopconfirmRef& value) {
+        reference_ = value.state_;
+        service_anchor_only_ = true;
+        return *this;
+    }
+
+    PopconfirmProps& onConfirmAsync(ConfirmAction value) {
+        action_ = std::move(value);
+        return *this;
+    }
+
+    PopconfirmProps& onActionError(std::function<void(ConfirmActionError)> value) {
+        action_error_ = std::move(value);
+        return *this;
+    }
+
     PopconfirmProps& locale(Prop<CommonLocale> value) {
         locale_ = std::move(value);
         return *this;
@@ -137,6 +178,13 @@ public:
 
 private:
     friend class detail::PopconfirmComponentHost;
+    friend class detail::AppPanelService;
+    std::shared_ptr<detail::PopconfirmRefState> reference_;
+    bool service_anchor_only_{};
+    std::shared_ptr<detail::PopconfirmAnchorBinding> service_anchor_;
+    ConfirmAction action_;
+    std::function<bool()> action_live_;
+    std::function<void(ConfirmActionError)> action_error_;
     Prop<String> title_{String{}};
     Prop<String> description_{String{}};
     bool explicit_title_{};

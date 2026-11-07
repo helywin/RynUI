@@ -69,6 +69,7 @@ class StepsComponentHost;
 class SkeletonComponentHost;
 class NoticeComponentHost;
 class AppComponentHost;
+class AppPanelService;
 class ResponsiveLayoutHost;
 class MasonryComponentHost;
 class ShellLayoutComponentHost;
@@ -553,6 +554,7 @@ public:
     }
 
 private:
+    friend class AppPanelService;
     friend class ModalComponentHost;
     friend class FeedbackComponentHost;
 

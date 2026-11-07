@@ -5,11 +5,13 @@
 #include <ryn/component_locales.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
+#include <ryn/confirm_action.hpp>
 
 namespace ryn {
 namespace detail {
 class ModalComponentHost;
-}
+class AppPanelService;
+} // namespace detail
 
 enum class ModalFooterMode { Default, None };
 
@@ -92,6 +94,11 @@ public:
         return *this;
     }
 
+    ModalProps& showCancel(Prop<bool> value = true) {
+        show_cancel_ = std::move(value);
+        return *this;
+    }
+
     ModalProps& footer(Prop<ModalFooterMode> value) {
         footer_ = std::move(value);
         return *this;
@@ -125,6 +132,16 @@ public:
         return *this;
     }
 
+    ModalProps& onOkAsync(ConfirmAction value) {
+        action_ = std::move(value);
+        return *this;
+    }
+
+    ModalProps& onActionError(std::function<void(ConfirmActionError)> value) {
+        action_error_ = std::move(value);
+        return *this;
+    }
+
     ModalProps& onCancel(std::function<void(ModalCancelReason)> value) {
         on_cancel_ = std::move(value);
         return *this;
@@ -142,6 +159,7 @@ public:
 
 private:
     friend class detail::ModalComponentHost;
+    friend class detail::AppPanelService;
     Prop<bool> open_{false};
     Prop<String> title_{String{}};
     Prop<float> width_{520};
@@ -151,12 +169,16 @@ private:
     Prop<bool> focus_trap_{true};
     Prop<ModalMask> mask_{ModalMask{}};
     Prop<bool> confirm_loading_{false};
+    Prop<bool> show_cancel_{true};
     Prop<ModalFooterMode> footer_{ModalFooterMode::Default};
     std::optional<Prop<String>> ok_text_;
     std::optional<Prop<String>> cancel_text_;
     std::optional<Prop<CommonLocale>> locale_;
     Prop<bool> restore_focus_{true};
     std::function<void()> on_ok_;
+    ConfirmAction action_;
+    std::function<bool()> action_live_;
+    std::function<void(ConfirmActionError)> action_error_;
     std::function<void(ModalCancelReason)> on_cancel_;
     std::function<void()> after_close_;
     std::function<void(bool)> after_open_change_;

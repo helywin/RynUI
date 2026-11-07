@@ -3,6 +3,7 @@
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/notice.hpp>
+#include <ryn/app_panel.hpp>
 
 namespace ryn {
 namespace detail {
@@ -22,6 +23,9 @@ public:
     [[nodiscard]] bool bound() const;
     [[nodiscard]] MessageRef message() const;
     [[nodiscard]] NotificationRef notification() const;
+    [[nodiscard]] ModalServiceRef modal() const;
+    [[nodiscard]] DrawerServiceRef drawer() const;
+    [[nodiscard]] PopconfirmServiceRef popconfirm() const;
 
 private:
     friend class AppProps;

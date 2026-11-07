@@ -4,6 +4,26 @@
 #include <ryn/popconfirm.hpp>
 
 namespace ryn::detail {
+struct PopconfirmAnchorBinding final {
+    runtime::CapturedComponentContext context;
+    WindowComponentServices* services{};
+    runtime::ComponentId owner;
+    runtime::ComponentId trigger;
+    std::thread::id thread{std::this_thread::get_id()};
+    bool alive{true};
+    bool controlled{};
+    bool service_only{};
+    bool open{};
+    std::weak_ptr<void> service;
+};
+
+struct PopconfirmRefState final {
+    std::weak_ptr<PopconfirmAnchorBinding> binding;
+    bool assigned{};
+};
+
+[[nodiscard]] bool popconfirm_anchor_live(const PopconfirmAnchorBinding&);
+
 struct PopconfirmSnapshot final {
     runtime::ComponentId trigger;
     runtime::ComponentId popup;
@@ -35,6 +55,9 @@ public:
                           std::optional<input::InteractionId> origin) override;
     void position_window_layers(runtime::Size viewport, runtime::Rect clip) override;
     void synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) override;
+    [[nodiscard]] std::function<void()> detach_action(runtime::ComponentId) noexcept;
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
 private:
     void refresh(runtime::ComponentId id);
@@ -46,5 +69,6 @@ private:
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     bool window_active_{true};
+    std::shared_ptr<int> lifetime_{std::make_shared<int>(0)};
 };
 } // namespace ryn::detail

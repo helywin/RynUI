@@ -14,13 +14,13 @@ open默认false且由应用持有；OK/取消只发送请求，应用不回写fa
 
 width为正且有限的logical units，默认520；centered控制垂直居中。默认页脚OK/Cancel可改文字，footer(None)隐藏默认按钮，ModalSlots的typed title/footer支持自定义内容。restoreFocusAfterClose默认true。afterOpenChange在实际显示转换后通知，afterClose只在实际隐藏后通知，初始隐藏不产生关闭事件。
 
-108 默认文案接入（source-only，尚未编译或运行）：默认页脚读取最近活 ConfigProvider 的
+108 默认文案已接入：默认页脚读取最近活 ConfigProvider 的
 `common.confirm/cancel`，无 Provider 仍为 OK/Cancel。`locale(Prop<CommonLocale>)` 是完整组件覆盖；
 `okText/cancelText` 的显式英文或空串高于完整 Locale，完整 Locale 的英文/空字段高于作用域包。
 typed footer/title 与业务 body String 保留原意。语言切换只更新默认按钮标签与必要测量，保留打开状态、
 富 Input 身份、草稿、反向选区、preedit、undo 与焦点，不发送 onOk/onCancel/afterOpenChange。
-新 CPU host 源码入口为 `rynui.i18n_components_defaults` / `rynui.i18n_components_overrides`；
-未运行构建或 CTest，不表示服务、异步确认或平台验收已完成。
+CPU host 入口为 `rynui.i18n_components_defaults` / `rynui.i18n_components_overrides`；
+实际 Debug/Release 结果见 [108 组件阶段](../openspec/changes/108-20261107-add-native-i18n/evidence/components-windows.md)，不替代原生平台验收。
 
 首次挂载一次预建并保留全部slots，包括初始关闭时的内容。隐藏时清理焦点、输入和子弹层，再开保留编辑器、草稿和组件身份；初始隐藏内容的autoFocus被阻止。显示转换通知在后续窗口同步的安全阶段发出，初始关闭不通知。回调可以重开或卸载；已卸载owner不再接收后续通知。
 
@@ -28,6 +28,6 @@ Modal脱离父级Box/Flex/Space和顶层正文流，不占空间或gap，保留�
 
 默认最新打开的Modal是唯一输入边界。`focusTrap(false)` 可释放本层的焦点限制，但不会解除仍打开的其他 Modal 所需的输入限制；嵌套层继承底层边界，无共同模态祖先的兄弟层收口到顶层。动态切换和销毁后重新解析存活栈。Tab/Shift+Tab在其中环绕，无入口时停留在对话框；打开优先正文入口，其次默认OK和其他入口。关闭恢复仍有效、可见且未禁用的触发入口，嵌套关闭恢复父级；可用restoreFocusAfterClose关闭自动恢复。背景仍绘制并保留自身disabled值，无遮罩颜色也不会透传输入。Escape先处理编辑器组合事务，再处理Select/Tooltip，最后请求取消Modal。子浮层可越过正文和对话框边缘，仍夹紧在窗口内。
 
-动态销毁/懒加载、动画、静态confirm/Promise自动关闭、拖动/resize、mask blur、RTL、响应断点宽度、平台可访问性桥接和Web/DOM API不在首版。实际状态以061的tasks与evidence为准。
+`onOkAsync(ConfirmAction)`、`onActionError` 与 `showCancel` 提供异步确认。异步 Close 只调用原 onOk 请求；受控方拒绝回写时保留打开状态和草稿。KeepOpen/错误恢复 loading，可重试；pending 阻止普通取消和重复确认。关闭/隐藏/owner 退役使动作失效。`AppRef::modal()` 的真实动态服务、结果与调度合同及实际 Debug/Release 证据见 [App 服务](app.md)。完整 lazy/motion、拖动/resize、mask blur、RTL、响应断点宽度、平台可访问性桥接和 Web/DOM API 继续独立跟踪。
 
 视觉入口为`ThemeConfig::modal`，支持颜色、11个布局尺寸、正文/标题字体、focus/阴影及z-index，继承/reset、独立component seed/algorithm和显式覆盖。颜色/布局/字体/效果/层级分五组失效。默认elevated背景、黑色0.45遮罩、正文14/22、标题16/24及600字重、20垂直/24水平padding、header gap8/footer gap12、圆角8、close32；基于锁定Ant Design6.6.5。纯颜色变化不测量或重跑正文。活跃Modal组共享其中最高z-index作为全局层级base，打开顺序决定组间前后；子浮层在所属组内按自己的z-index排序，始终位于其对话框之上。

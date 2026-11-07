@@ -313,6 +313,8 @@ add_library(rynui_components STATIC
     component/notice_model.cpp
     component/notice_component.cpp
     component/app_component.cpp
+    component/app_panel_service.cpp
+    component/confirm_action.cpp
     component/tabs_model.cpp
     component/modal_model.cpp
     component/drawer_model.cpp

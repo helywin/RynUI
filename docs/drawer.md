@@ -28,4 +28,4 @@ Drawer 与 Modal 共用同一模态栈，最新打开层是唯一输入边界。
 
 视觉入口为 `ThemeConfig::drawer`。Default/Dark/Compact、嵌套继承/reset、独立 component seed/algorithm、颜色/metrics/typography/effects/order 五组订阅均独立于 Modal。默认 body24、header16/24、footer8/16、close24/icon16/gap8、分隔线1、标题16/24及600字重、黑色0.45 mask，以锁定 [Ant Design 6.6.5 Drawer 源码](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/drawer/style/index.ts) 为依据。107 将 Theme 的基准向下阴影随 placement 旋转到内侧边缘，blur/spread/color 保持；不复制 CSS。颜色更新不触发测量或内容重建。
 
-尚缺完整开合动画、静态 service、mask blur、平台可访问性桥接及 Web/DOM/CSS 字段。完整退出动画需要与共享 Modal 的可见性、焦点约束和 afterOpenChange 队列共同设计；静态 service 需要有作用域、显式窗口归属及销毁取消的宿主合同，交父线程协调。上述 107 源码和 Gallery 不是验收通过；公开 API 无平台 SDK 类型，CPU scene v3/GPU ABI v2 保持。历史证据见 change062；107 未运行构建、CTest 或真实窗口。
+`AppRef::drawer().open(props, content, slots)` 返回 typed `DrawerHandle`，支持 update/close/destroy/closed；默认没有确认页脚。真实 retained 挂载、captured Provider/App、输入域和清理合同及实际 Debug/Release 证据见 [App 服务](app.md)。完整开合动画、独立 drag、mask blur、平台可访问性桥接及 Web/DOM/CSS 字段继续分别跟踪；closed 当前按即时退役完成，不声称 motion 已结束。公开 API 无平台 SDK 类型，CPU scene v3/GPU ABI v2 保持。

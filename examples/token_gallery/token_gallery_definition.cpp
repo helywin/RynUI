@@ -7763,6 +7763,11 @@ void add_app_samples(const std::shared_ptr<GalleryState>& state) {
         I18n i18n;
         InputRef editor;
         std::optional<NoticeHandle> handle;
+        InputRef panel_editor;
+        PopconfirmRef anchor;
+        std::optional<ModalHandle> modal;
+        std::optional<DrawerHandle> drawer;
+        std::optional<PopconfirmHandle> popconfirm;
         Signal<LocaleId> language{locales::zh_CN};
         Signal<String> result{String{u8"打开通知，在富内容中编辑，再切换语言。"}};
     };
@@ -7821,6 +7826,46 @@ void add_app_samples(const std::shared_ptr<GalleryState>& state) {
                     }),
                            [] { Text(u8"读取关闭结果"); });
                     remember_target(state, "gallery.app.result");
+                    Button(ButtonProps{}.onClick([demo, title] {
+                        if (demo->modal && demo->modal->bound()) {
+                            demo->modal->update({.title = demo->i18n.text(title)});
+                            return;
+                        }
+                        demo->modal = demo->app.modal().confirm(
+                            ModalProps{}.title(demo->i18n.text(title)).onOk([demo] {
+                                demo->result.set(u8"已确认保存");
+                            }),
+                            ModalContent{[demo] {
+                                Input(InputProps{}.ref(demo->panel_editor).defaultValue(u8"确认框中的草稿"));
+                            }});
+                    }),
+                           [] { Text(u8"打开确认框"); });
+                    remember_target(state, "gallery.app.modal");
+                    Button(ButtonProps{}.onClick([demo, title] {
+                        if (demo->drawer && demo->drawer->bound()) {
+                            demo->drawer->update({.title = demo->i18n.text(title)});
+                            return;
+                        }
+                        demo->drawer = demo->app.drawer().open(
+                            DrawerProps{}.title(demo->i18n.text(title)),
+                            DrawerContent{[] { Input(InputProps{}.defaultValue(u8"抽屉中的草稿")); }});
+                    }),
+                           [] { Text(u8"打开抽屉"); });
+                    remember_target(state, "gallery.app.drawer");
+                    Popconfirm(PopconfirmProps{}.serviceAnchor(demo->anchor), PopconfirmTrigger{[demo, state] {
+                                   Button(ButtonProps{}.onClick([demo] {
+                                       if (demo->popconfirm && demo->popconfirm->bound()) {
+                                           return;
+                                       }
+                                       demo->popconfirm = demo->app.popconfirm().confirm(
+                                           demo->anchor,
+                                           PopconfirmProps{}.title(u8"确认清除这份草稿？").onConfirm([demo] {
+                                               demo->result.set(u8"已确认清除");
+                                           }));
+                                   }),
+                                          [] { Text(u8"锚点确认"); });
+                                   remember_target(state, "gallery.app.popconfirm");
+                               }});
                 }});
         }});
     ++state->telemetry.live_samples;

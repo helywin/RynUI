@@ -1,5 +1,6 @@
 #include "component/popconfirm_component.hpp"
 #include "component/localized_prop.hpp"
+#include "component/confirm_action.hpp"
 #include "component/popconfirm_model.hpp"
 #include "component/select_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -32,7 +33,16 @@ struct PopconfirmState final {
     Signal<String> ok_text{String{u8"OK"}};
     Signal<String> cancel_text{String{u8"Cancel"}};
     std::uint64_t label_revision{};
+    std::uint64_t refresh_revision{};
     Signal<bool> loading{false};
+    bool user_loading{};
+    bool action_starting{};
+    ConfirmAction action_source;
+    std::function<bool()> action_live;
+    std::shared_ptr<ConfirmActionSession> action;
+    std::function<void(ConfirmActionError)> action_error;
+    std::shared_ptr<PopconfirmAnchorBinding> reference;
+    std::shared_ptr<PopconfirmAnchorBinding> service_anchor;
     Signal<runtime::SemanticForeground> text_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> title_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> warning_color{{0, 0, 0, 1}};
@@ -110,11 +120,58 @@ runtime::ComponentId group(WindowComponentServices& services, layout::LayoutMode
 }
 } // namespace
 
+bool popconfirm_anchor_live(const PopconfirmAnchorBinding& binding) {
+    if (binding.thread != std::this_thread::get_id() || !binding.alive || binding.context.owner.expired() ||
+        !binding.context.config || !binding.context.config->active()) {
+        return false;
+    }
+    auto& host = binding.services->components();
+    return host.active() && host.contains(binding.owner) && host.scope(binding.owner).active();
+}
+
+std::function<void()> PopconfirmComponentHost::detach_action(runtime::ComponentId id) noexcept {
+    auto* state = services_->components().state<PopconfirmState>(id);
+    return state && state->action ? state->action->detach_cancel() : ConfirmAction::Cancel{};
+}
+
+std::size_t PopconfirmComponentHost::tick_auxiliary(animation::AnimationTime time) {
+    if (!next_auxiliary_deadline()) {
+        return 0;
+    }
+    const auto ids = mounted_;
+    const auto life = std::weak_ptr{lifetime_};
+    std::size_t count{};
+    for (const auto id : ids) {
+        const auto* state = services_->components().state<PopconfirmState>(id);
+        const auto action = state ? state->action : nullptr;
+        if (action && action->tick(time)) {
+            ++count;
+        }
+        if (life.expired()) {
+            break;
+        }
+    }
+    return count;
+}
+
+std::optional<animation::AnimationTime> PopconfirmComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> result;
+    for (const auto id : mounted_) {
+        const auto* state = services_->components().state<PopconfirmState>(id);
+        const auto deadline = state && state->action ? state->action->deadline() : std::nullopt;
+        if (deadline && (!result || *deadline < *result)) {
+            result = deadline;
+        }
+    }
+    return result;
+}
+
 PopconfirmComponentHost::PopconfirmComponentHost(WindowComponentServices& services) : services_(&services) {
     services.attach(*this);
 }
 
 PopconfirmComponentHost::~PopconfirmComponentHost() {
+    lifetime_.reset();
     services_->detach(*this);
 }
 
@@ -133,6 +190,7 @@ void PopconfirmComponentHost::on_destroy() noexcept {
 }
 
 void PopconfirmComponentHost::on_dispose() noexcept {
+    lifetime_.reset();
     mounted_.clear();
 }
 
@@ -151,6 +209,24 @@ void PopconfirmComponentHost::refresh(runtime::ComponentId id) {
     }
     const bool visible =
         s->model.open() && !s->disabled && window_active_ && services_->interactions().component_active(id);
+    if (s->reference) {
+        s->reference->open = s->model.open();
+    }
+    const auto revision = ++s->refresh_revision;
+    if (!visible && s->action && s->action->pending()) {
+        const auto life = std::weak_ptr{lifetime_};
+        auto cancel = s->action->detach_cancel();
+        const auto loading = s->loading;
+        loading.set(s->user_loading);
+        ConfirmActionSession::run_cancel(std::move(cancel));
+        if (life.expired()) {
+            return;
+        }
+        s = services_->components().state<PopconfirmState>(id);
+        if (!s || s->refresh_revision != revision) {
+            return;
+        }
+    }
     const bool changed = visible != s->snapshot.geometry.visible;
     s->snapshot.geometry.visible = visible;
     const bool description = s->rich_description || !s->description.get().empty();
@@ -171,11 +247,17 @@ void PopconfirmComponentHost::refresh(runtime::ComponentId id) {
         return;
     }
     if (visible) {
+        const auto trigger = s->service_anchor ? s->service_anchor->trigger : s->snapshot.trigger;
         const auto focus = services_->focus().state().focused;
         const auto* record = focus ? services_->interactions().find(*focus) : nullptr;
-        s->restore_target = record && descendant(*services_, record->component, s->snapshot.trigger)
-                                ? focus
-                                : first_focus(*services_, s->snapshot.trigger);
+        s->restore_target =
+            record && descendant(*services_, record->component, trigger) ? focus : first_focus(*services_, trigger);
+        if (!s->restore_target && s->service_anchor) {
+            const auto* anchor = services_->components().state<PopconfirmState>(s->service_anchor->owner);
+            if (anchor && can_focus(*services_, anchor->trigger_hit)) {
+                s->restore_target = anchor->trigger_hit;
+            }
+        }
         if (!s->restore_target && can_focus(*services_, s->trigger_hit)) {
             s->restore_target = s->trigger_hit;
         }
@@ -210,15 +292,18 @@ void PopconfirmComponentHost::refresh(runtime::ComponentId id) {
 
 void PopconfirmComponentHost::request_open(runtime::ComponentId id, bool open, bool restore) {
     auto* s = services_->components().state<PopconfirmState>(id);
-    if (!s || !services_->components().scope(id).active() ||
+    if (!s || !services_->components().scope(id).active() || s->action_starting ||
+        (s->action && s->action->pending()) ||
         (open && (s->disabled || !window_active_ || !services_->interactions().component_active(id)))) {
         return;
     }
     s->restore = restore;
     const bool notify = s->model.request(open);
     const auto callback = s->on_open;
+    const auto life = std::weak_ptr{lifetime_};
     refresh(id);
-    if (notify && callback && services_->components().contains(id) && services_->components().scope(id).active()) {
+    if (!life.expired() && notify && callback && services_->components().contains(id) &&
+        services_->components().scope(id).active()) {
         callback(open);
     }
 }
@@ -229,23 +314,56 @@ void PopconfirmComponentHost::suppress(runtime::ComponentId id) {
         return;
     }
     s->restore = false;
+    auto cancel = s->action ? s->action->detach_cancel() : ConfirmAction::Cancel{};
     const bool notify = s->model.suppress();
     const auto callback = s->on_open;
+    const auto life = std::weak_ptr{lifetime_};
+    s->loading.set(s->user_loading);
+    ConfirmActionSession::run_cancel(std::move(cancel));
+    if (life.expired()) {
+        return;
+    }
     refresh(id);
-    if (notify && callback && services_->components().contains(id) && services_->components().scope(id).active()) {
+    if (!life.expired() && notify && callback && services_->components().contains(id) &&
+        services_->components().scope(id).active()) {
         callback(false);
     }
 }
 
 void PopconfirmComponentHost::confirm(runtime::ComponentId id) {
+    const auto life = std::weak_ptr{lifetime_};
     const auto* s = services_->components().state<PopconfirmState>(id);
     if (!s || !s->snapshot.geometry.visible || s->disabled || s->loading.get() ||
-        !services_->interactions().component_active(id)) {
+        (s->action_live && !s->action_live()) || !services_->interactions().component_active(id)) {
         return;
     }
     const auto callback = s->on_confirm;
+    if (s->action_source) {
+        const auto session = s->action;
+        const auto source = s->action_source;
+        services_->components().state<PopconfirmState>(id)->action_starting = true;
+        const auto loading = s->loading;
+        loading.set(true);
+        if (life.expired()) {
+            return;
+        }
+        auto* state = services_->components().state<PopconfirmState>(id);
+        if (state && services_->components().scope(id).active()) {
+            state->action_starting = false;
+            if (state->snapshot.geometry.visible && !state->disabled && window_active_) {
+                services_->request_frame();
+                session->start(source, services_->animation_time());
+            } else {
+                loading.set(state->user_loading);
+            }
+        }
+        return;
+    }
     if (callback) {
         callback();
+    }
+    if (life.expired()) {
+        return;
     }
     s = services_->components().state<PopconfirmState>(id);
     if (s && services_->components().scope(id).active() && !s->loading.get()) {
@@ -254,13 +372,16 @@ void PopconfirmComponentHost::confirm(runtime::ComponentId id) {
 }
 
 void PopconfirmComponentHost::cancel(runtime::ComponentId id) {
+    const auto life = std::weak_ptr{lifetime_};
     const auto* s = services_->components().state<PopconfirmState>(id);
-    if (!s || !s->snapshot.geometry.visible || !s->show_cancel || !services_->interactions().component_active(id)) {
+    if (!s || !s->snapshot.geometry.visible || !s->show_cancel || s->action_starting ||
+        (s->action && s->action->pending()) || !services_->interactions().component_active(id)) {
         return;
     }
     const auto callback = s->on_cancel;
     request_open(id, false);
-    if (callback && services_->components().contains(id) && services_->components().scope(id).active()) {
+    if (!life.expired() && callback && services_->components().contains(id) &&
+        services_->components().scope(id).active()) {
         callback();
     }
 }
@@ -292,6 +413,9 @@ void PopconfirmComponentHost::update_theme(runtime::ComponentId id, bool geometr
 
 void PopconfirmComponentHost::mount(const PopconfirmProps& props, const PopconfirmTrigger& trigger,
                                     const PopconfirmSlots& slots) {
+    if (props.service_anchor_only_ && (props.open_ || props.default_open_)) {
+        throw std::invalid_argument("Popconfirm serviceAnchor cannot control declarative open");
+    }
     if (props.open_ && props.default_open_) {
         throw std::invalid_argument("Popconfirm cannot combine open and defaultOpen");
     }
@@ -308,7 +432,8 @@ void PopconfirmComponentHost::mount(const PopconfirmProps& props, const Popconfi
         props.cancel_text_ ? *props.cancel_text_ : bind([locale] { return read_prop(locale).cancel; });
     const auto id = build.mount_component<PopconfirmState>(
         props.open_.has_value(), props.open_ ? read_prop(*props.open_) : props.default_open_.value_or(false));
-    auto& s = build.state<PopconfirmState>(id);
+    const auto retained = build.host().retain_state<PopconfirmState>(id);
+    auto& s = *retained;
     s.node = build.root(id);
     s.rich_title = slots.title.has_value();
     s.rich_description = slots.description.has_value();
@@ -316,6 +441,61 @@ void PopconfirmComponentHost::mount(const PopconfirmProps& props, const Popconfi
     s.show_cancel = read_prop(props.show_cancel_);
     s.on_open = props.on_open_;
     s.on_confirm = props.on_confirm_;
+    s.action_source = props.action_;
+    s.action_live = props.action_live_;
+    s.action_error = props.action_error_;
+    s.service_anchor = props.service_anchor_;
+    s.action = std::make_shared<ConfirmActionSession>([this, life = std::weak_ptr{lifetime_},
+                                                       id](ConfirmActionResult result) {
+        if (life.expired()) {
+            return;
+        }
+        auto* state = services_->components().state<PopconfirmState>(id);
+        if (!state || !services_->components().scope(id).active() || (state->action_live && !state->action_live())) {
+            return;
+        }
+        const auto loading = state->loading;
+        const auto error = state->action_error;
+        const auto accepted = state->on_confirm;
+        const bool service = bool(state->service_anchor);
+        const auto generation = state->action->generation();
+        loading.set(state->user_loading);
+        if (life.expired()) {
+            return;
+        }
+        state = services_->components().state<PopconfirmState>(id);
+        if (!state || !services_->components().scope(id).active() || state->action->generation() != generation ||
+            (state->action_live && !state->action_live())) {
+            return;
+        }
+        if (result.error) {
+            if (error) {
+                error(std::move(*result.error));
+            }
+        } else if (result.decision == ConfirmActionDecision::Close) {
+            if (accepted) {
+                accepted();
+            }
+            if (!life.expired() && !service) {
+                request_open(id, false);
+            }
+        }
+    });
+    build.scope(id).on_cleanup([action = s.action] { action->cancel(); });
+    if (props.reference_) {
+        if (const auto previous = props.reference_->binding.lock(); previous && previous->alive) {
+            throw std::invalid_argument("PopconfirmRef is already bound");
+        }
+        s.reference = std::make_shared<PopconfirmAnchorBinding>();
+        s.reference->services = &services;
+        s.reference->owner = id;
+        s.reference->context = build.host().capture_context(id);
+        s.reference->controlled = props.open_.has_value();
+        s.reference->service_only = props.service_anchor_only_;
+        props.reference_->binding = s.reference;
+        props.reference_->assigned = true;
+        build.scope(id).on_cleanup([reference = s.reference] { reference->alive = false; });
+    }
     s.on_cancel = props.on_cancel_;
     s.title.set(read_prop(props.title_));
     s.description.set(read_prop(props.description_));
@@ -453,6 +633,14 @@ void PopconfirmComponentHost::mount(const PopconfirmProps& props, const Popconfi
                         engine.place_child(services_->components().root(state->snapshot.trigger), rect);
                     }});
     mounted_.push_back(id);
+    if (s.reference) {
+        s.reference->trigger = s.snapshot.trigger;
+    }
+    if (s.service_anchor) {
+        services.nodes().require(s.node).out_of_flow = true;
+        services.interactions().set_focusable(s.trigger_hit, false);
+        services.interactions().set_tab_stop(s.trigger_hit, false);
+    }
     auto& scope = build.scope(id);
     const auto text = [&](const Prop<String>& prop, Signal<String> PopconfirmState::* field) {
         connect_prop(scope, prop, [this, id, field](String value) {
@@ -498,7 +686,8 @@ void PopconfirmComponentHost::mount(const PopconfirmProps& props, const Popconfi
     });
     connect_prop(scope, props.loading_, [this, id](bool value) {
         if (auto* state = services_->components().state<PopconfirmState>(id)) {
-            state->loading.set(value);
+            state->user_loading = value;
+            state->loading.set(value || state->action_starting || state->action->pending());
         }
     });
     const auto flag = [&](const Prop<bool>& prop, bool PopconfirmState::* field) {
@@ -537,22 +726,30 @@ void PopconfirmComponentHost::mount(const PopconfirmProps& props, const Popconfi
 }
 
 void PopconfirmComponentHost::on_window_active(bool active) {
+    const auto life = std::weak_ptr{lifetime_};
     window_active_ = active;
     const auto ids = mounted_;
     for (auto id : ids) {
         if (!active) {
             suppress(id);
+            if (life.expired()) {
+                return;
+            }
         }
     }
 }
 
 void PopconfirmComponentHost::on_input_boundary_changed() {
+    const auto life = std::weak_ptr{lifetime_};
     const auto ids = mounted_;
     for (auto id : ids) {
         if (!services_->interactions().component_active(id)) {
             suppress(id);
         } else {
             refresh(id);
+        }
+        if (life.expired()) {
+            return;
         }
     }
 }
@@ -569,7 +766,8 @@ bool PopconfirmComponentHost::on_keyboard_input(const input::KeyboardInputEvent&
     std::optional<runtime::ComponentId> escape_target;
     for (auto id : ids) {
         const auto* s = services_->components().state<PopconfirmState>(id);
-        if (!s || s->disabled || !services_->interactions().component_active(id)) {
+        if (!s || s->disabled || (s->reference && (s->reference->service_only || !s->reference->service.expired())) ||
+            !services_->interactions().component_active(id)) {
             continue;
         }
         if ((focus == s->trigger_hit ||
@@ -611,9 +809,11 @@ void PopconfirmComponentHost::on_pointer_input(const input::PointerInputEvent& e
         return;
     }
     const auto ids = mounted_;
+    const auto life = std::weak_ptr{lifetime_};
     for (auto id : ids) {
         const auto* s = services_->components().state<PopconfirmState>(id);
-        if (!s || s->disabled || !services_->interactions().component_active(id)) {
+        if (!s || s->disabled || (s->reference && (s->reference->service_only || !s->reference->service.expired())) ||
+            !services_->interactions().component_active(id)) {
             continue;
         }
         const auto* record = hit ? services_->interactions().find(*hit) : nullptr;
@@ -628,6 +828,9 @@ void PopconfirmComponentHost::on_pointer_input(const input::PointerInputEvent& e
                    origin == hit && in_trigger) {
             request_open(id, !s->snapshot.geometry.visible);
         }
+        if (life.expired()) {
+            return;
+        }
     }
 }
 
@@ -636,12 +839,16 @@ void PopconfirmComponentHost::position_window_layers(runtime::Size viewport, run
         return;
     }
     const auto ids = mounted_;
+    const auto life = std::weak_ptr{lifetime_};
     for (auto id : ids) {
         if (!services_->components().contains(id)) {
             continue;
         }
         if (!services_->interactions().component_active(id)) {
             suppress(id);
+            if (life.expired()) {
+                return;
+            }
         }
         auto* s = services_->components().state<PopconfirmState>(id);
         if (!s || !s->snapshot.geometry.visible) {
@@ -671,7 +878,15 @@ void PopconfirmComponentHost::position_window_layers(runtime::Size viewport, run
             s->needs_measure = false;
             s->viewport = viewport;
         }
-        const auto& node = services_->nodes().require(s->node);
+        if (s->service_anchor && !popconfirm_anchor_live(*s->service_anchor)) {
+            suppress(id);
+            if (life.expired()) {
+                return;
+            }
+            continue;
+        }
+        const auto anchor_node = s->service_anchor ? services_->components().root(s->service_anchor->trigger) : s->node;
+        const auto& node = services_->nodes().require(anchor_node);
         const runtime::Rect anchor{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
                                    node.bounds.width, node.bounds.height};
         s->snapshot.geometry =
@@ -747,6 +962,23 @@ void PopconfirmComponentHost::synchronize_auxiliary_geometry(runtime::Size viewp
 } // namespace ryn::detail
 
 namespace ryn {
+PopconfirmRef::PopconfirmRef() : state_(std::make_shared<detail::PopconfirmRefState>()) {}
+
+PopconfirmRef::PopconfirmRef(const PopconfirmRef& other)
+    : state_(other.state_ && other.state_->assigned ? std::make_shared<detail::PopconfirmRefState>(*other.state_)
+                                                    : other.state_) {}
+
+PopconfirmRef& PopconfirmRef::operator=(const PopconfirmRef& other) {
+    state_ = other.state_ && other.state_->assigned ? std::make_shared<detail::PopconfirmRefState>(*other.state_)
+                                                    : other.state_;
+    return *this;
+}
+
+bool PopconfirmRef::bound() const {
+    const auto binding = state_ ? state_->binding.lock() : nullptr;
+    return binding && detail::popconfirm_anchor_live(*binding);
+}
+
 void Popconfirm(PopconfirmProps props, PopconfirmTrigger trigger, PopconfirmSlots slots) {
     if (!detail::active_popconfirms) {
         throw std::logic_error("Popconfirm requires window component services");

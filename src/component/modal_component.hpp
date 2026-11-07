@@ -51,6 +51,11 @@ public:
     [[nodiscard]] ModalSnapshot snapshot(runtime::ComponentId) const;
 
     [[nodiscard]] bool visible() const noexcept;
+    [[nodiscard]] std::function<void()> detach_action(runtime::ComponentId) noexcept;
+    void append_service_body(runtime::ComponentId, runtime::ComponentId, const Content&,
+                             const runtime::CapturedComponentContext&);
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;

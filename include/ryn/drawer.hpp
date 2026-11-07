@@ -8,7 +8,8 @@
 namespace ryn {
 namespace detail {
 class ModalComponentHost;
-}
+class AppPanelService;
+} // namespace detail
 
 enum class DrawerPlacement { Top, Bottom, Left, Right };
 
@@ -161,6 +162,7 @@ public:
 
 private:
     friend class detail::ModalComponentHost;
+    friend class detail::AppPanelService;
     Prop<bool> open_{false};
     Prop<String> title_{String{}};
     Prop<DrawerPlacement> placement_{DrawerPlacement::Right};

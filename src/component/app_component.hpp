@@ -5,6 +5,8 @@
 #include <ryn/app.hpp>
 
 namespace ryn::detail {
+struct PanelEntry;
+
 struct AppBinding final {
     bool alive{true};
     std::thread::id thread{std::this_thread::get_id()};
@@ -13,6 +15,8 @@ struct AppBinding final {
     WindowComponentServices* services{};
     MessageRef message;
     NotificationRef notification;
+    std::vector<std::shared_ptr<PanelEntry>> panels;
+    std::vector<runtime::ComponentId> panel_sources;
 };
 
 struct AppRefState final {
