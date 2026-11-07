@@ -37,9 +37,9 @@
 
 ## 6. Linux 自动平台集成
 
-- [ ] 6.1 在实际 Linux 机器正式构建，经 tools/run_background_wayland.py 使用独立 headless Wayland/Vulkan 运行两语言局部 readback、输入/DPI/弹层和退役序列；只记录真实 Linux 结果，不连接用户桌面、不重复平台通用逻辑矩阵。
-- [ ] 6.2 核对 Linux 实际 font/shaping、GPU 和窗口集成结果，原始产物只在 out；独立记录平台数量与未测边界并提交，不以 Windows 结果勾选。
+- [x] 6.1 在实际 Linux 机器正式构建，经 tools/run_background_wayland.py 使用独立 headless Wayland/Vulkan 运行两语言局部 readback、输入/DPI/弹层和退役序列；只记录真实 Linux 结果，不连接用户桌面、不重复平台通用逻辑矩阵。
+- [x] 6.2 核对 Linux 实际 font/shaping、GPU 和窗口集成结果，原始产物只在 out；独立记录平台数量与未测边界并提交，不以 Windows 结果勾选。
 
 ## 7. 最终集成
 
-- [ ] 7.1 在所有通用阶段就绪后运行一次实际 HEADLESS Debug/Release 集成检查和目录/文档校验，核对 107 共享实现引用、Theme golden 与公开迁移说明；只汇总本 change 实跑的平台证据，不重复已通过合同或新增人工门槛。
+- [x] 7.1 在所有通用阶段就绪后运行一次实际 HEADLESS Debug/Release 集成检查和目录/文档校验，核对 107 共享实现引用、Theme golden 与公开迁移说明；只汇总本 change 实跑的平台证据，不重复已通过合同或新增人工门槛。
