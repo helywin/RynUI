@@ -13,6 +13,8 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 
 Linux 原生 Gallery 还通过 pkg-config 要求 `wayland-client >= 1.18` 的头文件和链接库，用于有限自动验收的 `wl_surface.frame` 同步。Arch/EndeavourOS 由 `wayland` 提供，Debian/Ubuntu 对应 `libwayland-dev`；默认 bundled SDL/libdecor 的其他开发依赖见 [第三方依赖](third-party.md)。此依赖仅链接 example/native Gallery，普通交互运行不启用有限验收同步；Core、renderer/common 和 HEADLESS 不依赖 Wayland SDK。后台窗口验收必须使用私有 compositor runner，不回退到用户桌面。
 
+私有 compositor 的临时 socket 使用系统临时目录，由 runner 创建权限为 `0700` 的独立 runtime 并在退出时清理。原始日志仍写入仓库 ignored `out/`。不要把 socket 放在 WSL drvfs 等不支持 Unix socket 或目录权限的源码挂载盘上。
+
 `CMakeUserPresets.json` 已被忽略，可用于个人路径和本机 cache variable 覆盖；不要把这些值写入共享的 `CMakePresets.json`。
 
 默认 preset 使用锁定归档的 `BUNDLED` 依赖模式。系统或 package-manager 提供的 SDL3 使用带 `-system` 后缀的 configure/build/test preset；完整规则与锁定值见 [第三方依赖](third-party.md)。

@@ -25,7 +25,9 @@ def main():
     if not log_dir.is_relative_to(output_root):
         parser.error("--log-dir must be inside this repository's ignored out/ directory")
     log_dir.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="wayland-", dir=output_root) as runtime:
+    # Runtime sockets need a native filesystem and mode 0700; mounted source
+    # trees (for example WSL drvfs) may provide neither. Logs stay in out/.
+    with tempfile.TemporaryDirectory(prefix="rynui-wayland-") as runtime:
         env = dict(os.environ, XDG_RUNTIME_DIR=runtime, WAYLAND_DISPLAY="rynui-test",
                    SDL_VIDEODRIVER="wayland", SDL_GPU_DRIVER="vulkan",
                    GIO_USE_VFS="local", GSETTINGS_BACKEND="memory")
