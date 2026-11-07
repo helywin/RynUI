@@ -257,6 +257,7 @@ add_library(rynui_components STATIC
     component/carousel_component.cpp
     component/decoration_component.cpp
     component/qrcode_component.cpp
+    component/tour_component.cpp
     component/calendar_component.cpp
     component/date_picker_model.cpp
     component/date_picker_component.cpp

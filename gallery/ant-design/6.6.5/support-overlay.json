@@ -1540,20 +1540,29 @@
     {
       "identity": "ant.component.table",
       "status": "partial",
-      "summary": "原生 Table 已提供保留键控行、typed 列/插槽、受控排序/选择及有限滚动；Gallery 可编辑数值、更新/重排/增删数据并分页，平台验收独立记录。",
+      "summary": "原生 Table 支持保留键控虚拟行、树与详情展开、筛选、固定列、RTL 和滚动条拖动；富编辑内容随滚动和尺寸更新保留，Windows 自动验收已记录。",
       "supported_scope": [
         "retained keyed rows with reactive typed cell slots and fixed columns",
-        "controlled sorting/Checkbox selection, finite scroll, loading/empty states and Pagination"
+        "controlled sorting/Checkbox selection, finite scroll, loading/empty states and Pagination",
+        "deterministic-height virtualization retaining visited keyed rows and rich editor state",
+        "tree/detail expansion, controlled filters, RTL start/end fixed columns and pointer-captured scrollbars",
+        "reactive widths and responsive Gallery fixed columns preserve the retained editor"
       ],
       "missing_scope": [
-        "virtualization, expandable/tree rows, filters, fixed columns and draggable scrollbars",
-        "native Windows/Linux GPU/input acceptance remains independent"
+        "dynamic column schema replacement, complex merged cells and application-owned server data pipelines",
+        "Linux/Wayland/Vulkan, system IME and platform accessibility adapter acceptance remain independent",
+        "full Ant Design Web/DOM/CSS APIs are outside the declared native scope"
       ],
       "evidence_identifiers": [
         "openspec:066-20261023-add-native-table-and-pagination",
         "openspec:072-20261023-add-data-and-selection-gallery",
         "test:rynui.table_component",
-        "test:rynui.token_gallery_frame"
+        "test:rynui.token_gallery_frame",
+        "api:include/ryn/table.hpp",
+        "test:rynui.table_completion",
+        "test:rynui.gallery_visual_table",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/table-tour-windows.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components#41.1"
       ]
     },
     {
@@ -1647,16 +1656,26 @@
     },
     {
       "identity": "ant.component.tour",
-      "status": "planned",
-      "summary": "漫游式引导（Tour）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Tour 提供窗口归属目标、遮罩高亮、保留富步骤、受控导航与关闭，并与子浮层输入边界组合；Windows 自动验收已记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive Tour/TourTarget with window ownership, retained identity and Theme",
+        "native target positioning/highlight, missing-target fallback, RTL and viewport clamping",
+        "controlled/default navigation and close requests with retained rich editor drafts",
+        "live inherited or explicit TourLocale, focus restoration, Modal confinement and cleanup"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "browser DOM/CSS/portal and scrollIntoView APIs are outside the declared native scope",
+        "Linux/Wayland/Vulkan, system IME and platform accessibility adapter acceptance remain independent"
       ],
       "evidence_identifiers": [
-        "source:components/tour/index.en-US.md"
+        "source:components/tour/index.en-US.md",
+        "api:include/ryn/tour.hpp",
+        "runtime:src/component/tour_component.cpp",
+        "test:rynui.tour_component",
+        "docs:docs/tour.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/table-tour-windows.md",
+        "openspec:107-20261104-complete-navigation-and-remaining-components#45.1"
       ]
     },
     {

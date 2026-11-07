@@ -1,6 +1,8 @@
 #include "runtime/component_host.hpp"
 #include "runtime/component_mount.hpp"
+#include "runtime/config_context.hpp"
 #include "runtime/prop_connection.hpp"
+#include "theme/theme_runtime.hpp"
 
 #include <ryn/component.hpp>
 #include <ryn/reactive.hpp>
@@ -291,6 +293,71 @@ void test_host_dispose_order_and_idempotence() {
     require(prop_updates == 1, "destroyed component Prop requested an update after Host disposal");
 }
 
+void test_parent_scoped_mount_restores_context_and_rolls_back() {
+    using namespace ryn;
+    using namespace ryn::runtime;
+    NodeStore nodes;
+    ComponentHost host(nodes);
+    const auto target_theme = theme_runtime::ThemeScope::create_default();
+    const auto other_theme = theme_runtime::ThemeScope::create_default();
+    const auto target_config = ConfigScope::create_default();
+    const auto other_config = ConfigScope::create_default();
+    ComponentId parent;
+    ComponentId child;
+    ComponentId failed_child;
+    require(current_component_build_context() == nullptr, "mount context leaked before Host mount");
+    host.mount(Content{[&] {
+        auto& root = require_component_build_context();
+        root.mount_slot_with_theme_scope(Content{[&] {
+                                             require_component_build_context().mount_slot_with_config_scope(
+                                                 Content{[&] { parent = mount_test_component(1); }}, target_config);
+                                         }},
+                                         target_theme);
+        root.mount_slot_with_theme_scope(
+            Content{[&] {
+                require_component_build_context().mount_slot_with_config_scope(
+                    Content{[&] {
+                        auto& other = require_component_build_context();
+                        other.mount_slot_from_parent(
+                            parent, Content{[&] {
+                                auto& own = require_component_build_context();
+                                require(own.theme_scope() == target_theme && own.config_scope() == target_config,
+                                        "parent-scoped content inherited the unrelated active Provider");
+                                child = mount_test_component(2);
+                            }});
+                        bool failed{};
+                        try {
+                            other.mount_slot_from_parent(parent, Content{[&] {
+                                                             failed_child = mount_test_component(3);
+                                                             throw std::runtime_error("scoped child failure");
+                                                         }});
+                        } catch (const std::runtime_error& error) {
+                            if (std::string{error.what()} != "scoped child failure") {
+                                throw;
+                            }
+                            failed = true;
+                        }
+                        require(failed && !host.contains(failed_child) && host.children(parent) == std::vector{child},
+                                "failed scoped content did not roll back only its new children");
+                        require(current_component_build_context() == &other && other.theme_scope() == other_theme &&
+                                    other.config_scope() == other_config,
+                                "nested scoped mount did not restore the caller context");
+                        bool append_rejected{};
+                        try {
+                            host.append_slot(parent, Content{[] {}});
+                        } catch (const std::logic_error&) {
+                            append_rejected = true;
+                        }
+                        require(append_rejected, "scoped mounting relaxed the dynamic append reentry guard");
+                    }},
+                    other_config);
+            }},
+            other_theme);
+    }});
+    require(current_component_build_context() == nullptr && host.component_count() == 2,
+            "scoped mounting leaked its context or partial children");
+}
+
 } // namespace
 
 int main() {
@@ -303,6 +370,7 @@ int main() {
         test_mount_stack_fail_fast_and_recovers();
         test_mount_reentry_is_rejected_and_stack_recovers();
         test_host_dispose_order_and_idempotence();
+        test_parent_scoped_mount_restores_context_and_rolls_back();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

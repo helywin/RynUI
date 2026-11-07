@@ -224,8 +224,13 @@ template <typename Function> Effect effect(Scope& scope, Function&& function) {
     }
     auto observer =
         detail::observe(detail::ObserverPhase::effect, std::function<void()>(std::forward<Function>(function)), false);
-    observer->run();
     scope.own_observer(observer);
+    try {
+        observer->run();
+    } catch (...) {
+        observer->deactivate();
+        throw;
+    }
     return Effect(observer);
 }
 
@@ -240,8 +245,13 @@ BindingHandle connect_binding(Scope& scope, const Binding<T>& binding, Apply&& a
             apply_function(binding.get());
         },
         false);
-    observer->run();
     scope.own_observer(observer);
+    try {
+        observer->run();
+    } catch (...) {
+        observer->deactivate();
+        throw;
+    }
     return BindingHandle(observer);
 }
 

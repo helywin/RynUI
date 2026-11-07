@@ -4278,7 +4278,7 @@ ThemeSnapshot::ThemeSnapshot(
     std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
     ImageThemeToken&& image, UploadThemeToken&& upload, CalendarThemeToken&& calendar, CarouselThemeToken&& carousel,
     QRCodeThemeToken&& qrcode, WatermarkThemeToken&& watermark, BorderBeamThemeToken&& border_beam,
-    AffixThemeToken&& affix)
+    AffixThemeToken&& affix, TourThemeToken&& tour)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), float_button_(std::move(float_button)),
@@ -4292,7 +4292,8 @@ ThemeSnapshot::ThemeSnapshot(
       time_picker_(std::move(time_picker)), skeleton_(std::move(skeleton)), timeline_(std::move(timeline)),
       avatar_(std::move(avatar)), rate_(std::move(rate)), statistic_(std::move(statistic)), tree_(std::move(tree)),
       auto_complete_(std::move(auto_complete)), tree_select_(std::move(tree_select)), layout_(std::move(layout)),
-      splitter_(std::move(splitter)), mentions_(std::move(mentions)), descriptions_(std::move(descriptions)),
+      splitter_(std::move(splitter)), mentions_(std::move(mentions)),
+      tour_(std::make_shared<const TourThemeToken>(std::move(tour))), descriptions_(std::move(descriptions)),
       popover_(std::move(popover)), message_(std::move(message)), notification_(std::move(notification)),
       modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)),
       popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
@@ -5222,6 +5223,18 @@ ThemeSnapshot::ThemeSnapshot(
     metric(border_beam_.length);
     status_json << "]},\"affix\":{\"zIndex\":" << affix_.z_index << '}';
     hash_integer(identity_, affix_.z_index);
+    status_json << ",\"tour\":{\"colors\":[";
+    first = true;
+    for (auto value : tour_->colors()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto value : tour_->metrics()) {
+        metric(value);
+    }
+    hash_integer(identity_, tour_->z_index);
+    status_json << "],\"zIndex\":" << tour_->z_index << '}';
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -5367,7 +5380,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            *left.layout_ == *right.layout_ && *left.splitter_ == *right.splitter_ &&
            *left.mentions_ == *right.mentions_ && left.calendar_ == right.calendar_ &&
            left.carousel_ == right.carousel_ && left.qrcode_ == right.qrcode_ && left.watermark_ == right.watermark_ &&
-           left.border_beam_ == right.border_beam_ && left.affix_ == right.affix_;
+           left.border_beam_ == right.border_beam_ && left.affix_ == right.affix_ && *left.tour_ == *right.tour_;
 }
 
 const ThemeConfig& detail::default_theme_config() {
@@ -5447,6 +5460,7 @@ struct ResolveState final {
     WatermarkThemeToken watermark;
     BorderBeamThemeToken border_beam;
     AffixThemeToken affix;
+    TourThemeToken tour;
 };
 
 } // namespace
@@ -7048,6 +7062,54 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     border_beam.radius = positive(b.radius, border_beam.radius, true);
     border_beam.length = positive(b.length, border_beam.length);
     affix.z_index = config.affix.tokens.z_index.value_or(affix.z_index);
+    {
+        auto& token = workspace->tour;
+        token.background = alias.color_background_elevated;
+        token.text = alias.color_text;
+        token.mask = Color{0, 0, 0, .45F};
+        token.highlight = map.color_primary;
+        token.padding = map.size;
+        token.radius = map.border_radius_large;
+        if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
+            config.algorithms.empty()) {
+            token = parent->tour();
+        }
+        const auto& o = config.tour.tokens;
+        if (o.background) {
+            token.background = *o.background;
+        }
+        if (o.text) {
+            token.text = *o.text;
+        }
+        if (o.mask) {
+            token.mask = *o.mask;
+        }
+        if (o.highlight) {
+            token.highlight = *o.highlight;
+        }
+        const auto length = [](float& target, const std::optional<LogicalLength>& value) {
+            if (value) {
+                if (value->is_auto() || !std::isfinite(value->value()) || value->value() < 0 ||
+                    value->value() > 16384) {
+                    throw std::invalid_argument("Tour metric must be a finite nonnegative logical length");
+                }
+                target = value->value();
+            }
+        };
+        length(token.width, o.width);
+        length(token.padding, o.padding);
+        length(token.gap, o.gap);
+        length(token.radius, o.radius);
+        length(token.target_gap, o.target_gap);
+        length(token.highlight_width, o.highlight_width);
+        length(token.viewport_margin, o.viewport_margin);
+        if (o.z_index) {
+            token.z_index = *o.z_index;
+        }
+        if (token.width <= 0) {
+            throw std::invalid_argument("Tour width must be positive");
+        }
+    }
     return ThemeSnapshot(
         std::move(workspace->float_button), std::move(seed), std::move(map), std::move(alias),
         std::move(workspace->button), std::move(workspace->text), std::move(workspace->switch_token),
@@ -7069,7 +7131,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         std::move(workspace->tree_select), std::move(workspace->layout), std::move(workspace->splitter),
         std::move(workspace->mentions), std::move(workspace->image), std::move(workspace->upload),
         std::move(workspace->calendar), std::move(workspace->carousel), std::move(workspace->qrcode),
-        std::move(workspace->watermark), std::move(workspace->border_beam), std::move(workspace->affix));
+        std::move(workspace->watermark), std::move(workspace->border_beam), std::move(workspace->affix),
+        std::move(workspace->tour));
 }
 
 } // namespace ryn

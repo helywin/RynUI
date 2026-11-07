@@ -204,8 +204,8 @@
 
 ## 41. 数据展示：Table
 
-- [ ] 41.1 按对应 spec 与 design 矩阵实现 Table 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 41.2 为 Table 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 41.1 按对应 spec 与 design 矩阵实现 Table 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 41.2 为 Table 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 42. 数据展示：Tag
 
@@ -224,8 +224,8 @@
 
 ## 45. 数据展示：Tour
 
-- [ ] 45.1 按对应 spec 与 design 矩阵实现 Tour 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
-- [ ] 45.2 为 Tour 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
+- [x] 45.1 按对应 spec 与 design 矩阵实现 Tour 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
+- [x] 45.2 为 Tour 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
 ## 46. 数据展示：Tree
 

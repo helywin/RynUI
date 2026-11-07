@@ -24,6 +24,10 @@ struct TableSnapshot final {
     std::size_t current{1};
     TableSort sort;
     bool loading{};
+    std::vector<String> expanded_keys;
+    std::vector<runtime::ComponentId> filter_buttons;
+    std::vector<runtime::ComponentId> scrollbars;
+    std::size_t projected_rows{};
 };
 
 struct TableWork final {
@@ -54,6 +58,7 @@ public:
     }
 
     void position_window_layers(runtime::Size, runtime::Rect) override;
+    void synchronize_retained_translations() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool on_scroll_input(const input::ScrollInputEvent&) override;
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
@@ -66,6 +71,8 @@ private:
     runtime::ComponentId mount_row(runtime::ComponentId, const TableRecord*, bool header, bool shown = true);
     void request_sort(runtime::ComponentId, std::size_t);
     void request_selection(runtime::ComponentId, std::optional<String>, bool);
+    void request_expand(runtime::ComponentId, String);
+    void scroll_to(runtime::ComponentId, float, float);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
 };

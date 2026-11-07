@@ -10659,6 +10659,158 @@ void add_border_beam_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 1;
 }
 
+void add_table_completion_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    std::vector<GalleryRecord> initial;
+    for (int i = 0; i < 1000; ++i) {
+        initial.push_back({utf8("virtual-" + std::to_string(i)), utf8("保留编辑行 " + std::to_string(i)),
+                           static_cast<double>(i), i % 3 == 0});
+    }
+    Signal<std::vector<GalleryRecord>> records{std::move(initial)};
+    Signal<std::vector<String>> expanded{std::vector<String>{}};
+    Signal<std::vector<String>> filtered{std::vector<String>{}};
+    Signal<TextDirection> direction{TextDirection::LeftToRight};
+    Signal<bool> accept{true};
+    Flex(FlexProps{}.wrap(true).gap(dp(8)), FlexContent{[=] {
+             Button(ButtonProps{}.onClick([=] {
+                 direction.set(direction.get() == TextDirection::LeftToRight ? TextDirection::RightToLeft
+                                                                             : TextDirection::LeftToRight);
+             }),
+                    ButtonContent{[] { Text(u8"切换 RTL"); }});
+             remember_target(state, "gallery.table.rtl");
+             Button(ButtonProps{}.onClick([=] { accept.set(!accept.get()); }),
+                    ButtonContent{[] { Text(u8"接受 / 拒绝展开与筛选请求"); }});
+             remember_target(state, "gallery.table.refuse");
+             Button(ButtonProps{}.onClick([=] {
+                 expanded.set(expanded.get().empty() ? std::vector<String>{u8"virtual-0"} : std::vector<String>{});
+             }),
+                    ButtonContent{[] { Text(u8"展开 / 折叠首行"); }});
+             remember_target(state, "gallery.table.expand");
+         }});
+    TableExpandable<GalleryRecord> expansion;
+    expansion.expandedRowKeys = expanded;
+    expansion.onExpandedRowsChange = [=](auto value) {
+        if (accept.get()) {
+            expanded.set(std::move(value));
+        }
+    };
+    expansion.children = [](const GalleryRecord& row) {
+        return row.key == String{u8"virtual-0"} ? std::vector<GalleryRecord>{{u8"virtual-child", u8"树子行", 1, false}}
+                                                : std::vector<GalleryRecord>{};
+    };
+    expansion.expandedRowRender = [](TableCell<GalleryRecord> cell) {
+        Input(InputProps{}.defaultValue(cell.value().name).layout(LayoutStyle{}.width(dp(280))));
+    };
+    Table(
+        TableProps<GalleryRecord>{}
+            .dataSource(records)
+            .rowKey([](const GalleryRecord& row) { return row.key; })
+            .columns(
+                {TableColumn<GalleryRecord>{u8"key", u8"固定起始列",
+                                            [](TableCell<GalleryRecord> cell) {
+                                                Text(TextProps{}.content(bind([cell] { return cell.key(); })));
+                                            }}
+                     .width(bind([width = state->document_width] { return std::min(200.0F, width.get().value() / 4); }))
+                     .fixed(TableFixed::Start),
+                 TableColumn<GalleryRecord>{
+                     u8"editor", u8"虚拟行的保留编辑器",
+                     [](TableCell<GalleryRecord> cell) {
+                         Input(InputProps{}.defaultValue(cell.value().name).layout(LayoutStyle{}.width(dp(450))));
+                     }}
+                     .width(700),
+                 TableColumn<GalleryRecord>{u8"state", u8"固定结束列 / 筛选",
+                                            [](TableCell<GalleryRecord> cell) {
+                                                Text(TextProps{}.content(bind([cell] {
+                                                    return cell.value().locked ? String{u8"已锁定"}
+                                                                               : String{u8"可编辑"};
+                                                })));
+                                            }}
+                     .width(bind([width = state->document_width] { return std::min(180.0F, width.get().value() / 4); }))
+                     .fixed(TableFixed::End)
+                     .filters({{u8"locked", u8"已锁定"}, {u8"editable", u8"可编辑"}})
+                     .filteredValue(filtered)
+                     .onFilter([](const String& value, const GalleryRecord& row) {
+                         return (value == String{u8"locked"}) == row.locked;
+                     })
+                     .onFilterChange([=](auto value) {
+                         if (accept.get()) {
+                             filtered.set(std::move(value));
+                         }
+                     })})
+            .expandable(std::move(expansion))
+            .virtualRows({64, 120, 2})
+            .direction(direction)
+            .scrollY(220)
+            .bordered()
+            .layout(LayoutStyle{}.width(state->document_width)));
+    remember_target(state, "gallery.table.virtual");
+    ++state->telemetry.live_samples;
+}
+
+void add_tour_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    TourTargetRef editor_target;
+    TourTargetRef action_target;
+    TourTargetRef missing;
+    Signal<bool> open{false};
+    Signal<bool> accept{true};
+    Signal<bool> child_modal{false};
+    Signal<std::size_t> current{0};
+    Signal<std::vector<TourStep>> steps{std::vector<TourStep>{}};
+    TourTarget(editor_target, TourTargetContent{[=] {
+                   Input(InputProps{}.defaultValue(u8"原生目标中的编辑草稿").layout(LayoutStyle{}.width(dp(300))));
+                   remember_target(state, "gallery.tour.target-editor");
+               }});
+    TourTarget(action_target, TourTargetContent{[=] {
+                   Button(ButtonProps{}.onClick([state] { state->data_feedback.set(u8"Tour 目标真实 callback"); }),
+                          ButtonContent{[] { Text(u8"第二个原生目标"); }});
+                   remember_target(state, "gallery.tour.target-action");
+               }});
+    Button(ButtonProps{}.onClick([=] {
+        current.set(0);
+        open.set(true);
+    }),
+           ButtonContent{[] { Text(u8"开始原生引导"); }});
+    remember_target(state, "gallery.tour.open");
+    steps.set(
+        {TourStep{u8"editor", u8"第一步：原生编辑目标"}.target(editor_target).richDescription(TourDescription{[=] {
+             Input(InputProps{}.defaultValue(u8"切步后仍保留的步骤草稿").layout(LayoutStyle{}.width(dp(280))));
+             remember_target(state, "gallery.tour.draft");
+             Button(ButtonProps{}.onClick([=] { accept.set(!accept.get()); }),
+                    ButtonContent{[] { Text(u8"接受 / 拒绝导航与关闭"); }});
+             remember_target(state, "gallery.tour.refuse");
+             Button(ButtonProps{}.onClick([=] { child_modal.set(true); }),
+                    ButtonContent{[] { Text(u8"打开嵌套 Modal"); }});
+             remember_target(state, "gallery.tour.modal");
+             Modal(ModalProps{}.open(child_modal).title(u8"Tour 的子浮层").onCancel([=](auto) {
+                 child_modal.set(false);
+             }),
+                   ModalContent{[] { Input(InputProps{}.defaultValue(u8"最内层输入边界")); }});
+         }}),
+         TourStep{u8"action", u8"第二步：可操作目标"}
+             .target(action_target)
+             .description(u8"原生目标仍可点击；可返回检查编辑草稿。"),
+         TourStep{u8"missing", u8"第三步：目标未挂载"}.target(missing).description(
+             u8"缺失目标时步骤居中，导航与关闭仍可用。")});
+    Tour(TourProps{}
+             .steps(steps)
+             .open(open)
+             .current(current)
+             .onChange([=](auto next) {
+                 if (accept.get()) {
+                     current.set(next);
+                 }
+             })
+             .onOpenChange([=](bool next) {
+                 if (accept.get()) {
+                     open.set(next);
+                 }
+             }));
+    remember_target(state, "gallery.tour.main");
+    Text(TextProps{}.content(state->data_feedback));
+    ++state->telemetry.live_samples;
+}
+
 constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
     {{"gallery.sample.watermark.native",
       "ant.component.watermark",
@@ -10681,6 +10833,20 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_border_beam_samples",
       "include/ryn/border_beam.hpp"},
      add_border_beam_samples},
+    {{"gallery.sample.table.completion",
+      "ant.component.table",
+      {},
+      "虚拟行、树展开、筛选、固定列与拖拽滚动条",
+      "add_table_completion_samples",
+      "include/ryn/table.hpp"},
+     add_table_completion_samples},
+    {{"gallery.sample.tour.native",
+      "ant.component.tour",
+      {},
+      "真实目标、保留富步骤、受控导航与嵌套浮层",
+      "add_tour_samples",
+      "include/ryn/tour.hpp"},
+     add_tour_samples},
     {{"gallery.sample.qr-code.native",
       "ant.component.qr-code",
       {},

@@ -242,6 +242,9 @@ public:
         return *host_;
     }
 
+    // Mount under an existing parent using that parent's captured scopes.
+    void mount_slot_from_parent(ComponentId parent, const Content& content);
+
     [[nodiscard]] bool has_ancestor(ComponentId ancestor) const {
         for (auto current = parent_; current; current = host_->parent(*current)) {
             if (*current == ancestor) {
@@ -335,6 +338,7 @@ private:
     std::shared_ptr<ChildMountHook> child_mount_hook_;
 };
 
+[[nodiscard]] ComponentBuildContext* current_component_build_context() noexcept;
 [[nodiscard]] ComponentBuildContext& require_component_build_context();
 
 } // namespace ryn::runtime

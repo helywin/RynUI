@@ -6,6 +6,7 @@
 #include "component/dropdown_component.hpp"
 #include "component/form_component.hpp"
 #include "component/feedback_component.hpp"
+#include "component/table_component.hpp"
 #include "graphics/color_field.hpp"
 #include "renderer/common/rounded_effect_packing.hpp"
 #include "support/input_fixture.hpp"
@@ -296,6 +297,52 @@ void disabled_input() {
               std::abs(result[1] - result[2]) < .0001F,
           "warning border filled the interior of a disabled Input");
 }
+
+void table_responsive() {
+    Fixture f;
+    f.show("ant.component.table");
+    const auto table = f.host.target("gallery.table.virtual");
+    check(table.valid(), "responsive Table sample is missing");
+    f.reveal(table);
+    const auto inputs = f.inputs.mounted_inputs();
+    const auto found =
+        std::ranges::find_if(inputs, [&](const auto& input) { return f.within(input.component, table); });
+    check(found != inputs.end(), "responsive Table editor is missing");
+    const auto editor = *found;
+    static_cast<void>(f.services.focus().request_focus(editor.interaction, input::FocusModality::keyboard));
+    check(f.services.focus().state().focused == editor.interaction, "responsive Table editor could not focus");
+    static_cast<void>(
+        f.host.dispatch(input::KeyboardInputEvent{input::Key::a, input::KeyAction::down, input::KeyModifier::control}));
+    static_cast<void>(
+        f.host.dispatch(input::KeyboardInputEvent{input::Key::a, input::KeyAction::up, input::KeyModifier::control}));
+    static_cast<void>(
+        f.host.dispatch(input::TextCommitted{String{u8"retained narrow draft"}, f.inputs.sessions().active()}));
+    f.sync();
+    check(f.inputs.display_snapshot(editor.component).text == "retained narrow draft",
+          "responsive Table editor rejected text input");
+    for (const float width : {480.0F, 1440.0F, 728.0F, 480.0F}) {
+        f.viewport.width = width;
+        f.sync();
+        f.reveal(table);
+        const auto snapshot = f.services.table().snapshot(table);
+        check(snapshot.projected_rows == 1000 && snapshot.rows.size() < 20 && snapshot.widths.size() == 3,
+              "responsive Table lost virtualization");
+        const auto visible = graphics::intersect_effect_bounds(
+            f.rect(editor.component),
+            f.nodes.content_clip(f.services.components().root(editor.component), snapshot.body));
+        check(visible.width >= std::min(100.0F, snapshot.body.width / 4) && visible.height > 0,
+              "fixed columns squeezed the responsive Table editor out of view");
+        if (f.inputs.display_snapshot(editor.component).text != "retained narrow draft" ||
+            f.host.sample_runs("gallery.sample.table.completion") != 1) {
+            std::cerr << "responsive_table: width=" << width
+                      << " text=" << f.inputs.display_snapshot(editor.component).text
+                      << " runs=" << f.host.sample_runs("gallery.sample.table.completion") << '\n';
+        }
+        check(f.inputs.display_snapshot(editor.component).text == "retained narrow draft" &&
+                  f.host.sample_runs("gallery.sample.table.completion") == 1,
+              "responsive Table rebuilt its rich editor");
+    }
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -315,6 +362,8 @@ int main(int argc, char** argv) {
             flow();
         } else if (name == "input") {
             disabled_input();
+        } else if (name == "table") {
+            table_responsive();
         } else {
             throw std::invalid_argument("unknown visual regression case");
         }

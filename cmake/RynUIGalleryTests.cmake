@@ -419,6 +419,6 @@ target_link_libraries(rynui_gallery_visual_regression_tests PRIVATE
 target_compile_definitions(rynui_gallery_visual_regression_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
-foreach(visual_case IN ITEMS field layout pagination tabs popup flow input)
+foreach(visual_case IN ITEMS field layout pagination tabs popup flow input table)
     add_test(NAME rynui.gallery_visual_${visual_case} COMMAND rynui_gallery_visual_regression_tests ${visual_case})
 endforeach()

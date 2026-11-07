@@ -164,6 +164,14 @@ struct TableLocale final {
     friend bool operator==(const TableLocale&, const TableLocale&) = default;
 };
 
+struct TourLocale final {
+    String previous{u8"Previous"};
+    String next{u8"Next"};
+    String finish{u8"Finish"};
+    String close{u8"Close"};
+    friend bool operator==(const TourLocale&, const TourLocale&) = default;
+};
+
 struct CascaderLocale final {
     String empty{u8"No data"};
     String loading{u8"Loading…"};

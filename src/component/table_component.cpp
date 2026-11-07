@@ -1,5 +1,6 @@
 #include "component/table_component.hpp"
 #include "component/localized_prop.hpp"
+#include "component/retained_slot_mount.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "reactive/untracked.hpp"
@@ -7,7 +8,9 @@
 #include <ryn/checkbox.hpp>
 #include <ryn/flex.hpp>
 #include <ryn/icon.hpp>
+#include <ryn/popover.hpp>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <exception>
 #include <limits>
@@ -19,11 +22,15 @@ namespace {
 thread_local TableComponentHost* active_tables{};
 constexpr auto infinity = std::numeric_limits<float>::infinity();
 
+struct CellViewportState final {};
+
 struct CellState final {
+    runtime::ComponentId viewport;
     runtime::NodeId node;
     runtime::ComponentId content;
     runtime::Size measured;
     std::size_t column{};
+    runtime::Rect allocation;
 };
 
 struct RowState final {
@@ -41,6 +48,12 @@ struct RowState final {
     float height{};
     bool header{};
     bool shown{};
+    runtime::ComponentId expansion;
+    runtime::ComponentId expand_button;
+    Signal<IconName> expand_icon{IconName::RightOutlined};
+    Signal<bool> expand_disabled{true};
+    Signal<LogicalLength> indentation{dp(0)};
+    float main_height{};
 };
 
 struct TableState final {
@@ -60,6 +73,21 @@ struct TableState final {
     std::vector<float> widths;
     std::vector<TableAlign> alignments;
     std::vector<runtime::ComponentId> sort_buttons;
+    std::vector<runtime::ComponentId> filter_buttons;
+    std::vector<std::vector<String>> filters;
+    std::vector<String> expanded;
+    std::vector<String> page_keys;
+    std::vector<float> page_offsets;
+    std::map<std::string, std::size_t, std::less<>> record_indices;
+    std::array<runtime::ComponentId, 2> scrollbar_components;
+    std::array<input::InteractionId, 2> scrollbar_hits;
+    std::array<component::RetainedSurfaceId, 2> scrollbar_surfaces;
+    std::array<runtime::Rect, 2> scrollbar_tracks;
+    std::array<runtime::Rect, 2> scrollbar_thumbs;
+    std::optional<std::size_t> dragging;
+    float drag_start{};
+    float drag_scroll{};
+    bool rtl{};
     std::vector<Signal<IconName>> sort_icons;
     std::map<std::string, runtime::ComponentId> by_key;
     std::vector<runtime::ComponentId> source_order;
@@ -117,6 +145,13 @@ struct TableState final {
 };
 
 using TableStatePtr = std::shared_ptr<TableState>;
+
+TableFixed fixed_column(const TableState& state, std::size_t index) {
+    if (state.options.selected && index == 0) {
+        return state.options.selection_fixed ? TableFixed::Start : TableFixed::None;
+    }
+    return state.columns[index - (state.options.selected ? 1 : 0)].fixed;
+}
 
 TableStatePtr table_state(WindowComponentServices& services, runtime::ComponentId id) {
     const auto* stored = services.components().state<TableStatePtr>(id);
@@ -201,11 +236,51 @@ std::vector<String> sort_records(const TableState& state, const std::vector<Tabl
             });
         }
     }
-    std::vector<String> result;
-    result.reserve(order.size());
+    std::map<std::string, std::vector<const TableRecord*>, std::less<>> children;
+    std::set<std::string, std::less<>> accepted;
+    std::map<std::string, const TableRecord*, std::less<>> by_key;
     for (const auto* record : order) {
-        result.push_back(record->key);
+        by_key.emplace(record->key.bytes(), record);
+        children[std::string{record->parent_key.bytes()}].push_back(record);
+        bool matches = true;
+        for (std::size_t c = 0; c < state.columns.size(); ++c) {
+            if (state.filters[c].empty() || !state.columns[c].filter) {
+                continue;
+            }
+            bool match = false;
+            for (const auto& value : state.filters[c]) {
+                match |= state.columns[c].filter(value, record->value);
+                if (!current()) {
+                    throw ProjectionInterrupted{};
+                }
+            }
+            matches &= match;
+        }
+        if (matches) {
+            accepted.emplace(record->key.bytes());
+        }
     }
+    // A matching descendant keeps its path; it never invents expansion state.
+    auto matching = accepted;
+    for (const auto& key : matching) {
+        for (auto* row = by_key.at(key); !row->parent_key.empty();) {
+            accepted.emplace(row->parent_key.bytes());
+            row = by_key.at(std::string{row->parent_key.bytes()});
+        }
+    }
+    std::vector<String> result;
+    const auto append = [&](auto&& self, const std::string& parent) -> void {
+        for (const auto* row : children[parent]) {
+            if (!accepted.contains(row->key.bytes())) {
+                continue;
+            }
+            result.push_back(row->key);
+            if (std::ranges::find(state.expanded, row->key) != state.expanded.end()) {
+                self(self, std::string{row->key.bytes()});
+            }
+        }
+    };
+    append(append, {});
     return result;
 }
 
@@ -239,6 +314,9 @@ void translate(runtime::NodeId node, runtime::Point offset, WindowComponentServi
         return;
     }
     runtime::NodePropertyWriter{services.nodes(), services.dirty()}.set_translation(node, offset);
+    if (services.nodes().require(node).owns_child_translation) {
+        return;
+    }
     for (auto child : services.nodes().require(node).children) {
         translate(child, offset, services);
     }
@@ -317,6 +395,10 @@ TableSnapshot TableComponentHost::snapshot(runtime::ComponentId id) const {
     result.current = s->effective_current;
     result.sort = s->sort;
     result.loading = s->loading;
+    result.expanded_keys = s->expanded;
+    result.filter_buttons = s->filter_buttons;
+    result.scrollbars.assign(s->scrollbar_components.begin(), s->scrollbar_components.end());
+    result.projected_rows = s->sorted_keys.size();
     return result;
 }
 
@@ -365,138 +447,323 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
         row_id, Content{[&] {
             auto& cells = runtime::require_component_build_context();
             for (std::size_t index = 0; index < s.widths.size(); ++index) {
-                const auto cell_id = cells.mount_component<CellState>();
-                auto& cell = cells.state<CellState>(cell_id);
-                cell.node = cells.root(cell_id);
-                cell.column = index;
-                services.nodes().require(cell.node).clip_content = true;
-                cells.on_resource_cleanup(cell_id,
-                                          [&services, node = cell.node] { services.layout().remove_layout(node); });
-                const bool selection = s.options.selected && index == 0;
-                const auto column_index = index - (s.options.selected ? 1 : 0);
-                const auto content = Content{[&, selection, column_index] {
-                    if (selection) {
-                        CheckboxProps props;
-                        props.checked(header ? s.all_checked : row.checked)
-                            .disabled(header ? s.all_disabled : row.disabled)
-                            .skipGroup(true)
-                            .wave(false)
-                            .onChange(
-                                [this, id, key = header ? std::optional<String>{} : std::optional{row.record.key}](
-                                    bool checked) { request_selection(id, key, checked); });
-                        if (header) {
-                            props.indeterminate(s.all_partial);
-                        }
-                        Checkbox(std::move(props));
+                const auto viewport_id = cells.mount_component<CellViewportState>();
+                const auto viewport_node = cells.root(viewport_id);
+                services.nodes().require(viewport_node).clip_content = true;
+                cells.on_resource_cleanup(
+                    viewport_id, [&services, viewport_node] { services.layout().remove_layout(viewport_node); });
+                cells.mount_slot(
+                    viewport_id, Content{[&] {
+                        auto& cell_build = runtime::require_component_build_context();
+                        const auto cell_id = cell_build.mount_component<CellState>();
+                        auto& cell = cell_build.state<CellState>(cell_id);
+                        cell.viewport = viewport_id;
+                        cell.node = cell_build.root(cell_id);
+                        cell.column = index;
+                        services.nodes().require(cell.node).clip_content = true;
+                        cell_build.on_resource_cleanup(
+                            cell_id, [&services, node = cell.node] { services.layout().remove_layout(node); });
+                        const bool selection = s.options.selected && index == 0;
+                        const auto column_index = index - (s.options.selected ? 1 : 0);
+                        const auto content = Content{[&, selection, column_index] {
+                            if (selection) {
+                                CheckboxProps props;
+                                props.checked(header ? s.all_checked : row.checked)
+                                    .disabled(header ? s.all_disabled : row.disabled)
+                                    .skipGroup(true)
+                                    .wave(false)
+                                    .onChange([this, id,
+                                               key = header ? std::optional<String>{} : std::optional{row.record.key}](
+                                                  bool checked) { request_selection(id, key, checked); });
+                                if (header) {
+                                    props.indeterminate(s.all_partial);
+                                }
+                                Checkbox(std::move(props));
+                                if (!intact()) {
+                                    return;
+                                }
+                                const auto hit = services.interactions().declaration_order().back();
+                                row.checkbox = services.interactions().require(hit).component;
+                                if (header) {
+                                    s.select_all = row.checkbox;
+                                }
+                            } else if (header) {
+                                Flex(
+                                    FlexProps{}.align(FlexAlign::Center).gap(dp(4)), FlexContent{[&, column_index] {
+                                        const auto column = s.columns[column_index];
+                                        if (column.header) {
+                                            SlotContentAccess::function (*column.header)();
+                                        } else {
+                                            Text(TextProps{}.content(column.title));
+                                        }
+                                        if (!intact()) {
+                                            return;
+                                        }
+                                        if (column.sortable) {
+                                            Button(ButtonProps{}
+                                                       .type(ButtonType::Text)
+                                                       .size(ControlSize::Small)
+                                                       .wave(false)
+                                                       .disabled(s.blocked)
+                                                       .onClick([this, id, column_index] {
+                                                           request_sort(id, column_index);
+                                                       }),
+                                                   ButtonContent{[icon = s.sort_icons[column_index]] {
+                                                       Icon(IconProps{}.name(icon));
+                                                   }});
+                                            if (!intact()) {
+                                                return;
+                                            }
+                                            const auto hit = services.interactions().declaration_order().back();
+                                            s.sort_buttons[column_index] =
+                                                services.interactions().require(hit).component;
+                                        }
+                                        if (!column.filters.empty()) {
+                                            Popover(
+                                                PopoverProps{}.trigger(PopoverTriggerMode::Click).disabled(s.blocked),
+                                                PopoverTrigger{[&] {
+                                                    Button(ButtonProps{}
+                                                               .type(ButtonType::Text)
+                                                               .size(ControlSize::Small)
+                                                               .wave(false),
+                                                           ButtonContent{[] {
+                                                               Icon(IconProps{}.name(IconName::FilterOutlined));
+                                                           }});
+                                                    if (intact()) {
+                                                        s.filter_buttons[column_index] =
+                                                            services.interactions()
+                                                                .require(
+                                                                    services.interactions().declaration_order().back())
+                                                                .component;
+                                                    }
+                                                }},
+                                                {{}, PopoverContent{[this, id, column_index, column] {
+                                                     Flex(
+                                                         FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[&] {
+                                                             for (const auto& item : column.filters) {
+                                                                 Checkbox(
+                                                                     CheckboxProps{}
+                                                                         .wave(false)
+                                                                         .skipGroup(true)
+                                                                         .checked(bind([filtered = column.filtered,
+                                                                                        value = item.value] {
+                                                                             const auto values = read_prop(filtered);
+                                                                             return std::ranges::find(values, value) !=
+                                                                                    values.end();
+                                                                         }))
+                                                                         .onChange([this, id, column_index,
+                                                                                    value = item.value](bool checked) {
+                                                                             const auto state =
+                                                                                 table_state(*services_, id);
+                                                                             if (!state || state->loading) {
+                                                                                 return;
+                                                                             }
+                                                                             auto next = state->filters[column_index];
+                                                                             std::erase(next, value);
+                                                                             if (checked) {
+                                                                                 next.push_back(value);
+                                                                             }
+                                                                             const auto callback =
+                                                                                 state->columns[column_index].on_filter;
+                                                                             if (callback) {
+                                                                                 try {
+                                                                                     callback(std::move(next));
+                                                                                 } catch (...) {
+                                                                                     services_->retire_failed_component(
+                                                                                         id);
+                                                                                     throw;
+                                                                                 }
+                                                                             }
+                                                                         }),
+                                                                     CheckboxLabel{
+                                                                         [label = item.label] { Text(label); }});
+                                                             }
+                                                         }});
+                                                 }}});
+                                        }
+                                    }});
+                            } else {
+                                const auto render = [&] {
+                                    s.columns[column_index].cell(row.record.key,
+                                                                 bind([value = row.value] { return value.get(); }));
+                                };
+                                if (column_index == 0 && (s.options.expansion || s.options.tree_rows)) {
+                                    Flex(FlexProps{}.align(FlexAlign::Center).gap(dp(4)), FlexContent{[&] {
+                                             if (s.options.tree_rows) {
+                                                 Text(TextProps{}.content(String{}).layout(
+                                                     LayoutStyle{}.width(row.indentation)));
+                                             }
+                                             Button(ButtonProps{}
+                                                        .type(ButtonType::Text)
+                                                        .size(ControlSize::Small)
+                                                        .wave(false)
+                                                        .disabled(row.expand_disabled)
+                                                        .onClick([this, id, key = row.record.key] {
+                                                            request_expand(id, key);
+                                                        }),
+                                                    ButtonContent{
+                                                        [icon = row.expand_icon] { Icon(IconProps{}.name(icon)); }});
+                                             if (!intact()) {
+                                                 return;
+                                             }
+                                             row.expand_button =
+                                                 services.interactions()
+                                                     .require(services.interactions().declaration_order().back())
+                                                     .component;
+                                             render();
+                                         }});
+                                } else {
+                                    render();
+                                }
+                            }
+                        }};
+                        const auto content_id =
+                            region(cell_id, services, content, header ? s.header_foreground : s.foreground,
+                                   header ? s.header_typography : s.typography);
                         if (!intact()) {
                             return;
                         }
-                        const auto hit = services.interactions().declaration_order().back();
-                        row.checkbox = services.interactions().require(hit).component;
-                        if (header) {
-                            s.select_all = row.checkbox;
+                        if (!services.components().contains(cell_id) || !services.components().contains(content_id)) {
+                            services.retire_failed_component(id);
+                            return;
                         }
-                    } else if (header) {
-                        Flex(FlexProps{}.align(FlexAlign::Center).gap(dp(4)), FlexContent{[&, column_index] {
-                                 const auto column = s.columns[column_index];
-                                 if (column.header) {
-                                     SlotContentAccess::function (*column.header)();
-                                 } else {
-                                     Text(TextProps{}.content(column.title));
-                                 }
-                                 if (!intact()) {
-                                     return;
-                                 }
-                                 if (column.sortable) {
-                                     Button(ButtonProps{}
-                                                .type(ButtonType::Text)
-                                                .size(ControlSize::Small)
-                                                .wave(false)
-                                                .disabled(s.blocked)
-                                                .onClick([this, id, column_index] { request_sort(id, column_index); }),
-                                            ButtonContent{
-                                                [icon = s.sort_icons[column_index]] { Icon(IconProps{}.name(icon)); }});
-                                     if (!intact()) {
-                                         return;
-                                     }
-                                     const auto hit = services.interactions().declaration_order().back();
-                                     s.sort_buttons[column_index] = services.interactions().require(hit).component;
-                                 }
-                             }});
-                    } else {
-                        s.columns[column_index].cell(row.record.key, bind([value = row.value] { return value.get(); }));
-                    }
-                }};
-                const auto content_id = region(cell_id, services, content, header ? s.header_foreground : s.foreground,
-                                               header ? s.header_typography : s.typography);
-                if (!intact()) {
-                    return;
-                }
-                if (!services.components().contains(cell_id) || !services.components().contains(content_id)) {
-                    services.retire_failed_component(id);
-                    return;
-                }
-                cell.content = content_id;
-                services.layout().set_layout(
-                    cell.node,
-                    layout::ComponentLayout{
-                        [this, id, cell_id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                            auto& s = *table_state(*services_, id);
-                            auto& cell = *services_->components().state<CellState>(cell_id);
-                            const auto padding = s.options.selected && cell.column == 0
-                                                     ? 0.0F
-                                                     : std::min(s.padding_x, limits.max_width / 2);
-                            cell.measured =
-                                engine.measure_child(services_->components().root(cell.content),
-                                                     {0, std::max(0.0F, limits.max_width - padding * 2), 0, infinity});
-                            return limits.constrain({limits.max_width, cell.measured.height + s.padding_y * 2});
-                        },
-                        [this, id, cell_id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
-                            auto& s = *table_state(*services_, id);
-                            auto& cell = *services_->components().state<CellState>(cell_id);
-                            const auto padding =
-                                s.options.selected && cell.column == 0 ? 0.0F : std::min(s.padding_x, bounds.width / 2);
-                            const auto width =
-                                std::min(cell.measured.width, std::max(0.0F, bounds.width - padding * 2));
-                            const auto align = s.alignments[cell.column];
-                            const auto x = align == TableAlign::Right    ? bounds.x + bounds.width - padding - width
-                                           : align == TableAlign::Center ? bounds.x + (bounds.width - width) / 2
-                                                                         : bounds.x + padding;
-                            engine.place_child(services_->components().root(cell.content),
-                                               {x, bounds.y + (bounds.height - cell.measured.height) / 2, width,
-                                                cell.measured.height});
-                        }});
-                row.cells.push_back(cell_id);
+                        cell.content = content_id;
+                        services.layout().set_layout(
+                            cell.node,
+                            layout::ComponentLayout{
+                                [this, id, cell_id](layout::LayoutEngine& engine, runtime::NodeId,
+                                                    layout::Constraints limits) {
+                                    auto& s = *table_state(*services_, id);
+                                    auto& cell = *services_->components().state<CellState>(cell_id);
+                                    const auto padding = s.options.selected && cell.column == 0
+                                                             ? 0.0F
+                                                             : std::min(s.padding_x, limits.max_width / 2);
+                                    cell.measured = engine.measure_child(
+                                        services_->components().root(cell.content),
+                                        {0, std::max(0.0F, limits.max_width - padding * 2), 0, infinity});
+                                    return limits.constrain({limits.max_width, cell.measured.height + s.padding_y * 2});
+                                },
+                                [this, id, cell_id](layout::LayoutEngine& engine, runtime::NodeId,
+                                                    runtime::Rect bounds) {
+                                    auto& s = *table_state(*services_, id);
+                                    auto& cell = *services_->components().state<CellState>(cell_id);
+                                    bounds = cell.allocation;
+                                    const auto padding = s.options.selected && cell.column == 0
+                                                             ? 0.0F
+                                                             : std::min(s.padding_x, bounds.width / 2);
+                                    const auto width =
+                                        std::min(cell.measured.width, std::max(0.0F, bounds.width - padding * 2));
+                                    const auto align = s.alignments[cell.column];
+                                    const auto x = align == TableAlign::Right
+                                                       ? bounds.x + bounds.width - padding - width
+                                                   : align == TableAlign::Center ? bounds.x + (bounds.width - width) / 2
+                                                                                 : bounds.x + padding;
+                                    engine.place_child(services_->components().root(cell.content),
+                                                       {x, bounds.y + (bounds.height - cell.measured.height) / 2, width,
+                                                        cell.measured.height});
+                                }});
+                        row.cells.push_back(cell_id);
+                        services.layout().set_layout(
+                            viewport_node, layout::ComponentLayout{
+                                               [&services, cell_id](auto& engine, auto, layout::Constraints limits) {
+                                                   return engine.measure_child(services.components().root(cell_id),
+                                                                               limits);
+                                               },
+                                               [&services, cell_id](auto& engine, auto, runtime::Rect) {
+                                                   const auto& value = *services.components().state<CellState>(cell_id);
+                                                   engine.place_child(value.node, value.allocation, false, true);
+                                               }});
+                    }});
             }
         }});
     if (!intact()) {
         return {};
     }
     services.layout().set_layout(
-        row.node, layout::ComponentLayout{
-                      [this, id, row_id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
-                          auto& s = *table_state(*services_, id);
-                          auto& row = *services_->components().state<RowState>(row_id);
-                          row.height = 0;
-                          for (std::size_t i = 0; i < row.cells.size(); ++i) {
-                              const auto size = engine.measure_child(services_->components().root(row.cells[i]),
-                                                                     {s.widths[i], s.widths[i], 0, infinity});
-                              row.height = std::max(row.height, size.height);
-                          }
-                          const auto& token = services_->components().theme_scope(id)->snapshot().table();
-                          row.height = std::max(row.height, token.metrics.line_height + s.padding_y * 2);
-                          return limits.constrain({s.content_width, row.height});
-                      },
-                      [this, id, row_id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
-                          auto& s = *table_state(*services_, id);
-                          auto& row = *services_->components().state<RowState>(row_id);
-                          float x = bounds.x;
-                          for (std::size_t i = 0; i < row.cells.size(); ++i) {
-                              engine.place_child(services_->components().root(row.cells[i]),
-                                                 {x, bounds.y, s.widths[i], bounds.height}, false, true);
-                              x += s.widths[i];
-                          }
-                      }});
+        row.node,
+        layout::ComponentLayout{
+            [this, id, row_id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                auto& s = *table_state(*services_, id);
+                auto& row = *services_->components().state<RowState>(row_id);
+                row.height = 0;
+                for (std::size_t i = 0; i < row.cells.size(); ++i) {
+                    const auto viewport = services_->components().state<CellState>(row.cells[i])->viewport;
+                    const auto size = engine.measure_child(services_->components().root(viewport),
+                                                           {s.widths[i], s.widths[i], 0, infinity});
+                    row.height = std::max(row.height, size.height);
+                }
+                const auto& token = services_->components().theme_scope(id)->snapshot().table();
+                row.height = std::max(row.height, token.metrics.line_height + s.padding_y * 2);
+                if (!row.header && s.options.virtualization) {
+                    row.height = s.options.virtualization->row_height;
+                }
+                row.main_height = row.height;
+                if (row.record.detail_expandable && row.expansion.valid() &&
+                    std::ranges::find(s.expanded, row.record.key) != s.expanded.end()) {
+                    const auto height = engine
+                                            .measure_child(services_->components().root(row.expansion),
+                                                           {s.content_width, s.content_width, 0, infinity})
+                                            .height;
+                    row.height += s.options.virtualization ? s.options.virtualization->expanded_height : height;
+                }
+                return limits.constrain({s.content_width, row.height});
+            },
+            [this, id, row_id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
+                auto& s = *table_state(*services_, id);
+                auto& row = *services_->components().state<RowState>(row_id);
+                float start_width = 0;
+                float end_width = 0;
+                const auto fixed = [&](std::size_t i) {
+                    return fixed_column(s, i);
+                };
+                for (std::size_t i = 0; i < row.cells.size(); ++i) {
+                    if (fixed(i) == TableFixed::Start) {
+                        start_width += s.widths[i];
+                    }
+                    if (fixed(i) == TableFixed::End) {
+                        end_width += s.widths[i];
+                    }
+                }
+                const auto viewport = s.body_bounds.width > 0 ? s.body_bounds.width : bounds.width;
+                float start = 0;
+                float end = 0;
+                float natural = 0;
+                for (std::size_t i = 0; i < row.cells.size(); ++i) {
+                    const auto width = s.widths[i];
+                    float x = natural - s.scroll_x;
+                    float clip_left = start_width;
+                    float clip_right = viewport - end_width;
+                    if (fixed(i) == TableFixed::Start) {
+                        x = start;
+                        start += width;
+                        clip_left = 0;
+                        clip_right = viewport;
+                    } else if (fixed(i) == TableFixed::End) {
+                        x = viewport - end_width + end;
+                        end += width;
+                        clip_left = 0;
+                        clip_right = viewport;
+                    }
+                    if (s.rtl) {
+                        x = viewport - x - width;
+                        const auto left = clip_left;
+                        clip_left = viewport - clip_right;
+                        clip_right = viewport - left;
+                    }
+                    auto& cell = *services_->components().state<CellState>(row.cells[i]);
+                    cell.allocation = {bounds.x + x, bounds.y, width, row.main_height};
+                    const auto cropped = graphics::intersect_effect_bounds(
+                        cell.allocation,
+                        {bounds.x + clip_left, bounds.y, std::max(0.0F, clip_right - clip_left), row.main_height});
+                    engine.place_child(services_->components().root(cell.viewport), cropped, false, true);
+                    natural += width;
+                }
+                if (row.record.detail_expandable && row.expansion.valid() &&
+                    std::ranges::find(s.expanded, row.record.key) != s.expanded.end()) {
+                    engine.place_child(services_->components().root(row.expansion),
+                                       {bounds.x, bounds.y + row.main_height, viewport, row.height - row.main_height});
+                }
+            }});
     return row_id;
 }
 
@@ -574,6 +841,10 @@ void TableComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             }
         }
         if (s->data_dirty) {
+            s->record_indices.clear();
+            for (std::size_t i = 0; i < s->records.size(); ++i) {
+                s->record_indices.emplace(s->records[i].key.bytes(), i);
+            }
             std::set<std::string, std::less<>> next_keys;
             for (const auto& record : s->records) {
                 next_keys.emplace(record.key.bytes());
@@ -598,21 +869,18 @@ void TableComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             if (!current()) {
                 continue;
             }
-            const auto [start, count] = page_range(*s, s->sorted_keys.size());
-            std::set<std::string_view> shown_keys;
-            for (std::size_t i = start; i < start + count; ++i) {
-                shown_keys.insert(s->sorted_keys[i].bytes());
-            }
             std::vector<runtime::ComponentId> source_order;
             source_order.reserve(s->records.size());
             for (const auto& record : s->records) {
                 const auto key = std::string{record.key.bytes()};
                 auto found = s->by_key.find(key);
                 if (found == s->by_key.end()) {
+                    if (s->options.virtualization) {
+                        continue;
+                    }
                     runtime::ComponentId row;
-                    services_->append_slot(
-                        s->body,
-                        Content{[&] { row = mount_row(id, &record, false, shown_keys.contains(record.key.bytes())); }});
+                    mount_retained_slot(*services_, s->body,
+                                        Content{[&] { row = mount_row(id, &record, false, false); }});
                     if (!alive()) {
                         return;
                     }
@@ -645,19 +913,86 @@ void TableComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             s->order_dirty = true;
             geometry = true;
         }
-        if (sorted_changed || s->order_dirty) {
+        if (sorted_changed || s->order_dirty || s->page_dirty) {
+            const auto [start, count] = page_range(*s, s->sorted_keys.size());
+            s->page_keys.assign(s->sorted_keys.begin() + start, s->sorted_keys.begin() + start + count);
+            s->page_offsets.assign(count + 1, 0);
+            for (std::size_t i = 0; i < count; ++i) {
+                const auto& record = s->records[s->record_indices.at(std::string{s->page_keys[i].bytes()})];
+                const auto extra = s->options.expansion && record.detail_expandable &&
+                                   std::ranges::find(s->expanded, record.key) != s->expanded.end();
+                if (s->options.virtualization) {
+                    s->page_offsets[i + 1] = s->page_offsets[i] + s->options.virtualization->row_height +
+                                             (extra ? s->options.virtualization->expanded_height : 0);
+                }
+            }
+            if (s->options.virtualization) {
+                s->scroll_y = std::min(s->scroll_y, std::max(0.0F, s->page_offsets.back() - s->viewport_height));
+                const auto& offsets = s->page_offsets;
+                const auto first = std::upper_bound(offsets.begin(), offsets.end(), s->scroll_y) - offsets.begin();
+                const auto last = std::lower_bound(offsets.begin(), offsets.end(), s->scroll_y + s->viewport_height) -
+                                  offsets.begin();
+                const auto overscan = s->options.virtualization->overscan;
+                const auto begin =
+                    static_cast<std::size_t>(first) > overscan + 1 ? static_cast<std::size_t>(first) - overscan - 1 : 0;
+                const auto end = std::min(count, static_cast<std::size_t>(last) + overscan);
+                for (std::size_t i = begin; i < end; ++i) {
+                    const auto key = std::string{s->page_keys[i].bytes()};
+                    if (!s->by_key.contains(key)) {
+                        const auto record = s->records[s->record_indices.at(key)];
+                        runtime::ComponentId row;
+                        try {
+                            mount_retained_slot(*services_, s->body,
+                                                Content{[&] { row = mount_row(id, &record, false, false); }});
+                        } catch (...) {
+                            services_->retire_failed_component(id);
+                            throw;
+                        }
+                        if (!current()) {
+                            return;
+                        }
+                        s->by_key.emplace(key, row);
+                        s->source_order.push_back(row);
+                    }
+                }
+            }
             std::vector<runtime::ComponentId> sorted_order;
             sorted_order.reserve(s->sorted_keys.size());
             for (const auto& key : s->sorted_keys) {
-                sorted_order.push_back(s->by_key.at(std::string{key.bytes()}));
+                if (const auto found = s->by_key.find(std::string{key.bytes()}); found != s->by_key.end()) {
+                    sorted_order.push_back(found->second);
+                }
             }
             s->sorted_order = std::move(sorted_order);
             s->page_dirty = true;
         }
         if (s->page_dirty) {
-            const auto [start, count] = page_range(*s, s->sorted_order.size());
-            std::vector<runtime::ComponentId> visible(s->sorted_order.begin() + start,
-                                                      s->sorted_order.begin() + start + count);
+            std::vector<runtime::ComponentId> visible;
+            const auto focused = services_->focus().state().focused;
+            const auto* focus = focused ? services_->interactions().find(*focused) : nullptr;
+            for (std::size_t i = 0; i < s->page_keys.size(); ++i) {
+                const auto found = s->by_key.find(std::string{s->page_keys[i].bytes()});
+                if (found == s->by_key.end()) {
+                    continue;
+                }
+                bool pinned = false;
+                for (auto ancestor = focus ? std::optional{focus->component} : std::nullopt; ancestor;
+                     ancestor = services_->components().parent(*ancestor)) {
+                    if (*ancestor == found->second) {
+                        pinned = true;
+                        break;
+                    }
+                }
+                const auto overscan = s->options.virtualization
+                                          ? s->options.virtualization->row_height *
+                                                static_cast<float>(s->options.virtualization->overscan)
+                                          : 0;
+                if (!s->options.virtualization || pinned ||
+                    (s->page_offsets[i + 1] >= s->scroll_y - overscan &&
+                     s->page_offsets[i] <= s->scroll_y + s->viewport_height + overscan)) {
+                    visible.push_back(found->second);
+                }
+            }
             s->visible = std::move(visible);
             for (auto row_id : s->source_order) {
                 auto* row = services_->components().state<RowState>(row_id);
@@ -750,9 +1085,72 @@ void TableComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                 services_->retire_failed_component(id);
                 return;
             }
+            const auto intact = [&] {
+                if (!current()) {
+                    return false;
+                }
+                if (!services_->components().contains(row_id)) {
+                    services_->retire_failed_component(id);
+                    return false;
+                }
+                return true;
+            };
             ++s->work.visited_rows;
             const bool shown = row->shown;
             active(*services_, row_id, shown);
+            if (!intact()) {
+                return;
+            }
+            if (s->options.expansion && row->record.detail_expandable &&
+                std::ranges::find(s->expanded, row->record.key) != s->expanded.end() && !row->expansion.valid()) {
+                const auto row_value = row->value;
+                const auto row_key = row->record.key;
+                runtime::ComponentId expansion;
+                try {
+                    mount_retained_slot(*services_, row_id, Content{[&] {
+                        expansion =
+                            region(row_id, *services_, Content{[&] {
+                                       s->options.expansion(row_key, bind([row_value] { return row_value.get(); }));
+                                   }},
+                                   s->foreground, s->typography, shown);
+                    }});
+                } catch (...) {
+                    services_->retire_failed_component(id);
+                    throw;
+                }
+                if (!intact()) {
+                    return;
+                }
+                row = services_->components().state<RowState>(row_id);
+                row->expansion = expansion;
+                services_->nodes().require(services_->components().root(expansion)).clip_content = true;
+            }
+            if (row->expansion.valid()) {
+                active(*services_, row->expansion,
+                       shown && row->record.detail_expandable &&
+                           std::ranges::find(s->expanded, row->record.key) != s->expanded.end());
+                if (!intact()) {
+                    return;
+                }
+            }
+            const auto expand_icon = row->expand_icon;
+            const auto expand_disabled = row->expand_disabled;
+            const auto indentation = row->indentation;
+            expand_icon.set(std::ranges::find(s->expanded, row->record.key) != s->expanded.end()
+                                ? IconName::DownOutlined
+                            : s->rtl ? IconName::LeftOutlined
+                                     : IconName::RightOutlined);
+            if (!intact()) {
+                return;
+            }
+            expand_disabled.set(s->loading || !row->record.expandable);
+            if (!intact()) {
+                return;
+            }
+            indentation.set(dp(static_cast<float>(row->record.depth) * s->padding_x));
+            if (!intact()) {
+                return;
+            }
             const bool selected = s->selected_keys.contains(row->record.key.bytes());
             const bool disabled = row->record.selection_disabled;
             const auto row_checked = row->checked;
@@ -769,11 +1167,12 @@ void TableComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                 services_->retire_failed_component(id);
                 return;
             }
-            if (shown && !disabled) {
+        }
+        for (const auto& key : s->page_keys) {
+            const auto& record = s->records[s->record_indices.at(std::string{key.bytes()})];
+            if (!record.selection_disabled) {
                 ++selectable;
-                if (selected) {
-                    ++checked;
-                }
+                checked += s->selected_keys.contains(key.bytes()) ? 1 : 0;
             }
         }
         s->all_checked.set(selectable > 0 && checked == selectable);
@@ -834,7 +1233,12 @@ void TableComponentHost::request_sort(runtime::ComponentId id, std::size_t colum
     }
     const auto callback = s->options.on_sort;
     if (callback) {
-        callback(std::move(value));
+        try {
+            callback(std::move(value));
+        } catch (...) {
+            services_->retire_failed_component(id);
+            throw;
+        }
     }
 }
 
@@ -844,22 +1248,75 @@ void TableComponentHost::request_selection(runtime::ComponentId id, std::optiona
         return;
     }
     auto value = s->selected;
-    for (auto row_id : s->visible) {
-        const auto& row = *services_->components().state<RowState>(row_id);
-        if (row.record.selection_disabled || (key && row.record.key != *key)) {
+    for (const auto& row_key : s->page_keys) {
+        const auto& row = s->records[s->record_indices.at(std::string{row_key.bytes()})];
+        if (row.selection_disabled || (key && row.key != *key)) {
             continue;
         }
-        const auto found = std::ranges::find(value, row.record.key);
+        const auto found = std::ranges::find(value, row.key);
         if (selected && found == value.end()) {
-            value.push_back(row.record.key);
+            value.push_back(row.key);
         } else if (!selected && found != value.end()) {
             value.erase(found);
         }
     }
     const auto callback = s->options.on_selection;
     if (callback && value != s->selected) {
-        callback(std::move(value));
+        try {
+            callback(std::move(value));
+        } catch (...) {
+            services_->retire_failed_component(id);
+            throw;
+        }
     }
+}
+
+void TableComponentHost::request_expand(runtime::ComponentId id, String key) {
+    const auto s = table_state(*services_, id);
+    if (!s || s->loading) {
+        return;
+    }
+    const auto row = s->record_indices.find(key.bytes());
+    if (row == s->record_indices.end() || !s->records[row->second].expandable) {
+        return;
+    }
+    auto value = s->expanded;
+    if (std::ranges::find(value, key) == value.end()) {
+        value.push_back(key);
+    } else {
+        std::erase(value, key);
+    }
+    const auto callback = s->options.on_expand;
+    if (!s->options.expanded) {
+        s->expanded = value;
+        ++s->projection_revision;
+        refresh(id, true);
+    }
+    if (callback && live(*services_, id, s)) {
+        try {
+            callback(std::move(value));
+        } catch (...) {
+            services_->retire_failed_component(id);
+            throw;
+        }
+    }
+}
+
+void TableComponentHost::scroll_to(runtime::ComponentId id, float x, float y) {
+    const auto s = table_state(*services_, id);
+    if (!s) {
+        return;
+    }
+    x = std::clamp(x, 0.0F, s->maximum_x);
+    y = std::clamp(y, 0.0F, s->maximum_y);
+    if (s->scroll_x == x && s->scroll_y == y) {
+        return;
+    }
+    s->scroll_x = x;
+    s->scroll_y = y;
+    s->page_dirty = true;
+    s->order_dirty = true;
+    refresh(id, true);
 }
 
 void TableComponentHost::mount(TableOptions options, const Prop<std::vector<TableRecord>>& source,
@@ -876,6 +1333,15 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
         }
         finite_nonnegative(read_prop(column.width), "Table column width must be finite and nonnegative");
         valid_align(read_prop(column.align));
+        if (column.fixed != TableFixed::None && column.fixed != TableFixed::Start && column.fixed != TableFixed::End) {
+            throw std::invalid_argument("Table fixed column side is invalid");
+        }
+        std::set<std::string, std::less<>> filter_keys;
+        for (const auto& filter : column.filters) {
+            if (filter.value.empty() || !filter_keys.emplace(filter.value.bytes()).second) {
+                throw std::invalid_argument("Table filter values must be nonempty and unique");
+            }
+        }
     }
     positive_size(read_prop(options.page_size));
     if (options.current) {
@@ -884,6 +1350,13 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
     finite_nonnegative(read_prop(options.viewport_height), "Table scrollY must be finite and nonnegative");
     valid_size(read_prop(options.size));
     validate_sort(read_prop(options.sort), columns);
+    if (options.virtualization) {
+        const auto v = *options.virtualization;
+        if (!std::isfinite(v.row_height) || v.row_height <= 0 || !std::isfinite(v.expanded_height) ||
+            v.expanded_height <= 0 || v.overscan > 4096) {
+            throw std::invalid_argument("Table virtualization requires positive finite heights and bounded overscan");
+        }
+    }
     auto& build = runtime::require_component_build_context();
     const auto locale =
         localized_prop(options.locale, build.config_scope(), [](const LocaleData& d) { return d.table; });
@@ -905,6 +1378,10 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
     s.current = s.options.current ? read_prop(*s.options.current) : 1;
     s.page_size = read_prop(s.options.page_size);
     s.sort = read_prop(s.options.sort);
+    s.rtl = read_prop(s.options.direction) == TextDirection::RightToLeft;
+    if (s.options.expanded) {
+        s.expanded = read_prop(*s.options.expanded);
+    }
     if (s.options.selected) {
         s.selected = read_prop(*s.options.selected);
         for (const auto& key : s.selected) {
@@ -917,17 +1394,22 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
         s.requested_widths.push_back(read_prop(column.width));
         s.alignments.push_back(read_prop(column.align));
         s.sort_icons.emplace_back(IconName::ColumnHeightOutlined);
+        s.filters.push_back(read_prop(column.filtered));
     }
     s.widths = s.requested_widths;
     s.sort_buttons.resize(s.columns.size());
+    s.filter_buttons.resize(s.columns.size());
     s.records = records;
+    for (std::size_t i = 0; i < records.size(); ++i) {
+        s.record_indices.emplace(records[i].key.bytes(), i);
+    }
     try {
         s.sorted_keys = sort_records(s, records, [&] { return live(services, id, owner); });
     } catch (const ProjectionInterrupted&) {
         return;
     }
     s.sorted_revision = s.projection_revision;
-    const auto [page_start, page_count] = page_range(s, records.size());
+    const auto [page_start, page_count] = page_range(s, s.sorted_keys.size());
     std::set<std::string_view> shown_keys;
     for (std::size_t i = page_start; i < page_start + page_count; ++i) {
         shown_keys.insert(s.sorted_keys[i].bytes());
@@ -937,6 +1419,7 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
         return;
     }
     services.nodes().require(s.node).clip_content = true;
+    services.nodes().require(s.node).owns_child_translation = true;
     const auto fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     s.surface = services.surfaces().create_content_range(fragment, {});
     const auto border_fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::after_children);
@@ -989,6 +1472,9 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
             });
             context.mount_slot(s.body, Content{[&] {
                                    for (const auto& record : records) {
+                                       if (s.options.virtualization) {
+                                           continue;
+                                       }
                                        const auto row =
                                            mount_row(id, &record, false, shown_keys.contains(record.key.bytes()));
                                        if (!live(services, id, owner)) {
@@ -1018,17 +1504,74 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
             context.on_resource_cleanup(s.loading_label, [&services, surface = s.loading_surface] {
                 services.surfaces().destroy_content_range(surface);
             });
+            for (std::size_t axis = 0; axis < 2; ++axis) {
+                const auto control = context.mount_component<int>(0);
+                const auto node = context.root(control);
+                services.nodes().require(node).out_of_flow = true;
+                services.layout().set_layout(node, layout::LeafLayout{});
+                const auto hit = services.interactions().create({control, node, {}, false, false, {}, false, false});
+                const auto hit_fragment =
+                    context.register_scene_fragment(control, runtime::SceneFragmentPlacement::after_children);
+                services.scene_composer().set_fragment(hit_fragment, {}, hit);
+                const auto fragment =
+                    context.register_scene_fragment(control, runtime::SceneFragmentPlacement::after_children);
+                const auto surface = services.surfaces().create_content_range(fragment, {});
+                s.scrollbar_components[axis] = control;
+                s.scrollbar_hits[axis] = hit;
+                s.scrollbar_surfaces[axis] = surface;
+                services.interactions().set_handlers(
+                    hit,
+                    {{},
+                     [this, id, axis](input::PointerDispatchContext& event) {
+                         const auto state = table_state(*services_, id);
+                         if (!state) {
+                             return;
+                         }
+                         const auto point = axis == 0 ? event.event().x : event.event().y;
+                         if (event.kind() == input::PointerEventKind::down &&
+                             event.event().button == input::PointerButton::primary) {
+                             if (event.capture_pointer()) {
+                                 state->dragging = axis;
+                                 state->drag_start = point;
+                                 state->drag_scroll = axis == 0 ? state->scroll_x : state->scroll_y;
+                             }
+                             event.stop_propagation();
+                         } else if (event.kind() == input::PointerEventKind::move && state->dragging == axis) {
+                             const auto track = state->scrollbar_tracks[axis];
+                             const auto thumb = state->scrollbar_thumbs[axis];
+                             const auto travel = axis == 0 ? track.width - thumb.width : track.height - thumb.height;
+                             const auto maximum = axis == 0 ? state->maximum_x : state->maximum_y;
+                             const auto delta = (point - state->drag_start) * (axis == 0 && state->rtl ? -1.0F : 1.0F);
+                             const auto value = state->drag_scroll + (travel > 0 ? delta * maximum / travel : 0);
+                             scroll_to(id, axis == 0 ? value : state->scroll_x, axis == 1 ? value : state->scroll_y);
+                             event.stop_propagation();
+                         } else if (event.kind() == input::PointerEventKind::cancel ||
+                                    event.kind() == input::PointerEventKind::up) {
+                             state->dragging.reset();
+                             static_cast<void>(event.release_pointer_capture());
+                         }
+                     },
+                     {}});
+                context.on_resource_cleanup(control, [&services, node, hit, surface, hit_fragment] {
+                    services.pointer().cancel_interaction(hit, false);
+                    services.interactions().remove(hit);
+                    services.scene_composer().remove_fragment(hit_fragment);
+                    services.surfaces().destroy_content_range(surface);
+                    services.layout().remove_layout(node);
+                });
+            }
             services.layout().set_layout(
                 body_node,
                 layout::ComponentLayout{
                     [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
                         auto& s = *table_state(*services_, id);
-                        s.content_height = 0;
+                        s.content_height = s.options.virtualization ? s.page_offsets.back() : 0;
                         for (auto row : s.visible) {
-                            s.content_height += engine
-                                                    .measure_child(services_->components().root(row),
-                                                                   {s.content_width, s.content_width, 0, infinity})
-                                                    .height;
+                            const auto size = engine.measure_child(services_->components().root(row),
+                                                                   {s.content_width, s.content_width, 0, infinity});
+                            if (!s.options.virtualization) {
+                                s.content_height += size.height;
+                            }
                         }
                         if (s.visible.empty()) {
                             static_cast<void>(engine.measure_child(services_->components().root(s.empty),
@@ -1048,6 +1591,10 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                         float y = bounds.y;
                         for (auto row_id : s.visible) {
                             const auto& row = *services_->components().state<RowState>(row_id);
+                            if (s.options.virtualization) {
+                                const auto found = std::ranges::find(s.page_keys, row.record.key);
+                                y = bounds.y + s.page_offsets[static_cast<std::size_t>(found - s.page_keys.begin())];
+                            }
                             engine.place_child(row.node, {bounds.x, y, s.content_width, row.height});
                             y += row.height;
                         }
@@ -1105,15 +1652,23 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                     {viewport_width, viewport_width, 0, std::max(0.0F, limits.max_height - s.header_height)});
                 static_cast<void>(engine.measure_child(services_->components().root(s.loading_label),
                                                        {0, viewport_width, 0, infinity}));
+                for (auto control : s.scrollbar_components) {
+                    static_cast<void>(engine.measure_child(services_->components().root(control), {0, 0, 0, 0}));
+                }
                 return limits.constrain({viewport_width, s.header_height + body.height});
             },
             [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
                 auto& s = *table_state(*services_, id);
+                s.body_bounds.width = bounds.width;
+                const auto height = std::min(s.viewport_height, std::max(0.0F, bounds.height - s.header_height));
+                s.maximum_x = std::max(0.0F, s.content_width - bounds.width);
+                s.maximum_y = std::max(0.0F, s.content_height - height);
+                s.scroll_x = std::clamp(s.scroll_x, 0.0F, s.maximum_x);
+                s.scroll_y = std::clamp(s.scroll_y, 0.0F, s.maximum_y);
                 if (s.show_header) {
                     engine.place_child(services_->components().root(s.header_viewport),
                                        {bounds.x, bounds.y, bounds.width, s.header_height});
                 }
-                const auto height = std::min(s.viewport_height, std::max(0.0F, bounds.height - s.header_height));
                 engine.place_child(services_->components().root(s.body),
                                    {bounds.x, bounds.y + s.header_height, bounds.width, height});
                 const auto loading_size =
@@ -1122,10 +1677,9 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
                                    {bounds.x + (bounds.width - loading_size.width) / 2,
                                     bounds.y + s.header_height + (height - loading_size.height) / 2, loading_size.width,
                                     loading_size.height});
-                s.maximum_x = std::max(0.0F, s.content_width - bounds.width);
-                s.maximum_y = std::max(0.0F, s.content_height - height);
-                s.scroll_x = std::clamp(s.scroll_x, 0.0F, s.maximum_x);
-                s.scroll_y = std::clamp(s.scroll_y, 0.0F, s.maximum_y);
+                for (auto control : s.scrollbar_components) {
+                    engine.place_child(services_->components().root(control), {bounds.x, bounds.y, 0, 0});
+                }
             }});
     mounted_.push_back(id);
     s.ready = true;
@@ -1167,6 +1721,27 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
         s.sort = std::move(value);
         refresh(id, true);
     });
+    if (!live(services, id, owner)) {
+        return;
+    }
+    connect_prop(scope, s.options.direction, [this, id](TextDirection value) {
+        if (value != TextDirection::LeftToRight && value != TextDirection::RightToLeft) {
+            throw std::invalid_argument("Table direction is invalid");
+        }
+        table_state(*services_, id)->rtl = value == TextDirection::RightToLeft;
+        refresh(id, true);
+    });
+    if (!live(services, id, owner)) {
+        return;
+    }
+    if (s.options.expanded) {
+        connect_prop(scope, *s.options.expanded, [this, id](std::vector<String> value) {
+            const auto state = table_state(*services_, id);
+            state->expanded = std::move(value);
+            ++state->projection_revision;
+            refresh(id, true);
+        });
+    }
     if (!live(services, id, owner)) {
         return;
     }
@@ -1249,6 +1824,19 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
         return;
     }
     for (std::size_t i = 0; i < s.columns.size(); ++i) {
+        connect_prop(scope, s.columns[i].filtered, [this, id, i](std::vector<String> value) {
+            const auto state = table_state(*services_, id);
+            if (state->filters[i] == value) {
+                return;
+            }
+            state->filters[i] = std::move(value);
+            ++state->projection_revision;
+            state->scroll_y = 0;
+            refresh(id, true);
+        });
+        if (!live(services, id, owner)) {
+            return;
+        }
         const auto index = i + (s.options.selected ? 1 : 0);
         connect_prop(scope, s.columns[i].width, [this, id, index](float value) {
             finite_nonnegative(value, "Table width must be finite and nonnegative");
@@ -1289,12 +1877,15 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
 }
 
 void TableComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect document_clip) {
-    for (auto id : mounted_) {
+    const auto ids = mounted_;
+    for (auto id : ids) {
         auto s = table_state(*services_, id);
         if (!s || !services_->components().branch_active(id)) {
             continue;
         }
         s->clip = services_->component_clip(id, viewport, document_clip);
+        const auto previous_x = s->scroll_x;
+        const auto previous_y = s->scroll_y;
         const auto focused = services_->focus().state().focused;
         if (s->last_focus != focused) {
             s->last_focus = focused;
@@ -1309,10 +1900,32 @@ void TableComponentHost::position_window_layers(runtime::Size viewport, runtime:
                 const auto top = target_node.bounds.y - s->body_bounds.y;
                 const auto right = left + std::min(target_node.bounds.width, s->body_bounds.width);
                 const auto bottom = top + std::min(target_node.bounds.height, s->body_bounds.height);
-                if (left < s->scroll_x) {
-                    s->scroll_x = std::max(0.0F, left);
-                } else if (right > s->scroll_x + s->body_bounds.width) {
-                    s->scroll_x = std::min(s->maximum_x, right - s->body_bounds.width);
+                bool fixed_cell = false;
+                for (auto cell = std::optional{target->component}; cell && *cell != *ancestor;
+                     cell = services_->components().parent(*cell)) {
+                    if (const auto* value = services_->components().state<CellState>(*cell)) {
+                        fixed_cell = fixed_column(*s, value->column) != TableFixed::None;
+                        break;
+                    }
+                }
+                if (!fixed_cell) {
+                    float start = 0;
+                    float end = 0;
+                    for (std::size_t i = 0; i < s->widths.size(); ++i) {
+                        const auto fixed = fixed_column(*s, i);
+                        if (fixed == TableFixed::Start) {
+                            start += s->widths[i];
+                        }
+                        if (fixed == TableFixed::End) {
+                            end += s->widths[i];
+                        }
+                    }
+                    const auto left_edge = s->rtl ? end : start;
+                    const auto right_edge = s->body_bounds.width - (s->rtl ? start : end);
+                    const auto delta = left < left_edge     ? left - left_edge
+                                       : right > right_edge ? right - right_edge
+                                                            : 0;
+                    s->scroll_x = std::clamp(s->scroll_x + (s->rtl ? -delta : delta), 0.0F, s->maximum_x);
                 }
                 if (top < s->scroll_y) {
                     s->scroll_y = std::max(0.0F, top);
@@ -1322,14 +1935,37 @@ void TableComponentHost::position_window_layers(runtime::Size viewport, runtime:
                 break;
             }
         }
-        const auto offset = services_->nodes().require(s->node).translation;
-        translate(services_->components().root(s->header_viewport), offset, *services_);
-        translate(services_->components().root(s->header), {offset.x - s->scroll_x, offset.y}, *services_);
-        translate(services_->components().root(s->body), offset, *services_);
-        for (auto row : s->visible) {
-            translate(services_->components().root(row), {offset.x - s->scroll_x, offset.y - s->scroll_y}, *services_);
+        if (previous_x != s->scroll_x || previous_y != s->scroll_y) {
+            s->page_dirty = true;
+            s->order_dirty = true;
+            refresh(id, true);
+            if (!live(*services_, id, s)) {
+                continue;
+            }
+            const auto bounds = services_->nodes().require(s->node).bounds;
+            static_cast<void>(
+                services_->layout().measure_child(s->node, {bounds.width, bounds.width, bounds.height, bounds.height}));
+            services_->layout().place_child(s->node, bounds);
         }
-        translate(services_->components().root(s->loading_label), offset, *services_);
+    }
+}
+
+void TableComponentHost::synchronize_retained_translations() {
+    for (auto id : mounted_) {
+        services_->enqueue_retained_translation(id, [this, id] {
+            const auto s = table_state(*services_, id);
+            if (!s || !services_->components().branch_active(id)) {
+                return;
+            }
+            const auto offset = services_->nodes().require(s->node).translation;
+            translate(services_->components().root(s->header_viewport), offset, *services_);
+            translate(services_->components().root(s->header), offset, *services_);
+            translate(services_->components().root(s->body), offset, *services_);
+            for (auto row : s->visible) {
+                translate(services_->components().root(row), {offset.x, offset.y - s->scroll_y}, *services_);
+            }
+            translate(services_->components().root(s->loading_label), offset, *services_);
+        });
     }
 }
 
@@ -1348,12 +1984,10 @@ bool TableComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
         auto s = table_state(*services_, *current);
         if (s && services_->interactions().component_active(*current) &&
             contains(translated(s->body_bounds, services_->nodes().require(s->node).translation), event.x, event.y)) {
-            const auto x = std::clamp(s->scroll_x + event.delta_x * 32.0F, 0.0F, s->maximum_x);
+            const auto x = std::clamp(s->scroll_x + event.delta_x * (s->rtl ? -32.0F : 32.0F), 0.0F, s->maximum_x);
             const auto y = std::clamp(s->scroll_y - event.delta_y * 32.0F, 0.0F, s->maximum_y);
             if (x != s->scroll_x || y != s->scroll_y) {
-                s->scroll_x = x;
-                s->scroll_y = y;
-                services_->dirty().invalidate(s->node, runtime::DirtyFlags::Transform | runtime::DirtyFlags::HitTest);
+                scroll_to(*current, x, y);
                 return true;
             }
         }
@@ -1396,6 +2030,10 @@ void TableComponentHost::on_window_active(bool value) {
             if (auto s = table_state(*services_, id)) {
                 s->hovered.reset();
                 services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
+                s->dragging.reset();
+                for (const auto hit : s->scrollbar_hits) {
+                    services_->pointer().cancel_interaction(hit);
+                }
             }
         }
     }
@@ -1408,6 +2046,7 @@ void TableComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
             continue;
         }
         const auto& root = services_->nodes().require(s->node);
+        s->clip = services_->component_clip(id, viewport, document_clip);
         const auto& token = services_->components().theme_scope(id)->snapshot().table();
         const auto clip =
             services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip));
@@ -1432,6 +2071,39 @@ void TableComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
                  token.colors.border, root.translation, clip);
         }
         static_cast<void>(services_->surfaces().update_content_effects(s->border_surface, quads));
+        for (std::size_t axis = 0; axis < 2; ++axis) {
+            const auto maximum = axis == 0 ? s->maximum_x : s->maximum_y;
+            const auto size = std::max(1.0F, token.metrics.padding_inline_small);
+            const auto body = translated(s->body_bounds, root.translation);
+            const runtime::Rect track =
+                axis == 0 ? runtime::Rect{body.x, body.y + std::max(0.0F, body.height - size),
+                                          std::max(0.0F, body.width - size), std::min(size, body.height)}
+                          : runtime::Rect{s->rtl ? body.x : body.x + std::max(0.0F, body.width - size), body.y,
+                                          std::min(size, body.width), std::max(0.0F, body.height - size)};
+            auto thumb = track;
+            if (axis == 0) {
+                thumb.width = std::min(track.width,
+                                       std::max(size * 2, track.width * body.width / std::max(1.0F, s->content_width)));
+                const auto fraction = maximum > 0 ? s->scroll_x / maximum : 0;
+                thumb.x += (track.width - thumb.width) * (s->rtl ? 1 - fraction : fraction);
+            } else {
+                thumb.height = std::min(
+                    track.height, std::max(size * 2, track.height * body.height / std::max(1.0F, s->content_height)));
+                thumb.y += maximum > 0 ? (track.height - thumb.height) * s->scroll_y / maximum : 0;
+            }
+            s->scrollbar_tracks[axis] = track;
+            s->scrollbar_thumbs[axis] = thumb;
+            const auto node = services_->components().root(s->scrollbar_components[axis]);
+            services_->nodes().require(node).translation = {};
+            services_->nodes().require(node).bounds = thumb;
+            services_->interactions().set_eligible(s->scrollbar_hits[axis],
+                                                   maximum > 0 && body.width > 0 && body.height > 0);
+            quads.clear();
+            if (maximum > 0) {
+                quad(thumb, token.colors.border, {}, clip);
+            }
+            static_cast<void>(services_->surfaces().update_content_effects(s->scrollbar_surfaces[axis], quads));
+        }
         if (s->loading) {
             quads.clear();
             const auto color = token.colors.background;

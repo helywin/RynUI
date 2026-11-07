@@ -1241,7 +1241,7 @@ target_include_directories(rynui_translation_ownership_tests PRIVATE "${PROJECT_
 target_link_libraries(rynui_translation_ownership_tests PRIVATE rynui_runtime)
 add_test(NAME rynui.translation_ownership COMMAND rynui_translation_ownership_tests)
 
-foreach(name IN ITEMS pagination_component table_component table_theme table_public_api)
+foreach(name IN ITEMS pagination_component table_component table_theme table_public_api table_completion tour_component)
     add_executable(rynui_${name}_tests ${name}_tests.cpp)
     rynui_configure_cpp_target(rynui_${name}_tests)
     target_link_libraries(rynui_${name}_tests PRIVATE rynui_components)

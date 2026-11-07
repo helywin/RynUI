@@ -876,6 +876,33 @@ const std::optional<Prop<SemanticTypography>>& ComponentBuildContext::semantic_t
     return semantic_typography_;
 }
 
+void ComponentBuildContext::mount_slot_from_parent(ComponentId parent, const Content& content) {
+    if (!host_->active() || active_build_context == nullptr || &active_build_context->host() != host_) {
+        throw std::logic_error("Parent-scoped slots require an active build for the same Host");
+    }
+    const auto captured = host_->capture_context(parent);
+    if (!captured.theme || !captured.config || !host_->scope(parent).active()) {
+        throw I18nException({I18nErrorCode::StaleContext, {}, {}});
+    }
+    captured.config->ensure_live();
+    const auto previous_children = host_->children(parent).size();
+    try {
+        host_->mount_slot(parent, detail::SlotContentAccess::function(content), std::nullopt, std::nullopt,
+                          captured.theme, captured.config);
+    } catch (...) {
+        while (host_->contains(parent) && host_->children(parent).size() > previous_children) {
+            if (!host_->destroy(host_->children(parent).back())) {
+                break;
+            }
+        }
+        throw;
+    }
+}
+
+ComponentBuildContext* current_component_build_context() noexcept {
+    return active_build_context;
+}
+
 ComponentBuildContext& require_component_build_context() {
     if (active_build_context == nullptr) {
         throw std::logic_error("A component can only be declared inside active Host content");

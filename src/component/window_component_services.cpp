@@ -28,6 +28,7 @@
 #include "component/avatar_component.hpp"
 #include "component/image_component.hpp"
 #include "component/qrcode_component.hpp"
+#include "component/tour_component.hpp"
 #include "component/upload_component.hpp"
 #include "component/rate_component.hpp"
 #include "component/statistic_component.hpp"
@@ -227,6 +228,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     menu_ = std::make_unique<MenuComponentHost>(*this);
     pagination_ = std::make_unique<PaginationComponentHost>(*this);
     empty_result_ = std::make_unique<EmptyResultComponentHost>(*this);
+    tour_ = std::make_unique<TourComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {

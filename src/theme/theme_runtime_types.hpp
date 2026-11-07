@@ -270,6 +270,7 @@ enum class TokenIdentity : std::uint16_t {
     watermark,
     border_beam,
     affix,
+    tour,
     count,
 };
 

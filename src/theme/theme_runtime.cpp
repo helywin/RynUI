@@ -348,6 +348,7 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.border_beam(), after.border_beam(), TokenIdentity::border_beam, changed, count);
     append_if_changed(before.affix(), after.affix(), TokenIdentity::affix, changed, count);
     append_if_changed(before.qrcode().metrics, after.qrcode().metrics, TokenIdentity::qrcode_metrics, changed, count);
+    append_if_changed(before.tour(), after.tour(), TokenIdentity::tour, changed, count);
     append_if_changed(before.carousel().colors, after.carousel().colors, TokenIdentity::carousel_colors, changed,
                       count);
     append_if_changed(before.carousel().metrics, after.carousel().metrics, TokenIdentity::carousel_metrics, changed,
@@ -1998,6 +1999,12 @@ const AffixThemeToken& ThemeScope::affix() const {
     return snapshot_->affix();
 }
 
+const TourThemeToken& ThemeScope::tour() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tour);
+    return snapshot_->tour();
+}
+
 const CarouselThemeToken& ThemeScope::carousel_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::carousel_colors);
@@ -2513,6 +2520,7 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Watermark",
         "BorderBeam",
         "Affix",
+        "Tour",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -2767,6 +2775,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::dropdown_metrics:
     case TokenIdentity::select_metrics:
     case TokenIdentity::qrcode_metrics:
+    case TokenIdentity::tour:
     case TokenIdentity::carousel_metrics:
     case TokenIdentity::calendar_metrics:
     case TokenIdentity::mentions_metrics:

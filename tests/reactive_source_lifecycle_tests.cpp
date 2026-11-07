@@ -60,12 +60,38 @@ void queued_destruction() {
     check(runs == 2 && observer.active(), "queued observer retained destroyed source");
     scope.dispose();
 }
+
+void initial_callback_retires_scope() {
+    ryn::Signal<int> trigger{0};
+    auto effect_scope = std::make_unique<ryn::Scope>();
+    int effect_runs{};
+    const auto observer = ryn::effect(*effect_scope, [&] {
+        ++effect_runs;
+        static_cast<void>(trigger.get());
+        effect_scope.reset();
+    });
+    check(!observer.active(), "initial effect retained a destroyed scope");
+
+    auto binding_scope = std::make_unique<ryn::Scope>();
+    int binding_runs{};
+    const auto binding = ryn::connect_binding(*binding_scope, ryn::bind([&] {
+        ++binding_runs;
+        static_cast<void>(trigger.get());
+        binding_scope.reset();
+        return 7;
+    }),
+                                              [](int) {});
+    check(!binding.active(), "initial binding retained a destroyed scope");
+    trigger.set(1);
+    check(effect_runs == 1 && binding_runs == 1, "initial callback retirement retained a subscription");
+}
 } // namespace
 
 int main() {
     try {
         destroyed_source_and_reentry();
         queued_destruction();
+        initial_callback_retires_scope();
     } catch (const std::exception& error) {
         ryn_test::allocation::end();
         std::cerr << error.what() << '\n';

@@ -52,6 +52,7 @@ void validate_pagination(const PaginationLocale& p) {
 }
 
 void validate(const LocaleData& d) {
+    require_strings({&d.tour.previous, &d.tour.next, &d.tour.finish, &d.tour.close});
     try {
         d.picker.validate();
     } catch (const std::invalid_argument&) {
@@ -222,6 +223,7 @@ LocalePack make_chinese() {
     d->descriptions = {u8"："};
     d->qrcode = {u8"二维码已过期", u8"刷新", u8"加载中", u8"已扫描"};
     d->table = {u8"暂无数据", u8"加载中…"};
+    d->tour = {u8"上一步", u8"下一步", u8"完成", u8"关闭"};
     d->cascader = {u8"暂无数据", u8"加载中…", u8"加载失败", u8"搜索路径", u8"重试"};
     d->color_picker = {u8"单色", u8"渐变", u8"清除", u8"添加色标", u8"移除", u8"颜色"};
     d->plural = IntegerPluralRule::OtherOnly;

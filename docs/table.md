@@ -57,11 +57,18 @@ cell slot 只执行一次。`TableCell<Row>::value()` 是响应读取，应放�
 
 多选为受控 selectedRowKeys；回调收到完整的下一组 key。可配置每行 disabled predicate，表头全选只操作当前页的可选行，保留其他页及数据源暂时不存在的 key。没有选择回写时 Checkbox 保持受控显示。loading 显示正文遮罩和 `Loading…`，阻止排序与选择，保留已有 cell；不阻止 cell 内业务组件自己的操作。
 
-scrollY 为有限、非负的正文高度上限（默认 240），表头保持可见。横纵滚轮在正文内滚动并夹紧，边界不消费未产生位移的滚轮事件；焦点首次进入不可见 cell 时自动显露该控件。首版没有拖拽滚动条。`showHeader(false)` 隐藏表头；空数据默认 `No data`，可用第二参数 `TableEmpty{...}` 提供只挂载一次的空状态。
+scrollY 为有限、非负的正文高度上限（默认 240），表头保持可见。横纵滚轮在正文内滚动并夹紧，边界不消费未产生位移的滚轮事件；焦点首次进入不可见 cell 时自动显露该控件。横纵滚动条通过真实 pointer capture 拖动；命中由祖先裁剪、输入限制和实际 window layer 共同决定。`showHeader(false)` 隐藏表头；空数据默认 `No data`，可用第二参数 `TableEmpty{...}` 提供只挂载一次的空状态。
 
 视觉基线固定 Ant Design 6.6.5。`ThemeConfig::table.tokens` 提供背景、表头、正文、边框、hover/selected 颜色，以及三档 padding、字体尺寸/行高、最小列宽、选择列宽、空状态高度和边框宽度。字体族/正文字重继承 Text token；表头字重为 600。Default、Dark、Compact 和嵌套覆盖均受测；颜色更新不测量或重跑 cell。LayoutStyle 只控制外部布局。
 
-首版全量保留挂载，适合有限桌面业务数据，内存随行数×列数增长；分页只控制可见行。没有虚拟化、服务端请求管线、过滤菜单、列 schema 动态替换、固定列、复杂 span、树或内置编辑。绘制仅使用共同 logical CPU scene v3，GPU ABI v2 不变。本 change 的证据为 Windows MSVC headless，不代表 GPU、Linux、人工视觉或 IME 验收。
+107 扩展源码增加下列入口；编译、自动合同与原生 GPU 验收仍待集成线程执行，不据此提升目录状态。
+
+- `.virtualRows(TableVirtualization{row_height, expanded_height, overscan})` 使用确定的行/详情高度和前缀位置，只在视口与 overscan 内首次建立 cell。默认保持现有完整保留模式。虚拟模式缓存已访问的 keyed 子树，保存编辑器草稿；当前获得焦点的行保留活动资格，裁剪继续限制画面与命中。缓存随访问行数增长，删除业务 key 才释放，不提供控件状态序列化或行复用协议。
+- `.expandable(TableExpandable<Row>{...})` 接受 children getter、可选 expandedRowRender、rowExpandable、受控 expandedRowKeys 与 onExpandedRowsChange。省略 expandedRowKeys 时内部管理展开；受控拒绝不改变画面。行 key 在整棵树中唯一，深度最多 256。详情首次展开时挂载，折叠保留子树并撤销其输入资格。筛选后的匹配子行保留祖先路径，展开仍以应用状态为准；分页应用于展开后的投影。
+- 列 `.filters(...)`、`.filteredValue(...)`、`.onFilter(...)`、`.onFilterChange(...)` 提供原生 Checkbox popup。列内多选为 OR，列之间为 AND；过滤值受控。没有 predicate 时应用负责服务端过滤。排序、筛选与展开更新复用原有投影 revision 与回调重入检查。
+- 列 `.fixed(TableFixed::Start|End)` 固定到逻辑起止边；TableRowSelection.fixed 默认 false，显式开启后选择列固定到起始边。`.direction(TextDirection::RightToLeft)` 镜像列和水平滚动条。中间单元使用实际分配 viewport 裁剪，固定列与正文保留同一个 cell/editor，不复制控件或另开上传路径。
+
+独立 Gallery 增加 `gallery.sample.table.completion`（主目标 `gallery.table.virtual`），保留旧 workflow 与稳定 ID。没有服务端请求管线、动态列 schema 替换、复杂 span 或内置业务编辑存储。绘制继续使用共同 logical CPU scene v3/GPU ABI v2；未运行的新增合同不能代表 Windows/Linux GPU、系统 IME 或辅助技术验收。
 
 ## ConfigProvider 内置文案
 

@@ -25,6 +25,13 @@ void locale_contract() {
     }
     const auto en = catalog.resolve(locales::en_US).pack;
     const auto zh = catalog.resolve(locales::zh_CN).pack;
+    require(en.data().tour == TourLocale{} && zh.data().tour == TourLocale{u8"上一步", u8"下一步", u8"完成", u8"关闭"},
+            "Tour built-in package is incomplete");
+    for (const auto field : {&TourLocale::previous, &TourLocale::next, &TourLocale::finish, &TourLocale::close}) {
+        auto invalid = std::make_unique<LocaleData>(zh.data());
+        invalid->tour.*field = {};
+        rejects([&] { static_cast<void>(LocalePack(*invalid)); }, I18nErrorCode::InvalidPack);
+    }
     require(zh.data().picker.months[11] == String{u8"十二月"} &&
                 zh.data().picker.confirm_range == String{u8"确认范围"} &&
                 zh.data().transfer.pagination == zh.data().pagination &&

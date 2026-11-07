@@ -24,8 +24,8 @@ def main():
         before=json.loads(original(path.relative_to(ROOT)))
         after=json.loads(path.read_text(encoding='utf-8'))
         assert len(before)==64
-        assert list(after) == list(before) + ['calendar', 'carousel', 'qrcode', 'watermark', 'borderBeam', 'affix']
-        assert len(after)==70
+        assert list(after) == list(before) + ['calendar', 'carousel', 'qrcode', 'watermark', 'borderBeam', 'affix', 'tour']
+        assert len(after)==71
         for field,value in before.items():
             if field == 'identity':
                 continue
@@ -51,7 +51,7 @@ def main():
     assert after[len(before)+2:len(before)+5]==['carousel_colors','carousel_metrics','carousel_effects']
     path='include/ryn/theme.hpp'
     def config_fields(text): return re.findall(r'^    (.+);$',text.split('struct ThemeConfig final {')[1].split('friend bool')[0],re.M)
-    assert config_fields((ROOT/path).read_text()) == config_fields(original(path))+['CalendarThemeConfig calendar','CarouselThemeConfig carousel','QRCodeThemeConfig qrcode','WatermarkThemeConfig watermark','BorderBeamThemeConfig border_beam','AffixThemeConfig affix']
+    assert config_fields((ROOT/path).read_text(encoding='utf-8')) == config_fields(original(path))+['CalendarThemeConfig calendar','CarouselThemeConfig carousel','QRCodeThemeConfig qrcode','WatermarkThemeConfig watermark','BorderBeamThemeConfig border_beam','AffixThemeConfig affix','TourThemeConfig tour']
     runtime=(ROOT/'src/theme/theme_runtime.cpp').read_text()
     for name in ['Calendar.colors','Calendar.metrics','Calendar.effects','Carousel.colors','Carousel.metrics','Carousel.effects']: assert '"'+name+'"' in runtime
     print('Calendar/Carousel baseline: 5 full goldens, all 64 old fields/prefixes protected; exact Card/Empty appends; old TokenIdentity names/order unchanged')

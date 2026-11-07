@@ -757,6 +757,70 @@ void locale_getters_can_destroy_each_collection() {
     }
 }
 
+void virtual_table_locale_keeps_projection_and_draft() {
+    Fixture f;
+    Signal<LocaleId> language{locales::en_US};
+    Signal<bool> loading{false};
+    std::vector<Record> records;
+    for (int i = 0; i < 1000; ++i) {
+        records.push_back({String::from_utf8(std::to_string(i)).value(), u8"literal draft"});
+    }
+    int factories = 0;
+    f.services.mount(Content{[&] {
+        ConfigProvider(
+            ConfigProviderProps{}.locale(language), ConfigProviderContent{[&] {
+                Table(TableProps<Record>{}
+                          .dataSource(records)
+                          .rowKey([](const Record& row) { return row.key; })
+                          .columns({TableColumn<Record>{u8"edit", u8"Literal header",
+                                                        [&](TableCell<Record> cell) {
+                                                            ++factories;
+                                                            Input(InputProps{}.defaultValue(cell.value().value));
+                                                        }}
+                                        .width(240)
+                                        .fixed(TableFixed::Start),
+                                    TableColumn<Record>{u8"value", u8"Literal header",
+                                                        [](TableCell<Record> cell) {
+                                                            Text(TextProps{}.content(
+                                                                bind([cell] { return cell.key(); })));
+                                                        }}
+                                        .width(1200)})
+                          .virtualRows({60, 100, 2})
+                          .scrollY(180)
+                          .loading(loading));
+            }});
+    }});
+    sync(f);
+    const auto id = f.services.table().mounted().front();
+    const auto initial = f.services.table().snapshot(id);
+    require(initial.rows.size() < 10 && factories < 10, "localized virtual Table eagerly mounted all rows");
+    const auto input = input_in(f, initial.rows.front().component, true);
+    require(f.services.focus().request_focus(input.interaction, FocusModality::keyboard),
+            "virtual Table editor did not focus");
+    auto& editor = f.inputs.editors().require(input.editor);
+    require(
+        bool(f.inputs.replace_range(input.component, {0, editor.value().size()}, String{u8"edited draft"}.view())) &&
+            bool(editor.select({8, 1})),
+        "virtual Table draft/selection setup failed");
+    sync(f);
+    const auto work = f.services.table().work(id);
+    const auto count = factories;
+    const auto selection = editor.selection();
+    language.set(locales::zh_CN);
+    sync(f);
+    const auto after = f.services.table().snapshot(id);
+    const auto after_work = f.services.table().work(id);
+    require(after.rows.front().component == initial.rows.front().component && factories == count &&
+                editor.value() == "edited draft" && editor.selection() == selection &&
+                text_present(f, id, String{u8"暂无数据"}.view()) && work.copied_records == after_work.copied_records &&
+                work.sort_passes == after_work.sort_passes && work.visited_rows == after_work.visited_rows,
+            "virtual Table locale reran projection/factories or discarded retained input state");
+    loading.set(true);
+    sync(f);
+    require(text_present(f, id, String{u8"加载中…"}.view(), true), "virtual Table restored hard-coded loading text");
+    f.services.dispose();
+}
+
 } // namespace
 
 int main() {
@@ -777,7 +841,8 @@ int main() {
         run("inherited_count_plural_rule_is_a_live_dependency", inherited_count_plural_rule_is_a_live_dependency);
         run("reentrant_label_observers_retire_owner", reentrant_label_observers_retire_owner);
         run("locale_getters_can_destroy_each_collection", locale_getters_can_destroy_each_collection);
-        std::cout << "i18n collections: 10 cases passed\n";
+        run("virtual_table_locale_keeps_projection_and_draft", virtual_table_locale_keeps_projection_and_draft);
+        std::cout << "i18n collections: 11 cases passed\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "i18n collections: " << error.what() << '\n';

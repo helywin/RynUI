@@ -56,6 +56,7 @@ class TimelineComponentHost;
 class AvatarComponentHost;
 class ImageComponentHost;
 class QRCodeComponentHost;
+class TourComponentHost;
 class UploadComponentHost;
 class RateComponentHost;
 class StatisticComponentHost;
@@ -400,6 +401,10 @@ public:
         return *qrcode_;
     }
 
+    [[nodiscard]] TourComponentHost& tour() noexcept {
+        return *tour_;
+    }
+
     [[nodiscard]] ImageComponentHost& image() noexcept {
         return *image_;
     }
@@ -641,6 +646,7 @@ private:
     graphics::ImageStore images_;
     std::unique_ptr<ImageComponentHost> image_;
     std::unique_ptr<QRCodeComponentHost> qrcode_;
+    std::unique_ptr<TourComponentHost> tour_;
     std::unique_ptr<UploadComponentHost> upload_;
     NativeFileServices* file_services_{};
     std::uint32_t file_window_id_{};

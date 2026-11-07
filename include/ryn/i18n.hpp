@@ -93,6 +93,7 @@ struct LocaleData final {
     ColorPickerLocale color_picker;
     IntegerPluralRule plural{IntegerPluralRule::Unsupported};
     LocaleFormatSupport formats;
+    TourLocale tour;
     friend bool operator==(const LocaleData&, const LocaleData&) = default;
 };
 

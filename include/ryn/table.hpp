@@ -4,6 +4,7 @@
 #include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
+#include <ryn/text_direction.hpp>
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -14,6 +15,21 @@ namespace ryn {
 enum class TableAlign { Left, Center, Right };
 
 enum class TableSortOrder { None, Ascend, Descend };
+
+enum class TableFixed { None, Start, End };
+
+struct TableFilterItem final {
+    String value;
+    String label;
+    friend bool operator==(const TableFilterItem&, const TableFilterItem&) = default;
+};
+
+struct TableVirtualization final {
+    float row_height{54.0F};
+    float expanded_height{120.0F};
+    std::size_t overscan{2};
+    friend bool operator==(const TableVirtualization&, const TableVirtualization&) = default;
+};
 
 struct TableSort final {
     String column_key;
@@ -73,6 +89,10 @@ struct TableRecord final {
     String key;
     TableValue value;
     bool selection_disabled{};
+    String parent_key;
+    std::size_t depth{};
+    bool expandable{};
+    bool detail_expandable{};
     friend bool operator==(const TableRecord&, const TableRecord&) = default;
 };
 
@@ -85,6 +105,11 @@ struct TableColumnSchema final {
     Prop<float> width{0.0F};
     Prop<TableAlign> align{TableAlign::Left};
     bool sortable{};
+    TableFixed fixed{TableFixed::None};
+    std::vector<TableFilterItem> filters;
+    Prop<std::vector<String>> filtered{std::vector<String>{}};
+    std::function<bool(const String&, const TableValue&)> filter;
+    std::function<void(std::vector<String>)> on_filter;
 };
 
 struct TableOptions final {
@@ -101,6 +126,13 @@ struct TableOptions final {
     Prop<bool> show_header{true};
     LayoutStyle layout;
     std::optional<Prop<TableLocale>> locale;
+    std::optional<TableVirtualization> virtualization;
+    std::optional<Prop<std::vector<String>>> expanded;
+    std::function<void(std::vector<String>)> on_expand;
+    std::function<void(String, Binding<TableValue>)> expansion;
+    Prop<TextDirection> direction{TextDirection::LeftToRight};
+    bool tree_rows{};
+    bool selection_fixed{};
 };
 
 void mount_table(TableOptions, Prop<std::vector<TableRecord>>, std::vector<TableColumnSchema>,
@@ -144,6 +176,31 @@ public:
         return *this;
     }
 
+    TableColumn& fixed(TableFixed value) {
+        fixed_ = value;
+        return *this;
+    }
+
+    TableColumn& filters(std::vector<TableFilterItem> value) {
+        filters_ = std::move(value);
+        return *this;
+    }
+
+    TableColumn& filteredValue(Prop<std::vector<String>> value) {
+        filtered_ = std::move(value);
+        return *this;
+    }
+
+    TableColumn& onFilter(std::function<bool(const String&, const Row&)> value) {
+        filter_ = std::move(value);
+        return *this;
+    }
+
+    TableColumn& onFilterChange(std::function<void(std::vector<String>)> value) {
+        on_filter_ = std::move(value);
+        return *this;
+    }
+
 private:
     template <typename> friend class TableProps;
     String key_;
@@ -154,12 +211,26 @@ private:
     Prop<TableAlign> align_{TableAlign::Left};
     std::function<bool(const Row&, const Row&)> less_;
     bool sortable_{};
+    TableFixed fixed_{TableFixed::None};
+    std::vector<TableFilterItem> filters_;
+    Prop<std::vector<String>> filtered_{std::vector<String>{}};
+    std::function<bool(const String&, const Row&)> filter_;
+    std::function<void(std::vector<String>)> on_filter_;
 };
 
 template <typename Row> struct TableRowSelection final {
     Prop<std::vector<String>> selectedRowKeys{std::vector<String>{}};
     std::function<void(std::vector<String>)> onChange;
     std::function<bool(const Row&)> disabled;
+    bool fixed{};
+};
+
+template <typename Row> struct TableExpandable final {
+    std::optional<Prop<std::vector<String>>> expandedRowKeys;
+    std::function<void(std::vector<String>)> onExpandedRowsChange;
+    std::function<std::vector<Row>(const Row&)> children;
+    TableCellContent<Row> expandedRowRender;
+    std::function<bool(const Row&)> rowExpandable;
 };
 
 template <typename Row> class TableProps final {
@@ -195,6 +266,7 @@ public:
     }
 
     TableProps& rowSelection(TableRowSelection<Row> value) {
+        options_.selection_fixed = value.fixed;
         options_.selected = std::move(value.selectedRowKeys);
         options_.on_selection = std::move(value.onChange);
         disabled_ = std::move(value.disabled);
@@ -241,6 +313,21 @@ public:
         return *this;
     }
 
+    TableProps& virtualRows(TableVirtualization value = {}) {
+        options_.virtualization = value;
+        return *this;
+    }
+
+    TableProps& expandable(TableExpandable<Row> value) {
+        expandable_ = std::move(value);
+        return *this;
+    }
+
+    TableProps& direction(Prop<TextDirection> value) {
+        options_.direction = std::move(value);
+        return *this;
+    }
+
     void mount(std::optional<TableEmpty> empty) const {
         if (!key_) {
             throw std::invalid_argument("Table requires rowKey");
@@ -266,17 +353,55 @@ public:
             c.width = column.width_;
             c.align = column.align_;
             c.sortable = column.sortable_;
+            c.fixed = column.fixed_;
+            c.filters = column.filters_;
+            c.filtered = column.filtered_;
+            c.on_filter = column.on_filter_;
+            if (column.filter_) {
+                c.filter = [filter = column.filter_](const String& key, const detail::TableValue& row) {
+                    return filter(key, *std::static_pointer_cast<const Row>(row));
+                };
+            }
             schema.push_back(std::move(c));
         }
-        auto data = bind([source = source_, key = key_, disabled = disabled_] {
-            std::vector<detail::TableRecord> result;
-            for (auto& row : detail::TablePropBridge::read(source)) {
-                auto value = std::make_shared<const Row>(std::move(row));
-                result.push_back({key(*value), value, disabled && disabled(*value)});
+        auto options = options_;
+        if (expandable_) {
+            options.tree_rows = static_cast<bool>(expandable_->children);
+            options.expanded = expandable_->expandedRowKeys;
+            options.on_expand = expandable_->onExpandedRowsChange;
+            if (expandable_->expandedRowRender) {
+                options.expansion = [render = expandable_->expandedRowRender](String key,
+                                                                              Binding<detail::TableValue> value) {
+                    render(TableCell<Row>{std::move(key),
+                                          bind([value] { return *std::static_pointer_cast<const Row>(value.get()); })});
+                };
             }
+        }
+        auto data = bind([source = source_, key = key_, disabled = disabled_, expandable = expandable_] {
+            std::vector<detail::TableRecord> result;
+            const auto append = [&](auto&& self, std::vector<Row> rows, String parent, std::size_t depth) -> void {
+                if (depth > 256) {
+                    throw std::invalid_argument("Table tree depth exceeds 256");
+                }
+                for (auto& row : rows) {
+                    auto value = std::make_shared<const Row>(std::move(row));
+                    const auto identity = key(*value);
+                    auto children =
+                        expandable && expandable->children ? expandable->children(*value) : std::vector<Row>{};
+                    const bool detail_expandable = expandable && expandable->expandedRowRender &&
+                                                   (!expandable->rowExpandable || expandable->rowExpandable(*value));
+                    const bool can_expand = !children.empty() || detail_expandable;
+                    result.push_back(
+                        {identity, value, disabled && disabled(*value), parent, depth, can_expand, detail_expandable});
+                    if (!children.empty()) {
+                        self(self, std::move(children), identity, depth + 1);
+                    }
+                }
+            };
+            append(append, detail::TablePropBridge::read(source), {}, 0);
             return result;
         });
-        detail::mount_table(options_, std::move(data), std::move(schema), std::move(empty));
+        detail::mount_table(std::move(options), std::move(data), std::move(schema), std::move(empty));
     }
 
 private:
@@ -285,6 +410,7 @@ private:
     std::function<bool(const Row&)> disabled_;
     std::vector<TableColumn<Row>> columns_;
     detail::TableOptions options_;
+    std::optional<TableExpandable<Row>> expandable_;
 };
 
 template <typename Row> void Table(TableProps<Row> props, std::optional<TableEmpty> empty = {}) {

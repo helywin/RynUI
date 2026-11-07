@@ -22,11 +22,11 @@ def appended_tokens(before, after, additions, context):
             assert after[key] == value, (context, key)
 
 def main():
-    domains={'qrcode', 'watermark', 'borderBeam', 'affix'}
+    domains={'qrcode', 'watermark', 'borderBeam', 'affix', 'tour'}
     for p in sorted((ROOT/'design-tokens/ant-design/6.6.5/golden').glob('*.json')):
         before=json.loads(old(p.relative_to(ROOT)))
         after=json.loads(p.read_text(encoding='utf-8'))
-        assert list(after) == list(before) + ['qrcode', 'watermark', 'borderBeam', 'affix'], (p.name, 'domain order')
+        assert list(after) == list(before) + ['qrcode', 'watermark', 'borderBeam', 'affix', 'tour'], (p.name, 'domain order')
         assert set(before)|domains==set(after),(p.name,set(after)-set(before))
         for name,value in before.items():
             if name == 'skeleton':
@@ -40,10 +40,10 @@ def main():
     before=identities(old(path));after=identities((ROOT/path).read_text())
     assert after[:len(before)-1]==before[:-1]
     assert after[-1]=='count' and len(after)==len(set(after))
-    additions=['qrcode_colors','qrcode_metrics','watermark','border_beam','affix']
+    additions=['qrcode_colors','qrcode_metrics','watermark','border_beam','affix','tour']
     assert after[len(before)-1:-1]==additions
     path='include/ryn/theme.hpp'
-    additions=['QRCodeThemeConfig qrcode','WatermarkThemeConfig watermark','BorderBeamThemeConfig border_beam','AffixThemeConfig affix']
+    additions=['QRCodeThemeConfig qrcode','WatermarkThemeConfig watermark','BorderBeamThemeConfig border_beam','AffixThemeConfig affix','TourThemeConfig tour']
     assert fields((ROOT/path).read_text())==fields(old(path))+additions
     print(f'5 complete goldens: all pre-QRCode main domains preserved; {len(domains)} appended domains; old identities and aggregate order unchanged')
 if __name__=='__main__':main()

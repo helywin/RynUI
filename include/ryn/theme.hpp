@@ -15,6 +15,7 @@
 #include <ryn/carousel_tokens.hpp>
 #include <ryn/decoration_tokens.hpp>
 #include <ryn/qrcode_tokens.hpp>
+#include <ryn/tour_tokens.hpp>
 #include <ryn/form_tokens.hpp>
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/anchor_tokens.hpp>
@@ -1864,6 +1865,11 @@ struct QRCodeThemeConfig final {
     friend bool operator==(const QRCodeThemeConfig&, const QRCodeThemeConfig&) = default;
 };
 
+struct TourThemeConfig final {
+    TourTokenOverride tokens;
+    friend bool operator==(const TourThemeConfig&, const TourThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     FloatButtonThemeConfig float_button;
     StepsThemeConfig steps;
@@ -1933,6 +1939,7 @@ struct ThemeConfig final {
     WatermarkThemeConfig watermark;
     BorderBeamThemeConfig border_beam;
     AffixThemeConfig affix;
+    TourThemeConfig tour;
 
     friend bool operator==(const ThemeConfig&, const ThemeConfig&) = default;
 };
@@ -2545,6 +2552,10 @@ public:
         return qrcode_;
     }
 
+    [[nodiscard]] const TourThemeToken& tour() const noexcept {
+        return *tour_;
+    }
+
     [[nodiscard]] const CalendarThemeToken& calendar() const noexcept {
         return calendar_;
     }
@@ -2692,7 +2703,7 @@ private:
         std::shared_ptr<const SplitterThemeToken> splitter, std::shared_ptr<const MentionsThemeToken> mentions,
         ImageThemeToken&& image, UploadThemeToken&& upload, CalendarThemeToken&& calendar,
         CarouselThemeToken&& carousel, QRCodeThemeToken&& qrcode, WatermarkThemeToken&& watermark,
-        BorderBeamThemeToken&& border_beam, AffixThemeToken&& affix);
+        BorderBeamThemeToken&& border_beam, AffixThemeToken&& affix, TourThemeToken&& tour);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2739,6 +2750,7 @@ private:
     std::shared_ptr<const LayoutThemeToken> layout_;
     std::shared_ptr<const SplitterThemeToken> splitter_;
     std::shared_ptr<const MentionsThemeToken> mentions_;
+    std::shared_ptr<const TourThemeToken> tour_;
     DescriptionsThemeToken descriptions_;
     std::shared_ptr<const PopoverThemeToken> popover_;
     std::shared_ptr<const NoticeThemeToken> message_;

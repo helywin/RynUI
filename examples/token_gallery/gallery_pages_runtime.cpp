@@ -2,6 +2,7 @@
 #include "gallery_visual_capture.hpp"
 #include "gallery_existing_data_entry_acceptance.hpp"
 #include "gallery_status_acceptance.hpp"
+#include "gallery_table_tour_acceptance.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
@@ -662,6 +663,11 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                         }
                     } else if (name == "ant.component.tooltip") {
                         gather(app.services().tooltip(), [](auto id, const auto&) { return id; });
+                    } else if (name == "ant.component.tour") {
+                        const auto trigger = pages.target("gallery.tour.open");
+                        if (trigger.valid()) {
+                            targets.push_back(trigger);
+                        }
                     } else {
                         const auto add = [&](std::string_view identity) {
                             const auto id = pages.target(identity);
@@ -1025,6 +1031,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press});
         accept_status_data_display(
             route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press}, resize);
+        accept_table_tour(route,
+                          {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press});
         if (route.component_identity == "ant.component.tag") {
             previous_session = inputs.sessions().active();
         }

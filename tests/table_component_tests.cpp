@@ -301,6 +301,12 @@ void scroll_theme_and_nested_cleanup() {
     name_width.set(150.0F);
     sync(f);
     s = f.services.table().snapshot(id);
+    if (s.maximum_x != 170 || s.scroll_x != 170 || s.widths.front() != 150 ||
+        bounds(f, s.rows[0].cells[0]).width != 150 || runs["a"] != 1) {
+        std::cerr << "Table width: maximum=" << s.maximum_x << ", scroll=" << s.scroll_x
+                  << ", column=" << s.widths.front() << ", cell=" << bounds(f, s.rows[0].cells[0]).width
+                  << ", factory runs=" << runs["a"] << '\n';
+    }
     check(s.maximum_x == 170 && s.scroll_x == 170 && s.widths.front() == 150 &&
               bounds(f, s.rows[0].cells[0]).width == 150 && runs["a"] == 1,
           "reactive column width did not clamp scroll");
@@ -390,6 +396,12 @@ void retained_select_popup_wheel_and_anchor() {
     menu = f.services.select().snapshot(select);
     const auto moved_anchor = bounds(f, select);
     const auto gap = f.services.components().theme_scope(select)->snapshot().select().metrics.gap;
+    if (!(moved_anchor.y < anchor.y) ||
+        std::abs(menu.popup.y - (moved_anchor.y + moved_anchor.height + gap)) >= 0.01F) {
+        std::cerr << "Table popup: anchor=" << anchor.y << " moved=" << moved_anchor.y << ',' << moved_anchor.height
+                  << " popup=" << menu.popup.y << " gap=" << gap
+                  << " scroll=" << f.services.table().snapshot(table).scroll_y << '\n';
+    }
     check(moved_anchor.y < anchor.y && std::abs(menu.popup.y - (moved_anchor.y + moved_anchor.height + gap)) < 0.01F,
           "Select popup did not follow Table transform in the same synchronization");
     check(f.inputs.dispatch(ScrollInputEvent{0, 0.5F, body.x + body.width - 5, body.y + 10}),
