@@ -77,7 +77,7 @@ void theme_contract() {
           "Popconfirm grouped invalidation failed");
     const auto previous = scope->snapshot();
     const auto generation = scope->generation();
-    const auto reject = [&](ThemeConfig invalid) {
+    const auto reject = [&](const ThemeConfig& invalid) {
         bool rejected{};
         try {
             scope->update(invalid);

@@ -3854,7 +3854,37 @@ void add_popconfirm_samples(const std::shared_ptr<GalleryState>& state) {
                    Button(ButtonProps{}, [] { gallery_label("gallery.copy.sample.201"); });
                    gallery_target("gallery.popconfirm.single");
                }});
-    state->telemetry.live_samples += 2;
+    Popconfirm(PopconfirmProps{}
+                   .title(gallery_text("gallery.copy.property.028"))
+                   .trigger(PopconfirmTriggerMode::Hover)
+                   .animated(),
+               PopconfirmTrigger{[] {
+                   Button(ButtonProps{}, [] { gallery_label("gallery.popconfirm.hover.caption"); });
+                   gallery_target("gallery.popconfirm.hover");
+               }});
+    Popconfirm(PopconfirmProps{}
+                   .title(gallery_text("gallery.copy.property.028"))
+                   .trigger(PopconfirmTriggerMode::ContextMenu)
+                   .animated(),
+               PopconfirmTrigger{[] {
+                   Button(ButtonProps{}, [] { gallery_label("gallery.popconfirm.context.caption"); });
+                   gallery_target("gallery.popconfirm.context");
+               }});
+    Popconfirm(PopconfirmProps{}
+                   .title(gallery_text("gallery.copy.property.028"))
+                   .triggers(PopconfirmTriggers{false, true, true, false})
+                   .animated()
+                   .okButtonProps(ButtonProps{}.type(ButtonType::Primary).danger(true).shape(ButtonShape::Round))
+                   .cancelButtonProps(ButtonProps{}.type(ButtonType::Text)),
+               PopconfirmTrigger{[] {
+                   Button(ButtonProps{}, [] { gallery_label("gallery.popconfirm.motion.caption"); });
+                   gallery_target("gallery.popconfirm.motion");
+               }},
+               {.description = PopconfirmDescription{[] {
+                    Input(InputProps{}.defaultValue(gallery_text("gallery.copy.property.027").get()));
+                    gallery_target("gallery.popconfirm.motion-draft");
+                }}});
+    state->telemetry.live_samples += 5;
 }
 
 void add_alert_samples(const std::shared_ptr<GalleryState>& state) {
@@ -8731,7 +8761,7 @@ void add_app_samples(const std::shared_ptr<GalleryState>& state) {
                             return;
                         }
                         demo->modal = demo->app.modal().confirm(
-                            ModalProps{}.title(demo->i18n.text(title)).onOk([demo] {
+                            ModalProps{}.animated().title(demo->i18n.text(title)).onOk([demo] {
                                 demo->result.set(GalleryMessage{"gallery.complete.copy.250", {}});
                             }),
                             ModalContent{[demo] {
@@ -8759,6 +8789,7 @@ void add_app_samples(const std::shared_ptr<GalleryState>& state) {
                                        demo->popconfirm = demo->app.popconfirm().confirm(
                                            demo->anchor,
                                            PopconfirmProps{}
+                                               .animated()
                                                .title(tr.text(gallery_message("gallery.complete.copy.000")))
                                                .onConfirm([demo] {
                                                    demo->result.set(GalleryMessage{"gallery.complete.copy.251", {}});

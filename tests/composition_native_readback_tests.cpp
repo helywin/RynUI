@@ -6,6 +6,7 @@
 #include "support/composition_reference.hpp"
 #include "component/app_component.hpp"
 #include "component/modal_component.hpp"
+#include "component/popconfirm_component.hpp"
 #include <chrono>
 #include <SDL3/SDL.h>
 #if defined(_WIN32)
@@ -620,6 +621,93 @@ void modal_presentation_readback(const char* driver) {
             "Modal native completion left paint, editor or deadline");
 }
 
+void popconfirm_joint_readback(const char* driver) {
+    PlatformConfig config;
+    config.title = "RynUI hidden Popconfirm joint";
+    config.width = 720;
+    config.height = 600;
+    config.hidden = true;
+    config.high_pixel_density = false;
+    auto platform = PlatformState::create(config);
+    require(bool(platform), "Popconfirm native platform");
+    SdlSceneRenderer renderer(*platform.state);
+    require(std::string(renderer.gpu_driver()) == driver, "Popconfirm native GPU driver");
+    renderer.set_clear_color(Color{1, 1, 1, 1});
+    for (const float scale : {1.0F, 1.25F}) {
+        for (const float alpha : {.5F, .85F}) {
+            ryn_test::input_component::Fixture f;
+            f.services.set_display_scale(scale);
+            Signal<bool> open{false};
+            Signal<PopconfirmPlacement> placement{PopconfirmPlacement::Top};
+            const runtime::Size viewport{720 / scale, 600 / scale};
+            f.services.mount(Content{[&] {
+                Flex(FlexProps{}
+                         .justify(FlexJustify::Center)
+                         .align(FlexAlign::Center)
+                         .layout(LayoutStyle{}.width(dp(viewport.width)).height(dp(viewport.height))),
+                     [&] {
+                         Popconfirm(PopconfirmProps{}.open(open).title(u8"Joint coverage").placement(placement),
+                                    PopconfirmTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Anchor"); }); }});
+                     });
+            }});
+            ThemeConfig theme;
+            theme.popconfirm.tokens.background = Color{0, 0, 1, alpha};
+            theme.popconfirm.tokens.shadow = ShadowList{};
+            f.services.components().theme_scope(f.services.components().root_components().front())->update(theme);
+            SceneResources resources(renderer);
+            const auto read = [&] {
+                for (int i = 0; i < 2; ++i) {
+                    require(f.services.layout_and_synchronize(viewport, {0, 0, viewport.width, viewport.height}),
+                            "Popconfirm native layout");
+                }
+                const auto& scene = f.services.scene_composer().ordered_scene();
+                require(resources.synchronize({&f.services.surfaces().instances(),
+                                               f.scene.atlas(),
+                                               f.scene.glyph_scene().instances(),
+                                               &f.services.rounded_effects(),
+                                               {720, 600, scale},
+                                               &f.services.images(),
+                                               &scene}),
+                        "Popconfirm native upload");
+                require(renderer.attach_scene(resources.attach(scene)), "Popconfirm native attach");
+                SceneRgbaReadback frame;
+                require(renderer.read_frame_rgba(frame), renderer.last_error());
+                return frame;
+            };
+            const auto baseline = read();
+            open.set(true);
+            for (const auto side : {PopconfirmPlacement::Top, PopconfirmPlacement::Bottom, PopconfirmPlacement::Left,
+                                    PopconfirmPlacement::Right}) {
+                placement.set(side);
+                const auto frame = read();
+                const auto s = f.services.popconfirm().snapshot(f.services.popconfirm().mounted().front());
+                const auto b = s.geometry.bounds;
+                const auto direction = static_cast<int>(s.geometry.placement) / 3;
+                const float x = direction < 2 ? b.x + s.geometry.arrow_center : direction == 2 ? b.x + b.width : b.x;
+                const float y = direction >= 2 ? b.y + s.geometry.arrow_center : direction == 0 ? b.y + b.height : b.y;
+                require(direction == static_cast<int>(side) / 3, "Popconfirm joint unexpectedly flipped");
+                for (int dy = -1; dy <= 1; ++dy) {
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        const auto px = static_cast<unsigned>(std::floor(x * scale) + dx);
+                        const auto py = static_cast<unsigned>(std::floor(y * scale) + dy);
+                        const auto offset = std::size_t(py) * baseline.row_pitch + px * 4;
+                        std::array<int, 4> expected;
+                        for (unsigned c = 0; c < 4; ++c) {
+                            const auto bg = std::to_integer<unsigned char>(baseline.pixels[offset + c]);
+                            expected[c] = static_cast<int>(std::lround((c >= 2 ? 255 : 0) * alpha + bg * (1 - alpha)));
+                        }
+                        pixel(frame, px, py, expected, 2);
+                    }
+                }
+            }
+            open.set(false);
+            (void)read(); // Let the normal close path restore its native anchor focus.
+            (void)f.services.focus().clear_focus();
+            require(read().pixels == baseline.pixels, "Popconfirm joint cleanup left paint");
+        }
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -648,6 +736,7 @@ int main(int argc, char** argv) {
         multiple_prefixes(renderer, *platform.state);
         service_readback(renderer);
         modal_presentation_readback(argv[1]);
+        popconfirm_joint_readback(argv[1]);
         std::cout << "composition native RGBA passed, driver=" << renderer.gpu_driver() << '\n';
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

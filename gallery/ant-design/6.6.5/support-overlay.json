@@ -1798,7 +1798,7 @@
     },
     {
       "identity": "ant.component.modal",
-      "status": "partial",
+      "status": "implemented",
       "summary": "原生 Modal 支持保留编辑、真实背景模糊、有限开合、lazy/destroy、拖动缩放、RTL、响应断点及 App 异步服务。",
       "supported_scope": [
         "typed reactive Props, retained ModalContent/title/footer slots and controlled OK/cancel requests",
@@ -1864,22 +1864,32 @@
     },
     {
       "identity": "ant.component.popconfirm",
-      "status": "partial",
-      "summary": "已实现点击/键盘触发的保留式气泡确认、真实确认取消按钮、加载与焦点恢复；Gallery 包含受控完成和 Drawer 内组合，原生平台验收独立记录。",
+      "status": "implemented",
+      "summary": "原生 Popconfirm 支持组合触发、按钮属性、有限动画、RTL、联合箭头填充及 App 异步确认服务。",
       "supported_scope": [
         "controlled/default visibility, disabled, confirmLoading/showCancel and typed trigger/title/description slots",
         "real small Buttons, native trigger activation, outside/Escape closing and focus restoration",
-        "twelve placements, arrow/flip/clamp, Modal and child popup ownership with Component Token"
+        "twelve placements, arrow/flip/clamp, Modal and child popup ownership with Component Token",
+        "Click/Hover/Focus/ContextMenu/Manual and composed triggers, finite enter/leave deadlines and native trigger eligibility",
+        "arbitrary real ButtonProps with post-callback loading/disabled checks; inherited RTL and retained rich editing",
+        "finite reversible presentation, immediate exit input blocking and terminal service futures/callbacks",
+        "single coverage bubble/arrow fill with transparent-alpha correctness and captured App asynchronous confirmation"
       ],
       "missing_scope": [
-        "Promise/static service, hover/contextMenu triggers and arbitrary ButtonProps forwarding",
-        "activation animation, RTL and native accessibility bridge"
+        "Web/DOM/CSS compatibility aliases and OS accessibility adapters remain separate"
       ],
       "evidence_identifiers": [
         "source:components/popconfirm/index.en-US.md",
         "openspec:064-20261023-add-native-popconfirm",
         "test:popconfirm_model/popconfirm_public_api/popconfirm_theme/popconfirm_component/token_gallery_frame",
-        "docs:docs/popconfirm.md"
+        "docs:docs/popconfirm.md",
+        "test:rynui.popconfirm_completion_hover",
+        "test:rynui.popconfirm_completion_context",
+        "test:rynui.popconfirm_completion_buttons",
+        "test:rynui.popconfirm_completion_motion",
+        "test:rynui.popconfirm_completion_rtl_retained",
+        "test:rynui.popconfirm_completion_service",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/popconfirm-completion.md"
       ]
     },
     {
@@ -2032,15 +2042,15 @@
     },
     {
       "identity": "ant.component.app",
-      "status": "partial",
-      "summary": "原生 App 已提供 typed App/useApp 与真实 Message/Notification 活上下文服务，代际、future、清理及 Windows 原生验收已记录。",
+      "status": "implemented",
+      "summary": "原生 App 提供活上下文 Message/Notification、Modal/Drawer/Popconfirm 服务、保留内容更新、异步确认及终帧 future。",
       "supported_scope": [
-        "retained App/AppRef/useApp, captured live theme/config, real Message/Notification holders and generation-safe handles"
+        "retained App/AppRef/useApp, captured live theme/config, real Message/Notification holders and generation-safe handles",
+        "real Modal/Drawer/Popconfirm services with captured live context, retained update, asynchronous ConfirmAction and generation-safe terminal futures",
+        "shared overlay input authority, source/anchor retirement, cancellation, error recovery and finite presentation completion"
       ],
       "missing_scope": [
-        "Modal/Drawer/Popconfirm 动态服务继续按 107 后续阶段实施",
-        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
-        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
+        "Web/DOM/CSS compatibility aliases and OS accessibility adapters remain separate"
       ],
       "evidence_identifiers": [
         "source:components/app/index.en-US.md",
@@ -2050,7 +2060,11 @@
         "test:rynui.app_service_binding",
         "docs:docs/app.md",
         "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
-        "openspec:107-20261104-complete-navigation-and-remaining-components"
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "test:rynui.app_panel_lifecycle",
+        "test:rynui.confirm_action",
+        "test:rynui.popconfirm_completion_service",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/popconfirm-completion.md"
       ]
     },
     {

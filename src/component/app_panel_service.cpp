@@ -47,6 +47,7 @@ struct PanelEntry final {
     std::shared_future<PanelCloseResult> future{promise.get_future().share()};
     std::function<void()> after_close;
     std::function<void(bool)> after_open;
+    std::function<void(bool)> after_presentation;
     std::function<void(ModalCancelReason)> modal_cancel;
     std::function<void(DrawerCancelReason)> drawer_cancel;
     std::function<void()> popconfirm_cancel;
@@ -118,8 +119,8 @@ void finish(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result, b
     auto cancel = detach(entry);
     erase(entry);
     dispose_subscriptions(entry);
-    // Drawer arrives here through its effective exit completion or hard
-    // retirement. Modal/Popconfirm retain their immediate retirement boundary.
+    // Animated panels arrive through effective exit completion or hard
+    // retirement. Legacy nonanimated panels retain immediate retirement.
     std::exception_ptr error;
     if (retire_resources && owner && !entry->context->captured.owner.expired()) {
         auto& target = *owner->services;
@@ -176,6 +177,9 @@ void finish(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result, b
     if (app_context_live(*owner, entry->context->captured) && entry->after_open) {
         call([&] { entry->after_open(false); });
     }
+    if (app_context_live(*owner, entry->context->captured) && entry->after_presentation) {
+        call([&] { entry->after_presentation(false); });
+    }
     if (app_context_live(*owner, entry->context->captured) && entry->after_close) {
         call(entry->after_close);
     }
@@ -200,7 +204,11 @@ bool begin_panel_close(const std::shared_ptr<PanelEntry>& entry, PanelCloseResul
     try {
         entry->open.set(false);
         if (live(entry) && entry->close_revision == revision) {
-            services(entry).modal().arm_service_panel_close(entry->panel);
+            if (entry->kind == PanelKind::Popconfirm) {
+                services(entry).popconfirm().arm_service_close(entry->panel);
+            } else {
+                services(entry).modal().arm_service_panel_close(entry->panel);
+            }
             services(entry).request_frame();
         }
     } catch (...) {
@@ -215,7 +223,8 @@ bool close_entry(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult resu
         return false;
     }
     if (entry->kind == PanelKind::Drawer ||
-        (entry->kind == PanelKind::Modal && services(entry).modal().presentation_enabled(entry->panel))) {
+        (entry->kind == PanelKind::Modal && services(entry).modal().presentation_enabled(entry->panel)) ||
+        (entry->kind == PanelKind::Popconfirm && services(entry).popconfirm().presentation_enabled(entry->panel))) {
         return begin_panel_close(entry, result);
     }
     finish(entry, result);
@@ -677,6 +686,7 @@ PopconfirmHandle AppPanelService::popconfirm(const std::shared_ptr<PanelServiceC
             return detail::live(weak.lock());
         };
         entry->after_open = props.on_open_;
+        entry->after_presentation = props.after_open_;
         entry->action_error = props.action_error_;
         props.disabled_ = cache(entry, props.disabled_);
         props.show_cancel_ = cache(entry, props.show_cancel_);
@@ -685,6 +695,25 @@ PopconfirmHandle AppPanelService::popconfirm(const std::shared_ptr<PanelServiceC
         props.arrow_ = cache(entry, props.arrow_);
         props.point_at_center_ = cache(entry, props.point_at_center_);
         props.adjust_ = cache(entry, props.adjust_);
+        props.animated_ = cache(entry, props.animated_);
+        props.trigger_ = cache(entry, props.trigger_);
+        if (props.triggers_) {
+            props.triggers_ = cache(entry, *props.triggers_);
+        }
+        props.direction_ = cache(entry, props.direction_);
+        props.enter_ = cache(entry, props.enter_);
+        props.leave_ = cache(entry, props.leave_);
+        props.afterOpenChange([weak = std::weak_ptr{entry}](bool visible) {
+            if (const auto entry = weak.lock(); detail::live(entry)) {
+                if (visible) {
+                    if (!entry->closing && entry->after_presentation) {
+                        entry->after_presentation(true);
+                    }
+                } else if (entry->closing && entry->pending_close) {
+                    finish(entry, *entry->pending_close);
+                }
+            }
+        });
         props.reference_.reset();
         props.default_open_.reset();
         props.service_anchor_ = anchor;
@@ -702,7 +731,7 @@ PopconfirmHandle AppPanelService::popconfirm(const std::shared_ptr<PanelServiceC
             .onCancel({})
             .onOpenChange([weak = std::weak_ptr{entry}](bool open) {
                 if (const auto entry = weak.lock(); detail::live(entry) && !open) {
-                    finish(entry, {PanelCloseKind::Cancelled});
+                    close_entry(entry, {PanelCloseKind::Cancelled});
                 }
             });
         mount(entry, Content{[props, slots] { Popconfirm(props, PopconfirmTrigger{[] {}}, slots); }});
@@ -787,12 +816,12 @@ bool AppPanelService::update(const std::shared_ptr<PanelHandleState>& state, Dra
 
 bool AppPanelService::update(const std::shared_ptr<PanelHandleState>& state, PopconfirmUpdate patch) {
     const auto entry = state ? state->entry.lock() : nullptr;
-    if (!detail::live(entry) || entry->kind != PanelKind::Popconfirm) {
+    if (!detail::live(entry) || entry->closing || entry->kind != PanelKind::Popconfirm) {
         return false;
     }
     const auto revision = ++entry->revision;
     const auto current = [&] {
-        return detail::live(entry) && entry->revision == revision;
+        return detail::live(entry) && !entry->closing && entry->revision == revision;
     };
     if (patch.title) {
         connect(entry, entry->title, *patch.title);

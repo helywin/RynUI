@@ -33,6 +33,7 @@
 #include "component/steps_component.hpp"
 #include "component/tabs_component.hpp"
 #include "component/popover_component.hpp"
+#include "component/popconfirm_component.hpp"
 #include "component/statistic_component.hpp"
 #include "component/feedback_component.hpp"
 #include "component/skeleton_component.hpp"
@@ -633,6 +634,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                                    route.component_identity == "ant.component.border-beam" ||
                                    route.component_identity == "ant.component.popover" ||
                                    route.component_identity == "ant.component.tooltip" ||
+                                   route.component_identity == "ant.component.popconfirm" ||
                                    route.component_identity == "ant.component.statistic" ||
                                    route.component_identity == "ant.component.result" ||
                                    route.component_identity == "ant.component.skeleton" ||
@@ -838,6 +840,9 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                         } else if (name == "ant.component.popconfirm") {
                             add("gallery.popconfirm.single");
                             add("gallery.popconfirm.controlled");
+                            add("gallery.popconfirm.hover");
+                            add("gallery.popconfirm.context");
+                            add("gallery.popconfirm.motion");
                         } else if (name == "ant.component.drawer") {
                             const auto owner = pages.target("gallery.sample.drawer.account");
                             for (const auto& button : app.mounted_buttons()) {
@@ -883,7 +888,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                             }
                         } else if (name == "ant.component.app") {
                             for (const auto id : {"gallery.app.open", "gallery.app.update", "gallery.app.language",
-                                                  "gallery.app.close", "gallery.app.result"}) {
+                                                  "gallery.app.close", "gallery.app.result", "gallery.app.modal",
+                                                  "gallery.app.drawer", "gallery.app.popconfirm"}) {
                                 add(id);
                             }
                         } else if (name == "ant.component.progress") {
@@ -915,6 +921,54 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     return targets;
                 },
                 [&](runtime::ComponentId id) {
+                    if (route.component_identity == "ant.component.popconfirm" &&
+                        (id == pages.target("gallery.popconfirm.hover") ||
+                         id == pages.target("gallery.popconfirm.context") ||
+                         id == pages.target("gallery.popconfirm.motion"))) {
+                        events.acceptance_time = events.now();
+                        app.services().set_motion_preference(animation::MotionPreference::normal);
+                        const auto rect = bounds(id);
+                        const bool hover = id == pages.target("gallery.popconfirm.hover");
+                        const bool context = id == pages.target("gallery.popconfirm.context");
+                        pointer(input::PointerAction::move, {rect.x + rect.width / 2, rect.y + rect.height / 2});
+                        if (context) {
+                            for (const auto action : {input::PointerAction::down, input::PointerAction::up}) {
+                                pages.dispatch(input::PointerInputEvent{
+                                    input::PointerIdentity::mouse(), action, input::PointerButton::secondary,
+                                    rect.x + rect.width / 2, rect.y + rect.height / 2});
+                            }
+                        } else if (!hover) {
+                            click(id);
+                        }
+                        events.acceptance_time = events.now() + animation::AnimationDuration::microseconds(100000);
+                        render();
+                        auto& host = app.services().popconfirm();
+                        const auto owner = std::ranges::find_if(
+                            host.mounted(), [&](auto popup) { return owns(app, id, host.snapshot(popup).trigger); });
+                        check(owner != host.mounted().end(), "native Popconfirm trigger owner is missing");
+                        check(host.snapshot(*owner).geometry.visible, "native Popconfirm trigger did not open");
+                        events.acceptance_time = events.now() + animation::AnimationDuration::microseconds(50000);
+                        render();
+                        const auto mid = host.snapshot(*owner);
+                        if (hover) {
+                            check(mid.transitioning && mid.opacity > 0 && mid.opacity < 1,
+                                  "native Popconfirm hover animation has no intermediate frame");
+                        }
+                        if (context) {
+                            check(mid.geometry.anchor.width == 0 && mid.geometry.anchor.height == 0,
+                                  "native Popconfirm context anchor is not the pointer");
+                        }
+                        const auto name = "ant.component.popconfirm-motion-" + std::to_string(i) +
+                                          (hover     ? "-hover.bmp"
+                                           : context ? "-context.bmp"
+                                                     : "-click.bmp");
+                        check(renderer.save_frame_bmp(options.output.parent_path() / name),
+                              "native Popconfirm intermediate readback failed");
+                        events.acceptance_time = events.now() + animation::AnimationDuration::microseconds(200000);
+                        render();
+                        check(!host.snapshot(*owner).transitioning, "native Popconfirm animation did not settle");
+                        return;
+                    }
                     const bool listy = route.component_identity == "ant.component.listy";
                     const auto listy_owner = listy ? pages.target("gallery.listy.retained") : runtime::ComponentId{};
                     if (listy && !retained_listy_editor) {
@@ -973,6 +1027,25 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     const auto rect = bounds(id);
                     pointer(input::PointerAction::move, {rect.x + rect.width / 2, rect.y + rect.height / 2});
                     click(id);
+                    if (route.component_identity == "ant.component.app" &&
+                        (id == pages.target("gallery.app.modal") || id == pages.target("gallery.app.drawer") ||
+                         id == pages.target("gallery.app.popconfirm"))) {
+                        events.acceptance_time = events.now() + animation::AnimationDuration::microseconds(400000);
+                        render();
+                        if (id == pages.target("gallery.app.modal")) {
+                            const auto& host = app.services().modal();
+                            check(!host.mounted().empty() && host.snapshot(host.mounted().back()).paint_visible,
+                                  "native App Modal service did not paint");
+                        } else if (id == pages.target("gallery.app.drawer")) {
+                            const auto& host = app.services().modal();
+                            check(!host.mounted().empty() && host.snapshot(host.mounted().back()).paint_visible,
+                                  "native App Drawer service did not paint");
+                        } else {
+                            const auto& host = app.services().popconfirm();
+                            check(!host.mounted().empty() && host.snapshot(host.mounted().back()).geometry.visible,
+                                  "native App Popconfirm service did not open");
+                        }
+                    }
                     if (listy && retained_listy_editor) {
                         const auto& editor = *retained_listy_editor;
                         const auto snapshot = app.services().listy().snapshot(listy_owner);
@@ -1016,6 +1089,11 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 [&] {
                     pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::down});
                     pages.dispatch(input::KeyboardInputEvent{input::Key::escape, input::KeyAction::up});
+                    if (route.component_identity == "ant.component.popconfirm" ||
+                        route.component_identity == "ant.component.app") {
+                        events.acceptance_time = events.now() + animation::AnimationDuration::microseconds(400000);
+                        render();
+                    }
                 },
                 [&] {
                     auto& decorations = app.services().decorations();

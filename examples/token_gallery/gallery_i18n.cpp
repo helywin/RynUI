@@ -4616,33 +4616,28 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
                  {MessageKey{u8"gallery.ant.component.popconfirm.name", String{u8"Popconfirm"}},
                   String{u8"Popconfirm 气泡确认框"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.popconfirm.summary",
-                      String{u8"Popconfirm provides retained pointer/keyboard-triggered confirmation, actual "
-                             u8"confirm/cancel buttons, loading and focus restoration. Gallery includes controlled "
-                             u8"completion and Drawer composition; native results remain separate."}},
-                  String{
-                      u8"已实现点击/键盘触发的保留式气泡确认、真实确认取消按钮、加载与焦点恢复；Gallery 包含受控完成和 "
-                      u8"Drawer 内组合，原生平台验收独立记录。"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.popconfirm.supported",
-                      String{u8"controlled/default visibility, disabled, confirmLoading/showCancel and typed "
-                             u8"trigger/title/description slots · real small Buttons, native trigger activation, "
-                             u8"outside/Escape closing and focus restoration · twelve placements, arrow/flip/clamp, "
-                             u8"Modal and child popup ownership with Component Token"}},
-                  String{u8"受控/默认显隐、禁用、confirmLoading/showCancel 与 typed "
-                         u8"触发器/标题/说明；真实小号按钮、原生激活、外部/Escape "
-                         u8"关闭与焦点恢复；十二方位、箭头/翻转/钳制、Modal/子弹层归属及 Token。353 源码的 App "
-                         u8"动态服务已接入 "
-                         u8"Gallery，等待父端运行验证。"}},
+                 {MessageKey{u8"gallery.ant.component.popconfirm.summary",
+                             String{u8"Native Popconfirm supports composed triggers, real button properties, finite "
+                                    u8"motion, RTL, joint arrow coverage and captured App asynchronous confirmation."}},
+                  String{u8"原生 Popconfirm 支持组合触发、按钮属性、有限动画、RTL、联合箭头填充及 App 异步确认服务。"}},
+                 {MessageKey{u8"gallery.ant.component.popconfirm.supported",
+                             String{u8"Retained controlled/default popups and rich editors; "
+                                    u8"Click/Hover/Focus/ContextMenu/Manual and composed triggers; actual ButtonProps "
+                                    u8"with current eligibility; inherited RTL; reversible finite presentation and "
+                                    u8"terminal service futures; a single transparent-alpha bubble/arrow fill."}},
+                  String{u8"controlled/default visibility, disabled, confirmLoading/showCancel and typed "
+                         u8"trigger/title/description slots；real small Buttons, native trigger activation, "
+                         u8"outside/Escape closing and focus restoration；twelve placements, arrow/flip/clamp, Modal "
+                         u8"and child popup ownership with Component Token；Click/Hover/Focus/ContextMenu/Manual and "
+                         u8"composed triggers, finite enter/leave deadlines and native trigger eligibility；arbitrary "
+                         u8"real ButtonProps with post-callback loading/disabled checks; inherited RTL and retained "
+                         u8"rich editing；finite reversible presentation, immediate exit input blocking and terminal "
+                         u8"service futures/callbacks；single coverage bubble/arrow fill with transparent-alpha "
+                         u8"correctness and captured App asynchronous confirmation"}},
                  {MessageKey{
                       u8"gallery.ant.component.popconfirm.missing",
-                      String{
-                          u8"Promise/static service, hover/contextMenu triggers and arbitrary ButtonProps forwarding "
-                          u8"· activation animation, RTL and native accessibility bridge"}},
-                  String{u8"353 的动态服务源码待父端本次组合验证；hover/contextMenu 触发、任意 ButtonProps "
-                         u8"透传、激活动画/RTL "
-                         u8"和原生辅助技术桥按独立合同追踪。"}},
+                      String{u8"Web DOM/CSS compatibility aliases and OS accessibility adapters remain separate."}},
+                  String{u8"Web/DOM/CSS compatibility aliases and OS accessibility adapters remain separate"}},
                  {MessageKey{u8"gallery.ant.component.progress.name", String{u8"Progress"}},
                   String{u8"Progress 进度条"}},
                  {MessageKey{u8"gallery.ant.component.progress.summary",
@@ -4813,30 +4808,24 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                  {MessageKey{u8"gallery.ant.component.app.name", String{u8"App"}}, String{u8"App 包裹组件"}},
                  {MessageKey{
                       u8"gallery.ant.component.app.summary",
-                      String{
-                          u8"App supplies live-context Message/Notification services. The 353 source dependency adds "
-                          u8"retained Modal/Drawer/Popconfirm panels and async confirmation; this Gallery integration "
-                          u8"awaits parent runtime validation."}},
-                  String{u8"App 提供活上下文 Message/Notification 服务；353 源码依赖新增保留式 Modal/Drawer/Popconfirm "
-                         u8"与异步确认，本次 Gallery 组合等待父端运行验证。"}},
+                      String{u8"Native App provides live-context Message/Notification and Modal/Drawer/Popconfirm "
+                             u8"services, retained updates, asynchronous confirmation and terminal futures."}},
+                  String{u8"原生 App 提供活上下文 Message/Notification、Modal/Drawer/Popconfirm "
+                         u8"服务、保留内容更新、异步确认及终帧 future。"}},
                  {MessageKey{
                       u8"gallery.ant.component.app.supported",
-                      String{u8"Retained App/AppRef/useApp, captured live theme/config, real Message/Notification "
-                             u8"holders and generation-safe handles. The 353 dependency adds retained "
-                             u8"Modal/Drawer/Popconfirm services and async confirmation; Gallery actions and bilingual "
-                             u8"feedback are integrated in source, pending parent runtime validation."}},
-                  String{u8"保留 App/AppRef/useApp、捕获活 theme/config、真实 Message/Notification holder "
-                         u8"及代际安全句柄。353 "
-                         u8"源码新增 Modal/Drawer/Popconfirm 动态面板、富内容保留与异步确认；本次 Gallery "
-                         u8"已接入操作和双语状态，实际验收由父端运行。"}},
+                      String{u8"Typed App/useApp and real notice holders; captured live theme/config; retained panel "
+                             u8"updates; asynchronous ConfirmAction, source and anchor retirement; shared overlay "
+                             u8"input authority; finite presentation completion and generation-safe futures."}},
+                  String{u8"retained App/AppRef/useApp, captured live theme/config, real Message/Notification holders "
+                         u8"and generation-safe handles；real Modal/Drawer/Popconfirm services with captured live "
+                         u8"context, retained update, asynchronous ConfirmAction and generation-safe terminal "
+                         u8"futures；shared overlay input authority, source/anchor retirement, cancellation, error "
+                         u8"recovery and finite presentation completion"}},
                  {MessageKey{
                       u8"gallery.ant.component.app.missing",
-                      String{u8"The 353 Modal/Drawer/Popconfirm services are present in the source baseline; parent "
-                             u8"combination/platform validation remains required. Linux/Wayland/Vulkan, system IME and "
-                             u8"accessibility remain independent; full Web/DOM/CSS APIs are excluded."}},
-                  String{u8"353 的 Modal/Drawer/Popconfirm "
-                         u8"服务已是本次源码依赖，组合及平台结果由父端实际验证；Linux/Wayland/Vulkan、系统 IME "
-                         u8"和辅助技术独立；完整 Web/DOM/CSS API 不属原生子集。"}},
+                      String{u8"Web DOM/CSS compatibility aliases and OS accessibility adapters remain separate."}},
+                  String{u8"Web/DOM/CSS compatibility aliases and OS accessibility adapters remain separate"}},
                  {MessageKey{u8"gallery.ant.component.border-beam.name", String{u8"BorderBeam"}},
                   String{u8"BorderBeam 边框流光"}},
                  {MessageKey{
@@ -5835,6 +5824,12 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                  {MessageKey{u8"gallery.modal.basic.caption", String{u8"Basic confirmation"}}, String{u8"基础确认"}},
                  {MessageKey{u8"gallery.modal.motion.caption", String{u8"Animated, movable and resizable dialog"}},
                   String{u8"动画、拖动与缩放"}},
+                 {MessageKey{u8"gallery.popconfirm.hover.caption", String{u8"Hover to confirm"}}, String{u8"悬停确认"}},
+                 {MessageKey{u8"gallery.popconfirm.context.caption", String{u8"Right-click to confirm"}},
+                  String{u8"右键确认"}},
+                 {MessageKey{u8"gallery.popconfirm.motion.caption",
+                             String{u8"Animated confirmation with custom buttons"}},
+                  String{u8"动画确认与自定义按钮"}},
                  {MessageKey{u8"gallery.modal.centered.caption", String{u8"Vertically centered"}},
                   String{u8"垂直居中"}},
                  {MessageKey{u8"gallery.modal.component-theme.caption", String{u8"Scoped dialog theme"}},

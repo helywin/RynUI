@@ -1142,7 +1142,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = page_frame_definition({"button"});
-    require(definition.stable_test_ids.size() == 486, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 490, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {

@@ -173,6 +173,17 @@ foreach(case IN ITEMS context scroll popup_motion locale timer statistic_motion 
 endforeach()
 
 add_executable(rynui_drawer_motion_tests drawer_motion_tests.cpp)
+add_executable(rynui_popconfirm_completion_tests popconfirm_completion_tests.cpp)
+rynui_configure_cpp_target(rynui_popconfirm_completion_tests)
+target_link_libraries(rynui_popconfirm_completion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_popconfirm_completion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(popconfirm_completion_case hover context buttons motion rtl_retained service)
+    add_test(NAME rynui.popconfirm_completion_${popconfirm_completion_case}
+        COMMAND rynui_popconfirm_completion_tests ${popconfirm_completion_case})
+endforeach()
+
 add_executable(rynui_modal_completion_tests modal_completion_tests.cpp)
 rynui_configure_cpp_target(rynui_modal_completion_tests)
 target_link_libraries(rynui_modal_completion_tests PRIVATE rynui_components)

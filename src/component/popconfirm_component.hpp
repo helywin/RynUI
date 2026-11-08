@@ -31,6 +31,9 @@ struct PopconfirmSnapshot final {
     runtime::ComponentId cancel;
     runtime::ComponentId description;
     TooltipSnapshot geometry;
+    bool paint_visible{};
+    bool transitioning{};
+    float opacity{};
 };
 
 class PopconfirmComponentHost final : public WindowComponentParticipant {
@@ -58,6 +61,10 @@ public:
     [[nodiscard]] std::function<void()> detach_action(runtime::ComponentId) noexcept;
     std::size_t tick_auxiliary(animation::AnimationTime) override;
     std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
+    void synchronize_auxiliary_motion() override;
+    bool synchronize_auxiliary_fragments() override;
+    [[nodiscard]] bool presentation_enabled(runtime::ComponentId) const;
+    void arm_service_close(runtime::ComponentId);
 
 private:
     void refresh(runtime::ComponentId id);
@@ -66,9 +73,11 @@ private:
     void confirm(runtime::ComponentId id);
     void cancel(runtime::ComponentId id);
     void update_theme(runtime::ComponentId id, bool geometry);
+    void observe(runtime::ComponentId id, animation::AnimationTime time);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     bool window_active_{true};
+    animation::MonotonicTimeCursor clock_;
     std::shared_ptr<int> lifetime_{std::make_shared<int>(0)};
 };
 } // namespace ryn::detail

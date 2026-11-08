@@ -3,6 +3,7 @@
 #include <ryn/tooltip.hpp>
 #include <ryn/component_locales.hpp>
 #include <ryn/confirm_action.hpp>
+#include <ryn/button.hpp>
 
 namespace ryn {
 namespace detail {
@@ -27,6 +28,8 @@ private:
 };
 
 using PopconfirmPlacement = TooltipPlacement;
+using PopconfirmTriggerMode = TooltipTriggerMode;
+using PopconfirmTriggers = TooltipTriggers;
 
 struct PopconfirmTriggerSlot final {};
 
@@ -156,6 +159,53 @@ public:
         return *this;
     }
 
+    PopconfirmProps& trigger(Prop<PopconfirmTriggerMode> value) {
+        trigger_ = std::move(value);
+        triggers_.reset();
+        return *this;
+    }
+
+    PopconfirmProps& triggers(Prop<PopconfirmTriggers> value) {
+        triggers_ = std::move(value);
+        return *this;
+    }
+
+    PopconfirmProps& mouseEnterDelay(Prop<Duration> value) {
+        enter_ = std::move(value);
+        return *this;
+    }
+
+    PopconfirmProps& mouseLeaveDelay(Prop<Duration> value) {
+        leave_ = std::move(value);
+        return *this;
+    }
+
+    PopconfirmProps& direction(Prop<TextDirection> value) {
+        direction_ = std::move(value);
+        direction_set_ = true;
+        return *this;
+    }
+
+    PopconfirmProps& animated(Prop<bool> value = true) {
+        animated_ = std::move(value);
+        return *this;
+    }
+
+    PopconfirmProps& okButtonProps(ButtonProps value) {
+        ok_button_ = std::move(value);
+        return *this;
+    }
+
+    PopconfirmProps& cancelButtonProps(ButtonProps value) {
+        cancel_button_ = std::move(value);
+        return *this;
+    }
+
+    PopconfirmProps& afterOpenChange(std::function<void(bool)> value) {
+        after_open_ = std::move(value);
+        return *this;
+    }
+
     PopconfirmProps& onOpenChange(std::function<void(bool)> value) {
         on_open_ = std::move(value);
         return *this;
@@ -201,6 +251,16 @@ private:
     Prop<bool> arrow_{true};
     Prop<bool> point_at_center_{false};
     Prop<bool> adjust_{true};
+    Prop<PopconfirmTriggerMode> trigger_{PopconfirmTriggerMode::Click};
+    std::optional<Prop<PopconfirmTriggers>> triggers_;
+    Prop<Duration> enter_{Duration::milliseconds(100)};
+    Prop<Duration> leave_{Duration::milliseconds(100)};
+    Prop<TextDirection> direction_{TextDirection::LeftToRight};
+    bool direction_set_{};
+    Prop<bool> animated_{false};
+    std::optional<ButtonProps> ok_button_;
+    std::optional<ButtonProps> cancel_button_;
+    std::function<void(bool)> after_open_;
     std::function<void(bool)> on_open_;
     std::function<void()> on_confirm_;
     std::function<void()> on_cancel_;

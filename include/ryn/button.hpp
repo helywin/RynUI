@@ -22,6 +22,7 @@ namespace detail {
 
 struct ButtonPropsAccess;
 struct SearchPropsAccess;
+class PopconfirmComponentHost;
 struct ButtonRefState;
 
 } // namespace detail
@@ -131,6 +132,7 @@ private:
     friend struct detail::ConfigDefaults;
     friend struct detail::ButtonPropsAccess;
     friend struct detail::SearchPropsAccess;
+    friend class detail::PopconfirmComponentHost;
 
     Prop<ButtonType> type_{ButtonType::Default};
     std::optional<Prop<ButtonColor>> color_;
