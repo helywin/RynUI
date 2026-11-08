@@ -24,7 +24,39 @@ foreach(shader_name IN ITEMS
         image.vertex.dxil
         image.fragment.dxil
         image.vertex.spv
-        image.fragment.spv)
+        image.fragment.spv
+        quad_composition.vertex.dxil
+        quad_composition.vertex.spv
+        quad_composition.fragment.dxil
+        quad_composition.fragment.spv
+        glyph_composition.vertex.dxil
+        glyph_composition.vertex.spv
+        glyph_composition.fragment.dxil
+        glyph_composition.fragment.spv
+        image_composition.vertex.dxil
+        image_composition.vertex.spv
+        image_composition.fragment.dxil
+        image_composition.fragment.spv
+        rounded_effect_composition.vertex.dxil
+        rounded_effect_composition.vertex.spv
+        rounded_effect_composition.fragment.dxil
+        rounded_effect_composition.fragment.spv
+        rounded_effect_paint_composition.vertex.dxil
+        rounded_effect_paint_composition.vertex.spv
+        rounded_effect_paint_composition.fragment.dxil
+        rounded_effect_paint_composition.fragment.spv
+        masked_group.vertex.dxil
+        masked_group.vertex.spv
+        masked_group.fragment.dxil
+        masked_group.fragment.spv
+        backdrop_filter.vertex.dxil
+        backdrop_filter.vertex.spv
+        backdrop_filter.fragment.dxil
+        backdrop_filter.fragment.spv
+        backdrop_composite.vertex.dxil
+        backdrop_composite.vertex.spv
+        backdrop_composite.fragment.dxil
+        backdrop_composite.fragment.spv)
     set(shader_path "${SHADER_DIRECTORY}/${shader_name}")
     if(NOT EXISTS "${shader_path}")
         message(FATAL_ERROR "Generated shader is missing: ${shader_path}")
@@ -45,7 +77,7 @@ foreach(shader_name IN ITEMS
     endif()
 endforeach()
 
-foreach(shader_name IN ITEMS glyph rounded_effect rounded_effect_paint image)
+foreach(shader_name IN ITEMS glyph rounded_effect rounded_effect_paint image quad_composition glyph_composition image_composition rounded_effect_composition rounded_effect_paint_composition masked_group backdrop_filter backdrop_composite)
 foreach(glyph_stage IN ITEMS vertex fragment)
     set(glyph_reflection "${SHADER_DIRECTORY}/${shader_name}.${glyph_stage}.json")
     if(NOT EXISTS "${glyph_reflection}")

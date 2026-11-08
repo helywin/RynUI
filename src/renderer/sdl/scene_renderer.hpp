@@ -151,6 +151,14 @@ public:
     }
 
     [[nodiscard]] const SceneRendererCounters& counters() const noexcept;
+    void* create_composition_target(CompositionTargetSpec) override;
+    void release_composition_target(void*) noexcept override;
+    void* create_composition_weights(std::size_t) override;
+    bool upload_composition_weights(void*, std::span<const std::byte>) override;
+    void release_composition_weights(void*) noexcept override;
+    bool composition_fence_complete(std::uint64_t) override;
+    void wait_composition_fence(std::uint64_t) noexcept override;
+    void trim_idle_composition() noexcept override;
     bool begin_upload_batch() override;
     bool finish_upload_batch() override;
     void cancel_upload_batch() noexcept override;
@@ -173,7 +181,9 @@ private:
         texture,
         sampler,
         image_texture,
-        image_buffer
+        image_buffer,
+        composition_target,
+        composition_weights
     };
     static ResourceKind effect_paint_resource_kind(EffectPaintBufferKind kind);
     bool ensure_effect_paint_pipeline(bool cap_geometry = false);
@@ -195,6 +205,17 @@ private:
     void release_resource(void* handle, ResourceKind kind) noexcept;
     [[nodiscard]] void* native_resource(void* handle, ResourceKind kind) const;
 
+    bool ensure_composition_pipelines();
+    bool ensure_backdrop_pipelines();
+    void execute_backdrop(void* command, const CompositionFrame&, std::uint32_t request);
+    void execute_composition(void* command);
+    runtime::FrameSubmissionResult submit_composition();
+    std::uint64_t store_composition_fence(void* fence);
+    std::array<void*, 8> composition_pipelines_{};
+    std::unordered_map<std::uint64_t, void*> composition_fences_;
+    std::uint64_t next_composition_fence_{};
+    std::uint64_t completed_composition_fence_{};
+    bool composition_active_{};
     PlatformState* platform_;
     SdlGpuBinding binding_;
     SceneBackendCapabilities capabilities_;

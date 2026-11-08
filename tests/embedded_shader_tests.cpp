@@ -18,7 +18,10 @@ int main(int argc, char** argv) {
         const std::filesystem::path directory{argv[1]};
         std::size_t total_bytes{};
         std::size_t shader_count{};
-        for (const auto name : std::array{"quad", "glyph", "rounded_effect", "rounded_effect_paint", "image"}) {
+        for (const auto name :
+             std::array{"quad", "glyph", "rounded_effect", "rounded_effect_paint", "image", "quad_composition",
+                        "glyph_composition", "image_composition", "rounded_effect_composition",
+                        "rounded_effect_paint_composition", "masked_group", "backdrop_filter", "backdrop_composite"}) {
             for (const auto stage : std::array{"vertex", "fragment"}) {
                 for (const auto format : std::array{"dxil", "spv"}) {
                     const auto filename = std::string{name} + "." + stage + "." + format;

@@ -1489,6 +1489,8 @@ void apply_modal_override(ModalThemeToken& token, const ModalTokenOverride& o) {
         fixed_length(o.focus_offset, token.effects.focus_offset, "Modal focus_offset must be non-negative");
     token.effects.focus_radius =
         fixed_length(o.focus_radius, token.effects.focus_radius, "Modal focus_radius must be non-negative");
+    token.effects.mask_blur_sigma = fixed_length(o.mask_blur_sigma, token.effects.mask_blur_sigma,
+                                                 "Modal mask_blur_sigma must be finite and non-negative");
     if (o.font_family) {
         token.typography.font_family = *o.font_family;
     }
@@ -3523,7 +3525,7 @@ serialize_snapshot(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, c
         }
         stream << modal_effects[i];
     }
-    stream << "],\"shadow\":[";
+    stream << "],\"maskBlurSigma\":" << modal.effects.mask_blur_sigma << ",\"shadow\":[";
     for (std::size_t i = 0; i < modal.effects.shadow.size(); ++i) {
         if (i) {
             stream << ',';
@@ -4158,6 +4160,7 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
     for (float value : modal.effects.values()) {
         hash_float(hash, value);
     }
+    hash_float(hash, modal.effects.mask_blur_sigma);
     hash_shadow(hash, modal.effects.shadow);
     hash_integer(hash, modal.z_index_popup);
     for (const auto color : drawer.colors.values()) {

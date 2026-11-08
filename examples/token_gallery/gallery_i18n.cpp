@@ -3852,34 +3852,30 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"Core/逻辑场景证据不代表 "
                          u8"Windows/MSVC、GPU、实际桌面或系统 IME 实测；平台集成由 63.3/64.3 单独记录"}},
                  {MessageKey{u8"gallery.ant.component.card.name", String{u8"Card"}}, String{u8"Card 卡片"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.card.summary",
-                      String{u8"Card Grid, Meta, retained Tabs, Image cover and loading passed MSVC HEADLESS "
-                             u8"Debug/Release and focused Windows hidden D3D12 checks. Arbitrary descendant rounded "
-                             u8"masking remains incomplete; status remains partial."}},
-                  String{u8"Card Grid、Meta、保留 Tabs、Image cover 与 loading 已通过 MSVC HEADLESS Debug/Release 和 "
-                         u8"Windows "
-                         u8"hidden D3D12 定向检查；任意后代圆角遮罩仍未完成，状态保持 partial。"}},
+                 {MessageKey{u8"gallery.ant.component.card.summary",
+                             String{u8"Native Card supports Grid, Meta, retained Tabs, Image covers, bounded loading "
+                                    u8"animation and shared rounded composition of ordinary descendants."}},
+                  String{u8"原生 Card 支持 Grid、Meta、保留 Tabs、Image cover、有限 loading "
+                         u8"动画与任意普通后代的共同圆角合成。"}},
                  {MessageKey{
                       u8"gallery.ant.component.card.supported",
-                      String{u8"typed reactive Props and body/title/extra/cover/actions slots · default/small, "
-                             u8"outlined/borderless and hover across nested controls · retained loading placeholder "
-                             u8"with body "
-                             u8"focus/input/popup cleanup and editor state restoration · Card Component Token, precise "
-                             u8"invalidation, logical translation/clipping and idle cleanup · 107 Grid/Meta/keyed "
-                             u8"Tabs, Image "
-                             u8"cover composition and bounded loading pulse; MSVC CPU and Windows hidden GPU checks"}},
-                  String{u8"typed 响应属性与正文/标题/extra/封面/actions slot；默认/小号、描边/无边框及嵌套控件 "
-                         u8"hover；保留加载占位，正文焦点/输入/弹层清理及编辑状态恢复；独立 "
-                         u8"Token、精确失效、逻辑平移/裁剪与 "
-                         u8"idle；107 Grid/Meta/键控 Tabs、Image 封面、有界加载脉冲；已记录 MSVC CPU 与 Windows hidden "
-                         u8"GPU "
-                         u8"定向检查。"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.card.missing",
-                      String{u8"arbitrary descendant rounded mask requires a shared Core/renderer contract · complete "
-                             u8"Web/DOM/CSS API"}},
-                  String{u8"任意后代圆角遮罩仍需共同 Core/renderer 合同；完整 Web/DOM/CSS API 不属当前子集。"}},
+                      String{
+                          u8"Typed reactive content, Grid/Meta/keyed Tabs and shared Image covers; retained editors "
+                          u8"and bounded loading motion; optional shared rounded composition of text, images, effects, "
+                          u8"child shadows and focus rings, with matching hit geometry and atomic resource retry."}},
+                  String{u8"typed reactive Props and body/title/extra/cover/actions slots；default/small, "
+                         u8"outlined/borderless and hover across nested controls；retained loading placeholder with "
+                         u8"body focus/input/popup cleanup and editor state restoration；Card Component Token, precise "
+                         u8"invalidation, logical translation/clipping and idle cleanup；Grid/Meta/keyed Tabs, shared "
+                         u8"Image cover and bounded loading pulse；optional rounded descendant composition across "
+                         u8"Quad/Glyph/Image/Effect, child shadows and focus rings; retained editors and rounded hit "
+                         u8"geometry；ancestor hard clip updates, nested mask coverage and atomic resource "
+                         u8"failure/retry; cold path allocates no composition resources"}},
+                 {MessageKey{u8"gallery.ant.component.card.missing",
+                             String{u8"Web DOM/CSS interfaces are outside the native API. System IME and OS "
+                                    u8"accessibility adapters require their own platform evidence."}},
+                  String{u8"Web/DOM/CSS interfaces are outside the native API; system IME and OS accessibility "
+                         u8"adapters require their own platform evidence"}},
                  {MessageKey{u8"gallery.ant.component.carousel.name", String{u8"Carousel"}},
                   String{u8"Carousel 走马灯"}},
                  {MessageKey{
@@ -4568,35 +4564,28 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                 {{MessageKey{u8"gallery.ant.component.modal.name", String{u8"Modal"}}, String{u8"Modal 对话框"}},
                  {MessageKey{
                       u8"gallery.ant.component.modal.summary",
-                      String{
-                          u8"Controlled Modal, retained content, nested window layers, focus management and bounded "
-                          u8"viewport "
-                          u8"body scrolling are implemented. Common and native platform acceptance remain separate."}},
-                  String{u8"已实现受控对话框、保留内容、嵌套窗口层、焦点管理与有限视口正文滚动；平台通用验证与原生窗口"
-                         u8"验收独立记"
-                         u8"录。"}},
+                      String{u8"Native Modal provides controlled input boundaries, retained editing, captured App and "
+                             u8"asynchronous confirmation services, and real Gaussian backdrop filtering."}},
+                  String{u8"原生 Modal 已具备受控输入边界、保留编辑、App 动态及异步确认服务，并支持真实前序背景 "
+                         u8"Gaussian 模糊。"}},
                  {MessageKey{
                       u8"gallery.ant.component.modal.supported",
-                      String{
-                          u8"typed reactive Props, retained ModalContent/title/footer slots and controlled OK/cancel "
-                          u8"requests · mask/keyboard/close/footer/loading states, lifecycle notifications and Modal "
-                          u8"Component Token · topmost logical input boundary, nested layers, focus trap/restoration "
-                          u8"and IME/popup Escape priority · window clipping, fixed header/footer, pixel-aligned body "
-                          u8"scroll and focused editor/caret reveal"}},
-                  String{
-                      u8"typed 响应属性、保留 ModalContent/标题/页尾及受控确认/取消；遮罩/键盘/关闭/加载、生命周期与 "
-                      u8"Token；顶层逻辑输入域、嵌套、焦点约束/恢复、IME/弹层 Escape "
-                      u8"优先；窗口裁剪、固定页头页尾、像素对齐正文滚动及编辑器/caret 显露。353 源码新增 App "
-                      u8"保留面板与异步确认，Gallery 操作已接入，运行结果由父端验证。"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.modal.missing",
-                      String{u8"static confirm/Promise services, lazy/destroyOnHidden and activation animation · "
-                             u8"drag/resize, mask blur, RTL, responsive breakpoint widths and native accessibility "
-                             u8"bridge · Web/DOM/CSS compatibility aliases"}},
-                  String{u8"353 "
-                         u8"的动态服务源码待父端本次组合验证；拖动/"
-                         u8"resize、遮罩模糊、RTL、响应断点宽度和原生辅助技术桥按各自合同追踪；Web/DOM/CSS "
-                         u8"兼容别名不提供。"}},
+                      String{u8"Controlled dialogs, retained typed content, nested focus and input boundaries, fixed "
+                             u8"header/footer and scrolling; captured App services and asynchronous confirmation; "
+                             u8"optional framebuffer-prefix Gaussian blur with correct premultiplied alpha."}},
+                  String{u8"typed reactive Props, retained ModalContent/title/footer slots and controlled OK/cancel "
+                         u8"requests；mask/keyboard/close/footer/loading states, lifecycle notifications and Modal "
+                         u8"Component Token；topmost logical input boundary, nested layers, focus trap/restoration and "
+                         u8"IME/popup Escape priority；window clipping, fixed header/footer, pixel-aligned body scroll "
+                         u8"and focused editor/caret reveal；captured App dynamic services and asynchronous "
+                         u8"confirmation with retained content；opt-in real framebuffer-prefix Gaussian backdrop with "
+                         u8"independent mask activation and PM alpha correctness"}},
+                 {MessageKey{u8"gallery.ant.component.modal.missing",
+                             String{u8"Lazy content, destroy-on-hidden, activation motion, dragging, resizing, full "
+                                    u8"RTL and responsive widths remain tracked. OS accessibility adapters and Web "
+                                    u8"DOM/CSS interfaces are separate."}},
+                  String{u8"lazy/destroyOnHidden, activation animation, drag/resize, full RTL and responsive "
+                         u8"breakpoint widths；native accessibility bridge and Web/DOM/CSS compatibility aliases"}},
                  {MessageKey{u8"gallery.ant.component.notification.name", String{u8"Notification"}},
                   String{u8"Notification 通知提醒框"}},
                  {MessageKey{
@@ -6291,10 +6280,50 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                  {MessageKey{u8"gallery.sample.config-provider.context.title",
                              String{u8"Scoped defaults and retained editing"}},
                   String{u8"作用域默认值与保留编辑"}}});
+        },
+        [](std::vector<GalleryMessageDefinition>& target) {
+            target.insert(
+                target.end(),
+                {{MessageKey{u8"gallery.sample.card.rounded-mask.title",
+                             String{u8"Rounded content and retained editing"}},
+                  String{u8"圆角内容与保留编辑"}},
+                 {MessageKey{u8"gallery.sample.modal.backdrop.title", String{u8"Background blur and mask options"}},
+                  String{u8"背景模糊与遮罩选择"}},
+                 {MessageKey{u8"gallery.composition.card.toggle", String{u8"Toggle rounded content clipping"}},
+                  String{u8"切换圆角内容裁剪"}},
+                 {MessageKey{u8"gallery.composition.card.enabled", String{u8"Rounded clipping enabled"}},
+                  String{u8"圆角裁剪已启用"}},
+                 {MessageKey{u8"gallery.composition.card.overflow", String{u8"Allow content overflow"}},
+                  String{u8"允许内容溢出"}},
+                 {MessageKey{u8"gallery.composition.card.draft", String{u8"Keep this note while toggling clipping"}},
+                  String{u8"保留此备注后切换裁剪"}},
+                 {MessageKey{u8"gallery.composition.card.action", String{u8"Action inside the card"}},
+                  String{u8"卡片内的操作"}},
+                 {MessageKey{u8"gallery.composition.card.description",
+                             String{u8"Cover, content and actions share the card corners"}},
+                  String{u8"封面、正文与操作共享卡片圆角"}},
+                 {MessageKey{u8"gallery.composition.modal.description",
+                             String{u8"Edit the background note, then open a dialog to inspect it"}},
+                  String{u8"更改背景备注，再打开对话框查看当前背景"}},
+                 {MessageKey{u8"gallery.composition.modal.background", String{u8"Customer details and notes"}},
+                  String{u8"客户资料与备注"}},
+                 {MessageKey{u8"gallery.composition.modal.blur", String{u8"Open a dialog with background blur"}},
+                  String{u8"打开背景模糊对话框"}},
+                 {MessageKey{u8"gallery.composition.modal.tint", String{u8"Use a solid mask"}},
+                  String{u8"使用纯色遮罩"}},
+                 {MessageKey{u8"gallery.composition.modal.none", String{u8"No mask"}}, String{u8"无遮罩"}},
+                 {MessageKey{u8"gallery.composition.modal.service", String{u8"Open a service dialog"}},
+                  String{u8"打开服务对话框"}},
+                 {MessageKey{u8"gallery.composition.modal.confirm", String{u8"Confirm action"}}, String{u8"操作确认"}},
+                 {MessageKey{u8"gallery.composition.modal.update", String{u8"Confirm this customer details update"}},
+                  String{u8"请确认本次客户资料更新"}},
+                 {MessageKey{u8"gallery.composition.modal.title", String{u8"Customer details"}}, String{u8"客户资料"}},
+                 {MessageKey{u8"gallery.composition.modal.note", String{u8"Notes inside the dialog"}},
+                  String{u8"对话框中的备注"}}});
         }};
     static const auto declarations = [] {
         std::vector<GalleryMessageDefinition> result;
-        result.reserve(2169);
+        result.reserve(2187);
         for (const auto append : append_batches) {
             append(result);
         }

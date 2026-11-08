@@ -1,6 +1,9 @@
+#include "scene_pass.hlsli"
+#if defined(RYNUI_FRAGMENT_SHADER)
 SamplerState AtlasSampler : register(s0, space2);
 Texture2D<float> AtlasTexture : register(t0, space2);
 
+#endif
 struct VertexOutput {
     float4 position : SV_Position;
     float2 uv : TEXCOORD0;
@@ -10,6 +13,7 @@ struct VertexOutput {
     float opacity : TEXCOORD4;
 };
 
+#if defined(RYNUI_VERTEX_SHADER)
 VertexOutput VSMain(uint vertexId : SV_VertexID, float4 positionSize : TEXCOORD0, float4 uvRect : TEXCOORD1,
                     float4 clipBounds : TEXCOORD2, float4 color : TEXCOORD3, float4 translationOpacity : TEXCOORD4,
                     float4 rotationBasis : TEXCOORD5) {
@@ -27,9 +31,12 @@ VertexOutput VSMain(uint vertexId : SV_VertexID, float4 positionSize : TEXCOORD0
     output.clipBounds = clipBounds;
     output.color = color;
     output.opacity = translationOpacity.z;
+    output.position = ScenePassPosition(output.position);
     return output;
 }
+#endif
 
+#if defined(RYNUI_FRAGMENT_SHADER)
 float4 PSMain(VertexOutput input) : SV_Target0 {
     float clipDistance = min(min(input.clipPosition.x - input.clipBounds.x, input.clipBounds.z - input.clipPosition.x),
                              min(input.clipBounds.y - input.clipPosition.y, input.clipPosition.y - input.clipBounds.w));
@@ -37,3 +44,4 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
     float coverage = AtlasTexture.Sample(AtlasSampler, input.uv).r;
     return float4(input.color.rgb, input.color.a * input.opacity * coverage);
 }
+#endif

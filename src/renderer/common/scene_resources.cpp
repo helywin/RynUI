@@ -2,6 +2,7 @@
 #include "renderer/common/scene_buffer_capacity.hpp"
 
 #include <atomic>
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
 
@@ -18,6 +19,18 @@ bool SceneBackend::valid_attachment(const SceneAttachment& value) const noexcept
                        state->owner == owner_id() && value.epoch_ == device_epoch() && state->epoch == device_epoch() &&
                        value.revision_ == state->revision;
     if (!valid) {
+        return false;
+    }
+    if (value.scene_->composition()) {
+        if (!value.composition_ || !value.composition_->uploaded || value.composition_->owner != owner_id() ||
+            value.composition_->epoch != device_epoch() ||
+            value.composition_->plan.program.scene_revision != value.scene_->revision() ||
+            !std::ranges::equal(value.composition_->plan.commands, value.scene_->commands()) ||
+            value.composition_->plan.program.operations != value.scene_->composition()->operations ||
+            value.composition_->plan.program.requests != value.scene_->composition()->requests) {
+            return false;
+        }
+    } else if (value.composition_) {
         return false;
     }
     for (const auto& command : value.scene_->commands()) {
@@ -65,7 +78,7 @@ bool SceneBackend::attach_scene(const SceneAttachment& value) noexcept {
 }
 
 SceneResources::SceneResources(SceneBackend& backend)
-    : backend_(&backend), state_(std::make_shared<SceneResourceState>()) {
+    : backend_(&backend), state_(std::make_shared<SceneResourceState>()), composition_(backend) {
     validate_scene_capabilities(backend.capabilities());
     glyphs_ = std::make_unique<GlyphGpuResources>(backend);
     images_ = std::make_unique<ImageGpuResources>(backend);
@@ -79,6 +92,8 @@ SceneResources::~SceneResources() {
 }
 
 void SceneResources::abandon_stale_device() noexcept {
+    fence_retry_.reset();
+    composition_.abandon();
     if (images_) {
         images_->abandon_device();
     }
@@ -94,11 +109,13 @@ void SceneResources::abandon_stale_device() noexcept {
 }
 
 void SceneResources::retire() noexcept {
+    fence_retry_.reset();
     state_->ready = false;
     retry_required_ = true;
     if (state_->epoch != backend_->device_epoch()) {
         abandon_stale_device();
     }
+    composition_.retire();
     quads_.reset();
     images_.reset();
     glyphs_.reset();
@@ -106,6 +123,12 @@ void SceneResources::retire() noexcept {
 }
 
 void SceneResources::rollback(SceneCpuData data) noexcept {
+    if (state_->epoch != backend_->device_epoch()) {
+        composition_.abandon();
+    } else {
+        composition_.invalidate();
+    }
+    refresh_fence_retry();
     state_->ready = false;
     retry_required_ = true;
     if (images_) {
@@ -140,6 +163,11 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         validate_scene_device_metrics(data.metrics);
         const auto capabilities = backend_->capabilities();
         validate_scene_capabilities(capabilities);
+        CompositionPlan composition_plan;
+        if (data.composition_scene) {
+            composition_plan = pack_composition(*data.composition_scene, data.metrics, capabilities);
+        }
+        composition_.preflight(composition_plan, backend_->owner_id(), backend_->device_epoch(), capabilities);
         RoundedEffectGpuResources::preflight(data.effects, data.metrics, capabilities,
                                              state_->epoch == backend_->device_epoch() ? effects_.get() : nullptr);
         if (data.images && data.images->live_count() &&
@@ -210,6 +238,8 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
             timing->effects = std::chrono::steady_clock::now();
         }
         images_->synchronize(data.images, data.metrics);
+        composition_.synchronize(std::move(composition_plan), backend_->owner_id(), backend_->device_epoch(),
+                                 capabilities);
         if (!backend_->finish_upload_batch()) {
             backend_->cancel_upload_batch();
             rollback(data);
@@ -218,6 +248,7 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         active = false;
         state_->ready = true;
         retry_required_ = false;
+        refresh_fence_retry();
         if (timing) {
             timing->committed = std::chrono::steady_clock::now();
         }
@@ -229,6 +260,17 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         rollback(data);
         throw;
     }
+}
+
+void SceneResources::refresh_fence_retry() noexcept {
+    if (!composition_.waiting_for_fences()) {
+        fence_retry_.reset();
+        return;
+    }
+    constexpr auto interval = 16000;
+    const auto now = frame_time_.count_microseconds();
+    const auto maximum = std::numeric_limits<animation::AnimationTime::rep>::max();
+    fence_retry_ = animation::AnimationTime::microseconds(now > maximum - interval ? maximum : now + interval);
 }
 
 SceneAttachment SceneResources::attach(const graphics::OrderedScene& scene) const noexcept {
@@ -244,6 +286,7 @@ SceneAttachment SceneResources::attach(const graphics::OrderedScene& scene) cons
     result.scene_ = &scene;
     result.quad_count_ = quad_count_;
     result.glyph_count_ = glyph_count_;
+    result.composition_ = composition_.current();
     return result;
 }
 } // namespace ryn::detail

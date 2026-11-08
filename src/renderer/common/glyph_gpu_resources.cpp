@@ -224,6 +224,9 @@ void GlyphGpuResources::upload_instance_ranges(graphics::GlyphInstanceStore& ins
 }
 
 void draw_ordered_scene(const graphics::OrderedScene& scene, SceneDrawApi& api) {
+    if (scene.composition()) {
+        throw std::invalid_argument("Legacy draw interpreter cannot consume composition");
+    }
     for (const graphics::SceneDrawCommand command : scene.commands()) {
         switch (command.kind) {
         case graphics::SceneDrawKind::image:

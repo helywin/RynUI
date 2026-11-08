@@ -192,6 +192,7 @@ int run_card_acceptance(int argc, char** argv) {
                 viewport = {metrics.pixel_width / scale, metrics.pixel_height / scale};
                 const auto time = animation::AnimationTime::microseconds(++frame_number * 250'000);
                 (void)services.tick_animations(time);
+                services.set_display_scale(scale);
                 require(services.layout_and_synchronize(viewport, {0, 0, viewport.width, viewport.height}, {16, 12}),
                         "native Card layout failed");
                 require(resources.synchronize({&services.surfaces().instances(),
@@ -199,7 +200,9 @@ int run_card_acceptance(int argc, char** argv) {
                                                scene.glyph_scene().instances(),
                                                &services.rounded_effects(),
                                                {static_cast<std::uint32_t>(metrics.pixel_width),
-                                                static_cast<std::uint32_t>(metrics.pixel_height), scale}}),
+                                                static_cast<std::uint32_t>(metrics.pixel_height), scale},
+                                               &services.images(),
+                                               &services.scene_composer().ordered_scene()}),
                         "native Card GPU upload failed");
                 require(backend.attach_scene(resources.attach(services.scene_composer().ordered_scene())),
                         "native Card scene attachment failed");

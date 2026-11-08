@@ -20,6 +20,24 @@ enum class RecordingFailure { none, begin, create, upload, commit, upload_except
     value.effect_conic_fields = true;
     value.effect_underlays = true;
     value.cap_geometry_abi_version = cap_geometry_abi_version;
+    value.scene_composition_version = graphics::scene_composition_version;
+    value.rounded_clip_abi_version = rounded_clip_abi_version;
+    value.backdrop_filter_abi_version = backdrop_filter_abi_version;
+    value.masked_groups = true;
+    value.rounded_clip = true;
+    value.cropped_target_coordinates = true;
+    value.premultiplied_targets = true;
+    value.target_sampling = true;
+    value.gaussian_backdrop = true;
+    value.maximum_composition_target_width = 16384;
+    value.maximum_composition_target_height = 16384;
+    value.maximum_composition_bytes = 512ULL * 1024 * 1024;
+    value.maximum_composition_frames = 2;
+    value.maximum_composition_depth = 32;
+    value.maximum_composition_groups = 4096;
+    value.maximum_composition_ops = 1048576;
+    value.maximum_gaussian_radius = 256;
+    value.maximum_gaussian_weight_bytes = 16ULL * 1024 * 1024;
     return value;
 }
 
@@ -84,6 +102,32 @@ public:
     [[nodiscard]] std::span<const std::byte> buffer_bytes(void* handle) const;
     [[nodiscard]] std::span<const std::byte> texture_bytes(void* handle) const;
 
+    struct CompositionRecord final {
+        graphics::SceneCompositionOp operation;
+        void* target{};
+        void* source{};
+        void* filtered{};
+    };
+
+    [[nodiscard]] std::span<const CompositionRecord> composition_records() const noexcept {
+        return composition_records_;
+    }
+
+    void set_auto_complete_frames(bool value) noexcept {
+        auto_complete_frames_ = value;
+    }
+
+    void complete_frames() noexcept {
+        completed_composition_fence_ = composition_fence_;
+    }
+
+    void* create_composition_target(CompositionTargetSpec) override;
+    void release_composition_target(void*) noexcept override;
+    void* create_composition_weights(std::size_t) override;
+    bool upload_composition_weights(void*, std::span<const std::byte>) override;
+    void release_composition_weights(void*) noexcept override;
+    bool composition_fence_complete(std::uint64_t) override;
+    void wait_composition_fence(std::uint64_t) noexcept override;
     bool begin_upload_batch() override;
     bool finish_upload_batch() override;
     void cancel_upload_batch() noexcept override;
@@ -145,7 +189,9 @@ private:
         effect_link,
         effect_field,
         effect_stop,
-        cap_geometry
+        cap_geometry,
+        composition_target,
+        composition_weights
     };
     [[nodiscard]] static Kind paint_kind(EffectPaintBufferKind kind) noexcept;
 
@@ -190,6 +236,10 @@ private:
     std::vector<Upload> pending_;
     std::vector<RecordedDraw> draws_;
     RecordingCounters counters_;
+    std::vector<CompositionRecord> composition_records_;
+    std::uint64_t composition_fence_{};
+    std::uint64_t completed_composition_fence_{};
+    bool auto_complete_frames_{true};
 };
 
 } // namespace ryn::detail

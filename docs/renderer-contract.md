@@ -136,3 +136,15 @@ SceneCpuData 在旧五个 aggregate 成员后增加可选 ImageStore。SceneReso
 Core 内部 Node 的 paint opacity 是祖先相乘的纯绘制包络，与输入可达性独立。RetainedSurfaceService 保留未乘包络的 Quad 与 RoundedEffect 来源；创建、包络变化和 range remap 后从来源重新生成材质，零透明度恢复不会丢失原始值。Text/Icon/Input 的 glyph、选区、光标和直接 effect 使用同一祖先因子。Image 主图、PreviewGroup 与 Upload 缩略图及预览 canvas 发布 ImageInstance 时应用一次 content opacity 与 paint opacity 的乘积；其背景/焦点/遮罩由共同 surface 应用包络，不把已乘值再交给 renderer 全局缩放。该机制不创建下一帧请求；动画宿主仍须分别执行本帧 invalidation 与下一帧 deadline。输入禁用、焦点、capture、preedit 和 popup 的清理由组件的 input boundary 完成。logical CPU scene v3、既有 Quad/Glyph/RoundedEffect packed GPU ABI v2 和 Image 独立 ABI v2/112 bytes 均不变。
 
 圆角 Image 的 logical 分片具有互不重叠的实际 bounds 和相对于完整原图的 `source_uv`，所有片段保留同一个 pivot；packer 将 UV 子范围写入已有 `uv_rect` 并在原图坐标中翻转。圆角 coverage 仍使用已有 circle clip；矩形邻接处依靠共享边的三角形光栅化规则，不以 epsilon 裁剪制造缝隙。共同 ImageGpuResources 的 texture lease 仅在自身 device/owner/epoch 内按同一不可变 ImagePixels 身份共享；source 变更、upload retry、retire 与 abandon_device 保持独立代际和事务资格。该扩展不改变 logical scene v3 或任何 packed ABI。
+
+## Scene Composition v1（107）
+
+内部 program 仅包含 DrawRange、BeginMaskedGroup、EndMaskedGroup、Backdrop，绑定最终 OrderedScene 的 revision 和完整 commands；primitive 的 first/count、logical3/packed2 与 Quad48/Glyph96/Effect112/Image112 不变。SceneCpuData 尾部可传 `composition_scene`，上传前冻结最终可见 program；遗漏或混配会拒绝 attachment。旧解释器拒绝带 composition 的 stream。Core Node 只持有 logical radius/几何，hit snapshot 保存不可变 rounded clip 链；窗口层停止该 clip 链，保持既有 owner 和输入限制。
+
+独立 clip ABI1/filter ABI1 的 16-byte aligned sidecar：PassViewport32（full viewport@0、crop origin/extent@16）、DrawCoverageControl16（uint role@0）、RoundedClip64（shape@0、radius/AA@16、hard clip@32、source origin/extent@48）、GaussianFilter32（source@0、uint axis/radius/first/count@16）、GaussianWeight16（float weight@0）、BackdropComposite96（clip64、PM tint@64、activation@80）。self surface 的 owner shape 通过独立 RoundedClip uniform 提供，不占用 primitive 或 Effect Paint/cap bytes。未知版本/role、失配的 draw stream 与不平衡组在 begin 前拒绝。
+
+全部旧 instances 按完整窗口 metrics 打包，新 pass 才映射 crop；直边和圆角 draw support 外延 1 physical px，真实 ancestor hard clip 不扩大。composition 的新物理 shape 坐标必须保留 half-pixel 表示能力，不向无 composition 的旧 logical scene 增加该约束。
+
+SDL 使用 RGBA8_UNORM、PM 中间 target、sample_count1；primitive 保持 straight source-over，masked PM 输出使用 ONE 合成。Backdrop 冻结 root 的当前 prefix 到独立 B，完整窗口作为保守 halo ROI，H/F 两遍 normalized Gaussian 后以禁用 blending 的 replacement 写回；不读写同一 texture，不跨帧缓存像素。绘制和 RGBA readback 调用同一个 program 执行器。
+
+SDL 的实际接受上限为 target 16384×16384、全部未完成 frame 加本次容量 512 MiB、2 frame sets、32 层、4096 live requests、1048576 ops、Gaussian radius256、weights16 MiB；这些不是显存可用保证。共同 preflight 检查所有 live 请求，包括 hidden/opacity0；target 按实际容量计预算。资源与旧 primitive/Image 共享上传事务，失败失效附件并完整重试；frame fence 完成前不能重写同一 target，owner/epoch 改变失效资格，关闭后的安全资源释放回冷路径。冷场景不创建 composition target、weights 或 pipeline。shader closure/反射和 Recording 属于必要源码/资源检查，Windows D3D12 与 Linux Vulkan 的真实 GPU 结果分别记录。

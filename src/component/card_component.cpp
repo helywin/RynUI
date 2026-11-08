@@ -26,6 +26,11 @@ struct CardState final {
     bool actions_slot{};
     bool grid{};
     bool animated{true};
+    bool clip_content{};
+    runtime::SceneFragmentId shadow_fragment;
+    runtime::SceneFragmentId decoration_fragment;
+    std::optional<runtime::RoundedContentClip> last_mask;
+    std::optional<runtime::Rect> last_mask_clip;
     std::size_t columns{3};
     std::vector<runtime::ComponentId> grid_children;
     std::vector<runtime::Size> grid_sizes;
@@ -163,6 +168,16 @@ void CardComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             layout::LeafLayout{{padding * 2 + 160,
                                 padding * 2 + token.metrics.loading_line_height * 3 + token.metrics.loading_gap * 2}});
     }
+    const auto& mask_token = services_->components().theme_scope(id)->snapshot().card();
+    const bool masked = !s->grid && (s->clip_content || s->snapshot.loading);
+    auto& mask_node = services_->nodes().require(s->node);
+    const std::optional<float> requested_radius =
+        masked ? std::optional{mask_token.metrics.border_radius} : std::nullopt;
+    if (mask_node.rounded_content_radius != requested_radius) {
+        mask_node.rounded_content_radius = requested_radius;
+        services_->scene_composer().invalidate_composition();
+        services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    }
     services_->dirty().invalidate(s->node, geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                           runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
                                                     : runtime::DirtyFlags::Material);
@@ -185,6 +200,7 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
     s.grid = grid;
     s.columns = read_prop(props.grid_columns_);
     s.animated = read_prop(props.animated_);
+    s.clip_content = read_prop(props.clip_content_);
     s.snapshot.loading = read_prop(props.loading_);
     s.title.set(read_prop(props.title_));
     s.title_slot = slots.title.has_value();
@@ -202,6 +218,9 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
     const auto decoration_fragment =
         build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
     s.decorations = services.surfaces().create_content_range(decoration_fragment, {});
+    s.shadow_fragment = fragment;
+    s.decoration_fragment = decoration_fragment;
+    services.scene_composer().set_fragment_composition(fragment, true);
     build.on_resource_cleanup(
         id, [&services, decorations = s.decorations] { services.surfaces().destroy_content_range(decorations); });
     build.on_resource_cleanup(id, [&services, node = s.node, hit = s.interaction, surface = s.surface] {
@@ -469,6 +488,12 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
             refresh(id, true);
         }
     });
+    connect_prop(scope, props.clip_content_, [this, id](bool value) {
+        if (auto* s = services_->components().state<CardState>(id)) {
+            s->clip_content = value;
+            refresh(id, false);
+        }
+    });
     connect_prop(scope, props.animated_, [this, id](bool value) {
         if (auto* s = services_->components().state<CardState>(id)) {
             s->animated = value;
@@ -556,7 +581,20 @@ void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
         const auto actions = s->snapshot.actions_bounds;
         const auto effective_clip = services_->nodes().content_clip(s->node, clip);
         const auto effect_clip = graphics::EffectClip{1, effective_clip};
-        std::array<graphics::RoundedEffectInstance, 33> decorations;
+        const bool masked = node.rounded_content_radius.has_value();
+        const auto current_mask =
+            masked ? std::optional{services_->nodes().rounded_content_clip(s->node)} : std::nullopt;
+        const auto current_mask_clip = masked ? std::optional{effective_clip} : std::nullopt;
+        if (s->last_mask != current_mask || s->last_mask_clip != current_mask_clip) {
+            s->last_mask = current_mask;
+            s->last_mask_clip = current_mask_clip;
+            services_->scene_composer().invalidate_composition();
+            services_->dirty().invalidate(s->node, runtime::DirtyFlags::HitTest);
+        }
+        services_->scene_composer().set_fragment_composition(s->decoration_fragment, false,
+                                                             masked ? graphics::DrawCoverageRole::GroupOwnsOuterCoverage
+                                                                    : graphics::DrawCoverageRole::Normal);
+        std::array<graphics::RoundedEffectInstance, 33 + ShadowList::capacity> decorations;
         std::size_t count = 0;
         const auto fill = [&](runtime::Rect rect, Color color, float rounding, std::array<bool, 4> corners,
                               bool visible = true) {
@@ -566,10 +604,41 @@ void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
                 decorations[count++] = std::move(effect);
             }
         };
-        fill(bounds, token.colors.background, radius, {true, true, true, true});
+        const auto surface_fill = [&](runtime::Rect band, Color color, bool visible = true) {
+            if (!masked) {
+                return;
+            }
+            runtime::Rect translated{band.x + node.translation.x, band.y + node.translation.y, band.width, band.height};
+            // Internal bands have hard shared boundaries; their outside Card
+            // edge remains the group's single AA boundary, including its guard.
+            const float left = band.x == bounds.x ? effective_clip.x : translated.x;
+            const float top = band.y == bounds.y ? effective_clip.y : translated.y;
+            const float right = band.x + band.width == bounds.x + bounds.width ? effective_clip.x + effective_clip.width
+                                                                               : translated.x + translated.width;
+            const float bottom = band.y + band.height == bounds.y + bounds.height
+                                     ? effective_clip.y + effective_clip.height
+                                     : translated.y + translated.height;
+            const auto band_clip = graphics::EffectClip{
+                1, graphics::intersect_effect_bounds(
+                       {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)}, effective_clip)};
+            auto effect = graphics::make_shadow_effect({bounds, radius}, {ShadowKind::outer, {}, 0, 0, color},
+                                                       node.translation, band_clip);
+            effect.material.opacity = visible ? node.opacity : 0;
+            decorations[count++] = std::move(effect);
+        };
+        if (masked) {
+            surface_fill(bounds, token.colors.background);
+        } else {
+            fill(bounds, token.colors.background, radius, {true, true, true, true});
+        }
         const bool has_header = s->snapshot.has_header || tabs.height > 0;
-        fill(header, token.colors.header_background, radius, {true, true, false, false}, has_header);
-        fill(actions, token.colors.actions_background, radius, {false, false, true, true}, s->actions_slot);
+        if (masked) {
+            surface_fill(header, token.colors.header_background, has_header);
+            surface_fill(actions, token.colors.actions_background, s->actions_slot);
+        } else {
+            fill(header, token.colors.header_background, radius, {true, true, false, false}, has_header);
+            fill(actions, token.colors.actions_background, radius, {false, false, true, true}, s->actions_slot);
+        }
         fill({header.x, header.y + std::max(0.0F, header.height - m.border_width), header.width,
               has_header ? std::min(m.border_width, header.height) : 0},
              token.colors.separator, 0, {false, false, false, false}, has_header);
@@ -596,17 +665,39 @@ void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
         const float border = std::min(m.border_width, std::min(bounds.width, bounds.height) / 2);
         const runtime::Rect inner{bounds.x + border, bounds.y + border, std::max(0.0F, bounds.width - border * 2),
                                   std::max(0.0F, bounds.height - border * 2)};
-        decorations[count++] = graphics::make_outline_effect(
-            {inner, std::max(0.0F, radius - border)}, border > 0 ? border : 1, 0, token.colors.border,
-            border > 0 && s->variant == CardVariant::Outlined && !hovered ? node.opacity : 0, node.translation,
-            effect_clip);
+        const float border_opacity = border > 0 && s->variant == CardVariant::Outlined && !hovered ? node.opacity : 0;
+        if (masked) {
+            // An inset band keeps the existing nonnegative outline-offset
+            // contract. The group supplies its outer coverage exactly once.
+            auto effect =
+                graphics::make_shadow_effect({bounds, radius}, {ShadowKind::inset, {}, 0, border, token.colors.border},
+                                             node.translation, effect_clip);
+            effect.material.opacity = border_opacity;
+            decorations[count++] = std::move(effect);
+        } else {
+            decorations[count++] =
+                graphics::make_outline_effect({inner, std::max(0.0F, radius - border)}, border > 0 ? border : 1, 0,
+                                              token.colors.border, border_opacity, node.translation, effect_clip);
+        }
+        const auto shadow_layers = hovered                                 ? token.effects.hover_shadow
+                                   : s->variant == CardVariant::Borderless ? token.effects.shadow
+                                                                           : ShadowList{};
+        std::array<ShadowLayer, ShadowList::capacity> outer_layers;
+        std::size_t outer_count = 0;
+        for (const auto& layer : shadow_layers.layers()) {
+            if (masked && layer.kind == ShadowKind::inset) {
+                auto effect = graphics::make_shadow_effect({bounds, radius}, layer, node.translation, effect_clip);
+                effect.material.opacity = node.opacity;
+                decorations[count++] = std::move(effect);
+            } else {
+                outer_layers[outer_count++] = layer;
+            }
+        }
         static_cast<void>(
             services_->surfaces().update_content_effects(s->decorations, std::span{decorations}.first(count)));
         component::RetainedSurfaceEffects effects;
         effects.shape = {{bounds.x, bounds.y, bounds.width, bounds.height}, radius};
-        effects.shadows = hovered                                 ? token.effects.hover_shadow
-                          : s->variant == CardVariant::Borderless ? token.effects.shadow
-                                                                  : ShadowList{};
+        effects.shadows = ShadowList{std::span{outer_layers}.first(outer_count)};
         effects.translation = node.translation;
         effects.shadow_opacity = node.opacity;
         effects.focus_enabled = false;

@@ -73,6 +73,7 @@ struct ModalState final {
     input::InteractionId shield_hit;
     input::InteractionId dialog_hit;
     component::RetainedSurfaceId shield_surface;
+    runtime::SceneFragmentId shield_fragment;
     component::RetainedSurfaceId dialog_surface;
     Signal<String> title{String{}};
     Signal<String> ok_text{String{u8"OK"}};
@@ -889,6 +890,7 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
             no_effect.focus_enabled = false;
             const auto shield_fragment =
                 context.register_scene_fragment(s.snapshot.overlay, runtime::SceneFragmentPlacement::before_children);
+            s.shield_fragment = shield_fragment;
             s.shield_surface = services.surfaces().create(s.snapshot.overlay, overlay_node, shield_fragment,
                                                           s.shield_hit, std::span{&initial, 1}, no_effect);
             context.on_resource_cleanup(s.snapshot.overlay, [&services, root = s.snapshot.overlay, node = overlay_node,
@@ -2019,11 +2021,32 @@ void ModalComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
     const runtime::Rect window{0, 0, viewport.width, viewport.height};
     for (auto id : mounted_) {
         const auto* s = services_->components().state<ModalState>(id);
-        if (!s || !paint_visible(*s)) {
+        if (!s) {
             continue;
         }
-        const auto token = panel_theme(services_->components().theme_scope(id)->snapshot(), s->drawer.has_value());
-        auto shield = quad(window, s->model.options().mask.enabled ? token.colors.mask : Color::rgba8(0, 0, 0, 0));
+        const auto& snapshot = services_->components().theme_scope(id)->snapshot();
+        const auto token = panel_theme(snapshot, s->drawer.has_value());
+        const auto mask = s->model.options().mask;
+        const bool blur = !s->drawer && s->model.visible() && mask.enabled && mask.blur;
+        std::optional<graphics::SceneCompositionRequest> backdrop;
+        if (blur) {
+            const auto overlay = services_->components().root(s->snapshot.overlay);
+            backdrop = graphics::SceneCompositionRequest{overlay,
+                                                         {window, 0},
+                                                         window,
+                                                         true,
+                                                         snapshot.modal().effects.mask_blur_sigma,
+                                                         {token.colors.mask.red(), token.colors.mask.green(),
+                                                          token.colors.mask.blue(), token.colors.mask.alpha()},
+                                                         services_->nodes().paint_opacity(overlay)};
+        }
+        // Clear the request on close even when its paint subtree is inactive.
+        services_->scene_composer().set_fragment_composition(s->shield_fragment, false,
+                                                             graphics::DrawCoverageRole::Normal, backdrop);
+        if (!paint_visible(*s)) {
+            continue;
+        }
+        auto shield = quad(window, mask.enabled && !blur ? token.colors.mask : Color::rgba8(0, 0, 0, 0));
         if (s->drawer) {
             shield.color[3] *= s->presentation.progress;
         }

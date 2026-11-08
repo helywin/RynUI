@@ -1,4 +1,5 @@
 #include "graphics/glyph_scene.hpp"
+#include "graphics/scene_composition.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -493,15 +494,33 @@ std::span<const SceneDrawCommand> OrderedScene::commands() const noexcept {
     return commands_;
 }
 
+void OrderedScene::barrier() noexcept {
+    barrier_ = true;
+}
+
+void OrderedScene::set_composition(std::shared_ptr<const SceneCompositionProgram> program) {
+    if (program && program->scene_revision != revision_) {
+        throw std::invalid_argument("Composition belongs to another draw revision");
+    }
+    composition_ = std::move(program);
+}
+
 void OrderedScene::clear() noexcept {
     commands_.clear();
+    composition_.reset();
+    barrier_ = false;
+    ++revision_;
 }
 
 void OrderedScene::append(SceneDrawCommand command) {
     if (command.instance_count == 0) {
         return;
     }
-    if (!commands_.empty()) {
+    ++revision_;
+    composition_.reset();
+    const bool can_merge = !barrier_;
+    barrier_ = false;
+    if (can_merge && !commands_.empty()) {
         SceneDrawCommand& previous = commands_.back();
         const bool compatible =
             command.kind != SceneDrawKind::image && previous.kind == command.kind &&

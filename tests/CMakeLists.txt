@@ -1315,6 +1315,31 @@ foreach(effect_dirty_case IN ITEMS material geometry)
 endforeach()
 
 if(TARGET rynui_renderer_recording)
+    add_executable(rynui_composition_failure_tests composition_failure_tests.cpp)
+    rynui_configure_cpp_target(rynui_composition_failure_tests)
+    target_link_libraries(rynui_composition_failure_tests PRIVATE rynui_components rynui_renderer_recording)
+    target_compile_definitions(rynui_composition_failure_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.composition_failure COMMAND rynui_composition_failure_tests)
+    add_executable(rynui_modal_backdrop_tests modal_backdrop_tests.cpp)
+    rynui_configure_cpp_target(rynui_modal_backdrop_tests)
+    target_link_libraries(rynui_modal_backdrop_tests PRIVATE rynui_components rynui_renderer_recording)
+    target_compile_definitions(rynui_modal_backdrop_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.modal_backdrop COMMAND rynui_modal_backdrop_tests)
+    add_executable(rynui_card_mask_tests card_mask_tests.cpp)
+    rynui_configure_cpp_target(rynui_card_mask_tests)
+    target_link_libraries(rynui_card_mask_tests PRIVATE rynui_components rynui_renderer_recording)
+    target_compile_definitions(rynui_card_mask_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.card_mask COMMAND rynui_card_mask_tests)
+    add_executable(rynui_scene_composition_tests scene_composition_tests.cpp)
+    rynui_configure_cpp_target(rynui_scene_composition_tests)
+    target_link_libraries(rynui_scene_composition_tests PRIVATE rynui_components rynui_renderer_recording)
+    add_test(NAME rynui.scene_composition COMMAND rynui_scene_composition_tests)
 add_executable(rynui_image_resource_tests image_resource_tests.cpp)
 rynui_configure_cpp_target(rynui_image_resource_tests)
 target_link_libraries(rynui_image_resource_tests PRIVATE rynui_image rynui_renderer_common rynui_renderer_recording)
@@ -3371,6 +3396,27 @@ if(TARGET shadercross)
 endif()
 
 if(RYNUI_HAS_SDL_GPU)
+    add_test(NAME rynui.composition_shader_layout
+        COMMAND "${Python3_EXECUTABLE}" -B "${PROJECT_SOURCE_DIR}/tools/verify_composition_spirv.py"
+            "${RYNUI_GENERATED_SHADER_DIRECTORY}"
+            --negative-test "${PROJECT_SOURCE_DIR}/out/107-composition/shader-layout-negative")
+    add_executable(rynui_composition_native_readback_tests composition_native_readback_tests.cpp)
+    rynui_configure_cpp_target(rynui_composition_native_readback_tests)
+    target_link_libraries(rynui_composition_native_readback_tests PRIVATE rynui_components rynui_renderer_sdl rynui_renderer_common SDL3::SDL3)
+    target_compile_definitions(rynui_composition_native_readback_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    rynui_embed_target_shaders(rynui_composition_native_readback_tests)
+    if(WIN32)
+        add_test(NAME rynui.composition_d3d12_hidden COMMAND rynui_composition_native_readback_tests direct3d12)
+        set_tests_properties(rynui.composition_d3d12_hidden PROPERTIES ENVIRONMENT "SDL_GPU_DRIVER=direct3d12" LABELS "windows;gpu;hidden" TIMEOUT 180 RUN_SERIAL TRUE)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME rynui.composition_vulkan_private
+            COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_background_wayland.py"
+                --timeout 180 --log-dir "${PROJECT_SOURCE_DIR}/out/107-composition/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/wayland"
+                -- "$<TARGET_FILE:rynui_composition_native_readback_tests>" vulkan)
+        set_tests_properties(rynui.composition_vulkan_private PROPERTIES ENVIRONMENT "SDL_GPU_DRIVER=vulkan" LABELS "linux;gpu;private-wayland" TIMEOUT 200 RUN_SERIAL TRUE)
+    endif()
     add_executable(rynui_effect_paint_native_readback_tests effect_paint_native_readback_tests.cpp)
     rynui_configure_cpp_target(rynui_effect_paint_native_readback_tests)
     target_link_libraries(rynui_effect_paint_native_readback_tests PRIVATE

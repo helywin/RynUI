@@ -39,6 +39,10 @@ def main():
                 verify_appended_tokens(value, after[field], {'colors': 2}, (path.name, field))
             elif field == 'popover':
                 verify_appended_tokens(value, after[field], {'colors': 1, 'metrics': 6}, (path.name, field))
+            elif field == 'modal':
+                native = dict(after[field])
+                assert native.pop('maskBlurSigma') == 4, (path.name, 'native Modal sigma')
+                assert native == value, (path.name, 'old Modal fields')
             else:
                 assert after[field] == value, (path.name, field)
         assert after['identity']!=before['identity']

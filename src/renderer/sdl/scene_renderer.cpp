@@ -73,8 +73,19 @@ struct ShaderSelection {
 [[nodiscard]] SDL_GPUGraphicsPipeline* create_pipeline(SDL_GPUDevice* device, SDL_Window* window, SDL_GPUShader* vertex,
                                                        SDL_GPUShader* fragment,
                                                        std::span<const SDL_GPUVertexBufferDescription> buffers,
-                                                       std::span<const SDL_GPUVertexAttribute> attributes) {
-    const auto target = color_target(device, window);
+                                                       std::span<const SDL_GPUVertexAttribute> attributes,
+                                                       SDL_GPUTextureFormat format = SDL_GPU_TEXTUREFORMAT_INVALID,
+                                                       int blend = 0) {
+    auto target = color_target(device, window);
+    if (format != SDL_GPU_TEXTUREFORMAT_INVALID) {
+        target.format = format;
+    }
+    if (blend == 1) {
+        target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    }
+    if (blend == 2) {
+        target.blend_state.enable_blend = false;
+    }
     SDL_GPUGraphicsPipelineCreateInfo info{};
     info.vertex_shader = vertex;
     info.fragment_shader = fragment;
@@ -109,6 +120,27 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
                                                              SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
     capabilities_.rgba8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
                                                                 SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    capabilities_.scene_composition_version = graphics::scene_composition_version;
+    capabilities_.rounded_clip_abi_version = rounded_clip_abi_version;
+    const bool composition_format =
+        SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, SDL_GPU_TEXTURETYPE_2D,
+                                     SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    capabilities_.masked_groups = composition_format;
+    capabilities_.rounded_clip = composition_format;
+    capabilities_.cropped_target_coordinates = composition_format;
+    capabilities_.premultiplied_targets = composition_format;
+    capabilities_.target_sampling = composition_format;
+    capabilities_.maximum_composition_target_width = 16384;
+    capabilities_.maximum_composition_target_height = 16384;
+    capabilities_.maximum_composition_bytes = 512ULL * 1024 * 1024;
+    capabilities_.maximum_composition_frames = 2;
+    capabilities_.maximum_composition_depth = 32;
+    capabilities_.maximum_composition_groups = 4096;
+    capabilities_.maximum_composition_ops = 1048576;
+    capabilities_.backdrop_filter_abi_version = backdrop_filter_abi_version;
+    capabilities_.gaussian_backdrop = composition_format;
+    capabilities_.maximum_gaussian_radius = 256;
+    capabilities_.maximum_gaussian_weight_bytes = 16ULL * 1024 * 1024;
     validate_scene_capabilities(capabilities_);
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
@@ -202,6 +234,18 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
 
 SdlSceneRenderer::~SdlSceneRenderer() {
     cancel_upload_batch();
+    for (const auto& [id, fence] : composition_fences_) {
+        (void)id;
+        auto* native = static_cast<SDL_GPUFence*>(fence);
+        SDL_WaitForGPUFences(static_cast<SDL_GPUDevice*>(binding_.device()), true, &native, 1);
+        SDL_ReleaseGPUFence(static_cast<SDL_GPUDevice*>(binding_.device()), native);
+    }
+    for (auto* pipeline : composition_pipelines_) {
+        if (pipeline) {
+            SDL_ReleaseGPUGraphicsPipeline(static_cast<SDL_GPUDevice*>(binding_.device()),
+                                           static_cast<SDL_GPUGraphicsPipeline*>(pipeline));
+        }
+    }
     if (image_sampler_) {
         release_glyph_sampler(image_sampler_);
     }
@@ -678,6 +722,7 @@ void SdlSceneRenderer::Resource::release() noexcept {
         break;
     case ResourceKind::texture:
     case ResourceKind::image_texture:
+    case ResourceKind::composition_target:
         SDL_ReleaseGPUTexture(gpu, static_cast<SDL_GPUTexture*>(native));
         break;
     case ResourceKind::quad:
@@ -688,6 +733,7 @@ void SdlSceneRenderer::Resource::release() noexcept {
     case ResourceKind::effect_stop:
     case ResourceKind::cap_geometry:
     case ResourceKind::image_buffer:
+    case ResourceKind::composition_weights:
         SDL_ReleaseGPUBuffer(gpu, static_cast<SDL_GPUBuffer*>(native));
         break;
     }
@@ -746,7 +792,8 @@ void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
         throw std::logic_error("Quad draw resources are not attached");
     }
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
-    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
+    SDL_BindGPUGraphicsPipeline(
+        pass, static_cast<SDL_GPUGraphicsPipeline*>(composition_active_ ? composition_pipelines_[0] : quad_pipeline_));
     const SDL_GPUBufferBinding binding{
         static_cast<SDL_GPUBuffer*>(native_resource(quad_buffer_, ResourceKind::quad)),
         first * static_cast<Uint32>(sizeof(QuadGpuInstance)),
@@ -762,7 +809,8 @@ void SdlSceneRenderer::draw_glyph(std::uint32_t atlas_page, std::uint32_t first,
         throw std::logic_error("Glyph draw resources are not attached");
     }
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
-    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
+    SDL_BindGPUGraphicsPipeline(
+        pass, static_cast<SDL_GPUGraphicsPipeline*>(composition_active_ ? composition_pipelines_[1] : glyph_pipeline_));
     const SDL_GPUBufferBinding vertex_binding{
         static_cast<SDL_GPUBuffer*>(native_resource(glyph_resources_->instance_buffer(), ResourceKind::glyph)),
         first * static_cast<Uint32>(sizeof(GlyphGpuInstance)),
@@ -797,7 +845,11 @@ void SdlSceneRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t co
         checked(binding.base, ResourceKind::effect, binding.base_byte_offset, count, sizeof(RoundedEffectGpuInstance));
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
     if (binding.link) {
-        auto* pipeline = binding.cap_geometry ? effect_cap_pipeline_ : effect_paint_pipeline_;
+        auto* pipeline = composition_active_ ? composition_pipelines_[4]
+                                             : (binding.cap_geometry ? effect_cap_pipeline_ : effect_paint_pipeline_);
+        if (composition_active_ && binding.cap_geometry) {
+            throw std::invalid_argument("Composition does not enable candidate cap geometry");
+        }
         if (!pipeline || !binding.field_count || !binding.stop_count) {
             throw std::logic_error("Effect paint pipeline or storage is not ready");
         }
@@ -820,7 +872,8 @@ void SdlSceneRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t co
         }
         SDL_BindGPUFragmentStorageBuffers(pass, 0, storage.data(), static_cast<Uint32>(storage.size()));
     } else {
-        SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
+        SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(
+                                              composition_active_ ? composition_pipelines_[3] : effect_pipeline_));
         SDL_BindGPUVertexBuffers(pass, 0, &base, 1);
     }
     SDL_DrawGPUPrimitives(pass, detail::rounded_effect_vertex_count, count, 0, 0);
@@ -836,6 +889,9 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(animation::Animati
     if (!attached_scene_ready() || upload_batch_active_) {
         last_error_ = "Ordered Scene is not attached";
         return runtime::FrameSubmissionResult::failed;
+    }
+    if (attachment().composition()) {
+        return submit_composition();
     }
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* command = SDL_AcquireGPUCommandBuffer(device);
@@ -907,7 +963,14 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
     const auto metrics = platform_->window_metrics();
     const auto width = static_cast<Uint32>(metrics.pixel_width);
     const auto height = static_cast<Uint32>(metrics.pixel_height);
-    const auto format = SDL_GetGPUSwapchainTextureFormat(device, static_cast<SDL_Window*>(platform_->window()));
+    if (attachment().composition() && (attachment().composition()->plan.metrics.pixel_width != width ||
+                                       attachment().composition()->plan.metrics.pixel_height != height)) {
+        last_error_ = "Composition readback requires matching window metrics";
+        return false;
+    }
+    const auto format = attachment().composition()
+                            ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+                            : SDL_GetGPUSwapchainTextureFormat(device, static_cast<SDL_Window*>(platform_->window()));
     if (width == 0 || height == 0 || width > 16384 || height > 16384 ||
         (format != SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM && format != SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM)) {
         last_error_ = "Frame export requires an SDR RGBA8 or BGRA8 target of valid size";
@@ -964,38 +1027,51 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
         texture_info.layer_count_or_depth = 1;
         texture_info.num_levels = 1;
         texture_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
-        scope.texture = SDL_CreateGPUTexture(device, &texture_info);
+        if (!attachment().composition()) {
+            scope.texture = SDL_CreateGPUTexture(device, &texture_info);
+        }
         const Uint32 pitch = (width * 4U + 255U) & ~255U;
         const SDL_GPUTransferBufferCreateInfo transfer_info{SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, pitch * height, 0};
         scope.transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
         scope.command = SDL_AcquireGPUCommandBuffer(device);
-        if (!scope.texture || !scope.transfer || !scope.command) {
+        if ((!scope.texture && !attachment().composition()) || !scope.transfer || !scope.command) {
             last_error_ = sdl_error("Failed to allocate frame export resources");
             return false;
         }
-        const auto viewport = quad_viewport_uniform(width, height);
-        SDL_PushGPUVertexUniformData(scope.command, 0, &viewport, sizeof(viewport));
-        SDL_GPUColorTargetInfo target{};
-        target.texture = scope.texture;
-        target.clear_color = {clear_color_.red(), clear_color_.green(), clear_color_.blue(), clear_color_.alpha()};
-        target.load_op = SDL_GPU_LOADOP_CLEAR;
-        target.store_op = SDL_GPU_STOREOP_STORE;
-        scope.render = SDL_BeginGPURenderPass(scope.command, &target, 1, nullptr);
-        if (!scope.render) {
-            last_error_ = sdl_error("Failed to begin frame export render pass");
-            return false;
+        SDL_GPUTexture* rendered = scope.texture;
+        if (attachment().composition()) {
+            auto& frame = *attachment().composition();
+            if (frame.fence && !composition_fence_complete(frame.fence)) {
+                throw std::runtime_error("Composition readback awaits prior frame fence");
+            }
+            execute_composition(scope.command);
+            rendered =
+                static_cast<SDL_GPUTexture*>(native_resource(frame.targets[0], ResourceKind::composition_target));
+        } else {
+            const auto viewport = quad_viewport_uniform(width, height);
+            SDL_PushGPUVertexUniformData(scope.command, 0, &viewport, sizeof(viewport));
+            SDL_GPUColorTargetInfo target{};
+            target.texture = scope.texture;
+            target.clear_color = {clear_color_.red(), clear_color_.green(), clear_color_.blue(), clear_color_.alpha()};
+            target.load_op = SDL_GPU_LOADOP_CLEAR;
+            target.store_op = SDL_GPU_STOREOP_STORE;
+            scope.render = SDL_BeginGPURenderPass(scope.command, &target, 1, nullptr);
+            if (!scope.render) {
+                last_error_ = sdl_error("Failed to begin frame export render pass");
+                return false;
+            }
+            active_render_pass_ = scope.render;
+            draw_ordered_scene(*scene_, *this);
+            active_render_pass_ = nullptr;
+            SDL_EndGPURenderPass(scope.render);
+            scope.render = nullptr;
         }
-        active_render_pass_ = scope.render;
-        draw_ordered_scene(*scene_, *this);
-        active_render_pass_ = nullptr;
-        SDL_EndGPURenderPass(scope.render);
-        scope.render = nullptr;
         scope.copy = SDL_BeginGPUCopyPass(scope.command);
         if (!scope.copy) {
             last_error_ = sdl_error("Failed to begin frame export readback");
             return false;
         }
-        const SDL_GPUTextureRegion source{scope.texture, 0, 0, 0, 0, 0, width, height, 1};
+        const SDL_GPUTextureRegion source{rendered, 0, 0, 0, 0, 0, width, height, 1};
         const SDL_GPUTextureTransferInfo destination{scope.transfer, 0, pitch / 4U, height};
         SDL_DownloadFromGPUTexture(scope.copy, &source, &destination);
         SDL_EndGPUCopyPass(scope.copy);
@@ -1508,7 +1584,8 @@ void SdlSceneRenderer::draw_image(std::uint32_t index, std::uint32_t generation)
         throw std::logic_error("Invalid SDL Image draw");
     }
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
-    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(image_pipeline_));
+    SDL_BindGPUGraphicsPipeline(
+        pass, static_cast<SDL_GPUGraphicsPipeline*>(composition_active_ ? composition_pipelines_[2] : image_pipeline_));
     const SDL_GPUBufferBinding vertex{
         static_cast<SDL_GPUBuffer*>(native_resource(images->buffer(), ResourceKind::image_buffer)),
         index * static_cast<Uint32>(sizeof(ImageGpuInstance))};
@@ -1518,5 +1595,459 @@ void SdlSceneRenderer::draw_image(std::uint32_t index, std::uint32_t generation)
         static_cast<SDL_GPUSampler*>(native_resource(image_sampler_, ResourceKind::sampler))};
     SDL_BindGPUFragmentSamplers(pass, 0, &texture, 1);
     SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
+}
+} // namespace ryn::detail
+
+namespace ryn::detail {
+bool SdlSceneRenderer::ensure_composition_pipelines() {
+    if (composition_pipelines_[0] && (composition_pipelines_[4] || !capabilities().effect_paints)) {
+        return true;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
+    auto* window = static_cast<SDL_Window*>(platform_->window());
+    const auto selection = select_shader_format(device);
+    auto pending = composition_pipelines_;
+    std::array<bool, 8> created{};
+    try {
+        const std::array names{"quad_composition",
+                               "glyph_composition",
+                               "image_composition",
+                               "rounded_effect_composition",
+                               "rounded_effect_paint_composition",
+                               "masked_group"};
+        for (std::size_t index = 0; index < names.size(); ++index) {
+            if (pending[index] || (index == 4 && !capabilities().effect_paints)) {
+                continue;
+            }
+            std::vector<SDL_GPUVertexAttribute> attributes;
+            std::vector<SDL_GPUVertexBufferDescription> buffers;
+            if (index == 0) {
+                attributes = {{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
+                              {1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
+                              {2, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT, 32},
+                              {3, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT, 36},
+                              {4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 40}};
+                buffers.push_back({0, 48, SDL_GPU_VERTEXINPUTRATE_INSTANCE, 0});
+            } else if (index < 5) {
+                const Uint32 count = index == 1 ? 6 : 7;
+                for (Uint32 i = 0; i < count; ++i) {
+                    attributes.push_back({i, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, i * 16});
+                }
+                buffers.push_back({0, index == 1 ? 96U : 112U, SDL_GPU_VERTEXINPUTRATE_INSTANCE, 0});
+                if (index == 4) {
+                    attributes.push_back({7, 1, SDL_GPU_VERTEXELEMENTFORMAT_UINT4, 0});
+                    buffers.push_back({1, 16, SDL_GPU_VERTEXINPUTRATE_INSTANCE, 0});
+                }
+            }
+            auto* vertex = create_shader(device, std::string(names[index]) + ".vertex." + selection.extension,
+                                         selection.format, SDL_GPU_SHADERSTAGE_VERTEX, 0, index == 5 ? 0 : 1);
+            if (!vertex) {
+                throw std::runtime_error(sdl_error("Composition vertex shader"));
+            }
+            auto* fragment =
+                create_shader(device, std::string(names[index]) + ".fragment." + selection.extension, selection.format,
+                              SDL_GPU_SHADERSTAGE_FRAGMENT, (index == 1 || index == 2 || index == 5) ? 1 : 0,
+                              index == 5   ? 2
+                              : index == 0 ? 2
+                              : index == 3 ? 3
+                              : index == 4 ? 1
+                                           : 0,
+                              index == 4 ? 2 : 0);
+            if (!fragment) {
+                SDL_ReleaseGPUShader(device, vertex);
+                throw std::runtime_error(sdl_error("Composition fragment shader"));
+            }
+            pending[index] = create_pipeline(device, window, vertex, fragment, buffers, attributes,
+                                             SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, index == 5 ? 1 : 0);
+            SDL_ReleaseGPUShader(device, vertex);
+            SDL_ReleaseGPUShader(device, fragment);
+            if (!pending[index]) {
+                throw std::runtime_error(sdl_error("Composition pipeline"));
+            }
+            created[index] = true;
+        }
+        composition_pipelines_ = pending;
+        return true;
+    } catch (const std::exception& e) {
+        for (std::size_t i = 0; i < pending.size(); ++i) {
+            if (created[i]) {
+                SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(pending[i]));
+            }
+        }
+        last_error_ = e.what();
+        return false;
+    }
+}
+
+void* SdlSceneRenderer::create_composition_target(CompositionTargetSpec spec) {
+    if (!platform_->is_owner_thread() || !spec.width || !spec.height ||
+        spec.width > capabilities_.maximum_composition_target_width ||
+        spec.height > capabilities_.maximum_composition_target_height || !ensure_composition_pipelines()) {
+        return nullptr;
+    }
+    SDL_GPUTextureCreateInfo info{};
+    info.type = SDL_GPU_TEXTURETYPE_2D;
+    info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    info.width = spec.width;
+    info.height = spec.height;
+    info.layer_count_or_depth = 1;
+    info.num_levels = 1;
+    info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    return track_resource(SDL_CreateGPUTexture(static_cast<SDL_GPUDevice*>(binding_.device()), &info),
+                          ResourceKind::composition_target, std::size_t(spec.width) * spec.height * 4, spec.width,
+                          spec.height);
+}
+
+void SdlSceneRenderer::release_composition_target(void* handle) noexcept {
+    release_resource(handle, ResourceKind::composition_target);
+}
+
+void* SdlSceneRenderer::create_composition_weights(std::size_t size) {
+    if (!platform_->is_owner_thread() || !size || size % sizeof(GaussianWeightV1) ||
+        size > capabilities_.maximum_gaussian_weight_bytes || size > std::numeric_limits<Uint32>::max() ||
+        !ensure_backdrop_pipelines()) {
+        return nullptr;
+    }
+    const SDL_GPUBufferCreateInfo info{SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, static_cast<Uint32>(size), 0};
+    return track_resource(SDL_CreateGPUBuffer(static_cast<SDL_GPUDevice*>(binding_.device()), &info),
+                          ResourceKind::composition_weights, size);
+}
+
+bool SdlSceneRenderer::upload_composition_weights(void* handle, std::span<const std::byte> bytes) {
+    auto* owned = resource(handle, ResourceKind::composition_weights);
+    if (!owned || bytes.size() != owned->size) {
+        last_error_ = "Composition weights violate owner/kind/range";
+        return false;
+    }
+    return upload_buffer(owned->native, 0, bytes, "Composition weights");
+}
+
+void SdlSceneRenderer::release_composition_weights(void* handle) noexcept {
+    release_resource(handle, ResourceKind::composition_weights);
+}
+
+std::uint64_t SdlSceneRenderer::store_composition_fence(void* fence) {
+    if (!fence) {
+        throw std::runtime_error(sdl_error("Composition submit failed"));
+    }
+    const auto id = ++next_composition_fence_;
+    try {
+        composition_fences_.emplace(id, fence);
+    } catch (...) {
+        auto* native = static_cast<SDL_GPUFence*>(fence);
+        SDL_WaitForGPUFences(static_cast<SDL_GPUDevice*>(binding_.device()), true, &native, 1);
+        SDL_ReleaseGPUFence(static_cast<SDL_GPUDevice*>(binding_.device()), native);
+        throw;
+    }
+    return id;
+}
+
+bool SdlSceneRenderer::composition_fence_complete(std::uint64_t id) {
+    if (!platform_->is_owner_thread()) {
+        return false;
+    }
+    if (id <= completed_composition_fence_) {
+        return true;
+    }
+    const auto found = composition_fences_.find(id);
+    if (found == composition_fences_.end()) {
+        return false;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
+    if (!SDL_QueryGPUFence(device, static_cast<SDL_GPUFence*>(found->second))) {
+        return false;
+    }
+    SDL_ReleaseGPUFence(device, static_cast<SDL_GPUFence*>(found->second));
+    composition_fences_.erase(found);
+    completed_composition_fence_ = id;
+    return true;
+}
+
+void SdlSceneRenderer::wait_composition_fence(std::uint64_t id) noexcept {
+    const auto found = composition_fences_.find(id);
+    if (found == composition_fences_.end()) {
+        return;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
+    auto* fence = static_cast<SDL_GPUFence*>(found->second);
+    SDL_WaitForGPUFences(device, true, &fence, 1);
+    SDL_ReleaseGPUFence(device, fence);
+    composition_fences_.erase(found);
+    completed_composition_fence_ = std::max(completed_composition_fence_, id);
+}
+
+void SdlSceneRenderer::trim_idle_composition() noexcept {
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
+    for (auto*& pipeline : composition_pipelines_) {
+        if (pipeline) {
+            SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(pipeline));
+            pipeline = nullptr;
+        }
+    }
+    for (const auto& [id, value] : composition_fences_) {
+        (void)id;
+        auto* fence = static_cast<SDL_GPUFence*>(value);
+        SDL_WaitForGPUFences(device, true, &fence, 1);
+        SDL_ReleaseGPUFence(device, fence);
+    }
+    composition_fences_.clear();
+}
+
+void SdlSceneRenderer::execute_composition(void* command_handle) {
+    const auto& frame = *attachment().composition();
+    const auto& plan = frame.plan;
+    auto* command = static_cast<SDL_GPUCommandBuffer*>(command_handle);
+
+    struct Target {
+        std::uint32_t index;
+        CompositionCrop crop;
+    };
+
+    std::vector<Target> stack{{0, {0, 0, plan.metrics.pixel_width, plan.metrics.pixel_height}}};
+    auto* pass = static_cast<SDL_GPURenderPass*>(nullptr);
+    auto end = [&] {
+        if (pass) {
+            SDL_EndGPURenderPass(pass);
+            pass = nullptr;
+            active_render_pass_ = nullptr;
+        }
+    };
+    auto begin = [&](bool clear) {
+        SDL_GPUColorTargetInfo target{};
+        target.texture = static_cast<SDL_GPUTexture*>(
+            native_resource(frame.targets[stack.back().index], ResourceKind::composition_target));
+        target.load_op = clear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD;
+        target.store_op = SDL_GPU_STOREOP_STORE;
+        if (stack.back().index == 0) {
+            const float a = clear_color_.alpha();
+            target.clear_color = {clear_color_.red() * a, clear_color_.green() * a, clear_color_.blue() * a, a};
+        }
+        pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);
+        if (!pass) {
+            throw std::runtime_error(sdl_error("Composition render pass"));
+        }
+        active_render_pass_ = pass;
+        ++counters_.render_passes;
+        const auto viewport = composition_viewport(plan.metrics, stack.back().crop);
+        SDL_PushGPUVertexUniformData(command, 0, &viewport, sizeof(viewport));
+        SDL_PushGPUFragmentUniformData(command, 0, &viewport, sizeof(viewport));
+    };
+    composition_active_ = true;
+    try {
+        begin(true);
+        for (const auto op : plan.program.operations) {
+            if (op.kind == graphics::SceneCompositionOpKind::BeginMaskedGroup) {
+                end();
+                const auto& request = plan.requests[op.request];
+                stack.push_back({request.target, request.crop});
+                begin(true);
+            } else if (op.kind == graphics::SceneCompositionOpKind::EndMaskedGroup) {
+                end();
+                const auto child = stack.back();
+                stack.pop_back();
+                begin(false);
+                const auto& clip = plan.requests[op.request].clip;
+                SDL_PushGPUFragmentUniformData(command, 1, &clip, sizeof(clip));
+                SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(composition_pipelines_[5]));
+                const SDL_GPUTextureSamplerBinding sample{
+                    static_cast<SDL_GPUTexture*>(
+                        native_resource(frame.targets[child.index], ResourceKind::composition_target)),
+                    static_cast<SDL_GPUSampler*>(native_resource(image_sampler_, ResourceKind::sampler))};
+                SDL_BindGPUFragmentSamplers(pass, 0, &sample, 1);
+                SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+            } else if (op.kind == graphics::SceneCompositionOpKind::DrawRange) {
+                const DrawCoverageControlV1 control{{static_cast<std::uint32_t>(op.coverage), 0, 0, 0}};
+                SDL_PushGPUFragmentUniformData(command, 1, &control, sizeof(control));
+                RoundedClipUniformV1 owner{};
+                if (stack.size() > 1) {
+                    const auto found = std::find_if(plan.requests.begin(), plan.requests.end(),
+                                                    [&](const auto& r) { return r.target == stack.back().index; });
+                    owner = found->clip;
+                }
+                SDL_PushGPUFragmentUniformData(command, 2, &owner, sizeof(owner));
+                graphics::OrderedScene range;
+                for (std::uint32_t i = op.first; i < op.first + op.count; ++i) {
+                    range.append_command(scene_->commands()[i]);
+                }
+                draw_ordered_scene(range, *this);
+            } else {
+                end();
+                execute_backdrop(command, frame, op.request);
+                begin(false);
+            }
+        }
+        end();
+        composition_active_ = false;
+    } catch (...) {
+        end();
+        composition_active_ = false;
+        throw;
+    }
+}
+
+runtime::FrameSubmissionResult SdlSceneRenderer::submit_composition() {
+    auto& frame = *attachment().composition();
+    if (frame.fence && !composition_fence_complete(frame.fence)) {
+        return runtime::FrameSubmissionResult::deferred;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
+    auto* command = SDL_AcquireGPUCommandBuffer(device);
+    if (!command) {
+        last_error_ = sdl_error("Composition command buffer");
+        return runtime::FrameSubmissionResult::failed;
+    }
+    bool acquired = false;
+    try {
+        execute_composition(command);
+        auto* resolved_root =
+            static_cast<SDL_GPUTexture*>(native_resource(frame.targets[0], ResourceKind::composition_target));
+        SDL_GPUTexture* swapchain = nullptr;
+        Uint32 width = 0;
+        Uint32 height = 0;
+        if (!SDL_WaitAndAcquireGPUSwapchainTexture(command, static_cast<SDL_Window*>(platform_->window()), &swapchain,
+                                                   &width, &height)) {
+            throw std::runtime_error(sdl_error("Composition acquire swapchain"));
+        }
+        acquired = swapchain != nullptr;
+        if (swapchain) {
+            // All fallible rendering happened before swapchain acquisition.
+            SDL_GPUBlitInfo blit{};
+            blit.source = {resolved_root, 0, 0, 0, 0, frame.plan.metrics.pixel_width, frame.plan.metrics.pixel_height};
+            blit.destination = {swapchain, 0, 0, 0, 0, width, height};
+            blit.load_op = SDL_GPU_LOADOP_DONT_CARE;
+            blit.filter = SDL_GPU_FILTER_NEAREST;
+            SDL_BlitGPUTexture(command, &blit);
+        }
+        auto* fence = SDL_SubmitGPUCommandBufferAndAcquireFence(command);
+        command = nullptr;
+        frame.fence = store_composition_fence(fence);
+        ++counters_.frame_submissions;
+        return swapchain ? runtime::FrameSubmissionResult::submitted : runtime::FrameSubmissionResult::deferred;
+    } catch (const std::exception& e) {
+        last_error_ = e.what();
+        frame.uploaded = false;
+        if (command) {
+            if (acquired) {
+                SDL_SubmitGPUCommandBuffer(command);
+            } else {
+                SDL_CancelGPUCommandBuffer(command);
+            }
+        }
+        return runtime::FrameSubmissionResult::failed;
+    }
+}
+} // namespace ryn::detail
+
+namespace ryn::detail {
+bool SdlSceneRenderer::ensure_backdrop_pipelines() {
+    if (composition_pipelines_[6] && composition_pipelines_[7]) {
+        return true;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
+    auto* window = static_cast<SDL_Window*>(platform_->window());
+    const auto selection = select_shader_format(device);
+    std::array<void*, 2> pending{};
+    try {
+        for (unsigned i = 0; i < 2; ++i) {
+            const std::string name = i == 0 ? "backdrop_filter" : "backdrop_composite";
+            auto* vertex = create_shader(device, name + ".vertex." + selection.extension, selection.format,
+                                         SDL_GPU_SHADERSTAGE_VERTEX, 0);
+            if (!vertex) {
+                throw std::runtime_error(sdl_error("Backdrop vertex shader"));
+            }
+            auto* fragment = create_shader(device, name + ".fragment." + selection.extension, selection.format,
+                                           SDL_GPU_SHADERSTAGE_FRAGMENT, i == 0 ? 1 : 2, 2, i == 0 ? 1 : 0);
+            if (!fragment) {
+                SDL_ReleaseGPUShader(device, vertex);
+                throw std::runtime_error(sdl_error("Backdrop fragment shader"));
+            }
+            pending[i] =
+                create_pipeline(device, window, vertex, fragment, {}, {}, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, 2);
+            SDL_ReleaseGPUShader(device, vertex);
+            SDL_ReleaseGPUShader(device, fragment);
+            if (!pending[i]) {
+                throw std::runtime_error(sdl_error("Backdrop pipeline"));
+            }
+        }
+        composition_pipelines_[6] = pending[0];
+        composition_pipelines_[7] = pending[1];
+        return true;
+    } catch (const std::exception& e) {
+        for (auto* p : pending) {
+            if (p) {
+                SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(p));
+            }
+        }
+        last_error_ = e.what();
+        return false;
+    }
+}
+
+void SdlSceneRenderer::execute_backdrop(void* handle, const CompositionFrame& frame, std::uint32_t index) {
+    auto* command = static_cast<SDL_GPUCommandBuffer*>(handle);
+    const auto& plan = frame.plan;
+    const auto& request = plan.requests[index];
+    const auto texture = [&](std::uint32_t target) {
+        return static_cast<SDL_GPUTexture*>(native_resource(frame.targets[target], ResourceKind::composition_target));
+    };
+    auto* root = texture(0);
+    auto* background = texture(plan.snapshot_target);
+    auto* horizontal = texture(plan.horizontal_target);
+    auto* filtered = texture(plan.filtered_target);
+    if (root == background || root == horizontal || root == filtered || background == horizontal ||
+        background == filtered || horizontal == filtered) {
+        throw std::logic_error("Backdrop texture read/write alias");
+    }
+    // Snapshot exactly the completed prefix; no dialog/tint/later draw exists yet.
+    SDL_GPUBlitInfo copy{};
+    copy.source = {root, 0, 0, 0, 0, plan.metrics.pixel_width, plan.metrics.pixel_height};
+    copy.destination = {background, 0, 0, 0, 0, plan.metrics.pixel_width, plan.metrics.pixel_height};
+    copy.load_op = SDL_GPU_LOADOP_DONT_CARE;
+    copy.filter = SDL_GPU_FILTER_NEAREST;
+    SDL_BlitGPUTexture(command, &copy);
+    const auto viewport = composition_viewport(plan.metrics, request.source_crop);
+    SDL_PushGPUFragmentUniformData(command, 0, &viewport, sizeof(viewport));
+    auto* sampler = static_cast<SDL_GPUSampler*>(native_resource(image_sampler_, ResourceKind::sampler));
+    const auto run = [&](SDL_GPUTexture* destination, SDL_GPUTexture* source, unsigned axis) {
+        auto* weights = static_cast<SDL_GPUBuffer*>(native_resource(frame.weights, ResourceKind::composition_weights));
+        SDL_GPUColorTargetInfo target{};
+        target.texture = destination;
+        target.load_op = SDL_GPU_LOADOP_DONT_CARE;
+        target.store_op = SDL_GPU_STOREOP_STORE;
+        auto* pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);
+        if (!pass) {
+            throw std::runtime_error(sdl_error("Gaussian pass"));
+        }
+        SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(composition_pipelines_[6]));
+        const GaussianFilterUniformV1 filter{
+            request.clip.source_origin_extent,
+            {axis, request.weight_count - 1, request.first_weight, request.weight_count}};
+        SDL_PushGPUFragmentUniformData(command, 1, &filter, sizeof(filter));
+        const SDL_GPUTextureSamplerBinding sample{source, sampler};
+        SDL_BindGPUFragmentSamplers(pass, 0, &sample, 1);
+        SDL_BindGPUFragmentStorageBuffers(pass, 0, &weights, 1);
+        SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+        SDL_EndGPURenderPass(pass);
+        ++counters_.render_passes;
+    };
+    run(horizontal, background, 0);
+    run(filtered, horizontal, 1);
+    SDL_GPUColorTargetInfo target{};
+    target.texture = root;
+    target.load_op = SDL_GPU_LOADOP_LOAD;
+    target.store_op = SDL_GPU_STOREOP_STORE;
+    auto* pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);
+    if (!pass) {
+        throw std::runtime_error(sdl_error("Backdrop replacement pass"));
+    }
+    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(composition_pipelines_[7]));
+    SDL_PushGPUFragmentUniformData(command, 1, &request.backdrop, sizeof(request.backdrop));
+    const std::array samples{SDL_GPUTextureSamplerBinding{background, sampler},
+                             SDL_GPUTextureSamplerBinding{filtered, sampler}};
+    SDL_BindGPUFragmentSamplers(pass, 0, samples.data(), 2);
+    SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+    SDL_EndGPURenderPass(pass);
+    ++counters_.render_passes;
 }
 } // namespace ryn::detail

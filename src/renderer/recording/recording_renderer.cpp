@@ -9,6 +9,35 @@ namespace ryn::detail {
 
 RecordingRenderer::~RecordingRenderer() = default;
 
+void* RecordingRenderer::create_composition_target(CompositionTargetSpec spec) {
+    return create(Kind::composition_target, std::size_t(spec.width) * spec.height * 4, spec.width, spec.height);
+}
+
+void RecordingRenderer::release_composition_target(void* target) noexcept {
+    release(target, Kind::composition_target);
+}
+
+void* RecordingRenderer::create_composition_weights(std::size_t size) {
+    return create(Kind::composition_weights, size);
+}
+
+bool RecordingRenderer::upload_composition_weights(void* handle, std::span<const std::byte> bytes) {
+    return upload_buffer(handle, Kind::composition_weights, 0, bytes);
+}
+
+void RecordingRenderer::release_composition_weights(void* handle) noexcept {
+    release(handle, Kind::composition_weights);
+}
+
+bool RecordingRenderer::composition_fence_complete(std::uint64_t fence) {
+    require_owner();
+    return fence <= completed_composition_fence_;
+}
+
+void RecordingRenderer::wait_composition_fence(std::uint64_t fence) noexcept {
+    completed_composition_fence_ = std::max(completed_composition_fence_, fence);
+}
+
 void RecordingRenderer::require_owner() const {
     if (owner_ != std::this_thread::get_id()) {
         throw std::logic_error("Recording renderer requires its owner thread");
@@ -467,14 +496,64 @@ runtime::FrameSubmissionResult RecordingRenderer::submit_frame(animation::Animat
         error_ = "Scene is not committed or attachment is stale";
         return runtime::FrameSubmissionResult::failed;
     }
+    if (attachment().composition() && attachment().composition()->fence &&
+        !composition_fence_complete(attachment().composition()->fence)) {
+        ++counters_.deferred;
+        return runtime::FrameSubmissionResult::deferred;
+    }
     if (!surface_available_) {
         ++counters_.deferred;
         return runtime::FrameSubmissionResult::deferred;
     }
     draws_.clear();
+    composition_records_.clear();
     drawing_ = true;
     try {
-        draw_ordered_scene(*attachment().scene(), *this);
+        if (const auto& frame = attachment().composition()) {
+            const auto& plan = frame->plan;
+            std::vector<std::uint32_t> stack{0};
+            for (const auto op : plan.program.operations) {
+                CompositionRecord record{op, frame->targets[stack.back()]};
+                switch (op.kind) {
+                case graphics::SceneCompositionOpKind::DrawRange: {
+                    graphics::OrderedScene range;
+                    for (std::uint32_t i = op.first; i < op.first + op.count; ++i) {
+                        range.append_command(attachment().scene()->commands()[i]);
+                    }
+                    draw_ordered_scene(range, *this);
+                    break;
+                }
+                case graphics::SceneCompositionOpKind::BeginMaskedGroup:
+                    stack.push_back(plan.requests[op.request].target);
+                    record.target = frame->targets[stack.back()];
+                    break;
+                case graphics::SceneCompositionOpKind::EndMaskedGroup:
+                    record.source = frame->targets[stack.back()];
+                    stack.pop_back();
+                    record.target = frame->targets[stack.back()];
+                    break;
+                case graphics::SceneCompositionOpKind::Backdrop:
+                    record.source = frame->targets[plan.snapshot_target];
+                    record.filtered = frame->targets[plan.filtered_target];
+                    if (record.target == record.source || record.target == record.filtered ||
+                        record.source == record.filtered) {
+                        throw std::logic_error("Backdrop read/write alias");
+                    }
+                    if (frame->weights) {
+                        (void)require(frame->weights, Kind::composition_weights);
+                    }
+                    break;
+                }
+                (void)require(record.target, Kind::composition_target);
+                composition_records_.push_back(record);
+            }
+            frame->fence = ++composition_fence_;
+            if (auto_complete_frames_) {
+                completed_composition_fence_ = composition_fence_;
+            }
+        } else {
+            draw_ordered_scene(*attachment().scene(), *this);
+        }
     } catch (const std::exception& error) {
         drawing_ = false;
         draws_.clear();

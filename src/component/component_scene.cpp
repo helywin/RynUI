@@ -45,6 +45,11 @@ void ComponentSceneComposer::set_fragment(runtime::SceneFragmentId fragment,
     replacement.commands.assign(commands.begin(), commands.end());
     replacement.interaction = interaction;
     replacement.interaction_clip = interaction_clip;
+    if (previous) {
+        replacement.outside_own_mask = previous->outside_own_mask;
+        replacement.coverage = previous->coverage;
+        replacement.backdrop = previous->backdrop;
+    }
     bindings_[fragment.index] = std::move(replacement);
     bindings_dirty_ = true;
 }
@@ -60,10 +65,77 @@ bool ComponentSceneComposer::remove_fragment(runtime::SceneFragmentId fragment) 
     return true;
 }
 
+void ComponentSceneComposer::set_fragment_composition(runtime::SceneFragmentId fragment, bool outside,
+                                                      graphics::DrawCoverageRole coverage,
+                                                      std::optional<graphics::SceneCompositionRequest> backdrop) {
+    ensure_owner_thread();
+    auto* binding = find_binding(fragment);
+    if (!binding || !components_->contains(fragment)) {
+        throw std::invalid_argument("Composition requires a bound live fragment");
+    }
+    if (binding->outside_own_mask == outside && binding->coverage == coverage && binding->backdrop == backdrop) {
+        return;
+    }
+    binding->outside_own_mask = outside;
+    binding->coverage = coverage;
+    binding->backdrop = std::move(backdrop);
+    bindings_dirty_ = true;
+}
+
 void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<runtime::Rect> document_clip) {
     ensure_owner_thread();
-    ordered_scene_.clear();
-    interaction_order_.clear();
+    graphics::OrderedScene next_scene;
+    next_scene.reserve(ordered_scene_.commands().size());
+    std::vector<input::HitTestPaintEntry> next_interactions;
+    next_interactions.reserve(interaction_order_.capacity());
+    const auto& nodes = components_->nodes();
+    graphics::SceneCompositionProgram storage;
+    auto* program = &storage;
+    const auto owners = nodes.live_rounded_content_owners();
+    for (const auto owner : owners) {
+        auto hard = nodes.content_clip(owner, window_clip);
+        bool window_boundary = false;
+        for (auto current = std::optional{owner}; current; current = nodes.require(*current).parent) {
+            if (nodes.require(*current).clip_boundary) {
+                window_boundary = true;
+                break;
+            }
+        }
+        if (document_clip && !window_boundary) {
+            const float left = std::max(hard.x, document_clip->x);
+            const float top = std::max(hard.y, document_clip->y);
+            const float right = std::min(hard.x + hard.width, document_clip->x + document_clip->width);
+            const float bottom = std::min(hard.y + hard.height, document_clip->y + document_clip->height);
+            hard = {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
+        }
+        program->requests.push_back({owner, nodes.rounded_content_clip(owner), hard});
+    }
+    // A hidden request is still live and must be validated by the renderer.
+    for (std::size_t index = 0; index < bindings_.size(); ++index) {
+        const auto& binding = bindings_[index];
+        if (binding && binding->backdrop &&
+            components_->contains(runtime::SceneFragmentId{static_cast<std::uint32_t>(index), binding->generation})) {
+            program->requests.push_back(*binding->backdrop);
+        }
+    }
+    std::vector<std::uint32_t> open;
+    const auto transition = [&](const std::vector<std::uint32_t>& next) {
+        std::size_t common = 0;
+        while (common < open.size() && common < next.size() && open[common] == next[common]) {
+            ++common;
+        }
+        while (open.size() > common) {
+            program->operations.push_back({graphics::SceneCompositionOpKind::EndMaskedGroup, 0, 0, open.back()});
+            open.pop_back();
+        }
+        for (std::size_t i = common; i < next.size(); ++i) {
+            program->operations.push_back({graphics::SceneCompositionOpKind::BeginMaskedGroup, 0, 0, next[i]});
+            open.push_back(next[i]);
+        }
+        if (!program->requests.empty()) {
+            next_scene.barrier();
+        }
+    };
     for (const auto& entry : components_->paint_traversal()) {
         const auto* binding = find_binding(entry.fragment);
         if (binding == nullptr) {
@@ -74,8 +146,36 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<ru
             continue;
         }
         ++diagnostics_.fragments_emitted;
+        const auto root = components_->root(entry.component);
+        auto chain = nodes.rounded_content_owners(root);
+        if (binding->outside_own_mask && !chain.empty() && chain.back() == root) {
+            chain.pop_back();
+        }
+        std::vector<std::uint32_t> next;
+        for (const auto owner : chain) {
+            const auto found = std::find(owners.begin(), owners.end(), owner);
+            next.push_back(static_cast<std::uint32_t>(found - owners.begin()));
+        }
+        transition(next);
+        if (binding->backdrop) {
+            if (!open.empty()) {
+                throw std::invalid_argument("Backdrop must be in the window root target");
+            }
+            const auto found = std::find(program->requests.begin(), program->requests.end(), *binding->backdrop);
+            program->operations.push_back({graphics::SceneCompositionOpKind::Backdrop, 0, 0,
+                                           static_cast<std::uint32_t>(found - program->requests.begin())});
+            next_scene.barrier();
+        }
         for (const auto command : binding->commands) {
-            ordered_scene_.append_command(command);
+            const auto first = static_cast<std::uint32_t>(next_scene.commands().size());
+            if (!program->requests.empty()) {
+                next_scene.barrier();
+            }
+            next_scene.append_command(command);
+            if (!program->requests.empty() && command.instance_count) {
+                program->operations.push_back(
+                    {graphics::SceneCompositionOpKind::DrawRange, first, 1, 0, binding->coverage});
+            }
             if (command.instance_count != 0) {
                 ++diagnostics_.commands_emitted;
             }
@@ -88,9 +188,9 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<ru
             ++diagnostics_.stale_bindings_skipped;
             continue;
         }
-        if (std::find_if(interaction_order_.begin(), interaction_order_.end(), [&](const auto& paint) {
+        if (std::find_if(next_interactions.begin(), next_interactions.end(), [&](const auto& paint) {
                 return paint.interaction == *binding->interaction;
-            }) != interaction_order_.end()) {
+            }) != next_interactions.end()) {
             throw std::logic_error("Component paint traversal emitted an interaction more than once");
         }
         auto interaction_clip = binding->interaction_clip;
@@ -107,13 +207,20 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<ru
                 interaction_clip = document_clip;
             }
         }
-        interaction_order_.push_back({
+        next_interactions.push_back({
             *binding->interaction,
             interaction_clip,
         });
         ++diagnostics_.interactions_emitted;
     }
-    hit_test_->rebuild(interaction_order_, window_clip);
+    transition({});
+    if (!program->requests.empty()) {
+        program->scene_revision = next_scene.revision();
+        next_scene.set_composition(std::make_shared<const graphics::SceneCompositionProgram>(std::move(storage)));
+    }
+    hit_test_->rebuild(next_interactions, window_clip);
+    ordered_scene_ = std::move(next_scene);
+    interaction_order_ = std::move(next_interactions);
     ++diagnostics_.rebuilds;
     bindings_dirty_ = false;
 }
@@ -122,6 +229,12 @@ VisibleSceneStats ComponentSceneComposer::build_visible_scene(const runtime::Nod
                                                               runtime::Rect window_clip,
                                                               graphics::OrderedScene& destination) const {
     ensure_owner_thread();
+    if (ordered_scene_.composition()) {
+        // Preserve the complete balanced program and actual shadow support.
+        // EffectStore already performs its own geometry-aware compaction.
+        destination = ordered_scene_;
+        return {components_->paint_traversal().size(), components_->paint_traversal().size()};
+    }
     constexpr float visual_overflow = 32.0F;
     const float clip_left = window_clip.x - visual_overflow;
     const float clip_top = window_clip.y - visual_overflow;

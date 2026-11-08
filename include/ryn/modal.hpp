@@ -20,6 +20,7 @@ enum class ModalCancelReason { CancelButton, CloseButton, Mask, Escape };
 struct ModalMask final {
     bool enabled{true};
     bool closable{true};
+    bool blur{false};
     friend bool operator==(ModalMask, ModalMask) = default;
 };
 

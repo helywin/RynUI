@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/common/quad_gpu_resources.hpp"
+#include "renderer/common/composition_resources.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "renderer/common/scene_capabilities.hpp"
@@ -25,6 +26,10 @@ struct SceneResourceState final {
 // The weak resource stamp prevents access after retirement, failed upload or reset.
 class SceneAttachment final {
 public:
+    [[nodiscard]] const std::shared_ptr<CompositionFrame>& composition() const noexcept {
+        return composition_;
+    }
+
     [[nodiscard]] const ImageGpuResources* images() const noexcept {
         return images_;
     }
@@ -67,11 +72,13 @@ private:
     const graphics::OrderedScene* scene_{};
     std::uint32_t quad_count_{};
     std::uint32_t glyph_count_{};
+    std::shared_ptr<CompositionFrame> composition_;
 };
 
 // All upload methods own/copy source bytes before returning success. Batch commit
 // accepts GPU work; it is not a GPU completion notification.
-class SceneBackend : public detail::QuadUploadApi,
+class SceneBackend : public CompositionGpuApi,
+                     public detail::QuadUploadApi,
                      public GlyphGpuApi,
                      public ImageGpuApi,
                      public RoundedEffectGpuApi,

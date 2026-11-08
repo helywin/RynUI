@@ -537,6 +537,11 @@ std::optional<InteractionId> HitTestSnapshot::hit_test(runtime::Point point) {
             !contains(iterator->effective_clip, point) || !contains(iterator->translated_bounds, point)) {
             continue;
         }
+        if (iterator->rounded_clips && !std::ranges::all_of(*iterator->rounded_clips, [&](const auto& clip) {
+                return runtime::content_clip_contains(clip, point);
+            })) {
+            continue;
+        }
         ++diagnostics_.branch_checks;
         if (!registry_->branch_active(iterator->interaction)) {
             continue;
@@ -620,6 +625,10 @@ HitTestRecord HitTestSnapshot::make_record(const HitTestPaintEntry& entry, std::
         paint_order,
         interaction.eligible && (parent == nullptr || parent->effective_eligible),
         committed,
+        node && nodes_->has_rounded_content_clip(interaction.node)
+            ? std::make_shared<const std::vector<runtime::RoundedContentClip>>(
+                  nodes_->rounded_content_clips(interaction.node))
+            : nullptr,
     };
 }
 

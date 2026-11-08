@@ -59,6 +59,7 @@
 #include "platform/sdl/platform_state.hpp"
 #include "platform/sdl/file_services.hpp"
 #include "renderer/common/scene_resources.hpp"
+#include "renderer/common/scene_resource_deadlines.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "text/text_engine.hpp"
 
@@ -265,20 +266,22 @@ public:
             if (offscreen_frame.empty()) {
                 ++cursor_syncs;
             }
+            const runtime::Rect clip{0, 0, events.viewport.width, events.viewport.height};
+            static_cast<void>(app.scene_composer().build_visible_scene(app.nodes(), clip, visible));
+            resources.set_frame_time(time);
             if (!resources.synchronize({&app.services().surfaces().instances(),
                                         text_scene.atlas(),
                                         text_scene.glyph_scene().instances(),
                                         &app.rounded_effects(),
                                         {static_cast<std::uint32_t>(metrics.pixel_width),
                                          static_cast<std::uint32_t>(metrics.pixel_height), events.scale},
-                                        &app.services().images()})) {
+                                        &app.services().images(),
+                                        &visible})) {
                 throw std::runtime_error(renderer.last_error());
             }
             if (trace) {
                 std::cout << "page_acceptance_upload_complete\n" << std::flush;
             }
-            const runtime::Rect clip{0, 0, events.viewport.width, events.viewport.height};
-            static_cast<void>(app.scene_composer().build_visible_scene(app.nodes(), clip, visible));
             if (!renderer.attach_scene(resources.attach(visible))) {
                 throw std::runtime_error("Gallery scene attachment failed");
             }
@@ -302,6 +305,9 @@ public:
             }
             return submitted;
         } catch (const std::exception& failure) {
+            if (resources.waiting_for_composition_fence()) {
+                return runtime::FrameSubmissionResult::deferred;
+            }
             error = failure.what();
             return runtime::FrameSubmissionResult::failed;
         }
@@ -4055,7 +4061,8 @@ int run_gallery_pages(int argc, char** argv) {
         if (options.visual) {
             submitter.offscreen_frame = options.output.parent_path() / "current.bmp";
         }
-        runtime::OnDemandFrameLoop loop(frames, events, submitter, app, 10);
+        ryn::detail::SceneResourceDeadlines deadlines(app, resources);
+        runtime::OnDemandFrameLoop loop(frames, events, submitter, deadlines, 10);
         frames.request_frame();
         if (options.acceptance) {
             submitter.trace = true;

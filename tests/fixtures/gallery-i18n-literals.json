@@ -1538,5 +1538,26 @@
     "literal": "业务草稿",
     "category": "business-payload",
     "reason": "可编辑控件的精确初始业务正文；用于草稿、选区、composition、undo 或保留身份，切语言不改写该值。"
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_card_mask_samples",
+    "literal": "Customer note",
+    "category": "business-payload",
+    "reason": "Editable application value; locale updates preserve the draft. The placeholder is localized."
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_modal_backdrop_samples",
+    "literal": "Customer details",
+    "category": "business-payload",
+    "reason": "Editable application value; locale updates preserve the draft. The placeholder is localized."
+  },
+  {
+    "source": "examples/token_gallery/token_gallery_definition.cpp",
+    "function": "add_modal_backdrop_samples",
+    "literal": "Dialog note",
+    "category": "business-payload",
+    "reason": "Editable application value; locale updates preserve the draft. The placeholder is localized."
   }
 ]

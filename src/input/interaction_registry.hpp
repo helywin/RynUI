@@ -192,6 +192,7 @@ struct HitTestRecord final {
     std::size_t paint_order{0};
     bool effective_eligible{false};
     bool has_committed_layout{false};
+    std::shared_ptr<const std::vector<runtime::RoundedContentClip>> rounded_clips;
 };
 
 struct HitTestDiagnostics final {

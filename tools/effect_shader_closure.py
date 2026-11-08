@@ -14,7 +14,7 @@ import shutil
 import tempfile
 
 
-ENTRIES = ("rounded_effect", "rounded_effect_paint")
+ENTRIES = ("rounded_effect", "rounded_effect_paint", "quad_composition", "glyph_composition", "image_composition", "rounded_effect_composition", "rounded_effect_paint_composition", "masked_group", "backdrop_filter", "backdrop_composite")
 
 
 def closure(root: Path, entry: str) -> list[str]:
@@ -45,6 +45,17 @@ def closure(root: Path, entry: str) -> list[str]:
     return sorted(path.relative_to(root.resolve()).as_posix() for path in visited)
 
 
+def vertex_inputs(entry):
+    if entry.startswith("rounded_effect"):
+        return ["float4"] * 7 + (["uint4"] if "paint" in entry else [])
+    if entry == "quad_composition":
+        return ["float4", "float4", "float", "float", "float2"]
+    if entry == "glyph_composition":
+        return ["float4"] * 6
+    if entry == "image_composition":
+        return ["float4"] * 7
+    return []
+
 def manifest(root: Path) -> dict:
     pipelines = {}
     files = {}
@@ -58,8 +69,14 @@ def manifest(root: Path) -> dict:
             "entry": "shaders/" + entry + ".hlsl",
             "closure": sources,
             "closure_sha256": hashlib.sha256(records).hexdigest(),
-            "vertex_inputs": ["float4"] * 7 + (["uint4"] if entry != "rounded_effect" else []),
-            "fragment_storage_buffers": 2 if entry != "rounded_effect" else 0,
+            "vertex_inputs": vertex_inputs(entry),
+            "fragment_storage_buffers": 2 if "paint" in entry else 1 if entry == "backdrop_filter" else 0,
+            "vertex_uniform_buffers": 1 if entry.endswith("_composition") else 0,
+            "fragment_uniform_buffers": {"quad_composition": 2, "rounded_effect_composition": 3,
+                "rounded_effect_paint_composition": 1, "masked_group": 2,
+                "backdrop_filter": 2, "backdrop_composite": 2}.get(entry, 0),
+            "fragment_samplers": {"glyph_composition": 1, "image_composition": 1,
+                "masked_group": 1, "backdrop_filter": 1, "backdrop_composite": 2}.get(entry, 0),
             "stage_defines": {"vertex": ["RYNUI_VERTEX_SHADER=1"],
                               "fragment": ["RYNUI_FRAGMENT_SHADER=1"]},
             "artifacts": [entry + "." + stage + "." + suffix
@@ -137,11 +154,16 @@ def main() -> None:
     parser.add_argument("--define", action="append", default=[])
     parser.add_argument("--dependency", type=Path, action="append", default=[])
     parser.add_argument("--negative-test", type=Path)
+    parser.add_argument("--list-dependencies", action="store_true")
     args = parser.parse_args()
     root = args.root.resolve()
     lock = args.lock or root / "shaders/rounded_effect.lock.yaml"
+    if args.list_dependencies:
+        if not args.entry: parser.error("--list-dependencies requires --entry")
+        print(";".join(str(root / name) for name in closure(root,args.entry)))
+        return
     if args.write_lock:
-        lock.write_text(json.dumps(manifest(root), indent=2) + "\n", encoding="utf-8")
+        lock.write_text(json.dumps(manifest(root), indent=2) + "\n", encoding="utf-8", newline="\n")
     expected = validate(root, lock)
     if args.stage:
         if not args.entry:

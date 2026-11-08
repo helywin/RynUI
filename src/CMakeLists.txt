@@ -386,6 +386,8 @@ target_link_libraries(rynui_components PRIVATE
 )
 
 add_library(rynui_renderer_common STATIC
+    renderer/common/composition_packing.cpp
+    renderer/common/composition_resources.cpp
     renderer/common/cap_geometry_packing.cpp
     renderer/common/effect_paint_packing.cpp
     renderer/common/image_gpu_resources.cpp

@@ -1150,6 +1150,8 @@ struct ModalEffectToken final {
     float focus_offset{1};
     float focus_radius{8};
     ShadowList shadow;
+    // Native discrete Gaussian sigma in logical units; not an upstream catalog token.
+    float mask_blur_sigma{4};
 
     [[nodiscard]] auto values() const {
         return std::array{focus_width, focus_offset, focus_radius};
@@ -1201,6 +1203,7 @@ struct ModalTokenOverride final {
     std::optional<std::uint32_t> title_font_weight;
     std::optional<ShadowList> shadow;
     std::optional<std::int32_t> z_index_popup;
+    std::optional<LogicalLength> mask_blur_sigma;
     friend bool operator==(const ModalTokenOverride&, const ModalTokenOverride&) = default;
 };
 

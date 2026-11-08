@@ -32,6 +32,12 @@ loading 保留已挂载正文的编辑状态并切换三行占位，隐藏正文
 
 loading 新增可关闭的 `animated(false)` 脉冲；动画使用单调时钟，只在 loading、可见、窗口活动且允许 motion 时调度，停止后不申请持续帧。cover 可直接组合共同 `Image`，消费 ImageSource/编码资源/可取消 ImageLoader，图片可独立使用 RoundedRectangle。Card 自身不发起网络 IO。
 
-新增合同已通过正式 MSVC HEADLESS Debug/Release，并在独立 `gallery.sample.card.completion` 运行 Windows hidden D3D12 页签重排、Grid 切换及 loading 操作；精简结果见 [107 集成](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/display-windows-integration.md)。任意后代内容的圆角遮罩仍缺共同 Core/renderer 能力，Card 整体任务保持未完成；Image 自身圆角不能替代该合同。DOM/CSS/React 接口不属于原生 API。
+新增合同已通过正式 MSVC HEADLESS Debug/Release，并在独立 `gallery.sample.card.completion` 运行 Windows hidden D3D12 页签重排、Grid 切换及 loading 操作；精简结果见 [107 集成](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/display-windows-integration.md)。任意普通后代圆角组已通过 MSVC HEADLESS Debug/Release 与 Windows D3D12/DXIL Debug/Release 回读，见 [共同合成证据](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/composition-native.md)。Image 自身圆角不替代该合同。DOM/CSS/React 接口不属于原生 API。
 
-Gallery 已提供7个真实 Card 和 loading 切换操作；平台通用完整 headless、Gallery Recording 与 Windows MSVC Debug/Release 的20次 D3D12/DXIL主题/缩放窗口验收已通过。见 [Windows证据](../openspec/changes/059-20261023-add-native-card/evidence/windows.md)。自动输入不替代人工系统IME，Linux原生验收仍待实际机器完成。
+Gallery 已提供7个真实 Card 和 loading 切换操作；平台通用完整 headless、Gallery Recording 与 Windows MSVC Debug/Release 的20次 D3D12/DXIL主题/缩放窗口验收已通过。见 [Windows证据](../openspec/changes/059-20261023-add-native-card/evidence/windows.md)。自动输入不替代人工系统IME，Linux 后续平台结果单独记录于共同合成证据。
+
+## 圆角内容裁剪
+
+`CardProps::clipContent(Prop<bool>)` 默认为 false；loading 自动启用同一圆角 mask。开启后，普通后代的 Quad、Glyph、Image、Effect、子阴影与焦点环作为一个 PM 组合成，Card 自己的 outer shadow 位于组外。窗口层浮层遵循现有 clip boundary，仍服从 Modal/Spin 输入权威。切换属性及 Theme radius 保留 slots、编辑器和焦点身份；不增加布局 wrapper。
+
+不同嵌套 mask 各应用一次 alpha coverage，交叠 AA 过渡带相乘；hit 使用实际圆角几何交集，不包含 AA fringe。祖先 paint opacity 继续只在 primitive 上应用一次。新能力的实际 Windows 与 Linux GPU 验证分别记录。

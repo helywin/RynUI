@@ -33,6 +33,24 @@ struct SceneBackendCapabilities final {
     bool effect_conic_fields{};
     bool effect_underlays{};
     std::uint32_t cap_geometry_abi_version{};
+    std::uint32_t scene_composition_version{};
+    std::uint32_t rounded_clip_abi_version{};
+    std::uint32_t backdrop_filter_abi_version{};
+    bool masked_groups{};
+    bool rounded_clip{};
+    bool cropped_target_coordinates{};
+    bool premultiplied_targets{};
+    bool target_sampling{};
+    bool gaussian_backdrop{};
+    std::uint32_t maximum_composition_target_width{};
+    std::uint32_t maximum_composition_target_height{};
+    std::uint64_t maximum_composition_bytes{};
+    std::uint32_t maximum_composition_frames{};
+    std::uint32_t maximum_composition_depth{};
+    std::uint32_t maximum_composition_groups{};
+    std::uint32_t maximum_composition_ops{};
+    std::uint32_t maximum_gaussian_radius{};
+    std::uint64_t maximum_gaussian_weight_bytes{};
 };
 
 [[nodiscard]] constexpr SceneBackendCapabilities baseline_scene_capabilities() noexcept {

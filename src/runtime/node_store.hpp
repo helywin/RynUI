@@ -1,6 +1,7 @@
 #pragma once
 
 #include "runtime/geometry.hpp"
+#include "runtime/content_clip.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -75,6 +76,7 @@ struct Node {
     ExternalLayoutStyle external_layout;
     // Internal passive content viewports, resolved in logical window space.
     bool clip_content{};
+    std::optional<float> rounded_content_radius;
     // Passive allocated slots crop content/hits while allowing a child's own
     // outward decoration to reach the enclosing item viewport.
     bool clip_decorations{true};
@@ -106,6 +108,11 @@ public:
     [[nodiscard]] Node& require(NodeId id);
     [[nodiscard]] const Node& require(NodeId id) const;
     [[nodiscard]] Rect content_clip(NodeId id, Rect window_clip, ClipPurpose purpose = ClipPurpose::content) const;
+    [[nodiscard]] bool has_rounded_content_clip(NodeId id) const;
+    [[nodiscard]] std::vector<RoundedContentClip> rounded_content_clips(NodeId id) const;
+    [[nodiscard]] std::vector<NodeId> rounded_content_owners(NodeId id) const;
+    [[nodiscard]] std::vector<NodeId> live_rounded_content_owners() const;
+    [[nodiscard]] RoundedContentClip rounded_content_clip(NodeId id) const;
     [[nodiscard]] float content_opacity(NodeId id) const;
     [[nodiscard]] float paint_opacity(NodeId id) const;
     bool set_paint_opacity(NodeId id, float value);

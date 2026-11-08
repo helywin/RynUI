@@ -24,6 +24,62 @@ Rect NodeStore::content_clip(NodeId id, Rect clip, ClipPurpose purpose) const {
     return clip;
 }
 
+RoundedContentClip NodeStore::rounded_content_clip(NodeId id) const {
+    const auto& node = require(id);
+    if (!node.rounded_content_radius) {
+        throw std::invalid_argument("Node has no rounded content request");
+    }
+    return normalized_content_clip({{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y,
+                                     node.bounds.width, node.bounds.height},
+                                    *node.rounded_content_radius});
+}
+
+bool NodeStore::has_rounded_content_clip(NodeId id) const {
+    for (auto current = std::optional{id}; current; current = require(*current).parent) {
+        const auto& node = require(*current);
+        if (node.rounded_content_radius) {
+            return true;
+        }
+        if (node.clip_boundary) {
+            break;
+        }
+    }
+    return false;
+}
+
+std::vector<NodeId> NodeStore::rounded_content_owners(NodeId id) const {
+    std::vector<NodeId> owners;
+    for (auto current = std::optional{id}; current; current = require(*current).parent) {
+        const auto& node = require(*current);
+        if (node.rounded_content_radius) {
+            owners.push_back(*current);
+        }
+        if (node.clip_boundary) {
+            break;
+        }
+    }
+    std::reverse(owners.begin(), owners.end());
+    return owners;
+}
+
+std::vector<RoundedContentClip> NodeStore::rounded_content_clips(NodeId id) const {
+    std::vector<RoundedContentClip> result;
+    for (const auto owner : rounded_content_owners(id)) {
+        result.push_back(rounded_content_clip(owner));
+    }
+    return result;
+}
+
+std::vector<NodeId> NodeStore::live_rounded_content_owners() const {
+    std::vector<NodeId> result;
+    for (const auto& slot : slots_) {
+        if (slot.occupied && slot.node.rounded_content_radius) {
+            result.push_back(slot.node.id);
+        }
+    }
+    return result;
+}
+
 float NodeStore::content_opacity(NodeId id) const {
     float opacity = 1;
     for (auto current = std::optional{id}; current; current = require(*current).parent) {

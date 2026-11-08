@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/glyph_scene.hpp"
+#include "graphics/scene_composition.hpp"
 #include "input/interaction_registry.hpp"
 #include "runtime/component_host.hpp"
 
@@ -35,7 +36,15 @@ public:
                       std::optional<input::InteractionId> interaction = std::nullopt,
                       std::optional<runtime::Rect> interaction_clip = std::nullopt);
     bool remove_fragment(runtime::SceneFragmentId fragment);
+    // Self shadow excludes only its own group; ancestor masks remain authoritative.
+    void set_fragment_composition(runtime::SceneFragmentId fragment, bool outside_own_mask,
+                                  graphics::DrawCoverageRole coverage = graphics::DrawCoverageRole::Normal,
+                                  std::optional<graphics::SceneCompositionRequest> backdrop = std::nullopt);
     void rebuild(runtime::Rect window_clip, std::optional<runtime::Rect> document_clip = std::nullopt);
+
+    void invalidate_composition() noexcept {
+        bindings_dirty_ = true;
+    }
 
     [[nodiscard]] bool needs_rebuild() const noexcept {
         return bindings_dirty_;
@@ -54,6 +63,9 @@ private:
         std::vector<graphics::SceneDrawCommand> commands;
         std::optional<input::InteractionId> interaction;
         std::optional<runtime::Rect> interaction_clip;
+        bool outside_own_mask{};
+        graphics::DrawCoverageRole coverage{};
+        std::optional<graphics::SceneCompositionRequest> backdrop;
     };
 
     [[nodiscard]] FragmentBinding* find_binding(runtime::SceneFragmentId fragment) noexcept;

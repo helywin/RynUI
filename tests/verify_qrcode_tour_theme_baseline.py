@@ -33,6 +33,10 @@ def main():
                 appended_tokens(value, after[name], {'colors':2}, (p.name,name))
             elif name == 'popover':
                 appended_tokens(value, after[name], {'colors':1,'metrics':6}, (p.name,name))
+            elif name == 'modal':
+                native = dict(after[name])
+                assert native.pop('maskBlurSigma') == 4, (p.name, 'native Modal sigma')
+                assert native == value, (p.name, 'old Modal fields')
             elif name!='identity':
                 assert after[name]==value,(p.name,name)
         assert after['identity']!=before['identity']

@@ -108,6 +108,11 @@ public:
         return *this;
     }
 
+    CardProps& clipContent(Prop<bool> value = true) {
+        clip_content_ = std::move(value);
+        return *this;
+    }
+
     CardProps& loading(Prop<bool> value = true) {
         loading_ = std::move(value);
         return *this;
@@ -127,6 +132,7 @@ private:
     Prop<CardVariant> variant_{CardVariant::Outlined};
     Prop<bool> hoverable_{false};
     Prop<bool> loading_{false};
+    Prop<bool> clip_content_{false};
     Prop<bool> animated_{true};
     Prop<std::size_t> grid_columns_{3};
     std::optional<Prop<std::vector<TabItem>>> tabs_;

@@ -119,6 +119,11 @@ public:
     [[nodiscard]] std::size_t component_count() const noexcept;
     [[nodiscard]] std::size_t mount_runs() const noexcept;
     [[nodiscard]] NodeId root(ComponentId id) const;
+
+    [[nodiscard]] const NodeStore& nodes() const noexcept {
+        return *nodes_;
+    }
+
     [[nodiscard]] std::optional<ComponentId> parent(ComponentId id) const;
     [[nodiscard]] const std::vector<ComponentId>& children(ComponentId id) const;
     [[nodiscard]] std::span<const ComponentId> root_components() const noexcept;

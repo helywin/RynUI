@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 
 #include "graphics/dirty_ranges.hpp"
 #include "graphics/glyph_atlas.hpp"
@@ -148,6 +149,8 @@ struct SceneDrawCommand {
     friend bool operator==(SceneDrawCommand, SceneDrawCommand) = default;
 };
 
+struct SceneCompositionProgram;
+
 class OrderedScene final {
 public:
     void reserve(std::size_t command_capacity);
@@ -155,6 +158,17 @@ public:
     void append_glyph(GlyphDrawRange range);
     void append_glyph(const GlyphPrimitive& primitive);
     void append_command(SceneDrawCommand command);
+    void barrier() noexcept;
+
+    [[nodiscard]] std::uint64_t revision() const noexcept {
+        return revision_;
+    }
+
+    void set_composition(std::shared_ptr<const SceneCompositionProgram> program);
+
+    [[nodiscard]] const std::shared_ptr<const SceneCompositionProgram>& composition() const noexcept {
+        return composition_;
+    }
 
     [[nodiscard]] std::span<const SceneDrawCommand> commands() const noexcept;
     void clear() noexcept;
@@ -163,6 +177,9 @@ private:
     void append(SceneDrawCommand command);
 
     std::vector<SceneDrawCommand> commands_;
+    std::shared_ptr<const SceneCompositionProgram> composition_;
+    std::uint64_t revision_{1};
+    bool barrier_{};
 };
 
 } // namespace ryn::graphics

@@ -17,6 +17,7 @@
 #include "platform/sdl/platform_state.hpp"
 #include "platform/sdl/file_services.hpp"
 #include "renderer/common/scene_resources.hpp"
+#include "renderer/common/scene_resource_deadlines.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "runtime/animation_frame_deadline.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -599,15 +600,22 @@ public:
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto scene_synchronized = std::chrono::steady_clock::now();
+            last_visible_scene_ =
+                application_->scene_composer().build_visible_scene(application_->nodes(), clip, visible_scene_);
             ryn::detail::SceneUploadTiming upload_timing;
+            resources_->set_frame_time(frame_time);
             if (!resources_->synchronize({&application_->services().surfaces().instances(),
                                           text_scene_->atlas(),
                                           text_scene_->glyph_scene().instances(),
                                           &application_->rounded_effects(),
                                           {static_cast<std::uint32_t>(metrics.pixel_width),
                                            static_cast<std::uint32_t>(metrics.pixel_height), *render_scale_},
-                                          &application_->services().images()},
+                                          &application_->services().images(),
+                                          &visible_scene_},
                                          &upload_timing)) {
+                if (resources_->waiting_for_composition_fence()) {
+                    return ryn::runtime::FrameSubmissionResult::deferred;
+                }
                 last_error_ = renderer_->last_error();
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
@@ -617,8 +625,7 @@ public:
             const auto glyph_synchronized = upload_timing.glyphs;
             const auto effect_synchronized = upload_timing.effects;
             const auto resources_synchronized = upload_timing.committed;
-            last_visible_scene_ =
-                application_->scene_composer().build_visible_scene(application_->nodes(), clip, visible_scene_);
+
             const auto scene_culled = std::chrono::steady_clock::now();
             if (!renderer_->attach_scene(resources_->attach(visible_scene_))) {
                 last_error_ = "Token Gallery scene attachment is invalid";
@@ -678,6 +685,9 @@ public:
             }
             return result;
         } catch (const std::exception& error) {
+            if (resources_->waiting_for_composition_fence()) {
+                return ryn::runtime::FrameSubmissionResult::deferred;
+            }
             last_error_ = error.what();
             return ryn::runtime::FrameSubmissionResult::failed;
         }
@@ -1189,7 +1199,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                              navigation_scroll, scroll_presentation, site_children.back(), viewport, render_scale,
                              acceptance_scale.has_value(), *fonts, font_chain, definition.set_viewport_width,
                              definition.take_navigation_request, deferred_navigation);
-        auto& animation_deadlines = application;
+        ryn::detail::SceneResourceDeadlines animation_deadlines(application, scene_resources);
         ryn::runtime::OnDemandFrameLoop loop(frame_requests, events, submitter, animation_deadlines, 10);
 
         std::size_t smoke_stage = 0;

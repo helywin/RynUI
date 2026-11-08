@@ -8,25 +8,24 @@ function(rynui_add_shader_targets shadercross_command shadercross_dependency)
 
     set(shader_outputs)
     set(shader_filenames)
-    foreach(shader_name IN ITEMS quad glyph rounded_effect rounded_effect_paint image)
+    foreach(shader_name IN ITEMS quad glyph rounded_effect rounded_effect_paint image
+            quad_composition glyph_composition image_composition rounded_effect_composition rounded_effect_paint_composition masked_group backdrop_filter backdrop_composite)
         set(shader_source "${PROJECT_SOURCE_DIR}/shaders/${shader_name}.hlsl")
         set(shader_dependencies "${shader_source}")
         set(shader_validation ${CMAKE_COMMAND} -E true)
-        if(shader_name MATCHES "^rounded_effect")
-            list(APPEND shader_dependencies "${PROJECT_SOURCE_DIR}/shaders/rounded_effect_coverage.hlsli")
-            if(shader_name STREQUAL "rounded_effect_paint")
-                list(APPEND shader_dependencies
-                    "${PROJECT_SOURCE_DIR}/shaders/cap_number.hlsli"
-                    "${PROJECT_SOURCE_DIR}/shaders/effect_linear_exact.hlsli"
-                    "${PROJECT_SOURCE_DIR}/shaders/effect_conic_candidate.hlsli"
-                    "${PROJECT_SOURCE_DIR}/shaders/effect_paint_sampling.hlsli")
-            endif()
+        if(shader_name MATCHES "^rounded_effect|_composition$|^masked_group$|^backdrop_")
+            execute_process(COMMAND "${Python3_EXECUTABLE}" -B "${effect_validator}"
+                --root "${PROJECT_SOURCE_DIR}" --entry "${shader_name}" --list-dependencies
+                OUTPUT_VARIABLE shader_dependencies OUTPUT_STRIP_TRAILING_WHITESPACE
+                COMMAND_ERROR_IS_FATAL ANY)
             set(shader_validation "${Python3_EXECUTABLE}" -B "${effect_validator}"
                 --root "${PROJECT_SOURCE_DIR}" --lock "${effect_lock}" --entry "${shader_name}")
             foreach(dependency IN LISTS shader_dependencies)
                 list(APPEND shader_validation --dependency "${dependency}")
             endforeach()
             list(APPEND shader_dependencies "${effect_lock}" "${effect_validator}")
+        else()
+            list(APPEND shader_dependencies "${PROJECT_SOURCE_DIR}/shaders/scene_pass.hlsli")
         endif()
         foreach(shader_stage IN ITEMS vertex fragment)
             if(shader_stage STREQUAL "vertex")
@@ -39,7 +38,7 @@ function(rynui_add_shader_targets shadercross_command shadercross_dependency)
                 set(stage_define RYNUI_FRAGMENT_SHADER=1)
             endif()
             set(shader_stage_validation ${shader_validation})
-            if(shader_name MATCHES "^rounded_effect")
+            if(shader_name MATCHES "^rounded_effect|_composition$|^masked_group$|^backdrop_")
                 list(APPEND shader_stage_validation --stage "${shader_stage}" --define "${stage_define}")
             endif()
 
@@ -78,7 +77,8 @@ function(rynui_add_shader_targets shadercross_command shadercross_dependency)
         endforeach()
     endforeach()
 
-    foreach(shader_name IN ITEMS glyph rounded_effect rounded_effect_paint image)
+    foreach(shader_name IN ITEMS glyph rounded_effect rounded_effect_paint image
+            quad_composition glyph_composition image_composition rounded_effect_composition rounded_effect_paint_composition masked_group backdrop_filter backdrop_composite)
         foreach(shader_stage IN ITEMS vertex fragment)
             if(shader_stage STREQUAL "vertex")
                 set(entry_point VSMain)

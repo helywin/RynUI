@@ -8,8 +8,8 @@
 | --- | --- |
 | `gallery_pages_host.cpp` | 顶栏语言按钮、独立 formatLocale/direction 设置、导航、搜索、状态筛选、目录、页面标题、TOC、来源与 Token/API 说明；切语言不请求 route |
 | `gallery_page_controller.cpp` / `gallery_source_panel.cpp` | 失败、重试、返回、展开源码、复制及说明；源码正文与路径保持原文 |
-| `gallery_i18n.cpp` | 2169 条显式双语声明和参数 schema；当前 73 个 catalog 身份的 name/summary/supported/missing 逐项核对，技术标识与旧验收边界保留 |
-| `token_gallery_definition.cpp` | 112 个真实 sample 标题、操作、说明、属性与占位、事件反馈、历史 frame 导航与 reference cells；sample/action/target/source_function/public_header 身份保持 |
+| `gallery_i18n.cpp` | 2187 条显式双语声明和参数 schema；当前 73 个 catalog 身份的 name/summary/supported/missing 逐项核对，技术标识与旧验收边界保留 |
+| `token_gallery_definition.cpp` | 114 个真实 sample 标题、操作、说明、属性与占位、事件反馈、历史 frame 导航与 reference cells；sample/action/target/source_function/public_header 身份保持 |
 | 应用模型 | Tab/Menu/Select/AutoComplete/Mentions/Checkbox/Radio/Tree/TreeSelect/Transfer/Cascader/Tag/Steps/Timeline/Breadcrumb/Anchor、Table filter、Picker preset 的实际标签投影 |
 | 新依赖工厂 | Table 原生固定列/虚拟行/筛选和 Tour 原生目标两工厂的标题、操作、说明、步骤、反馈；353 App 的 Modal/Drawer/Popconfirm 服务样例 |
 
@@ -23,9 +23,9 @@ ConfigProvider 页挂载只使用公开头的 `examples/i18n_app/i18n_app.cpp`�
 
 ## 精确 literal 与检查器
 
-`tests/fixtures/gallery-i18n-literals.json` 当前登记 220 个精确 source/function/literal 来源，分类为业务 payload、确定性文本样本或代码/API。范围包括 editable 初始正文、人员名与业务值、合成 IO 错误、Typography/CJK/bidi/复制样本、二维码/水印 payload、代码与物理单位。未登记整页、整个组件或“所有中文”；操作、提示、菜单和选项标题不作为 fixture 放行。模型中保留的旧标签初值由显式键映射投影，不以原文猜语言。
+`tests/fixtures/gallery-i18n-literals.json` 当前登记 223 个精确 source/function/literal 来源，分类为业务 payload、确定性文本样本或代码/API。范围包括 editable 初始正文、人员名与业务值、合成 IO 错误、Typography/CJK/bidi/复制样本、二维码/水印 payload、代码与物理单位。未登记整页、整个组件或“所有中文”；操作、提示、菜单和选项标题不作为 fixture 放行。模型中保留的旧标签初值由显式键映射投影，不以原文猜语言。
 
-`tools/check_gallery_i18n.py` 同时检查声明/schema、调用身份、112 个实际 sample、73 个 catalog、fixture 精确来源，以及直接文本/属性/反馈和具名模型 label 的显示 sink，输出文件、行号、文字。`tests/gallery_i18n_source_checker_tests.py` 的 5 个负例组验证中英文遗漏、拼接反馈、模型标签、显示 automation ID 和 fixture 来源不匹配。该工具是有界源码检查，不是 C++ 语义分析器，也不替代实际绘制和交互。
+`tools/check_gallery_i18n.py` 同时检查声明/schema、调用身份、114 个实际 sample、73 个 catalog、fixture 精确来源，以及直接文本/属性/反馈和具名模型 label 的显示 sink，输出文件、行号、文字。`tests/gallery_i18n_source_checker_tests.py` 的 5 个负例组验证中英文遗漏、拼接反馈、模型标签、显示 automation ID 和 fixture 来源不匹配。该工具是有界源码检查，不是 C++ 语义分析器，也不替代实际绘制和交互。
 
 ## 自动入口与证据边界
 

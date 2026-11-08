@@ -7222,6 +7222,93 @@ void add_empty_completion_samples(const std::shared_ptr<GalleryState>& state) {
     ++state->telemetry.live_samples;
 }
 
+void add_card_mask_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<bool> clipped{true};
+    std::array<std::byte, 16> bytes{std::byte{24},  std::byte{144}, std::byte{255}, std::byte{255},
+                                    std::byte{114}, std::byte{46},  std::byte{209}, std::byte{255},
+                                    std::byte{82},  std::byte{196}, std::byte{26},  std::byte{255},
+                                    std::byte{250}, std::byte{173}, std::byte{20},  std::byte{255}};
+    const auto pixels = ImagePixels::copy(2, 2, 8, bytes);
+    Button(ButtonProps{}.onClick([=] { clipped.set(!clipped.get()); }),
+           [] { gallery_label("gallery.composition.card.toggle"); });
+    remember_target(state, "gallery.card.mask-toggle");
+    const auto enabled_text = gallery_text("gallery.composition.card.enabled");
+    const auto overflow_text = gallery_text("gallery.composition.card.overflow");
+    Text(TextProps{}.content(bind([=] { return clipped.get() ? enabled_text.get() : overflow_text.get(); })));
+    Card(CardProps{}.clipContent(clipped).hoverable(true).layout(LayoutStyle{}.width(dp(300))), CardContent{[=] {
+             Flex(FlexProps{}.vertical(true).gap(dp(12)), FlexContent{[=] {
+                      Input(InputProps{}
+                                .defaultValue(u8"Customer note")
+                                .placeholder(gallery_text("gallery.composition.card.draft")));
+                      remember_target(state, "gallery.card.mask-draft");
+                      Button(ButtonProps{}.type(ButtonType::Primary),
+                             [] { gallery_label("gallery.composition.card.action"); });
+                      remember_target(state, "gallery.card.mask-action");
+                      gallery_label("gallery.composition.card.description");
+                  }});
+         }},
+         {.cover = CardCover{[=] {
+              Image(ImageProps{}
+                        .source(ImageSource{pixels})
+                        .fit(ImageFit::Fill)
+                        .layout(LayoutStyle{}.width(dp(300)).height(dp(100))));
+          }}});
+    ++state->telemetry.live_samples;
+}
+
+void add_modal_backdrop_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Signal<bool> open{false};
+    Signal<ModalMask> mask{ModalMask{true, true, true}};
+    AppRef app;
+    const auto confirm_title = gallery_text("gallery.composition.modal.confirm");
+    App(AppProps{}.ref(app), AppContent{[=] {
+            gallery_label("gallery.composition.modal.description");
+            Input(InputProps{}
+                      .defaultValue(u8"Customer details")
+                      .placeholder(gallery_text("gallery.composition.modal.background")));
+            remember_target(state, "gallery.modal.backdrop-draft");
+            Button(ButtonProps{}.onClick([=] {
+                mask.set({true, true, true});
+                open.set(true);
+            }),
+                   [] { gallery_label("gallery.composition.modal.blur"); });
+            remember_target(state, "gallery.modal.backdrop-open");
+            Button(ButtonProps{}.onClick([=] {
+                mask.set({true, true, false});
+                open.set(true);
+            }),
+                   [] { gallery_label("gallery.composition.modal.tint"); });
+            remember_target(state, "gallery.modal.backdrop-tint");
+            Button(ButtonProps{}.onClick([=] {
+                mask.set({false, true, false});
+                open.set(true);
+            }),
+                   [] { gallery_label("gallery.composition.modal.none"); });
+            remember_target(state, "gallery.modal.backdrop-none");
+            Button(ButtonProps{}.onClick([=] {
+                (void)app.modal().confirm(ModalProps{}.title(confirm_title).mask(mask),
+                                          ModalContent{[] { gallery_label("gallery.composition.modal.update"); }});
+            }),
+                   [] { gallery_label("gallery.composition.modal.service"); });
+            remember_target(state, "gallery.modal.backdrop-service");
+            Modal(ModalProps{}
+                      .title(gallery_text("gallery.composition.modal.title"))
+                      .open(open)
+                      .mask(mask)
+                      .centered(true)
+                      .onOk([=] { open.set(false); })
+                      .onCancel([=](ModalCancelReason) { open.set(false); }),
+                  ModalContent{[] {
+                      Input(InputProps{}
+                                .defaultValue(u8"Dialog note")
+                                .placeholder(gallery_text("gallery.composition.modal.note")));
+                  }});
+        }});
+    ++state->telemetry.live_samples;
+}
+
 void add_card_completion_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Signal<std::size_t> columns{2};
@@ -11819,6 +11906,20 @@ constexpr auto sample_factories = std::to_array<GallerySampleFactory>({
       "add_config_provider_samples",
       "include/ryn/config_provider.hpp"},
      add_config_provider_samples},
+    {{"gallery.sample.card.rounded-mask",
+      "ant.component.card",
+      {},
+      "圆角内容与保留编辑",
+      "add_card_mask_samples",
+      "include/ryn/card.hpp"},
+     add_card_mask_samples},
+    {{"gallery.sample.modal.backdrop",
+      "ant.component.modal",
+      {},
+      "背景模糊与遮罩选择",
+      "add_modal_backdrop_samples",
+      "include/ryn/modal.hpp"},
+     add_modal_backdrop_samples},
     {{"gallery.sample.watermark.native",
       "ant.component.watermark",
       {},

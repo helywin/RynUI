@@ -1208,18 +1208,19 @@
     },
     {
       "identity": "ant.component.card",
-      "status": "partial",
-      "summary": "Card Grid、Meta、保留 Tabs、Image cover 与 loading 已通过 MSVC HEADLESS Debug/Release 和 Windows hidden D3D12 定向检查；任意后代圆角遮罩仍未完成，状态保持 partial。",
+      "status": "implemented",
+      "summary": "原生 Card 支持 Grid、Meta、保留 Tabs、Image cover、有限 loading 动画与任意普通后代的共同圆角合成。",
       "supported_scope": [
         "typed reactive Props and body/title/extra/cover/actions slots",
         "default/small, outlined/borderless and hover across nested controls",
         "retained loading placeholder with body focus/input/popup cleanup and editor state restoration",
         "Card Component Token, precise invalidation, logical translation/clipping and idle cleanup",
-        "107 Grid/Meta/keyed Tabs, Image cover composition and bounded loading pulse; MSVC CPU and Windows hidden GPU checks"
+        "Grid/Meta/keyed Tabs, shared Image cover and bounded loading pulse",
+        "optional rounded descendant composition across Quad/Glyph/Image/Effect, child shadows and focus rings; retained editors and rounded hit geometry",
+        "ancestor hard clip updates, nested mask coverage and atomic resource failure/retry; cold path allocates no composition resources"
       ],
       "missing_scope": [
-        "arbitrary descendant rounded mask requires a shared Core/renderer contract",
-        "complete Web/DOM/CSS API"
+        "Web/DOM/CSS interfaces are outside the native API; system IME and OS accessibility adapters require their own platform evidence"
       ],
       "evidence_identifiers": [
         "source:components/card/index.en-US.md",
@@ -1227,7 +1228,11 @@
         "test:rynui.card_theme",
         "test:rynui.card_component",
         "openspec:107-20261104-complete-navigation-and-remaining-components",
-        "test:rynui.portable.card_empty_completion"
+        "test:rynui.portable.card_empty_completion",
+        "test:rynui.card_mask",
+        "test:rynui.scene_composition",
+        "test:rynui.composition_failure",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/composition-native.md"
       ]
     },
     {
@@ -1794,23 +1799,26 @@
     {
       "identity": "ant.component.modal",
       "status": "partial",
-      "summary": "已实现受控对话框、保留内容、嵌套窗口层、焦点管理与有限视口正文滚动；平台通用验证与原生窗口验收独立记录。",
+      "summary": "原生 Modal 已具备受控输入边界、保留编辑、App 动态及异步确认服务，并支持真实前序背景 Gaussian 模糊。",
       "supported_scope": [
         "typed reactive Props, retained ModalContent/title/footer slots and controlled OK/cancel requests",
         "mask/keyboard/close/footer/loading states, lifecycle notifications and Modal Component Token",
         "topmost logical input boundary, nested layers, focus trap/restoration and IME/popup Escape priority",
-        "window clipping, fixed header/footer, pixel-aligned body scroll and focused editor/caret reveal"
+        "window clipping, fixed header/footer, pixel-aligned body scroll and focused editor/caret reveal",
+        "captured App dynamic services and asynchronous confirmation with retained content",
+        "opt-in real framebuffer-prefix Gaussian backdrop with independent mask activation and PM alpha correctness"
       ],
       "missing_scope": [
-        "static confirm/Promise services, lazy/destroyOnHidden and activation animation",
-        "drag/resize, mask blur, RTL, responsive breakpoint widths and native accessibility bridge",
-        "Web/DOM/CSS compatibility aliases"
+        "lazy/destroyOnHidden, activation animation, drag/resize, full RTL and responsive breakpoint widths",
+        "native accessibility bridge and Web/DOM/CSS compatibility aliases"
       ],
       "evidence_identifiers": [
         "source:components/modal/index.en-US.md",
         "openspec:061-20261023-add-native-modal",
         "test:modal_model/modal_public_api/modal_theme/modal_boundary/modal_component/token_gallery_frame",
-        "docs:docs/modal.md"
+        "docs:docs/modal.md",
+        "test:rynui.modal_backdrop",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/composition-native.md"
       ]
     },
     {
