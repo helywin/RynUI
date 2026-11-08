@@ -162,8 +162,9 @@ void active_layers_retain_rich_input_and_callbacks() {
     const auto popup_id = fixture.services.popconfirm().mounted()[0];
     const auto modal = fixture.services.modal().snapshot(modal_id);
     const auto popup = fixture.services.popconfirm().snapshot(popup_id);
-    require(modal.visible && popup.geometry.visible && !background.focus(),
-            "active Modal/Popconfirm or background input confinement setup failed");
+    require(modal.visible, "active Modal setup failed");
+    require(popup.geometry.visible, "nested Popconfirm setup failed");
+    require(!background.focus(), "Modal admitted background input during setup");
     require(refs[2].focus(), "rich popup Input did not focus");
     const auto input = fixture.inputs.mounted_inputs().back();
     auto& editor = fixture.inputs.editors().require(input.editor);

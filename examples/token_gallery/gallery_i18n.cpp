@@ -4562,30 +4562,30 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
             target.insert(
                 target.end(),
                 {{MessageKey{u8"gallery.ant.component.modal.name", String{u8"Modal"}}, String{u8"Modal 对话框"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.modal.summary",
-                      String{u8"Native Modal provides controlled input boundaries, retained editing, captured App and "
-                             u8"asynchronous confirmation services, and real Gaussian backdrop filtering."}},
-                  String{u8"原生 Modal 已具备受控输入边界、保留编辑、App 动态及异步确认服务，并支持真实前序背景 "
-                         u8"Gaussian 模糊。"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.modal.supported",
-                      String{u8"Controlled dialogs, retained typed content, nested focus and input boundaries, fixed "
-                             u8"header/footer and scrolling; captured App services and asynchronous confirmation; "
-                             u8"optional framebuffer-prefix Gaussian blur with correct premultiplied alpha."}},
+                 {MessageKey{u8"gallery.ant.component.modal.summary",
+                             String{u8"Native Modal supports retained editing, real backdrop blur, finite "
+                                    u8"presentation, lazy content, dragging, resizing, RTL, responsive widths and "
+                                    u8"captured App asynchronous services."}},
+                  String{u8"原生 Modal 支持保留编辑、真实背景模糊、有限开合、lazy/destroy、拖动缩放、RTL、响应断点及 "
+                         u8"App 异步服务。"}},
+                 {MessageKey{u8"gallery.ant.component.modal.supported",
+                             String{u8"Controlled retained dialogs and nested input boundaries; real Gaussian backdrop "
+                                    u8"filtering; finite reversible motion, lazy content and terminal cleanup; title "
+                                    u8"dragging, pointer and keyboard resizing, inherited RTL and responsive widths; "
+                                    u8"captured App services whose close futures wait for presentation completion."}},
                   String{u8"typed reactive Props, retained ModalContent/title/footer slots and controlled OK/cancel "
                          u8"requests；mask/keyboard/close/footer/loading states, lifecycle notifications and Modal "
                          u8"Component Token；topmost logical input boundary, nested layers, focus trap/restoration and "
                          u8"IME/popup Escape priority；window clipping, fixed header/footer, pixel-aligned body scroll "
                          u8"and focused editor/caret reveal；captured App dynamic services and asynchronous "
                          u8"confirmation with retained content；opt-in real framebuffer-prefix Gaussian backdrop with "
-                         u8"independent mask activation and PM alpha correctness"}},
-                 {MessageKey{u8"gallery.ant.component.modal.missing",
-                             String{u8"Lazy content, destroy-on-hidden, activation motion, dragging, resizing, full "
-                                    u8"RTL and responsive widths remain tracked. OS accessibility adapters and Web "
-                                    u8"DOM/CSS interfaces are separate."}},
-                  String{u8"lazy/destroyOnHidden, activation animation, drag/resize, full RTL and responsive "
-                         u8"breakpoint widths；native accessibility bridge and Web/DOM/CSS compatibility aliases"}},
+                         u8"independent mask activation and PM alpha correctness；lazy/destroyOnHidden, finite "
+                         u8"reversible presentation and terminal callbacks/service futures；actual title drag, "
+                         u8"pointer/keyboard resize, RTL inheritance and live responsive breakpoint widths"}},
+                 {MessageKey{
+                      u8"gallery.ant.component.modal.missing",
+                      String{u8"OS accessibility adapters and Web DOM/CSS compatibility aliases remain separate."}},
+                  String{u8"native accessibility bridge and Web/DOM/CSS compatibility aliases"}},
                  {MessageKey{u8"gallery.ant.component.notification.name", String{u8"Notification"}},
                   String{u8"Notification 通知提醒框"}},
                  {MessageKey{
@@ -5833,6 +5833,8 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                  {MessageKey{u8"gallery.input.underlined.caption", String{u8"input · underlined"}},
                   String{u8"input · underlined"}},
                  {MessageKey{u8"gallery.modal.basic.caption", String{u8"Basic confirmation"}}, String{u8"基础确认"}},
+                 {MessageKey{u8"gallery.modal.motion.caption", String{u8"Animated, movable and resizable dialog"}},
+                  String{u8"动画、拖动与缩放"}},
                  {MessageKey{u8"gallery.modal.centered.caption", String{u8"Vertically centered"}},
                   String{u8"垂直居中"}},
                  {MessageKey{u8"gallery.modal.component-theme.caption", String{u8"Scoped dialog theme"}},

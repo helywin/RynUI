@@ -34,6 +34,7 @@ struct ModalSnapshot final {
     bool transitioning{};
     float progress{};
     std::uint64_t motion_revision{};
+    bool dragging{};
 };
 
 class ModalComponentHost final : public WindowComponentParticipant {
@@ -56,7 +57,8 @@ public:
 
     [[nodiscard]] bool visible() const noexcept;
     [[nodiscard]] std::function<void()> detach_action(runtime::ComponentId) noexcept;
-    void arm_service_drawer_close(runtime::ComponentId);
+    void arm_service_panel_close(runtime::ComponentId);
+    [[nodiscard]] bool presentation_enabled(runtime::ComponentId) const;
     void append_service_body(runtime::ComponentId, runtime::ComponentId, const Content&,
                              const runtime::CapturedComponentContext&);
     std::size_t tick_auxiliary(animation::AnimationTime) override;
@@ -92,6 +94,8 @@ private:
                      const DrawerSlots* = nullptr);
     void reconcile_drawer_content(runtime::ComponentId);
     void resize_drawer(runtime::ComponentId, float, bool);
+    void move_modal(runtime::ComponentId, runtime::Point);
+    void resize_modal(runtime::ComponentId, runtime::Size);
     [[nodiscard]] runtime::Size measure_drawer(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place_drawer(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     void reconcile();

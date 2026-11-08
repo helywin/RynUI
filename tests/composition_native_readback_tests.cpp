@@ -501,6 +501,125 @@ void service_readback(SdlSceneRenderer& renderer) {
     require(restored.pixels == baseline.pixels, "service cleanup left backdrop contents/request");
 }
 
+void modal_presentation_readback(const char* driver) {
+    PlatformConfig config;
+    config.title = "RynUI hidden Modal presentation";
+    config.width = 720;
+    config.height = 600;
+    config.hidden = true;
+    config.high_pixel_density = false;
+    auto platform = PlatformState::create(config);
+    require(bool(platform), "Modal native platform");
+    SdlSceneRenderer renderer(*platform.state);
+    require(std::string(renderer.gpu_driver()) == driver, "Modal native GPU driver");
+    ryn_test::input_component::Fixture f;
+    f.services.set_motion_preference(animation::MotionPreference::normal);
+    Signal<bool> open{false};
+    InputRef input;
+    f.services.mount(Content{[&] {
+        Modal(ModalProps{}
+                  .open(open)
+                  .title(u8"Move retained dialog")
+                  .width(300)
+                  .animated()
+                  .lazy()
+                  .destroyOnHidden()
+                  .draggable()
+                  .resizable()
+                  .mask(ModalMask{true, true, true}),
+              ModalContent{[&] { Input(InputProps{}.ref(input).defaultValue(u8"Retained editor")); }});
+    }});
+    const auto root = f.services.components().root_components().front();
+    ThemeConfig theme;
+    theme.modal.tokens.background = Color{0, 0, 1, 1};
+    theme.modal.tokens.header_background = Color{0, 0, 1, 1};
+    theme.modal.tokens.footer_background = Color{0, 0, 1, 1};
+    theme.modal.tokens.mask = Color{0, 0, 0, 0};
+    theme.modal.tokens.shadow = ShadowList{};
+    f.services.components().theme_scope(root)->update(theme);
+    SceneResources resources(renderer);
+    const auto read = [&](std::int64_t time) {
+        (void)f.services.tick_animations(animation::AnimationTime::microseconds(time));
+        for (int i = 0; i < 2; ++i) {
+            require(f.services.layout_and_synchronize({720, 600}, {0, 0, 720, 600}), "Modal native layout");
+        }
+        const auto& scene = f.services.scene_composer().ordered_scene();
+        require(resources.synchronize({&f.services.surfaces().instances(),
+                                       f.scene.atlas(),
+                                       f.scene.glyph_scene().instances(),
+                                       &f.services.rounded_effects(),
+                                       {720, 600, 1},
+                                       &f.services.images(),
+                                       &scene}),
+                "Modal native upload");
+        require(renderer.attach_scene(resources.attach(scene)), "Modal native attach");
+        SceneRgbaReadback frame;
+        require(renderer.read_frame_rgba(frame), renderer.last_error());
+        return frame;
+    };
+    const auto baseline = read(0);
+    open.set(true);
+    (void)read(0);
+    const auto middle = read(150000);
+    const auto id = f.services.modal().mounted().front();
+    auto snapshot = f.services.modal().snapshot(id);
+    require(snapshot.transitioning && snapshot.progress > 0 && snapshot.progress < 1 && input.bound(),
+            "Modal native entry did not retain finite presentation");
+    const auto bx = static_cast<unsigned>(snapshot.bounds.x + 12);
+    const auto by = static_cast<unsigned>(snapshot.bounds.y + snapshot.bounds.height / 2);
+    const auto baseline_offset = std::size_t(by) * baseline.row_pitch + bx * 4;
+    std::array<int, 4> midpoint;
+    for (unsigned channel = 0; channel < 4; ++channel) {
+        const auto background = std::to_integer<unsigned char>(baseline.pixels[baseline_offset + channel]);
+        midpoint[channel] = static_cast<int>(
+            std::lround((channel >= 2 ? 255 : 0) * snapshot.progress + background * (1 - snapshot.progress)));
+    }
+    pixel(middle, bx, by, midpoint, 2);
+    const auto settled = read(300000);
+    snapshot = f.services.modal().snapshot(id);
+    pixel(settled, static_cast<unsigned>(snapshot.bounds.x + 12),
+          static_cast<unsigned>(snapshot.bounds.y + snapshot.bounds.height / 2), {0, 0, 255, 255}, 1);
+    const auto node_bounds = [&](runtime::ComponentId component) {
+        const auto& node = f.nodes.require(f.services.components().root(component));
+        return runtime::Rect{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y, node.bounds.width,
+                             node.bounds.height};
+    };
+    const auto pointer = [&](input::PointerAction action, float x, float y) {
+        f.services.pointer().dispatch(
+            {input::PointerIdentity::mouse(), action,
+             action == input::PointerAction::move ? input::PointerButton::none : input::PointerButton::primary, x, y});
+    };
+    const auto original = snapshot.bounds;
+    const auto title = node_bounds(snapshot.title);
+    pointer(input::PointerAction::down, title.x + 8, title.y + 8);
+    pointer(input::PointerAction::move, title.x + 58, title.y + 33);
+    pointer(input::PointerAction::up, title.x + 58, title.y + 33);
+    const auto moved = read(300000);
+    snapshot = f.services.modal().snapshot(id);
+    require(std::abs(snapshot.bounds.x - original.x - 50) < .02F &&
+                std::abs(snapshot.bounds.y - original.y - 25) < .02F,
+            "Modal native title drag failed");
+    pixel(moved, static_cast<unsigned>(snapshot.bounds.x + 12),
+          static_cast<unsigned>(snapshot.bounds.y + snapshot.bounds.height / 2), {0, 0, 255, 255}, 1);
+    const auto before_resize = snapshot.bounds;
+    const auto grip = node_bounds(snapshot.resize_handle);
+    pointer(input::PointerAction::down, grip.x + grip.width / 2, grip.y + grip.height / 2);
+    pointer(input::PointerAction::move, grip.x + grip.width / 2 + 40, grip.y + grip.height / 2 + 24);
+    pointer(input::PointerAction::up, grip.x + grip.width / 2 + 40, grip.y + grip.height / 2 + 24);
+    (void)read(300000);
+    snapshot = f.services.modal().snapshot(id);
+    require(std::abs(snapshot.bounds.width - before_resize.width - 40) < .02F &&
+                std::abs(snapshot.bounds.height - before_resize.height - 24) < .02F && input.bound(),
+            "Modal native corner resize failed");
+    open.set(false);
+    (void)read(450000);
+    require(input.bound() && f.services.modal().snapshot(id).paint_visible,
+            "Modal native exit destroyed content before completion");
+    const auto hidden = read(600000);
+    require(!input.bound() && hidden.pixels == baseline.pixels && !f.services.modal().next_auxiliary_deadline(),
+            "Modal native completion left paint, editor or deadline");
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -528,6 +647,7 @@ int main(int argc, char** argv) {
         backdrop_numerics(renderer, *platform.state);
         multiple_prefixes(renderer, *platform.state);
         service_readback(renderer);
+        modal_presentation_readback(argv[1]);
         std::cout << "composition native RGBA passed, driver=" << renderer.gpu_driver() << '\n';
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

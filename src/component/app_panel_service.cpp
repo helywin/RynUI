@@ -37,6 +37,8 @@ struct PanelEntry final {
     PanelValue<String> ok{String{}};
     PanelValue<String> cancel{String{}};
     PanelValue<float> width{520.0F};
+    PanelValue<Responsive<float>> width_profile{Responsive<float>{520}};
+    Signal<bool> width_profile_active{false};
     PanelValue<float> height{378.0F};
     PanelValue<bool> loading{false};
     std::vector<std::shared_ptr<Scope>> subscriptions;
@@ -182,7 +184,7 @@ void finish(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result, b
     }
 }
 
-bool begin_drawer_close(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result) {
+bool begin_panel_close(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result) {
     if (!live(entry) || entry->closing) {
         return false;
     }
@@ -198,13 +200,25 @@ bool begin_drawer_close(const std::shared_ptr<PanelEntry>& entry, PanelCloseResu
     try {
         entry->open.set(false);
         if (live(entry) && entry->close_revision == revision) {
-            services(entry).modal().arm_service_drawer_close(entry->panel);
+            services(entry).modal().arm_service_panel_close(entry->panel);
             services(entry).request_frame();
         }
     } catch (...) {
         finish(entry, {PanelCloseKind::Failed}, false);
         throw;
     }
+    return true;
+}
+
+bool close_entry(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result) {
+    if (!live(entry) || entry->closing) {
+        return false;
+    }
+    if (entry->kind == PanelKind::Drawer ||
+        (entry->kind == PanelKind::Modal && services(entry).modal().presentation_enabled(entry->panel))) {
+        return begin_panel_close(entry, result);
+    }
+    finish(entry, result);
     return true;
 }
 
@@ -225,7 +239,7 @@ void confirm_entry(const std::shared_ptr<PanelEntry>& entry) {
         }
     }
     if (live(entry)) {
-        finish(entry, {PanelCloseKind::Confirmed});
+        close_entry(entry, {PanelCloseKind::Confirmed});
     }
 }
 
@@ -426,6 +440,14 @@ ModalHandle AppPanelService::modal(const std::shared_ptr<PanelServiceContext>& c
     try {
         connect(entry, entry->title, props.title_);
         connect(entry, entry->width, props.width_);
+        if (props.responsive_width_) {
+            connect(entry, entry->width_profile, *props.responsive_width_);
+            entry->width_profile_active.set(true);
+            props.responsive_width_ = bind([profile = entry->width_profile.value, active = entry->width_profile_active,
+                                            fallback = entry->width.value] {
+                return active.get() ? profile.get() : Responsive<float>{fallback.get()};
+            });
+        }
         const auto locale =
             localized_prop(props.locale_, context->captured.config, [](const LocaleData& data) { return data.common; });
         connect(entry, entry->ok,
@@ -451,6 +473,13 @@ ModalHandle AppPanelService::modal(const std::shared_ptr<PanelServiceContext>& c
         props.show_cancel_ = cache(entry, props.show_cancel_);
         props.footer_ = cache(entry, props.footer_);
         props.restore_focus_ = cache(entry, props.restore_focus_);
+        props.lazy_ = cache(entry, props.lazy_);
+        props.destroy_hidden_ = cache(entry, props.destroy_hidden_);
+        props.animated_ = cache(entry, props.animated_);
+        props.rtl_ = cache(entry, props.rtl_);
+        props.draggable_ = cache(entry, props.draggable_);
+        props.resizable_ = cache(entry, props.resizable_);
+        props.width_ = entry->width.value;
         if (!props.action_ && props.on_ok_) {
             props.action_ = ConfirmAction::synchronous([callback = props.on_ok_] {
                 callback();
@@ -459,13 +488,20 @@ ModalHandle AppPanelService::modal(const std::shared_ptr<PanelServiceContext>& c
         }
         props.open(entry->open)
             .title(entry->title.value)
-            .width(entry->width.value)
             .okText(entry->ok.value)
             .cancelText(entry->cancel.value)
             .afterClose({})
             .afterOpenChange([weak = std::weak_ptr{entry}](bool open) {
-                if (const auto entry = weak.lock(); detail::live(entry) && open && entry->after_open) {
-                    entry->after_open(true);
+                const auto entry = weak.lock();
+                if (!detail::live(entry)) {
+                    return;
+                }
+                if (open) {
+                    if (!entry->closing && entry->after_open) {
+                        entry->after_open(true);
+                    }
+                } else if (entry->closing && entry->pending_close) {
+                    finish(entry, *entry->pending_close);
                 }
             })
             .onOk([weak = std::weak_ptr{entry}] {
@@ -475,7 +511,7 @@ ModalHandle AppPanelService::modal(const std::shared_ptr<PanelServiceContext>& c
             })
             .onCancel([weak = std::weak_ptr{entry}](ModalCancelReason reason) {
                 if (const auto entry = weak.lock(); detail::live(entry)) {
-                    finish(entry, {PanelCloseKind::Cancelled, reason});
+                    close_entry(entry, {PanelCloseKind::Cancelled, reason});
                 }
             });
         if (icon) {
@@ -553,7 +589,7 @@ DrawerHandle AppPanelService::drawer(const std::shared_ptr<PanelServiceContext>&
             })
             .onCancel([weak = std::weak_ptr{entry}](DrawerCancelReason reason) {
                 if (const auto entry = weak.lock(); detail::live(entry)) {
-                    begin_drawer_close(entry, {PanelCloseKind::Cancelled, {}, reason});
+                    begin_panel_close(entry, {PanelCloseKind::Cancelled, {}, reason});
                 }
             });
         mount(entry, Content{[entry, props, content, slots] {
@@ -679,7 +715,7 @@ PopconfirmHandle AppPanelService::popconfirm(const std::shared_ptr<PanelServiceC
 
 bool AppPanelService::update(const std::shared_ptr<PanelHandleState>& state, ModalUpdate patch) {
     const auto entry = state ? state->entry.lock() : nullptr;
-    if (!detail::live(entry) || entry->kind != PanelKind::Modal) {
+    if (!detail::live(entry) || entry->closing || entry->kind != PanelKind::Modal) {
         return false;
     }
     const auto revision = ++entry->revision;
@@ -704,6 +740,15 @@ bool AppPanelService::update(const std::shared_ptr<PanelHandleState>& state, Mod
     }
     if (patch.width && current()) {
         connect(entry, entry->width, *patch.width);
+        if (current()) {
+            ++entry->width_profile.revision;
+            if (entry->width_profile.subscription) {
+                entry->width_profile.subscription->dispose();
+                std::erase(entry->subscriptions, entry->width_profile.subscription);
+                entry->width_profile.subscription.reset();
+            }
+            entry->width_profile_active.set(false);
+        }
     }
     return current();
 }
@@ -769,9 +814,8 @@ bool AppPanelService::close(const std::shared_ptr<PanelHandleState>& state, Pane
     if (!detail::live(entry)) {
         return false;
     }
-    if (entry->kind == PanelKind::Drawer &&
-        (result.kind == PanelCloseKind::Closed || result.kind == PanelCloseKind::Cancelled)) {
-        return begin_drawer_close(entry, result);
+    if (result.kind == PanelCloseKind::Closed || result.kind == PanelCloseKind::Cancelled) {
+        return close_entry(entry, result);
     }
     finish(entry, result);
     return true;

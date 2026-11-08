@@ -10,6 +10,6 @@ Card 的 `clipContent` 默认关闭；loading 采用同一 mask。普通后代�
 
 Modal blur 对实际 framebuffer 前序内容做两遍离散 Gaussian，再用 replacement 合成；未用阴影或半透明色代替背景模糊。当前阶段不等于 Modal 剩余 lazy/motion/拖动/resize/完整 RTL/响应宽度已完成。
 
-- Linux Ubuntu 24.04 / WSL2，正式 `linux-gcc-release`：**3/3**（source closure、SPIR-V 布局、私有 Mutter Wayland/Vulkan 实际回读）。驱动为 Mesa llvmpipe，属于 CPU 软件 Vulkan，不能据此声称独立显卡硬件覆盖。Gallery 截图另行记录；初次脚本因缺 Pillow 未开始捕获，补齐环境后重跑。
+- Linux Ubuntu 24.04 / WSL2，正式 `linux-gcc-release`：**3/3**（source closure、SPIR-V 布局、私有 Mutter Wayland/Vulkan 实际回读）。驱动为 Mesa llvmpipe，属于 CPU 软件 Vulkan，不能据此声称独立显卡硬件覆盖。补齐 Pillow 并重建当前 Gallery 后，私有 Wayland 下 Card、Modal 各四组配置分别 **61、32** 个捕获，退出码均 0、布局警告均 0；初次依赖缺失未计为通过。
 
 本阶段不启用尚未认证的 Linear/Conic paint 或 nonRound arc cap。后台 GPU 回读不代表系统 IME、跨实际显示器或 OS accessibility adapter 实测。Linux GPU 与 Gallery 结果独立记录，不以 Windows 结果代替。

@@ -3420,6 +3420,13 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
               sample(10, "gallery.modal.component-theme", String{}, ModalProps{},
                      ModalContent{[] { gallery_label("gallery.copy.sample.164"); }});
           }});
+    sample(11, "gallery.modal.motion", String{},
+           ModalProps{}.animated().lazy().destroyOnHidden().draggable().resizable().width(
+               Responsive<float>{280}.at(Breakpoint::Md, 480).at(Breakpoint::Lg, 600)),
+           ModalContent{[] {
+               Input(InputProps{}.defaultValue(u8"Retained editor"));
+               gallery_target("gallery.modal.motion-draft");
+           }});
 }
 
 void add_avatar_image_samples(const std::shared_ptr<GalleryState>& state) {

@@ -6,6 +6,7 @@
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
 #include <ryn/confirm_action.hpp>
+#include <ryn/breakpoints.hpp>
 
 namespace ryn {
 namespace detail {
@@ -62,6 +63,53 @@ public:
 
     ModalProps& width(Prop<float> value) {
         width_ = std::move(value);
+        responsive_width_.reset();
+        return *this;
+    }
+
+    ModalProps& width(Prop<Responsive<float>> value) {
+        responsive_width_ = std::move(value);
+        return *this;
+    }
+
+    ModalProps& lazy(Prop<bool> value = true) {
+        lazy_ = std::move(value);
+        return *this;
+    }
+
+    ModalProps& destroyOnHidden(Prop<bool> value = true) {
+        destroy_hidden_ = std::move(value);
+        return *this;
+    }
+
+    ModalProps& animated(Prop<bool> value = true) {
+        animated_ = std::move(value);
+        return *this;
+    }
+
+    ModalProps& rtl(Prop<bool> value = true) {
+        rtl_ = std::move(value);
+        rtl_set_ = true;
+        return *this;
+    }
+
+    ModalProps& draggable(Prop<bool> value = true) {
+        draggable_ = std::move(value);
+        return *this;
+    }
+
+    ModalProps& resizable(Prop<bool> value = true) {
+        resizable_ = std::move(value);
+        return *this;
+    }
+
+    ModalProps& onDrag(std::function<void(float, float)> value) {
+        on_drag_ = std::move(value);
+        return *this;
+    }
+
+    ModalProps& onResize(std::function<void(float, float)> value) {
+        on_resize_ = std::move(value);
         return *this;
     }
 
@@ -164,6 +212,16 @@ private:
     Prop<bool> open_{false};
     Prop<String> title_{String{}};
     Prop<float> width_{520};
+    std::optional<Prop<Responsive<float>>> responsive_width_;
+    Prop<bool> lazy_{false};
+    Prop<bool> destroy_hidden_{false};
+    Prop<bool> animated_{false};
+    Prop<bool> rtl_{false};
+    bool rtl_set_{};
+    Prop<bool> draggable_{false};
+    Prop<bool> resizable_{false};
+    std::function<void(float, float)> on_drag_;
+    std::function<void(float, float)> on_resize_;
     Prop<bool> centered_{false};
     Prop<bool> closable_{true};
     Prop<bool> keyboard_{true};

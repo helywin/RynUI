@@ -1142,7 +1142,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = page_frame_definition({"button"});
-    require(definition.stable_test_ids.size() == 476, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 486, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -1714,7 +1714,7 @@ void test_modal_gallery_after_document_scroll() {
     sync();
     const auto count = services.components().component_count();
     const auto telemetry = definition.telemetry();
-    const auto id = services.modal().mounted()[1];
+    const auto id = definition.target("gallery.modal.retained-edit.dialog");
     const auto closed = services.modal().snapshot(id);
     require(!closed.visible && !f.inputs->sessions().active().valid(), "closed Gallery Modal started input");
     require(f.host->focus().request_focus(trigger.interaction, input::FocusModality::keyboard),
@@ -1755,8 +1755,14 @@ void test_modal_gallery_after_document_scroll() {
             "nested Gallery Modal scroll absent");
     sync();
     click(nested_trigger.component);
-    const auto parent = services.modal().mounted()[9];
-    const auto child = services.modal().mounted()[10];
+    const auto parent = definition.target("gallery.modal.nested.dialog");
+    const auto child_editor = definition.target("gallery.modal.child-draft");
+    const auto child_position = std::ranges::find_if(services.modal().mounted(), [&](auto candidate) {
+        return candidate != parent &&
+               component_descends_from(f, child_editor, services.modal().snapshot(candidate).body);
+    });
+    require(child_position != services.modal().mounted().end(), "Gallery nested Modal owner is missing");
+    const auto child = *child_position;
     click(button_with_label(f, "打开下一层").component);
     require(services.modal().snapshot(child).topmost && services.modal().snapshot(parent).visible &&
                 !services.modal().snapshot(parent).topmost,

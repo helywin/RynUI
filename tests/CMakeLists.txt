@@ -173,6 +173,15 @@ foreach(case IN ITEMS context scroll popup_motion locale timer statistic_motion 
 endforeach()
 
 add_executable(rynui_drawer_motion_tests drawer_motion_tests.cpp)
+add_executable(rynui_modal_completion_tests modal_completion_tests.cpp)
+rynui_configure_cpp_target(rynui_modal_completion_tests)
+target_link_libraries(rynui_modal_completion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_modal_completion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(modal_completion_case IN ITEMS lazy_motion geometry responsive_rtl cleanup_reentry service policy)
+    add_test(NAME rynui.modal_completion_${modal_completion_case} COMMAND rynui_modal_completion_tests ${modal_completion_case})
+endforeach()
 rynui_configure_cpp_target(rynui_drawer_motion_tests)
 target_link_libraries(rynui_drawer_motion_tests PRIVATE rynui_components)
 target_compile_definitions(rynui_drawer_motion_tests PRIVATE

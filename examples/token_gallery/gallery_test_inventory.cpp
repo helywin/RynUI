@@ -213,6 +213,8 @@ constexpr auto targets = std::to_array<GalleryLegacyTestTarget>({
     {"gallery.tabs.component-theme", "gallery.sample.tabs.panels", ""},
     {"gallery.tabs.toggle-label", "gallery.sample.tabs.panels", ""},
     {"gallery.modal.basic", "gallery.sample.modal.dialogs", ""},
+    {"gallery.modal.motion", "gallery.sample.modal.dialogs", ""},
+    {"gallery.modal.motion-draft", "gallery.sample.modal.dialogs", ""},
     {"gallery.modal.retained-edit", "gallery.sample.modal.dialogs", ""},
     {"gallery.modal.controlled-refusal", "gallery.sample.modal.dialogs", ""},
     {"gallery.modal.confirm-loading", "gallery.sample.modal.dialogs", ""},
