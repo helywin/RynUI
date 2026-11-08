@@ -38,6 +38,7 @@ struct EntryState final {
     Signal<String> title{String{}};
     Signal<String> description{String{}};
     Signal<IconName> icon{IconName::InfoCircleFilled};
+    Signal<bool> icon_spin{false};
     Signal<runtime::SemanticForeground> text_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> description_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticForeground> icon_color{{0, 0, 0, 1}};
@@ -364,10 +365,11 @@ runtime::ComponentId NoticeComponentHost::create(runtime::ComponentId owner, Str
                         icon_region, [&services, icon_node] { services.layout().remove_layout(icon_node); });
                     s->snapshot.icon = icon_region;
                     const auto icon = s->icon;
-                    child_build.mount_slot_with_semantic_text_style(icon_region,
-                                                                    Content{[icon] { Icon(IconProps{}.name(icon)); }},
-                                                                    Prop<runtime::SemanticForeground>{s->icon_color},
-                                                                    Prop<runtime::SemanticTypography>{s->icon_font});
+                    const auto icon_spin = s->icon_spin;
+                    child_build.mount_slot_with_semantic_text_style(
+                        icon_region, Content{[icon, icon_spin] { Icon(IconProps{}.name(icon).spin(icon_spin)); }},
+                        Prop<runtime::SemanticForeground>{s->icon_color},
+                        Prop<runtime::SemanticTypography>{s->icon_font});
                     const auto close_region = child_build.mount_component<int>(0);
                     const auto close_node = child_build.root(close_region);
                     services.nodes().require(close_node).clip_content = true;
@@ -857,6 +859,7 @@ void NoticeComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     const std::array<Color, 5> colors{t.colors.success, t.colors.info, t.colors.warning, t.colors.error,
                                       t.colors.loading};
     s->icon.set(icons[static_cast<unsigned>(status)]);
+    s->icon_spin.set(status == NoticeStatus::Loading);
     s->text_color.set(foreground(t.colors.text));
     s->description_color.set(foreground(t.colors.description));
     s->icon_color.set(foreground(colors[static_cast<unsigned>(status)]));

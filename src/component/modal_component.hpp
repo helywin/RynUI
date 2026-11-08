@@ -30,6 +30,10 @@ struct ModalSnapshot final {
     bool loading{};
     bool body_mounted{};
     bool resizing{};
+    bool paint_visible{};
+    bool transitioning{};
+    float progress{};
+    std::uint64_t motion_revision{};
 };
 
 class ModalComponentHost final : public WindowComponentParticipant {
@@ -52,6 +56,7 @@ public:
 
     [[nodiscard]] bool visible() const noexcept;
     [[nodiscard]] std::function<void()> detach_action(runtime::ComponentId) noexcept;
+    void arm_service_drawer_close(runtime::ComponentId);
     void append_service_body(runtime::ComponentId, runtime::ComponentId, const Content&,
                              const runtime::CapturedComponentContext&);
     std::size_t tick_auxiliary(animation::AnimationTime) override;
@@ -66,12 +71,16 @@ public:
     bool on_keyboard_input(const input::KeyboardInputEvent&) override;
     bool on_scroll_input(const input::ScrollInputEvent&) override;
     void prepare_auxiliary_layout() override;
+    void synchronize_auxiliary_motion() override;
     void position_window_layers(runtime::Size, runtime::Rect) override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool synchronize_auxiliary_fragments() override;
 
 private:
     void update_overlay(runtime::ComponentId);
+    void sample_drawers(animation::AnimationTime);
+    void retarget_drawer(runtime::ComponentId, bool, bool suppress = false);
+    void complete_drawers();
 
     struct Transition final {
         runtime::ComponentId owner;
@@ -96,6 +105,7 @@ private:
     std::vector<runtime::ComponentId> mounted_;
     std::shared_ptr<int> lifetime_{std::make_shared<int>(0)};
     std::vector<Transition> transitions_;
+    animation::MonotonicTimeCursor drawer_clock_;
     bool mounting_{};
     bool reconciling_{};
     bool reconcile_again_{};

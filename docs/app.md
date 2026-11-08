@@ -51,7 +51,9 @@ Popconfirm 需要真实保留锚点：先挂载 `Popconfirm(PopconfirmProps{}.se
 
 `closed()` 返回 `shared_future<PanelCloseResult>`，区分 Confirmed、Cancelled、Closed（Drawer 显式 close）、Destroyed、OwnerDisposed、Failed，并保留适用的 Modal/Drawer cancel reason。动作 KeepOpen、业务错误或投递错误保持打开且 future pending。`close` 是应用显式取消/关闭，`destroy` 是硬销毁；两者终止 pending 动作。普通用户入口在 pending 时阻止重复确认与取消。服务拥有 open；传入 props 的 open 被服务替代。原 declarative open 仍由应用控制。
 
-目前这些 panel 没有完整退出 motion，关闭在实际即时退役边界完成；不声称动画完成。退出顺序为失效动作票据、移出服务集合、撤输入/销毁旧 retained 资源、完成 future，再通知取消、afterOpenChange(false)、afterClose。两个 after 回调即使前者抛错也按顺序尝试，内部清理不依赖回调；owner 已退役则不再通知。整批 owner 退役先使所有 action 无效，再执行任一用户 cancel。异常取消不会中断余下清理。
+Drawer 普通关闭先撤销整个 overlay 输入，保留退出画面；handle 的 bound/update/重复 close 随即失效，但 entry 继续属于 owner 清理集合。future 在有效退出达到终点、终态 CPU scene 成功同步后的安全通知阶段完成。Theme motion 关闭、reduced、隐藏或失活走有限静态收口，同样不承诺 close() 返回前 future ready；这不等待 GPU fence 或显示器呈现。destroy、来源/App/窗口退役和失败立即取消退出并一次结算，旧完成桥不能覆盖硬退役结果。关闭期间保留既有响应式标题、尺寸与 loading 连接。
+
+Modal/Popconfirm 仍在即时退役边界完成。最终 finish 顺序保持移出服务集合、撤输入/销毁旧 retained 资源、完成 future，再通知取消、afterOpenChange(false)、afterClose。两个 after 回调即使前者抛错也按顺序尝试，内部清理不依赖回调；owner 已退役则不再通知。整批 owner 退役先使所有 action 无效，再执行任一用户 cancel。异常取消不会中断余下清理。
 
 ## ConfirmAction
 
@@ -59,4 +61,4 @@ Popconfirm 需要真实保留锚点：先挂载 `Popconfirm(PopconfirmProps{}.se
 
 provider 可同步/重复/worker 完成，只有第一个 completion 被接受。worker 只访问 atomic ticket 和 dispatcher；不访问 Signal、host 或 FrameRequestState。dispatcher 必须可靠安排 owner-thread 调用。post 抛错或在错误线程执行会标记 DispatchFailed；下一次正常 owner tick 消费，最迟已登记的有限 deadline 恢复 loading、调用 cancel 并保持可重试。dispatcher 丢弃闭包由 Timeout 恢复；窗口 event loop 必须继续处理 deadline。正常完成或取消立即移除 deadline，不轮询 future，也不新增线程。
 
-新增源码入口为 `rynui.confirm_action`、`rynui.app_panel_*`，并扩展原 `rynui.i18n_service`；公开头 TU 和 Gallery App 本页提供真实调用。完整 Modal/Drawer/Popconfirm motion、drag/resize/blur 和原生平台结果继续由各组件任务跟踪。
+源码入口为 `rynui.confirm_action`、`rynui.app_panel_*`、`rynui.drawer_motion_*`，并扩展原 `rynui.i18n_service`；公开头 TU 和 Gallery App 本页提供真实调用。Modal/Popconfirm motion、其余组件缺口和原生平台结果继续由各组件任务跟踪；新增测试源码不等于平台验收通过。

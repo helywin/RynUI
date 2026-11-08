@@ -54,6 +54,9 @@ struct PanelEntry final {
     bool committed{};
     bool settled{};
     std::uint64_t revision{};
+    bool closing{};
+    std::optional<PanelCloseResult> pending_close;
+    std::uint64_t close_revision{};
 };
 
 namespace {
@@ -113,8 +116,8 @@ void finish(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result, b
     auto cancel = detach(entry);
     erase(entry);
     dispose_subscriptions(entry);
-    // No exit motion exists for these panels yet. Closing revokes routes and
-    // retires this exact retained generation before resolving the future.
+    // Drawer arrives here through its effective exit completion or hard
+    // retirement. Modal/Popconfirm retain their immediate retirement boundary.
     std::exception_ptr error;
     if (retire_resources && owner && !entry->context->captured.owner.expired()) {
         auto& target = *owner->services;
@@ -177,6 +180,32 @@ void finish(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result, b
     if (error) {
         std::rethrow_exception(error);
     }
+}
+
+bool begin_drawer_close(const std::shared_ptr<PanelEntry>& entry, PanelCloseResult result) {
+    if (!live(entry) || entry->closing) {
+        return false;
+    }
+    entry->closing = true;
+    entry->pending_close = result;
+    const auto revision = ++entry->close_revision;
+    ++entry->revision; // Retire an in-flight update candidate, without dropping owner cleanup.
+    auto cancel = detach(entry);
+    ConfirmActionSession::run_cancel(std::move(cancel));
+    if (!live(entry) || entry->close_revision != revision) {
+        return true;
+    }
+    try {
+        entry->open.set(false);
+        if (live(entry) && entry->close_revision == revision) {
+            services(entry).modal().arm_service_drawer_close(entry->panel);
+            services(entry).request_frame();
+        }
+    } catch (...) {
+        finish(entry, {PanelCloseKind::Failed}, false);
+        throw;
+    }
+    return true;
 }
 
 void confirm_entry(const std::shared_ptr<PanelEntry>& entry) {
@@ -384,7 +413,8 @@ bool AppPanelService::live(const std::shared_ptr<PanelServiceContext>& context) 
 }
 
 bool AppPanelService::live(const std::shared_ptr<PanelHandleState>& state) {
-    return state && detail::live(state->entry.lock());
+    const auto entry = state ? state->entry.lock() : nullptr;
+    return detail::live(entry) && !entry->closing;
 }
 
 ModalHandle AppPanelService::modal(const std::shared_ptr<PanelServiceContext>& context, ModalProps props,
@@ -502,13 +532,28 @@ DrawerHandle AppPanelService::drawer(const std::shared_ptr<PanelServiceContext>&
             .loading(entry->loading.value)
             .afterClose({})
             .afterOpenChange([weak = std::weak_ptr{entry}](bool open) {
-                if (const auto entry = weak.lock(); detail::live(entry) && open && entry->after_open) {
-                    entry->after_open(true);
+                const auto entry = weak.lock();
+                if (!detail::live(entry)) {
+                    return;
+                }
+                if (open) {
+                    if (!entry->closing && entry->after_open) {
+                        entry->after_open(true);
+                    }
+                } else if (entry->closing && entry->pending_close) {
+                    // The host has already checked its motion revision. The
+                    // entry close revision owns the fixed business result and
+                    // remains independent of a reentrant host reconcile pass.
+                    const auto revision = entry->close_revision;
+                    const auto result = *entry->pending_close;
+                    if (detail::live(entry) && entry->closing && entry->close_revision == revision) {
+                        finish(entry, result);
+                    }
                 }
             })
             .onCancel([weak = std::weak_ptr{entry}](DrawerCancelReason reason) {
                 if (const auto entry = weak.lock(); detail::live(entry)) {
-                    finish(entry, {PanelCloseKind::Cancelled, {}, reason});
+                    begin_drawer_close(entry, {PanelCloseKind::Cancelled, {}, reason});
                 }
             });
         mount(entry, Content{[entry, props, content, slots] {
@@ -665,12 +710,12 @@ bool AppPanelService::update(const std::shared_ptr<PanelHandleState>& state, Mod
 
 bool AppPanelService::update(const std::shared_ptr<PanelHandleState>& state, DrawerUpdate patch) {
     const auto entry = state ? state->entry.lock() : nullptr;
-    if (!detail::live(entry) || entry->kind != PanelKind::Drawer) {
+    if (!detail::live(entry) || entry->closing || entry->kind != PanelKind::Drawer) {
         return false;
     }
     const auto revision = ++entry->revision;
     const auto current = [&] {
-        return detail::live(entry) && entry->revision == revision;
+        return detail::live(entry) && !entry->closing && entry->revision == revision;
     };
     validate_extent(patch.width);
     validate_extent(patch.height);
@@ -723,6 +768,10 @@ bool AppPanelService::close(const std::shared_ptr<PanelHandleState>& state, Pane
     const auto entry = state ? state->entry.lock() : nullptr;
     if (!detail::live(entry)) {
         return false;
+    }
+    if (entry->kind == PanelKind::Drawer &&
+        (result.kind == PanelCloseKind::Closed || result.kind == PanelCloseKind::Cancelled)) {
+        return begin_drawer_close(entry, result);
     }
     finish(entry, result);
     return true;

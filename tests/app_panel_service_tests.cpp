@@ -101,8 +101,10 @@ void lifecycle() {
     const auto d = f.services.modal().snapshot(f.services.modal().mounted().back());
     require(d.drawer && !d.ok.valid() && input.bound(), "Drawer service used a confirmation placeholder");
     require(drawer.update({.width = Prop<float>{420.0F}, .loading = Prop<bool>{true}}), "Drawer update failed");
-    require(drawer.close() && ready(drawer) && drawer.closed().get().kind == PanelCloseKind::Closed,
-            "Drawer close failed");
+    require(drawer.close() && !ready(drawer) && !drawer.bound(), "Drawer close did not enter pending retirement");
+    sync(f); // Reduced terminal scene.
+    sync(f); // One safe completion notification pass.
+    require(ready(drawer) && drawer.closed().get().kind == PanelCloseKind::Closed, "Drawer close failed");
 
     const auto pop = app.popconfirm().confirm(anchor, PopconfirmProps{}.title(u8"Delete?"));
     sync(f);

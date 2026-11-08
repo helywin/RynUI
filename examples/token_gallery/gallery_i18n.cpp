@@ -4264,23 +4264,19 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"定向及原生验收已记录。"}},
                  {MessageKey{
                       u8"gallery.ant.component.statistic.supported",
-                      String{
-                          u8"int64/uint64/double/String, precision, separators, formatter, rich content and loading · "
-                          u8"Catalog-linked actual metrics and rich Input, exact business-value feedback and loading "
-                          u8"recovery · Countdown/Countup, explicit reactive StatisticLocale and finite value "
-                          u8"animation"}},
-                  String{
-                      u8"int64/uint64/double/String、精度/分隔/formatter、富内容及加载；目录关联实际指标、富 "
-                      u8"Input、精确业务值反馈和恢复；Countdown/Countup、显式响应 StatisticLocale 与有限数值动画。"}},
+                      String{u8"Typed numeric or string values, exact Decimal formatting, precision and separators, "
+                             u8"formatters, retained rich content and loading; Countdown/Countup, explicit locale, "
+                             u8"inherited ConfigProvider formatLocale and finite value animation."}},
+                  String{u8"int64/uint64/double/String、precision、分隔符、formatter、富内容和 loading；Gallery "
+                         u8"目录直达真实统计值及富 Input、精确业务值反馈和加载恢复；Countdown/Countup, explicit "
+                         u8"reactive StatisticLocale and finite value animation；inherited ConfigProvider formatLocale "
+                         u8"and shared exact Decimal number formatting"}},
                  {MessageKey{
                       u8"gallery.ant.component.statistic.missing",
-                      String{u8"Unified ConfigProvider number formatting remains tracked by 108's formatting stage · "
-                             u8"Linux/Wayland/Vulkan, system IME and platform accessibility-adapter coverage need "
-                             u8"independent acceptance · Complete Web/DOM/CSS APIs are outside the native subset"}},
-                  String{u8"ConfigProvider 统一数字格式接入仍由 108 的数字族阶段跟踪 · Linux/Wayland/Vulkan、系统 IME "
-                         u8"与平台 "
-                         u8"accessibility adapter 的本阶段覆盖仍待各自验收 · 完整 Ant Design Web/DOM/CSS API "
-                         u8"不在当前原生子集内"}},
+                      String{u8"Linux/Wayland/Vulkan, system IME and OS accessibility adapters require their own "
+                             u8"platform evidence. Full Ant Design Web DOM/CSS APIs are outside the native subset."}},
+                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收；完整 "
+                         u8"Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
                  {MessageKey{u8"gallery.ant.component.table.name", String{u8"Table"}}, String{u8"Table 表格"}},
                  {MessageKey{
                       u8"gallery.ant.component.table.summary",
@@ -4410,15 +4406,15 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                  {MessageKey{
                       u8"gallery.ant.component.tooltip.supported",
                       String{
-                          u8"typed reactive title, open and trigger slot · hover/focus/manual with delay, Escape and "
-                          u8"disabled-child hover · twelve placements, flip/shift, arrow and window clipping · "
-                          u8"retained scene and Theme component tokens/algorithms · persistent rich title slot and "
-                          u8"reactive title availability · click/context-menu/composed triggers and outside dismissal "
-                          u8"· pointAtCenter and continuous vector glyph arrows"}},
-                  String{u8"typed 响应 title/open/trigger；悬停/焦点/手动、有界延迟、Escape 和禁用子项 "
-                         u8"hover；十二方位、翻转/平移、箭头与窗口裁剪；保留场景、Theme "
-                         u8"Token/算法；富标题保留及响应可用性；点击/右键/组合与外部关闭；pointAtCenter "
-                         u8"和连续向量字形箭头。"}},
+                          u8"Reactive plain or retained rich titles, controlled visibility, "
+                          u8"hover/focus/manual/click/context-menu and combined triggers, delays and dismissal, twelve "
+                          u8"placements, overflow adjustment, vector arrows, Theme, RTL and optional finite motion."}},
+                  String{u8"typed reactive title, open and trigger slot；hover/focus/manual with delay, Escape and "
+                         u8"disabled-child hover；twelve placements, flip/shift, arrow and window clipping；retained "
+                         u8"scene and Theme component tokens/algorithms；persistent rich title slot and reactive title "
+                         u8"availability；click/context-menu/composed triggers and outside dismissal；pointAtCenter "
+                         u8"and continuous vector glyph arrows；explicit RTL, finite optional motion and "
+                         u8"generation-safe right-button press/release"}},
                  {MessageKey{u8"gallery.ant.component.tooltip.missing",
                              String{u8"Web-only DOM/CSS/portal APIs are excluded from native scope"}},
                   String{u8"Web 专用 DOM/CSS/portal API 不属原生范围。"}},
@@ -4516,38 +4512,31 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"完整 Ant "
                          u8"Design Web/DOM/CSS API 不在当前原生子集内"}},
                  {MessageKey{u8"gallery.ant.component.drawer.name", String{u8"Drawer"}}, String{u8"Drawer 抽屉"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.drawer.summary",
-                      String{
-                          u8"Drawer supports loading, extra content, RTL, resize, push, lazy/destroy and directional "
-                          u8"shadows. Complete opening/closing motion and dynamic services remain tracked "
-                          u8"separately."}},
-                  String{u8"原生 Drawer 已补 loading、extra、RTL、resize、push、lazy/destroy "
-                         u8"和定向阴影；完整开合动画与动态服务继续跟踪。"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.drawer.supported",
-                      String{
-                          u8"controlled open, four placements, finite width/height and retained typed "
-                          u8"title/content/footer · "
-                          u8"fixed header/footer, scrolling body, focus reveal/restoration and shared Modal nesting · "
-                          u8"mask/keyboard/close controls, lifecycle callbacks and independent Drawer Component Token "
-                          u8"· "
-                          u8"loading/Skeleton, extra, RTL, drag resize, push, lazy/destroyOnHidden and directional "
-                          u8"shadows"}},
-                  String{
-                      u8"受控打开、四方位、有限宽高及保留 typed "
-                      u8"标题/正文/页尾；固定页头页尾、滚动正文、焦点显露/恢复与共同 "
-                      u8"Modal 嵌套；遮罩/键盘/关闭、生命周期及独立 Token；加载/Skeleton、extra/RTL、拖动 "
-                      u8"resize、push、lazy/destroyOnHidden 与定向阴影。353 源码还提供 App 动态 Drawer，当前 Gallery "
-                      u8"接入等待父端运行验证。"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.drawer.missing",
-                      String{u8"Full opening/closing motion and App/static dynamic services are not closed · "
-                             u8"Linux/Wayland/Vulkan, system IME and platform accessibility-adapter coverage need "
-                             u8"independent acceptance · Complete Web/DOM/CSS APIs are outside the native subset"}},
-                  String{
-                      u8"完整开合动画与 App/静态动态服务尚未收口 · Linux/Wayland/Vulkan、系统 IME 与平台 accessibility "
-                      u8"adapter 的本阶段覆盖仍待各自验收 · 完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
+                 {MessageKey{u8"gallery.ant.component.drawer.summary",
+                             String{u8"Native Drawer supports four-edge transitions, continuous nested push, retained "
+                                    u8"editing, loading, extra actions, RTL, resizing, lazy content, destroy-on-hidden "
+                                    u8"and App services."}},
+                  String{u8"原生 Drawer 支持四向开合、连续嵌套 "
+                         u8"push、保留编辑、loading、extra、RTL、resize、lazy/destroy 与 App 动态服务。"}},
+                 {MessageKey{u8"gallery.ant.component.drawer.supported",
+                             String{u8"Controlled four-edge panels; fixed header/footer, scrolling and focus "
+                                    u8"restoration; loading and retained typed content; resizing, RTL, lazy and "
+                                    u8"destroy-on-hidden; continuous nested push and reversible transitions; real "
+                                    u8"captured App services with completion-aligned futures."}},
+                  String{u8"controlled open, four placements, finite width/height and retained typed "
+                         u8"title/content/footer；fixed header/footer, scrolling body, focus reveal/restoration and "
+                         u8"shared Modal nesting；mask/keyboard/close controls, lifecycle callbacks and independent "
+                         u8"Drawer Component Token；loading/Skeleton, extra, RTL, drag resize, push, "
+                         u8"lazy/destroyOnHidden and directional shadows；finite four-edge transitions and continuous "
+                         u8"nested push; input stops immediately on close；completion callbacks, destroyOnHidden and "
+                         u8"Drawer service futures follow terminal scene synchronization；captured App context with "
+                         u8"real update/close/destroy services and retained content"}},
+                 {MessageKey{u8"gallery.ant.component.drawer.missing",
+                             String{u8"Linux/Wayland/Vulkan, system IME and OS accessibility adapters require their "
+                                    u8"own platform evidence. Web DOM/CSS APIs and arbitrary floating windows are "
+                                    u8"outside this docked native contract."}},
+                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收；完整 "
+                         u8"Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
                  {MessageKey{u8"gallery.ant.component.message.name", String{u8"Message"}},
                   String{u8"Message 全局提示"}},
                  {MessageKey{
@@ -4555,28 +4544,23 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                       String{u8"Message supports hover pause, progress, finite motion, close futures, collapsed stacks "
                              u8"and App live-context services."}},
                   String{u8"原生 Message 支持 hover 暂停、进度、有限动画、关闭 future、折叠栈及 App 活上下文服务。"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.message.supported",
-                      String{u8"window-scoped typed holder/ref with keyed open, partial update, close and clear · five "
-                             u8"status icons, string/rich content and retained editor identities · top-centered "
-                             u8"stacking, maxCount eviction, persistent or monotonic timed entries · Theme, input "
-                             u8"boundaries, reentrant callbacks and actual clipped scene rendering · interactive "
-                             u8"Gallery: catalog-linked native open/update/close/clear workflow · pauseOnHover, "
-                             u8"progress, finite motion, close future, collapsed stack and captured App services"}},
-                  String{u8"窗口级 typed "
-                         u8"holder/ref、键控打开/部分更新/关闭/清空；五状态图标、String/"
-                         u8"富内容及保留编辑身份；顶部居中堆叠、maxCount "
-                         u8"淘汰、常驻或单调计时；Theme、输入边界、重入和真实裁剪场景；目录关联原生流程；悬停暂停/进度/"
-                         u8"有限动画/"
-                         u8"关闭 future/折叠栈及 captured App 服务。"}},
+                 {MessageKey{u8"gallery.ant.component.message.supported",
+                             String{u8"Keyed window-scoped messages with reactive content/status, persistent or timed "
+                                    u8"entries, retained native controls, pause/progress/transitions/futures/stacking, "
+                                    u8"captured App services and a live Loading indicator."}},
+                  String{u8"window-scoped typed holder/ref with keyed open, partial update, close and clear；five "
+                         u8"status icons, string/rich content and retained editor identities；top-centered stacking, "
+                         u8"maxCount eviction, persistent or monotonic timed entries；Theme, input boundaries, "
+                         u8"reentrant callbacks and actual clipped scene rendering；interactive Gallery: "
+                         u8"catalog-linked native open/update/close/clear workflow；pauseOnHover, progress, finite "
+                         u8"motion, close future, collapsed stack and captured App services；default Loading icon uses "
+                         u8"shared Icon spin and motion/visibility lifecycle"}},
                  {MessageKey{
                       u8"gallery.ant.component.message.missing",
-                      String{
-                          u8"The Loading status icon is still static · Linux/Wayland/Vulkan, system IME and platform "
-                          u8"accessibility-adapter coverage need independent acceptance · Complete Web/DOM/CSS APIs "
-                          u8"are outside the native subset"}},
-                  String{u8"Loading 状态图标仍为静态 · Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter "
-                         u8"的本阶段覆盖仍待各自验收 · 完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"}}});
+                      String{u8"Linux/Wayland/Vulkan, system IME and OS accessibility adapters require their own "
+                             u8"platform evidence. Full Ant Design Web DOM/CSS APIs are outside the native subset."}},
+                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收；完整 "
+                         u8"Ant Design Web/DOM/CSS API 不在当前原生子集内"}}});
         },
         [](std::vector<GalleryMessageDefinition>& target) {
             target.insert(
@@ -4624,30 +4608,23 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"活上下文服务。"}},
                  {MessageKey{
                       u8"gallery.ant.component.notification.supported",
-                      String{
-                          u8"typed window-scoped holder/ref with keyed partial updates and safe close/clear · "
-                          u8"four-corner "
-                          u8"stacking, title/description/actions and real close Button · persistent/timed entries, "
-                          u8"maxCount, "
-                          u8"retained rich controls and reentrant lifecycle · independent Theme, clipping, focus/input "
-                          u8"boundaries and child-popup priority · interactive Gallery: retained native editor, keyed "
-                          u8"title "
-                          u8"updates, placement/status changes and close/clear · independent actionable Gallery, "
-                          u8"pause/progress/motion/future/stack and captured App services"}},
-                  String{u8"窗口级 typed "
-                         u8"holder/ref、键控部分更新与安全关闭/清空；四角堆叠、标题/说明/操作和真实关闭按钮；常驻/"
-                         u8"计时、maxCount、保留富控件与重入生命周期；独立 Theme/裁剪/焦点输入边界/子弹层优先；Gallery "
-                         u8"保留编辑、标题更新、方位/状态/关闭/清空；独立操作页、暂停/进度/动画/future/折叠和 captured "
-                         u8"App "
-                         u8"服务。"}},
+                      String{u8"Keyed notifications with title, description, actions, four placements, retained native "
+                             u8"controls, persistent or timed entries, pause/progress/transitions/futures/stacking, "
+                             u8"captured App services and a live Loading indicator."}},
+                  String{
+                      u8"typed window-scoped holder/ref with keyed partial updates and safe close/clear；four-corner "
+                      u8"stacking, title/description/actions and real close Button；persistent/timed entries, "
+                      u8"maxCount, retained rich controls and reentrant lifecycle；independent Theme, clipping, "
+                      u8"focus/input boundaries and child-popup priority；interactive Gallery: retained native editor, "
+                      u8"keyed title updates, placement/status changes and close/clear；independent actionable "
+                      u8"Gallery, pause/progress/motion/future/stack and captured App services；default Loading icon "
+                      u8"uses shared Icon spin and motion/visibility lifecycle"}},
                  {MessageKey{
                       u8"gallery.ant.component.notification.missing",
-                      String{
-                          u8"The Loading status icon is still static · Linux/Wayland/Vulkan, system IME and platform "
-                          u8"accessibility-adapter coverage need independent acceptance · Complete Web/DOM/CSS APIs "
-                          u8"are outside the native subset"}},
-                  String{u8"Loading 状态图标仍为静态 · Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter "
-                         u8"的本阶段覆盖仍待各自验收 · 完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
+                      String{u8"Linux/Wayland/Vulkan, system IME and OS accessibility adapters require their own "
+                             u8"platform evidence. Full Ant Design Web DOM/CSS APIs are outside the native subset."}},
+                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收；完整 "
+                         u8"Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
                  {MessageKey{u8"gallery.ant.component.popconfirm.name", String{u8"Popconfirm"}},
                   String{u8"Popconfirm 气泡确认框"}},
                  {MessageKey{
@@ -4708,26 +4685,18 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                              u8"finite state motion. Focused Windows and native acceptance are recorded."}},
                   String{u8"原生 Result 支持固定上游异常插画、保留式动态区域与有限状态动画，Windows "
                          u8"定向及原生验收已记录。"}},
-                 {MessageKey{
-                      u8"gallery.ant.component.result.supported",
-                      String{
-                          u8"typed ResultProps/ResultStatus, reactive title/subtitle/status and retained "
-                          u8"icon/content/extra "
-                          u8"slots · Success/Warning/Error/info and Forbidden/NotFound/ServerError mapped to existing "
-                          u8"native "
-                          u8"Icons · Theme component colors/metrics, finite text/Icon clipping, wrapped native actions "
-                          u8"and "
-                          u8"content surface · retained Button interaction, Input editor/draft and Text scene identity "
-                          u8"across status/Theme updates · 076 Gallery source: seven-state cycle, native continue "
-                          u8"action/draft, static 404 and custom Icon/Text Flex · pinned 403/404/500 illustrations "
-                          u8"through "
-                          u8"shared ImageSource, retained dynamic slots and finite state motion"}},
-                  String{
-                      u8"typed ResultProps/Status、响应标题/副标题/状态、保留图标/正文/extra；成功/警告/错误/info 和 "
-                      u8"403/404/500 原生映射；Theme 颜色尺寸、有限裁剪、换行动作及正文表面；状态/Theme "
-                      u8"变化保留按钮、Input "
-                      u8"草稿和 Text 身份；076 七态、继续操作、静态 404、自定义 Icon/Text；固定 403/404/500 插画经共享 "
-                      u8"ImageSource、保留动态 slot 及有限状态动画。"}},
+                 {MessageKey{u8"gallery.ant.component.result.supported",
+                             String{u8"Seven statuses with native Icons or pinned 403/404/500 illustrations through "
+                                    u8"shared ImageSource, reactive text and retained rich slots, native "
+                                    u8"actions/editors, Theme, clipping and finite state transitions."}},
+                  String{u8"typed ResultProps/ResultStatus, reactive title/subtitle/status and retained "
+                         u8"icon/content/extra slots；Success/Warning/Error/info use native Icons; "
+                         u8"Forbidden/NotFound/ServerError use pinned shared Image illustrations；Theme component "
+                         u8"colors/metrics, finite text/Icon clipping, wrapped native actions and content "
+                         u8"surface；retained Button interaction, Input editor/draft and Text scene identity across "
+                         u8"status/Theme updates；076 Gallery source: seven-state cycle, native continue action/draft, "
+                         u8"static 404 and custom Icon/Text Flex；pinned 403/404/500 illustrations through shared "
+                         u8"ImageSource, retained dynamic slots and finite state motion"}},
                  {MessageKey{
                       u8"gallery.ant.component.result.missing",
                       String{

@@ -172,6 +172,16 @@ foreach(case IN ITEMS context scroll popup_motion locale timer statistic_motion 
     add_test(NAME rynui.popup_statistic_${case} COMMAND rynui_popup_statistic_completion_tests ${case})
 endforeach()
 
+add_executable(rynui_drawer_motion_tests drawer_motion_tests.cpp)
+rynui_configure_cpp_target(rynui_drawer_motion_tests)
+target_link_libraries(rynui_drawer_motion_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_drawer_motion_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(drawer_motion_case IN ITEMS edges reversal completion input geometry nested gates service)
+    add_test(NAME rynui.drawer_motion_${drawer_motion_case} COMMAND rynui_drawer_motion_tests ${drawer_motion_case})
+endforeach()
+
 if(NOT RYNUI_HAS_SDL_GPU)
     add_executable(rynui_tooltip_component_tests tooltip_component_tests.cpp)
     rynui_configure_cpp_target(rynui_tooltip_component_tests)
@@ -848,6 +858,16 @@ foreach(notice_test IN ITEMS notice_model notice_theme notice_component)
 endforeach()
 
 add_test(NAME rynui.notice_docs_example COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_notice_examples.py")
+
+add_executable(rynui_notice_loading_tests notice_loading_tests.cpp)
+rynui_configure_cpp_target(rynui_notice_loading_tests)
+target_link_libraries(rynui_notice_loading_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_notice_loading_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(notice_loading_case IN ITEMS message_status notification_status message_visibility notification_visibility message_expiry notification_expiry)
+    add_test(NAME rynui.notice_loading_${notice_loading_case} COMMAND rynui_notice_loading_tests ${notice_loading_case})
+endforeach()
 
 add_executable(rynui_feedback_completion_tests feedback_completion_tests.cpp)
 rynui_configure_cpp_target(rynui_feedback_completion_tests)

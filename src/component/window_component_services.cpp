@@ -887,6 +887,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
         text_edit_->synchronize_pointer_cursor();
     }
     input_layout_ = InputLayoutContext{viewport, clip, origin, gap, unbounded_root_height};
+    ++successful_sync_revision_;
     return true;
 }
 

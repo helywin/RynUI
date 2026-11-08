@@ -1452,7 +1452,8 @@
         "runtime:examples/token_gallery/token_gallery_definition.cpp",
         "test:rynui.token_gallery_frame",
         "docs:docs/popover.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
@@ -1522,10 +1523,10 @@
       "supported_scope": [
         "int64/uint64/double/String、precision、分隔符、formatter、富内容和 loading",
         "Gallery 目录直达真实统计值及富 Input、精确业务值反馈和加载恢复",
-        "Countdown/Countup, explicit reactive StatisticLocale and finite value animation"
+        "Countdown/Countup, explicit reactive StatisticLocale and finite value animation",
+        "inherited ConfigProvider formatLocale and shared exact Decimal number formatting"
       ],
       "missing_scope": [
-        "ConfigProvider 统一数字格式接入仍由 108 的数字族阶段跟踪",
         "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
         "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
@@ -1534,7 +1535,8 @@
         "openspec:089-20261026-add-native-statistic",
         "openspec:093-20261026-add-member-and-rating-gallery",
         "test:rynui.token_gallery_frame",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
@@ -1641,7 +1643,8 @@
         "retained scene and Theme component tokens/algorithms",
         "persistent rich title slot and reactive title availability",
         "click/context-menu/composed triggers and outside dismissal",
-        "pointAtCenter and continuous vector glyph arrows"
+        "pointAtCenter and continuous vector glyph arrows",
+        "explicit RTL, finite optional motion and generation-safe right-button press/release"
       ],
       "missing_scope": [
         "Web-only DOM/CSS/portal APIs are excluded from native scope"
@@ -1651,7 +1654,8 @@
         "openspec:040-20261002-add-tooltip-overlay-foundation",
         "openspec:043-20261002-complete-native-tooltip-interactions",
         "test:rynui.tooltip_component",
-        "test:rynui.window_overlay"
+        "test:rynui.window_overlay",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
@@ -1724,21 +1728,24 @@
         "openspec:065-20261023-add-native-feedback-components",
         "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
         "docs:docs/feedback.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
       "identity": "ant.component.drawer",
       "status": "partial",
-      "summary": "原生 Drawer 已补 loading、extra、RTL、resize、push、lazy/destroy 和定向阴影；完整开合动画与动态服务继续跟踪。",
+      "summary": "原生 Drawer 支持四向开合、连续嵌套 push、保留编辑、loading、extra、RTL、resize、lazy/destroy 与 App 动态服务。",
       "supported_scope": [
         "controlled open, four placements, finite width/height and retained typed title/content/footer",
         "fixed header/footer, scrolling body, focus reveal/restoration and shared Modal nesting",
         "mask/keyboard/close controls, lifecycle callbacks and independent Drawer Component Token",
-        "loading/Skeleton, extra, RTL, drag resize, push, lazy/destroyOnHidden and directional shadows"
+        "loading/Skeleton, extra, RTL, drag resize, push, lazy/destroyOnHidden and directional shadows",
+        "finite four-edge transitions and continuous nested push; input stops immediately on close",
+        "completion callbacks, destroyOnHidden and Drawer service futures follow terminal scene synchronization",
+        "captured App context with real update/close/destroy services and retained content"
       ],
       "missing_scope": [
-        "完整开合动画与 App/静态动态服务尚未收口",
         "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
         "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
@@ -1747,7 +1754,8 @@
         "openspec:062-20261023-add-native-drawer",
         "test:drawer_model/drawer_public_api/drawer_theme/drawer_component/token_gallery_frame",
         "docs:docs/drawer.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
@@ -1760,10 +1768,10 @@
         "top-centered stacking, maxCount eviction, persistent or monotonic timed entries",
         "Theme, input boundaries, reentrant callbacks and actual clipped scene rendering",
         "interactive Gallery: catalog-linked native open/update/close/clear workflow",
-        "pauseOnHover, progress, finite motion, close future, collapsed stack and captured App services"
+        "pauseOnHover, progress, finite motion, close future, collapsed stack and captured App services",
+        "default Loading icon uses shared Icon spin and motion/visibility lifecycle"
       ],
       "missing_scope": [
-        "Loading 状态图标仍为静态",
         "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
         "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
@@ -1779,7 +1787,8 @@
         "runtime:examples/token_gallery/token_gallery_definition.cpp",
         "test:rynui.token_gallery_frame",
         "docs:docs/message-notification.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
@@ -1814,10 +1823,10 @@
         "persistent/timed entries, maxCount, retained rich controls and reentrant lifecycle",
         "independent Theme, clipping, focus/input boundaries and child-popup priority",
         "interactive Gallery: retained native editor, keyed title updates, placement/status changes and close/clear",
-        "independent actionable Gallery, pause/progress/motion/future/stack and captured App services"
+        "independent actionable Gallery, pause/progress/motion/future/stack and captured App services",
+        "default Loading icon uses shared Icon spin and motion/visibility lifecycle"
       ],
       "missing_scope": [
-        "Loading 状态图标仍为静态",
         "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
         "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
       ],
@@ -1833,7 +1842,8 @@
         "runtime:examples/token_gallery/token_gallery_definition.cpp",
         "test:rynui.token_gallery_frame",
         "docs:docs/message-notification.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
@@ -1882,7 +1892,7 @@
       "summary": "原生 Result 支持固定上游异常插画、保留式动态区域与有限状态动画，Windows 定向及原生验收已记录。",
       "supported_scope": [
         "typed ResultProps/ResultStatus, reactive title/subtitle/status and retained icon/content/extra slots",
-        "Success/Warning/Error/info and Forbidden/NotFound/ServerError mapped to existing native Icons",
+        "Success/Warning/Error/info use native Icons; Forbidden/NotFound/ServerError use pinned shared Image illustrations",
         "Theme component colors/metrics, finite text/Icon clipping, wrapped native actions and content surface",
         "retained Button interaction, Input editor/draft and Text scene identity across status/Theme updates",
         "076 Gallery source: seven-state cycle, native continue action/draft, static 404 and custom Icon/Text Flex",
@@ -1902,7 +1912,8 @@
         "test:rynui.empty_result_theme",
         "test:rynui.empty_result_component",
         "test:tests/token_gallery_frame_tests.cpp#test_empty_and_result_gallery_after_document_scroll",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
@@ -1934,7 +1945,8 @@
         "docs:docs/skeleton.md",
         "test:rynui_token_gallery_frame_tests --details-loading-only",
         "evidence:openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/01-gallery.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {
@@ -1956,7 +1968,8 @@
         "openspec:065-20261023-add-native-feedback-components",
         "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
         "docs:docs/feedback.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
       ]
     },
     {

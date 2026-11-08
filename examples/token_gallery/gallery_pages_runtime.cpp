@@ -1,8 +1,10 @@
 #include "gallery_pages_runtime.hpp"
 #include "gallery_visual_capture.hpp"
+#include "gallery_drawer_motion_acceptance.hpp"
 #include "gallery_existing_data_entry_acceptance.hpp"
 #include "gallery_status_acceptance.hpp"
 #include "gallery_table_tour_acceptance.hpp"
+#include "gallery_notice_acceptance.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "gallery_i18n_acceptance.hpp"
 #include "component/select_component.hpp"
@@ -644,11 +646,55 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         static_cast<void>(pages.process());
         if (options.visual) {
             std::cout << "visual_phase=mount_complete\n" << std::flush;
-            if (route.component_identity == "ant.component.border-beam") {
+            if (route.component_identity == "ant.component.border-beam" ||
+                route.component_identity == "ant.component.drawer") {
                 events.acceptance_time = events.now();
                 app.services().set_motion_preference(animation::MotionPreference::normal);
             }
             render();
+            if (route.component_identity == "ant.component.drawer") {
+                const auto original_scale = events.scale;
+                const auto original_viewport = events.viewport;
+                const auto set_scale = [&](float value) {
+                    const auto metrics = events.platform.window_metrics();
+                    events.scale = value;
+                    events.viewport = {metrics.pixel_width / value, metrics.pixel_height / value};
+                    app.services().set_display_scale(value);
+                    return events.viewport;
+                };
+                try {
+                    accept_drawer_motion(
+                        i, pages, app, inputs, renderer, events.viewport, events.scale, events.now(),
+                        options.output.parent_path(),
+                        [&](animation::AnimationTime time) {
+                            check((SDL_GetWindowFlags(static_cast<SDL_Window*>(events.platform.window())) &
+                                   SDL_WINDOW_HIDDEN) != 0,
+                                  "Drawer motion acceptance window became visible");
+                            events.acceptance_time = time;
+                            render();
+                        },
+                        [&](animation::AnimationTime time) {
+                            events.acceptance_time = time;
+                            const auto before = renderer.counters();
+                            const auto step = loop.tick();
+                            return step == runtime::FrameLoopStep::idle &&
+                                   renderer.counters().frame_submissions == before.frame_submissions &&
+                                   renderer.counters().upload_submissions == before.upload_submissions;
+                        },
+                        set_scale);
+                } catch (...) {
+                    events.scale = original_scale;
+                    events.viewport = original_viewport;
+                    app.services().set_display_scale(original_scale);
+                    throw;
+                }
+                events.scale = original_scale;
+                events.viewport = original_viewport;
+                app.services().set_display_scale(original_scale);
+                ++result.cases;
+                write_gallery_page_acceptance(options.output, result);
+                continue;
+            }
             std::optional<ryn::detail::MountedInputComponent> retained_listy_editor;
             capture_gallery_visuals(
                 route, i, app, pages, events.viewport, events.scale, options.output.parent_path(), render,
@@ -979,6 +1025,18 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                         check(after.phase == before.phase && !decorations.next_auxiliary_deadline(),
                               "native reduced-motion Beam changed phase or retained its deadline");
                     }
+                });
+            accept_notice_loading(
+                route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press},
+                [&](animation::AnimationDuration delta) {
+                    events.acceptance_time = events.now() + delta;
+                    render();
+                },
+                [&](std::string_view state) {
+                    const auto name =
+                        route.component_identity + "-loading-" + std::to_string(i) + "-" + std::string{state} + ".bmp";
+                    check(renderer.save_frame_bmp(options.output.parent_path() / name),
+                          "hidden notice animation GPU readback failed");
                 });
             ++result.cases;
             write_gallery_page_acceptance(options.output, result);

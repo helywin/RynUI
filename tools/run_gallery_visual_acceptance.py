@@ -97,6 +97,46 @@ def sheets(captures, output):
     return paths
 
 
+def drawer_numeric(directory, cases):
+    path = directory / "drawer-motion.tsv"
+    rows = list(csv.reader(path.read_text(encoding="utf-8").splitlines(), delimiter="\t")) if path.exists() else []
+    expected = {(case, edge, phase) for case in range(cases)
+                for edge in ("left", "right", "top", "bottom")
+                for phase in ("open-t0", "open-half", "open-end", "close-t0", "close-half", "close-end")}
+    actual = {(int(row[0]), row[1], row[2]) for row in rows if len(row) == 6 and row[-1] == "pass"}
+    summaries = {int(row[0]) for row in rows if len(row) == 5 and row[1] == "nested/reversal/scales/cleanup"
+                 and row[-1] == "pass"}
+    passed = expected <= actual and summaries == set(range(cases))
+    return dict(passed=passed, placement_time_samples=len(expected & actual),
+                expected_samples=len(expected), nested_scale_cleanup_cases=sorted(summaries))
+
+
+def notice_loading_pixels(directory, page, cases):
+    stdout = (directory / "stdout.log").read_text(encoding="utf-8")
+    rectangles = re.findall(r"notice_loading_icon_rect=(\d+),(\d+),(\d+),(\d+)", stdout)
+    if len(rectangles) != cases:
+        return dict(passed=False, error="Missing native Icon rectangle for a case")
+    results = []
+    for case, rectangle in enumerate(rectangles):
+        box = tuple(map(int, rectangle))
+        crops = []
+        for phase in ("loading-first", "loading-second", "info-stopped", "loading-restarted"):
+            path = directory / f"ant.component.{page}-loading-{case}-{phase}.bmp"
+            if not path.exists():
+                return dict(passed=False, error=f"Missing native frame: {case}/{phase}")
+            with Image.open(path) as frame:
+                if not (0 <= box[0] < box[2] <= frame.width and 0 <= box[1] < box[3] <= frame.height):
+                    return dict(passed=False, error="Native Icon rectangle escaped the GPU target")
+                crop = frame.convert("RGB").crop(box)
+            crop.save(path.with_suffix(".icon.png"))
+            crops.append(crop)
+        difference = ImageChops.difference(crops[0], crops[1])
+        mean = sum(ImageStat.Stat(difference).mean) / 3
+        results.append(dict(case=case, passed=difference.getbbox() is not None and mean > .5,
+                            physical_rectangle=list(box), rotation_mean_byte_difference=mean))
+    return dict(passed=all(case["passed"] for case in results), cases=results)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe")
@@ -139,6 +179,15 @@ def main():
         record = dict(page=page, exit=code, error=error or result.get("error", ""), expected_samples=routes[page],
                       captures=captures, warnings=warnings, sheets=sheets(captures, directory), native=result,
                       visual_verdict="pending image inspection")
+        if page == "drawer":
+            record["numeric"] = drawer_numeric(directory, args.cases)
+            record["visual_verdict"] = "numeric motion/readback passed" if code == 0 and record["numeric"]["passed"] else "numeric motion/readback failed"
+            if not record["numeric"]["passed"]:
+                record["exit"] = code or 1
+        if page in ("message", "notification"):
+            record["loading_pixels"] = notice_loading_pixels(directory, page, args.cases)
+            if not record["loading_pixels"]["passed"]:
+                record["exit"] = code or 1
         report["routes"].append(record)
         (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f'{page}: exit={code} captures={len(captures)} warnings={len(warnings)} {record["error"]}', flush=True)

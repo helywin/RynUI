@@ -241,6 +241,10 @@ public:
     [[nodiscard]] bool layout_and_synchronize(runtime::Size viewport, runtime::Rect clip, runtime::Point origin = {},
                                               float gap = 0.0F, bool unbounded_root_height = false);
 
+    [[nodiscard]] std::uint64_t successful_sync_revision() const noexcept {
+        return successful_sync_revision_;
+    }
+
     [[nodiscard]] std::uint64_t hit_test_refresh_nanoseconds() const noexcept {
         return hit_test_refresh_nanoseconds_;
     }
@@ -603,6 +607,7 @@ private:
     std::vector<WindowComponentParticipant*> pointer_participants_scratch_;
     WindowComponentParticipant* input_host_{nullptr};
     bool scene_structure_dirty_{true};
+    std::uint64_t successful_sync_revision_{};
     std::optional<runtime::Rect> hit_clip_;
     std::optional<runtime::Rect> document_hit_clip_;
     std::uint64_t hit_test_refresh_nanoseconds_{};

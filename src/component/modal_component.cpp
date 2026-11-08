@@ -15,16 +15,37 @@
 #include <utility>
 #include <cmath>
 #include <limits>
+#include <exception>
 
 namespace ryn::detail {
 namespace {
 thread_local ModalComponentHost* active_modals{};
+
+struct DrawerPresentation final {
+    float progress{};
+    float from{};
+    bool target{};
+    bool running{};
+    std::uint64_t revision{};
+    animation::AnimationTime start;
+    animation::AnimationSpec spec;
+    std::optional<animation::AnimationTime> deadline;
+    std::optional<std::uint64_t> completion;
+    std::optional<std::uint64_t> geometry;
+    std::uint64_t geometry_sync{};
+
+    bool painted() const {
+        return target || running;
+    }
+};
 
 struct ModalState final {
     explicit ModalState(ModalOptions options) : model(options) {}
 
     ModalModel model;
     std::optional<DrawerGeometry> drawer;
+    DrawerPresentation presentation;
+    theme_runtime::Subscription motion_subscription;
     Content drawer_content{[] {}};
     bool drawer_lazy{};
     bool drawer_destroy{};
@@ -38,7 +59,9 @@ struct ModalState final {
     float resize_extent{};
     float resize_requested{};
     float drawer_push_offset{};
+    runtime::Point drawer_family_offset;
     bool drawer_syncing{};
+    std::uint64_t refresh_revision{};
     bool keyboard_resizing{};
     runtime::Size extra_size;
     std::function<void(float)> on_resize;
@@ -185,6 +208,24 @@ void translate(runtime::NodeId node, runtime::Point offset, WindowComponentServi
 bool inside(runtime::Rect rect, float x, float y) {
     return x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height;
 }
+
+runtime::Point drawer_exit(const DrawerGeometry& geometry, runtime::Rect rect, float progress) {
+    switch (geometry.placement) {
+    case DrawerPlacement::Left:
+        return {-(1 - progress) * rect.width, 0};
+    case DrawerPlacement::Right:
+        return {(1 - progress) * rect.width, 0};
+    case DrawerPlacement::Top:
+        return {0, -(1 - progress) * rect.height};
+    case DrawerPlacement::Bottom:
+        return {0, (1 - progress) * rect.height};
+    }
+    return {};
+}
+
+bool paint_visible(const ModalState& state) {
+    return state.drawer ? state.presentation.painted() : state.model.visible();
+}
 } // namespace
 
 ModalComponentHost::ModalComponentHost(WindowComponentServices& services) : services_(&services) {
@@ -216,6 +257,10 @@ ModalSnapshot ModalComponentHost::snapshot(runtime::ComponentId id) const {
     auto result = state->snapshot;
     result.visible = state->model.visible();
     result.topmost = services_->overlay_stack().is_top(id);
+    result.paint_visible = paint_visible(*state);
+    result.progress = state->drawer ? state->presentation.progress : (result.visible ? 1 : 0);
+    result.transitioning = state->drawer && state->presentation.running;
+    result.motion_revision = state->presentation.revision;
     return result;
 }
 
@@ -223,6 +268,7 @@ void ModalComponentHost::on_dispose() noexcept {
     lifetime_.reset();
     mounted_.clear();
     transitions_.clear();
+    drawer_clock_.reset();
 }
 
 void ModalComponentHost::on_destroy() noexcept {
@@ -231,18 +277,43 @@ void ModalComponentHost::on_destroy() noexcept {
 }
 
 void ModalComponentHost::refresh(runtime::ComponentId id, bool geometry) {
-    auto* s = services_->components().state<ModalState>(id);
+    const auto retained = services_->components().retain_state<ModalState>(id);
+    auto* s = retained.get();
     if (!s || !services_->components().scope(id).active()) {
         return;
     }
+    const auto life = std::weak_ptr{lifetime_};
+    const auto revision = ++s->refresh_revision;
+    if (s->drawer && s->presentation.completion) {
+        s->presentation.geometry.reset();
+    }
+    const auto current = [&] {
+        return !life.expired() && services_->components().contains(id) && services_->components().scope(id).active() &&
+               s->refresh_revision == revision;
+    };
     const auto token = panel_theme(services_->components().theme_scope(id)->snapshot(), s->drawer.has_value());
     const auto& fonts = token.typography;
     s->text_color.set(foreground(token.colors.text));
+    if (!current()) {
+        return;
+    }
     s->title_color.set(foreground(token.colors.title));
+    if (!current()) {
+        return;
+    }
     s->body_font.set({fonts.font_family, fonts.font_weight, false, fonts.font_size, fonts.line_height});
+    if (!current()) {
+        return;
+    }
     s->title_font.set(
         {fonts.font_family, fonts.title_font_weight, false, fonts.title_font_size, fonts.title_line_height});
+    if (!current()) {
+        return;
+    }
     s->loading.set(s->model.options().confirm_loading || s->action_starting || (s->action && s->action->pending()));
+    if (!current()) {
+        return;
+    }
     ThemeConfig close_theme;
     close_theme.button.seed.control_height = dp(token.metrics.close_size);
     close_theme.button.seed.font_size = dp(token.metrics.close_icon_size);
@@ -255,6 +326,9 @@ void ModalComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     palette.light = token.colors.close_hover_background;
     palette.light_active = token.colors.close_hover_background;
     s->close_theme.set(std::move(close_theme));
+    if (!current()) {
+        return;
+    }
     const bool header = s->title_slot || !s->title.get().empty() || s->model.options().closable || s->drawer_extra;
     const bool footer = s->footer_slot || s->model.options().footer == ModalFooterMode::Default;
     for (const auto& [component, shown] :
@@ -271,6 +345,9 @@ void ModalComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     }
     if (s->drawer && s->ready) {
         reconcile_drawer_content(id);
+        if (!current()) {
+            return;
+        }
         s = services_->components().state<ModalState>(id);
         if (!s) {
             return;
@@ -291,7 +368,11 @@ void ModalComponentHost::update_overlay(runtime::ComponentId id) {
     }
     WindowOverlayState overlay;
     overlay.input_visible = state->ready && state->model.visible();
-    overlay.paint_visible = overlay.input_visible;
+    overlay.paint_visible = state->ready && paint_visible(*state);
+    if (state->drawer) {
+        services_->interactions().set_input_blocked(state->snapshot.overlay,
+                                                    !overlay.input_visible || !state->model.options().open);
+    }
     overlay.focus_trap = state->focus_trap;
     overlay.restore_focus = state->restore;
     overlay.layer_priority =
@@ -307,6 +388,80 @@ bool ModalComponentHost::visible() const noexcept {
                                [](const auto& entry) { return entry.kind != WindowOverlayKind::FullscreenSpin; });
 }
 
+void ModalComponentHost::sample_drawers(animation::AnimationTime time) {
+    const auto now = drawer_clock_.observe(time).effective;
+    for (const auto id : mounted_) {
+        auto* state = services_->components().state<ModalState>(id);
+        if (!state || !state->drawer || !state->presentation.running) {
+            continue;
+        }
+        auto& motion = state->presentation;
+        const auto policy = animation::resolve_motion_policy(services_->components().theme_scope(id)->snapshot(),
+                                                             services_->motion_preference());
+        const auto interval = animation::sample_animation_interval(now, motion.start, {}, motion.spec.duration);
+        const bool finished = !policy.enabled() || !services_->focus().state().window_active ||
+                              interval.phase == animation::AnimationIntervalPhase::completed;
+        const auto progress = finished ? (motion.target ? 1.0F : 0.0F)
+                                       : std::lerp(motion.from, motion.target ? 1.0F : 0.0F,
+                                                   motion.spec.easing.sample(interval.progress));
+        const bool changed = motion.progress != progress || finished;
+        motion.progress = progress;
+        motion.running = !finished;
+        motion.deadline = finished ? std::nullopt
+                                   : std::optional{std::min(now + animation::AnimationDuration::milliseconds(16),
+                                                            motion.start + motion.spec.duration)};
+        if (finished) {
+            motion.completion = motion.revision;
+        }
+        if (changed) {
+            state->needs_layout = true;
+            services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest |
+                                                           runtime::DirtyFlags::Material);
+            services_->request_frame();
+        }
+    }
+}
+
+void ModalComponentHost::retarget_drawer(runtime::ComponentId id, bool open, bool suppress) {
+    auto* state = services_->components().state<ModalState>(id);
+    auto& motion = state->presentation;
+    const auto now = drawer_clock_.observe(services_->animation_time()).effective;
+    ++motion.revision;
+    motion.completion.reset();
+    motion.geometry.reset();
+    motion.from = motion.progress;
+    motion.target = open;
+    motion.start = now;
+    const auto policy = animation::resolve_motion_policy(services_->components().theme_scope(id)->snapshot(),
+                                                         services_->motion_preference());
+    motion.spec = policy.transition(animation::MotionDurationToken::slow, animation::MotionEasingToken::ease_in_out);
+    const auto distance = std::abs((open ? 1.0F : 0.0F) - motion.from);
+    const auto duration = static_cast<animation::AnimationDuration::rep>(
+        std::ceil(static_cast<double>(motion.spec.duration.count_microseconds()) * distance));
+    motion.spec.duration = animation::AnimationDuration::microseconds(duration);
+    motion.running = !suppress && duration > 0 && services_->focus().state().window_active &&
+                     services_->overlay_stack().logical_branch_active(id);
+    if (motion.running) {
+        motion.deadline = std::min(now + animation::AnimationDuration::milliseconds(16), now + motion.spec.duration);
+    } else {
+        motion.progress = open ? 1.0F : 0.0F;
+        motion.deadline.reset();
+        if (!suppress) {
+            motion.completion = motion.revision;
+        }
+    }
+    // Publish the entire subtree block before the stack can revoke its last
+    // Restrict lease. This low-level setter cannot invoke application code.
+    services_->interactions().set_input_blocked(state->snapshot.overlay, !open);
+    if (!open) {
+        state->snapshot.resizing = false;
+        state->keyboard_resizing = false;
+    }
+    state->needs_layout = true;
+    services_->mark_scene_structure_dirty();
+    services_->request_frame();
+}
+
 void ModalComponentHost::reconcile() {
     if (mounting_ || !lifetime_) {
         return;
@@ -318,19 +473,24 @@ void ModalComponentHost::reconcile() {
     const auto life = std::weak_ptr{lifetime_};
     reconciling_ = true;
     try {
+        unsigned rounds{};
         do {
+            if (++rounds > 32) {
+                throw std::logic_error("Drawer visibility callbacks did not converge");
+            }
             reconcile_again_ = false;
+            sample_drawers(services_->animation_time());
             std::optional<std::vector<runtime::ComponentId>> snapshot;
             if (std::ranges::any_of(mounted_, [this](auto id) {
                     const auto* state = services_->components().state<ModalState>(id);
-                    return state && state->action && state->action->pending() &&
-                           (!state->model.options().open || !services_->overlay_stack().logical_branch_active(id));
+                    return state && (state->drawer || (state->action && state->action->pending() &&
+                                                       (!state->model.options().open ||
+                                                        !services_->overlay_stack().logical_branch_active(id))));
                 })) {
                 snapshot = mounted_;
             }
-            const std::span<const runtime::ComponentId> ids = snapshot
-                                                                  ? std::span<const runtime::ComponentId>{*snapshot}
-                                                                  : std::span<const runtime::ComponentId>{mounted_};
+            const auto ids = snapshot ? std::span<const runtime::ComponentId>{*snapshot}
+                                      : std::span<const runtime::ComponentId>{mounted_};
             for (auto id : ids) {
                 auto* s = services_->components().state<ModalState>(id);
                 if (!s || !s->ready || !services_->components().scope(id).active()) {
@@ -356,12 +516,39 @@ void ModalComponentHost::reconcile() {
                     s->revealed_focus.reset();
                     s->revealed_text_revision.reset();
                     s->revealed_caret_byte.reset();
-                    transitions_.push_back({id, *change});
+                    if (s->drawer) {
+                        bool family_hidden{};
+                        for (auto parent = services_->components().parent(id); parent;
+                             parent = services_->components().parent(*parent)) {
+                            const auto* ancestor = services_->components().state<ModalState>(*parent);
+                            if (ancestor && ancestor->drawer && !paint_visible(*ancestor)) {
+                                family_hidden = true;
+                                break;
+                            }
+                        }
+                        retarget_drawer(id, *change, !*change && family_hidden && s->model.options().open);
+                    } else {
+                        transitions_.push_back({id, *change});
+                    }
                     if (notifying_) {
                         services_->request_frame();
                     }
                 }
+                if (s->drawer && s->presentation.running && !services_->overlay_stack().logical_branch_active(id)) {
+                    s->presentation.running = false;
+                    s->presentation.progress = 0;
+                    s->presentation.deadline.reset();
+                    s->presentation.completion = s->presentation.revision;
+                    s->needs_layout = true;
+                    services_->request_frame();
+                }
                 update_overlay(id);
+                if (s->drawer) {
+                    reconcile_drawer_content(id);
+                    if (life.expired()) {
+                        return;
+                    }
+                }
             }
             static_cast<void>(services_->overlay_stack().reconcile(false));
             if (life.expired()) {
@@ -466,6 +653,20 @@ std::function<void()> ModalComponentHost::detach_action(runtime::ComponentId id)
     return state && state->action ? state->action->detach_cancel() : ConfirmAction::Cancel{};
 }
 
+void ModalComponentHost::arm_service_drawer_close(runtime::ComponentId id) {
+    const auto* state = services_->components().state<ModalState>(id);
+    if (!state || !state->drawer || !services_->components().scope(id).active()) {
+        throw std::logic_error("App Drawer close owner is retired");
+    }
+    // A service may be closed while its external owner is already hidden. No
+    // logical visible edge then exists, but this accepted close still needs the
+    // same finite terminal-sync completion boundary, never an inline future.
+    if (!state->presentation.target && !state->presentation.running && !state->presentation.completion) {
+        retarget_drawer(id, false);
+        update_overlay(id);
+    }
+}
+
 void ModalComponentHost::append_service_body(runtime::ComponentId id, runtime::ComponentId parent,
                                              const Content& content, const runtime::CapturedComponentContext& context) {
     const auto state = services_->components().retain_state<ModalState>(id);
@@ -488,14 +689,19 @@ std::size_t ModalComponentHost::tick_auxiliary(animation::AnimationTime time) {
     const auto ids = mounted_;
     const auto life = std::weak_ptr{lifetime_};
     std::size_t count{};
+    sample_drawers(time);
     for (const auto id : ids) {
-        const auto* state = services_->components().state<ModalState>(id);
+        auto* state = services_->components().state<ModalState>(id);
         const auto action = state ? state->action : nullptr;
         if (action && action->tick(time)) {
             ++count;
         }
         if (life.expired()) {
             break;
+        }
+        state = services_->components().state<ModalState>(id);
+        if (state && state->drawer && state->presentation.running) {
+            ++count;
         }
     }
     return count;
@@ -508,6 +714,10 @@ std::optional<animation::AnimationTime> ModalComponentHost::next_auxiliary_deadl
         const auto deadline = state && state->action ? state->action->deadline() : std::nullopt;
         if (deadline && (!result || *deadline < *result)) {
             result = deadline;
+        }
+        if (state && state->drawer && state->presentation.deadline &&
+            (!result || *state->presentation.deadline < *result)) {
+            result = state->presentation.deadline;
         }
     }
     return result;
@@ -681,13 +891,15 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
                 context.register_scene_fragment(s.snapshot.overlay, runtime::SceneFragmentPlacement::before_children);
             s.shield_surface = services.surfaces().create(s.snapshot.overlay, overlay_node, shield_fragment,
                                                           s.shield_hit, std::span{&initial, 1}, no_effect);
-            context.on_resource_cleanup(
-                s.snapshot.overlay, [&services, node = overlay_node, hit = s.shield_hit, surface = s.shield_surface] {
-                    services.pointer().cancel_interaction(hit);
-                    services.interactions().remove(hit);
-                    services.surfaces().destroy(surface);
-                    services.layout().remove_layout(node);
-                });
+            context.on_resource_cleanup(s.snapshot.overlay, [&services, root = s.snapshot.overlay, node = overlay_node,
+                                                             hit = s.shield_hit, surface = s.shield_surface] {
+                // The block belongs to this exact overlay generation.
+                services.interactions().set_input_blocked(root, false);
+                services.pointer().cancel_interaction(hit);
+                services.interactions().remove(hit);
+                services.surfaces().destroy(surface);
+                services.layout().remove_layout(node);
+            });
             context.mount_slot(
                 s.snapshot.overlay, Content{[&] {
                     auto& overlay = runtime::require_component_build_context();
@@ -969,7 +1181,23 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
             }
         });
     };
-    option(props.open_, [](auto& options, bool value) { options.open = value; });
+    connect_prop(scope, props.open_, [this, id](bool value) {
+        if (auto* state = services_->components().state<ModalState>(id)) {
+            auto options = state->model.options();
+            options.open = value;
+            state->model.reconcile(options);
+            const auto life = std::weak_ptr{lifetime_};
+            if (state->drawer && !value) {
+                // Also applies during an enclosing input/visibility callback:
+                // reconcile may defer its walk, but admission stops right now.
+                services_->interactions().set_input_blocked(state->snapshot.overlay, true);
+                reconcile();
+            }
+            if (!life.expired() && services_->components().contains(id)) {
+                refresh(id, false);
+            }
+        }
+    });
     option(props.closable_, [](auto& options, bool value) { options.closable = value; }, true);
     option(props.keyboard_, [](auto& options, bool value) { options.keyboard = value; });
     option(props.mask_, [](auto& options, ModalMask value) { options.mask = value; });
@@ -1063,6 +1291,31 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
                     update(next, value);
                     validate_drawer_geometry(next);
                     if (next != *state->drawer) {
+                        if (next.placement != state->drawer->placement) {
+                            const auto revision = state->presentation.revision;
+                            const auto hit = state->resize_hit;
+                            state->snapshot.resizing = false;
+                            state->keyboard_resizing = false;
+                            state->drawer = next;
+                            const auto life = std::weak_ptr{lifetime_};
+                            services_->pointer().cancel_interaction(hit);
+                            if (life.expired() || !services_->components().contains(id)) {
+                                return;
+                            }
+                            state = services_->components().state<ModalState>(id);
+                            if (state->presentation.revision != revision || *state->drawer != next) {
+                                return;
+                            }
+                            services_->focus().cancel_interaction(hit);
+                            if (life.expired() || !services_->components().contains(id)) {
+                                return;
+                            }
+                            state = services_->components().state<ModalState>(id);
+                            if (state->presentation.revision != revision || *state->drawer != next) {
+                                return;
+                            }
+                        }
+                        state = services_->components().state<ModalState>(id);
                         state->drawer = next;
                         refresh(id, true);
                     }
@@ -1100,6 +1353,8 @@ void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent
         subscribe(std::array{&theme_runtime::ThemeScope::drawer_colors, &theme_runtime::ThemeScope::drawer_metrics,
                              &theme_runtime::ThemeScope::drawer_typography, &theme_runtime::ThemeScope::drawer_effects,
                              &theme_runtime::ThemeScope::drawer_order});
+        s.motion_subscription = theme->capture([this](theme_runtime::DirtyPhase) { synchronize_auxiliary_motion(); },
+                                               [theme] { static_cast<void>(theme->motion_enabled()); });
     } else {
         subscribe(std::array{&theme_runtime::ThemeScope::modal_colors, &theme_runtime::ThemeScope::modal_metrics,
                              &theme_runtime::ThemeScope::modal_typography, &theme_runtime::ThemeScope::modal_effects,
@@ -1115,6 +1370,7 @@ void ModalComponentHost::reconcile_drawer_content(runtime::ComponentId id) {
         return;
     }
     s->drawer_syncing = true;
+    const auto life = std::weak_ptr{lifetime_};
     try {
         bool settled{};
         for (unsigned attempt = 0; attempt < 32; ++attempt) {
@@ -1123,14 +1379,34 @@ void ModalComponentHost::reconcile_drawer_content(runtime::ComponentId id) {
                 return;
             }
             const bool open = s->model.options().open;
-            const bool render = open || (!s->drawer_lazy && !s->drawer_destroy);
+            const bool render = open || s->presentation.painted() || s->presentation.completion ||
+                                (!s->drawer_lazy && !s->drawer_destroy);
             if (render && !s->snapshot.body_mounted) {
                 s->snapshot.body_mounted = true;
                 const auto content = s->drawer_content;
-                display_append_styled(*services_, id, s->snapshot.body, content, s->text_color, s->body_font, false);
-            } else if (!open && s->drawer_destroy && s->snapshot.body_mounted) {
+                const auto color = s->text_color;
+                const auto font = s->body_font;
+                display_append_styled(*services_, id, s->snapshot.body, content, color, font, false);
+                if (life.expired()) {
+                    return;
+                }
+            } else if (!render && s->drawer_destroy && s->snapshot.body_mounted) {
                 s->snapshot.body_mounted = false;
-                display_clear(*services_, id, s->snapshot.body);
+                const auto revision = s->presentation.revision;
+                const auto children = services_->components().children(s->snapshot.body);
+                for (auto child : children) {
+                    services_->destroy(child);
+                    if (life.expired()) {
+                        return;
+                    }
+                    s = services_->components().state<ModalState>(id);
+                    if (!s) {
+                        return;
+                    }
+                }
+                if (s->presentation.revision != revision) {
+                    continue; // Re-read the new target before publishing any gates.
+                }
             } else {
                 settled = true;
                 break;
@@ -1140,7 +1416,8 @@ void ModalComponentHost::reconcile_drawer_content(runtime::ComponentId id) {
             services_->retire_failed_component(id);
             throw std::logic_error("Drawer content callbacks did not converge");
         }
-        const bool shown = s->model.options().open;
+        const bool shown = paint_visible(*s);
+        const bool input = s->model.visible();
         for (const auto& [component, active] :
              {std::pair{s->snapshot.body, shown && !s->snapshot.loading},
               std::pair{s->snapshot.placeholder, shown && s->snapshot.loading},
@@ -1150,22 +1427,36 @@ void ModalComponentHost::reconcile_drawer_content(runtime::ComponentId id) {
                 services_->mark_scene_structure_dirty();
             }
         }
-        services_->interactions().set_eligible(s->resize_hit, shown && s->drawer_resize.enabled);
+        services_->interactions().set_eligible(s->resize_hit, input && s->drawer_resize.enabled);
         const auto handle = s->resize_hit;
-        const bool cancel = !shown || !s->drawer_resize.enabled;
+        const bool cancel = !input || !s->drawer_resize.enabled;
         const auto body = s->snapshot.body;
-        const bool blocked = !shown || s->snapshot.loading;
+        const bool blocked = s->snapshot.loading;
+        const auto revision = s->presentation.revision;
+        const auto refresh_revision = s->refresh_revision;
+        const auto current = [&] {
+            if (life.expired()) {
+                return false;
+            }
+            const auto* state = services_->components().state<ModalState>(id);
+            return state && state->presentation.revision == revision && state->refresh_revision == refresh_revision;
+        };
         s->drawer_syncing = false;
         if (cancel) {
             services_->pointer().cancel_interaction(handle);
+            if (!current()) {
+                return;
+            }
             services_->focus().cancel_interaction(handle);
         }
-        if (services_->components().contains(id)) {
+        if (current()) {
             services_->set_input_blocked(body, blocked);
         }
     } catch (...) {
-        if (auto* state = services_->components().state<ModalState>(id)) {
-            state->drawer_syncing = false;
+        if (!life.expired()) {
+            if (auto* state = services_->components().state<ModalState>(id)) {
+                state->drawer_syncing = false;
+            }
         }
         throw;
     }
@@ -1487,6 +1778,101 @@ bool ModalComponentHost::reveal_focus(runtime::ComponentId id, bool caret_ready)
     return scroll_to(id, next);
 }
 
+void ModalComponentHost::complete_drawers() {
+    if (std::ranges::none_of(mounted_, [this](auto id) {
+            const auto* state = services_->components().state<ModalState>(id);
+            return state && state->drawer && state->presentation.completion && state->presentation.geometry;
+        })) {
+        return;
+    }
+    const auto ids = mounted_;
+    const auto life = std::weak_ptr{lifetime_};
+    std::exception_ptr error;
+    const auto call = [&](auto&& callback) {
+        try {
+            callback();
+        } catch (...) {
+            if (!error) {
+                error = std::current_exception();
+            }
+        }
+    };
+    for (auto id : ids) {
+        auto* s = services_->components().state<ModalState>(id);
+        if (!s || !s->drawer || !s->presentation.completion || s->presentation.geometry != s->presentation.completion ||
+            s->presentation.geometry_sync == services_->successful_sync_revision() ||
+            !services_->components().scope(id).active()) {
+            continue;
+        }
+        const auto revision = s->presentation.revision;
+        const bool open = s->presentation.target;
+        const auto current = [&] {
+            if (life.expired()) {
+                return false;
+            }
+            const auto* state = services_->components().state<ModalState>(id);
+            return state && services_->components().scope(id).active() && state->presentation.revision == revision &&
+                   state->presentation.target == open;
+        };
+        const auto changed = s->after_open_change;
+        const auto closed = s->after_close;
+        // Consume before cleanup or user code. A throw cannot deliver this ticket twice.
+        s->presentation.completion.reset();
+        s->presentation.geometry.reset();
+        if (!open && s->drawer_destroy && s->snapshot.body_mounted) {
+            s->snapshot.body_mounted = false;
+            const auto children = services_->components().children(s->snapshot.body);
+            // Cleanup callbacks may reopen the Drawer while old InputRef bindings
+            // are still alive. Drain those generations before mounting new content.
+            s->drawer_syncing = true;
+            for (auto child : ids) {
+                auto* nested = services_->components().state<ModalState>(child);
+                if (child != id && nested && nested->drawer && descendant(*services_, child, s->snapshot.body)) {
+                    ++nested->presentation.revision;
+                    nested->presentation.completion.reset();
+                    nested->presentation.geometry.reset();
+                    nested->presentation.running = false;
+                    nested->presentation.deadline.reset();
+                }
+            }
+            // Only destroy the snapshotted old generations. Reentrant open may
+            // append new content under the same body; it is never in this list.
+            for (auto child : children) {
+                call([&] { services_->destroy(child); });
+                if (life.expired()) {
+                    return;
+                }
+                if (!services_->components().contains(id)) {
+                    break;
+                }
+            }
+            if (auto* state = services_->components().state<ModalState>(id)) {
+                state->drawer_syncing = false;
+                call([&] { reconcile_drawer_content(id); });
+            }
+        }
+        if (current() && changed) {
+            call([&] { changed(open); });
+        }
+        if (life.expired()) {
+            return;
+        }
+        if (!open && current() && closed) {
+            call(closed);
+        }
+        if (life.expired()) {
+            return;
+        }
+    }
+    if (error) {
+        std::rethrow_exception(error);
+    }
+}
+
+void ModalComponentHost::synchronize_auxiliary_motion() {
+    reconcile();
+}
+
 void ModalComponentHost::prepare_auxiliary_layout() {
     const auto life = std::weak_ptr{lifetime_};
     reconcile();
@@ -1494,6 +1880,10 @@ void ModalComponentHost::prepare_auxiliary_layout() {
         return;
     }
     on_input_boundary_changed();
+    complete_drawers();
+    if (life.expired()) {
+        return;
+    }
     // MSVC Debug's vector move constructs a container proxy even for an empty
     // vector. Stable frames must not allocate just to find no notifications.
     if (transitions_.empty()) {
@@ -1536,7 +1926,7 @@ void ModalComponentHost::prepare_auxiliary_layout() {
 void ModalComponentHost::position_window_layers(runtime::Size, runtime::Rect clip) {
     for (auto id : mounted_) {
         auto* s = services_->components().state<ModalState>(id);
-        if (!s || !s->model.visible()) {
+        if (!s || !paint_visible(*s)) {
             continue;
         }
         const auto token = panel_theme(services_->components().theme_scope(id)->snapshot(), s->drawer.has_value());
@@ -1546,16 +1936,33 @@ void ModalComponentHost::position_window_layers(runtime::Size, runtime::Rect cli
         if (s->drawer) {
             float push{};
             const auto overlays = services_->overlay_stack().ordered();
-            for (auto entry = overlays.rbegin(); entry != overlays.rend(); ++entry) {
-                const auto* child = services_->components().state<ModalState>(entry->owner);
-                if (child && child->drawer && child->model.visible() && child->drawer_push.enabled &&
-                    services_->overlay_stack().drawer_parent(entry->owner) == id) {
-                    push = child->drawer_push.distance;
-                    break;
+            for (const auto& entry : overlays) {
+                const auto* child = services_->components().state<ModalState>(entry.owner);
+                if (child && child->drawer && paint_visible(*child) && child->drawer_push.enabled &&
+                    services_->overlay_stack().drawer_parent(entry.owner) == id) {
+                    push = std::lerp(push, child->drawer_push.distance, child->presentation.progress);
                 }
             }
+            push *= s->presentation.progress;
             if (s->drawer_push_offset != push) {
                 s->drawer_push_offset = push;
+                s->needs_layout = true;
+            }
+            runtime::Point family;
+            for (auto parent = services_->components().parent(id); parent;
+                 parent = services_->components().parent(*parent)) {
+                const auto* ancestor = services_->components().state<ModalState>(*parent);
+                if (ancestor && ancestor->drawer && ancestor->presentation.running) {
+                    const auto offset = drawer_exit(*ancestor->drawer, drawer_bounds(*ancestor->drawer, clip),
+                                                    ancestor->presentation.progress);
+                    family.x += offset.x;
+                    family.y += offset.y;
+                }
+            }
+            // Window layers escape ordinary Node translations. Project family
+            // exit motion explicitly, without inheriting ancestor push/scroll.
+            if (s->drawer_family_offset != family) {
+                s->drawer_family_offset = family;
                 s->needs_layout = true;
             }
         }
@@ -1570,6 +1977,9 @@ void ModalComponentHost::position_window_layers(runtime::Size, runtime::Rect cli
             engine.place_child(overlay, clip);
             if (s->drawer) {
                 s->snapshot.bounds = drawer_bounds(*s->drawer, clip);
+                const auto offset = drawer_exit(*s->drawer, s->snapshot.bounds, s->presentation.progress);
+                s->snapshot.bounds.x += offset.x + s->drawer_family_offset.x;
+                s->snapshot.bounds.y += offset.y + s->drawer_family_offset.y;
                 switch (s->drawer->placement) {
                 case DrawerPlacement::Left:
                     s->snapshot.bounds.x += s->drawer_push_offset;
@@ -1609,12 +2019,14 @@ void ModalComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
     const runtime::Rect window{0, 0, viewport.width, viewport.height};
     for (auto id : mounted_) {
         const auto* s = services_->components().state<ModalState>(id);
-        if (!s || !s->model.visible()) {
+        if (!s || !paint_visible(*s)) {
             continue;
         }
         const auto token = panel_theme(services_->components().theme_scope(id)->snapshot(), s->drawer.has_value());
-        const auto shield =
-            quad(window, s->model.options().mask.enabled ? token.colors.mask : Color::rgba8(0, 0, 0, 0));
+        auto shield = quad(window, s->model.options().mask.enabled ? token.colors.mask : Color::rgba8(0, 0, 0, 0));
+        if (s->drawer) {
+            shield.color[3] *= s->presentation.progress;
+        }
         static_cast<void>(services_->surfaces().update_surface(s->shield_surface, std::span{&shield, 1}));
         const auto rect = s->snapshot.bounds;
         const float radius = std::min(token.metrics.border_radius, std::min(rect.width, rect.height) / 2);
@@ -1694,6 +2106,15 @@ bool ModalComponentHost::synchronize_auxiliary_fragments() {
     if (top && top->kind != WindowOverlayKind::FullscreenSpin && reveal_focus(top->owner, true)) {
         services_->request_frame();
     }
+    for (auto id : mounted_) {
+        auto* state = services_->components().state<ModalState>(id);
+        if (state && state->drawer && state->presentation.completion && !state->presentation.running &&
+            state->presentation.geometry != state->presentation.completion) {
+            state->presentation.geometry = state->presentation.completion;
+            state->presentation.geometry_sync = services_->successful_sync_revision();
+            services_->request_frame();
+        }
+    }
     return false;
 }
 
@@ -1761,7 +2182,9 @@ bool ModalComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
     return true;
 }
 
-void ModalComponentHost::on_window_active(bool) {}
+void ModalComponentHost::on_window_active(bool) {
+    synchronize_auxiliary_motion();
+}
 } // namespace ryn::detail
 
 namespace ryn {

@@ -46,7 +46,7 @@ rich slot 挂载期间更新的 value、precision、分隔符与 formatter 会�
 
 `locale(Prop<StatisticLocale>)` 提供 decimal/group separators、primary/secondary group 位数和十个 UTF-8 digits；primary/secondary 均须大于零，digit 不得为空。显式 decimalSeparator/groupSeparator 分别覆盖 locale 对应字段，formatter 和非数字字符串保持原合同。locale 更新只更新保留文本。比如 primary=3、secondary=2 可得到 `12,34,567`。
 
-未显式指定 locale 时，数字和 Timer 的 digits 继承最近 ConfigProvider 的 formatLocale，与翻译语言独立；显式完整 StatisticLocale（包括默认英文值）继续优先。数字显示算法与公开 i18n formatNumber 共用，不增加 ICU/货币功能；精确 Decimal 不参与 double 数值动画。新增国际化接入的回归源码等待父集成验证，不扩大历史验收范围。
+未显式指定 locale 时，数字和 Timer 的 digits 继承最近 ConfigProvider 的 formatLocale，与翻译语言独立；显式完整 StatisticLocale（包括默认英文值）继续优先。数字显示算法与公开 i18n formatNumber 共用，不增加 ICU/货币功能；精确 Decimal 不参与 double 数值动画。国际化接入已完成 MSVC Debug/Release 定向验证，见 [108 Windows 验收](../openspec/changes/108-20261107-add-native-i18n/evidence/gallery-windows.md)。
 
 `animated(Prop<bool>)` 默认 false。开启后，安全数值更新从当前显示插值到新值，使用 Theme slow duration 和 motion policy；结束发布原始 typed 值，不把大整数或高精度 String 经由 double 转换。自定义 formatter 与 richValue 不驱动内置数值动画。隐藏、loading、离页、零可见区域、窗口失活或 reduced motion 收敛到目标并停止 deadline。
 

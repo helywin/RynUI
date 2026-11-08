@@ -150,7 +150,9 @@ void WindowOverlayStack::update(const WindowOverlayTicket& ticket, const WindowO
         parent = ancestor->desired.parent;
     }
     if (!entry->desired.input_visible && next.input_visible) {
-        if (next_order_ == std::numeric_limits<std::uint64_t>::max()) {
+        const bool resume_drawer = entry->kind == WindowOverlayKind::Drawer && entry->desired.paint_visible &&
+                                   next.paint_visible && entry->order != 0;
+        if (!resume_drawer && next_order_ == std::numeric_limits<std::uint64_t>::max()) {
             throw std::length_error("Window overlay opening order exhausted");
         }
         entry->trigger = services_->focus().state().focused;
@@ -173,7 +175,9 @@ void WindowOverlayStack::update(const WindowOverlayTicket& ticket, const WindowO
                 entry->trigger = parent_entry->last_focus;
             }
         }
-        entry->order = ++next_order_;
+        if (!resume_drawer) {
+            entry->order = ++next_order_;
+        }
     }
     entry->desired = next;
     dirty_ = true;
