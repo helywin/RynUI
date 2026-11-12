@@ -21,12 +21,14 @@ struct GalleryDemoNativeActions final {
     std::function<GalleryDemoJson()> metrics;
     std::function<bool(const std::filesystem::path&)> capture;
     std::function<GalleryDemoJson(ryn::font::FontIdentity)> font_info;
+    std::function<std::uint32_t(ryn::font::FontIdentity, char32_t)> nominal_glyph;
 };
 
 // Uses the const scene query so editor selection/placeholder views remain read-only.
 [[nodiscard]] GalleryDemoJson
 gallery_demo_text_snapshot(const ryn::detail::TextSceneService&, ryn::detail::TextSceneId, ryn::runtime::Rect,
-                           const std::function<GalleryDemoJson(ryn::font::FontIdentity)>&);
+                           const std::function<GalleryDemoJson(ryn::font::FontIdentity)>&,
+                           const std::function<std::uint32_t(ryn::font::FontIdentity, char32_t)>& = {});
 
 // The production finite adapter and CPU routing tests share this exact bridge.
 // It dispatches through GalleryPagesHost; it has no callback/value mutation API.

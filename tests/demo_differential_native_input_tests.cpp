@@ -67,6 +67,7 @@ void routing() {
                                                            {"logical_height", fixture.viewport.height}};
                                    },
                                    {},
+                                   {},
                                    {}};
     GalleryDemoInputBridge bridge{definition, ports};
     std::size_t step{};
@@ -116,23 +117,36 @@ void routing() {
         require(source.has_value(), "actual text-view font source is stale");
         return Json::Object{{"family", source->family}, {"face_index", static_cast<std::int64_t>(source->face_index)}};
     };
+    const auto nominal_glyph = [&](font::FontIdentity identity, char32_t codepoint) {
+        const auto result = fixture.fonts->glyph_index(identity, codepoint);
+        require(static_cast<bool>(result), "actual nominal glyph query failed");
+        return result.glyph.glyph_id;
+    };
     for (const auto layer : {layers.base, layers.selected, layers.placeholder}) {
-        const auto metadata = gallery_demo_text_snapshot(fixture.scene, layer, node.bounds, font_info);
+        const auto metadata = gallery_demo_text_snapshot(fixture.scene, layer, node.bounds, font_info, nominal_glyph);
         require(metadata.at("index_unit").string() == "UTF-8-bytes", "text snapshot omitted explicit byte indices");
         require(!metadata.at("font_runs").array().empty() && !metadata.at("glyphs").array().empty(),
                 "actual editor text-view snapshot lost shared shaping/font observations");
+        require(metadata.at("font_coverage_available").boolean() && metadata.at("missing_font_scalars").array().empty(),
+                "declared Latin/CJK text unexpectedly lacks a real nominal glyph");
     }
     click("gallery.input.controlled");
     require(fixture.inputs.sessions().active().valid(), "pointer did not start actual editor session");
-    dispatch("text-commit", "gallery.input.controlled", Json::Object{{"text", "abc"}});
-    require(context->values.at("gallery.input.controlled")().string() == "abc", "accepted text commit missing");
+    dispatch("text-commit", "gallery.input.controlled", Json::Object{{"text", "abc🙂"}});
+    require(context->values.at("gallery.input.controlled")().string() == "abc🙂", "accepted text commit missing");
+    const auto coverage = gallery_demo_text_snapshot(fixture.scene, layers.base, node.bounds, font_info, nominal_glyph);
+    require(coverage.at("replacement_count").number() == 0 &&
+                coverage.at("replacement_count_unit").string() == "invalid-UTF8-repairs" &&
+                coverage.at("missing_font_scalars").array().size() == 1 &&
+                coverage.at("missing_font_scalars").array().front().at("codepoint").number() == 0x1F642,
+            "valid UTF8 repair count incorrectly certified missing emoji font coverage");
     dispatch("external-props", "sample", Json::Object{{"values", Json::Object{{"parent_policy", "reject"}}}});
     dispatch("text-commit", "gallery.input.controlled", Json::Object{{"text", "x"}});
-    require(context->values.at("gallery.input.controlled")().string() == "abc", "reject parent committed proposal");
+    require(context->values.at("gallery.input.controlled")().string() == "abc🙂", "reject parent committed proposal");
     require(!context->callbacks.back().at("payload").at("accepted").boolean(), "reject callback metadata is false");
     context->fault = "input-reject-commit";
     dispatch("text-commit", "gallery.input.controlled", Json::Object{{"text", "y"}});
-    require(context->values.at("gallery.input.controlled")().string() != "abc",
+    require(context->values.at("gallery.input.controlled")().string() != "abc🙂",
             "real controlled-commit fault did not alter the application value");
     context->fault = "duplicate-callback";
     context->parent_policy = "accept";

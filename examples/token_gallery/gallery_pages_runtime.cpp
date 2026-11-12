@@ -471,7 +471,14 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     }
                     return completed;
                 },
-                font_info});
+                font_info,
+                [&](font::FontIdentity identity, char32_t codepoint) {
+                    const auto result = events.fonts.glyph_index(identity, codepoint);
+                    if (!result) {
+                        throw std::runtime_error("scenario nominal-glyph query failed");
+                    }
+                    return result.glyph.glyph_id;
+                }});
         result.cases = 1;
         result.passed = true; // Protocol execution only; the Python oracle owns the differential verdict.
         write_gallery_page_acceptance(options.output, result);

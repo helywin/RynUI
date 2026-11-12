@@ -174,7 +174,7 @@ public:
 
     [[nodiscard]] Json text_record(ryn::detail::TextSceneId scene, runtime::ComponentId component) {
         return gallery_demo_text_snapshot(actions.app.text().scene_service(), scene, bounds(actions.app, component),
-                                          actions.font_info);
+                                          actions.font_info, actions.nominal_glyph);
     }
 
     [[nodiscard]] Json snapshot(std::string_view name) {
@@ -423,9 +423,11 @@ public:
 
 } // namespace
 
-GalleryDemoJson gallery_demo_text_snapshot(const ryn::detail::TextSceneService& service, ryn::detail::TextSceneId scene,
-                                           ryn::runtime::Rect area,
-                                           const std::function<GalleryDemoJson(ryn::font::FontIdentity)>& font_info) {
+GalleryDemoJson
+gallery_demo_text_snapshot(const ryn::detail::TextSceneService& service, ryn::detail::TextSceneId scene,
+                           ryn::runtime::Rect area,
+                           const std::function<GalleryDemoJson(ryn::font::FontIdentity)>& font_info,
+                           const std::function<std::uint32_t(ryn::font::FontIdentity, char32_t)>& nominal_glyph) {
     const auto& state = service.text_state(scene);
     const auto& measurement = state.measurement();
     Json::Array lines;
@@ -453,6 +455,29 @@ GalleryDemoJson gallery_demo_text_snapshot(const ryn::detail::TextSceneService& 
                                          {"offset_y", glyph.offset_y},
                                          {"font", font_info(glyph.font)}});
     }
+    Json::Array missing;
+    if (nominal_glyph) {
+        for (const auto& scalar : state.shaped().scalars) {
+            const auto value = scalar.value;
+            // Same non-painting controls as text_engine.cpp; they influence
+            // shaping without requiring their own nominal glyph.
+            if (value == 0x00AD || value == 0x034F || value == 0x061C || value == 0x180E ||
+                (value >= 0x200B && value <= 0x200F) || (value >= 0x202A && value <= 0x202E) ||
+                (value >= 0x2060 && value <= 0x206F) || (value >= 0xFE00 && value <= 0xFE0F) || value == 0xFEFF ||
+                (value >= 0xE0000 && value <= 0xE0FFF)) {
+                continue;
+            }
+            const auto run = std::ranges::find_if(state.shaped().runs, [&](const auto& item) {
+                return item.byte_start <= scalar.byte_start && scalar.byte_start < item.byte_end;
+            });
+            if (run != state.shaped().runs.end() && nominal_glyph(run->font, value) == 0) {
+                missing.emplace_back(Json::Object{{"codepoint", count(value)},
+                                                  {"byte_start", count(scalar.byte_start)},
+                                                  {"byte_end", count(scalar.byte_end)},
+                                                  {"selected_font", font_info(run->font)}});
+            }
+        }
+    }
     Json::Array ink;
     const auto& primitive = service.primitive(scene);
     for (std::uint32_t index = 0; index < primitive.instances.count; ++index) {
@@ -474,6 +499,9 @@ GalleryDemoJson gallery_demo_text_snapshot(const ryn::detail::TextSceneService& 
                         {"glyphs", std::move(glyphs)},
                         {"ink_instances", std::move(ink)},
                         {"replacement_count", count(state.shaped().replacement_count)},
+                        {"replacement_count_unit", "invalid-UTF8-repairs"},
+                        {"font_coverage_available", static_cast<bool>(nominal_glyph)},
+                        {"missing_font_scalars", std::move(missing)},
                         {"overflow", measurement.overflow},
                         {"width", measurement.width},
                         {"height", measurement.height},

@@ -20,6 +20,7 @@ pointer/key/text/composition/wheel 进入实际 `pages.dispatch`，外部策略�
 - sample factory 的 begin/end 观测仅记录现有 retained roots，不增加布局容器。sample-context 包含完整 authored 内容，Gallery title/导航/源码壳单列；不按每个控件紧裁/配准。
 - Button 使用现有 snapshot，Input 使用 editor/display/text layers，Select 使用 model/applied-state 查询；新增只读查询不重读业务 Prop getter、不改公开 Props。`resources.actual_initial_inputs` 与声明 fixture 分列，未具备的输入映射不会自动成为已验证。
 - 文本读取 **const TextSceneService**，保留 source/view 共享 shaping。记录行、glyph cluster、font source bytes/face、实际 ink/clip；icon-font 单列，不把私有码点当普通文字屏蔽。
+- `replacement_count` 的单位明确为 `invalid-UTF8-repairs`，不能证明字体覆盖。Gallery 验收查询实际选中 face 对原始 scalar 的 nominal glyph，另列 `font_coverage_available` 与 `missing_font_scalars`；没有查询或缺字不能作为 paired 字体通过。该查询只用于有限观测，不改变 Core 的 fallback/加载/渲染行为。
 - Core 选区是 **UTF-8 byte offsets**，text cluster/line byte indices 显式标注；DOM 是 UTF-16。`text_units.py` 仅转换完整 scalar 边界，grapheme 合法性仍由 Core 合同决定。不能把 scalar 数直接当作 byte/DOM 偏移。
 - checkpoint 经现有 `save_frame_bmp` → GPU readback/fence，绑定本次 nonce/scene revision/实际 metrics/文件 hash；`completed_readbacks` 只数本 adapter 成功的 checkpoint 导出。正常 Wayland callback、逻辑 submitted frames、checkpoint readbacks 分列。现有 renderer `gpu_submissions` 指标在 hidden composition/export 路径可为 0，不代表未执行这些独立 fence readback，也不作为正常 surface callback 数。
 
