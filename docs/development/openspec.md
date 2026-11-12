@@ -1,13 +1,13 @@
 # OpenSpec 开发工具
 
-RynUI 使用全局安装的 OpenSpec CLI。当前仓库 agent skills 由 **OpenSpec 1.14.0** 生成，配套 CLI 使用相同版本。OpenSpec 仅用于开发工作流，不进入 C++ 应用运行时，也不在仓库安装 Node.js 依赖。
+RynUI 使用全局安装的 OpenSpec CLI。当前仓库 agent skills 由 **OpenSpec 2.0.0** 生成，配套 CLI 使用相同版本。OpenSpec 仅用于开发工作流，不进入 C++ 应用运行时，也不在仓库安装 Node.js 依赖。
 
 ## 安装与升级
 
-准备 Node.js 20.19.0 或更高版本及 pnpm，然后执行：
+准备 Node.js 22.12.0 或更高版本及 pnpm，然后执行：
 
 ```powershell
-pnpm add --global @fission-ai/openspec@1.14.0
+pnpm add --global @fission-ai/openspec@2.0.0
 openspec --version
 ```
 
@@ -17,9 +17,13 @@ openspec --version
 openspec update
 ```
 
-`openspec update` 更新 `.agents/skills/openspec-*/SKILL.md` 等生成指引，不替代 CLI 包升级。更新后检查 Git diff，保留仓库的 `AGENTS.md`、`openspec/config.yaml` 与现有 change 约定。升级到其他版本时，应先确认上游发布版本，再更新全局 CLI、生成指引与本文的配套版本。
+更新前先运行 `openspec update --dry-run --json` 核对写入/删除范围，并保存自定义指引的副本。2.0.0 将生成技能统一到 `.agents/skills/openspec-*/SKILL.md`，并移除已生成的旧工具专属 slash command；workflow 本身不变。`openspec update` 会覆盖该目录下的生成指引，不能把项目约定只写在生成技能中。
+
+`openspec update` 不替代 CLI 包升级。更新后检查 Git diff，保留仓库的 `AGENTS.md`、`openspec/config.yaml` 与现有 change 约定。升级到其他版本时，应先确认上游发布版本，再更新全局 CLI、生成指引与本文的配套版本。
 
 上游要求与更新流程见 [OpenSpec 官方说明](https://github.com/Fission-AI/OpenSpec#updating-openspec)。仓库使用带明确版本的 pnpm 安装命令，以避免不同机器静默跟随 `latest`。
+
+2026-11-12 按用户要求升级到官方 latest **2.0.0**，官方 [release](https://github.com/Fission-AI/OpenSpec/releases/tag/v2.0.0) 与 npm registry 已核验。历史 evidence 中的 1.14.0 / 1.14.3 / 1.17.0 属于当时实际工具版本，不追溯改写为 2.0.0。本次工具迁移不修改 change 任务完成状态。
 
 ## 校验
 
@@ -48,3 +52,7 @@ git diff --check
 2026-10-30 已清理历史 evidence 运行产物，保留文字结果。旧文档中的原始附件路径属于历史记录；本机归档位于 `out/evidence-archive-20261030/`。Git 历史未重写，需要追溯时仍可从旧提交取回。必要的确定性测试输入与 schema 已移至 `tests/fixtures/`，不以历史截图存在与否判定当前功能是否通过。
 
 若 `openspec --version` 仍返回旧版，用 `Get-Command openspec`（Windows）或 `command -v openspec`（Linux/macOS）确认 PATH 实际解析的全局入口。旧的 1.4.1 CLI 不支持仓库要求的 `doctor`；应修复全局版本或 PATH，不跳过校验。
+
+## 2.0.0 迁移校验
+
+本仓库原已使用统一 `.agents/skills`，dry-run 仅列 6 个已有生成技能的更新，没有旧工具专属生成 command 待删；`openspec update` 已按该计划执行，并重读新的 apply 指引。实际 CLI 2.0.0：doctor healthy，strict **109 passed / 0 failed**，diff check 通过；全部 109 个 `tasks.md` 的 checkbox 身份/顺序/状态向量及 `openspec/config.yaml` 原样保留。C++/change artifacts 和进行中的实施差量未混入此工具提交，历史工具版本证据未改写。本阶段不运行 C++ 或 GUI 矩阵。
