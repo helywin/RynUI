@@ -15,11 +15,11 @@
 ## 2. 平台通用：固定官方 Web 参考与隔离依赖
 
 - [x] 2.1 实现独立测试工具 bootstrap，冻结 Node/pnpm、React/ReactDOM、Playwright/browser、bundler、Python 库及传递依赖的版本/URL/integrity/SHA256/license；在 fresh out 下 frozen-lockfile 安装成功，版本错配/缺依赖负例非零，原生 HEADLESS 不依赖该安装。
-- [ ] 2.2 实现固定 commit 源码/资源准备、导入 closure/hash 校验与 BUNDLED/SYSTEM 精确模式；通过错 tag、错 source、篡改 demo/Token、cache 截断测试及现有 AntD baseline/catalog checker。
-- [ ] 2.3 实现 headless Web adapter，直接运行 Button/Input/Select 官方 demo export 和具名参数化 wrapper；用模块身份/effective-input 自动测试证明真实官方组件被执行、无私改 CSS 配方或 native 测量值反灌。
-- [ ] 2.4 实现 semantic target、浏览器真实输入、callback/geometry/text/style observation 和 complete receipts；通过 Web adapter 自动正负例检出缺 target、不执行动作、错误 props/数据及无新帧。
-- [ ] 2.5 实现只读内容寻址 reference cache 与重建，安装/网络/字体/浏览器参数全归档到 out；通过 fresh-cache/cache-hit 一致性、错环境拒用和 execute 阶段未声明外网请求失败测试。
-- [ ] 2.6 写 reference provenance/依赖安装/参数化边界文档，验证文档准备命令可执行及源代码/依赖/截图均未写到 tracked fixture；本阶段不报告 native/Web 差分通过。
+- [x] 2.2 实现固定 commit 源码/资源准备、导入 closure/hash 校验与 BUNDLED/SYSTEM 精确模式；通过错 tag、错 source、篡改 demo/Token、cache 截断测试及现有 AntD baseline/catalog checker。
+- [x] 2.3 实现 headless Web adapter，直接运行 Button/Input/Select 官方 demo export 和具名参数化 wrapper；用模块身份/effective-input 自动测试证明真实官方组件被执行、无私改 CSS 配方或 native 测量值反灌。
+- [x] 2.4 实现 semantic target、浏览器真实输入、callback/geometry/text/style observation 和 complete receipts；通过 Web adapter 自动正负例检出缺 target、不执行动作、错误 props/数据及无新帧。
+- [x] 2.5 实现只读内容寻址 reference cache 与重建，安装/网络/字体/浏览器参数全归档到 out；通过 fresh-cache/cache-hit 一致性、错环境拒用和 execute 阶段未声明外网请求失败测试。
+- [x] 2.6 写 reference provenance/依赖安装/参数化边界文档，验证文档准备命令可执行及源代码/依赖/截图均未写到 tracked fixture；本阶段不报告 native/Web 差分通过。
 
 ## 3. 平台通用：复用 native finite 输入与观测
 
