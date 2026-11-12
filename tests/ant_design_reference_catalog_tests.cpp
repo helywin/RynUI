@@ -102,15 +102,6 @@ void test_categories_and_entries() {
             "List deprecation or verified Listy partial scope drifted");
 }
 
-void require_partial(std::string_view identity) {
-    using namespace rynui::example;
-    const auto* entry = find_ant_design_reference_entry(identity);
-    require(entry != nullptr && entry->support_status == GallerySupportStatus::partial &&
-                entry->evidence_identifiers.find("openspec:") != std::string_view::npos &&
-                entry->evidence_identifiers.find("test:") != std::string_view::npos,
-            "initial RynUI subset is not represented as evidence-backed partial support");
-}
-
 void test_typed_support_status() {
     using namespace rynui::example;
     const auto* button = find_ant_design_reference_entry("ant.component.button");
@@ -150,7 +141,19 @@ void test_typed_support_status() {
                     entry->evidence_identifiers.find("test:") != std::string_view::npos,
                 "native Flex/Space completion lost implementation evidence");
     }
-    require_partial("ant.component.config-provider");
+    const auto* config = find_ant_design_reference_entry("ant.component.config-provider");
+    require(config && config->support_status == GallerySupportStatus::implemented &&
+                config->evidence_identifiers.find("openspec:107-") != std::string_view::npos &&
+                config->evidence_identifiers.find("openspec:108-") != std::string_view::npos &&
+                config->evidence_identifiers.find("test:rynui.config_provider_sources") != std::string_view::npos &&
+                config->evidence_identifiers.find("test:rynui.i18n_context") != std::string_view::npos &&
+                config->missing_scope.find("DOM") != std::string_view::npos &&
+                config->missing_scope.find("ICU/CLDR") != std::string_view::npos,
+            "native ConfigProvider completion lost config/i18n evidence or Web/format boundaries");
+    for (const auto field : {"locale", "formatLocale", "messages", "direction", "size", "disabled", "theme"}) {
+        require(config->supported_scope.find(field) != std::string_view::npos,
+                "native ConfigProvider catalog lost an implemented context field");
+    }
     for (const auto identity : {"ant.component.pagination", "ant.component.steps", "ant.component.tabs"}) {
         const auto* entry = find_ant_design_reference_entry(identity);
         require(entry && entry->support_status == GallerySupportStatus::implemented &&
@@ -168,11 +171,16 @@ void test_typed_support_status() {
                     entry->missing_scope.find("MSVC") != std::string_view::npos,
                 "native picker completion lost typed range evidence or platform boundary");
     }
-    require_partial("ant.component.modal");
     const auto* modal = find_ant_design_reference_entry("ant.component.modal");
-    require(modal->supported_scope.find("retained") != std::string_view::npos &&
-                modal->missing_scope.find("static") != std::string_view::npos &&
-                modal->evidence_identifiers.find("modal_component") != std::string_view::npos,
+    require(modal && modal->support_status == GallerySupportStatus::implemented &&
+                modal->supported_scope.find("retained") != std::string_view::npos &&
+                modal->supported_scope.find("App dynamic services") != std::string_view::npos &&
+                modal->supported_scope.find("Gaussian backdrop") != std::string_view::npos &&
+                modal->missing_scope.find("Web/DOM/CSS") != std::string_view::npos &&
+                modal->evidence_identifiers.find("modal_component") != std::string_view::npos &&
+                modal->evidence_identifiers.find("test:rynui.modal_backdrop") != std::string_view::npos &&
+                modal->evidence_identifiers.find("test:rynui.modal_completion_service") != std::string_view::npos &&
+                modal->evidence_identifiers.find("openspec:") != std::string_view::npos,
             "Modal catalog lost native scope or implementation evidence");
     const auto* tabs = find_ant_design_reference_entry("ant.component.tabs");
     require(tabs->supported_scope.find("retained") != std::string_view::npos &&

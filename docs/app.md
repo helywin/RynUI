@@ -62,3 +62,5 @@ Drawer 普通关闭先撤销整个 overlay 输入，保留退出画面；handle 
 provider 可同步/重复/worker 完成，只有第一个 completion 被接受。worker 只访问 atomic ticket 和 dispatcher；不访问 Signal、host 或 FrameRequestState。dispatcher 必须可靠安排 owner-thread 调用。post 抛错或在错误线程执行会标记 DispatchFailed；下一次正常 owner tick 消费，最迟已登记的有限 deadline 恢复 loading、调用 cancel 并保持可重试。dispatcher 丢弃闭包由 Timeout 恢复；窗口 event loop 必须继续处理 deadline。正常完成或取消立即移除 deadline，不轮询 future，也不新增线程。
 
 源码入口为 `rynui.confirm_action`、`rynui.app_panel_*`、`rynui.drawer_motion_*`、`rynui.modal_completion_*`、`rynui.popconfirm_completion_*`，并扩展原 `rynui.i18n_service`；公开头 TU 和 Gallery App 本页提供真实调用。实际原生结果由各组件精简验收记录独立说明。
+
+Linux 私有 Wayland/Vulkan 的 App 定向序列覆盖通知更新/语言切换保留编辑器、真实 Modal 服务、capture/Core preedit 与页面退役，并保留窄屏 Gallery 壳自身的导航 Drawer；结果见[其他分类验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md)。

@@ -8,4 +8,4 @@
 
 `onChange(bool)` 只在固定状态改变后触发，派发在布局之后；回调销毁组件不会继续访问旧状态，抛异常会退役完整组件。`visible` / `disabled` 清理输入资格并恢复非固定位置；卸载释放整个保留子树。层级由 `ThemeConfig.affix.tokens.z_index` 控制，不增加视觉 Props。普通目标、偏移和 Theme 更新不重建子内容，不产生轮询 deadline。
 
-Gallery 使用真实文档滚动与显式窗口目标区域，提供顶部输入、底部按钮、切换目标、偏移和释放操作。自动原生输入/裁剪检查使用 hidden readback；滚动后的 onChange 反馈文案允许改变，几何与保留身份仍必须一致。Linux、其他实际 DPI、系统 IME 和 AT 未实测；原始输出仅放 `out/`。
+Gallery 使用真实文档滚动与显式窗口目标区域，提供顶部输入、底部按钮、切换目标、偏移和释放操作。自动原生输入/裁剪检查使用 hidden readback；滚动后的 onChange 反馈文案允许改变，几何与保留身份仍必须一致。Linux 私有 Wayland/Vulkan 的实际帧回调、输入/释放、保留草稿与离页清理结果见[其他分类验收](../../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md)。其他实际 DPI、物理系统 IME 和 AT 保持独立；原始输出仅放 `out/`。

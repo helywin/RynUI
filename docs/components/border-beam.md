@@ -8,4 +8,4 @@
 
 `visible=false`、禁用、祖先离页、窗口失活和 reduced motion 停止动画 deadline；窗口失活与减少动态效果保留静态光束。`ThemeConfig.seed.motion=false` 同样停动。恢复时从保留 phase 继续，不补跑暂停时间；静态内容与属性更新不重建子内容。
 
-Gallery 可调整时长、方向、颜色/圆角，切换减少动态效果及显示状态。原生自动验收使用固定时钟推进 200ms 捕获局部运动帧，检查 path phase 变化、reduced motion 停帧及内容身份；采用 hidden GPU readback。Linux、其他实际 DPI、系统 IME 和 AT 未实测；原始输出仅放 `out/`。
+Gallery 可调整时长、方向、颜色/圆角，切换减少动态效果及显示状态。原生自动验收使用固定时钟推进 200ms 捕获局部运动帧，检查 path phase 变化、reduced motion 停帧及内容身份；采用 hidden GPU readback。Linux 私有 Wayland/Vulkan 另验证正常帧回调下的 phase 推进、参数更新、reduced motion/隐藏恢复、保留输入和离页清理，见[其他分类验收](../../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md)。其他实际 DPI、物理系统 IME 和 AT 保持独立；原始输出仅放 `out/`。

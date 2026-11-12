@@ -70,3 +70,5 @@ const auto source = inherited.disabled.explicitValue(); // optional<bool>，只�
 ## 自动入口
 
 `rynui_config_provider_consumers_tests` 注册 `rynui.config_provider_sources`、`compact_group`、`input_gates`、`reentry`、`form_sources`、`compound`、`popup_service`、`collections_idle`、`getter_retirement`、`boundary_rtl`、`observer_retirement`、`generated_options`。独立公开头 TU 包含旧布尔调用/aggregate 编译断言。12 项真实 Host/Provider 回归已在正式 MSVC HEADLESS Debug/Release 通过，涵盖来源、嵌套/动态更新、双窗口、Compact/Form/Group、编辑/选区/preedit、弹层/服务晚挂、同 key 与等值 idle。实际平台边界见 [验收记录](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/config-gallery-windows.md)；CPU 输入事件不作为系统 IME 实测。
+
+Linux 私有 Wayland/Vulkan 的实际默认尺寸、方向、禁用与显式/嵌套覆盖、语言更新保留草稿，以及真实 capture/Core preedit 离页退役见[其他分类验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md)。目录中的原生功能状态与 Windows、物理系统 IME、OS 辅助技术及跨实际显示器的覆盖分别记录。

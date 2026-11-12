@@ -2037,7 +2037,8 @@
         "api:include/ryn/affix.hpp",
         "test:decoration_component/decoration_gallery",
         "evidence:107/decoration-windows",
-        "openspec:107-20261104-complete-navigation-and-remaining-components"
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md"
       ]
     },
     {
@@ -2064,7 +2065,8 @@
         "test:rynui.app_panel_lifecycle",
         "test:rynui.confirm_action",
         "test:rynui.popconfirm_completion_service",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/popconfirm-completion.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/popconfirm-completion.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md"
       ]
     },
     {
@@ -2085,29 +2087,42 @@
         "api:include/ryn/border_beam.hpp",
         "test:decoration_component/decoration_gallery",
         "evidence:107/decoration-windows",
-        "openspec:107-20261104-complete-navigation-and-remaining-components"
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md"
       ]
     },
     {
       "identity": "ant.component.config-provider",
-      "status": "partial",
-      "summary": "RynUI 通过 ThemeConfig、Theme 算法与嵌套 Theme 提供部分全局设计配置，但不等同于 Ant Design Web ConfigProvider。",
+      "status": "implemented",
+      "summary": "原生 ConfigProvider 已实现窗口隔离、locale/formatLocale/messages/direction/size/disabled/theme 的逐字段继承、嵌套覆盖和动态传播；独立页保留真实消费者与精确值应用。",
       "supported_scope": [
-        "typed ThemeConfig",
-        "Default/Dark/Compact algorithms",
-        "nested Theme scope",
-        "component token overrides"
+        "window-isolated field-wise locale/formatLocale/messages/direction/size/disabled/theme inheritance with nested overrides and retained dynamic consumers",
+        "public MessageKey/MessageCatalog/I18n.text/useI18n, exact Decimal/UInt formatting and explicit fallback",
+        "Default/Dark/Compact algorithms, nested Theme and component token overrides",
+        "actual Gallery size/disabled/direction controls, retained draft and standalone public i18n app with rich Modal"
       ],
       "missing_scope": [
-        "locale and direction provider",
-        "DOM prefix/CSP/renderEmpty contracts",
-        "component-size context",
-        "complete wave and Web configuration API"
+        "DOM prefix/CSP/renderEmpty, complete Web configuration and browser wave APIs are excluded from the native contract",
+        "Full ICU/CLDR, currency, complex plurals and timezone conversion are outside the declared format/fallback support; see docs/i18n.md",
+        "Platform results cover only the recorded OS/GPU paths; physical system IME, OS accessibility and real multi-display behavior remain independent"
       ],
       "evidence_identifiers": [
         "openspec:006-20260827-establish-ant-design-token-system",
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "openspec:108-20261107-add-native-i18n",
+        "api:include/ryn/config_provider.hpp",
+        "docs:docs/config-provider.md",
+        "docs:docs/i18n.md",
         "test:rynui.theme_runtime",
-        "test:rynui.theme_scope_component"
+        "test:rynui.theme_scope_component",
+        "test:rynui.config_provider_sources",
+        "test:rynui.config_provider_generated_options",
+        "test:rynui.i18n_context",
+        "test:rynui.i18n_public_api",
+        "test:rynui.gallery_pages_host",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/config-gallery-windows.md",
+        "evidence:openspec/changes/108-20261107-add-native-i18n/evidence/gallery-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md"
       ]
     },
     {
@@ -2126,7 +2141,8 @@
         "source:components/_util/index.en-US.md",
         "api:include/ryn/select.hpp",
         "api:include/ryn/input.hpp",
-        "openspec:107-20261104-complete-navigation-and-remaining-components"
+        "openspec:107-20261104-complete-navigation-and-remaining-components",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/application-context-linux.md"
       ]
     }
   ]

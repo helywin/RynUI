@@ -3,8 +3,8 @@
 #include "component/empty_result_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/popconfirm_component.hpp"
-#include "support/i18n_test.hpp"
-#include "support/input_fixture.hpp"
+#include "i18n_test.hpp"
+#include "input_fixture.hpp"
 
 #include <ryn/config_provider.hpp>
 

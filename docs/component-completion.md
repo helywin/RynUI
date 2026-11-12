@@ -28,7 +28,7 @@
 | Switch | 046 已实现保留状态文字/图标、RTL、ref/autoFocus/onClick、加载透明度、主题/阴影、按压与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Input / Search / Password / TextArea / OTP | 052 单行特性、053 多行/autoSize/scroll/resize、054 OTP 分格/formatter/mask/导航/动态长度已实现。055 已完成 Unicode 17 visual bidi | 保留 Unicode/IME/clipboard 合同；107 五个 canonical family route 的 Linux 定向输入见本轮证据 |
 | QRCode | 107 实现标准 QR Model 2、UTF-8/ECI/binary/分段、纠错/版本/boost、四状态与真实刷新、共享 ImageSource logo、保留 status slot、原生 ref 及确定性 PNG/SVG/RGBA 导出；见 [QRCode API](qrcode.md) | Linux GCC HEADLESS D/R、独立矩阵/解码与私有 Wayland/Vulkan 模块像素通过，见 [QRCode 验收](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/qrcode-linux.md)；Windows/MSVC/D3D12、物理 IME/AT/跨显示器独立未验证 |
-| Theme（ConfigProvider 原生映射） | 原生公共配置覆盖需要审核 | 作为 Theme 收尾，Web ConfigProvider API 不照抄 |
+| ConfigProvider / Theme | 107/108 已实现窗口隔离的 locale/formatLocale/messages/direction/size/disabled/theme、嵌套逐字段覆盖与保留消费者更新；独立页包含真实尺寸/禁用/方向操作和公开 i18n 应用，见 [ConfigProvider](config-provider.md)、[国际化](i18n.md) | 原生功能完整；已有 [Windows 定向与 GPU 证据](../openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/config-gallery-windows.md) 保留，分类验收独立；DOM/CSP/Web wave、完整 ICU/CLDR 与系统 IME/AT 不由此声明支持 |
 
 来源：`examples/token_gallery/generated_ant_design_reference_catalog.inc`、现有公开 headers、changes 003–039 的 tasks。每项开发前再次检查对应源码与锁定 Ant Design 6.6.5 合同，后续清单随已验证实现更新。
 

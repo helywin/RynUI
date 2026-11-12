@@ -7,6 +7,7 @@
 #include "gallery_notice_acceptance.hpp"
 #include "gallery_page_acceptance.hpp"
 #include "gallery_i18n_acceptance.hpp"
+#include "gallery_context_acceptance.hpp"
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
@@ -1216,6 +1217,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             }
         }
         accept_existing_data_entry(
+            route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press});
+        accept_application_context(
             route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press});
         accept_status_data_display(
             route, {app, inputs, pages, selections, check, render, reveal, activate, click, pointer, press}, resize);

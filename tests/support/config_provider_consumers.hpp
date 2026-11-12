@@ -1,7 +1,7 @@
 #pragma once
 
 #include "component/selection_component.hpp"
-#include "support/i18n_components.hpp"
+#include "i18n_components.hpp"
 
 namespace ryn_test::config_consumers {
 

@@ -85,6 +85,9 @@ void public_application_retains_real_text_and_editor() {
             "public applications shared mutable language state across windows");
     fixture.services.dispose();
     require(!model->outer.active() && second_model->outer.active(), "window disposal leaked or crossed i18n ownership");
+    second.services.dispose();
+    require(!second_model->outer.active() && second.inputs.mounted_inputs().empty(),
+            "second public application retained its configuration or editor after disposal");
 }
 
 void reactive_argument_errors_keep_last_good_text() {

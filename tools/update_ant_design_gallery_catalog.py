@@ -31,9 +31,6 @@ EXPECTED_DOCUMENT_SOURCES = {
     "ant.document.resources": "docs/resources.en-US.md",
     "ant.document.components-overview": "components/overview/index.en-US.md",
 }
-EXPECTED_INITIAL_PARTIALS = {
-    "ant.component.config-provider",
-}
 ALLOWED_SUPPORT_STATUSES = {
     "implemented",
     "partial",
@@ -255,9 +252,18 @@ def validate_overlay(
         result[identity] = entry
     if list(result) != source_identities:
         raise ValueError("support overlay identities or order differ from the source manifest")
-    for identity in EXPECTED_INITIAL_PARTIALS:
-        if result[identity]["status"] != "partial":
-            raise ValueError(f"initial supported subset must remain explicit partial: {identity}")
+    config = result["ant.component.config-provider"]
+    config_supported = " ".join(config["supported_scope"])
+    config_missing = " ".join(config["missing_scope"])
+    if (config["status"] != "implemented"
+            or not all(field in config_supported for field in
+                       ("locale", "formatLocale", "messages", "direction", "size", "disabled", "theme"))
+            or "openspec:107-20261104-complete-navigation-and-remaining-components" not in config["evidence_identifiers"]
+            or "openspec:108-20261107-add-native-i18n" not in config["evidence_identifiers"]
+            or "test:rynui.config_provider_sources" not in config["evidence_identifiers"]
+            or "test:rynui.i18n_context" not in config["evidence_identifiers"]
+            or "DOM" not in config_missing or "ICU/CLDR" not in config_missing):
+        raise ValueError("native ConfigProvider completion lost config/i18n evidence or Web/format boundaries")
     button = result["ant.component.button"]
     if button["status"] != "implemented" or "openspec:044-20261002-complete-native-button-variants" not in button["evidence_identifiers"]:
         raise ValueError("native Button completion requires its implementation change evidence")
