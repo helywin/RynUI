@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rynui:demo-differential:report:v1",
+  "$defs": {
+    "json": {
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/json"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/json"
+          }
+        }
+      ]
+    },
+    "map": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/json"
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "error",
+        "not-run"
+      ]
+    },
+    "exit_code": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "selected": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+        "maxLength": 256
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": true
+    },
+    "expected": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+        "maxLength": 256
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": true
+    },
+    "completed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+        "maxLength": 256
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": true
+    },
+    "passed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+        "maxLength": 256
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": true
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "identity": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "error",
+              "not-run"
+            ]
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "visual",
+                "layout",
+                "typography",
+                "token",
+                "state",
+                "input",
+                "logic",
+                "lifecycle",
+                "environment",
+                "reference-drift",
+                "protocol",
+                "coverage",
+                "calibration"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 100000,
+            "uniqueItems": true
+          },
+          "first_step": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "failures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/map"
+            },
+            "minItems": 0,
+            "maxItems": 100000,
+            "uniqueItems": false
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "relative-path",
+              "maxLength": 4096
+            },
+            "minItems": 0,
+            "maxItems": 100000,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "identity",
+          "verdict",
+          "categories",
+          "first_step",
+          "failures",
+          "artifacts"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "visual",
+              "layout",
+              "typography",
+              "token",
+              "state",
+              "input",
+              "logic",
+              "lifecycle",
+              "environment",
+              "reference-drift",
+              "protocol",
+              "coverage",
+              "calibration"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "category",
+          "message"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "provenance": {
+      "$ref": "#/$defs/map"
+    },
+    "coverage": {
+      "$ref": "#/$defs/map"
+    },
+    "timings": {
+      "$ref": "#/$defs/map"
+    },
+    "repro_argv": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "replay_argv": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "desktop_fallback": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "nonce",
+    "status",
+    "exit_code",
+    "selected",
+    "expected",
+    "completed",
+    "passed",
+    "cases",
+    "errors",
+    "provenance",
+    "coverage",
+    "timings",
+    "repro_argv",
+    "replay_argv",
+    "desktop_fallback"
+  ]
+}

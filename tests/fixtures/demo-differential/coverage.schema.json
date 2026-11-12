@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rynui:demo-differential:coverage:v1",
+  "$defs": {},
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "baseline_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "identity": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "component_id": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "input",
+              "search",
+              "password",
+              "text-area",
+              "otp"
+            ]
+          },
+          "sample_id": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "target_id": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "feature_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "mapping": {
+            "type": "string",
+            "enum": [
+              "paired",
+              "native-only",
+              "web-only",
+              "unsupported",
+              "pending"
+            ]
+          },
+          "implementation": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "planned"
+            ]
+          },
+          "official_demo_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "relative-path",
+              "maxLength": 4096
+            },
+            "minItems": 0,
+            "maxItems": 100000,
+            "uniqueItems": true
+          },
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "minItems": 0,
+            "maxItems": 100000,
+            "uniqueItems": true
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "action",
+              "observation",
+              "alias",
+              "sample",
+              "route",
+              "catalog"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "source_paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "relative-path",
+              "maxLength": 4096
+            },
+            "minItems": 1,
+            "maxItems": 100000,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "identity",
+          "component_id",
+          "family",
+          "sample_id",
+          "target_id",
+          "feature_id",
+          "mapping",
+          "implementation",
+          "official_demo_ids",
+          "cases",
+          "role",
+          "reason",
+          "source_paths"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "baseline_commit",
+    "rows"
+  ]
+}

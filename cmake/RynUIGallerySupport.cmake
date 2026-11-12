@@ -34,6 +34,7 @@ add_library(
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_model.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_page_model.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_test_inventory.cpp"
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_demo_inventory.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_sample_source.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_source_panel.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_i18n.cpp"

@@ -1,0 +1,2031 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rynui:demo-differential:case:v1",
+  "$defs": {
+    "json": {
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/json"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/json"
+          }
+        }
+      ]
+    },
+    "map": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/json"
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/map"
+        },
+        "props": {
+          "$ref": "#/$defs/map"
+        },
+        "slots": {
+          "$ref": "#/$defs/map"
+        },
+        "parent_policy": {
+          "type": "string",
+          "enum": [
+            "accept",
+            "reject",
+            "scripted"
+          ]
+        },
+        "clock_epoch_us": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "viewport": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16384
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16384
+            },
+            "dpr": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 4
+                },
+                {
+                  "const": "native"
+                }
+              ]
+            }
+          },
+          "required": [
+            "width",
+            "height",
+            "dpr"
+          ]
+        },
+        "container": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "padding": {
+              "type": "number"
+            },
+            "gap": {
+              "type": "number"
+            },
+            "layout": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "width",
+            "height",
+            "padding",
+            "gap",
+            "layout"
+          ]
+        },
+        "theme": {
+          "$ref": "#/$defs/map"
+        },
+        "locale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "format_locale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "ltr",
+            "rtl"
+          ]
+        },
+        "fonts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "identity": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                "maxLength": 256
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "face_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "weight": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "identity",
+              "sha256",
+              "face_index",
+              "weight"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": false
+        },
+        "font_policy": {
+          "type": "string",
+          "enum": [
+            "pinned",
+            "system"
+          ]
+        },
+        "motion": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "controlled"
+          ]
+        }
+      },
+      "required": [
+        "data",
+        "props",
+        "slots",
+        "parent_policy",
+        "clock_epoch_us",
+        "seed",
+        "timezone",
+        "viewport",
+        "container",
+        "theme",
+        "locale",
+        "format_locale",
+        "direction",
+        "fonts",
+        "font_policy",
+        "motion"
+      ]
+    },
+    "official": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "const": "https://github.com/ant-design/ant-design"
+        },
+        "commit": {
+          "const": "4a39f54842eade4e565ab336ef6097cd7e723cdd"
+        },
+        "demo_path": {
+          "type": "string",
+          "format": "relative-path",
+          "maxLength": 4096
+        },
+        "demo_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "format": "relative-path",
+                "maxLength": 4096
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "sha256"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 100000,
+          "uniqueItems": false
+        },
+        "adapter_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "adapter_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "official-demo",
+            "official-component-adapted"
+          ]
+        },
+        "adaptation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "value": {
+                "$ref": "#/$defs/json"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "field",
+              "value",
+              "reason"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 100000,
+          "uniqueItems": false
+        }
+      },
+      "required": [
+        "repository",
+        "commit",
+        "demo_path",
+        "demo_sha256",
+        "source_paths",
+        "adapter_id",
+        "adapter_sha256",
+        "mode",
+        "adaptation"
+      ]
+    },
+    "native": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "route": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "family": {
+          "type": "string",
+          "enum": [
+            "input",
+            "search",
+            "password",
+            "text-area",
+            "otp"
+          ]
+        },
+        "sample_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "minItems": 1,
+          "maxItems": 100000,
+          "uniqueItems": true
+        },
+        "source_function": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "public_header": {
+          "type": "string",
+          "format": "relative-path",
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "route",
+        "family",
+        "sample_id",
+        "targets",
+        "source_function",
+        "public_header"
+      ]
+    },
+    "action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "pointer-move"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "x_fraction": {
+                  "type": "number"
+                },
+                "y_fraction": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "x_fraction",
+                "y_fraction"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "pointer-down"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "button": {
+                  "type": "string",
+                  "enum": [
+                    "primary",
+                    "secondary"
+                  ]
+                },
+                "x_fraction": {
+                  "type": "number"
+                },
+                "y_fraction": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "button",
+                "x_fraction",
+                "y_fraction"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "pointer-up"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "button": {
+                  "type": "string",
+                  "enum": [
+                    "primary",
+                    "secondary"
+                  ]
+                },
+                "x_fraction": {
+                  "type": "number"
+                },
+                "y_fraction": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "button",
+                "x_fraction",
+                "y_fraction"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "pointer-cancel"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {},
+              "required": []
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "key-down"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                  "maxLength": 256
+                },
+                "modifiers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "shift",
+                      "control",
+                      "alt",
+                      "meta"
+                    ]
+                  },
+                  "minItems": 0,
+                  "maxItems": 100000,
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "key",
+                "modifiers"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "key-up"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                  "maxLength": 256
+                },
+                "modifiers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "shift",
+                      "control",
+                      "alt",
+                      "meta"
+                    ]
+                  },
+                  "minItems": 0,
+                  "maxItems": 100000,
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "key",
+                "modifiers"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "text-commit"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 1048576
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "composition"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "phase": {
+                  "type": "string",
+                  "enum": [
+                    "start",
+                    "update",
+                    "commit",
+                    "cancel"
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 1048576
+                },
+                "selection_start": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "selection_end": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "phase",
+                "text",
+                "selection_start",
+                "selection_end",
+                "session"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "wheel"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "delta_x": {
+                  "type": "number"
+                },
+                "delta_y": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "delta_x",
+                "delta_y"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "external-props"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "values": {
+                  "$ref": "#/$defs/map"
+                }
+              },
+              "required": [
+                "values"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "async-complete"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "request": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                  "maxLength": 256
+                },
+                "result": {
+                  "$ref": "#/$defs/json"
+                }
+              },
+              "required": [
+                "request",
+                "result"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "advance-clock"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "to_us": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "to_us"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "navigate"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                  "maxLength": 256
+                },
+                "sample_id": {
+                  "type": "string",
+                  "maxLength": 1048576
+                }
+              },
+              "required": [
+                "route",
+                "sample_id"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "kind": {
+              "const": "checkpoint"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "time_us": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "layer": {
+              "type": "string",
+              "enum": [
+                "browser-input",
+                "browser-composition-seam",
+                "native-core-dispatch",
+                "native-sdl-mapped",
+                "native-composition-seam",
+                "external-props",
+                "clock",
+                "observer"
+              ]
+            },
+            "preconditions": {
+              "$ref": "#/$defs/map"
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {},
+              "required": []
+            }
+          },
+          "required": [
+            "step",
+            "kind",
+            "target",
+            "time_us",
+            "layer",
+            "preconditions",
+            "parameters"
+          ]
+        }
+      ]
+    },
+    "predicate": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "equals"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "value": {
+              "$ref": "#/$defs/json"
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "path",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "unchanged"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "from_step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "path",
+            "from_step"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "count"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "stream": {
+              "type": "string",
+              "enum": [
+                "callbacks",
+                "receipts"
+              ]
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "event": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "equals": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "stream",
+            "target",
+            "event",
+            "equals"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "ordered_events"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "stream": {
+              "type": "string",
+              "enum": [
+                "callbacks",
+                "receipts"
+              ]
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                "maxLength": 256
+              },
+              "minItems": 0,
+              "maxItems": 100000,
+              "uniqueItems": false
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "stream",
+            "events"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "happens_before"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "first": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "second": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "first",
+            "second"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "focused"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "target"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "contains_keys_in_order"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "keys": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                "maxLength": 256
+              },
+              "minItems": 0,
+              "maxItems": 100000,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "path",
+            "keys"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "within"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "minimum": {
+              "type": "number"
+            },
+            "maximum": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "path",
+            "minimum",
+            "maximum"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "consumed_by"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "target"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "retired"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "owner": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "owner"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "idle_after"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "both",
+                "web",
+                "native"
+              ]
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "independent-contract",
+                "web-observation"
+              ]
+            },
+            "owner": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "duration_us": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "op",
+            "step",
+            "side",
+            "origin",
+            "owner",
+            "duration_us"
+          ]
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "identity": {
+      "type": "string",
+      "pattern": "^antd665\\.[a-z0-9-]+\\.[a-z0-9-]+\\.v1$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "official": {
+      "$ref": "#/$defs/official"
+    },
+    "native": {
+      "$ref": "#/$defs/native"
+    },
+    "mapping": {
+      "type": "string",
+      "enum": [
+        "paired",
+        "native-only",
+        "web-only",
+        "unsupported",
+        "pending"
+      ]
+    },
+    "fixture": {
+      "$ref": "#/$defs/fixture"
+    },
+    "profile": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+      "maxLength": 256
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/action"
+      },
+      "minItems": 1,
+      "maxItems": 4096,
+      "uniqueItems": false
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "step": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "minItems": 1,
+            "maxItems": 100000,
+            "uniqueItems": true
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "minItems": 1,
+            "maxItems": 100000,
+            "uniqueItems": true
+          },
+          "rois": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "identity": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                  "maxLength": 256
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "sample-context",
+                    "control",
+                    "popup",
+                    "guard-band"
+                  ]
+                },
+                "target": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                  "maxLength": 256
+                },
+                "guard_px": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "identity",
+                "kind",
+                "target",
+                "guard_px"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 100000,
+            "uniqueItems": false
+          }
+        },
+        "required": [
+          "step",
+          "targets",
+          "layers",
+          "rois"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": false
+    },
+    "oracle": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/predicate"
+      },
+      "minItems": 1,
+      "maxItems": 16384,
+      "uniqueItems": false
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+        "maxLength": 256
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": true
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "relative-path",
+        "maxLength": 4096
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "identity",
+    "revision",
+    "official",
+    "native",
+    "mapping",
+    "fixture",
+    "profile",
+    "actions",
+    "checkpoints",
+    "oracle",
+    "features",
+    "dependencies"
+  ]
+}

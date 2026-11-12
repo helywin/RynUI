@@ -1,10 +1,21 @@
 #include "token_gallery_definition.hpp"
+#include "gallery_demo_inventory.hpp"
+#include <iostream>
+#include <exception>
 #include "gallery_pages_runtime.hpp"
 #include <string_view>
 #include <array>
 #include <algorithm>
 
 int main(int argc, char** argv) {
+    try {
+        if (const auto result = rynui::example::run_gallery_demo_inventory(argc, argv, RYNUI_GALLERY_SOURCE_ROOT)) {
+            return *result;
+        }
+    } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+        return 2;
+    }
     for (int i = 1; i < argc; ++i) {
         if (std::string_view{argv[i]}.starts_with("--page") || std::string_view{argv[i]}.starts_with("--sample")) {
             return rynui::example::run_gallery_pages(argc, argv);

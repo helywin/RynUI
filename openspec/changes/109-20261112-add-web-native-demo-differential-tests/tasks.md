@@ -1,16 +1,16 @@
 # Tasks
 
-本次仅规划，以下全部未实施。每阶段通过相应自动验证后可独立 Conventional Commit；不能以采集成功、source review 或本规划通过来勾选。阶段 5 的真实三例 pilot 必须先于阶段 6–9 的全量扩展，遇到真实 native 差异先修复并按同参考复跑，不能放宽 oracle。平台通用任务只在一个受支持平台记录一次；Linux 和 Windows 集成项分别完成、分别提交。
+规划已进入 apply；完成状态仅以各项实现与自动验证为准。每阶段通过相应自动验证后可独立 Conventional Commit；不能以采集成功、source review 或本规划通过来勾选。阶段 5 的真实三例 pilot 必须先于阶段 6–9 的全量扩展，遇到真实 native 差异先修复并按同参考复跑，不能放宽 oracle。平台通用任务只在一个受支持平台记录一次；Linux 和 Windows 集成项分别完成、分别提交。
 
 下列为待实现命令/target，详细 CLI/schema/退出码见 design。`PYTEST` 指 `python -B -m unittest discover -s tests -p 'demo_differential_*_tests.py'`，允许按文件缩小到本阶段。`CORE` 指正式 `linux-gcc-headless` 或 `windows-msvc-headless` 配置，构建相关 `rynui_demo_differential_tests` 等 target，Debug/Release 定向运行 `ctest --preset <headless-build-preset> --no-tests=error -R '^rynui\.demo_differential_'`。实际所用 OS/preset 必须写入短结论。每阶段文档运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`；C++/HLSL 修改另运行 clang-format 22.x 的 `python scripts/format-code.py --check`。不为本 change 重跑无关 105/106 平台余项或全部 CTest。
 
 ## 1. 平台通用：协议、实际 inventory 与覆盖守卫
 
-- [ ] 1.1 建立 case/coverage/inventory/observation/report/profile schema v1 和有限 action/oracle grammar；通过 PYTEST 的未知字段、重复身份、非有限数值、非法路径及缺 oracle 正负例。
-- [ ] 1.2 实现 source writer/catalog/route/sample/target 的完整有序枚举和本地基线差量，保留 owner/alias；通过新增、删除、同 count 换身份、重排、alias 循环及旧身份保留测试，不硬编码历史总量上限。
-- [ ] 1.3 在现有 Gallery finite CLI 增加无窗口 `--page-inventory`，导出实际编译 registry/source provenance；通过 CORE 和静态 writer 逐项一致性测试，不能只比较数量或 `<40` 启发式。
-- [ ] 1.4 建立全部当前 canonical/家族/sample/target 的声明性 coverage ledger 骨架，区分 paired/native-only/web-only/unsupported/pending；通过 completeness 测试，未映射或 planned 不会计 pass，List/Util 只计说明页边界。
-- [ ] 1.5 写协议/覆盖维护文档及准确计数口径，跑 inventory 自检与文档校验；记录实施所选不可变 base、完整顺序差量及当前实际数量，保留新增 sample 的真实 source 消费检查。
+- [x] 1.1 建立 case/coverage/inventory/observation/report/profile schema v1 和有限 action/oracle grammar；通过 PYTEST 的未知字段、重复身份、非有限数值、非法路径及缺 oracle 正负例。
+- [x] 1.2 实现 source writer/catalog/route/sample/target 的完整有序枚举和本地基线差量，保留 owner/alias；通过新增、删除、同 count 换身份、重排、alias 循环及旧身份保留测试，不硬编码历史总量上限。
+- [x] 1.3 在现有 Gallery finite CLI 增加无窗口 `--page-inventory`，导出实际编译 registry/source provenance；通过 CORE 和静态 writer 逐项一致性测试，不能只比较数量或 `<40` 启发式。
+- [x] 1.4 建立全部当前 canonical/家族/sample/target 的声明性 coverage ledger 骨架，区分 paired/native-only/web-only/unsupported/pending；通过 completeness 测试，未映射或 planned 不会计 pass，List/Util 只计说明页边界。
+- [x] 1.5 写协议/覆盖维护文档及准确计数口径，跑 inventory 自检与文档校验；记录实施所选不可变 base、完整顺序差量及当前实际数量，保留新增 sample 的真实 source 消费检查。
 
 ## 2. 平台通用：固定官方 Web 参考与隔离依赖
 

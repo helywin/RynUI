@@ -1,0 +1,412 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rynui:demo-differential:observation:v1",
+  "$defs": {
+    "json": {
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/json"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/json"
+          }
+        }
+      ]
+    },
+    "map": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/json"
+      }
+    },
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ]
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "time_us": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "key": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "event": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "payload": {
+          "$ref": "#/$defs/json"
+        },
+        "owner_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "layer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "seq",
+        "step",
+        "time_us",
+        "target",
+        "key",
+        "event",
+        "payload",
+        "owner_generation",
+        "layer"
+      ]
+    },
+    "target_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "key": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "bounds": {
+          "$ref": "#/$defs/rect"
+        },
+        "clip": {
+          "$ref": "#/$defs/rect"
+        },
+        "scroll": {
+          "$ref": "#/$defs/map"
+        },
+        "state": {
+          "$ref": "#/$defs/map"
+        },
+        "text": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/map"
+          },
+          "minItems": 0,
+          "maxItems": 100000,
+          "uniqueItems": false
+        },
+        "icons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/map"
+          },
+          "minItems": 0,
+          "maxItems": 100000,
+          "uniqueItems": false
+        },
+        "tokens": {
+          "$ref": "#/$defs/map"
+        },
+        "owner_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scene_revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "identity",
+        "key",
+        "bounds",
+        "clip",
+        "scroll",
+        "state",
+        "text",
+        "icons",
+        "tokens",
+        "owner_generation",
+        "scene_revision"
+      ]
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "format": "relative-path",
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "nonce": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "checkpoint": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "scene_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dpr": {
+          "type": "number"
+        },
+        "fence_completed": {
+          "type": "boolean"
+        },
+        "framebuffer_format": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "channel_order": {
+          "type": "string",
+          "enum": [
+            "RGBA",
+            "BGRA"
+          ]
+        },
+        "alpha": {
+          "type": "string",
+          "enum": [
+            "straight",
+            "premultiplied",
+            "opaque"
+          ]
+        },
+        "color_profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "nonce",
+        "checkpoint",
+        "scene_revision",
+        "width",
+        "height",
+        "dpr",
+        "fence_completed",
+        "framebuffer_format",
+        "channel_order",
+        "alpha",
+        "color_profile"
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "hello",
+        "receipt",
+        "checkpoint",
+        "complete"
+      ]
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "case": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+      "maxLength": 256
+    },
+    "step": {
+      "type": "string",
+      "maxLength": 1048576
+    },
+    "adapter": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+      "maxLength": 256
+    },
+    "provenance": {
+      "$ref": "#/$defs/map"
+    },
+    "effective_inputs": {
+      "$ref": "#/$defs/map"
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dispatched": {
+          "type": "boolean"
+        },
+        "hit": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "consumed": {
+          "type": "boolean"
+        },
+        "layer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "dispatched",
+        "hit",
+        "consumed",
+        "layer"
+      ]
+    },
+    "state": {
+      "$ref": "#/$defs/map"
+    },
+    "callbacks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/trace"
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/target_observation"
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "captures": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/capture"
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "resources": {
+      "$ref": "#/$defs/map"
+    },
+    "completed_steps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+        "maxLength": 256
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": true
+    },
+    "completed_checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+        "maxLength": 256
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "type",
+    "nonce",
+    "case",
+    "step",
+    "adapter",
+    "provenance",
+    "effective_inputs",
+    "receipt",
+    "state",
+    "callbacks",
+    "targets",
+    "captures",
+    "resources",
+    "completed_steps",
+    "completed_checkpoints"
+  ]
+}

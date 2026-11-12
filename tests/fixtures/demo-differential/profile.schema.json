@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rynui:demo-differential:profile:v1",
+  "$defs": {
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "identity": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+      "maxLength": 256
+    },
+    "environment_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "algorithm_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "corpus_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "font_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": true
+    },
+    "repetitions": {
+      "type": "integer",
+      "minimum": 5
+    },
+    "calibrated": {
+      "type": "boolean"
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "identity": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "threshold": {
+            "type": "number"
+          },
+          "hard_cap": {
+            "type": "number"
+          },
+          "quantization_floor": {
+            "type": "number"
+          },
+          "positive_max": {
+            "type": "number"
+          },
+          "margin": {
+            "type": "number"
+          },
+          "negative_min": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "identity",
+          "threshold",
+          "hard_cap",
+          "quantization_floor",
+          "positive_max",
+          "margin",
+          "negative_min"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "masks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "identity": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "area_fraction": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 0.01
+          },
+          "rect": {
+            "$ref": "#/$defs/rect"
+          },
+          "protected_intersection": {
+            "const": false
+          }
+        },
+        "required": [
+          "identity",
+          "reason",
+          "area_fraction",
+          "rect",
+          "protected_intersection"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "color": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "const": "sRGB-SDR"
+        },
+        "channel_order": {
+          "type": "string",
+          "enum": [
+            "RGBA",
+            "BGRA"
+          ]
+        },
+        "alpha": {
+          "type": "string",
+          "enum": [
+            "straight",
+            "premultiplied",
+            "opaque"
+          ]
+        }
+      },
+      "required": [
+        "profile",
+        "channel_order",
+        "alpha"
+      ]
+    },
+    "font_policy": {
+      "type": "string",
+      "enum": [
+        "pinned",
+        "system"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "identity",
+    "environment_hash",
+    "algorithm_hash",
+    "corpus_hash",
+    "source_hash",
+    "font_hashes",
+    "repetitions",
+    "calibrated",
+    "metrics",
+    "masks",
+    "color",
+    "font_policy"
+  ]
+}

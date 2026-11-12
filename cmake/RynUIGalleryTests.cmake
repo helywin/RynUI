@@ -435,3 +435,15 @@ target_compile_definitions(rynui_gallery_visual_regression_tests PRIVATE
 foreach(visual_case IN ITEMS field layout pagination tabs popup flow input table)
     add_test(NAME rynui.gallery_visual_${visual_case} COMMAND rynui_gallery_visual_regression_tests ${visual_case})
 endforeach()
+
+# Pure CPU protocol/compiled-registry closure. No Web toolchain or display required.
+add_executable(rynui_demo_differential_tests demo_differential_inventory_main.cpp)
+rynui_configure_cpp_target(rynui_demo_differential_tests)
+target_link_libraries(rynui_demo_differential_tests PRIVATE rynui_token_gallery_definition)
+target_compile_definitions(rynui_demo_differential_tests PRIVATE
+    "RYNUI_GALLERY_SOURCE_ROOT=\"${PROJECT_SOURCE_DIR}\"")
+add_test(NAME rynui.demo_differential_inventory
+    COMMAND "${CMAKE_COMMAND}" -E env "RYNUI_DEMO_INVENTORY_BINARY=$<TARGET_FILE:rynui_demo_differential_tests>"
+        "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/demo_differential_inventory_tests.py")
+add_test(NAME rynui.demo_differential_protocol
+    COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/demo_differential_protocol_tests.py")

@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rynui:demo-differential:inventory:v1",
+  "$defs": {
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "overview",
+            "introduction",
+            "tokens",
+            "component"
+          ]
+        },
+        "component": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "family": {
+          "type": "string",
+          "enum": [
+            "input",
+            "search",
+            "password",
+            "text-area",
+            "otp"
+          ]
+        }
+      },
+      "required": [
+        "identity",
+        "kind",
+        "component",
+        "family"
+      ]
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "category": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_path": {
+          "type": "string",
+          "format": "relative-path",
+          "maxLength": 4096
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "identity",
+        "category",
+        "source_path",
+        "status"
+      ]
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "component": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "family": {
+          "type": "string",
+          "enum": [
+            "input",
+            "search",
+            "password",
+            "text-area",
+            "otp"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "overview",
+            "introduction",
+            "tokens",
+            "component"
+          ]
+        },
+        "source_function": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "public_header": {
+          "type": "string",
+          "format": "relative-path",
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "identity",
+        "component",
+        "family",
+        "kind",
+        "source_function",
+        "public_header"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "source_path": {
+          "type": "string",
+          "format": "relative-path",
+          "maxLength": 4096
+        },
+        "source_function": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "public_header": {
+          "type": "string",
+          "format": "relative-path",
+          "maxLength": 4096
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 1048576
+        }
+      },
+      "required": [
+        "identity",
+        "source_path",
+        "source_function",
+        "public_header",
+        "code"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "sample": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+          "maxLength": 256
+        },
+        "alias": {
+          "type": "string",
+          "maxLength": 1048576
+        }
+      },
+      "required": [
+        "identity",
+        "sample",
+        "alias"
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "reference_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "catalog_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "catalog": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/catalog"
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/route"
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "samples": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sample"
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": false
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/target"
+      },
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "reference_commit",
+    "catalog_hash",
+    "catalog",
+    "routes",
+    "samples",
+    "sources",
+    "targets"
+  ]
+}
