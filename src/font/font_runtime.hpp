@@ -135,6 +135,17 @@ struct FontRasterConfig {
     friend bool operator==(FontRasterConfig, FontRasterConfig) = default;
 };
 
+// Borrowed immutable resource bytes. Valid only on the owner thread and until
+// this exact font generation is removed or the runtime is shut down.
+struct FontSourceView final {
+    std::span<const std::byte> bytes;
+    long face_index{};
+    std::string family;
+    std::string style;
+    bool bold{};
+    bool italic{};
+};
+
 struct FontLoadResult {
     FontIdentity font{};
     FontError error{};
@@ -331,6 +342,7 @@ public:
                                                  FontFailurePoint failure_point = FontFailurePoint::none);
 
     [[nodiscard]] FontMetricsResult metrics(FontIdentity font) const;
+    [[nodiscard]] std::optional<FontSourceView> source(FontIdentity font) const;
 
     [[nodiscard]] GlyphLookupResult glyph_index(FontIdentity font, char32_t codepoint) const;
 

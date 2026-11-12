@@ -387,6 +387,24 @@ void test_owner_thread_guard() {
             "owner thread could not remove font after rejected access");
 }
 
+void test_read_only_font_source() {
+    auto runtime = create_runtime();
+    const auto expected = read_bytes(RYNUI_VALIDATION_LATIN_FONT);
+    const auto loaded = runtime->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, 14);
+    require(bool(loaded), "source query fixture failed to load");
+    const auto before = runtime->counters().coverage_queries;
+    const auto source = runtime->source(loaded.font);
+    require(source && source->face_index == 0 && !source->family.empty() && std::ranges::equal(source->bytes, expected),
+            "source query did not expose actual immutable font bytes/face");
+    std::optional<ryn::font::FontSourceView> foreign;
+    std::thread worker([&] { foreign = runtime->source(loaded.font); });
+    worker.join();
+    require(!foreign && runtime->counters().coverage_queries == before,
+            "read-only source query admitted a foreign thread or changed coverage state");
+    require(bool(runtime->remove_font(loaded.font)) && !runtime->source(loaded.font),
+            "source query accepted a retired font generation");
+}
+
 } // namespace
 
 int main() {
@@ -396,6 +414,7 @@ int main() {
         test_fallback_and_missing_glyph_diagnostics();
         test_rasterization_pitch_and_cache();
         test_owner_thread_guard();
+        test_read_only_font_source();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

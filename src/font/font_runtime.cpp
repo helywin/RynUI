@@ -502,6 +502,22 @@ FontMetricsResult FontRuntime::metrics(FontIdentity font) const {
     return {record->metrics, {}};
 }
 
+std::optional<FontSourceView> FontRuntime::source(FontIdentity font) const {
+    if (!impl_->is_owner_thread()) {
+        return std::nullopt;
+    }
+    const auto* record = impl_->find(font);
+    if (!record || !record->face) {
+        return std::nullopt;
+    }
+    return FontSourceView{record->bytes,
+                          record->face->face_index,
+                          record->face->family_name ? record->face->family_name : "",
+                          record->face->style_name ? record->face->style_name : "",
+                          bool(record->face->style_flags & FT_STYLE_FLAG_BOLD),
+                          bool(record->face->style_flags & FT_STYLE_FLAG_ITALIC)};
+}
+
 GlyphLookupResult FontRuntime::glyph_index(FontIdentity font, char32_t codepoint) const {
     if (!impl_->is_owner_thread()) {
         return {{}, impl_->owner_error(FontErrorStage::coverage_query)};
