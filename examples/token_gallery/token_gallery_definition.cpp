@@ -1,5 +1,6 @@
 #include "runtime/prop_connection.hpp"
 #include "token_gallery_definition.hpp"
+#include "gallery_demo_sample.hpp"
 
 #include "ant_design_reference_catalog.hpp"
 #include "gallery_document_model.hpp"
@@ -84,6 +85,7 @@ void gallery_validated_item(ryn::FormItemProps props, ryn::FormField<T> field,
 }
 
 struct GalleryState final {
+    std::shared_ptr<GalleryDemoSampleContext> demo{gallery_demo_sample_context()};
     ryn::I18n i18n;
     GalleryPageDraft draft;
     GalleryInputFamily page_family{};
@@ -1591,10 +1593,17 @@ void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view 
     const auto text = gallery_text(caption);
     // Keep the large ThemeConfig-bearing props off the native thread's stack.
     auto theme_props = std::make_unique<ryn::ThemeProps>();
-    theme_props->config(config);
+    if (state->demo && state->demo->fault == "button-padding-plus-one" && test_id == "gallery.state.default") {
+        auto effective_config = config;
+        effective_config.button.tokens.padding_inline_small =
+            ryn::dp(ryn::resolve_theme(config).button().padding_inline_small + 1);
+        theme_props->config(effective_config);
+    } else {
+        theme_props->config(config);
+    }
     ryn::Theme(std::move(*theme_props),
                ryn::ThemeContent{[state, text, type, size, disabled = std::move(disabled), loading = std::move(loading),
-                                  on_click = std::move(on_click)]() mutable {
+                                  on_click = std::move(on_click), test_id]() mutable {
                    ++state->telemetry.theme_content_runs;
                    auto props = ryn::ButtonProps{}
                                     .type(type)
@@ -1602,7 +1611,20 @@ void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view 
                                     .disabled(std::move(disabled))
                                     .loading(std::move(loading))
                                     .layout(ryn::LayoutStyle{}.width(state->cell_width).flex_shrink(1.0F));
-                   if (on_click) {
+                   if (state->demo) {
+                       const auto context = state->demo;
+                       const auto key = std::string{test_id};
+                       context->consume(
+                           key, GalleryDemoJson::Object{{"size", size == ryn::ControlSize::Small   ? "small"
+                                                                 : size == ryn::ControlSize::Large ? "large"
+                                                                                                   : "middle"},
+                                                        {"type", type == ryn::ButtonType::Primary  ? "primary"
+                                                                 : type == ryn::ButtonType::Danger ? "danger"
+                                                                                                   : "default"}});
+                       props.onClick([context, key, original = std::move(on_click)] {
+                           context->invoke(key, "activate", nullptr, original);
+                       });
+                   } else if (on_click) {
                        props.onClick(std::move(on_click));
                    }
                    ryn::Button(std::move(props), [text] { ryn::Text(ryn::TextProps{}.content(text)); });
@@ -1884,8 +1906,24 @@ void add_input_base_samples(const std::shared_ptr<GalleryState>& state) {
                                                                                     : ryn::InputStatus::Warning;
                                                      }))
                                                      .onChange([state](ryn::String next) {
-                                                         ++state->telemetry.input_changes;
-                                                         state->input_value.set(std::move(next));
+                                                         if (!state->demo) {
+                                                             ++state->telemetry.input_changes;
+                                                             state->input_value.set(std::move(next));
+                                                             return;
+                                                         }
+                                                         const auto apply = [state, next] {
+                                                             ++state->telemetry.input_changes;
+                                                             if (!state->demo ||
+                                                                 state->demo->accept("gallery.input.controlled")) {
+                                                                 state->input_value.set(next);
+                                                             }
+                                                         };
+                                                         if (state->demo) {
+                                                             state->demo->invoke("gallery.input.controlled", "change",
+                                                                                 std::string{next.bytes()}, apply);
+                                                         } else {
+                                                             apply();
+                                                         }
                                                      })
                                                      .onSubmit([state](ryn::String next) {
                                                          ++state->telemetry.input_submits;
@@ -1909,9 +1947,23 @@ void add_input_base_samples(const std::shared_ptr<GalleryState>& state) {
                                                      .allowClear(true)
                                                      .disabled(state->clear_disabled)
                                                      .onChange([state](ryn::String next) {
-                                                         state->remember("gallery.input.uncontrolled", next);
-                                                         ++state->telemetry.input_changes;
-                                                         state->input_feedback.set(std::move(next));
+                                                         if (!state->demo) {
+                                                             state->remember("gallery.input.uncontrolled", next);
+                                                             ++state->telemetry.input_changes;
+                                                             state->input_feedback.set(std::move(next));
+                                                             return;
+                                                         }
+                                                         const auto apply = [state, next] {
+                                                             state->remember("gallery.input.uncontrolled", next);
+                                                             ++state->telemetry.input_changes;
+                                                             state->input_feedback.set(next);
+                                                         };
+                                                         if (state->demo) {
+                                                             state->demo->invoke("gallery.input.uncontrolled", "change",
+                                                                                 std::string{next.bytes()}, apply);
+                                                         } else {
+                                                             apply();
+                                                         }
                                                      })
                                                      .onSubmit([state](ryn::String next) {
                                                          ++state->telemetry.input_submits;
@@ -6939,6 +6991,18 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
             }
             props.onChange(gallery_value_changed<SelectSelection>(identity));
         }
+        if (state->demo && identity != "gallery.select.controlled-open") {
+            const auto context = state->demo;
+            const auto target = std::string{identity};
+            props.onOpenChange([context, target](bool value) { context->invoke(target, "open-change", value, {}); });
+        }
+        if (state->demo) {
+            const auto context = state->demo;
+            const auto target = std::string{identity};
+            props.onSearch(
+                [context, target](String value) { context->invoke(target, "search", std::string{value.bytes()}, {}); });
+            props.onClear([context, target] { context->invoke(target, "clear", nullptr, {}); });
+        }
         Text(TextProps{}.content(gallery_field(identity, "caption")));
         Select(props.layout(LayoutStyle{}.width(state->cell_width)));
         remember_target(state, identity);
@@ -6956,8 +7020,35 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
               .placeholder(gallery_text("gallery.copy.property.071"))
               .notFoundContent(gallery_text("gallery.copy.property.072"))
               .onChange([state](SelectSelection value) {
-                  state->select_value.set(std::move(value));
-                  ++state->telemetry.activations;
+                  if (!state->demo) {
+                      state->select_value.set(std::move(value));
+                      ++state->telemetry.activations;
+                      return;
+                  }
+                  const auto apply = [state, value] {
+                      if (!state->demo || state->demo->accept("gallery.select.controlled-search")) {
+                          state->select_value.set(value);
+                      }
+                      ++state->telemetry.activations;
+                  };
+                  if (state->demo) {
+                      GalleryDemoJson payload;
+                      if (value) {
+                          std::visit(
+                              [&](const auto& selected) {
+                                  using T = std::decay_t<decltype(selected)>;
+                                  if constexpr (std::same_as<T, ryn::String>) {
+                                      payload = std::string{selected.bytes()};
+                                  } else {
+                                      payload = selected;
+                                  }
+                              },
+                              value->storage());
+                      }
+                      state->demo->invoke("gallery.select.controlled-search", "change", payload, apply);
+                  } else {
+                      apply();
+                  }
               }),
           u8"gallery.select.controlled-search");
     field(
@@ -6971,7 +7062,16 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
     field(SelectProps{}.options({}).showSearch().notFoundContent(gallery_text("gallery.copy.property.073")),
           u8"gallery.select.empty");
     field(SelectProps{}.options(choices).open(state->select_open).onOpenChange([state](bool value) {
-        state->select_open.set(value);
+        const auto apply = [state, value] {
+            if (!state->demo || state->demo->accept("gallery.select.controlled-open")) {
+                state->select_open.set(value);
+            }
+        };
+        if (state->demo) {
+            state->demo->invoke("gallery.select.controlled-open", "open-change", value, apply);
+        } else {
+            apply();
+        }
     }),
           u8"gallery.select.controlled-open");
     for (const auto [variant, caption] :
@@ -12837,6 +12937,46 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
         }
     }
     auto state = std::make_shared<GalleryState>();
+    if (state->demo) {
+        const auto& data = state->demo->fixture.at("data");
+        if (data.contains("gallery.input.controlled") && data.at("gallery.input.controlled").contains("value")) {
+            state->input_value.set(
+                ryn::String::from_utf8(data.at("gallery.input.controlled").at("value").string()).value());
+        }
+        if (data.contains("gallery.input.uncontrolled") &&
+            data.at("gallery.input.uncontrolled").contains("defaultValue")) {
+            state->remember(
+                "gallery.input.uncontrolled",
+                ryn::String::from_utf8(data.at("gallery.input.uncontrolled").at("defaultValue").string()).value());
+        }
+        const auto weak = std::weak_ptr{state};
+        state->demo->controlled_values = {"gallery.input.controlled", "gallery.select.controlled-search"};
+        state->demo->controlled_opens = {"gallery.select.controlled-open"};
+        state->demo->values["gallery.input.controlled"] = [weak]() -> GalleryDemoJson {
+            const auto state = weak.lock();
+            return state ? GalleryDemoJson{std::string{state->input_value.get().bytes()}} : GalleryDemoJson{};
+        };
+        state->demo->values["gallery.select.controlled-search"] = [weak]() -> GalleryDemoJson {
+            const auto state = weak.lock();
+            if (!state || !state->select_value.get()) {
+                return {};
+            }
+            return std::visit(
+                [](const auto& item) -> GalleryDemoJson {
+                    using T = std::decay_t<decltype(item)>;
+                    if constexpr (std::same_as<T, ryn::String>) {
+                        return std::string{item.bytes()};
+                    } else {
+                        return item;
+                    }
+                },
+                state->select_value.get()->storage());
+        };
+        state->demo->opens["gallery.select.controlled-open"] = [weak]() -> GalleryDemoJson {
+            const auto state = weak.lock();
+            return state ? GalleryDemoJson{state->select_open.get()} : GalleryDemoJson{};
+        };
+    }
     state->page_family = route.family;
     state->page_component = route.component_identity;
     state->register_targets = true;
@@ -12909,7 +13049,13 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
                                                  state->page_family == GalleryInputFamily::otp) {
                                                  gallery_label("gallery.copy.sample.668");
                                              }
+                                             if (state->demo && state->demo->factory_boundary) {
+                                                 state->demo->factory_boundary(factory.descriptor.identity, true);
+                                             }
                                              factory.mount(state);
+                                             if (state->demo && state->demo->factory_boundary) {
+                                                 state->demo->factory_boundary(factory.descriptor.identity, false);
+                                             }
                                              if (footer) {
                                                  footer(factory.descriptor, state->document_width);
                                              }

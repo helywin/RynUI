@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 
 namespace ryn::detail {
 namespace {
@@ -347,6 +348,18 @@ void SelectComponentHost::end_mount(void* previous) noexcept {
 
 void SelectComponentHost::on_destroy() noexcept {
     std::erase_if(mounted_, [this](auto id) { return !services_->components().contains(id); });
+}
+
+SelectInputSnapshot SelectComponentHost::input_snapshot(runtime::ComponentId id) const {
+    const auto& components = std::as_const(services_->components());
+    const auto* state = components.state<SelectState>(id);
+    if (!state || !services_->components().scope(id).active() || !services_->nodes().find(state->node)) {
+        throw std::out_of_range("Select component is stale");
+    }
+    return {state->model.options(), state->disabled,
+            state->loading,         state->show_search,
+            state->allow_clear,     state->authority.has_value() || state->values_authority.has_value(),
+            state->controlled_open};
 }
 
 SelectSnapshot SelectComponentHost::snapshot(runtime::ComponentId id) const {

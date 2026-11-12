@@ -447,3 +447,19 @@ add_test(NAME rynui.demo_differential_inventory
         "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/demo_differential_inventory_tests.py")
 add_test(NAME rynui.demo_differential_protocol
     COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/demo_differential_protocol_tests.py")
+add_executable(rynui_demo_differential_protocol_tests demo_differential_native_protocol_main.cpp)
+rynui_configure_cpp_target(rynui_demo_differential_protocol_tests)
+target_link_libraries(rynui_demo_differential_protocol_tests PRIVATE rynui_token_gallery_definition)
+target_compile_definitions(rynui_demo_differential_protocol_tests PRIVATE
+    "RYNUI_GALLERY_SOURCE_ROOT=\"${PROJECT_SOURCE_DIR}\"")
+add_test(NAME rynui.demo_differential_native_protocol
+    COMMAND "${CMAKE_COMMAND}" -E env "RYNUI_DEMO_PROTOCOL_BINARY=$<TARGET_FILE:rynui_demo_differential_protocol_tests>"
+        "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/demo_differential_native_protocol_tests.py")
+add_executable(rynui_demo_differential_native_input_tests demo_differential_native_input_tests.cpp)
+rynui_configure_cpp_target(rynui_demo_differential_native_input_tests)
+target_include_directories(rynui_demo_differential_native_input_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_demo_differential_native_input_tests PRIVATE rynui_demo_differential_native rynui_components)
+target_compile_definitions(rynui_demo_differential_native_input_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.demo_differential_native_input COMMAND rynui_demo_differential_native_input_tests)

@@ -53,6 +53,13 @@ struct SceneRgbaReadback final {
     std::vector<std::byte> pixels;
 };
 
+struct SceneDeviceDescription final {
+    std::string name;
+    std::string driver_name;
+    std::string driver_version;
+    std::string driver_info;
+};
+
 class SdlSceneRenderer final : public SceneBackend {
 public:
     explicit SdlSceneRenderer(PlatformState& platform, bool debug_mode = default_sdl_gpu_debug);
@@ -144,6 +151,7 @@ public:
     void end_pending_cap_validation_for_test() noexcept;
 #endif
 
+    [[nodiscard]] SceneDeviceDescription device_description() const;
     [[nodiscard]] const char* shader_format() const noexcept;
 
     [[nodiscard]] const char* gpu_driver() const noexcept {

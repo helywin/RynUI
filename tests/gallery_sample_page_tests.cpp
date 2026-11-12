@@ -225,7 +225,7 @@ void test_compiled_source_metadata() {
 void test_legacy_identity_ownership() {
     Fixture f;
     const auto targets = gallery_legacy_test_targets();
-    require(targets.size() == 476 && gallery_legacy_test_ids().size() == targets.size(),
+    require(targets.size() == 490 && gallery_legacy_test_ids().size() == targets.size(),
             "frozen legacy identity inventory was truncated");
     std::set<std::string_view> identities;
     for (const auto& target : targets) {

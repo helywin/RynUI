@@ -1,3 +1,6 @@
+#include <chrono>
+#include <fstream>
+#include <vector>
 #include "gallery_page_acceptance.hpp"
 #include <array>
 #include <filesystem>
@@ -77,6 +80,56 @@ int main(int argc, char** argv) {
         if (specific.pages.front().sample_identity != "gallery.sample.button.basics") {
             throw std::runtime_error("sample group route was lost");
         }
+        const auto scenario_dir = root / "out/demo-differential/cli-options";
+        std::filesystem::create_directories(scenario_dir);
+        const auto unique = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        const auto request = scenario_dir / ("request-" + unique + ".json");
+        const auto observations = scenario_dir / ("observations-" + unique + ".jsonl");
+        std::ofstream(request) << "{}";
+        std::vector<std::string> scenario_arguments{"--page-acceptance",
+                                                    "--page-visual",
+                                                    "--page=button",
+                                                    "--sample=gallery.sample.button.basics",
+                                                    "--page-scenario=" + request.string(),
+                                                    "--page-observations=" + observations.string()};
+        const auto parse_arguments = [&](const auto& values) {
+            std::vector<std::string_view> views(values.begin(), values.end());
+            return gallery_page_options(views, root);
+        };
+        const auto scenario_options = parse_arguments(scenario_arguments);
+        if (scenario_options.scenario != request || scenario_options.observations != observations) {
+            throw std::runtime_error("scenario CLI lost its bounded paths");
+        }
+        for (const auto fault : {"no-acceptance", "no-visual", "no-observations", "duplicate-scenario", "i18n",
+                                 "two-pages", "escaping-observations"}) {
+            auto arguments = scenario_arguments;
+            const std::string_view name{fault};
+            if (name == "no-acceptance") {
+                arguments.erase(arguments.begin());
+            } else if (name == "no-visual") {
+                arguments.erase(arguments.begin() + 1);
+            } else if (name == "no-observations") {
+                arguments.pop_back();
+            } else if (name == "duplicate-scenario") {
+                arguments.push_back(arguments[4]);
+            } else if (name == "i18n") {
+                arguments.emplace_back("--page-i18n");
+            } else if (name == "two-pages") {
+                arguments.emplace_back("--page=input");
+            } else {
+                arguments.back() = "--page-observations=README.jsonl";
+            }
+            bool invalid{};
+            try {
+                static_cast<void>(parse_arguments(arguments));
+            } catch (const std::invalid_argument&) {
+                invalid = true;
+            }
+            if (!invalid) {
+                throw std::runtime_error("unsafe or ambiguous scenario CLI was accepted");
+            }
+        }
+        std::filesystem::remove(request);
         if (argc == 2) {
             const std::string output_argument = "--page-output=" + std::string{argv[1]};
             const auto writer_options =

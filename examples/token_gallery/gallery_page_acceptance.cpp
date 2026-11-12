@@ -96,6 +96,18 @@ GalleryPageOptions gallery_page_options(std::span<const std::string_view> argume
         } else if (argument == "--page-visual") {
             result.visual = true;
             acceptance_argument = true;
+        } else if (argument.starts_with("--page-scenario=")) {
+            if (!result.scenario.empty()) {
+                throw std::invalid_argument("duplicate --page-scenario");
+            }
+            result.scenario = std::filesystem::path{argument.substr(16)};
+            acceptance_argument = true;
+        } else if (argument.starts_with("--page-observations=")) {
+            if (!result.observations.empty()) {
+                throw std::invalid_argument("duplicate --page-observations");
+            }
+            result.observations = std::filesystem::path{argument.substr(20)};
+            acceptance_argument = true;
         } else if (argument == "--page-i18n") {
             result.i18n = true;
             acceptance_argument = true;
@@ -148,6 +160,26 @@ GalleryPageOptions gallery_page_options(std::span<const std::string_view> argume
     }
     if (!result.acceptance && acceptance_argument) {
         throw std::invalid_argument("Page automation arguments require --page-acceptance");
+    }
+    if (result.scenario.empty() != result.observations.empty()) {
+        throw std::invalid_argument("--page-scenario and --page-observations are required together");
+    }
+    if (!result.scenario.empty()) {
+        if (!result.visual || result.i18n || result.pages.size() != 1) {
+            throw std::invalid_argument("scenario requires one explicit page, hidden visual mode and no old i18n tour");
+        }
+        const auto out = std::filesystem::weakly_canonical(repository / "out");
+        for (auto* path : {&result.scenario, &result.observations}) {
+            *path = std::filesystem::weakly_canonical(path->is_absolute() ? *path : repository / *path);
+            const auto relative = path->lexically_relative(out);
+            if (relative.empty() || relative == "." || *relative.begin() == "..") {
+                throw std::invalid_argument("scenario and observation paths must be inside this checkout out/");
+            }
+        }
+        if (result.scenario.extension() != ".json" || result.observations.extension() != ".jsonl" ||
+            !std::filesystem::is_regular_file(result.scenario) || std::filesystem::exists(result.observations)) {
+            throw std::invalid_argument("scenario requires an existing JSON input and a fresh JSONL output");
+        }
     }
     if (result.i18n && !result.visual) {
         throw std::invalid_argument("--page-i18n requires --page-acceptance --page-visual");

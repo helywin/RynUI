@@ -12,6 +12,8 @@ namespace rynui::example {
 struct GalleryPageOptions final {
     bool acceptance{};
     bool visual{};
+    std::filesystem::path scenario;
+    std::filesystem::path observations;
     bool motion_disabled{};
     std::filesystem::path output;
     std::vector<GalleryPageRoute> pages;

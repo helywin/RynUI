@@ -22,6 +22,17 @@ struct SelectSnapshot final {
     String overflow;
 };
 
+// Read-only acceptance metadata, separate from the regularly used visual snapshot.
+struct SelectInputSnapshot final {
+    std::vector<SelectOption> options;
+    bool disabled{};
+    bool loading{};
+    bool show_search{};
+    bool allow_clear{};
+    bool controlled_value{};
+    bool controlled_open{};
+};
+
 class SelectComponentHost final : public WindowComponentParticipant {
 public:
     explicit SelectComponentHost(WindowComponentServices& services);
@@ -34,6 +45,7 @@ public:
     }
 
     [[nodiscard]] SelectSnapshot snapshot(runtime::ComponentId id) const;
+    [[nodiscard]] SelectInputSnapshot input_snapshot(runtime::ComponentId id) const;
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;

@@ -1121,6 +1121,14 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
     return saved;
 }
 
+SceneDeviceDescription SdlSceneRenderer::device_description() const {
+    const auto properties = SDL_GetGPUDeviceProperties(static_cast<SDL_GPUDevice*>(binding_.device()));
+    return {SDL_GetStringProperty(properties, SDL_PROP_GPU_DEVICE_NAME_STRING, ""),
+            SDL_GetStringProperty(properties, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, ""),
+            SDL_GetStringProperty(properties, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, ""),
+            SDL_GetStringProperty(properties, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, "")};
+}
+
 const char* SdlSceneRenderer::shader_format() const noexcept {
     return shader_format_.c_str();
 }

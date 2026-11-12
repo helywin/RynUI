@@ -2580,6 +2580,15 @@ InputTextLayers InputComponentHost::text_layers(runtime::ComponentId component) 
     return {state->text_scene, state->selected_scene, state->placeholder_scene};
 }
 
+InputInputSnapshot InputComponentHost::input_snapshot(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        throw std::out_of_range("Input component is stale");
+    }
+    return {state->controlled,  state->disabled,    state->read_only,
+            state->allow_clear, state->placeholder, state->hard_max};
+}
+
 InputDisplaySnapshot InputComponentHost::display_snapshot(runtime::ComponentId component) const {
     const auto* state = host_->components().state<InputState>(component);
     if (!state) {

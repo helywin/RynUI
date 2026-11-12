@@ -23,9 +23,9 @@
 
 ## 3. 平台通用：复用 native finite 输入与观测
 
-- [ ] 3.1 增加 `--page-scenario`/`--page-observations` 有界 parser、hello/receipt/checkpoint/complete 协议，保留旧 CLI；通过参数/schema/截断/重复 step/超时路径测试和既有 gallery_page_acceptance 参数测试。
-- [ ] 3.2 在现有 `GalleryPageEvents`/`GalleryPageSubmitter`/`ExistingDataEntryActions` 接口桥接 scenario，复用 `pages.dispatch`、scroll 与当前帧泵；通过 CORE 输入路由测试证明不直接调用待测 onClick/set-value，无第二渲染或上传路径。
-- [ ] 3.3 为首批真实 sample builder 增加必要内部输入/受控父策略与 callback observer，默认行为保持；通过现有 sample/page tests 及 accept/reject/重复 callback 负例，observer 不生成 expected。
+- [x] 3.1 增加 `--page-scenario`/`--page-observations` 有界 parser、hello/receipt/checkpoint/complete 协议，保留旧 CLI；通过参数/schema/截断/重复 step/超时路径测试和既有 gallery_page_acceptance 参数测试。
+- [x] 3.2 在现有 `GalleryPageEvents`/`GalleryPageSubmitter`/`ExistingDataEntryActions` 接口桥接 scenario，复用 `pages.dispatch`、scroll 与当前帧泵；通过 CORE 输入路由测试证明不直接调用待测 onClick/set-value，无第二渲染或上传路径。
+- [x] 3.3 为首批真实 sample builder 增加必要内部输入/受控父策略与 callback observer，默认行为保持；通过现有 sample/page tests 及 accept/reject/重复 callback 负例，observer 不生成 expected。
 - [ ] 3.4 实现 semantic snapshot：target/key、bounds/clip/scroll、focus/capture/session、文字/字体/icon/Token、owner-local 生命周期与 scene revision；通过 CORE 校验合法 shell owner/共享缓存不会被误报泄漏，旧代际事件被拒绝。
 - [ ] 3.5 在既有 GPU readback 路径导出当前 checkpoint/frame/fence/实际 metrics 指纹，并显式支持测试字体链；通过 mock/recording 协议测试检出旧帧、错 DPR、错误 font-source 标记及 source/binary provenance 不一致，不将其描述为 GPU 验收。
 - [ ] 3.6 将相关 scenario/observer target 接入 CMakePresets 的正式 HEADLESS 构建并写接口文档；通过 CORE Debug/Release、旧 finite runner tests 及 include/link guards，确认 Core 无 Web/DOM/SDL/renderer 反向依赖。

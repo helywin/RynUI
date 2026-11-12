@@ -86,6 +86,7 @@ target_link_libraries(
     PRIVATE
         rynui_gallery_pages_host
         rynui_gallery_page_acceptance
+        rynui_demo_differential_native
         rynui_token_gallery_definition
         rynui_token_gallery_reference_surface
         rynui_token_gallery_document_viewport

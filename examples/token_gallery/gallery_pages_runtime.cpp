@@ -8,6 +8,8 @@
 #include "gallery_page_acceptance.hpp"
 #include "gallery_i18n_acceptance.hpp"
 #include "gallery_context_acceptance.hpp"
+#include "gallery_demo_scenario.hpp"
+#include "gallery_demo_hash.hpp"
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
@@ -335,7 +337,10 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                          GalleryPageEvents& events, GalleryPagesHost& pages, ryn::detail::ButtonComponentHost& app,
                          ryn::detail::InputComponentHost& inputs, ryn::detail::SelectionComponentHost& selections,
                          ryn::detail::SdlSceneRenderer& renderer, GalleryPageSubmitter& submitter,
-                         runtime::OnDemandFrameLoop& loop, runtime::FrameRequestState& frames) {
+                         runtime::OnDemandFrameLoop& loop, runtime::FrameRequestState& frames,
+                         const GalleryDemoScenario* scenario = nullptr,
+                         std::shared_ptr<GalleryDemoSampleContext> demo_context = {},
+                         GalleryDemoJson demo_provenance = {}) {
     write_gallery_page_acceptance(options.output, result);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(options.timeout_seconds);
     const auto check = [&result](bool condition, const char* message) {
@@ -404,6 +409,74 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         }
         throw std::runtime_error("Gallery page acceptance deadline exceeded");
     };
+    if (scenario) {
+        std::uint64_t demo_readbacks{};
+        const auto device = renderer.device_description();
+        std::get<GalleryDemoJson::Object>(demo_provenance.value)
+            .emplace("gpu", GalleryDemoJson::Object{{"name", device.name},
+                                                    {"driver_name", device.driver_name},
+                                                    {"driver_version", device.driver_version},
+                                                    {"driver_info", device.driver_info}});
+        pages.dispatch(input::WindowInputEvent{input::WindowInputAction::focus_gained});
+        std::map<std::pair<std::uint32_t, std::uint32_t>, GalleryDemoJson> font_sources;
+        const auto font_info = [&](font::FontIdentity identity) -> GalleryDemoJson {
+            const auto key = std::pair{identity.slot, identity.generation};
+            if (const auto found = font_sources.find(key); found != font_sources.end()) {
+                return found->second;
+            }
+            const auto source = events.fonts.source(identity);
+            const auto metrics = events.fonts.metrics(identity);
+            if (!source || !metrics) {
+                throw std::runtime_error("scenario text has an unobservable/stale actual font");
+            }
+            const auto bytes =
+                std::span{reinterpret_cast<const unsigned char*>(source->bytes.data()), source->bytes.size()};
+            const GalleryDemoJson info = GalleryDemoJson::Object{
+                {"sha256", gallery_demo_sha256(bytes)},
+                {"face_index", static_cast<std::int64_t>(source->face_index)},
+                {"family", source->family},
+                {"style", source->style},
+                {"bold", source->bold},
+                {"italic", source->italic},
+                {"logical_pixel_size", static_cast<std::int64_t>(metrics.metrics.logical_pixel_size)},
+                {"raster_pixel_size", static_cast<std::int64_t>(metrics.metrics.raster_pixel_size)},
+                {"display_scale", metrics.metrics.display_scale}};
+            font_sources.emplace(key, info);
+            return info;
+        };
+        run_gallery_demo_scenario(
+            *scenario, options.observations, std::move(demo_provenance),
+            GalleryDemoNativeActions{
+                app, inputs, pages, std::move(demo_context), render,
+                [&](std::int64_t time) { events.acceptance_time = animation::AnimationTime::microseconds(time); },
+                [&] { return submitter.visible.revision(); },
+                [&]() -> GalleryDemoJson {
+                    const auto metrics = events.platform.window_metrics();
+                    return GalleryDemoJson::Object{
+                        {"logical_width", metrics.logical_width()},
+                        {"logical_height", metrics.logical_height()},
+                        {"pixel_width", metrics.pixel_width},
+                        {"pixel_height", metrics.pixel_height},
+                        {"dpr", metrics.display_scale},
+                        {"coordinate_width", metrics.coordinate_width},
+                        {"coordinate_height", metrics.coordinate_height},
+                        {"submitted_frames", static_cast<std::int64_t>(result.submitted_frames)},
+                        {"gpu_submissions", static_cast<std::int64_t>(renderer.counters().frame_submissions)},
+                        {"completed_readbacks", static_cast<std::int64_t>(demo_readbacks)}};
+                },
+                [&](const std::filesystem::path& path) {
+                    const bool completed = renderer.save_frame_bmp(path);
+                    if (completed) {
+                        ++demo_readbacks;
+                    }
+                    return completed;
+                },
+                font_info});
+        result.cases = 1;
+        result.passed = true; // Protocol execution only; the Python oracle owns the differential verdict.
+        write_gallery_page_acceptance(options.output, result);
+        return;
+    }
     const auto read_frame = [&](const std::string& name) {
         const auto path = options.output.parent_path() / (name + ".bmp");
         check(renderer.save_frame_bmp(path), "Space visual frame readback failed");
@@ -4071,6 +4144,20 @@ int run_gallery_pages(int argc, char** argv) {
         if (options.acceptance) {
             gallery_suppress_native_errors();
         }
+        std::optional<GalleryDemoScenario> demo_scenario;
+        std::shared_ptr<GalleryDemoSampleContext> demo_context;
+        std::unique_ptr<GalleryDemoSampleScope> demo_scope;
+        if (!options.scenario.empty()) {
+            demo_scenario = read_gallery_demo_scenario(options.scenario, RYNUI_GALLERY_SOURCE_ROOT);
+            if (options.pages.front() != demo_scenario->route) {
+                throw std::invalid_argument("scenario route differs from explicit finite CLI selection");
+            }
+            demo_context = std::make_shared<GalleryDemoSampleContext>();
+            demo_context->fixture = demo_scenario->definition.at("fixture");
+            demo_context->parent_policy = demo_context->fixture.at("parent_policy").string();
+            demo_context->fault = demo_scenario->fault;
+            demo_scope = std::make_unique<GalleryDemoSampleScope>(demo_context);
+        }
         const bool motion_disabled = options.motion_disabled || options.acceptance;
         result.platform =
 #ifdef _WIN32
@@ -4086,6 +4173,11 @@ int run_gallery_pages(int argc, char** argv) {
         config.title = "RynUI · Components";
         config.width = 1440;
         config.height = 900;
+        if (demo_scenario) {
+            const auto& viewport = demo_context->fixture.at("viewport");
+            config.width = static_cast<int>(viewport.at("width").integer());
+            config.height = static_cast<int>(viewport.at("height").integer());
+        }
         config.hidden = options.visual;
         auto platform = ryn::detail::PlatformState::create(config);
         if (!platform) {
@@ -4103,6 +4195,13 @@ int run_gallery_pages(int argc, char** argv) {
         const auto scale = platform.state->window_metrics().display_scale;
         ryn::detail::DefaultFontChainRequest request;
         request.raster = {14, scale};
+        if (demo_scenario) {
+            for (const auto& font : demo_scenario->font_files.array()) {
+                request.preferred_fonts.push_back(
+                    {font.at("path").string(), static_cast<long>(font.at("face_index").integer()),
+                     font.at("identity").string(), static_cast<std::uint32_t>(font.at("weight").integer()), false});
+            }
+        }
         auto font_chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
         if (!font_chain) {
             throw std::runtime_error(font_chain.diagnostic);
@@ -4153,8 +4252,22 @@ int run_gallery_pages(int argc, char** argv) {
             submitter.trace = true;
             result.backend = renderer.gpu_driver();
             result.shader = renderer.shader_format();
-            run_page_acceptance(options, result, events, pages, app, inputs, selections, renderer, submitter, loop,
-                                frames);
+            run_page_acceptance(
+                options, result, events, pages, app, inputs, selections, renderer, submitter, loop, frames,
+                demo_scenario ? &*demo_scenario : nullptr, demo_context,
+                demo_scenario ? GalleryDemoJson{GalleryDemoJson::Object{
+                                    {"source", gallery_demo_native_build_manifest()},
+                                    {"binary_sha256", gallery_demo_file_sha256(std::filesystem::absolute(argv[0]))},
+                                    {"preset", result.preset},
+                                    {"configuration", result.configuration},
+                                    {"toolchain", result.toolchain},
+                                    {"platform", result.platform},
+                                    {"backend", result.backend},
+                                    {"shader", result.shader},
+                                    {"font_policy", demo_context->fixture.at("font_policy")},
+                                    {"fault", demo_scenario->fault},
+                                    {"desktop_fallback", false}}}
+                              : GalleryDemoJson{});
             return 0;
         }
         while (!events.quit) {

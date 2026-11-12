@@ -46,6 +46,16 @@ struct InputTextLayers {
     TextSceneId placeholder;
 };
 
+// Read-only applied input metadata, queried only by finite acceptance tooling.
+struct InputInputSnapshot final {
+    bool controlled{};
+    bool disabled{};
+    bool read_only{};
+    bool allow_clear{};
+    String placeholder;
+    std::optional<std::size_t> max_length;
+};
+
 struct InputSyncProfile final {
     std::uint64_t total_nanoseconds{};
     std::uint64_t update_text_nanoseconds{};
@@ -116,6 +126,7 @@ public:
     [[nodiscard]] TextSceneId text_scene(runtime::ComponentId) const;
     [[nodiscard]] InputTextLayers text_layers(runtime::ComponentId) const;
     [[nodiscard]] InputDisplaySnapshot display_snapshot(runtime::ComponentId) const;
+    [[nodiscard]] InputInputSnapshot input_snapshot(runtime::ComponentId) const;
     [[nodiscard]] InputStatus status(runtime::ComponentId) const;
     [[nodiscard]] bool focused(runtime::ComponentId) const;
     [[nodiscard]] ControlSize size(runtime::ComponentId) const;
