@@ -4501,12 +4501,11 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                  {MessageKey{
                       u8"gallery.ant.component.alert.missing",
                       String{
-                          u8"Linux/Wayland/Vulkan, system IME and platform accessibility-adapter coverage need their "
-                          u8"own "
-                          u8"acceptance · Complete Ant Design Web/DOM/CSS APIs are outside the current native subset"}},
-                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收 · "
-                         u8"完整 Ant "
-                         u8"Design Web/DOM/CSS API 不在当前原生子集内"}},
+                          u8"Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system "
+                          u8"IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain "
+                          u8"independent · Complete Ant Design Web/DOM/CSS APIs are outside the native contract"}},
+                  String{u8"Linux 私有 Wayland/Vulkan 的有界覆盖另见验收记录；物理系统 IME、OS 辅助技术、其他实际 DPI "
+                         u8"与跨物理显示器体验独立；完整 Ant Design Web/DOM/CSS API 不属原生合同。"}},
                  {MessageKey{u8"gallery.ant.component.drawer.name", String{u8"Drawer"}}, String{u8"Drawer 抽屉"}},
                  {MessageKey{u8"gallery.ant.component.drawer.summary",
                              String{u8"Native Drawer supports four-edge transitions, continuous nested push, retained "
@@ -4527,12 +4526,14 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"nested push; input stops immediately on close；completion callbacks, destroyOnHidden and "
                          u8"Drawer service futures follow terminal scene synchronization；captured App context with "
                          u8"real update/close/destroy services and retained content"}},
-                 {MessageKey{u8"gallery.ant.component.drawer.missing",
-                             String{u8"Linux/Wayland/Vulkan, system IME and OS accessibility adapters require their "
-                                    u8"own platform evidence. Web DOM/CSS APIs and arbitrary floating windows are "
-                                    u8"outside this docked native contract."}},
-                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收；完整 "
-                         u8"Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
+                 {MessageKey{
+                      u8"gallery.ant.component.drawer.missing",
+                      String{
+                          u8"Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system "
+                          u8"IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain "
+                          u8"independent · Complete Ant Design Web/DOM/CSS APIs are outside the native contract"}},
+                  String{u8"Linux 私有 Wayland/Vulkan 的有界覆盖另见验收记录；物理系统 IME、OS 辅助技术、其他实际 DPI "
+                         u8"与跨物理显示器体验独立；完整 Ant Design Web/DOM/CSS API 不属原生合同。"}},
                  {MessageKey{u8"gallery.ant.component.message.name", String{u8"Message"}},
                   String{u8"Message 全局提示"}},
                  {MessageKey{
@@ -4553,10 +4554,12 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"shared Icon spin and motion/visibility lifecycle"}},
                  {MessageKey{
                       u8"gallery.ant.component.message.missing",
-                      String{u8"Linux/Wayland/Vulkan, system IME and OS accessibility adapters require their own "
-                             u8"platform evidence. Full Ant Design Web DOM/CSS APIs are outside the native subset."}},
-                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收；完整 "
-                         u8"Ant Design Web/DOM/CSS API 不在当前原生子集内"}}});
+                      String{
+                          u8"Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system "
+                          u8"IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain "
+                          u8"independent · Complete Ant Design Web/DOM/CSS APIs are outside the native contract"}},
+                  String{u8"Linux 私有 Wayland/Vulkan 的有界覆盖另见验收记录；物理系统 IME、OS 辅助技术、其他实际 DPI "
+                         u8"与跨物理显示器体验独立；完整 Ant Design Web/DOM/CSS API 不属原生合同。"}}});
         },
         [](std::vector<GalleryMessageDefinition>& target) {
             target.insert(
@@ -4610,10 +4613,12 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                       u8"uses shared Icon spin and motion/visibility lifecycle"}},
                  {MessageKey{
                       u8"gallery.ant.component.notification.missing",
-                      String{u8"Linux/Wayland/Vulkan, system IME and OS accessibility adapters require their own "
-                             u8"platform evidence. Full Ant Design Web DOM/CSS APIs are outside the native subset."}},
-                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收；完整 "
-                         u8"Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
+                      String{
+                          u8"Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system "
+                          u8"IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain "
+                          u8"independent · Complete Ant Design Web/DOM/CSS APIs are outside the native contract"}},
+                  String{u8"Linux 私有 Wayland/Vulkan 的有界覆盖另见验收记录；物理系统 IME、OS 辅助技术、其他实际 DPI "
+                         u8"与跨物理显示器体验独立；完整 Ant Design Web/DOM/CSS API 不属原生合同。"}},
                  {MessageKey{u8"gallery.ant.component.popconfirm.name", String{u8"Popconfirm"}},
                   String{u8"Popconfirm 气泡确认框"}},
                  {MessageKey{u8"gallery.ant.component.popconfirm.summary",
@@ -4683,13 +4688,13 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"ImageSource, retained dynamic slots and finite state motion"}},
                  {MessageKey{
                       u8"gallery.ant.component.result.missing",
-                      String{
-                          u8"Generic HTTP/network-state services belong to the app · Linux/Wayland/Vulkan, system IME "
-                          u8"and platform accessibility-adapter coverage need independent acceptance · Complete "
-                          u8"Web/DOM/CSS APIs are outside the native subset"}},
-                  String{u8"通用 HTTP/网络状态服务由应用提供 · Linux/Wayland/Vulkan、系统 IME 与平台 accessibility "
-                         u8"adapter "
-                         u8"的本阶段覆盖仍待各自验收 · 完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
+                      String{u8"General HTTP/network status services are application-owned · Bounded Linux private "
+                             u8"Wayland/Vulkan verification is recorded separately; physical system IME, OS "
+                             u8"accessibility adapters, other actual DPI and real multi-display behavior remain "
+                             u8"independent · Complete Ant Design Web/DOM/CSS APIs are outside the native contract"}},
+                  String{u8"通用 HTTP/网络状态服务由应用提供；Linux 私有 Wayland/Vulkan "
+                         u8"的有界覆盖另见验收记录；物理系统 IME、OS 辅助技术、其他实际 DPI "
+                         u8"与跨物理显示器体验独立；完整 Ant Design Web/DOM/CSS API 不属原生合同。"}},
                  {MessageKey{u8"gallery.ant.component.skeleton.name", String{u8"Skeleton"}},
                   String{u8"Skeleton 骨架屏"}},
                  {MessageKey{
@@ -4715,11 +4720,13 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                          u8"渐变、Image/Node、主题图像字形尺寸/颜色。"}},
                  {MessageKey{
                       u8"gallery.ant.component.skeleton.missing",
-                      String{u8"Network-loading services belong to the app · Linux/Wayland/Vulkan, system IME and "
-                             u8"platform accessibility-adapter coverage need independent acceptance · Complete "
-                             u8"Web/DOM/CSS APIs are outside the native subset"}},
-                  String{u8"网络加载服务由应用提供 · Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter "
-                         u8"的本阶段覆盖仍待各自验收 · 完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"}},
+                      String{u8"Network loading services are application-owned · Bounded Linux private Wayland/Vulkan "
+                             u8"verification is recorded separately; physical system IME, OS accessibility adapters, "
+                             u8"other actual DPI and real multi-display behavior remain independent · Complete Ant "
+                             u8"Design Web/DOM/CSS APIs are outside the native contract"}},
+                  String{u8"网络加载服务由应用提供；Linux 私有 Wayland/Vulkan 的有界覆盖另见验收记录；物理系统 IME、OS "
+                         u8"辅助技术、其他实际 DPI 与跨物理显示器体验独立；完整 Ant Design Web/DOM/CSS API "
+                         u8"不属原生合同。"}},
                  {MessageKey{u8"gallery.ant.component.spin.name", String{u8"Spin"}}, String{u8"Spin 加载中"}},
                  {MessageKey{
                       u8"gallery.ant.component.spin.summary",
@@ -4742,12 +4749,11 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                  {MessageKey{
                       u8"gallery.ant.component.spin.missing",
                       String{
-                          u8"Linux/Wayland/Vulkan, system IME and platform accessibility-adapter coverage need their "
-                          u8"own "
-                          u8"acceptance · Complete Ant Design Web/DOM/CSS APIs are outside the current native subset"}},
-                  String{u8"Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收 · "
-                         u8"完整 Ant "
-                         u8"Design Web/DOM/CSS API 不在当前原生子集内"}},
+                          u8"Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system "
+                          u8"IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain "
+                          u8"independent · Complete Ant Design Web/DOM/CSS APIs are outside the native contract"}},
+                  String{u8"Linux 私有 Wayland/Vulkan 的有界覆盖另见验收记录；物理系统 IME、OS 辅助技术、其他实际 DPI "
+                         u8"与跨物理显示器体验独立；完整 Ant Design Web/DOM/CSS API 不属原生合同。"}},
                  {MessageKey{u8"gallery.ant.component.watermark.name", String{u8"Watermark"}},
                   String{u8"Watermark 水印"}},
                  {MessageKey{

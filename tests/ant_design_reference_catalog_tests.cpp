@@ -154,6 +154,17 @@ void test_typed_support_status() {
         require(config->supported_scope.find(field) != std::string_view::npos,
                 "native ConfigProvider catalog lost an implemented context field");
     }
+    for (const auto identity :
+         {"ant.component.alert", "ant.component.drawer", "ant.component.message", "ant.component.notification",
+          "ant.component.result", "ant.component.skeleton", "ant.component.spin"}) {
+        const auto* entry = find_ant_design_reference_entry(identity);
+        require(entry && entry->support_status == GallerySupportStatus::implemented &&
+                    entry->evidence_identifiers.find("feedback-linux.md") != std::string_view::npos &&
+                    entry->evidence_identifiers.find("test:") != std::string_view::npos &&
+                    entry->missing_scope.find("physical system IME") != std::string_view::npos &&
+                    entry->missing_scope.find("Web/DOM/CSS") != std::string_view::npos,
+                "native feedback completion lost implementation evidence or platform/Web boundaries");
+    }
     for (const auto identity : {"ant.component.pagination", "ant.component.steps", "ant.component.tabs"}) {
         const auto* entry = find_ant_design_reference_entry(identity);
         require(entry && entry->support_status == GallerySupportStatus::implemented &&

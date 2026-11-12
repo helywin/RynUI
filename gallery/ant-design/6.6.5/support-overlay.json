@@ -1717,7 +1717,7 @@
     },
     {
       "identity": "ant.component.alert",
-      "status": "partial",
+      "status": "implemented",
       "summary": "原生 Alert 支持 banner、跑马灯、有限退出及 afterClose，Windows 定向与原生验收已记录。",
       "supported_scope": [
         "reactive Status/message/description/visible/closable and onClose requests",
@@ -1725,8 +1725,8 @@
         "banner, pausable marquee, finite exit and afterClose"
       ],
       "missing_scope": [
-        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
-        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
+        "Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain independent",
+        "Complete Ant Design Web/DOM/CSS APIs are outside the native contract"
       ],
       "evidence_identifiers": [
         "source:components/alert/index.en-US.md",
@@ -1734,12 +1734,13 @@
         "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
         "docs:docs/feedback.md",
         "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-linux.md"
       ]
     },
     {
       "identity": "ant.component.drawer",
-      "status": "partial",
+      "status": "implemented",
       "summary": "原生 Drawer 支持四向开合、连续嵌套 push、保留编辑、loading、extra、RTL、resize、lazy/destroy 与 App 动态服务。",
       "supported_scope": [
         "controlled open, four placements, finite width/height and retained typed title/content/footer",
@@ -1751,8 +1752,8 @@
         "captured App context with real update/close/destroy services and retained content"
       ],
       "missing_scope": [
-        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
-        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
+        "Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain independent",
+        "Complete Ant Design Web/DOM/CSS APIs are outside the native contract"
       ],
       "evidence_identifiers": [
         "source:components/drawer/index.en-US.md",
@@ -1760,12 +1761,13 @@
         "test:drawer_model/drawer_public_api/drawer_theme/drawer_component/token_gallery_frame",
         "docs:docs/drawer.md",
         "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-linux.md"
       ]
     },
     {
       "identity": "ant.component.message",
-      "status": "partial",
+      "status": "implemented",
       "summary": "原生 Message 支持 hover 暂停、进度、有限动画、关闭 future、折叠栈及 App 活上下文服务。",
       "supported_scope": [
         "window-scoped typed holder/ref with keyed open, partial update, close and clear",
@@ -1777,8 +1779,8 @@
         "default Loading icon uses shared Icon spin and motion/visibility lifecycle"
       ],
       "missing_scope": [
-        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
-        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
+        "Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain independent",
+        "Complete Ant Design Web/DOM/CSS APIs are outside the native contract"
       ],
       "evidence_identifiers": [
         "source:components/message/index.en-US.md",
@@ -1793,7 +1795,8 @@
         "test:rynui.token_gallery_frame",
         "docs:docs/message-notification.md",
         "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-linux.md"
       ]
     },
     {
@@ -1831,7 +1834,7 @@
     },
     {
       "identity": "ant.component.notification",
-      "status": "partial",
+      "status": "implemented",
       "summary": "原生 Notification 提供独立操作页、hover 暂停、进度、有限动画、关闭 future、折叠栈与 App 活上下文服务。",
       "supported_scope": [
         "typed window-scoped holder/ref with keyed partial updates and safe close/clear",
@@ -1843,8 +1846,8 @@
         "default Loading icon uses shared Icon spin and motion/visibility lifecycle"
       ],
       "missing_scope": [
-        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
-        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
+        "Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain independent",
+        "Complete Ant Design Web/DOM/CSS APIs are outside the native contract"
       ],
       "evidence_identifiers": [
         "source:components/notification/index.en-US.md",
@@ -1859,7 +1862,8 @@
         "test:rynui.token_gallery_frame",
         "docs:docs/message-notification.md",
         "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-linux.md"
       ]
     },
     {
@@ -1914,7 +1918,7 @@
     },
     {
       "identity": "ant.component.result",
-      "status": "partial",
+      "status": "implemented",
       "summary": "原生 Result 支持固定上游异常插画、保留式动态区域与有限状态动画，Windows 定向及原生验收已记录。",
       "supported_scope": [
         "typed ResultProps/ResultStatus, reactive title/subtitle/status and retained icon/content/extra slots",
@@ -1925,9 +1929,9 @@
         "pinned 403/404/500 illustrations through shared ImageSource, retained dynamic slots and finite state motion"
       ],
       "missing_scope": [
-        "通用 HTTP/网络状态服务由应用提供",
-        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
-        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
+        "General HTTP/network status services are application-owned",
+        "Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain independent",
+        "Complete Ant Design Web/DOM/CSS APIs are outside the native contract"
       ],
       "evidence_identifiers": [
         "source:components/result/index.en-US.md",
@@ -1939,12 +1943,13 @@
         "test:rynui.empty_result_component",
         "test:tests/token_gallery_frame_tests.cpp#test_empty_and_result_gallery_after_document_scroll",
         "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-linux.md"
       ]
     },
     {
       "identity": "ant.component.skeleton",
-      "status": "partial",
+      "status": "implemented",
       "summary": "原生 Skeleton 支持 active 渐变、Image/Node 与保留式加载正文，Windows 定向及原生验收已记录。",
       "supported_scope": [
         "typed reactive static title/paragraph/avatar composition and proportional row widths",
@@ -1955,9 +1960,9 @@
         "active shimmer, SkeletonImage/SkeletonNode and themed image glyph sizing/color"
       ],
       "missing_scope": [
-        "网络加载服务由应用提供",
-        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
-        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
+        "Network loading services are application-owned",
+        "Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain independent",
+        "Complete Ant Design Web/DOM/CSS APIs are outside the native contract"
       ],
       "evidence_identifiers": [
         "source:components/skeleton/index.en-US.md",
@@ -1972,12 +1977,13 @@
         "test:rynui_token_gallery_frame_tests --details-loading-only",
         "evidence:openspec/changes/086-20261025-add-descriptions-and-skeleton-gallery/evidence/01-gallery.md",
         "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-linux.md"
       ]
     },
     {
       "identity": "ant.component.spin",
-      "status": "partial",
+      "status": "implemented",
       "summary": "原生 Spin 支持 fullscreen、delay、数值/自动百分比及保留式正文，Windows 定向及原生验收已记录。",
       "supported_scope": [
         "reactive spinning/size/description, retained content/custom indicator and Spin Component Token",
@@ -1986,8 +1992,8 @@
         "fullscreen input domain, cancellable delay, numeric/automatic percent and custom indicator"
       ],
       "missing_scope": [
-        "Linux/Wayland/Vulkan、系统 IME 与平台 accessibility adapter 的本阶段覆盖仍待各自验收",
-        "完整 Ant Design Web/DOM/CSS API 不在当前原生子集内"
+        "Bounded Linux private Wayland/Vulkan verification is recorded separately; physical system IME, OS accessibility adapters, other actual DPI and real multi-display behavior remain independent",
+        "Complete Ant Design Web/DOM/CSS APIs are outside the native contract"
       ],
       "evidence_identifiers": [
         "source:components/spin/index.en-US.md",
@@ -1995,7 +2001,8 @@
         "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
         "docs:docs/feedback.md",
         "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-i18n-windows.md",
-        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md"
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-motion-windows.md",
+        "evidence:openspec/changes/107-20261104-complete-navigation-and-remaining-components/evidence/feedback-linux.md"
       ]
     },
     {
