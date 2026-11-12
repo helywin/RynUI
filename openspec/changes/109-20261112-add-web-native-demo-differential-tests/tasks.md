@@ -34,7 +34,7 @@
 
 - [ ] 4.1 实现 select→prepare→preflight→execute→compare→report→cleanup 状态机及 design 的 0/1/2/3/4 退出码；PYTEST 必须拒绝空选择、零退出但漏动作/图像/complete、崩溃/超时、过期 out 与路径逃逸。
 - [ ] 4.2 实现 pilot 所需的 target ROI/context/guard、等比例坐标与 DPR 检查、基础 geometry/token/pixel/文字存在性判定；通过程序生成正负控制，1 logical px 偏差、小图标丢失/局部纯背景不能被大背景稀释。
-- [ ] 4.3 实现独立 oracle evaluator 与两侧语义 trace 归一化，声明精确 callback/状态/焦点断言；通过双侧同错、次数/顺序改变、未执行导致零 callback 和 native-derived expected 负例。
+- [x] 4.3 实现独立 oracle evaluator 与两侧语义 trace 归一化，声明精确 callback/状态/焦点断言；通过双侧同错、次数/顺序改变、未执行导致零 callback 和 native-derived expected 负例。
 - [ ] 4.4 定义 Button basic-states、Input controlled-edit、Select popup-lifecycle 三个真实 case，绑定固定 demo/source hash、native sample/targets、完整输入/适配说明；schema/coverage/effective-input 测试全部通过，执行顺序与 checkpoints 明确。
 - [ ] 4.5 实现 pilot 的 acceptance-only 真实外观/逻辑故障开关和 meta 外层判定，至少覆盖 padding +1 与错误受控提交/重复 callback；单元测试证明 faulted 普通 run 不可 pass、不发布 reference cache，正常产品路径不启用 fault。
 - [ ] 4.6 输出初版 report.json/JUnit/本地 index、首次分歧和 replay argv，写单命令 pilot 文档；用 runner 故障替身验证分类/路径/退出码与 artifact 完整性，再进入实际平台 pilot。
