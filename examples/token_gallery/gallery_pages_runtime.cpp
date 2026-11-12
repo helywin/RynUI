@@ -805,7 +805,11 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                             for (const auto id :
                                  {"gallery.listy.grid", "gallery.listy.reorder", "gallery.listy.pagination",
                                   "gallery.listy.scroll-end", "gallery.listy.direction", "gallery.listy.scroll-end",
-                                  "gallery.listy.empty", "gallery.listy.empty"}) {
+                                  "gallery.listy.empty", "gallery.listy.empty", "gallery.listy.group-jump",
+                                  "gallery.listy.group-start", "gallery.listy.sticky-toggle",
+                                  "gallery.listy.sticky-toggle", "gallery.listy.virtual-toggle",
+                                  "gallery.listy.virtual-toggle", "gallery.listy.group-reorder",
+                                  "gallery.listy.group-empty", "gallery.listy.group-empty"}) {
                                 add(id);
                             }
                         } else if (name == "ant.component.watermark") {

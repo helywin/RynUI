@@ -14,7 +14,10 @@ namespace {
 using rynui::example::AntDesignGalleryCategory;
 using rynui::example::GallerySupportStatus;
 
+std::size_t assertions{};
+
 void require(bool condition, const char* message) {
+    ++assertions;
     if (!condition) {
         throw std::runtime_error(message);
     }
@@ -97,9 +100,15 @@ void test_categories_and_entries() {
     const auto* listy = find_ant_design_reference_entry("ant.component.listy");
     require(list != nullptr && list->support_status == GallerySupportStatus::deprecated && listy != nullptr &&
                 listy->category == AntDesignGalleryCategory::data_display &&
-                listy->support_status == GallerySupportStatus::partial &&
+                listy->support_status == GallerySupportStatus::implemented &&
+                listy->supported_scope.find("measured virtual") != std::string_view::npos &&
+                listy->supported_scope.find("sticky") != std::string_view::npos &&
+                listy->supported_scope.find("ListyGroup/View") != std::string_view::npos &&
+                listy->missing_scope.find("Web DOM/CSS/React") != std::string_view::npos &&
+                listy->missing_scope.find("Windows/MSVC/D3D12") != std::string_view::npos &&
+                listy->evidence_identifiers.find("listy-linux-completion.md") != std::string_view::npos &&
                 listy->evidence_identifiers.find("test:rynui.portable.listy_component") != std::string_view::npos,
-            "List deprecation or verified Listy partial scope drifted");
+            "List deprecation or verified Listy native scope/boundaries drifted");
 }
 
 void test_typed_support_status() {
@@ -209,11 +218,15 @@ void test_typed_support_status() {
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
     try {
         test_snapshot_identity();
         test_document_sources();
         test_categories_and_entries();
+        if (argc == 2 && std::string_view{argv[1]} == "--catalog-identities-and-listy") {
+            std::cout << "Catalog identities/Listy assertions: " << assertions << '\n';
+            return 0;
+        }
         test_typed_support_status();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

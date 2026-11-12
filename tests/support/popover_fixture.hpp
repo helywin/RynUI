@@ -8,7 +8,10 @@ using namespace ryn;
 using namespace ryn::input;
 using Fixture = input_component::Fixture;
 
+inline std::size_t assertions{};
+
 inline void check(bool value, const char* message) {
+    ++assertions;
     if (!value) {
         throw std::runtime_error(message);
     }

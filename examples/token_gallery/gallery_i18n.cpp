@@ -1719,6 +1719,15 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                              String{u8"Edit a draft, reorder, paginate and change layout; the "
                                     u8"wheel and final action use a real scroll domain."}},
                   String{u8"编辑草稿后重排、切页或切换网格；滚轮和末尾按钮控制真实视口。"}},
+                 {MessageKey{u8"gallery.listy.virtual.description",
+                             String{u8"Grouped variable-height rows, sticky headers and retained virtual editors"}},
+                  String{u8"分组、不同行高、sticky 标题与保留草稿的虚拟列表"}},
+                 {MessageKey{u8"gallery.listy.virtual.toggle", String{u8"Toggle virtualization"}},
+                  String{u8"切换虚拟化"}},
+                 {MessageKey{u8"gallery.listy.sticky.toggle", String{u8"Toggle sticky headers"}},
+                  String{u8"切换 sticky 标题"}},
+                 {MessageKey{u8"gallery.listy.group.jump", String{u8"Jump to group 7"}}, String{u8"跳到第 7 组"}},
+                 {MessageKey{u8"gallery.listy.group.start", String{u8"Return to start"}}, String{u8"返回起点"}},
                  {MessageKey{u8"gallery.copy.sample.403", String{u8"Account list · Stable keys and retained drafts"}},
                   String{u8"账户列表 · 稳定 key 保留草稿"}},
                  {MessageKey{u8"gallery.copy.sample.404",
@@ -4107,36 +4116,35 @@ std::span<const GalleryMessageDefinition> gallery_messages() {
                                     u8"replacement scope"}},
                   String{u8"不提供新的 List 控件；原生替代范围见 Listy 独立页"}},
                  {MessageKey{u8"gallery.ant.component.listy.name", String{u8"Listy"}}, String{u8"Listy 高性能列表"}},
+                 {MessageKey{u8"gallery.ant.component.listy.summary",
+                             String{u8"Listy now supports stable keyed groups, interactive sticky titles and measured "
+                                    u8"virtualization. Existing direction/grid/paging/editing contracts remain; "
+                                    u8"focused Linux and private Wayland/Vulkan results are recorded separately."}},
+                  String{
+                      u8"Listy 已补齐稳定键分组、交互 sticky 标题及真实测量虚拟化；保留原方向/网格/分页/编辑合同，新增 "
+                      u8"Linux 定向与私有 Wayland/Vulkan 验收独立记录。"}},
                  {MessageKey{
-                      u8"gallery.ant.component.listy.summary",
-                      String{
-                          u8"Listy stable keys, retained rows, direction/grid, pagination, scrolling and empty states "
-                          u8"passed MSVC HEADLESS Debug/Release and focused Windows hidden D3D12 checks. Other "
-                          u8"platforms remain separate."}},
-                  String{
-                      u8"Listy 的稳定 key、保留行、方向/网格、分页、滚动及空状态已通过 MSVC HEADLESS Debug/Release 和 "
-                      u8"Windows hidden D3D12 定向检查；其他平台独立待验。"}},
-                 {MessageKey{u8"gallery.ant.component.listy.supported",
-                             String{u8"Typed owned data, stable keys and retained item slots · Vertical/horizontal, "
-                                    u8"RTL, equal-width "
-                                    u8"grid, actual pagination, bounded viewport scrolling and empty state · Windows "
-                                    u8"MSVC HEADLESS "
-                                    u8"Debug/Release contracts for retained editing, data reorder, disabled state, "
-                                    u8"controlled paging "
-                                    u8"and failure cleanup · Windows hidden D3D12 captures in four configurations for "
-                                    u8"retained drafts, "
-                                    u8"reorder, grid, direction, scrolling and empty state"}},
-                  String{
-                      u8"typed owned data、稳定 key 与 retained item slots · "
-                      u8"纵横方向、RTL、等宽网格、真实分页、有限视口滚动和空状态 · Windows MSVC HEADLESS Debug/Release "
-                      u8"的保留编辑、数据重排、禁用、受控分页、失败清理合同 · Windows hidden D3D12 "
-                      u8"四配置的保留草稿、重排、网格、方向、滚动及空态捕获"}},
+                      u8"gallery.ant.component.listy.supported",
+                      String{u8"Typed owned data and stable retained item/group slots · Vertical/horizontal, RTL, "
+                             u8"grid, pagination, scrolling and empty state · First-seen groups, rich reactive titles "
+                             u8"and cross-group editor identity · Clipped sticky headers and measured virtual "
+                             u8"intervals with overscan/focus pinning, unmounted key reveal and deletion cleanup · "
+                             u8"One-sync Table↔Listy→Select/Popover geometry and inner-first wheel/edge handoff · "
+                             u8"Existing Windows basic scope and new Linux HEADLESS Debug/Release contracts; private "
+                             u8"Wayland/Vulkan input, retirement and separate GPU readbacks"}},
+                  String{u8"typed owned data 与稳定 retained item/group slots · 纵横方向、RTL、网格、分页、滚动与空态 "
+                         u8"· 首次出现组顺序、响应式富标题及跨组编辑身份 · clip 内 "
+                         u8"sticky、真实测量虚拟区间/overscan/焦点保活、未挂载 key 定位与删除释放 · 同 sync "
+                         u8"Table↔Listy→Select/Popover 几何与内层优先/边界 handoff · 历史 Windows 基本范围及新增 Linux "
+                         u8"HEADLESS Debug/Release 合同；私有 Wayland/Vulkan 输入、退役与独立 GPU 回读"}},
                  {MessageKey{u8"gallery.ant.component.listy.missing",
-                             String{u8"Linux native GPU/window, system IME and AT evidence remain independent · "
-                                    u8"Group/sticky/virtual and Web DOM/CSS/React compatibility are not provided"}},
-                  String{
-                      u8"Linux 原生 GPU/窗口、系统 IME 和辅助技术独立待验；group/sticky/virtual 及 Web DOM/CSS/React "
-                      u8"兼容未提供。"}},
+                             String{u8"Web DOM/CSS/React refs/UIEvent are outside native scope; visited keyed controls "
+                                    u8"remain cached until deletion · New group/sticky/virtual scope has not been "
+                                    u8"rerun on Windows/MSVC/D3D12; system IME candidate UI, platform AT and physical "
+                                    u8"multi-monitor results remain unverified"}},
+                  String{u8"Web DOM/CSS/React ref/UIEvent 不属于原生合同；已访问控件缓存到 key 删除 · 本次新增 "
+                         u8"group/sticky/virtual 未重验 Windows/MSVC/D3D12；系统 IME 候选窗、平台 AT "
+                         u8"与实际跨显示器独立未验"}},
                  {MessageKey{u8"gallery.ant.component.popover.name", String{u8"Popover"}},
                   String{u8"Popover 气泡卡片"}},
                  {MessageKey{

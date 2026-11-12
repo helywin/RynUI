@@ -61,6 +61,7 @@ public:
     void synchronize_retained_translations() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool on_scroll_input(const input::ScrollInputEvent&) override;
+    bool scroll_owner_input(runtime::ComponentId, const input::ScrollInputEvent&);
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;
     void on_window_active(bool) override;

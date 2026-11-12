@@ -182,6 +182,8 @@
 - [x] 36.1 按对应 spec 与 design 矩阵实现 Listy 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。
 - [x] 36.2 为 Listy 接入实际 Gallery 示例并更新 API/支持范围；构建相关 HEADLESS target、运行受影响 Debug/Release 测试与目录校验，记录精简结果并提交。
 
+2026-11-12 补充核验发现原 checked 范围未覆盖 group/sticky/virtual：本次补齐 typed 分组、交互 sticky、真实测量虚拟化及 Table↔Listy→Select/Popover 单 sync/滚轮合同；旧 Windows 基本范围证据保留，新增范围的 Linux 定向、私有 Wayland 与 GPU 回读结果见 `evidence/listy-linux-completion.md`。本阶段不关闭 63.3 或 Windows 64.*。
+
 ## 37. 数据展示：Popover
 
 - [x] 37.1 按对应 spec 与 design 矩阵实现 Popover 的尚缺原生合同、typed API、Theme 和生命周期；新增定向自动合同覆盖受控更新、动态内容及失败/清理。

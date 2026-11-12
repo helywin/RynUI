@@ -39,6 +39,7 @@ public:
     bool consume_scroll_boundary(const input::ScrollInputEvent&);
     void prepare_auxiliary_layout() override;
     void position_window_layers(runtime::Size, runtime::Rect) override;
+    void synchronize_retained_translations() override;
     void position_window_layer(runtime::ComponentId, runtime::Size, runtime::Rect);
     void position_ancestors(runtime::ComponentId, runtime::Size, runtime::Rect);
     [[nodiscard]] bool owns_escape(runtime::ComponentId ancestor, runtime::ComponentId focused) const;
@@ -58,5 +59,7 @@ private:
     std::vector<runtime::ComponentId> mounted_;
     std::vector<runtime::ComponentId> positioning_;
     bool window_active_{true};
+    runtime::Size viewport_;
+    runtime::Rect document_clip_;
 };
 } // namespace ryn::detail

@@ -1992,10 +1992,7 @@ bool TableComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
         auto s = table_state(*services_, *current);
         if (s && services_->interactions().component_active(*current) &&
             contains(translated(s->body_bounds, services_->nodes().require(s->node).translation), event.x, event.y)) {
-            const auto x = std::clamp(s->scroll_x + event.delta_x * (s->rtl ? -32.0F : 32.0F), 0.0F, s->maximum_x);
-            const auto y = std::clamp(s->scroll_y - event.delta_y * 32.0F, 0.0F, s->maximum_y);
-            if (x != s->scroll_x || y != s->scroll_y) {
-                scroll_to(*current, x, y);
+            if (scroll_owner_input(*current, event)) {
                 return true;
             }
         }
@@ -2004,6 +2001,21 @@ bool TableComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
         }
     }
     return false;
+}
+
+bool TableComponentHost::scroll_owner_input(runtime::ComponentId id, const input::ScrollInputEvent& event) {
+    const auto s = table_state(*services_, id);
+    if (!s || !services_->interactions().component_active(id) ||
+        !contains(translated(s->body_bounds, services_->nodes().require(s->node).translation), event.x, event.y)) {
+        return false;
+    }
+    const auto x = std::clamp(s->scroll_x + event.delta_x * (s->rtl ? -32.0F : 32.0F), 0.0F, s->maximum_x);
+    const auto y = std::clamp(s->scroll_y - event.delta_y * 32.0F, 0.0F, s->maximum_y);
+    if (x == s->scroll_x && y == s->scroll_y) {
+        return false;
+    }
+    scroll_to(id, x, y);
+    return true;
 }
 
 void TableComponentHost::on_pointer_input(const input::PointerInputEvent& event,

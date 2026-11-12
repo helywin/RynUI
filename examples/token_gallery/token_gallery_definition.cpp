@@ -7196,6 +7196,64 @@ void add_listy_samples(const std::shared_ptr<GalleryState>& state) {
                        }});
               }));
     remember_target(state, "gallery.listy.retained");
+    std::vector<ListyItem<String>> virtual_rows;
+    for (int i = 0; i < 200; ++i) {
+        const auto value = String::from_utf8(std::to_string(i)).value();
+        virtual_rows.emplace_back(value, value);
+    }
+    Signal<std::vector<ListyItem<String>>> grouped{virtual_rows};
+    Signal<bool> windowed{true};
+    Signal<bool> sticky{true};
+    ListyRef virtual_ref;
+    gallery_label("gallery.listy.virtual.description");
+    Space(SpaceProps{}.wrap(true), SpaceContent{[=] {
+              Button(ButtonProps{}.onClick([=] { windowed.set(!windowed.get()); }),
+                     [] { gallery_label("gallery.listy.virtual.toggle"); });
+              remember_target(state, "gallery.listy.virtual-toggle");
+              Button(ButtonProps{}.onClick([=] { sticky.set(!sticky.get()); }),
+                     [] { gallery_label("gallery.listy.sticky.toggle"); });
+              remember_target(state, "gallery.listy.sticky-toggle");
+              Button(ButtonProps{}.onClick([=] { (void)virtual_ref.scrollToGroup(u8"7", ListyScrollAlign::Start); }),
+                     [] { gallery_label("gallery.listy.group.jump"); });
+              remember_target(state, "gallery.listy.group-jump");
+              Button(ButtonProps{}.onClick([=] { (void)virtual_ref.scrollTo(0); }),
+                     [] { gallery_label("gallery.listy.group.start"); });
+              remember_target(state, "gallery.listy.group-start");
+              Button(ButtonProps{}.onClick([=] {
+                  auto next = grouped.get();
+                  std::reverse(next.begin(), next.end());
+                  grouped.set(std::move(next));
+              }),
+                     [] { gallery_label("gallery.copy.sample.395"); });
+              remember_target(state, "gallery.listy.group-reorder");
+              Button(ButtonProps{}.onClick(
+                         [=] { grouped.set(grouped.get().empty() ? virtual_rows : std::vector<ListyItem<String>>{}); }),
+                     [] { gallery_label("gallery.copy.sample.397"); });
+              remember_target(state, "gallery.listy.group-empty");
+          }});
+    Listy(ListyProps<String>{}
+              .items(grouped)
+              .height(200)
+              .virtualized(windowed)
+              .sticky(sticky)
+              .ref(virtual_ref)
+              .layout(LayoutStyle{}.width(state->document_width))
+              .group({[](const String& value) {
+                          return String::from_utf8(std::to_string(std::stoi(std::string{value.bytes()}) / 20)).value();
+                      },
+                      [](ListyGroupView<String> group) {
+                          Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[=] {
+                                   Text(TextProps{}.content(group.key));
+                                   Input(InputProps{}.defaultValue(group.key).layout(LayoutStyle{}.width(dp(140))));
+                               }});
+                      }})
+              .itemRender([](ListyItemView<String> view) {
+                  Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[=] {
+                           Text(TextProps{}.content(view.data()));
+                           Input(InputProps{}.defaultValue(view.key).layout(LayoutStyle{}.width(dp(140))));
+                       }});
+              }));
+    remember_target(state, "gallery.listy.virtual");
     ++state->telemetry.live_samples;
 }
 

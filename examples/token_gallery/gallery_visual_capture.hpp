@@ -89,8 +89,9 @@ inline void capture_gallery_visuals(const GalleryPageRoute& route, std::size_t c
         throw std::runtime_error("Requested visual page has no registered samples");
     }
     std::size_t state_index{};
+    const std::size_t activation_limit = route.component_identity == "ant.component.listy" ? 17 : 8;
     for (const auto id : triggers()) {
-        if (state_index == 8) {
+        if (state_index == activation_limit) {
             break;
         }
         const auto rect = bounds(id);

@@ -25,7 +25,10 @@ struct Row final {
     friend bool operator==(const Row&, const Row&) = default;
 };
 
+std::size_t assertions{};
+
 void check(bool value, const char* message) {
+    ++assertions;
     if (!value) {
         throw std::runtime_error(message);
     }
@@ -1039,5 +1042,6 @@ int main() {
         std::cerr << e.what() << '\n';
         return 1;
     }
+    std::cout << "Table assertions: " << assertions << '\n';
     return 0;
 }

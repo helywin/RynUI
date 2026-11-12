@@ -1,5 +1,6 @@
 #include "gallery_table_tour_acceptance.hpp"
 #include "component/table_component.hpp"
+#include "component/listy_component.hpp"
 #include "component/tour_component.hpp"
 #include "component/modal_component.hpp"
 #include "graphics/rounded_effect.hpp"
@@ -24,6 +25,117 @@ void accept_table_tour(const GalleryPageRoute& route, ExistingDataEntryActions a
         a.activate(id);
         a.render();
     };
+    if (route.component_identity == "ant.component.listy") {
+        auto& lists = a.app.services().listy();
+        const auto id = a.pages.target("gallery.listy.virtual");
+        a.check(id.valid(), "native grouped Listy is absent");
+        a.reveal(id);
+        a.render();
+        const auto before = lists.snapshot(id);
+        a.check(before.items.size() == 200 && before.mounted_items < 20,
+                "native Listy virtualization mounted unseen records");
+        runtime::ComponentId editor;
+        for (const auto& input : a.inputs.mounted_inputs()) {
+            if (owns(input.component, before.items.front().component)) {
+                editor = input.component;
+                a.check(a.app.focus().request_focus(input.interaction, input::FocusModality::keyboard),
+                        "native virtual Listy editor focus rejected");
+                a.pages.dispatch(
+                    input::KeyboardInputEvent{input::Key::a, input::KeyAction::down, input::KeyModifier::control});
+                a.pages.dispatch(
+                    input::KeyboardInputEvent{input::Key::a, input::KeyAction::up, input::KeyModifier::control});
+                a.pages.dispatch(input::TextCommitted{String{u8"native-listy-draft"}, a.inputs.sessions().active()});
+                break;
+            }
+        }
+        a.check(editor.valid(), "native virtual Listy retained editor absent");
+        a.render();
+        runtime::ComponentId group_editor;
+        for (const auto& input : a.inputs.mounted_inputs()) {
+            if (!before.groups.empty() && owns(input.component, before.groups.front().component)) {
+                group_editor = input.component;
+                a.check(a.app.focus().request_focus(input.interaction, input::FocusModality::keyboard),
+                        "native sticky group editor focus rejected");
+                a.pages.dispatch(
+                    input::KeyboardInputEvent{input::Key::a, input::KeyAction::down, input::KeyModifier::control});
+                a.pages.dispatch(
+                    input::KeyboardInputEvent{input::Key::a, input::KeyAction::up, input::KeyModifier::control});
+                a.pages.dispatch(input::TextCommitted{String{u8"native-group-draft"}, a.inputs.sessions().active()});
+                break;
+            }
+        }
+        a.check(group_editor.valid(), "native interactive sticky group editor absent");
+        a.render();
+        const auto& node = a.app.nodes().require(a.app.components().root(before.viewport));
+        a.pages.dispatch(input::ScrollInputEvent{0, -2, node.bounds.x + node.translation.x + node.bounds.width / 2,
+                                                 node.bounds.y + node.translation.y + node.bounds.height / 2});
+        a.render();
+        a.check(lists.snapshot(id).offset > 0, "native Listy actual wheel did not move the viewport");
+        run("gallery.listy.group-jump");
+        a.reveal(id);
+        a.render();
+        const auto distant = lists.snapshot(id);
+        a.check(distant.offset > 1000 && distant.mounted_items < 40,
+                "native Listy group jump eagerly mounted intervening rows");
+        run("gallery.listy.group-start");
+        a.reveal(id);
+        a.render();
+        a.check(a.inputs.display_snapshot(editor).text == "native-listy-draft" &&
+                    lists.snapshot(id).items.front().component == before.items.front().component &&
+                    a.inputs.display_snapshot(group_editor).text == "native-group-draft" &&
+                    lists.snapshot(id).groups.front().component == before.groups.front().component,
+                "native virtual Listy revisit lost row/group editor identity/draft");
+        run("gallery.listy.virtual-toggle");
+        a.check(lists.snapshot(id).mounted_items == 200, "native Listy disabling virtualization lost data");
+        run("gallery.listy.virtual-toggle");
+        const auto windowed = lists.snapshot(id);
+        a.check(std::ranges::count_if(windowed.items, [](const auto& row) { return row.shown; }) < 12 &&
+                    a.inputs.display_snapshot(editor).text == "native-listy-draft",
+                "native Listy virtualization toggle lost the visible interval/draft");
+        run("gallery.listy.sticky-toggle");
+        run("gallery.listy.sticky-toggle");
+        run("gallery.listy.group-reorder");
+        a.check(lists.snapshot(id).items.back().component == before.items.front().component,
+                "native Listy group reorder rebuilt the keyed row");
+        run("gallery.listy.group-empty");
+        a.check(lists.snapshot(id).items.empty() && lists.snapshot(id).groups.empty() &&
+                    !a.app.components().contains(editor) && !a.app.components().contains(group_editor),
+                "native Listy empty transition retained old group/editor owners");
+        run("gallery.listy.group-empty");
+        a.check(lists.snapshot(id).items.size() == 200 && lists.snapshot(id).mounted_items < 20,
+                "native virtual Listy empty recovery failed");
+        a.check(a.pages.sample_runs("gallery.sample.listy.retained") == 1, "native Listy reran its sample factory");
+        a.reveal(id);
+        a.render();
+        const auto restored = lists.snapshot(id);
+        input::TextInputSessionStamp stamp;
+        for (const auto& input : a.inputs.mounted_inputs()) {
+            if (owns(input.component, restored.items.front().component)) {
+                a.check(a.app.focus().request_focus(input.interaction, input::FocusModality::keyboard),
+                        "native Listy retirement editor focus rejected");
+                const auto area = a.inputs.layout_snapshot(input.component).viewport;
+                a.pointer(input::PointerAction::down, {area.x + 4, area.y + area.height / 2});
+                a.render();
+                stamp = a.inputs.sessions().active();
+                a.pages.dispatch(input::CompositionChanged{String{u8"候选"}, {}, stamp});
+                a.render();
+                break;
+            }
+        }
+        const auto capture = a.app.pointer().state(input::PointerIdentity::mouse());
+        a.check(stamp.valid() && a.inputs.editors().require(stamp.owner).composition().active && capture &&
+                    capture->capture.has_value(),
+                "native Listy retirement did not arm real editor capture/preedit");
+        a.check(a.pages.request(GalleryPageRoute{GalleryPageKind::introduction}), "native Listy retirement rejected");
+        a.pages.process();
+        a.render();
+        const auto after_capture = a.app.pointer().state(input::PointerIdentity::mouse());
+        a.check(lists.mounted().empty() && !a.app.components().contains(id) && !a.inputs.sessions().active().valid() &&
+                    !a.inputs.editors().find(stamp.owner) && (!after_capture || !after_capture->capture),
+                "native Listy page retirement leaked editor/capture/session");
+        std::cout << "listy_native=passed groups=true measured_virtual=true actual_wheel=true retained_draft=true "
+                     "sticky=true group_draft=true reorder=true empty=true preedit_capture_retired=true\n";
+    }
     if (route.component_identity == "ant.component.table") {
         auto& table = a.app.services().table();
         const auto id = a.pages.target("gallery.table.virtual");

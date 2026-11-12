@@ -11,6 +11,13 @@ namespace ryn {
 enum class ListyDirection { Vertical, Horizontal };
 enum class ListyScrollAlign { Start, End, Auto };
 
+struct ListyVirtualization final {
+    float estimated_item_height{48.0F};
+    float estimated_group_height{32.0F};
+    std::size_t overscan{2};
+    friend bool operator==(const ListyVirtualization&, const ListyVirtualization&) = default;
+};
+
 struct ListyContentSlot final {};
 
 struct ListyEmptySlot final {};
@@ -42,6 +49,8 @@ public:
     [[nodiscard]] bool bound() const;
     [[nodiscard]] bool scrollTo(float offset) const;
     [[nodiscard]] bool scrollTo(String key, ListyScrollAlign align = ListyScrollAlign::Auto, float offset = 0) const;
+    [[nodiscard]] bool scrollToGroup(String key, ListyScrollAlign align = ListyScrollAlign::Auto,
+                                     float offset = 0) const;
 
 private:
     friend class detail::ListyComponentHost;
@@ -76,6 +85,7 @@ namespace detail {
 struct ListyRecord final {
     String key;
     std::shared_ptr<const void> value;
+    String group;
     friend bool operator==(const ListyRecord&, const ListyRecord&) = default;
 };
 
@@ -99,6 +109,10 @@ struct ListyOptions final {
     LayoutStyle layout;
     bool explicit_rtl{};
     bool explicit_disabled{};
+    Prop<bool> virtualized{false};
+    Prop<bool> sticky{false};
+    ListyVirtualization virtualization;
+    std::function<void(String, Binding<std::vector<std::shared_ptr<const void>>>)> group_render;
 };
 
 using ListyRenderer = std::function<void(String, Binding<std::shared_ptr<const void>>, Binding<std::size_t>)>;
@@ -120,6 +134,26 @@ template <class Data> struct ListyItemView final {
     }
 };
 
+template <class Data> struct ListyGroupView final {
+    String key;
+    Binding<std::vector<std::shared_ptr<const void>>> source;
+
+    [[nodiscard]] Prop<std::vector<Data>> items() const {
+        return bind([value = source] {
+            std::vector<Data> result;
+            for (const auto& item : value.get()) {
+                result.push_back(*std::static_pointer_cast<const Data>(item));
+            }
+            return result;
+        });
+    }
+};
+
+template <class Data> struct ListyGroup final {
+    std::function<String(const Data&)> key;
+    std::function<void(ListyGroupView<Data>)> title;
+};
+
 template <class Data = String> class ListyProps final {
 public:
     ListyProps& items(Prop<std::vector<ListyItem<Data>>> value) {
@@ -129,6 +163,26 @@ public:
 
     ListyProps& itemRender(std::function<void(ListyItemView<Data>)> value) {
         render_ = std::move(value);
+        return *this;
+    }
+
+    ListyProps& group(ListyGroup<Data> value) {
+        group_ = std::move(value);
+        return *this;
+    }
+
+    ListyProps& virtualized(Prop<bool> value = true) {
+        options_.virtualized = std::move(value);
+        return *this;
+    }
+
+    ListyProps& virtualization(ListyVirtualization value) {
+        options_.virtualization = value;
+        return *this;
+    }
+
+    ListyProps& sticky(Prop<bool> value = true) {
+        options_.sticky = std::move(value);
         return *this;
     }
 
@@ -220,10 +274,13 @@ public:
     }
 
     void mount() const {
-        auto records = bind([source = items_] {
+        if (group_ && (!group_->key || !group_->title)) {
+            throw std::invalid_argument("Listy grouping requires key and title factories");
+        }
+        auto records = bind([source = items_, group = group_] {
             std::vector<detail::ListyRecord> result;
             for (const auto& item : detail::ListyPropBridge::read(source)) {
-                result.push_back({item.key(), item.data()});
+                result.push_back({item.key(), item.data(), group ? group->key(*item.data()) : String{}});
             }
             return result;
         });
@@ -233,13 +290,20 @@ public:
                 render(ListyItemView<Data>{std::move(key), std::move(value), std::move(index)});
             };
         }
-        detail::mount_listy(options_, std::move(records), std::move(renderer));
+        auto options = options_;
+        if (group_) {
+            options.group_render = [render = group_->title](auto key, auto values) {
+                render(ListyGroupView<Data>{std::move(key), std::move(values)});
+            };
+        }
+        detail::mount_listy(std::move(options), std::move(records), std::move(renderer));
     }
 
 private:
     Prop<std::vector<ListyItem<Data>>> items_{std::vector<ListyItem<Data>>{}};
     std::function<void(ListyItemView<Data>)> render_;
     detail::ListyOptions options_;
+    std::optional<ListyGroup<Data>> group_;
 };
 
 template <class Data> void Listy(ListyProps<Data> props) {

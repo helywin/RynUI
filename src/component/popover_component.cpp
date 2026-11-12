@@ -1151,9 +1151,18 @@ void PopoverComponentHost::position_ancestors(runtime::ComponentId id, runtime::
 }
 
 void PopoverComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect document_clip) {
+    viewport_ = viewport;
+    document_clip_ = document_clip;
     const auto ids = mounted_;
     for (auto id : ids) {
         position_window_layer(id, viewport, document_clip);
+    }
+}
+
+void PopoverComponentHost::synchronize_retained_translations() {
+    for (auto id : mounted_) {
+        services_->enqueue_retained_translation(
+            id, [this, id, viewport = viewport_, clip = document_clip_] { position_window_layer(id, viewport, clip); });
     }
 }
 

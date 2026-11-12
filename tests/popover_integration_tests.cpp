@@ -352,4 +352,6 @@ int main(int argc, char** argv) {
         std::cerr << e.what() << '\n';
         return 1;
     }
+    std::cout << "Popover assertions: " << ryn_test::popover::assertions << '\n';
+    return 0;
 }

@@ -18,6 +18,8 @@ struct ListySnapshot final {
     std::size_t current{1};
     float offset{};
     float maximum{};
+    std::vector<ListyItemSnapshot> groups;
+    std::size_t mounted_items{};
 };
 
 class ListyComponentHost final : public WindowComponentParticipant {
@@ -40,6 +42,7 @@ public:
     }
 
     void prepare_auxiliary_layout() override;
+    void position_window_layers(runtime::Size, runtime::Rect) override;
     void synchronize_retained_translations() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool on_scroll_input(const input::ScrollInputEvent&) override;
@@ -47,8 +50,9 @@ public:
 private:
     void reconcile(runtime::ComponentId);
     void refresh(runtime::ComponentId);
+    bool materialize(runtime::ComponentId);
     bool scroll(runtime::ComponentId, float);
-    bool reveal(runtime::ComponentId, String, ListyScrollAlign, float);
+    bool reveal(runtime::ComponentId, String, ListyScrollAlign, float, bool group = false);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
 };
