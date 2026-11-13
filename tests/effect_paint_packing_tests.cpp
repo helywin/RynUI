@@ -318,18 +318,107 @@ void exact_ratio_guard_sticky_and_carry() {
     require(shift(one, 1151).back() == 32768 && shift(one, 1152) == Integer{}, "wide shift length differs");
 }
 
+effect_source_oracle::Integer decode_exact_integer(const effect_linear_exact::Integer& value) {
+    effect_source_oracle::Integer result;
+    for (std::size_t i = effect_linear_exact::digits; i-- > 0;) {
+        result = effect_source_oracle::shift(result, 16) + effect_source_oracle::Integer{value[i]};
+    }
+    if (value.back() & 32768) {
+        result = result - effect_source_oracle::shift(effect_source_oracle::Integer{1}, 1152);
+    }
+    return result;
+}
+
+void exact_sparse_product_boundaries() {
+    using namespace effect_linear_exact;
+    const auto verify = [](std::uint32_t a, std::uint32_t b, std::uint32_t c) {
+        const auto expected = effect_source_oracle::input(std::bit_cast<float>(a)) *
+                              effect_source_oracle::input(std::bit_cast<float>(b)) *
+                              effect_source_oracle::input(std::bit_cast<float>(c));
+        require(effect_source_oracle::compare(decode_exact_integer(product(a, b, c)), expected) == 0,
+                "small significand product lost a carry, exponent bit, zero or sign");
+    };
+    // Raw exponents exercise shifts 0,1,15,16,17,253 and their sums. Include
+    // +/-0, min/max subnormals, the normal boundary, all-one limbs and negatives.
+    const std::array inputs{0u,          0x80000000u, 1u,          0x80000001u, 0x007fffffu, 0x00800000u, 0x00ffffffu,
+                            0x01000001u, 0x0800ffffu, 0x0880ffffu, 0x0900ffffu, 0x7f7fffffu, 0xff7fffffu};
+    for (const auto a : inputs) {
+        for (const auto b : inputs) {
+            for (const auto c : inputs) {
+                verify(a, b, c);
+            }
+        }
+    }
+    for (std::uint32_t signs = 0; signs < 8; ++signs) {
+        verify(0x00ffffffu | ((signs & 1u) << 31), 0x00ffffffu | (((signs >> 1) & 1u) << 31),
+               0x00ffffffu | (((signs >> 2) & 1u) << 31));
+    }
+    // Independently expand (2^24-1)^3 = 2^72-3*2^48+3*2^24-1.
+    const auto expected_cube = effect_source_oracle::shift(effect_source_oracle::Integer{1}, 72) -
+                               effect_source_oracle::shift(effect_source_oracle::Integer{3}, 48) +
+                               effect_source_oracle::shift(effect_source_oracle::Integer{3}, 24) -
+                               effect_source_oracle::Integer{1};
+    const auto cube = product(0x00ffffffu, 0x00ffffffu, 0x00ffffffu);
+    require(effect_source_oracle::compare(decode_exact_integer(cube), expected_cube) == 0 && cube[4] == 255 &&
+                std::all_of(cube.begin() + 5, cube.end(), [](auto digit) { return digit == 0; }),
+            "maximum triple significand did not retain its full 72-bit product");
+    Integer one{};
+    one[0] = 1;
+    require(effect_source_oracle::compare(decode_exact_integer(add(cube, one)),
+                                          expected_cube + effect_source_oracle::Integer{1}) == 0 &&
+                effect_source_oracle::compare(decode_exact_integer(add(one, cube, true)),
+                                              effect_source_oracle::Integer{1} - expected_cube) == 0,
+            "small product expansion lost wide accumulation carry or subtraction");
+}
+
+void raw_affine_dual_source_regressions() {
+    const EffectLinearDomain a{{-16777211, -16777210}, {-16777203, -16777218}};
+    const EffectLinearDomain b{{-16777210, -16777210}, {-16777202, -16777218}};
+    for (const auto alpha : {0.0F, 0.5F, std::nextafter(1.0F, 0.0F), 1.0F}) {
+        auto effect = fill();
+        const EffectGradientRamp foreground{{0, Color{1, 0, 0, alpha}},
+                                            {1.0F / 32, Color{1, 0, 0, alpha}},
+                                            {1.0F / 32, Color{0, 0, 1, alpha}},
+                                            {1, Color{0, 0, 1, alpha}}};
+        const EffectGradientRamp underlay{{0, Color{0, 1, 0, 0.5F}}, {1, Color{1, 1, 0, 0.5F}}};
+        effect.material.paint = EffectPaint{{foreground, a}, EffectPaintField{underlay, b}};
+        EffectPaintPackedTables tables;
+        pack_effect_paint_tables(std::array{effect}, {128, 96, 1.5F}, tables);
+        const runtime::Point point{16.5F, 16.5F};
+        auto expected = effect_source_oracle::sample(effect.material.paint->foreground, {}, 1.5F, point);
+        const auto behind = effect_source_oracle::sample(*effect.material.paint->underlay, {}, 1.5F, point);
+        require(expected == std::array<double, 4>{0, 0, alpha, alpha} &&
+                    behind == std::array<double, 4>{0, 0.5, 0, 0.5},
+                "independent L1 dual-field analytic colors differ");
+        const auto remaining = 1 - expected[3];
+        for (std::size_t channel = 0; channel < expected.size(); ++channel) {
+            expected[channel] += behind[channel] * remaining;
+        }
+        for (const auto opacity : {0.0F, 0.5F, 1.0F}) {
+            auto surface = fill();
+            surface.material.opacity = opacity;
+            // The interior, exact AA midpoint and outside have coverage 1,.5,0.
+            for (const auto left : {10.0F, 16.5F, 20.0F}) {
+                surface.geometry.shape.rect.x = left;
+                const auto coverage = left == 10 ? 1.0 : left == 16.5F ? 0.5 : 0.0;
+                const auto actual =
+                    effect_paint_gpu_fragment_reference(point, pack_rounded_effect_instance(surface, {128, 96, 1}),
+                                                        tables.links[0], tables.fields, tables.stops);
+                if (alpha < 1 && opacity > 0 && coverage > 0) {
+                    require(actual[1] > 0, "nonopaque foreground lost the distinct underlay, including nextdown(1)");
+                }
+                for (std::size_t channel = 0; channel < expected.size(); ++channel) {
+                    const auto pm = channel == 3 ? actual[3] : actual[channel] * actual[3];
+                    require(std::abs(double(pm) - expected[channel] * coverage * opacity) < 2e-7,
+                            "dual fields changed source-over or coverage/opacity applied once");
+                }
+            }
+        }
+    }
+}
+
 void exact_polynomial_integer_boundaries() {
     using namespace effect_linear_exact;
-    const auto decode = [](const Integer& value) {
-        effect_source_oracle::Integer result;
-        for (std::size_t i = digits; i-- > 0;) {
-            result = effect_source_oracle::shift(result, 16) + effect_source_oracle::Integer{value[i]};
-        }
-        if (value.back() & 32768) {
-            result = result - effect_source_oracle::shift(effect_source_oracle::Integer{1}, 1152);
-        }
-        return result;
-    };
     const auto maximum = std::numeric_limits<float>::max();
     const auto tiny = std::numeric_limits<float>::denorm_min();
     // Arithmetic kernel probes intentionally include points outside the retained
@@ -349,13 +438,13 @@ void exact_polynomial_integer_boundaries() {
             axis(std::bit_cast<std::uint32_t>(point.y), std::bit_cast<std::uint32_t>(domain.start.y),
                  std::bit_cast<std::uint32_t>(domain.end.y), std::bit_cast<std::uint32_t>(translation.y),
                  std::bit_cast<std::uint32_t>(scale), n, d);
-            require(effect_source_oracle::compare(decode(n), source.numerator) == 0 &&
-                        effect_source_oracle::compare(decode(d), source.denominator) == 0,
+            require(effect_source_oracle::compare(decode_exact_integer(n), source.numerator) == 0 &&
+                        effect_source_oracle::compare(decode_exact_integer(d), source.denominator) == 0,
                     "1152-bit original-factor polynomial differs from unbounded factored source");
             for (const auto stop : {-maximum, -tiny, -0.0F, tiny, maximum}) {
                 const auto expected = effect_source_oracle::input(stop) * source.denominator;
                 const auto actual = stop_product(d, stop);
-                require(effect_source_oracle::compare(decode(actual), expected) == 0 &&
+                require(effect_source_oracle::compare(decode_exact_integer(actual), expected) == 0 &&
                             less(shift(n, 149), actual) ==
                                 (effect_source_oracle::compare(effect_source_oracle::shift(source.numerator, 149),
                                                                expected) < 0),
@@ -374,6 +463,8 @@ int main() {
         malformed_tables_and_capacity();
         raw_affine_source_regressions();
         exact_ratio_guard_sticky_and_carry();
+        exact_sparse_product_boundaries();
+        raw_affine_dual_source_regressions();
         exact_polynomial_integer_boundaries();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

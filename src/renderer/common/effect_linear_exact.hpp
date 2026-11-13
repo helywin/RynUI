@@ -61,12 +61,42 @@ inline std::uint32_t integer_shift(std::uint32_t bits) {
     return biased ? biased - 1 : 0;
 }
 
-inline Integer product(std::uint32_t a, std::uint32_t b, std::uint32_t c) {
-    Integer result{};
-    result[0] = 1;
-    for (const auto bits : std::array{a, b, c}) {
-        result = times_significand(result, significand(bits));
+using SmallProduct = std::array<std::uint32_t, 5>;
+
+inline SmallProduct small_times_significand(const SmallProduct& value, std::uint32_t significand) {
+    SmallProduct result{};
+    for (std::size_t j = 0; j < 2; ++j) {
+        const auto multiplier = (significand >> (16 * j)) & 65535;
+        std::uint32_t carry{};
+        for (std::size_t i = 0; i < result.size() - j; ++i) {
+            // Each digit/carry <= 65535: (65535^2)+65535+65535 = 2^32-1.
+            const auto product = value[i] * multiplier + result[i + j] + carry;
+            result[i + j] = product & 65535;
+            carry = product >> 16;
+        }
     }
+    return result;
+}
+
+inline Integer product(std::uint32_t a, std::uint32_t b, std::uint32_t c) {
+    const auto a_significand = significand(a);
+    const auto b_significand = significand(b);
+    const auto c_significand = significand(c);
+    if (!a_significand || !b_significand || !c_significand) {
+        return {};
+    }
+    // Only 24-bit significands enter: stages <2^48 and <2^72. Positive partial
+    // rows fit in 80 bits, discarded carries are zero, and the top digit <=255.
+    SmallProduct small{};
+    small[0] = a_significand & 65535;
+    small[1] = a_significand >> 16;
+    small = small_times_significand(small, b_significand);
+    small = small_times_significand(small, c_significand);
+    Integer result{};
+    for (std::size_t i = 0; i < small.size(); ++i) {
+        result[i] = small[i];
+    }
+    // Finite raw inputs shift by at most 3*253; 72+759 < 1152, no high bits lost.
     result = shift(result, integer_shift(a) + integer_shift(b) + integer_shift(c));
     return ((a ^ b ^ c) >> 31) ? add({}, result, true) : result;
 }

@@ -68,13 +68,45 @@ uint EffectIntegerShift(uint bits) {
     return biased == 0u ? 0u : biased - 1u;
 }
 
+struct EffectExactSmallProduct {
+    uint digit[5];
+};
+
+EffectExactSmallProduct EffectExactSmallTimesSignificand(EffectExactSmallProduct value, uint significand) {
+    EffectExactSmallProduct result = (EffectExactSmallProduct)0;
+    [unroll] for (uint j = 0u; j < 2u; ++j) {
+        uint multiplier = (significand >> (16u * j)) & 65535u;
+        uint carry = 0u;
+        [unroll] for (uint i = 0u; i < 5u - j; ++i) {
+            // Each digit/carry <= 65535: (65535^2)+65535+65535 = 2^32-1.
+            uint product = value.digit[i] * multiplier + result.digit[i + j] + carry;
+            result.digit[i + j] = product & 65535u;
+            carry = product >> 16u;
+        }
+    }
+    return result;
+}
+
 void EffectExactProduct(inout EffectExact sum, uint a, uint b, uint c, bool subtract) {
+    uint aSignificand = EffectSignificand(a);
+    uint bSignificand = EffectSignificand(b);
+    uint cSignificand = EffectSignificand(c);
+    [branch] if (aSignificand == 0u || bSignificand == 0u || cSignificand == 0u) {
+        return;
+    }
+    // Called only for 24-bit significands: the two stages are <2^48 and <2^72.
+    // All positive partial rows fit in 5 digits (80 bits), so discarded carries
+    // are zero; the top digit uses at most 8 bits. Expand only this exact product.
+    EffectExactSmallProduct small = (EffectExactSmallProduct)0;
+    small.digit[0] = aSignificand & 65535u;
+    small.digit[1] = aSignificand >> 16u;
+    small = EffectExactSmallTimesSignificand(small, bSignificand);
+    small = EffectExactSmallTimesSignificand(small, cSignificand);
     EffectExact product = (EffectExact)0;
-    uint significand = EffectSignificand(a);
-    product.digit[0] = significand & 65535u;
-    product.digit[1] = significand >> 16u;
-    product = EffectExactTimesSignificand(product, EffectSignificand(b));
-    product = EffectExactTimesSignificand(product, EffectSignificand(c));
+    [unroll] for (uint i = 0u; i < 5u; ++i) {
+        product.digit[i] = small.digit[i];
+    }
+    // Finite raw inputs shift by at most 3*253; 72+759 < 1152, no high bits lost.
     product = EffectExactShift(product, EffectIntegerShift(a) + EffectIntegerShift(b) + EffectIntegerShift(c));
     sum = EffectExactAdd(sum, product, subtract != (((a ^ b ^ c) >> 31u) != 0u));
 }

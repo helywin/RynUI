@@ -70,13 +70,16 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
     [branch] if (input.paintLink.x == 0xffffffffu) {
         return float4(input.color.rgb, input.color.a * input.materialParams.x * coverage);
     }
+    float factor = coverage * input.materialParams.x;
+    [branch] if (factor == 0.0) {
+        return 0.0;
+    }
     float4 combined = SampleEffectField(samplePosition, input.paintLink.x);
-    [branch] if (input.paintLink.y != 0xffffffffu) {
+    [branch] if (input.paintLink.y != 0xffffffffu && combined.a != 1.0) {
         float4 underlay = SampleEffectField(samplePosition, input.paintLink.y);
         combined += underlay * (1.0 - combined.a);
     }
-    float factor = coverage * input.materialParams.x;
-    if (combined.a <= 0.0 || factor == 0.0) {
+    if (combined.a <= 0.0) {
         return 0.0;
     }
     return float4(combined.rgb / combined.a, combined.a * factor);
