@@ -73,6 +73,7 @@ def tree_digest(root):
 
 
 def main():
+    previous = json.loads((HERE / 'dependencies.lock.json').read_text())
     lock_text = (HERE / 'pnpm-lock.yaml').read_text()
     packages = lock_text.split('\npackages:\n', 1)[1].split('\nsnapshots:\n', 1)[0]
     rows = re.findall(r"^  '?([^\n']+)'?:\n    resolution: \{integrity: ([^}]+)\}", packages, re.M)
@@ -124,6 +125,22 @@ def main():
     with tarfile.open(ROOT / 'out/demo-differential/downloads/node-v22.21.1-linux-x64.tar.xz') as archive:
         lock['node']['artifacts']['linux-x64']['executable_sha256'] = hashlib.sha256(archive.extractfile('node-v22.21.1-linux-x64/bin/node').read()).hexdigest()
         lock['node']['license_sha256'] = hashlib.sha256(archive.extractfile('node-v22.21.1-linux-x64/LICENSE').read()).hexdigest()
+    # Keep the separately verified Windows pins when refreshing npm/Linux data.
+    # Re-read actual official archives; never carry platform hashes on trust or
+    # silently reduce a complete Windows record to its URL/archive hash alone.
+    for tool in ('node', 'browser'):
+        record = previous[tool]['artifacts']['win-x64']
+        data = fetch(record['url'], OUT / (tool + '-win-x64.zip'))
+        assert len(data) == record['bytes']
+        assert hashlib.sha256(data).hexdigest() == record['sha256']
+        with __import__('zipfile').ZipFile(io.BytesIO(data)) as archive:
+            files = {name.split('/', 1)[1]: hashlib.sha256(archive.read(name)).hexdigest()
+                     for name in archive.namelist() if not name.endswith('/')}
+            assert hashlib.sha256(archive.read(record['executable'])).hexdigest() == record['executable_sha256']
+        assert hashlib.sha256(json.dumps(files, sort_keys=True, separators=(',', ':')).encode()).hexdigest() == record['files_sha256']
+        if tool == 'node':
+            assert files['LICENSE'] == record['license_sha256']
+        lock[tool]['artifacts']['win-x64'] = record
     license_url = 'https://raw.githubusercontent.com/chromium/chromium/141.0.7390.37/LICENSE'
     license_bytes = fetch(license_url, OUT / 'chromium-LICENSE')
     lock['browser']['license_url'] = license_url

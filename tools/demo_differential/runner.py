@@ -269,7 +269,7 @@ def run(options, definitions, *, adapters=None, comparator=None, coverage_docume
                     library = options.get('comparison_site')
                     if not library:
                         try:
-                            library = prepare(directory / 'comparison-dependencies')
+                            library = prepare(directory / 'comparison-dependencies', offline=options.get('offline', False))
                         except ProtocolError as error:
                             raise RunError(3, 'environment', str(error)) from error
                         options['comparison_site'] = library

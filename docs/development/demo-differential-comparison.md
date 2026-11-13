@@ -4,9 +4,39 @@
 
 局部 raster 指标保留最大 channel residual、变化连通块、两侧 foreground occupancy、coverage mass 和双向 contour 距离。每个必需 glyph/run/icon 都须独立调用，不能用整图均值稀释一个小图标；两侧同为空白不会得到存在性通过。background 必须是独立声明/校准值，不从当前 native 失败图估计。以上为原始编码 byte/轮廓度量，尚不构成色彩转换、容差校准或完整比较 verdict。
 
-PNG/BMP 解码所需 Pillow 单独锁在 `comparison-dependencies.lock.json`：12.0.0，wheel/source URL、实际 SHA256、完整安装文件和所带 license hashes。`comparison_dependencies.prepare(<fresh ignored out>)` 只解包到任务目录，`image_module(<site-packages>)` 先核文件集合/hash，再核实际 import origin/version；不使用已安装的全局第三方包或隐式 fallback。Python 记录兼容性和实际 `sys.version`，不固定解释器 patch 版本。
+PNG/BMP 解码所需 Pillow 单独锁在 `comparison-dependencies.lock.json`：12.0.0，wheel/source URL、实际 SHA256、完整安装文件和所带 license hashes。`comparison_dependencies.prepare(<fresh ignored out>)` 只解包到任务目录，`image_module(<site-packages>)` 先核文件集合/hash，再核实际 import origin/version；不使用已安装的全局第三方包或隐式 fallback。活动 Python 按 ABI 验证并记录实际 `sys.version`；Windows BUNDLED 解释器归档另外固定，见下。
 
-当前锁提供 Linux/Windows x64 CPython 3.14 ABI wheel；ABI 是二进制兼容条件，同一 ABI 的其他 Python patch 版本不被 gate。其他 ABI 应明确报无兼容锁，不能假装自动可用。Linux 实际 archive install/import 已测；Windows 只有 archive/hash 元数据，未在 Windows 执行，不计平台验收。
+当前锁提供 Linux/Windows x64、非 free-threaded CPython 3.14 ABI wheel；ABI 是二进制兼容条件，同一 ABI 的其他 Python patch 版本不被 gate。其他 ABI/32 bit 应明确报无兼容锁，不能假装自动可用。Linux 既有 wheel 路线保留。Windows 已通过实际 CPython 3.14.0 + Pillow 12.0.0 的 CPU import、PNG/BMP 往返与 fresh/offline 重复控制；这不计 GPU 或 paired 平台验收。
+
+## Windows x64 解释器准备
+
+`comparison_runtime.discover_interpreters()` 只探测当前 Python 和 PythonCore 3.14 注册路径，验证 CPython/实际 executable、3.14、64 bit、`cp314-win_amd64` 与非 free-threaded；不通过 PATH 猜工具。先运行发现命令；若返回兼容解释器，可显式选择 `mode='SYSTEM', python=r'<返回的 executable>'`。SYSTEM 解释器按既有 ABI 合同允许 3.14 patch release，并记录实际版本和 executable hash；不会接受 Python 3.10。发现为空时显式选择 BUNDLED，不自动改模式：
+
+```powershell
+$bootstrapPython = 'C:/Users/jiang/AppData/Local/Programs/Python/Python310/python.exe'
+& $bootstrapPython -B -c "import sys,json; sys.path.insert(0,'tools'); from demo_differential.comparison_runtime import discover_interpreters; print(json.dumps(discover_interpreters(),indent=2))"
+$runtime = (& $bootstrapPython -B -c "import sys,json; sys.path.insert(0,'tools'); from demo_differential.comparison_runtime import prepare_runtime; print(json.dumps(prepare_runtime('out/demo-differential/comparison-win',mode='BUNDLED')))") | ConvertFrom-Json
+$comparisonPython = $runtime.python
+$pythonFlags = $runtime.python_flags
+& $comparisonPython @pythonFlags tools/demo_reference_web/bootstrap.py --mode BUNDLED --output out/demo-differential/prepared
+# 主 runner 的其余参数见 demo-differential-testing.md。
+# 用 & $comparisonPython @pythonFlags $runtime.runner run ... 启动，
+# 并传 --comparison-site $runtime.comparison_site。
+```
+
+BUNDLED 固定 [官方 CPython 3.14.0 embeddable amd64 zip](https://www.python.org/downloads/release/python-3140/)，URL/bytes SHA256、完整 36 文件和 LICENSE.txt hash 在比较器锁；不运行 installer、pip 或修改系统 Python。Python 3.10 只用于标准库 zip 引导。所有解释器/DLL/配置、Pillow wheel/site、原始 runtime 记录与 hash 缓存在 out。新目录必需；归档缓存损坏即拒绝，不能联网覆盖消错；`offline=True` 不发网络请求，`downloads='<directory>'` 只按两个已锁 SHA256 导入归档。
+
+依据 [CPython Windows embeddable 说明](https://docs.python.org/3.14/using/windows.html#the-embeddable-package)，只改 out 内 `python314._pth` 为标准库 zip、解释器目录和本 checkout tools 的显式路径，不启用 `import site`。启动 flags 为 `-E -s -S -B`；`$runtime.runner` 是 out 内的简短入口，固定本 checkout tools 的 import 路径后运行原 runner，避免 SYSTEM embeddable 的外部 `._pth` 指向另一 checkout。Pillow 由 `--comparison-site` 经 `image_module()` 验证后加入 sys.path，不把未经校验的第三方目录写进 `._pth`。`verify_runtime(<out/runtime>)` 重新检查锁、解释器完整文件/配置、入口、实际 ABI、Pillow 完整文件与 CPU codec。换 checkout/移动目录后必须重建。
+
+CPU 控制入口（先显式准备真实 archive caches；这些不启动页面或 Node 包脚本）：
+
+```powershell
+& $comparisonPython @pythonFlags -m unittest discover -s tests -p demo_differential_windows_preparation_tests.py
+$env:RYNUI_COMPARATOR_WHEEL = 'out/demo-differential/comparison-win/comparison/pillow-12.0.0-cp314-cp314-win_amd64.whl'
+& $comparisonPython @pythonFlags -m unittest discover -s tests -p demo_differential_comparison_dependencies_tests.py
+```
+
+Windows Web CPU 控制需要 `out/demo-differential/archives` 中的真实 Node/browser/source/npm 归档，可由父执行正常 Web prepare 填充；缺归档失败。它只执行 Node/browser `--version`，在 pnpm 安装前明确停止；真实 frozen-lockfile 安装、浏览器动作/图像与 pilot 仍由父侧运行。比较器 `prepare(..., offline=True)` 也支持单独的 ABI 兼容解释器调用；runner 的自动准备调用须传递其 `--offline` 选项，传显式 `--comparison-site` 可避免自动准备路径。
 
 `demo_differential_regions_tests.py` 的确定性程序控制只证明 ROI/局部度量，`demo_differential_comparison_dependencies_tests.py` 验证真实 archive 安装及损坏拒绝。这些不代替两侧真实组件执行、五次正控制/留出负控制、有效 profile 或实际 GPU 红绿。缺失的上层校准、Token/text/alpha/clip/overflow AND 判定仍按 109 tasks 跟踪，不根据当前差异学习宽松阈值。
 

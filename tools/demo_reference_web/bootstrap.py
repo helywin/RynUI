@@ -67,12 +67,31 @@ def load_lock():
     return lock
 
 
+def host_platform(lock):
+    host = {'Linux': 'linux', 'Windows': 'win'}.get(platform.system(), 'unsupported') + '-' + {
+        'x86_64': 'x64', 'AMD64': 'x64', 'amd64': 'x64'}.get(platform.machine(), platform.machine())
+    require(host in lock['browser']['artifacts'] and host in lock['node']['artifacts'],
+            'no locked tool/browser artifact for platform ' + host)
+    return host
+
+
+def platform_packages(lock, host):
+    system, cpu = host.split('-', 1)
+    system = {'win': 'win32'}.get(system, system)
+    def matches(values, value):
+        return value not in [v[1:] for v in values if v.startswith('!')] and (
+            not any(not v.startswith('!') for v in values) or value in values)
+    return [r for r in lock['npm'] if r['name'] != 'pnpm'
+            and matches(r.get('os', []), system) and matches(r.get('cpu', []), cpu)]
+
+
 def fetch(record, cache, offline=False):
     cache = output_path(cache)
     cache.mkdir(parents=True, exist_ok=True)
     path = cache / record['sha256']
     if path.exists():
         require(sha(path) == record['sha256'], 'corrupt archive cache: ' + str(path))
+        require('bytes' not in record or path.stat().st_size == record['bytes'], 'archive byte count mismatch')
         return path
     require(not offline, 'offline archive missing: ' + record['url'])
     with tempfile.NamedTemporaryFile(dir=cache, delete=False) as stream:
@@ -82,6 +101,7 @@ def fetch(record, cache, offline=False):
                 shutil.copyfileobj(response, stream)
             stream.close()
             require(sha(pending) == record['sha256'], 'archive SHA256 mismatch: ' + record['url'])
+            require('bytes' not in record or pending.stat().st_size == record['bytes'], 'archive byte count mismatch')
             if 'integrity' in record:
                 algorithm, expected = record['integrity'].split('-', 1)
                 actual = base64.b64encode(hashlib.new(algorithm, pending.read_bytes()).digest()).decode()
@@ -156,6 +176,13 @@ def version(argv, expected):
     require(actual == expected, f'version mismatch: {actual!r}, expected {expected!r}')
 
 
+def verify_windows_node(node, artifact):
+    node = Path(node)
+    require(node.name == Path(artifact['executable']).name, 'Node executable path mismatch')
+    require(tree_digest(node.parent) == artifact['files_sha256'], 'Node resource drift')
+    require(sha(node.parent / 'LICENSE') == artifact['license_sha256'], 'Node license drift')
+
+
 def verify_packages(install, lock, cache, offline):
     # Verify actual installed bytes against independently SHA256+integrity checked tarballs.
     verified = {}
@@ -184,10 +211,19 @@ def verify_packages(install, lock, cache, offline):
     for name, expected in read(HERE / 'package.json')['dependencies'].items():
         require(read(install / 'node_modules' / name / 'package.json')['version'] == expected,
                 'missing/wrong direct dependency: ' + name)
+    expected = {r['name'] + '@' + r['version'] for r in platform_packages(lock, host_platform(lock))}
+    require(set(verified) == expected, 'installed platform dependency closure differs; missing: ' +
+            ', '.join(sorted(expected - set(verified))) + '; extra: ' + ', '.join(sorted(set(verified) - expected)))
     return verified
 
 
 def library_fingerprints(executable):
+    if platform.system() == 'Windows':
+        from demo_reference_web.windows_dependencies import fingerprints
+        try:
+            return fingerprints(executable)
+        except (OSError, ValueError) as error:
+            raise PreparationError('Windows browser dependency closure: ' + str(error)) from error
     if platform.system() != 'Linux':
         raise PreparationError('shared-library provenance is not implemented on this platform')
     text = subprocess.check_output(['ldd', str(executable)], text=True, timeout=20)
@@ -218,16 +254,16 @@ def prepare(output, *, mode='BUNDLED', offline=False, downloads=None, node=None,
     require(not output.exists(), 'prepare output already exists')
     lock = load_lock()
     require(mode in lock['modes'], 'explicit BUNDLED or SYSTEM required')
-    host = {'Linux': 'linux', 'Windows': 'win'}.get(platform.system(), 'unsupported') + '-' + {
-        'x86_64': 'x64', 'AMD64': 'x64'}.get(platform.machine(), platform.machine())
-    require(host in lock['browser']['artifacts'], 'no locked browser artifact for platform ' + host)
+    host = host_platform(lock)
     output.mkdir(parents=True)
     cache = ROOT / 'out/demo-differential/archives'
     cache.mkdir(parents=True, exist_ok=True)
     seed_downloads(downloads, lock, cache)
     environment = os.environ.copy()
-    for name in ('NPM_CONFIG_PREFIX', 'PNPM_HOME', 'NODE_PATH'):
-        environment.pop(name, None)
+    for name in list(environment):
+        if name.upper().startswith(('NPM_CONFIG_', 'PNPM_', 'COREPACK_')) or name.upper() in (
+                'NODE_PATH', 'NODE_OPTIONS', 'ESBUILD_BINARY_PATH', 'PLAYWRIGHT_BROWSERS_PATH'):
+            environment.pop(name)
     environment.update({'PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD': '1', 'CI': 'true',
                         'npm_config_cache': str(output / 'npm-cache'),
                         'npm_config_userconfig': str(output / 'npmrc'),
@@ -236,30 +272,32 @@ def prepare(output, *, mode='BUNDLED', offline=False, downloads=None, node=None,
     if mode == 'BUNDLED':
         require(not any([node, pnpm, browser, source]), 'BUNDLED cannot use SYSTEM overrides')
         extract(fetch(lock['node']['artifacts'][host], cache, offline), output / 'node')
-        node = next((output / 'node').glob('*/bin/node'))
+        node = output / 'node' / lock['node']['artifacts'][host].get('executable',
+                    'node-v' + lock['node']['version'] + '-linux-x64/bin/node')
         pnpm_row = next(r for r in lock['npm'] if r['name'] == 'pnpm')
         extract(fetch(pnpm_row, cache, offline), output / 'pnpm')
         pnpm = output / 'pnpm/package/bin/pnpm.cjs'
         extract(fetch(lock['browser']['artifacts'][host], cache, offline), output / 'browser')
-        browser = output / 'browser/chrome-linux/headless_shell'
-        # The upstream archive names this chrome-linux (not chrome-headless-shell-linux).
-        if not browser.exists():
-            browser = output / 'browser/chrome-headless-shell-linux64/headless_shell'
+        browser = output / 'browser' / lock['browser']['artifacts'][host].get(
+            'executable', 'chrome-linux/headless_shell')
         extract(fetch(lock['source'], cache, offline), output / 'source')
         source = next((output / 'source').iterdir())
     else:
         require(all([node, pnpm, browser, source]), 'SYSTEM requires explicit node, pnpm CLI, browser, source')
         node, pnpm, browser, source = [Path(x).resolve() for x in (node, pnpm, browser, source)]
     require(sha(node) == lock['node']['artifacts'][host]['executable_sha256'], 'Node binary drift')
+    if host == 'win-x64':
+        verify_windows_node(node, lock['node']['artifacts'][host])
     pnpm_row = next(r for r in lock['npm'] if r['name'] == 'pnpm')
     require(tree_digest(Path(pnpm).parents[1]) == pnpm_row['files_sha256'], 'pnpm tool source drift')
     version([node, '--version'], 'v' + lock['node']['version'])
     version([node, pnpm, '--version'], '10.23.0')
-    browser_version = subprocess.check_output([str(browser), '--version'], text=True, timeout=20).strip()
-    require(lock['browser']['version'] in browser_version, 'browser version mismatch')
     if 'executable_sha256' in lock['browser']['artifacts'][host]:
         require(sha(browser) == lock['browser']['artifacts'][host]['executable_sha256'], 'browser binary drift')
     require(tree_digest(Path(browser).parent) == lock['browser']['artifacts'][host]['files_sha256'], 'browser resource drift')
+    browser_version = subprocess.check_output([str(browser), '--version'], text=True, timeout=20).strip()
+    require(browser_version == lock['browser']['artifacts'][host]['version_output'] if host == 'win-x64'
+            else lock['browser']['version'] in browser_version, 'browser version mismatch')
     verify_source(source, lock)
     environment['PATH'] = str(Path(node).parent) + os.pathsep + environment.get('PATH', '')
     install = output / 'web-tools'
@@ -297,7 +335,10 @@ def prepare(output, *, mode='BUNDLED', offline=False, downloads=None, node=None,
         registry.server_close()
         thread.join()
     packages = verify_packages(install, lock, cache, offline)
-    run([node, '-e', "console.log(require('esbuild').version); console.log(require('playwright/package.json').version)"],
+    run([node, '-e', "const assert = require('node:assert/strict'); "
+         "assert.equal(require('esbuild').version, '0.25.12'); "
+         "assert.equal(require('playwright/package.json').version, '1.56.1'); "
+         "console.log('esbuild 0.25.12; playwright 1.56.1')"],
         environment, output / 'versions.log', cwd=install)
     if mode == 'BUNDLED':
         readonly(source)
@@ -315,10 +356,13 @@ def verify_prepared(path):
     path = output_path(path)
     record = read(path / 'prepared.json')
     lock = load_lock()
+    require(record['host'] == host_platform(lock), 'prepared host platform differs')
     require(record['lock_sha256'] == sha(HERE / 'dependencies.lock.json'), 'prepared dependency lock drift')
     for key in ('node', 'pnpm', 'browser'):
         require(sha(record[key]) == record[key + '_sha256'], key + ' prepared binary drift')
     require(sha(record['node']) == lock['node']['artifacts'][record['host']]['executable_sha256'], 'locked Node drift')
+    if record['host'] == 'win-x64':
+        verify_windows_node(record['node'], lock['node']['artifacts']['win-x64'])
     require(sha(record['browser']) == lock['browser']['artifacts'][record['host']]['executable_sha256'], 'locked browser drift')
     require(tree_digest(Path(record['browser']).parent) == lock['browser']['artifacts'][record['host']]['files_sha256'], 'locked browser resource drift')
     pnpm_row = next(r for r in lock['npm'] if r['name'] == 'pnpm')

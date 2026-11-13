@@ -2,8 +2,10 @@
 import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -22,18 +24,22 @@ class LibraryTests(unittest.TestCase):
             output=Path(temp)/'runtime'
             site=prepare(output,archive=archive)
             verify(site,package)
-            library=image_module(site)
-            self.assertEqual(library.__version__,package['version'])
-            image=library.new('RGBA',(3,2),(12,34,56,255));path=Path(temp)/'control.png';image.save(path)
-            self.assertEqual(list(library.open(path).convert('RGBA').getdata()),[(12,34,56,255)]*6)
+            with patch.dict(sys.modules,{'PIL':SimpleNamespace(__file__=str(Path(temp)/'global/PIL/__init__.py'))}):
+                with self.assertRaisesRegex(ProtocolError,'another Pillow'):
+                    image_module(site)
+            # Windows cannot delete a mapped .pyd. Keep real import/codec work in
+            # an owned CPU child that exits before TemporaryDirectory cleanup.
+            script=("import sys,io; sys.path.insert(0,"+repr(str(ROOT/'tools'))+"); "
+                    "from demo_differential.comparison_dependencies import image_module; "
+                    "library=image_module("+repr(str(site))+"); "
+                    "assert library.__version__=="+repr(package['version'])+"; "
+                    "image=library.new('RGBA',(3,2),(12,34,56,255)); "
+                    "buffer=io.BytesIO(); image.save(buffer,format='PNG'); buffer.seek(0); "
+                    "assert library.open(buffer).convert('RGBA').tobytes()==image.tobytes()")
+            subprocess.run([sys.executable,'-I','-S','-B','-c',script],check=True,timeout=30)
             target=site/'PIL/Image.py';target.write_bytes(target.read_bytes()+b'\n# corrupted\n')
             with self.assertRaises(ProtocolError): verify(site,package)
             with self.assertRaises(ProtocolError): prepare(output,archive=archive)
-        # A loaded extension remains mapped; the next import must not silently
-        # select another installation merely because the old path disappeared.
-        for name in list(sys.modules):
-            if name=='PIL' or name.startswith('PIL.'):
-                del sys.modules[name]
 
     def test_wrong_abi_is_binary_compatibility_not_patch_pin(self):
         from collections import namedtuple

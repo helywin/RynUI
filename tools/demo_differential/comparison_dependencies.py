@@ -7,8 +7,9 @@ import json
 from pathlib import Path
 import platform
 import shutil
+import struct
+import sysconfig
 import sys
-import urllib.request
 import zipfile
 
 from .protocol import ROOT, ProtocolError, output_path, read
@@ -21,14 +22,15 @@ def sha(path):
 
 
 def wheel_profile():
-    system = {'Linux': 'linux', 'Windows': 'windows'}.get(platform.system())
+    system = {'Linux': 'linux', 'Windows': 'win'}.get(platform.system())
     if system is None or platform.machine().lower() not in ('x86_64', 'amd64'):
         raise ProtocolError('comparison library has no locked wheel for this platform')
     lock = read(LOCK)
     package = lock['libraries']['Pillow'][system + '-x64']
     # This tests binary compatibility, not an exact interpreter patch version.
     abi = 'cp' + str(sys.version_info.major) + str(sys.version_info.minor)
-    if sys.implementation.name != 'cpython' or package['python_abi'] != abi:
+    if (sys.implementation.name != 'cpython' or package['python_abi'] != abi
+            or struct.calcsize('P') != 8 or sysconfig.get_config_var('Py_GIL_DISABLED')):
         raise ProtocolError('no compatible locked Pillow wheel for the active Python ABI')
     return package
 
@@ -45,18 +47,22 @@ def verify(directory, package):
         raise ProtocolError('comparison library installed file set differs')
 
 
-def prepare(output, *, archive=None):
+def prepare(output, *, archive=None, offline=False):
     output = output_path(output)
     package = wheel_profile()
     if output.exists():
         raise ProtocolError('comparison preparation directory must be fresh')
+    # Reuse only a hash-checked cache. Offline never attempts a URL, including
+    # the runner's automatic comparison preparation path.
+    from demo_reference_web.bootstrap import fetch, PreparationError
+    if not archive:
+        try:
+            archive = fetch(package, ROOT / 'out/demo-differential/comparison-archives', offline)
+        except PreparationError as error:
+            raise ProtocolError(str(error)) from error
     output.mkdir(parents=True)
     wheel = output / package['filename']
-    if archive:
-        shutil.copyfile(archive, wheel)
-    else:
-        with urllib.request.urlopen(package['url'], timeout=60) as source, wheel.open('wb') as target:
-            shutil.copyfileobj(source, target)
+    shutil.copyfile(archive, wheel)
     if sha(wheel) != package['sha256']:
         raise ProtocolError('comparison library archive hash differs')
     site = output / 'site-packages'

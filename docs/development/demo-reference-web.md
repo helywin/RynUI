@@ -20,7 +20,11 @@ python -B -m unittest discover -s tests -p 'demo_differential_web_adapter_tests.
 
 BUNDLED 从已核对的归档解包，逐文件检查安装包，再对新目录执行 `pnpm install --frozen-lockfile --ignore-scripts`。安装 registry 是由本次 prepare 创建的 loopback 服务，只提供独立 SHA256/integrity 校验后的锁定 tarball；store、node_modules、npm 配置和日志均在该输出目录。没有旧 store/node_modules 复制，也没有脚本安装、全局配置修改或产品 npm/CMake 依赖。归档首次准备可联网；已有完整归档时加 `--offline` 仍可从零安装。`--downloads <directory>` 仅按完整 SHA256 导入已有归档，partial 不会成为可用归档。
 
-SYSTEM 必须显式提供 `--node <executable> --pnpm <package/bin/pnpm.cjs> --browser <executable> --source <official-source-root>`；版本、二进制、pnpm 整包及源码都必须匹配锁，没有 system-first 或自动 fallback。Linux x64 的 browser 归档/执行路径已锁定；其他平台没有对应 browser lock 时明确失败，Windows 运行与 lock 扩展留在其平台验收阶段。Node Windows zip 的官方校验值不代表已在 Windows 运行。
+SYSTEM 必须显式提供 `--node <executable> --pnpm <package/bin/pnpm.cjs> --browser <executable> --source <official-source-root>`；版本、二进制、pnpm 整包及源码都必须匹配锁，没有 system-first 或自动 fallback。Linux x64 与 Windows x64 分别使用锁定归档/路径；其他 OS/arch 在下载前明确失败。Windows Node 必须保留完整官方 zip 文件树和 LICENSE；仅提供同版本的另一份 node.exe 不满足 SYSTEM。Windows browser 路径为 `chrome-win/headless_shell.exe`，Node 为 `node-v22.21.1-win-x64/node.exe`，来源与 Chromium revision 路径依据 [Playwright v1.56.1 registry](https://github.com/microsoft/playwright/blob/v1.56.1/packages/playwright-core/src/server/registry/index.ts)。
+
+Windows 先按 [比较器解释器准备](demo-differential-comparison.md#windows-x64-解释器准备) 用已有标准库 Python 引导 out 内 CPython 3.14，然后用该解释器执行本页准备命令与整个 runner；这也避免旧 Python 3.10.11 缺少安全 tar data filter 的问题。Web 准备仍不依赖 Pillow。安装包集合须精确等于当前 OS/arch 的锁定闭包，包含 `@esbuild/win32-x64`；即使它在 npm 中标为 optional，缺失仍失败。全平台 optional tarball 继续保留在同一固定锁，版本/hash/license 不变。
+
+Windows `browser_libraries` 由 CPU PE 解析记录 executable、全部 bundled DLL 和递归 eager imports 的实际 System32 文件 SHA256，API-set 经 System32-only loader 解析；不搜索 PATH，也不安装系统库。该指纹不证明 delay-load、运行时 GPU/driver 模块或浏览器页面执行，后者仍由实际 browser/CDP 验收提供。`--version` 只证明该锁定 executable 能报告版本。准备时清除 npm/pnpm/Node/esbuild 外部覆盖环境，安装仍仅使用锁定 Node/pnpm 与本次 loopback registry。
 
 字体从唯一 `cmake/dependencies/RynUIDependencyLock.cmake` 读取 URL/version/hash/license，下载到 out，不另造漂移的字体版本。缺文件、错误 bytes/face/weight、意外系统 fallback 失败。当前 Web 输入支持 face index 0 / weight 400 的锁定 regular 链；其他 face/字重必须先明确扩展锁与 synthesis 合同，不能静默替换。
 

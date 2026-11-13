@@ -24,7 +24,12 @@
       },
       "win-x64": {
         "url": "https://nodejs.org/download/release/v22.21.1/node-v22.21.1-win-x64.zip",
-        "sha256": "3c624e9fbe07e3217552ec52a0f84e2bdc2e6ffa7348f3fdfb9fbf8f42e23fcf"
+        "sha256": "3c624e9fbe07e3217552ec52a0f84e2bdc2e6ffa7348f3fdfb9fbf8f42e23fcf",
+        "bytes": 35556042,
+        "executable": "node-v22.21.1-win-x64/node.exe",
+        "executable_sha256": "471961cb355311c9a9dd8ba417eca8269ead32a2231653084112554cda52e8b3",
+        "files_sha256": "fe0b9f4fe985fe8bf2e2757e2af3807b472f8b28900dd2a379da519a31f62389",
+        "license_sha256": "339c50294da6a84322dcbe7285b57b248123bd4d9e37a2f72d68d5abf2574783"
       }
     },
     "license_sha256": "e991d81497a85bb24fc6bffae0a3637a6accd6c6bc5ce1f2c5698bd555cf9d49"
@@ -61,6 +66,15 @@
         "sha256": "d745c7210cc88b73c7991a22c9624819960d84bc3de77ac7336d2de841a8c91f",
         "files_sha256": "07023dd72c47acd59cff05480bef9a24cb1e5bec7be05927c4001e17e9fa8d24",
         "executable_sha256": "6c82af1bb96955970f0ff50884bcbd75f200222414dc136076ada667bf4628d1"
+      },
+      "win-x64": {
+        "url": "https://cdn.playwright.dev/builds/chromium/1194/chromium-headless-shell-win64.zip",
+        "sha256": "c745ef87016c69b11f461ca5eced32c69abcf1ae450e37b450585de9f446e103",
+        "bytes": 95373298,
+        "executable": "chrome-win/headless_shell.exe",
+        "version_output": "Chromium 141.0.7390.37",
+        "files_sha256": "6be309f9a1945c995e266f949d76276ab755fe4e07b83cea5a6b63fc90d8c5e8",
+        "executable_sha256": "ed19d88b4486c39c0265b0c07cbf1d6835d06069e600bede1adb09db0df46c8e"
       }
     },
     "license_url": "https://raw.githubusercontent.com/chromium/chromium/141.0.7390.37/LICENSE",

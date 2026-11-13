@@ -1,5 +1,59 @@
 {
   "schema_version": 1,
+  "python_runtime": {
+    "win-x64": {
+      "implementation": "cpython",
+      "version": "3.14.0",
+      "python_abi": "cp314",
+      "soabi": "cp314-win_amd64",
+      "url": "https://www.python.org/ftp/python/3.14.0/python-3.14.0-embed-amd64.zip",
+      "release_url": "https://www.python.org/downloads/release/python-3140/",
+      "sha256": "8d4d3590c10449d78aa4375f534e6d5f3027d67fdc362dd1a882279db6f90fdf",
+      "bytes": 11994671,
+      "executable": "python.exe",
+      "license": "PSF-2.0 AND bundled-third-party",
+      "license_file": "LICENSE.txt",
+      "license_sha256": "935cf13e19f8c31b497d20b05d73623431a226b230c3599bc30fa3348979bc68",
+      "files": {
+        "python.exe": "467014615a5255aca450ae88100dd2caf887da87657f00e3c2171ec44a685aec",
+        "pythonw.exe": "d278b258a6d565aa014a4cab0731134facdec77e9b25d97d0c235922353464b3",
+        "python314.dll": "f1722bd369d79fecbc85f3ed2790c30c330b9413fd74332f95b086e60dfacc2a",
+        "python3.dll": "27972cedfa8ca9f6835a2cbbff95336b15773a05b10067e3b084409095341068",
+        "vcruntime140.dll": "052ad6a20d375957e82aa6a3c441ea548d89be0981516ca7eb306e063d5027f4",
+        "vcruntime140_1.dll": "6a99bc0128e0c7d6cbbf615fcc26909565e17d4ca3451b97f8987f9c6acbc6c8",
+        "LICENSE.txt": "935cf13e19f8c31b497d20b05d73623431a226b230c3599bc30fa3348979bc68",
+        "pyexpat.pyd": "489ec5678cf44e878ce72a84a9149d67dbe926bdcf8d337ee8fd06b04b3f994b",
+        "select.pyd": "5c4103eef14aebd195425d42196895ffb87bf6a25ab4651242bebf0a6b25cf1d",
+        "unicodedata.pyd": "552317719cb70d92b73d9cd0d54c314ebab2f4dd1c468221e49c3190f24a4e7e",
+        "winsound.pyd": "b23776248616522fcb09d35d2841edccf22703c292b16cb364a9293eb9bd8722",
+        "_asyncio.pyd": "bdd004633904171c4d00b84deb69707667b676156840d7869a38edb7ba52d25b",
+        "_bz2.pyd": "f0643f805a011efc704df472bb431ba231e6ae31fb7ba71328df1b6f1a9e1aa2",
+        "_ctypes.pyd": "f761aad10818806531aa431143b30f0d90a0a402b60f6f1c6e406fcc08f4e6b8",
+        "_decimal.pyd": "a33b1562acc8201411971f54444bd9c648f2d194d9914f0eb734904882213828",
+        "_elementtree.pyd": "e28d76c0accf1fb4709ed2b01bdf2ca1c6aab309cda2b9ee8cb35363caf6f5cc",
+        "_hashlib.pyd": "052f824d5e3a046aa401efef86307c0c7746a0d8ff85c855d4225d6fe565bb07",
+        "_lzma.pyd": "3a0c632ba1b9bef724e87e42011942ba90b0dee1b47bcd563728899e95dcb723",
+        "_multiprocessing.pyd": "a8fd9f42314077d35060055f946176ad5753e6bdee9ac175c675d5be8796ea24",
+        "_overlapped.pyd": "d08ccd8aa330d52f7793995194f79465a47cc6aab9dcbac017a72cd3c96398f8",
+        "_queue.pyd": "4fd91087253a1507a5e5068eb366e77826efc27a568707ed4796d638df1fcf1a",
+        "_remote_debugging.pyd": "58d6b6b7ab897377cf3a42b42889638261fdf2218c29a0eeccb0d79c688fe5d0",
+        "_socket.pyd": "6a016011e78e2476eb19dbe7330b373b9e2c66ff6c0be9bd64ff008ee53647ef",
+        "_sqlite3.pyd": "23370d813030202ae481b114fa042ddff6edd31cdaa6bba4616718ecf0628ff4",
+        "_ssl.pyd": "1edd9575243ae8322f6a21e9eecc933701c5820f05e7b0ebc0b51cb80592da77",
+        "_uuid.pyd": "2f141001cc496ff2f462e5247276d16a4f92ff741c75c81ed4e12e16ad859b10",
+        "_wmi.pyd": "2aec82cd41bfc201fd04143023c7493f117436041f66120ddcd4a24b131ca9db",
+        "_zoneinfo.pyd": "f02125eee6fdbcd0c4d68fc84abab9d0f3d37bc5030cad7ef1eeb36816c26be3",
+        "_zstd.pyd": "74f64a5d724cad1c10ca9ba579b6af198178406b0a4f061685326e79cffa3eea",
+        "libcrypto-3.dll": "e03dd02fdcfb791981c9962827cfcf495f2a47a514c1526efb57f847a9df514a",
+        "libffi-8.dll": "eff52743773eb550fcc6ce3efc37c85724502233b6b002a35496d828bd7b280a",
+        "libssl-3.dll": "1e4bc0638682bfcbb36f4465d6a2e9944d917a60f05ecc8ddf9e96847e05e13f",
+        "sqlite3.dll": "c068490825d8258cfc16e9e2566d6ff5c2cdf91050db36f80ae62f4b2fd37456",
+        "python314.zip": "f9b891b0aae0d0aa0c3120183a8141a21c3909a35cfea66cbdbc5cb7082d5a95",
+        "python314._pth": "2ed7ccda80e9e28ab5877902a9a325586c8a7b7b3e6731d944565bee082e216c",
+        "python.cat": "53cb8146aa95951419fc3c4cc81e2c409eb122964077d6f0b41c3a9d36849c93"
+      }
+    }
+  },
   "libraries": {
     "Pillow": {
       "linux-x64": {
@@ -293,5 +347,5 @@
     "sha256": "87d4f8125c9988bfbed67af47dd7a953e2fc7b0cc1e7800ec6d2080d490bb353",
     "license": "MIT-CMU"
   },
-  "python_compatibility": "CPython >=3.10; choose a compatible wheel ABI, no exact interpreter-version gate"
+  "python_compatibility": "Web/bootstrap accepts CPython >=3.10; locked Pillow requires non-free-threaded CPython 3.14 x64. SYSTEM accepts compatible 3.14 patch releases; Windows BUNDLED interpreter bytes are pinned separately."
 }

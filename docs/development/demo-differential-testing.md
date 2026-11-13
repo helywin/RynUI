@@ -53,7 +53,7 @@ python -B tools/run_demo_differential.py run --suite pilot --reference locked --
 python -B tools/run_demo_differential.py replay --failure out/demo-differential/pilot-fresh/report.json --binary <fixed-gallery-binary> --output out/demo-differential/pilot-replay-fresh
 ```
 
-`run` 的 prepare 自动调用既有 `bootstrap.py --mode BUNDLED` 和中央字体资源准备；已有独立安装可显式传 `--prepared <out/prepared>`、`--font-files <out/fonts/font-files.json>`，仍逐项验证。`--comparison-site` 只接受独立 bootstrap 校验过的 Pillow 安装；不发现全局库、不改锁。当前 Pillow wheel 需要 CPython 3.14 ABI，Windows Web browser artifact 仍缺锁；这些环境缺口非零，不能用 Python 3.10 单元测试替代。
+`run` 的 prepare 自动调用既有 `bootstrap.py --mode BUNDLED` 和中央字体资源准备；已有独立安装可显式传 `--prepared <out/prepared>`、`--font-files <out/fonts/font-files.json>`，仍逐项验证。`--comparison-site` 只接受独立 bootstrap 校验过的 Pillow 安装；不发现全局库、不改锁。Windows x64 Web artifact 与隔离 CPython 3.14/Pillow 准备路线已明确锁定，入口见 [比较器解释器准备](demo-differential-comparison.md#windows-x64-解释器准备)。必须用该 ABI 的实际解释器启动整个 runner，并传其已验证 site；Python 3.10 仅可引导准备，不能加载 cp314 wheel。CPU 准备通过不代表字体、浏览器页面、校准或实际 Windows pilot 已通过。
 
 状态顺序为 select/inventory → prepare → preflight → execute → validate → compare → report → cleanup。`--preset` 是 build preset，由 CMakePresets 解析 configure preset/configuration 并核 hello；HEADLESS/Recording 不能用于 paired。native preflight 使用同一真实 sample 的首个 checkpoint scenario 读取实际 DPR，再仅将 DPR 输入传给 Web；不从 native measured bounds 或 pixels 生成 Web 样式/expected。显式 `--dpr` 必须匹配实际 native metrics，默认 `native`。Linux 始终使用既有私有 Wayland/DBus wrapper，Windows 使用 hidden native 路径及无 console/错误弹窗的进程创建。单 native、单 Web 串行，不另造帧泵、组件或 renderer。
 
