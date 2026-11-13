@@ -87,13 +87,14 @@ void parameters(const GalleryDemoAction& action) {
     }
 }
 
-std::filesystem::path owned_file(const std::filesystem::path& path, const std::filesystem::path& repository) {
+std::filesystem::path owned_file(const std::filesystem::path& path, const std::filesystem::path& repository,
+                                 std::uintmax_t byte_limit, std::string_view description) {
     const auto file = std::filesystem::weakly_canonical(path.is_absolute() ? path : repository / path);
     const auto out = std::filesystem::weakly_canonical(repository / "out");
     const auto relative = file.lexically_relative(out);
     if (relative.empty() || relative == "." || *relative.begin() == ".." || !std::filesystem::is_regular_file(file) ||
-        std::filesystem::file_size(file) > 16 * 1024 * 1024) {
-        throw std::invalid_argument("scenario input must be a bounded file inside this checkout out/");
+        std::filesystem::file_size(file) > byte_limit) {
+        throw std::invalid_argument(std::string(description) + " must be a bounded file inside this checkout out/");
     }
     return file;
 }
@@ -102,7 +103,7 @@ std::filesystem::path owned_file(const std::filesystem::path& path, const std::f
 
 GalleryDemoScenario read_gallery_demo_scenario(const std::filesystem::path& path,
                                                const std::filesystem::path& repository) {
-    std::ifstream input(owned_file(path, repository), std::ios::binary);
+    std::ifstream input(owned_file(path, repository, 16 * 1024 * 1024, "scenario input"), std::ios::binary);
     const auto request = Json::parse(std::string{std::istreambuf_iterator<char>{input}, {}});
     gallery_demo_fields(request, {"schema_version", "nonce", "definition", "fault", "font_files"});
     if (request.at("schema_version").integer() != 1) {
@@ -205,7 +206,9 @@ GalleryDemoScenario read_gallery_demo_scenario(const std::filesystem::path& path
             font.at("weight").integer() < 1 || font.at("weight").integer() > 1000) {
             throw std::invalid_argument("scenario font face/weight is out of bounds");
         }
-        const auto path = owned_file(font.at("path").string(), repository);
+        // Resource bytes have a separate bound from the JSON envelope. The
+        // locked CJK SemiBold font is larger than the 16 MiB request limit.
+        const auto path = owned_file(font.at("path").string(), repository, 32 * 1024 * 1024, "scenario font source");
         if (gallery_demo_file_sha256(path) != font.at("sha256").string()) {
             throw std::invalid_argument("scenario font source content hash differs");
         }

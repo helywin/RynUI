@@ -43,6 +43,23 @@ class NativeProtocolTests(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn('protocol-control.v1 1 1',result.stdout)
 
+    def test_font_resource_bound_is_independent_of_json_envelope(self):
+        font=Path(self.request['font_files'][0]['path'])
+        with font.open('wb') as stream:
+            stream.truncate(16*1024*1024+1)
+        self.request['font_files'][0]['sha256']=hashlib.sha256(font.read_bytes()).hexdigest()
+        result=self.execute()
+        self.assertEqual(result.returncode,0,result.stderr)
+        with font.open('wb') as stream:
+            stream.truncate(32*1024*1024+1)
+        result=self.execute()
+        self.assertEqual(result.returncode,2)
+        self.assertIn('scenario font source',result.stderr)
+        self.path.write_bytes(b' '*(16*1024*1024)+b'{}')
+        result=subprocess.run([self.binary,str(self.path)],capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,2)
+        self.assertIn('scenario input',result.stderr)
+
     def test_duplicate_unknown_truncated_unicode_and_nonfinite(self):
         for raw in ('{"x":1,"x":2}', '{"schema_version":', '{"x":NaN}', '{"x":1e999}',
                     '{"x":"\\ud800"}', '{"x":01}', '{"x":1.}', '['*60+'0'+']'*60):
