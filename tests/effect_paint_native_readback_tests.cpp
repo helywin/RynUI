@@ -1,6 +1,7 @@
 #include "graphics/color_field.hpp"
 #include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
+#include "effect_linear_source_oracle.hpp"
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -71,11 +72,11 @@ void no_dialogs() {
         nullptr);
 }
 
-PlatformCreateResult hidden_host() {
+PlatformCreateResult hidden_host(int width = 128, int height = 96) {
     PlatformConfig config;
     config.title = "RynUI hidden effect paint contract";
-    config.width = 128;
-    config.height = 96;
+    config.width = width;
+    config.height = height;
     config.high_pixel_density = false;
     config.hidden = true;
     return PlatformState::create(config);
@@ -190,6 +191,395 @@ EffectPaintField constant(Color color) {
 
 RoundedEffectInstance fill(runtime::Rect bounds = {8, 8, 40, 32}) {
     return make_shadow_effect({bounds, 0}, {ShadowKind::outer, {}, 0, 0, Color{1, 1, 1}});
+}
+
+std::array<float, 4> source_linear_pixel(const RoundedEffectInstance& effect, float scale, runtime::Point point,
+                                         float coverage = 1) {
+    const auto& paint = *effect.material.paint;
+    auto color = effect_source_oracle::sample(paint.foreground, effect.geometry.translation, scale, point);
+    if (paint.underlay) {
+        const auto underlay = effect_source_oracle::sample(*paint.underlay, effect.geometry.translation, scale, point);
+        const auto remaining = 1 - color[3];
+        for (std::size_t channel = 0; channel < 4; ++channel) {
+            color[channel] += underlay[channel] * remaining;
+        }
+    }
+    std::array<float, 4> result;
+    for (std::size_t channel = 0; channel < 4; ++channel) {
+        result[channel] = static_cast<float>(color[channel] * coverage * effect.material.opacity);
+    }
+    return result;
+}
+
+using CostClock = std::chrono::steady_clock;
+
+struct LinearCostOptions final {
+    int width{128};
+    int height{96};
+    std::string field{"all"};
+    std::string layers{"both"};
+};
+
+constexpr const char* native_usage =
+    "Expected --expect-driver direct3d12|vulkan --suite transport|caps|all|linear-cost --output <ignored out directory>"
+    " [--linear-size 128x96|1920x1080] [--linear-case all|horizontal|diagonal|l1|l2|adjacent|extreme]"
+    " [--linear-layers single|double|both]. Linear options require --suite linear-cost."
+    " 1920x1080 requires one explicit --linear-case and --linear-layers single or double; run 128x96 first.";
+
+double cost_ms(CostClock::time_point from, CostClock::time_point to = CostClock::now()) {
+    return std::chrono::duration<double, std::milli>(to - from).count();
+}
+
+struct LinearCostLog final {
+    CostClock::time_point suite_started;
+    std::ofstream csv{output_directory / "linear-cost.csv"};
+
+    explicit LinearCostLog(CostClock::time_point started) : suite_started(started) {
+        require(bool(csv), "linear-cost CSV open failed");
+        csv << "case,phase,elapsed_ms,suite_elapsed_ms,pixels,oracle_samples,uploaded_bytes,upload_regions,"
+               "pipeline_creations\n";
+        csv.flush();
+        std::cout << "linear_cost_timing=CPU_wall_clock GPU_timestamps=unavailable "
+                     "cold_pipeline_includes_buffer_create=true lazy_driver_JIT_in_first_readback=true "
+                     "pack_preflight_and_upload_share_sync_interval=true total_includes_oracle_and_io=true "
+                     "driver_cache_state=uncontrolled\n"
+                  << std::flush;
+    }
+
+    void budget() const {
+        require(CostClock::now() - suite_started < std::chrono::seconds(55),
+                "linear-cost exhausted the existing 55-second workload; external guard must bound blocking GPU calls");
+    }
+
+    CostClock::time_point begin(const std::string& name, const char* phase) {
+        budget();
+        std::cout << "linear_cost_begin case=" << name << " phase=" << phase
+                  << " suite_elapsed_ms=" << cost_ms(suite_started) << '\n'
+                  << std::flush;
+        return CostClock::now();
+    }
+
+    void record(const std::string& name, const char* phase, CostClock::time_point started, std::size_t pixels = 0,
+                std::size_t samples = 0, std::uint64_t bytes = 0, std::uint64_t regions = 0,
+                std::uint64_t pipelines = 0) {
+        const auto ended = CostClock::now();
+        csv << name << ',' << phase << ',' << cost_ms(started, ended) << ',' << cost_ms(suite_started, ended) << ','
+            << pixels << ',' << samples << ',' << bytes << ',' << regions << ',' << pipelines << '\n';
+        csv.flush();
+        require(bool(csv), "linear-cost CSV write failed");
+        budget();
+    }
+};
+
+RoundedEffectInstance linear_cost_source(const std::string& name, const LinearCostOptions& options, bool dual,
+                                         float scale) {
+    // Oversize only the shape, so every viewport sample has coverage=1. The
+    // field remains independent of the coverage box, including cancellation.
+    auto effect = fill({-4 / scale, -4 / scale, (options.width + 8) / scale, (options.height + 8) / scale});
+    const float alpha = dual ? 0.5F : 1.0F;
+    EffectLinearDomain domain{{0, 0}, {float(options.width) / scale, 0}};
+    EffectGradientRamp ramp{{0, Color{1, 0, 0, alpha}}, {1, Color{0, 0, 1, alpha}}};
+    if (name == "diagonal") {
+        domain = {{-2, -3}, {float(options.width) / scale, float(options.height) / scale}};
+    } else if (name == "l1") {
+        domain = {{-16777211, -16777210}, {-16777203, -16777218}};
+        ramp = EffectGradientRamp{{0, Color{1, 0, 0, alpha}},
+                                  {1.0F / 32, Color{1, 0, 0, alpha}},
+                                  {1.0F / 32, Color{0, 0, 1, alpha}},
+                                  {1, Color{0, 0, 1, alpha}}};
+    } else if (name == "l2") {
+        effect = fill({33554428, 33554428, float(options.width + 8), float(options.height + 8)});
+        effect.geometry.translation = {-33554432, -33554432};
+        domain = {{33554432, 33554432}, {33554440, 33554424}};
+        ramp = EffectGradientRamp{{-0.125F, Color{1, 0, 0, alpha}}, {0, Color{0, 0, 1, alpha}}};
+    } else if (name == "adjacent") {
+        domain = {{-100000000, -100000000}, {-99999992, -100000008}};
+        ramp = EffectGradientRamp{{std::nextafter(-0.0625F, -1.0F), Color{1, 0, 0, alpha}},
+                                  {std::nextafter(-0.0625F, 0.0F), Color{0, 0, 1, alpha}}};
+    } else if (name == "extreme") {
+        const auto maximum = std::numeric_limits<float>::max();
+        domain = {{16.5F, -maximum / 4}, {17.5F, -maximum / 4}};
+        ramp = EffectGradientRamp{{-maximum, Color{1, 0, 0, alpha}}, {maximum, Color{0, 0, 1, alpha}}};
+    }
+    effect.material.paint = EffectPaint{{ramp, domain}, std::nullopt};
+    if (dual) {
+        // Always translucent, distinct, and Linear: an opaque-foreground skip
+        // cannot make this double-field measurement look like a single field.
+        if (name == "l1") {
+            domain = {{-16777210, -16777210}, {-16777202, -16777218}};
+        } else {
+            std::swap(domain.start, domain.end);
+        }
+        effect.material.paint->underlay =
+            EffectPaintField{EffectGradientRamp{{0, Color{0, 1, 0, 0.5F}}, {1, Color{1, 1, 0, 0.5F}}}, domain};
+    }
+    return effect;
+}
+
+void linear_cost_frame(Fixture& fixture, const RoundedEffectInstance& effect, const std::string& name,
+                       LinearCostLog& log, bool full_oracle, bool idle = false, bool full_upload = false) {
+    const auto total_started = log.begin(name, "frame_total");
+    const auto before = fixture.backend.counters();
+    const auto full_before = fixture.resources.effects().counters().full_uploads;
+    auto stage = log.begin(name, "cpu_preflight_pack_upload");
+    require(fixture.sync(), name + ": synchronize: " + fixture.backend.last_error());
+    const auto after = fixture.backend.counters();
+    log.record(name, "cpu_preflight_pack_upload", stage, 0, 0, after.uploaded_bytes - before.uploaded_bytes,
+               after.buffer_upload_regions - before.buffer_upload_regions,
+               after.effect_paint_pipeline_creations - before.effect_paint_pipeline_creations);
+    if (idle) {
+        require(after.uploaded_bytes == before.uploaded_bytes &&
+                    after.upload_submissions == before.upload_submissions &&
+                    after.buffer_upload_regions == before.buffer_upload_regions,
+                "linear-cost static idle uploaded data");
+    } else {
+        require(after.uploaded_bytes > before.uploaded_bytes, "linear-cost dirty scene did not upload");
+    }
+    if (full_upload) {
+        require(fixture.resources.effects().counters().full_uploads > full_before,
+                "linear-cost metrics projection not full");
+    }
+    stage = log.begin(name, "cpu_order_attach");
+    fixture.all();
+    require(fixture.resources.effects().instance_count() == 1, "linear-cost must draw exactly one viewport effect");
+    const auto& tables = fixture.resources.effects().paint_tables();
+    require(tables.fields.size() == (effect.material.paint->underlay ? 2u : 1u),
+            "linear-cost actual field count mismatch");
+    for (const auto& field : tables.fields) {
+        require(field.kind == static_cast<std::uint32_t>(EffectPaintFieldKind::linear),
+                "linear-cost accidentally selected a non-Linear field");
+    }
+    require(fixture.backend.attach_scene(fixture.resources.attach(fixture.order)), name + ": attach");
+    log.record(name, "cpu_order_attach", stage);
+    stage = log.begin(name, "submit_fence_readback");
+    SceneRgbaReadback frame;
+    require(fixture.backend.read_frame_rgba(frame), name + ": readback: " + fixture.backend.last_error());
+    const auto pixels = std::size_t(frame.width) * frame.height;
+    log.record(name, "submit_fence_readback", stage, pixels);
+    require(frame.width == fixture.metrics.pixel_width && frame.height == fixture.metrics.pixel_height &&
+                frame.row_pitch == frame.width * 4 && frame.pixels.size() == pixels * 4,
+            "linear-cost actual readback extent or tight owned RGBA differs");
+    stage = log.begin(name, "independent_source_oracle");
+    std::size_t samples{};
+    const auto probe = [&](int x, int y) {
+        fixture.encloses(0, x, y);
+        pixel(frame, x, y,
+              source_linear_pixel(effect, fixture.metrics.display_scale, {float(x) + 0.5F, float(y) + 0.5F}), name);
+        ++samples;
+    };
+    if (full_oracle) {
+        require(pixels == 128 * 96, "linear-cost full oracle is bounded to the small matrix");
+        for (int y = 0; y < int(frame.height); ++y) {
+            log.budget();
+            for (int x = 0; x < int(frame.width); ++x) {
+                probe(x, y);
+            }
+        }
+    } else {
+        // A finite 5x5 lattice plus both semantic counterexample points. Never
+        // run a two-million-pixel CPU oracle inside the large GPU cost probe.
+        for (int row = 0; row < 5; ++row) {
+            for (int column = 0; column < 5; ++column) {
+                probe(int((frame.width - 1) * column / 4), int((frame.height - 1) * row / 4));
+            }
+        }
+        probe(16, 16);
+        probe(16, 17);
+        require(samples == 27, "linear-cost large oracle must remain strictly bounded");
+    }
+    log.record(name, "independent_source_oracle", stage, pixels, samples);
+    stage = log.begin(name, "raw_output");
+    std::ofstream raw(output_directory / (name + ".rgba"), std::ios::binary);
+    raw.write(reinterpret_cast<const char*>(frame.pixels.data()), static_cast<std::streamsize>(frame.pixels.size()));
+    raw.close();
+    require(bool(raw), name + ": raw output");
+    log.record(name, "raw_output", stage, pixels);
+    ++cases;
+    log.record(name, "frame_total_including_oracle_io", total_started, pixels, samples);
+}
+
+void linear_cost(SdlSceneRenderer& renderer, PlatformState& platform, const LinearCostOptions& options,
+                 CostClock::time_point suite_started) {
+    LinearCostLog log(suite_started);
+    require(!renderer.capabilities().effect_paints && !renderer.capabilities().effect_linear_fields &&
+                !renderer.capabilities().effect_conic_fields && !renderer.capabilities().effect_underlays &&
+                !renderer.capabilities().effect_arc_caps,
+            "linear-cost production flags must remain OFF");
+    require(renderer.begin_pending_paint_validation_for_test(), "linear-cost candidate validation scope failed");
+
+    struct PaintScope final {
+        SdlSceneRenderer& renderer;
+
+        ~PaintScope() {
+            renderer.end_pending_paint_validation_for_test();
+        }
+    } scope{renderer};
+
+    const auto cold = log.begin("suite", "cold_pipeline_jit_buffer_create");
+    require(renderer.counters().effect_paint_pipeline_creations == 0, "linear-cost requires a cold paint pipeline");
+    auto* buffer = renderer.create_effect_paint_buffer(EffectPaintBufferKind::link, effect_paint_link_stride);
+    require(buffer != nullptr, "linear-cost cold pipeline/buffer creation: " + std::string(renderer.last_error()));
+    renderer.release_effect_paint_buffer(EffectPaintBufferKind::link, buffer);
+    require(renderer.counters().effect_paint_pipeline_creations == 1, "linear-cost cold pipeline was not created");
+    log.record("suite", "cold_pipeline_jit_buffer_create", cold, 0, 0, 0, 0, 1);
+    const bool small = options.width == 128;
+    bool updates_done{};
+    for (const std::string field : {"horizontal", "diagonal", "l1", "l2", "adjacent", "extreme"}) {
+        if (options.field != "all" && options.field != field) {
+            continue;
+        }
+        for (const bool dual : {false, true}) {
+            if ((options.layers == "single" && dual) || (options.layers == "double" && !dual)) {
+                continue;
+            }
+            const auto name = "linear-cost-" + field + (dual ? "-double" : "-single");
+            const auto scenario = log.begin(name, "scenario_total");
+            const auto prepare = log.begin(name, "cpu_source_prepare");
+            Fixture fixture(renderer, platform, field == "l1" ? 1.5F : 1.0F);
+            auto effect = linear_cost_source(field, options, dual, fixture.metrics.display_scale);
+            const auto id = fixture.effects.add(effect);
+            log.record(name, "cpu_source_prepare", prepare);
+            linear_cost_frame(fixture, effect, name, log, small);
+            if (small && !updates_done) {
+                updates_done = true;
+                linear_cost_frame(fixture, effect, name + "-idle", log, true, true);
+                auto changed = log.begin(name, "cpu_paint_update_prepare");
+                effect.material.opacity = 0.75F;
+                require(fixture.effects.update_material(id, effect.material), "linear-cost paint-only update");
+                log.record(name, "cpu_paint_update_prepare", changed);
+                linear_cost_frame(fixture, effect, name + "-paint-update", log, true);
+                changed = log.begin(name, "cpu_metrics_update_prepare");
+                fixture.metrics.display_scale *= 1.25F;
+                log.record(name, "cpu_metrics_update_prepare", changed);
+                linear_cost_frame(fixture, effect, name + "-metrics-update", log, true, false, true);
+            }
+            log.record(name, "scenario_total_including_prepare_oracle_io", scenario);
+        }
+    }
+    log.record("suite", "suite_total_including_host_cold_prepare_oracle_io", suite_started);
+}
+
+void raw_affine_linear(SdlSceneRenderer& renderer, PlatformState& platform) {
+    const EffectGradientRamp ramp{
+        {0, Color{1, 0, 0}}, {1.0F / 32, Color{1, 0, 0}}, {1.0F / 32, Color{0, 0, 1}}, {1, Color{0, 0, 1}}};
+    const EffectLinearDomain a{{-16777211, -16777210}, {-16777203, -16777218}};
+    const EffectLinearDomain b{{-16777210, -16777210}, {-16777202, -16777218}};
+    {
+        Fixture f(renderer, platform, 1.5F);
+        auto effect = fill();
+        effect.material.paint = EffectPaint{{ramp, a}, std::nullopt};
+        const auto id = f.effects.add(effect);
+        const auto frame_a = f.read("raw-affine-dpi-A-blue");
+        f.encloses(0, 16, 16);
+        const auto expected_a = source_linear_pixel(effect, f.metrics.display_scale, {16.5F, 16.5F});
+        require(expected_a == std::array<float, 4>{0, 0, 1, 1}, "independent exact source A must be blue");
+        pixel(frame_a, 16, 16, expected_a, "source logical A blue", 0);
+        const auto base_a = f.resources.effects().instances()[0];
+        const auto tables_a = f.resources.effects().paint_tables();
+        effect.material.paint = EffectPaint{{ramp, b}, std::nullopt};
+        require(f.effects.update_material(id, effect.material), "source B material update");
+        const auto frame_b = f.read("raw-affine-dpi-B-red");
+        f.encloses(0, 16, 16);
+        const auto expected_b = source_linear_pixel(effect, f.metrics.display_scale, {16.5F, 16.5F});
+        require(expected_b == std::array<float, 4>{1, 0, 0, 1}, "independent exact source B must be red");
+        pixel(frame_b, 16, 16, expected_b, "source logical B red", 0);
+        const auto& tables_b = f.resources.effects().paint_tables();
+        require(base_a == f.resources.effects().instances()[0] && tables_a.links == tables_b.links &&
+                    tables_a.stops == tables_b.stops && tables_a.fields[0] != tables_b.fields[0] &&
+                    tables_a.fields[0].affine_bits == tables_b.fields[0].affine_bits,
+                "actual projection must distinguish only the raw source domain in the DPI collision pair");
+        require(sizeof(tables_b.fields[0]) == 48 && tables_b.fields[0].affine_bits[2] == 0x3fc00000,
+                "actual raw affine field48 or scale bits differ");
+        // Change only actual GPU field bytes back to A. The CPU source remains B;
+        // overwrite the borrowed upload input before finish to check ownership.
+        const auto binding = f.resources.effects().draw_binding(0, 1);
+        auto raw = tables_a.fields[0];
+        require(renderer.begin_upload_batch() &&
+                    renderer.upload_effect_paint_buffer(EffectPaintBufferKind::field, binding.field, 0,
+                                                        std::as_bytes(std::span{&raw, 1})),
+                "raw field-only source ownership upload");
+        std::ranges::fill(std::as_writable_bytes(std::span{&raw, 1}), std::byte{0xcd});
+        require(renderer.finish_upload_batch(), "raw field-only ownership finish");
+        SceneRgbaReadback owned;
+        require(renderer.read_frame_rgba(owned), "raw field-only owned GPU readback");
+        pixel(owned, 16, 16, expected_a, "shader consumed owned raw field48 bits", 0);
+    }
+    {
+        Fixture f(renderer, platform);
+        auto effect = fill({33554432, 33554432, 48, 48});
+        effect.geometry.translation = {-33554432, -33554432};
+        effect.material.paint = EffectPaint{{EffectGradientRamp{{-0.125F, Color{1, 0, 0}}, {0, Color{0, 0, 1}}},
+                                             EffectLinearDomain{{33554432, 33554432}, {33554440, 33554424}}},
+                                            std::nullopt};
+        static_cast<void>(f.effects.add(effect));
+        const auto frame = f.read("raw-affine-translation-rounding");
+        f.encloses(0, 16, 17);
+        const auto expected = source_linear_pixel(effect, 1, {16.5F, 17.5F});
+        require(expected == std::array<float, 4>{0.5F, 0, 0.5F, 1}, "exact affine translation must yield t=-1/16");
+        pixel(frame, 16, 17, expected, "raw translation exact affine purple");
+    }
+    for (const float scale : {0.25F, std::ldexp(1.0F, -60)}) {
+        Fixture f(renderer, platform, scale);
+        const auto tiny = std::numeric_limits<float>::denorm_min();
+        auto effect = fill({8 / scale, 8 / scale, 40 / scale, 32 / scale});
+        effect.material.paint = EffectPaint{{EffectGradientRamp{{0, Color{1, 0, 0, 0}}, {1, Color{0, 0, 1}}},
+                                             EffectLinearDomain{{-0.0F, tiny}, {32 / scale, tiny}}},
+                                            std::nullopt};
+        static_cast<void>(f.effects.add(effect));
+        const auto frame = f.read(scale == 0.25F ? "raw-affine-scale-quarter" : "raw-affine-scale-small");
+        f.encloses(0, 16, 16);
+        require(f.resources.effects().paint_tables().fields[0].raw_domain_bits[0] == 0x80000000 &&
+                    f.resources.effects().paint_tables().fields[0].raw_domain_bits[1] == 1,
+                "raw signed zero/subnormal domain bits lost before GPU");
+        pixel(frame, 16, 16, source_linear_pixel(effect, scale, {16.5F, 16.5F}), "small scale exact affine");
+        pixel(frame, 16, 16, {0, 0, 33.0F / 64, 33.0F / 64}, "independent small scale fraction 33/64");
+    }
+    {
+        Fixture f(renderer, platform, 1.5F);
+        auto effect = fill();
+        const EffectGradientRamp foreground{{0, Color{1, 0, 0, 0}},
+                                            {1.0F / 32, Color{1, 0, 0, 0}},
+                                            {1.0F / 32, Color{0, 0, 1, 0.5F}},
+                                            {1, Color{0, 0, 1, 0.5F}}};
+        const EffectGradientRamp underlay{{0, Color{0, 1, 0, 0.5F}},
+                                          {1.0F / 32, Color{0, 1, 0, 0.5F}},
+                                          {1.0F / 32, Color{1, 1, 0, 0.5F}},
+                                          {1, Color{1, 1, 0, 0.5F}}};
+        effect.material.paint = EffectPaint{{foreground, a}, EffectPaintField{underlay, b}};
+        effect.material.opacity = 0.5F;
+        const auto id = f.effects.add(effect);
+        const auto frame = f.read("raw-affine-dual-linear");
+        const auto expected = source_linear_pixel(effect, 1.5F, {16.5F, 16.5F});
+        require(expected == std::array<float, 4>{0, 0.125F, 0.25F, 0.375F}, "independent dual source-over expected");
+        pixel(frame, 16, 16, expected, "raw distinct dual fields opacity once");
+        effect.geometry.shape.rect.x = 11;
+        effect.geometry.ancestor_clip = EffectClip{1, {11, 8, 10, 32}};
+        require(f.effects.update_geometry(id, effect.geometry), "raw dual coverage/hard clip update");
+        const auto edge = f.read("raw-affine-dual-coverage-clip");
+        f.encloses(0, 16, 16);
+        pixel(edge, 16, 16, source_linear_pixel(effect, 1.5F, {16.5F, 16.5F}, 0.5F),
+              "raw dual edge coverage/opacity once");
+        pixel(edge, 15, 16, {}, "raw dual hard clip exact zero", 0);
+    }
+    for (const float axis : {1e-30F, 1e30F}) {
+        Fixture f(renderer, platform);
+        auto effect = fill();
+        effect.material.paint = EffectPaint{{ramp, EffectLinearDomain{{0, 0}, {axis, 0}}}, std::nullopt};
+        effect.material.visible = false;
+        static_cast<void>(f.effects.add(effect));
+        const auto before = renderer.counters();
+        bool rejected{};
+        try {
+            static_cast<void>(f.sync());
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        const auto after = renderer.counters();
+        require(rejected && after.upload_submissions == before.upload_submissions &&
+                    after.buffer_transfer_creations == before.buffer_transfer_creations &&
+                    after.buffer_upload_regions == before.buffer_upload_regions,
+                "raw affine retained admission must reject under/overflow even for a hidden field");
+    }
 }
 
 void old_solid_cold(SdlSceneRenderer& renderer, PlatformState& platform) {
@@ -909,9 +1299,9 @@ void failure_ownership_retry_idle(SdlSceneRenderer& renderer, PlatformState& pla
     require(!renderer.upload_effect_paint_buffer(EffectPaintBufferKind::link, binding.link,
                                                  std::numeric_limits<std::size_t>::max(), arbitrary),
             "Offset overflow upload accepted");
-    require(!renderer.upload_effect_paint_buffer(EffectPaintBufferKind::field, binding.field,
-                                                 std::size_t(f.resources.effects().paint_capacities()[1]) * 32 - 1,
-                                                 arbitrary),
+    require(!renderer.upload_effect_paint_buffer(
+                EffectPaintBufferKind::field, binding.field,
+                std::size_t(f.resources.effects().paint_capacities()[1]) * effect_paint_field_stride - 1, arbitrary),
             "Length overflow accepted");
     auto second = hidden_host();
     require(bool(second), "foreign hidden host");
@@ -1042,27 +1432,83 @@ int main(int argc, char** argv) {
     no_dialogs();
     try {
         const auto started = std::chrono::steady_clock::now();
-        require(
-            argc == 7 && std::string(argv[1]) == "--expect-driver" && std::string(argv[3]) == "--suite" &&
-                std::string(argv[5]) == "--output",
-            "Expected --expect-driver direct3d12|vulkan --suite transport|caps|all --output <ignored out directory>");
+        if (argc == 2 && std::string(argv[1]) == "--help") {
+            std::cout << native_usage << '\n';
+            return 0;
+        }
+        require(argc >= 7 && argc <= 13 && argc % 2 == 1 && std::string(argv[1]) == "--expect-driver" &&
+                    std::string(argv[3]) == "--suite" && std::string(argv[5]) == "--output",
+                native_usage);
         const std::string expected_driver = argv[2];
         const std::string suite = argv[4];
         require((expected_driver == "direct3d12" || expected_driver == "vulkan") &&
-                    (suite == "transport" || suite == "caps" || suite == "all"),
+                    (suite == "transport" || suite == "caps" || suite == "all" || suite == "linear-cost"),
                 "Unknown driver or suite");
+        LinearCostOptions cost_options;
+        bool size_set{};
+        bool case_set{};
+        bool layers_set{};
+        for (int argument = 7; argument < argc; argument += 2) {
+            require(suite == "linear-cost", "Linear options require --suite linear-cost");
+            const std::string option = argv[argument];
+            const std::string value = argv[argument + 1];
+            if (option == "--linear-size") {
+                require(!size_set && (value == "128x96" || value == "1920x1080"), native_usage);
+                size_set = true;
+                if (value == "1920x1080") {
+                    cost_options.width = 1920;
+                    cost_options.height = 1080;
+                }
+            } else if (option == "--linear-case") {
+                require(!case_set && (value == "all" || value == "horizontal" || value == "diagonal" || value == "l1" ||
+                                      value == "l2" || value == "adjacent" || value == "extreme"),
+                        native_usage);
+                case_set = true;
+                cost_options.field = value;
+            } else if (option == "--linear-layers") {
+                require(!layers_set && (value == "single" || value == "double" || value == "both"), native_usage);
+                layers_set = true;
+                cost_options.layers = value;
+            } else {
+                throw std::invalid_argument(native_usage);
+            }
+        }
+        require(cost_options.width == 128 ||
+                    (case_set && cost_options.field != "all" && layers_set && cost_options.layers != "both"),
+                "1920x1080 requires exactly one explicit case/layer selection; run 128x96 first");
         output_directory = argv[6];
         std::filesystem::create_directories(output_directory);
         const auto closure_id = closure_identity(suite == "caps" ? "rounded_effect_cap" : "rounded_effect_paint");
-        auto host = hidden_host();
+        const auto host_started = CostClock::now();
+        if (suite == "linear-cost") {
+            std::cout << "linear_cost_begin phase=host_renderer_init source_closure=" << closure_id
+                      << " config=" << RYNUI_TEST_CONFIG << " width=" << cost_options.width
+                      << " height=" << cost_options.height << " case=" << cost_options.field
+                      << " layers=" << cost_options.layers << '\n'
+                      << std::flush;
+        }
+        auto host = hidden_host(cost_options.width, cost_options.height);
         require(bool(host), "Hidden platform creation failed");
         check_hidden(*host.state);
+        const auto host_finished = CostClock::now();
         SdlSceneRenderer renderer(*host.state);
+        if (suite == "linear-cost") {
+            require(host.state->window_metrics().pixel_width == cost_options.width &&
+                        host.state->window_metrics().pixel_height == cost_options.height,
+                    "linear-cost actual hidden viewport differs from the explicitly bounded size");
+            std::cout << "linear_cost_host_ms=" << cost_ms(host_started, host_finished)
+                      << " renderer_init_ms=" << cost_ms(host_finished) << " suite_elapsed_ms=" << cost_ms(started)
+                      << " driver=" << renderer.gpu_driver() << " format=" << renderer.shader_format() << '\n'
+                      << std::flush;
+        }
         require(std::string(renderer.gpu_driver()) == expected_driver,
                 "Actual GPU driver differs from --expect-driver");
         require(std::string(renderer.shader_format()) == (expected_driver == "direct3d12" ? "DXIL" : "SPIR-V"),
                 "Actual shader format differs from the required backend format");
         renderer.set_clear_color(Color{0, 0, 0, 0});
+        if (suite == "linear-cost") {
+            linear_cost(renderer, *host.state, cost_options, started);
+        }
         if (suite == "transport" || suite == "all") {
             old_solid_cold(renderer, *host.state);
             require(!renderer.capabilities().effect_paints, "production paint capability prematurely enabled");
@@ -1077,6 +1523,7 @@ int main(int argc, char** argv) {
             } paint_validation{renderer};
 
             paint_samples(renderer, *host.state);
+            raw_affine_linear(renderer, *host.state);
             cancellation_and_stop_boundaries(renderer, *host.state);
             extreme_fields(renderer, *host.state);
             fractional_clip_and_cells(renderer, *host.state);

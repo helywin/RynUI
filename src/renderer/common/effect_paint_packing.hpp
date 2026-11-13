@@ -9,11 +9,26 @@
 
 namespace ryn::detail {
 
-inline constexpr std::uint32_t effect_paint_abi_version = 1;
+inline constexpr std::uint32_t effect_paint_abi_version = 2;
+inline constexpr std::size_t effect_paint_link_stride = 16;
+inline constexpr std::size_t effect_paint_field_stride = 48;
+inline constexpr std::size_t effect_paint_stop_stride = 32;
 inline constexpr std::uint32_t effect_paint_no_field = std::numeric_limits<std::uint32_t>::max();
 
 enum class EffectPaintBufferKind { link, field, stop };
 enum class EffectPaintFieldKind : std::uint32_t { linear = 1, conic = 2 };
+
+[[nodiscard]] constexpr std::size_t effect_paint_buffer_stride(EffectPaintBufferKind kind) noexcept {
+    switch (kind) {
+    case EffectPaintBufferKind::link:
+        return effect_paint_link_stride;
+    case EffectPaintBufferKind::field:
+        return effect_paint_field_stride;
+    case EffectPaintBufferKind::stop:
+        return effect_paint_stop_stride;
+    }
+    return 0;
+}
 
 struct alignas(16) EffectPaintGpuLink final {
     std::uint32_t foreground_field{effect_paint_no_field};
@@ -28,7 +43,9 @@ struct alignas(16) EffectPaintGpuField final {
     std::uint32_t first_stop{};
     std::uint32_t stop_count{};
     std::uint32_t reserved{};
-    std::array<float, 4> domain{};
+    // Original logical binary32 values. Never transport them through float arithmetic.
+    std::array<std::uint32_t, 4> raw_domain_bits{};
+    std::array<std::uint32_t, 4> affine_bits{}; // translation x/y, display scale, zero
     friend constexpr bool operator==(const EffectPaintGpuField&, const EffectPaintGpuField&) = default;
 };
 
@@ -38,18 +55,19 @@ struct alignas(16) EffectPaintGpuStop final {
     friend constexpr bool operator==(const EffectPaintGpuStop&, const EffectPaintGpuStop&) = default;
 };
 
-static_assert(sizeof(EffectPaintGpuLink) == 16 && alignof(EffectPaintGpuLink) == 16);
+static_assert(sizeof(EffectPaintGpuLink) == effect_paint_link_stride && alignof(EffectPaintGpuLink) == 16);
 static_assert(offsetof(EffectPaintGpuLink, foreground_field) == 0);
 static_assert(offsetof(EffectPaintGpuLink, underlay_field) == 4);
 static_assert(offsetof(EffectPaintGpuLink, arc_cap) == 8);
 static_assert(offsetof(EffectPaintGpuLink, reserved) == 12);
-static_assert(sizeof(EffectPaintGpuField) == 32 && alignof(EffectPaintGpuField) == 16);
+static_assert(sizeof(EffectPaintGpuField) == effect_paint_field_stride && alignof(EffectPaintGpuField) == 16);
 static_assert(offsetof(EffectPaintGpuField, kind) == 0);
 static_assert(offsetof(EffectPaintGpuField, first_stop) == 4);
 static_assert(offsetof(EffectPaintGpuField, stop_count) == 8);
 static_assert(offsetof(EffectPaintGpuField, reserved) == 12);
-static_assert(offsetof(EffectPaintGpuField, domain) == 16);
-static_assert(sizeof(EffectPaintGpuStop) == 32 && alignof(EffectPaintGpuStop) == 16);
+static_assert(offsetof(EffectPaintGpuField, raw_domain_bits) == 16);
+static_assert(offsetof(EffectPaintGpuField, affine_bits) == 32);
+static_assert(sizeof(EffectPaintGpuStop) == effect_paint_stop_stride && alignof(EffectPaintGpuStop) == 16);
 static_assert(offsetof(EffectPaintGpuStop, position) == 0);
 static_assert(offsetof(EffectPaintGpuStop, premultiplied_rgba) == 16);
 

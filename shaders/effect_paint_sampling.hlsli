@@ -6,7 +6,8 @@
 
 struct EffectField {
     uint4 meta;
-    float4 domain;
+    uint4 raw_domain_bits;
+    uint4 affine_bits;
 };
 
 struct EffectStop {
@@ -24,11 +25,13 @@ float4 SampleEffectField(float2 sample_position, uint index) {
     EffectExact denominator = (EffectExact)0;
     CapNumber conic = (CapNumber)0;
     if (linear_field) {
-        EffectLinearAxis(sample_position.x, field.domain.x, field.domain.z, numerator, denominator);
-        EffectLinearAxis(sample_position.y, field.domain.y, field.domain.w, numerator, denominator);
+        EffectLinearAxis(asuint(sample_position.x), field.raw_domain_bits.x, field.raw_domain_bits.z,
+                         field.affine_bits.x, field.affine_bits.z, numerator, denominator);
+        EffectLinearAxis(asuint(sample_position.y), field.raw_domain_bits.y, field.raw_domain_bits.w,
+                         field.affine_bits.y, field.affine_bits.z, numerator, denominator);
         numerator = EffectExactShift(numerator, 149u);
     } else {
-        conic = EffectConicCoordinate(sample_position, field.domain);
+        conic = EffectConicCoordinate(sample_position, field.raw_domain_bits, field.affine_bits);
     }
     uint low = 0u;
     uint high = field.meta.z;

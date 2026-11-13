@@ -83,7 +83,11 @@
 ### Requirement: Progress 原生合同
 系统 SHALL 为 Progress 提供 typed Props、响应属性、Theme 视觉和可操作 Gallery。保留已实现的原生合同，并补齐设计矩阵所列原生缺口；与该组件相关的 Web 专用接口和平台实测边界分开说明。
 
-系统 SHALL 保留现有解析 arc/默认 round/solid 合同，并通过共同 immutable logical paint、typed Round/Butt/Square cap 和显式 Effect Paint ABI v1 完成连续 linear/conic 渐变。基础 scene ABI v2、112-byte Effect 与 Quad/Glyph/Image 保持。native 使用既有 Color 数值域的 premultiplied 插值和单 fragment 双场 source-over；不声明未锁定浏览器的像素一致性。
+系统 SHALL 保留现有解析 arc/默认 round/solid 合同，并通过共同 immutable logical paint、typed Round/Butt/Square cap、显式 Effect Paint ABI v2 和独立 Cap Geometry ABI v1 完成连续 linear/conic 渐变。基础 scene ABI v2、112-byte Effect 与 Quad/Glyph/Image 保持。native 使用既有 Color 数值域的 premultiplied 插值和单 fragment 双场 source-over；不声明未锁定浏览器的像素一致性。
+
+#### Scenario: Linear 原始因子与独立数值期望
+- **WHEN** 原始 logical binary32 domain、translation 和 scale 在 physical float 打包时发生抵消或预舍入碰撞
+- **THEN** field48 保留原始 bits，Linear 按精确 dyadic 的 `A=E-S, Q=P-scale*(T+S), N=Q·A, D=scale*(A·A)` 选择 stop；独立 source oracle 不调用 packer、packed reference 或 shader，旧 float/double logical reference 不充当逐位等价依据；原 admission envelope 不缩小，插值分数的明确误差界不被描述为完整颜色链逐位相等。
 
 #### Scenario: 不同类型的渐变坐标与步骤组合
 - **WHEN** 应用改变 percent、RTL、gap placement、stops 或 steps

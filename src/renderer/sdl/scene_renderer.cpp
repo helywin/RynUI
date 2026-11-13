@@ -614,7 +614,7 @@ SdlSceneRenderer::ResourceKind SdlSceneRenderer::effect_paint_resource_kind(Effe
 RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_paint_buffer(EffectPaintBufferKind kind,
                                                                           std::size_t size) {
     const auto resource_kind = effect_paint_resource_kind(kind);
-    const auto stride = kind == EffectPaintBufferKind::link ? sizeof(EffectPaintGpuLink) : sizeof(EffectPaintGpuField);
+    const auto stride = effect_paint_buffer_stride(kind);
     if (!platform_->is_owner_thread() || size == 0 || size % stride != 0 || size > capabilities_.maximum_buffer_bytes ||
         size > std::numeric_limits<Uint32>::max()) {
         last_error_ = "Effect-paint buffer violates owner, stride or size contract";

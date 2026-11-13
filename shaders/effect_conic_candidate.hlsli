@@ -27,9 +27,12 @@ CapNumber EffectAtanUnit(CapNumber ratio) {
     return result;
 }
 
-CapNumber EffectConicCoordinate(float2 sample_position, float4 domain) {
-    CapNumber dx = CapSubtract(CapSmall(sample_position.x), CapSmall(domain.x));
-    CapNumber dy = CapSubtract(CapSmall(sample_position.y), CapSmall(domain.y));
+CapNumber EffectConicCoordinate(float2 sample_position, uint4 domain, uint4 affine) {
+    CapNumber scale = CapFromBits(affine.z);
+    CapNumber dx = CapSubtract(CapSmall(sample_position.x),
+                               CapMultiply(scale, CapAdd(CapFromBits(affine.x), CapFromBits(domain.x))));
+    CapNumber dy = CapSubtract(CapSmall(sample_position.y),
+                               CapMultiply(scale, CapAdd(CapFromBits(affine.y), CapFromBits(domain.y))));
     if (CapZero(dx) && CapZero(dy)) {
         return (CapNumber)0;
     }
@@ -49,7 +52,7 @@ CapNumber EffectConicCoordinate(float2 sample_position, float4 domain) {
         angle = CapNegate(angle);
     }
     CapNumber tau = CapScale2(CapPi(), 1);
-    angle = CapSubtract(angle, CapSmall(domain.z));
+    angle = CapSubtract(angle, CapFromBits(domain.z));
     // pi_f is slightly larger than real pi: angle-start can extend just
     // beyond either +/-tau, so one addition alone is insufficient.
     [unroll] for (uint i = 0u; i < 2u; ++i) {
@@ -60,8 +63,8 @@ CapNumber EffectConicCoordinate(float2 sample_position, float4 domain) {
         }
     }
     // Preserve the CPU full-turn sentinel and true-tau wrap/divisor.
-    CapNumber sweep = CapSmall(domain.w);
-    if (asuint(domain.w) == asuint(6.28318530717958647692)) {
+    CapNumber sweep = CapFromBits(domain.w);
+    if (domain.w == asuint(6.28318530717958647692)) {
         sweep = tau;
     }
     return CapDivide(angle, sweep);

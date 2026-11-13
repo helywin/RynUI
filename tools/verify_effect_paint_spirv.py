@@ -102,14 +102,18 @@ class Module:
             array = members[0]
             opcode, element = self.types[array]
             self.require(opcode == 29, "storage payload must be a runtime array")
-            self.require(self.decorations.get(array, {}).get(6) == (32,), "storage ArrayStride must be 32")
+            stride = 48 if binding == 0 else 32
+            self.require(self.decorations.get(array, {}).get(6) == (stride,),
+                         f"storage binding {binding} ArrayStride must be {stride}")
             element_id = element[0]
             opcode, fields = self.types[element_id]
-            self.require(opcode == 30 and len(fields) == 2, "field/stop must contain exactly two vectors")
+            count = 3 if binding == 0 else 2
+            self.require(opcode == 30 and len(fields) == count,
+                         f"storage binding {binding} must contain exactly {count} vectors")
             for index, field in enumerate(fields):
                 self.require(self.members.get((element_id, index), {}).get(35) == (index * 16,),
                              f"storage member {index} offset must be {index * 16}")
-                self.require(self.vector(field, binding == 0 and index == 0),
+                self.require(self.vector(field, binding == 0),
                              f"storage binding {binding} member {index} type")
         self.require(set(bindings) == {0, 1}, "field/stop storage bindings")
 
@@ -178,7 +182,8 @@ def main():
     validate(args.directory)
     if args.negative_test:
         negative_test(args.directory, args.negative_test)
-    print("SPIR-V reflection: legacy=7xf32x4/0, paint=7xf32x4+u32x4/2; Flat, set2[0,1], stride32 offsets[0,16]; cap excluded")
+    print("SPIR-V reflection: legacy=7xf32x4/0, paint=7xf32x4+u32x4/2; Flat, set2[0,1], "
+          "field48=3xu32x4@[0,16,32], stop32=2xf32x4@[0,16]; cap excluded")
 
 
 if __name__ == "__main__":

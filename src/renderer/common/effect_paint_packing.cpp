@@ -1,4 +1,5 @@
 #include "renderer/common/effect_paint_packing.hpp"
+#include "renderer/common/effect_linear_exact.hpp"
 
 #include <algorithm>
 #include <bit>
@@ -12,18 +13,32 @@ namespace {
 constexpr float turn = 2 * std::numbers::pi_v<float>;
 
 void validate_domain(const EffectPaintGpuField& field) {
-    if (field.reserved || !std::ranges::all_of(field.domain, [](float value) { return std::isfinite(value); })) {
+    const auto domain = std::bit_cast<std::array<float, 4>>(field.raw_domain_bits);
+    const auto affine = std::bit_cast<std::array<float, 4>>(field.affine_bits);
+    if (field.reserved || field.affine_bits[3] ||
+        !std::ranges::all_of(domain, [](float value) { return std::isfinite(value); }) || !std::isfinite(affine[0]) ||
+        !std::isfinite(affine[1]) || !std::isfinite(affine[2]) || affine[2] <= 0) {
         throw std::invalid_argument("Effect paint packed domain is not finite or reserved is nonzero");
     }
+    const auto physical = [&](float value, std::size_t axis) {
+        return (value + affine[axis]) * affine[2];
+    };
+    const auto sx = physical(domain[0], 0);
+    const auto sy = physical(domain[1], 1);
+    if (!std::isfinite(sx) || !std::isfinite(sy)) {
+        throw std::invalid_argument("Effect paint physical domain overflows");
+    }
     if (field.kind == static_cast<std::uint32_t>(EffectPaintFieldKind::linear)) {
-        const auto dx = field.domain[2] - field.domain[0];
-        const auto dy = field.domain[3] - field.domain[1];
+        // Preserve the v1 admission envelope; these rounded values are never
+        // stored or used for sampling. Expanding the accepted domain is separate.
+        const auto dx = physical(domain[2], 0) - sx;
+        const auto dy = physical(domain[3], 1) - sy;
         const auto square = dx * dx + dy * dy;
         if (!std::isfinite(square) || square <= 0) {
             throw std::invalid_argument("Effect paint packed Linear domain is degenerate or overflows");
         }
     } else if (field.kind == static_cast<std::uint32_t>(EffectPaintFieldKind::conic)) {
-        if (std::abs(field.domain[2]) > std::numbers::pi_v<float> || field.domain[3] <= 0 || field.domain[3] > turn) {
+        if (std::abs(domain[2]) > std::numbers::pi_v<float> || domain[3] <= 0 || domain[3] > turn) {
             throw std::invalid_argument("Effect paint packed Conic domain is invalid");
         }
     } else {
@@ -58,23 +73,48 @@ void validate_field(const EffectPaintGpuField& field, std::span<const EffectPain
 
 std::array<double, 4> sample_field(runtime::Point point, const EffectPaintGpuField& field,
                                    std::span<const EffectPaintGpuStop> stops) {
-    double coordinate{};
-    const auto dx = double(point.x) - field.domain[0];
-    const auto dy = double(point.y) - field.domain[1];
+    const auto span = stops.subspan(field.first_stop, field.stop_count);
     if (field.kind == static_cast<std::uint32_t>(EffectPaintFieldKind::linear)) {
-        const auto ax = double(field.domain[2]) - field.domain[0];
-        const auto ay = double(field.domain[3]) - field.domain[1];
-        coordinate = (dx * ax + dy * ay) / (ax * ax + ay * ay);
-    } else {
+        using namespace effect_linear_exact;
+        Integer n{};
+        Integer d{};
+        axis(std::bit_cast<std::uint32_t>(point.x), field.raw_domain_bits[0], field.raw_domain_bits[2],
+             field.affine_bits[0], field.affine_bits[2], n, d);
+        axis(std::bit_cast<std::uint32_t>(point.y), field.raw_domain_bits[1], field.raw_domain_bits[3],
+             field.affine_bits[1], field.affine_bits[2], n, d);
+        n = shift(n, 149);
+        const auto next = std::upper_bound(span.begin(), span.end(), n, [&](const Integer& value, const auto& stop) {
+            return less(value, stop_product(d, stop.position[0]));
+        });
+        const auto& previous = next == span.begin() ? span.front() : *(next - 1);
+        std::array<double, 4> result;
+        std::ranges::copy(previous.premultiplied_rgba, result.begin());
+        if (next != span.begin() && next != span.end()) {
+            const auto start = stop_product(d, previous.position[0]);
+            const auto end = stop_product(d, next->position[0]);
+            const auto fraction = unit_ratio(add(n, start, true), add(end, start, true));
+            for (std::size_t channel = 0; channel < result.size(); ++channel) {
+                result[channel] += double(fraction) * (next->premultiplied_rgba[channel] - result[channel]);
+            }
+        }
+        return result;
+    }
+    // Conic remains an approximate, disabled candidate; raw inputs do not
+    // certify the transcendental predicates or the following double arithmetic.
+    const auto domain = std::bit_cast<std::array<float, 4>>(field.raw_domain_bits);
+    const auto affine = std::bit_cast<std::array<float, 4>>(field.affine_bits);
+    double coordinate{};
+    const auto dx = double(point.x) - double(affine[2]) * (double(affine[0]) + domain[0]);
+    const auto dy = double(point.y) - double(affine[2]) * (double(affine[1]) + domain[1]);
+    {
         constexpr auto tau = 2 * std::numbers::pi_v<double>;
-        auto angle = dx == 0 && dy == 0 ? 0.0 : std::atan2(dy, dx) - field.domain[2];
+        auto angle = dx == 0 && dy == 0 ? 0.0 : std::atan2(dy, dx) - domain[2];
         angle = std::fmod(angle, tau);
         if (angle < 0) {
             angle += tau;
         }
-        coordinate = angle / (field.domain[3] == turn ? tau : double(field.domain[3]));
+        coordinate = angle / (domain[3] == turn ? tau : double(domain[3]));
     }
-    const auto span = stops.subspan(field.first_stop, field.stop_count);
     const auto next = std::upper_bound(span.begin(), span.end(), coordinate,
                                        [](double value, const auto& stop) { return value < stop.position[0]; });
     const auto& previous = next == span.begin() ? span.front() : *(next - 1);
@@ -126,23 +166,20 @@ EffectPaintGpuField pack_effect_paint_field(const graphics::EffectPaintField& fi
         std::uint64_t(first_stop) + count > std::numeric_limits<std::uint32_t>::max()) {
         throw std::length_error("Effect paint packed stop span exceeds uint32_t");
     }
-    const auto point = [&](runtime::Point value) {
-        return runtime::Point{(value.x + translation.x) * metrics.display_scale,
-                              (value.y + translation.y) * metrics.display_scale};
-    };
     EffectPaintGpuField result;
     result.first_stop = first_stop;
     result.stop_count = static_cast<std::uint32_t>(count);
+    result.affine_bits = std::bit_cast<std::array<std::uint32_t, 4>>(
+        std::array{translation.x, translation.y, metrics.display_scale, 0.0F});
     if (const auto* linear = std::get_if<graphics::EffectLinearDomain>(&field.domain())) {
         result.kind = static_cast<std::uint32_t>(EffectPaintFieldKind::linear);
-        const auto start = point(linear->start);
-        const auto end = point(linear->end);
-        result.domain = {start.x, start.y, end.x, end.y};
+        result.raw_domain_bits = std::bit_cast<std::array<std::uint32_t, 4>>(
+            std::array{linear->start.x, linear->start.y, linear->end.x, linear->end.y});
     } else {
         result.kind = static_cast<std::uint32_t>(EffectPaintFieldKind::conic);
         const auto& conic = std::get<graphics::EffectConicDomain>(field.domain());
-        const auto center = point(conic.center);
-        result.domain = {center.x, center.y, conic.start_radians, conic.sweep_radians};
+        result.raw_domain_bits = std::bit_cast<std::array<std::uint32_t, 4>>(
+            std::array{conic.center.x, conic.center.y, conic.start_radians, conic.sweep_radians});
     }
     validate_domain(result);
     return result;

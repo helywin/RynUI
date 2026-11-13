@@ -249,6 +249,11 @@ void* RecordingRenderer::create_effect_paint_buffer(EffectPaintBufferKind kind, 
         error_ = "Recording Effect paint ABI unsupported";
         return nullptr;
     }
+    const auto stride = effect_paint_buffer_stride(kind);
+    if (!stride || !size || size % stride) {
+        error_ = "Recording Effect paint buffer stride is invalid";
+        return nullptr;
+    }
     return create(paint_kind(kind), size);
 }
 

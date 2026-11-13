@@ -2,9 +2,9 @@
   "schema_version": 2,
   "hash_normalization": "lf",
   "instance_size_bytes": 112,
-  "effect_paint_abi": 1,
+  "effect_paint_abi": 2,
   "link_stride": 16,
-  "field_stride": 32,
+  "field_stride": 48,
   "stop_stride": 32,
   "cap_geometry_abi": 1,
   "cap_geometry_stride": 32,
@@ -26,16 +26,16 @@
       "bytes": 12347
     },
     "shaders/effect_conic_candidate.hlsli": {
-      "sha256": "3e79cfc3664b3af0e5d87019d3a8538be5fbc19dbc704cdea050bde6696cbfa2",
-      "bytes": 2571
+      "sha256": "5cb9c287a9c9f4fb47fa0e07abdf4a7d840e4e567443ed77c20325bc873791fe",
+      "bytes": 2797
     },
     "shaders/effect_linear_exact.hlsli": {
-      "sha256": "5945ec62a1f1b84fd204a59e37dc513adf9298786e54e334a4b33ec0bcaf8486",
-      "bytes": 4855
+      "sha256": "31135f01856aee4e24dcebbabaf1f1cd610024ecde9601310a743019954347da",
+      "bytes": 5480
     },
     "shaders/effect_paint_sampling.hlsli": {
-      "sha256": "78a12c0d67246299a56bffc229f18d473edbc4bb46b84e4fd975553684bb571f",
-      "bytes": 2783
+      "sha256": "261215341a394db7054e6fe02f81887ab76b4e4a98c47c155d44b476902b20c9",
+      "bytes": 3028
     },
     "shaders/glyph.hlsl": {
       "sha256": "24c5a0f8998b2c15ce49e90bab052b90c727319644ab61b53dfc562b563c732b",
@@ -140,7 +140,7 @@
         "shaders/rounded_effect_paint.hlsl",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "dac07e3209e89645982e0ce481573fc3457b2a1a13e0990a957732164b3927ff",
+      "closure_sha256": "9ab28759915bd99767a97859fed488f734a51a3fc659c4d6074b25d8880a1277",
       "vertex_inputs": [
         "float4",
         "float4",
@@ -334,7 +334,7 @@
         "shaders/rounded_effect_paint_composition.hlsl",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "f62d5bb022fa4fd0e34c2d3ea27ea3c8072309d6388c7b0e1b2f05f5bd09c3c1",
+      "closure_sha256": "8b8b6338654d2d7022438f175e6d647919b2c205fda56180e7fc3527e9bc404b",
       "vertex_inputs": [
         "float4",
         "float4",

@@ -70,17 +70,23 @@ SceneBackend 必须显式提供 SceneBackendCapabilities：logical scene v3、pa
 
 SceneResources 在 begin_upload_batch 前检查全部 live effects 的需求，隐藏、窗口外、ancestor clip 外、零 coverage 和零 opacity 均不能绕过；拒绝失效附件并保留原子重试数据。旧单记录 pack 在任何裁剪早退前拒绝 paint 或非 Round cap，不能降级成 solid/Round。baseline_scene_capabilities 的新能力始终关闭；Recording 独立 opt in，SDL 的 paint/Linear/Conic/underlay 与非 Round 产品能力均保持关闭；BUILD_TESTING 的 owner-local scope 仅用于显式候选验证。能力声明不代表完成平台验收。
 
-### Effect Paint ABI v1（107 B1）
+### Effect Paint ABI v2（107 B1/B2 raw-affine）
 
-独立 `effect_paint_abi_version=1` 不改变 logical scene v3、packed scene ABI v2、112-byte Effect、七个 float4 或 kind 0..5。下列三表全部采用 16-byte alignment；整数均为 uint32，不以 float 存索引，不借用 base 的 dash/Tooltip 参数位。保留字段必须为零。
+独立 `effect_paint_abi_version=2` 不改变 logical scene v3、packed scene ABI v2、112-byte Effect、七个 float4 或 kind 0..5。ABI v1 的 physical float field 会丢失决定 stop 的源信息，必须拒绝，不能只换 shader 算术。下列三表全部采用 16-byte alignment；整数均为 uint32，不以 float 存索引，不借用 base 的 dash/Tooltip 参数位。保留字段必须为零。
 
 | 表 | stride | 字段与 byte offset |
 | --- | --- | --- |
 | link（第二 instance stream） | 16 | foreground_field 0、underlay_field 4、arc_cap 8（Round=0 / Butt=1 / Square=2）、reserved 12 |
-| field（PS storage 0） | 32 | kind 0（Linear=1 / Conic=2）、first_stop 4、stop_count 8、reserved 12；float4 domain 16 |
+| field（PS storage 0） | 48 | kind 0（Linear=1 / Conic=2）、first_stop 4、stop_count 8、reserved 12；uint4 raw_domain_bits 16；uint4 affine_bits 32 |
 | stop（PS storage 1） | 32 | float4 position 0（x 为位置，yzw=0）；float4 premultiplied_rgba 16 |
 
-`0xffffffff` 是 link 的 no-field sentinel；foreground 缺省时 underlay 也必须缺省，solid 由 base.color 表达。Linear domain 为已施加 retained translation 和 display_scale 的物理 pixel 起止点 `(sx,sy,ex,ey)`；Conic 为同域 center 与不随 DPI 改变的 start/sweep radians `(cx,cy,start,sweep)`。至少两个 stop，保留重复点与域外位置。field/stop span 在 uint64 域检查后才收窄；field index 不能等于 sentinel。所有物理值必须有限，Linear 在 float 运算域内的端点差及长度平方必须有限且严格正，Conic sweep 在 `(0,2pi]`。重复 stop 右连续、premultiplied 插值、双场 source-over 后统一乘 coverage/opacity，与 logical reference 相同；packed reference 直接采样 packed tables。
+`0xffffffff` 是 link 的 no-field sentinel；foreground 缺省时 underlay 也必须缺省，solid 由 base.color 表达。raw domain 保存 translation 之前的 logical binary32：Linear 为 `(sx,sy,ex,ey)`，Conic 为 `(cx,cy,start,sweep)`；affine 保存 `(translation.x,translation.y,display_scale,0)` 原始 bits，不先做坐标相加或乘法。四个域分量和三个 affine 因子均以整数存取，保留 subnormal 与有符号零；不经浮点 vertex fetch。
+
+至少两个 stop，保留重复点与域外位置。field/stop span 在 uint64 域检查后才收窄；field index 不能等于 sentinel。ABI v2 保留原 physical float admission envelope：原先要求有限的物理端点、float 差与严格正有限长度平方仍检查，不新增数值拒绝，也不将其描述为接受所有有限 Core Linear domain。Conic sweep 仍在 `(0,2pi]`。资源 limits 按实际 field48 capacity 预算；link16、stop32 与独立 cap32 保持。
+
+Linear 采用精确 affine B 语义。`P` 为当前物理 sample 的 binary32，`S/E/T/scale` 来自原始 source bits；将这些值视为精确 dyadic，计算 `A=E-S, Q=P-scale*(T+S), N=Q·A, D=scale*(A·A)`，以 `N-stop*D` 的精确符号做右连续 stop 选择。不得回到先在 float 中变换 domain 或先做 Point<float> 局部减法。旧 Core float/double logical reference 只作普通近似兼容检查；独立 source oracle 不调用 packer、packed reference 或 shader。
+
+共同实现与 HLSL 使用 72 个 base-2^16 digits，即 1152-bit 有符号整数。degree-four 的 `N-stop*D` 在 2^-596 格点上，保守 magnitude 小于 2^516，至多 1112 magnitude bits；符号及 25 次保守 doubling 仍小于 1138 bits。插值分数用独立整数除法/tie-even 期望验证，落在 2^-24 网格，绝对误差不超过 2^-25；这不是后续浮点 premultiplied 颜色链的逐位等价证明。颜色仍在原 Color 数值域插值，两场 source-over 后统一乘 coverage/opacity。Conic 的 raw-affine transport 不代表其角度/跨 stop 精度已认证。
 
 link 与同一次 compact 的实际 packed Effect 一一对应，包括 solid/paint 混排；删除、隐藏、cull 和 slot reuse 同步 remap，不使用 Store ID.index 作为 GPU index。全 solid/default Round 的可见场景只走旧 pipeline，三表资源为零。可见 paint 或非 Round cap 启用新 pipeline，所有可见 Effect 都具有 link；cap-only 场景也分配、上传各一个零 field/stop 作为两个 storage binding 的最小占位，不能省略 limits 检查。占位不被 link 引用。
 
@@ -108,7 +114,9 @@ cap buffer 纳入同一 capacity/limits、owner/epoch、失败失效、无新增
 
 SDL 的 link 为 VERTEX buffer，field/stop 为 GRAPHICS_STORAGE_READ buffer；typed tombstone、owner/epoch、范围与源 bytes ownership 归同一 upload batch。Round paint 候选使用 base112/link16 两条实例流、七 float4 加 uint4 属性与两个 fragment storage；field/stop 从表起点绑定，draw first_instance=0。冷启动旧 solid/default Round 不创建新 pipeline/表，恢复旧场景释放三表，已创建 pipeline 缓存至析构。新 pipeline 创建失败使事务失败。
 
-新旧 entry 共用 `rounded_effect_coverage.hlsli` 的旧 Round/dash/Tooltip/阴影/outline 和一物理像素 AA；hard clip 保持左上包含、右下排除。paint 两场在 premultiplied 域插值和 source-over 后，仅乘一次 coverage/opacity，再输出 straight RGBA。Linear 以 896-bit 有界 dyadic 整数精确比较 N-stop*D，并在相同表达式上求插值分数，避免先舍入两个大坐标差；任意有限、相邻和重复 stop 不设新范围限制。Conic 候选使用 224-bit 坐标同时选择 stop 和求分数，保留 true-tau wrap/full sentinel/center0；其全域算术误差、跨 stop 判定与 unresolved 的有界处置仍未认证，因此不能据此打开产品 paint。cap union 源码保留为独立候选，本阶段不生成、反射或嵌入 cap entry；SDL 明确拒绝 cap pipeline，disabled cap suite 不属于本阶段可执行 GPU 验收。
+新旧 entry 共用 `rounded_effect_coverage.hlsli` 的旧 Round/dash/Tooltip/阴影/outline 和一物理像素 AA；hard clip 保持左上包含、右下排除。paint 两场在 premultiplied 域插值和 source-over 后，仅乘一次 coverage/opacity，再输出 straight RGBA。Linear 按上述 raw-affine/1152-bit 合同精确选择 stop，任意有限、相邻和重复 stop 不设新范围限制。Conic 候选使用 224-bit 坐标同时选择 stop 和求分数，保留 true-tau wrap/full sentinel/center0；其全域算术误差、跨 stop 判定与 unresolved 的有界处置仍未认证，因此不能据此打开产品能力。cap union 源码保留为独立候选，本阶段不生成、反射或嵌入 cap entry；SDL 明确拒绝 cap pipeline，disabled cap suite 不属于本阶段可执行 GPU 验收。
+
+Linear 必须独立记录冷 pipeline/JIT、共同 pack/upload、submit/fence/readback、source oracle 与总 wall time；submit/fence/readback 的 CPU 时间不是独立 GPU kernel 时间或 FPS。先测有界小矩阵，再显式测整 1080p 的单 Linear 与两个半透明 Linear。保留 55 秒 workload/60 秒外部 guard，不以提高超时、只测同色或不透明双场代替成本验证。候选阶段全部产品 flags 保持关闭，数值与平台证据按实际运行分别记录。
 
 `tools/effect_shader_closure.py --write-lock` 显式生成 schema2 JSON/YAML-subset lock，包含每文件 LF SHA256、长度、排序 closure SHA256 及各 stage 的编译定义。vertex/fragment 分别显式定义 `RYNUI_VERTEX_SHADER=1` / `RYNUI_FRAGMENT_SHADER=1`；paint storage 与采样入口只编入 fragment，避免 vertex 模块留下未使用的 descriptor 声明。验证递归 quoted includes，拒绝循环、越界、漏锁、stage recipe 与 CMake DEPENDS 漂移；新旧各 stage 编译依赖完整 closure、lock、validator。交接不生成 lock/binary，父在最终格式化后用锁定 BUNDLED shadercross/DXC 生成。JSON 核对 IO/资源数量，`tools/verify_effect_paint_spirv.py` 从真实 SPIR-V 检查整数/Flat、set2 storage0/1、stride/offset；不将其描述为 DXIL reflection。
 

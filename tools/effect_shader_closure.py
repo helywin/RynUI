@@ -83,7 +83,7 @@ def manifest(root: Path) -> dict:
                           for stage in ("vertex", "fragment") for suffix in ("dxil", "spv", "json")],
         }
     return {"schema_version": 2, "hash_normalization": "lf", "instance_size_bytes": 112,
-            "effect_paint_abi": 1, "link_stride": 16, "field_stride": 32, "stop_stride": 32,
+            "effect_paint_abi": 2, "link_stride": 16, "field_stride": 48, "stop_stride": 32,
             "cap_geometry_abi": 1, "cap_geometry_stride": 32,
             "entry_points": {"vertex": "VSMain", "fragment": "PSMain"},
             "files": dict(sorted(files.items())), "pipelines": pipelines}
@@ -109,6 +109,17 @@ def negative_test(root: Path, lock: Path, output: Path) -> None:
         test_root = Path(directory)
         shutil.copytree(root / "shaders", test_root / "shaders")
         test_lock = test_root / "shaders/rounded_effect.lock.yaml"
+        shutil.copyfile(lock, test_lock)
+        for key, value in (("effect_paint_abi", 1), ("effect_paint_abi", 3), ("field_stride", 32)):
+            changed_abi = json.loads(lock.read_text(encoding="utf-8"))
+            changed_abi[key] = value
+            test_lock.write_text(json.dumps(changed_abi), encoding="utf-8")
+            try:
+                validate(test_root, test_lock)
+            except ValueError:
+                pass
+            else:
+                raise ValueError(f"ABI/stride mutation incorrectly passed the shader lock: {key}={value}")
         shutil.copyfile(lock, test_lock)
         changed_recipe = json.loads(test_lock.read_text(encoding="utf-8"))
         changed_recipe["pipelines"]["rounded_effect_paint"]["stage_defines"]["vertex"] = []

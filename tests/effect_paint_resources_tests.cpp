@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstring>
 #include <iostream>
 #include <numbers>
@@ -306,13 +307,14 @@ void raw_owned_bytes_foreign_owner_and_kind() {
     for (const auto kind : {EffectPaintBufferKind::link, EffectPaintBufferKind::field, EffectPaintBufferKind::stop}) {
         RecordingRenderer backend;
         RecordingRenderer other;
-        auto* buffer = backend.create_effect_paint_buffer(kind, 32);
-        std::array<std::byte, 32> source;
-        source.fill(std::byte{42});
+        const auto stride = effect_paint_buffer_stride(kind);
+        require(!backend.create_effect_paint_buffer(kind, stride - 1), "misaligned paint buffer accepted");
+        auto* buffer = backend.create_effect_paint_buffer(kind, stride);
+        std::vector<std::byte> source(stride, std::byte{42});
         const auto expected = source;
         require(backend.begin_upload_batch() && backend.upload_effect_paint_buffer(kind, buffer, 0, source),
                 "paint raw upload failed");
-        source.fill(std::byte{99});
+        std::ranges::fill(source, std::byte{99});
         require(backend.finish_upload_batch() && std::ranges::equal(backend.buffer_bytes(buffer), expected),
                 "paint upload borrowed caller bytes after successful return");
         require(other.begin_upload_batch() && !other.upload_effect_paint_buffer(kind, buffer, 0, source),
@@ -345,7 +347,7 @@ void preflight_precedes_begin() {
             caps.effect_arc_caps = false;
             value = make_arc_effect({20, 20}, 10, 4, 0, 90, ArcCap::Butt, Color{1, 0, 0});
         } else if (mode == 2) {
-            caps.effect_paint_abi_version = 2;
+            caps.effect_paint_abi_version = effect_paint_abi_version + 1;
         } else if (mode == 3) {
             caps.effect_linear_fields = false;
         } else if (mode == 4) {
@@ -412,6 +414,19 @@ void supported_capability_subsets_and_actual_draw_bytes() {
     require(std::ranges::equal(std::span{linear_only.backend.draws()[0].effect_stop_bytes}.first(sizeof(replacement)),
                                std::as_bytes(std::span{&replacement, 1})),
             "Recording used CPU staging instead of actual consumed paint bytes");
+    auto raw_field = linear_only.resources.effects().paint_tables().fields[0];
+    raw_field.affine_bits[0] = std::bit_cast<std::uint32_t>(1.0F);
+    require(linear_only.backend.begin_upload_batch() &&
+                linear_only.backend.upload_effect_paint_buffer(EffectPaintBufferKind::field, binding.field, 0,
+                                                               std::as_bytes(std::span{&raw_field, 1})) &&
+                linear_only.backend.finish_upload_batch(),
+            "actual raw affine field fixture upload failed");
+    linear_only.draw();
+    require(linear_only.resources.effects().paint_tables().fields[0] != raw_field &&
+                linear_only.backend.draws()[0].effect_field_bytes.size() == effect_paint_field_stride,
+            "Recording raw field test failed to distinguish staging and actual bytes");
+    same_bytes(std::span<const std::byte>{linear_only.backend.draws()[0].effect_field_bytes},
+               std::span<const EffectPaintGpuField>{&raw_field, 1});
     const EffectPaintGpuLink invalid{effect_paint_no_field - 1, effect_paint_no_field, 0, 0};
     require(linear_only.backend.begin_upload_batch() &&
                 linear_only.backend.upload_effect_paint_buffer(EffectPaintBufferKind::link, binding.link, 0,
@@ -459,6 +474,79 @@ void color_picker_solid_field_and_paint_share_transaction() {
                 f.backend.draws()[0].effect_field_indices == std::vector<std::uint32_t>{0},
             "solidEffects/paint shared draw lost link correspondence or created fields for solid tiles");
 }
+
+void raw_affine_versions_precede_begin() {
+    for (const auto version : {0u, 1u, effect_paint_abi_version + 1, effect_paint_no_field}) {
+        auto caps = recording_scene_capabilities();
+        caps.effect_paint_abi_version = version;
+        Fixture f{caps};
+        require(f.sync(), "unknown paint ABI empty scene priming failed");
+        auto value = painted(Color{1, 0, 0, 0.5F}, true);
+        value.material.visible = false;
+        const auto id = f.effects.add(value);
+        f.backend.fail_next(RecordingFailure::begin);
+        const auto before = f.backend.counters();
+        rejects([&] { static_cast<void>(f.sync()); });
+        require(f.backend.counters().cancels == before.cancels && f.backend.counters().uploads == before.uploads &&
+                    f.backend.counters().commits == before.commits,
+                "old/unknown paint ABI was rejected after begin");
+        require(f.effects.remove(id), "unknown paint ABI source removal failed");
+        require(!f.sync() && f.sync(), "unknown paint ABI consumed pending begin failure");
+    }
+}
+
+void raw_affine_recording_transaction() {
+    const EffectGradientRamp ramp{
+        {0, Color{1, 0, 0}}, {1.0F / 32, Color{1, 0, 0}}, {1.0F / 32, Color{0, 0, 1}}, {1, Color{0, 0, 1}}};
+    auto a = solid();
+    a.material.paint =
+        EffectPaint{{ramp, EffectLinearDomain{{-16777211, -16777210}, {-16777203, -16777218}}}, std::nullopt};
+    auto b = solid();
+    b.material.paint =
+        EffectPaint{{ramp, EffectLinearDomain{{-16777210, -16777210}, {-16777202, -16777218}}}, std::nullopt};
+    a.material.paint->underlay = b.material.paint->foreground;
+    const SceneDeviceMetrics original{128, 96, 1.5F};
+    for (const auto failure :
+         {RecordingFailure::upload, RecordingFailure::upload_exception, RecordingFailure::commit}) {
+        Fixture f;
+        static_cast<void>(f.effects.add_batch(std::array{solid(), a, solid(), b}));
+        f.order.append_command({SceneDrawKind::rounded_effect, 1, 3, invalid_glyph_atlas_page});
+        require(f.sync(original), "raw affine nonzero mixed scene prime failed");
+        const auto old = f.resources.attach(f.order);
+        f.backend.fail_next(failure, failure == RecordingFailure::commit ? 0 : 2); // base,link,field
+        bool failed{};
+        try {
+            failed = !f.sync({160, 120, 1.25F});
+        } catch (const std::exception&) {
+            failed = true;
+        }
+        require(failed && !f.backend.valid_attachment(old), "raw field/commit failure kept old attachment");
+        f.effects.clear_dirty_ranges();
+        const auto uploads = f.backend.counters().uploads;
+        require(f.sync(original) && f.backend.counters().uploads == uploads + 4,
+                "raw field failure did not rebuild all buffers on original metrics without dirty");
+        f.draw();
+        const auto& draw = f.backend.draws()[0];
+        require(draw.effect_field_indices == std::vector<std::uint32_t>{0, 1, 2} &&
+                    draw.effect_field_bytes.size() == 3 * effect_paint_field_stride &&
+                    draw.effect_binding.base_byte_offset == 112 && draw.effect_binding.link_byte_offset == 16,
+                "raw mixed nonzero-first field48 records or global table indices differ");
+        for (std::size_t index = 0; index < 3; ++index) {
+            EffectPaintGpuField actual;
+            std::memcpy(&actual, draw.effect_field_bytes.data() + index * effect_paint_field_stride, sizeof(actual));
+            const auto& domain = std::get<EffectLinearDomain>(index == 0 ? a.material.paint->foreground.domain()
+                                                                         : b.material.paint->foreground.domain());
+            const auto expected = std::bit_cast<std::array<std::uint32_t, 4>>(
+                std::array{domain.start.x, domain.start.y, domain.end.x, domain.end.y});
+            require(actual.kind == 1 && actual.first_stop == index * 4 && actual.stop_count == 4 && !actual.reserved &&
+                        actual.raw_domain_bits == expected &&
+                        actual.affine_bits == std::array<std::uint32_t, 4>{0, 0, 0x3fc00000, 0},
+                    "Recording consumed raw affine bytes differ from independent source bits");
+        }
+        const auto idle = f.backend.counters().uploads;
+        require(f.sync(original) && f.backend.counters().uploads == idle, "raw affine retry did not settle idle");
+    }
+}
 } // namespace
 
 int main() {
@@ -473,6 +561,8 @@ int main() {
         supported_capability_subsets_and_actual_draw_bytes();
         growth_create_failures_preserve_old_resources();
         color_picker_solid_field_and_paint_share_transaction();
+        raw_affine_versions_precede_begin();
+        raw_affine_recording_transaction();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

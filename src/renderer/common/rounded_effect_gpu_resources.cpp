@@ -17,7 +17,7 @@ namespace {
 
 constexpr std::array table_kinds{EffectPaintBufferKind::link, EffectPaintBufferKind::field,
                                  EffectPaintBufferKind::stop};
-constexpr std::array table_strides{sizeof(EffectPaintGpuLink), sizeof(EffectPaintGpuField), sizeof(EffectPaintGpuStop)};
+constexpr std::array table_strides{effect_paint_link_stride, effect_paint_field_stride, effect_paint_stop_stride};
 
 bool needs_paint_transport(std::span<const graphics::RoundedEffectInstance> source) {
     return std::ranges::any_of(source, [](const auto& instance) {
