@@ -76,23 +76,18 @@ std::array<double, 4> sample_field(runtime::Point point, const EffectPaintGpuFie
     const auto span = stops.subspan(field.first_stop, field.stop_count);
     if (field.kind == static_cast<std::uint32_t>(EffectPaintFieldKind::linear)) {
         using namespace effect_linear_exact;
-        Integer n{};
-        Integer d{};
-        axis(std::bit_cast<std::uint32_t>(point.x), field.raw_domain_bits[0], field.raw_domain_bits[2],
-             field.affine_bits[0], field.affine_bits[2], n, d);
-        axis(std::bit_cast<std::uint32_t>(point.y), field.raw_domain_bits[1], field.raw_domain_bits[3],
-             field.affine_bits[1], field.affine_bits[2], n, d);
-        n = shift(n, 149);
-        const auto next = std::upper_bound(span.begin(), span.end(), n, [&](const Integer& value, const auto& stop) {
-            return less(value, stop_product(d, stop.position[0]));
-        });
+        const Inputs raw{{std::bit_cast<std::uint32_t>(point.x), std::bit_cast<std::uint32_t>(point.y),
+                          field.raw_domain_bits[0], field.raw_domain_bits[1], field.raw_domain_bits[2],
+                          field.raw_domain_bits[3], field.affine_bits[0], field.affine_bits[1]},
+                         field.affine_bits[2]};
+        const auto selection =
+            select(raw, field.stop_count, [&](std::uint32_t index) { return span[index].position[0]; });
+        const auto next = span.begin() + selection.next;
         const auto& previous = next == span.begin() ? span.front() : *(next - 1);
         std::array<double, 4> result;
         std::ranges::copy(previous.premultiplied_rgba, result.begin());
         if (next != span.begin() && next != span.end()) {
-            const auto start = stop_product(d, previous.position[0]);
-            const auto end = stop_product(d, next->position[0]);
-            const auto fraction = unit_ratio(add(n, start, true), add(end, start, true));
+            const auto fraction = selection.fraction;
             for (std::size_t channel = 0; channel < result.size(); ++channel) {
                 result[channel] += double(fraction) * (next->premultiplied_rgba[channel] - result[channel]);
             }

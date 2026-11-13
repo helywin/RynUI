@@ -2,6 +2,7 @@
 #include "renderer/common/effect_paint_packing.hpp"
 #include "renderer/common/effect_linear_exact.hpp"
 #include "effect_linear_source_oracle.hpp"
+#include "effect_linear_s2_tests.hpp"
 
 #include <algorithm>
 #include <bit>
@@ -466,6 +467,7 @@ int main() {
         exact_sparse_product_boundaries();
         raw_affine_dual_source_regressions();
         exact_polynomial_integer_boundaries();
+        effect_linear_s2_tests::run();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
