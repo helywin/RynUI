@@ -238,7 +238,70 @@ void windowed_groups() {
     clean(g);
 }
 
+void nested_affix_selector_ownership() {
+    for (const bool prefix : {true, false}) {
+        Fixture f;
+        SelectRef outer;
+        InputRef inner;
+        runtime::ComponentId nested_input;
+        runtime::ComponentId button;
+        int clicks{};
+        int searches{};
+        const auto affix = [&] {
+            Button(ButtonProps{}.onClick([&] { ++clicks; }), ButtonContent{[] { Text(u8"Action"); }});
+            button = f.buttons.mounted_buttons().back().component;
+            Input(InputProps{}.ref(inner).defaultValue(u8"inner").layout(LayoutStyle{}.width(dp(80))));
+            nested_input = f.inputs.mounted_inputs().back().component;
+        };
+        f.services.mount(Content{[&] {
+            auto props = SelectProps{}
+                             .ref(outer)
+                             .showSearch()
+                             .options({{1, u8"One"}})
+                             .onSearch([&](String) { ++searches; })
+                             .layout(LayoutStyle{}.width(dp(320)));
+            if (prefix) {
+                Select(std::move(props), SelectPrefix{affix});
+            } else {
+                Select(std::move(props), {}, SelectSuffix{affix});
+            }
+        }});
+        const auto id = f.services.select().mounted().front();
+        const auto selector = selection(f, id).selector;
+        check(selector != nested_input, "Select claimed its nested affix editor as selector");
+        sync(f);
+        const auto button_node = f.services.components().root(button);
+        check(f.services.components().branch_active(button) && f.nodes.require(button_node).place_count > 0 &&
+                  bounds(f, button).width > 0 && bounds(f, button).height > 0,
+              "nested affix Button remained active without placement");
+        static_cast<void>(f.services.layout().horizontal_content_geometry(button_node));
+        click(f, button);
+        check(clicks == 1, "nested affix Button lost real pointer activation");
+        check(outer.focus(), "outer Select focus failed with nested affix editor");
+        const auto focus = f.services.focus().state().focused;
+        check(focus && f.services.interactions().find(*focus)->component == selector,
+              "Select ref focused its nested affix editor");
+        edit(f, u8"outer query");
+        check(searches == 1 && f.inputs.display_snapshot(nested_input).text == "inner",
+              "outer search edited the nested draft");
+        check(inner.focus(), "nested affix Input ref failed");
+        edit(f, u8"inner draft");
+        check(searches == 1 && f.inputs.display_snapshot(nested_input).text == "inner draft",
+              "nested editing triggered outer Select search");
+        check(outer.focus(), "outer focus was lost after nested editing");
+        key(f, Key::down);
+        key(f, Key::escape);
+        sync(f);
+        check(selection(f, id).selector == selector && f.services.components().contains(nested_input) &&
+                  f.services.components().contains(button) && inner.bound() &&
+                  f.inputs.display_snapshot(nested_input).text == "inner draft",
+              "popup roundtrip replaced or cleared a nested affix");
+        clean(f);
+    }
+}
+
 void retained_rich_and_affixes() {
+    nested_affix_selector_ownership();
     Fixture f;
     SelectRef ref;
     InputRef child;

@@ -1788,7 +1788,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                                                services.layout().set_layout(node, flex);
                                            }});
                       }};
-                      const auto input_count = inputs->mounted_inputs().size();
+                      const auto selector_child_index = services.components().children(id).size();
                       Input(InputProps{}
                                 .value(s.display)
                                 .placeholder(s.placeholder)
@@ -1860,7 +1860,13 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                                     Icon(IconProps{}.source(s.arrow).spin(s.spinning).tone(TextTone::Secondary));
                                 }
                             }});
-                      const auto input = inputs->mounted_inputs()[input_count];
+                      const auto selector = services.components().children(id).at(selector_child_index);
+                      const auto mounted_inputs = inputs->mounted_inputs();
+                      const auto found = std::ranges::find(mounted_inputs, selector, &MountedInputComponent::component);
+                      if (found == mounted_inputs.end()) {
+                          throw std::logic_error("Select selector Input was not mounted");
+                      }
+                      const auto input = *found;
                       s.selector = input.component;
                       s.selector_hit = input.interaction;
                       s.editor = input.editor;
