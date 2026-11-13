@@ -1016,7 +1016,7 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
 
     ReadbackScope scope{device, active_render_pass_};
     try {
-        SceneRgbaReadback candidate{width, height, width * 4U, {}};
+        SceneRgbaReadback candidate{width, height, width * 4U, {}, {}};
         candidate.pixels.resize(static_cast<std::size_t>(candidate.row_pitch) * height);
         SDL_GPUTextureCreateInfo texture_info{};
         texture_info.type = SDL_GPU_TEXTURETYPE_2D;
@@ -1082,6 +1082,9 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
             last_error_ = sdl_error("Failed to complete frame export readback");
             return false;
         }
+        // An owner-local serial names this specific submitted fence. It is not a
+        // surface submission counter or the address of an SDL object.
+        const auto readback_id = ++next_readback_id_;
         const auto* pixels = static_cast<const std::byte*>(SDL_MapGPUTransferBuffer(device, scope.transfer, false));
         if (!pixels) {
             last_error_ = sdl_error("Failed to map frame RGBA readback");
@@ -1097,6 +1100,15 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
                 }
             }
         }
+        candidate.evidence = {readback_id,
+                              readback_id,
+                              attachment().scene_revision(),
+                              owner_id(),
+                              device_epoch(),
+                              {width, height, metrics.display_scale},
+                              attachment().metrics(),
+                              true,
+                              format == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM};
         output = std::move(candidate);
         return true;
     } catch (const std::exception& error) {
@@ -1105,7 +1117,10 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
     }
 }
 
-bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
+bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path, SceneReadbackEvidence* evidence) {
+    if (evidence) {
+        *evidence = {};
+    }
     SceneRgbaReadback frame;
     if (!read_frame_rgba(frame)) {
         return false;
@@ -1117,6 +1132,8 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
     const bool saved = surface && SDL_SaveBMP(surface.get(), path.string().c_str());
     if (!saved) {
         last_error_ = sdl_error("Failed to save exported frame");
+    } else if (evidence) {
+        *evidence = frame.evidence;
     }
     return saved;
 }

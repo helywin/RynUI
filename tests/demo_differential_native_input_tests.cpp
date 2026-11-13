@@ -132,6 +132,10 @@ void routing() {
     }
     click("gallery.input.controlled");
     require(fixture.inputs.sessions().active().valid(), "pointer did not start actual editor session");
+    const auto previous_input_session = fixture.inputs.sessions().active();
+    require(fixture.inputs.set_caret_deadline(input_owner, animation::AnimationTime::microseconds(500000)) &&
+                fixture.inputs.caret_deadline(input_owner) == animation::AnimationTime::microseconds(500000),
+            "owner-local injected caret deadline was not observed");
     dispatch("text-commit", "gallery.input.controlled", Json::Object{{"text", "abc🙂"}});
     require(context->values.at("gallery.input.controlled")().string() == "abc🙂", "accepted text commit missing");
     const auto coverage = gallery_demo_text_snapshot(fixture.scene, layers.base, node.bounds, font_info, nominal_glyph);
@@ -163,6 +167,17 @@ void routing() {
                           {"gallery.select.controlled-search", "gallery.select.disabled", "gallery.select.loading"});
     fixture.show(definition);
     const auto select_owner = fixture.pages.target("gallery.select.controlled-search");
+    const auto before_stale = context->callbacks.size();
+    require(!fixture.pages.dispatch(input::TextCommitted{String{u8"late old owner"}, previous_input_session}) &&
+                context->callbacks.size() == before_stale,
+            "retired editor session accepted a late generation event");
+    bool rejected_input_deadline{};
+    try {
+        static_cast<void>(fixture.inputs.caret_deadline(input_owner));
+    } catch (const std::out_of_range&) {
+        rejected_input_deadline = true;
+    }
+    require(rejected_input_deadline, "retired Input deadline query silently reported no deadline");
     const auto select_metadata = fixture.services.select().input_snapshot(select_owner);
     require(select_metadata.controlled_value && select_metadata.show_search && select_metadata.allow_clear &&
                 select_metadata.options.size() == 2 && select_metadata.options[0].value == SelectValue{u8"desktop"} &&

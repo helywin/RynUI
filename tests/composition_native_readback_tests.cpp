@@ -108,6 +108,13 @@ struct RawScene {
         require(result.row_pitch == result.width * 4 &&
                     result.pixels.size() == std::size_t(result.row_pitch) * result.height,
                 "owned tight RGBA");
+        require(result.evidence.fence_completed && result.evidence.readback_id != 0 && result.evidence.fence_id != 0 &&
+                    result.evidence.renderer_owner == renderer.owner_id() &&
+                    result.evidence.device_epoch == renderer.device_epoch() &&
+                    result.evidence.scene_revision == order.revision() && result.evidence.scene_metrics == metrics &&
+                    result.evidence.metrics.pixel_width == result.width &&
+                    result.evidence.metrics.pixel_height == result.height,
+                "readback receipt must preserve submitted scene metrics and actual target metrics separately");
         return result;
     }
 };

@@ -1879,8 +1879,7 @@ bool GalleryPagesHost::Impl::dispatch(const input::PlatformInputEvent& event) {
             } else if constexpr (std::is_same_v<T, input::ClipboardChanged>) {
                 return false;
             } else {
-                static_cast<void>(inputs.dispatch(value));
-                return true;
+                return static_cast<bool>(inputs.dispatch(value));
             }
         },
         event);

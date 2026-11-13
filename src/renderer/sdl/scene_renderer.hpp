@@ -45,12 +45,25 @@ struct SceneRendererCounters {
     std::uint64_t effect_cap_pipeline_creations{};
 };
 
+struct SceneReadbackEvidence final {
+    std::uint64_t readback_id{};
+    std::uint64_t fence_id{};
+    std::uint64_t scene_revision{};
+    std::uint64_t renderer_owner{};
+    std::uint64_t device_epoch{};
+    SceneDeviceMetrics metrics;
+    SceneDeviceMetrics scene_metrics;
+    bool fence_completed{};
+    bool source_bgra{};
+};
+
 struct SceneRgbaReadback final {
     std::uint32_t width{};
     std::uint32_t height{};
     std::uint32_t row_pitch{};
     // Owned, top-left RGBA framebuffer bytes, without unpremultiplication.
     std::vector<std::byte> pixels;
+    SceneReadbackEvidence evidence;
 };
 
 struct SceneDeviceDescription final {
@@ -136,7 +149,7 @@ public:
     void draw_rounded_effect(std::uint32_t first, std::uint32_t count) override;
     runtime::FrameSubmissionResult submit_frame(animation::AnimationTime frame_time) override;
     // Render the attached scene into a matching offscreen target for visual QA.
-    bool save_frame_bmp(const std::filesystem::path& path);
+    bool save_frame_bmp(const std::filesystem::path& path, SceneReadbackEvidence* evidence = nullptr);
     bool read_frame_rgba(SceneRgbaReadback& output);
 
 #if defined(RYNUI_SDL_TEST_HOOKS)
@@ -223,6 +236,7 @@ private:
     std::unordered_map<std::uint64_t, void*> composition_fences_;
     std::uint64_t next_composition_fence_{};
     std::uint64_t completed_composition_fence_{};
+    std::uint64_t next_readback_id_{};
     bool composition_active_{};
     PlatformState* platform_;
     SdlGpuBinding binding_;

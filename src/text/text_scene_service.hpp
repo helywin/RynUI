@@ -85,6 +85,7 @@ public:
                                      std::vector<font::FontIdentity> fallback_chain, std::uint32_t pixel_size,
                                      text::TextLayoutConfig layout);
     [[nodiscard]] font::FontIdentity icon_font(font::FontIdentity reference, std::uint32_t logical_pixel_size);
+    [[nodiscard]] bool is_bundled_icon_font(font::FontIdentity) const;
     [[nodiscard]] font::FontIdentity icon_font(const IconSource& source, font::FontIdentity reference,
                                                std::uint32_t logical_pixel_size);
     bool destroy(TextSceneId id);

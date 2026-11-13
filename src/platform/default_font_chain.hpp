@@ -31,6 +31,8 @@ struct DefaultFontChainRequest {
     std::vector<FontFilePreference> preferred_monospace_fonts;
     std::filesystem::path fallback_latin;
     std::filesystem::path fallback_cjk;
+    // Explicit acceptance/application policy. The ordinary Gallery default stays true.
+    bool allow_system_fallback{true};
 };
 
 struct LoadedDefaultFontFace {
@@ -57,6 +59,8 @@ struct DefaultFontChainResult {
     // Monospace-only faces discovered for `SystemFontFamily::ui_monospace`. They
     // are released alongside `faces` but are not part of the UI chain.
     std::vector<LoadedDefaultFontFace> monospace_faces;
+    // Source metadata for lazily resolved styled faces (owned by FontRuntime).
+    std::vector<LoadedDefaultFontFace> resolved_faces;
     std::string diagnostic;
     // Face-selection notes accumulated by the resolver, for example a strong or
     // italic request that had to fall back to the regular face.
@@ -64,6 +68,7 @@ struct DefaultFontChainResult {
     bool uses_custom_fonts{};
     bool uses_system_fonts{};
     bool uses_bundled_fallbacks{};
+    bool explicit_files_only{};
 
     [[nodiscard]] explicit operator bool() const noexcept {
         return !faces.empty() && diagnostic.empty();

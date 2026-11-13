@@ -139,6 +139,11 @@ public:
     void set_nominal_frame_period(AnimationDuration period);
     [[nodiscard]] AnimationDuration nominal_frame_period() const noexcept;
     [[nodiscard]] std::optional<AnimationTime> next_deadline() const;
+    // Owner-thread, read-only scope queries used by finite lifecycle observers.
+    // Exact generations are required; a retired scope is never an idle live scope.
+    [[nodiscard]] std::vector<AnimationScopeId> scopes() const;
+    [[nodiscard]] std::size_t size(AnimationScopeId scope) const;
+    [[nodiscard]] std::optional<AnimationTime> next_deadline(AnimationScopeId scope) const;
 
     [[nodiscard]] bool contains(AnimationId animation) const;
     [[nodiscard]] bool contains(AnimationScopeId scope) const;
@@ -207,6 +212,7 @@ private:
     void invoke_completion(AnimationId animation);
     bool remove_animation(AnimationId animation, bool canceled);
     void cancel_target_animations(AnimationTargetId target);
+    [[nodiscard]] std::optional<AnimationTime> deadline_for(std::optional<AnimationScopeId>) const;
     void ensure_owner_thread() const;
 
     std::thread::id owner_thread_;

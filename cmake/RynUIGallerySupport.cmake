@@ -119,6 +119,7 @@ rynui_configure_cpp_target(rynui_gallery_page_acceptance)
 target_link_libraries(rynui_gallery_page_acceptance PUBLIC rynui_token_gallery_definition)
 
 add_library(rynui_demo_differential_native STATIC
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_demo_observation.cpp"
     "${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_demo_scenario.cpp")
 rynui_configure_cpp_target(rynui_demo_differential_native)
 target_include_directories(rynui_demo_differential_native PRIVATE "${PROJECT_SOURCE_DIR}/src")

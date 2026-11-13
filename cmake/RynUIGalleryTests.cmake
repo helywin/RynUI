@@ -463,3 +463,17 @@ target_compile_definitions(rynui_demo_differential_native_input_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.demo_differential_native_input COMMAND rynui_demo_differential_native_input_tests)
+
+add_executable(rynui_demo_differential_native_observation_tests demo_differential_native_observation_tests.cpp)
+rynui_configure_cpp_target(rynui_demo_differential_native_observation_tests)
+target_include_directories(rynui_demo_differential_native_observation_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_demo_differential_native_observation_tests PRIVATE rynui_demo_differential_native rynui_components)
+target_compile_definitions(rynui_demo_differential_native_observation_tests PRIVATE
+    "RYNUI_GALLERY_SOURCE_ROOT=\"${PROJECT_SOURCE_DIR}\""
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.demo_differential_native_observation COMMAND rynui_demo_differential_native_observation_tests)
+if(TARGET rynui_renderer_recording)
+    target_link_libraries(rynui_demo_differential_native_observation_tests PRIVATE rynui_renderer_recording)
+    target_compile_definitions(rynui_demo_differential_native_observation_tests PRIVATE RYNUI_DEMO_RECORDING_OBSERVATION)
+endif()

@@ -17,7 +17,7 @@ bool SceneBackend::valid_attachment(const SceneAttachment& value) const noexcept
     const auto state = value.state_.lock();
     const bool valid = state && state->ready && value.scene_ && value.glyphs_ && value.owner_ == owner_id() &&
                        state->owner == owner_id() && value.epoch_ == device_epoch() && state->epoch == device_epoch() &&
-                       value.revision_ == state->revision;
+                       value.revision_ == state->revision && value.scene_revision_ == value.scene_->revision();
     if (!valid) {
         return false;
     }
@@ -246,6 +246,7 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
             return false;
         }
         active = false;
+        state_->metrics = data.metrics;
         state_->ready = true;
         retry_required_ = false;
         refresh_fence_retry();
@@ -284,6 +285,8 @@ SceneAttachment SceneResources::attach(const graphics::OrderedScene& scene) cons
     result.images_ = images_.get();
     result.effects_ = effects_.get();
     result.scene_ = &scene;
+    result.metrics_ = state_->metrics;
+    result.scene_revision_ = scene.revision();
     result.quad_count_ = quad_count_;
     result.glyph_count_ = glyph_count_;
     result.composition_ = composition_.current();

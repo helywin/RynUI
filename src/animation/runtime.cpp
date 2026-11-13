@@ -345,6 +345,41 @@ AnimationDuration AnimationRuntime::nominal_frame_period() const noexcept {
 }
 
 std::optional<AnimationTime> AnimationRuntime::next_deadline() const {
+    return deadline_for(std::nullopt);
+}
+
+std::vector<AnimationScopeId> AnimationRuntime::scopes() const {
+    ensure_owner_thread();
+    std::vector<AnimationScopeId> result;
+    for (const auto& slot : scope_slots_) {
+        if (slot.record) {
+            result.push_back(slot.record->id);
+        }
+    }
+    return result;
+}
+
+std::size_t AnimationRuntime::size(AnimationScopeId scope) const {
+    ensure_owner_thread();
+    if (!find(scope)) {
+        throw std::out_of_range("Animation scope generation is stale");
+    }
+    return std::ranges::count_if(active_, [&](auto id) {
+        const auto* animation = find(id);
+        const auto* target = animation ? find(animation->target) : nullptr;
+        return target && target->scope == scope;
+    });
+}
+
+std::optional<AnimationTime> AnimationRuntime::next_deadline(AnimationScopeId scope) const {
+    ensure_owner_thread();
+    if (!find(scope)) {
+        throw std::out_of_range("Animation scope generation is stale");
+    }
+    return deadline_for(scope);
+}
+
+std::optional<AnimationTime> AnimationRuntime::deadline_for(std::optional<AnimationScopeId> scope) const {
     ensure_owner_thread();
     std::optional<AnimationTime> earliest;
     const auto observed = time_cursor_.last();
@@ -353,6 +388,12 @@ std::optional<AnimationTime> AnimationRuntime::next_deadline() const {
         const auto* record = find(id);
         if (record == nullptr) {
             continue;
+        }
+        if (scope) {
+            const auto* target = find(record->target);
+            if (!target || target->scope != *scope) {
+                continue;
+            }
         }
         const auto active_start = record->start_time + record->spec.delay;
         const auto active_end = active_start + record->spec.duration;

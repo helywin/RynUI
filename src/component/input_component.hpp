@@ -140,6 +140,7 @@ public:
     // Internal deadline injection seam for controlled-clock/lifecycle tests.
     bool set_caret_deadline(runtime::ComponentId, std::optional<animation::AnimationTime>);
     [[nodiscard]] std::optional<animation::AnimationTime> next_caret_deadline() const;
+    [[nodiscard]] std::optional<animation::AnimationTime> caret_deadline(runtime::ComponentId) const;
 
 private:
     friend struct InputPropsAccess;

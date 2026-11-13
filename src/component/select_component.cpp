@@ -362,6 +362,15 @@ SelectInputSnapshot SelectComponentHost::input_snapshot(runtime::ComponentId id)
             state->controlled_open};
 }
 
+std::optional<animation::AnimationTime> SelectComponentHost::motion_deadline(runtime::ComponentId id) const {
+    const auto& components = std::as_const(services_->components());
+    const auto* state = components.state<SelectState>(id);
+    if (!state || !components.contains(id)) {
+        throw std::out_of_range("Select component is stale");
+    }
+    return state->motion.deadline();
+}
+
 SelectSnapshot SelectComponentHost::snapshot(runtime::ComponentId id) const {
     const auto* s = select_state(*services_, id);
     if (!s) {

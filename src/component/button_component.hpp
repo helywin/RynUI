@@ -142,6 +142,7 @@ public:
     [[nodiscard]] const animation::AnimationRuntime& animations() const noexcept;
     [[nodiscard]] std::span<const MountedButtonComponent> mounted_buttons() const noexcept;
     [[nodiscard]] ButtonComponentSnapshot snapshot(runtime::ComponentId component) const;
+    [[nodiscard]] std::optional<animation::AnimationTime> loading_deadline(runtime::ComponentId) const;
 
 private:
     explicit ButtonComponentHost(std::unique_ptr<WindowComponentServices> services);

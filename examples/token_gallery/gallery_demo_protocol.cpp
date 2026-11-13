@@ -194,11 +194,17 @@ GalleryDemoScenario read_gallery_demo_scenario(const std::filesystem::path& path
         }
     }
     result.font_files = request.at("font_files");
-    if (result.font_files.array().empty() || result.font_files.array().size() > 16) {
+    if ((fixture.at("font_policy").string() == "pinned" && result.font_files.array().empty()) ||
+        result.font_files.array().size() > 16) {
         throw std::invalid_argument("scenario must explicitly configure its test font chain");
     }
     for (const auto& font : result.font_files.array()) {
         gallery_demo_fields(font, {"identity", "path", "sha256", "face_index", "weight"});
+        identifier(font.at("identity").string());
+        if (font.at("face_index").integer() < 0 || font.at("face_index").integer() > 65535 ||
+            font.at("weight").integer() < 1 || font.at("weight").integer() > 1000) {
+            throw std::invalid_argument("scenario font face/weight is out of bounds");
+        }
         const auto path = owned_file(font.at("path").string(), repository);
         if (gallery_demo_file_sha256(path) != font.at("sha256").string()) {
             throw std::invalid_argument("scenario font source content hash differs");

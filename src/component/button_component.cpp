@@ -797,6 +797,14 @@ std::span<const MountedButtonComponent> ButtonComponentHost::mounted_buttons() c
     return mounted_buttons_;
 }
 
+std::optional<animation::AnimationTime> ButtonComponentHost::loading_deadline(runtime::ComponentId component) const {
+    const auto* state = find_state(component);
+    if (!state) {
+        throw std::out_of_range("Button component is stale");
+    }
+    return state->loading_deadline;
+}
+
 ButtonComponentSnapshot ButtonComponentHost::snapshot(runtime::ComponentId component) const {
     const auto* state = find_state(component);
     if (state == nullptr) {

@@ -116,6 +116,11 @@ font::FontIdentity TextSceneService::icon_font(const IconSource& source, font::F
     return result.font;
 }
 
+bool TextSceneService::is_bundled_icon_font(font::FontIdentity identity) const {
+    ensure_owner_thread();
+    return std::ranges::any_of(icon_fonts_, [&](const auto& item) { return item.font == identity; });
+}
+
 font::FontIdentity TextSceneService::icon_font(font::FontIdentity reference, std::uint32_t logical_pixel_size) {
     ensure_owner_thread();
     if (logical_pixel_size == 0) {

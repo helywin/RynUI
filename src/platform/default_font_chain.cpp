@@ -854,6 +854,7 @@ std::string DefaultFontChainResult::telemetry_rendering() const {
 
 DefaultFontChainResult load_default_ui_font_chain(font::FontRuntime& fonts, const DefaultFontChainRequest& request) {
     DefaultFontChainResult result;
+    result.explicit_files_only = !request.allow_system_fallback;
     std::vector<FontDescriptor> descriptors;
     for (const auto& preferred : request.preferred_fonts) {
         append_unique(descriptors, {
@@ -874,6 +875,14 @@ DefaultFontChainResult load_default_ui_font_chain(font::FontRuntime& fonts, cons
             result.diagnostic = "Configured custom UI font could not be loaded: " + descriptor.path.string();
             return result;
         }
+    }
+
+    if (result.explicit_files_only) {
+        if (!covers(fonts, result, U'A') || !covers(fonts, result, U'中') || !covers(fonts, result, U'\uFFFD')) {
+            release_loaded(fonts, result);
+            result.diagnostic = "Explicit UI font files do not cover Latin/CJK/replacement; fallback is disabled.";
+        }
+        return result;
     }
 
     for (auto descriptor : platform_system_fonts(PlatformFontRole::ui)) {
@@ -1009,6 +1018,9 @@ DefaultUiFontResolver make_default_ui_font_resolver(font::FontRuntime& fonts, De
     // regular requests at the startup pixel size. Styled requests resolve lazily
     // because a weight/slant matrix would otherwise load many unused faces.
     for (const auto family : {SystemFontFamily::ui_sans, SystemFontFamily::ui_monospace}) {
+        if (initial_chain.explicit_files_only) {
+            continue;
+        }
         const bool monospace = family == SystemFontFamily::ui_monospace;
         const auto& source = monospace ? initial_chain.monospace_faces : initial_chain.faces;
         if (source.empty() || (!monospace && source.empty())) {
@@ -1031,6 +1043,24 @@ DefaultUiFontResolver make_default_ui_font_resolver(font::FontRuntime& fonts, De
         const auto raster = [&](const LoadedDefaultFontFace& face) {
             return font::FontRasterConfig{pixel_size, state->display_scale, face.raster_policy};
         };
+        if (state->chain->explicit_files_only) {
+            std::vector<font::FontIdentity> identities;
+            for (const auto& face : state->chain->faces) {
+                if (face.weight != weight || face.italic != italic) {
+                    continue;
+                }
+                const auto loaded = state->fonts->load_font_file(face.source_path, face.face_index, raster(face));
+                if (!loaded) {
+                    return std::vector<font::FontIdentity>{};
+                }
+                identities.push_back(loaded.font);
+            }
+            if (identities.empty()) {
+                throw std::runtime_error("Explicit font chain has no file for requested weight/slant");
+            }
+            state->cache.emplace(key, identities);
+            return identities;
+        }
         const auto reload =
             [&](std::span<const LoadedDefaultFontFace> source) -> std::optional<std::vector<font::FontIdentity>> {
             std::vector<font::FontIdentity> identities;
@@ -1085,6 +1115,9 @@ DefaultUiFontResolver make_default_ui_font_resolver(font::FontRuntime& fonts, De
             const auto loaded = state->fonts->load_font_file(face.source_path, face.face_index, raster(face));
             if (loaded && std::ranges::find(identities, loaded.font) == identities.end()) {
                 identities.push_back(loaded.font);
+                auto actual = face;
+                actual.identity = loaded.font;
+                state->chain->resolved_faces.push_back(std::move(actual));
             }
         }
         // The regular faces of the requested family always follow the styled

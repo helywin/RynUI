@@ -7,6 +7,7 @@
 #include "renderer/common/scene_capabilities.hpp"
 #include "renderer/common/image_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
+#include "renderer/common/scene_metrics.hpp"
 
 #include <memory>
 
@@ -20,6 +21,7 @@ struct SceneResourceState final {
     std::uint64_t epoch{};
     std::uint64_t revision{};
     bool ready{};
+    SceneDeviceMetrics metrics;
 };
 
 // A borrowed scene is consumed before its CPU OrderedScene is changed/destroyed.
@@ -50,6 +52,14 @@ public:
         return scene_;
     }
 
+    [[nodiscard]] SceneDeviceMetrics metrics() const noexcept {
+        return metrics_;
+    }
+
+    [[nodiscard]] std::uint64_t scene_revision() const noexcept {
+        return scene_revision_;
+    }
+
     [[nodiscard]] std::uint32_t quad_count() const noexcept {
         return quad_count_;
     }
@@ -70,6 +80,8 @@ private:
     const ImageGpuResources* images_{};
     const RoundedEffectGpuResources* effects_{};
     const graphics::OrderedScene* scene_{};
+    SceneDeviceMetrics metrics_;
+    std::uint64_t scene_revision_{};
     std::uint32_t quad_count_{};
     std::uint32_t glyph_count_{};
     std::shared_ptr<CompositionFrame> composition_;

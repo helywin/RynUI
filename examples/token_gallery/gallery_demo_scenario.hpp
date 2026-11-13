@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gallery_demo_sample.hpp"
+#include "gallery_demo_observation.hpp"
 #include "gallery_pages_host.hpp"
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
@@ -19,7 +20,7 @@ struct GalleryDemoNativeActions final {
     std::function<void(std::int64_t)> set_time;
     std::function<std::uint64_t()> scene_revision;
     std::function<GalleryDemoJson()> metrics;
-    std::function<bool(const std::filesystem::path&)> capture;
+    std::function<GalleryDemoCaptureEvidence(const std::filesystem::path&)> capture;
     std::function<GalleryDemoJson(ryn::font::FontIdentity)> font_info;
     std::function<std::uint32_t(ryn::font::FontIdentity, char32_t)> nominal_glyph;
 };

@@ -2664,6 +2664,14 @@ bool InputComponentHost::set_caret_deadline(runtime::ComponentId component,
     return state->caret_blink.override_deadline(deadline);
 }
 
+std::optional<animation::AnimationTime> InputComponentHost::caret_deadline(runtime::ComponentId component) const {
+    const auto* state = std::as_const(host_->components()).state<InputState>(component);
+    if (!state) {
+        throw std::out_of_range("Input component is stale");
+    }
+    return state->caret_blink.deadline();
+}
+
 std::optional<animation::AnimationTime> InputComponentHost::next_caret_deadline() const {
     std::optional<animation::AnimationTime> next;
     for (const auto& mounted : mounted_) {

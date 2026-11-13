@@ -46,6 +46,7 @@ public:
 
     [[nodiscard]] SelectSnapshot snapshot(runtime::ComponentId id) const;
     [[nodiscard]] SelectInputSnapshot input_snapshot(runtime::ComponentId id) const;
+    [[nodiscard]] std::optional<animation::AnimationTime> motion_deadline(runtime::ComponentId) const;
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;

@@ -419,6 +419,34 @@ void test_custom_monospace_font_precedes_platform() {
             "shared preferred font lost its order or replacement coverage after resizing");
 }
 
+void test_explicit_file_chain_rejects_implicit_faces() {
+    auto created = ryn::font::FontRuntime::create();
+    require(static_cast<bool>(created), "Font Runtime initialization failed");
+    auto fonts = std::move(created.runtime);
+    ryn::detail::DefaultFontChainRequest request;
+    request.raster = {14, 1.25F};
+    request.allow_system_fallback = false;
+    request.preferred_fonts = {{RYNUI_VALIDATION_LATIN_FONT, 0, "PinnedLatin", 400, false},
+                               {RYNUI_VALIDATION_CJK_FONT, 0, "PinnedCjk", 400, false}};
+    auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    require(chain && chain.explicit_files_only && chain.faces.size() == 2 && !chain.uses_system_fonts &&
+                !chain.uses_bundled_fallbacks && chain.monospace_faces.empty(),
+            "pinned file chain loaded an implicit system/monospace/fallback font");
+    auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.25F);
+    require(resolver(ryn::SystemFontFamily::ui_sans, 400, false, 16).size() == 2,
+            "pinned resize did not preserve explicit files");
+    bool rejected{};
+    try {
+        static_cast<void>(resolver(ryn::SystemFontFamily::ui_sans, 700, false, 14));
+    } catch (const std::runtime_error&) {
+        rejected = true;
+    }
+    require(rejected, "pinned missing bold silently resolved a system or regular face");
+    request.preferred_fonts.pop_back();
+    const auto incomplete = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    require(!incomplete && !incomplete.diagnostic.empty(), "pinned missing CJK silently loaded a fallback");
+}
+
 } // namespace
 
 int main() {
@@ -431,6 +459,7 @@ int main() {
         test_custom_monospace_font_precedes_platform();
         test_custom_font_precedes_platform_defaults();
         test_invalid_custom_font_fails_fast();
+        test_explicit_file_chain_rejects_implicit_faces();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

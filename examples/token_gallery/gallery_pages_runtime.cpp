@@ -411,6 +411,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
     };
     if (scenario) {
         std::uint64_t demo_readbacks{};
+        const auto demo_binary_path = std::filesystem::path{demo_provenance.at("binary_path").string()};
         const auto device = renderer.device_description();
         std::get<GalleryDemoJson::Object>(demo_provenance.value)
             .emplace("gpu", GalleryDemoJson::Object{{"name", device.name},
@@ -431,7 +432,7 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             }
             const auto bytes =
                 std::span{reinterpret_cast<const unsigned char*>(source->bytes.data()), source->bytes.size()};
-            const GalleryDemoJson info = GalleryDemoJson::Object{
+            GalleryDemoJson info = GalleryDemoJson::Object{
                 {"sha256", gallery_demo_sha256(bytes)},
                 {"face_index", static_cast<std::int64_t>(source->face_index)},
                 {"family", source->family},
@@ -440,7 +441,29 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 {"italic", source->italic},
                 {"logical_pixel_size", static_cast<std::int64_t>(metrics.metrics.logical_pixel_size)},
                 {"raster_pixel_size", static_cast<std::int64_t>(metrics.metrics.raster_pixel_size)},
-                {"display_scale", metrics.metrics.display_scale}};
+                {"display_scale", metrics.metrics.display_scale},
+                {"source", "unknown"},
+                {"path", nullptr}};
+            auto& details = std::get<GalleryDemoJson::Object>(info.value);
+            if (app.text().scene_service().is_bundled_icon_font(identity)) {
+                details["source"] = "bundled-icon";
+            } else {
+                const auto classify = [&](const auto& faces) {
+                    for (const auto& face : faces) {
+                        if (face.face_index == source->face_index &&
+                            gallery_demo_file_sha256(face.source_path) == info.at("sha256").string()) {
+                            details["source"] = face.system_font   ? "system-file"
+                                                : face.custom_font ? "pinned-file"
+                                                                   : "bundled-fallback";
+                            details["path"] = face.source_path.generic_string();
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                static_cast<void>(classify(events.font_chain.faces) || classify(events.font_chain.monospace_faces) ||
+                                  classify(events.font_chain.resolved_faces));
+            }
             font_sources.emplace(key, info);
             return info;
         };
@@ -465,11 +488,35 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                         {"completed_readbacks", static_cast<std::int64_t>(demo_readbacks)}};
                 },
                 [&](const std::filesystem::path& path) {
-                    const bool completed = renderer.save_frame_bmp(path);
-                    if (completed) {
-                        ++demo_readbacks;
+                    ryn::detail::SceneReadbackEvidence receipt;
+                    if (!renderer.save_frame_bmp(path, &receipt)) {
+                        throw std::runtime_error(renderer.last_error());
                     }
-                    return completed;
+                    if (receipt.scene_metrics != receipt.metrics) {
+                        throw std::runtime_error(
+                            "scenario committed scene metrics differ from actual readback metrics");
+                    }
+                    ++demo_readbacks;
+                    const auto& actual = receipt.metrics;
+                    return GalleryDemoCaptureEvidence{
+                        receipt.readback_id,
+                        receipt.fence_id,
+                        receipt.scene_revision,
+                        receipt.renderer_owner,
+                        receipt.device_epoch,
+                        GalleryDemoJson::Object{{"logical_width", actual.pixel_width / actual.display_scale},
+                                                {"logical_height", actual.pixel_height / actual.display_scale},
+                                                {"pixel_width", static_cast<std::int64_t>(actual.pixel_width)},
+                                                {"pixel_height", static_cast<std::int64_t>(actual.pixel_height)},
+                                                {"dpr", actual.display_scale}},
+                        receipt.source_bgra ? "BGRA8_UNORM" : "RGBA8_UNORM",
+                        receipt.source_bgra ? "BGRA" : "RGBA",
+                        "RGBA",
+                        "premultiplied",
+                        "native-encoded-SDR",
+                        receipt.fence_completed,
+                        gallery_demo_native_build_manifest().at("source_hash").string(),
+                        gallery_demo_file_sha256(demo_binary_path)};
                 },
                 font_info,
                 [&](font::FontIdentity identity, char32_t codepoint) {
@@ -4156,6 +4203,8 @@ int run_gallery_pages(int argc, char** argv) {
         std::unique_ptr<GalleryDemoSampleScope> demo_scope;
         if (!options.scenario.empty()) {
             demo_scenario = read_gallery_demo_scenario(options.scenario, RYNUI_GALLERY_SOURCE_ROOT);
+            gallery_demo_validate_font_chain(*demo_scenario);
+            gallery_demo_verify_source_files(gallery_demo_native_build_manifest(), RYNUI_GALLERY_SOURCE_ROOT);
             if (options.pages.front() != demo_scenario->route) {
                 throw std::invalid_argument("scenario route differs from explicit finite CLI selection");
             }
@@ -4202,7 +4251,8 @@ int run_gallery_pages(int argc, char** argv) {
         const auto scale = platform.state->window_metrics().display_scale;
         ryn::detail::DefaultFontChainRequest request;
         request.raster = {14, scale};
-        if (demo_scenario) {
+        if (demo_scenario && demo_context->fixture.at("font_policy").string() == "pinned") {
+            request.allow_system_fallback = false;
             for (const auto& font : demo_scenario->font_files.array()) {
                 request.preferred_fonts.push_back(
                     {font.at("path").string(), static_cast<long>(font.at("face_index").integer()),
@@ -4265,6 +4315,7 @@ int run_gallery_pages(int argc, char** argv) {
                 demo_scenario ? GalleryDemoJson{GalleryDemoJson::Object{
                                     {"source", gallery_demo_native_build_manifest()},
                                     {"binary_sha256", gallery_demo_file_sha256(std::filesystem::absolute(argv[0]))},
+                                    {"binary_path", std::filesystem::absolute(argv[0]).generic_string()},
                                     {"preset", result.preset},
                                     {"configuration", result.configuration},
                                     {"toolchain", result.toolchain},
