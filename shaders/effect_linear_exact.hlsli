@@ -1,63 +1,14 @@
 #ifndef RYNUI_EFFECT_LINEAR_EXACT
 #define RYNUI_EFFECT_LINEAR_EXACT
 
-// Signed two's-complement integer, base 2^16, no optional 64-bit arithmetic.
-// A binary32 value is an integer * 2^-149, magnitude < 2^128.
-// Exact affine: A=E-S, Q=P-scale*(T+S), N=Q.A, D=scale*(A.A).
-// N,D have degree <=3, quantum 2^-447, |N|<2^388, D<2^387.
-// N-stop*D has degree <=4, quantum 2^-596, magnitude <2^516:
-// at most 1112 magnitude bits. A sign and even 25 conservative doublings
-// fit within 1152 bits. Every expanded partial sum obeys the same bound.
-#define RYNUI_EFFECT_EXACT_DIGITS 72
-
-struct EffectExact {
-    uint digit[RYNUI_EFFECT_EXACT_DIGITS];
+// Original raw72 uses quantum 2^-447, then N<<149 and stop products at 2^-596.
+// The bounded12 instance uses exact common factors q/c, never truncation.
+struct EffectFactor {
+    uint m;
+    int e;
+    int l;
+    bool negative;
 };
-
-EffectExact EffectExactAdd(EffectExact a, EffectExact b, bool subtract) {
-    EffectExact result;
-    uint carry = subtract ? 1u : 0u;
-    [loop] for (uint i = 0u; i < RYNUI_EFFECT_EXACT_DIGITS; ++i) {
-        uint term = subtract ? 65535u - b.digit[i] : b.digit[i];
-        uint sum = a.digit[i] + term + carry;
-        result.digit[i] = sum & 65535u;
-        carry = sum >> 16u;
-    }
-    return result;
-}
-
-EffectExact EffectExactShift(EffectExact value, uint shift) {
-    EffectExact result = (EffectExact)0;
-    uint whole = shift / 16u;
-    uint part = shift % 16u;
-    [loop] for (uint i = 0u; i < RYNUI_EFFECT_EXACT_DIGITS; ++i) {
-        if (i >= whole) {
-            result.digit[i] = (value.digit[i - whole] << part) & 65535u;
-            if (part != 0u && i > whole) {
-                result.digit[i] |= value.digit[i - whole - 1u] >> (16u - part);
-            }
-        }
-    }
-    return result;
-}
-
-EffectExact EffectExactTimesDigit(EffectExact value, uint multiplier) {
-    EffectExact result;
-    uint carry = 0u;
-    [loop] for (uint i = 0u; i < RYNUI_EFFECT_EXACT_DIGITS; ++i) {
-        // (2^16-1)^2 + (2^16-1) < 2^32.
-        uint product = value.digit[i] * multiplier + carry;
-        result.digit[i] = product & 65535u;
-        carry = product >> 16u;
-    }
-    return result;
-}
-
-EffectExact EffectExactTimesSignificand(EffectExact value, uint significand) {
-    EffectExact low = EffectExactTimesDigit(value, significand & 65535u);
-    EffectExact high = EffectExactShift(EffectExactTimesDigit(value, significand >> 16u), 16u);
-    return EffectExactAdd(low, high, false);
-}
 
 uint EffectSignificand(uint bits) {
     return (bits & 0x7fffffu) | ((bits & 0x7f800000u) == 0u ? 0u : 0x800000u);
@@ -66,6 +17,44 @@ uint EffectSignificand(uint bits) {
 uint EffectIntegerShift(uint bits) {
     uint biased = (bits >> 23u) & 255u;
     return biased == 0u ? 0u : biased - 1u;
+}
+
+EffectFactor EffectRawFactor(uint bits) {
+    EffectFactor result = (EffectFactor)0;
+    result.m = EffectSignificand(bits);
+    result.e = (int)EffectIntegerShift(bits);
+    result.negative = (bits >> 31u) != 0u;
+    return result;
+}
+
+bool EffectDecode(uint bits, out EffectFactor result) {
+    result = (EffectFactor)0;
+    uint biased = (bits >> 23u) & 255u;
+    if (biased == 255u) {
+        return false;
+    }
+    uint u = EffectSignificand(bits);
+    if (u == 0u) {
+        return true; // +/-0: no ctz/bitlen, no exponent sentinel arithmetic.
+    }
+    uint z = 0u;
+    [unroll] for (uint step = 16u; step > 0u; step >>= 1u) {
+        if ((u & ((1u << step) - 1u)) == 0u) {
+            u >>= step;
+            z += step;
+        }
+    }
+    result.m = u;
+    result.e = (biased == 0u ? -149 : (int)biased - 150) + (int)z;
+    result.l = 1;
+    [unroll] for (uint step = 16u; step > 0u; step >>= 1u) {
+        if ((u >> step) != 0u) {
+            u >>= step;
+            result.l += (int)step;
+        }
+    }
+    result.negative = (bits >> 31u) != 0u;
+    return true;
 }
 
 struct EffectExactSmallProduct {
@@ -78,7 +67,7 @@ EffectExactSmallProduct EffectExactSmallTimesSignificand(EffectExactSmallProduct
         uint multiplier = (significand >> (16u * j)) & 65535u;
         uint carry = 0u;
         [unroll] for (uint i = 0u; i < 5u - j; ++i) {
-            // Each digit/carry <= 65535: (65535^2)+65535+65535 = 2^32-1.
+            // 65535^2 + 65535 + 65535 = 2^32-1; positive product <2^72.
             uint product = value.digit[i] * multiplier + result.digit[i + j] + carry;
             result.digit[i + j] = product & 65535u;
             carry = product >> 16u;
@@ -87,44 +76,31 @@ EffectExactSmallProduct EffectExactSmallTimesSignificand(EffectExactSmallProduct
     return result;
 }
 
+#define RYNUI_FIXED_TYPE EffectExact
+#define RYNUI_FIXED_NAME(name) EffectExact##name
+#define RYNUI_FIXED_DIGITS 72
+#include "effect_linear_fixed.hlsli"
+#undef RYNUI_FIXED_TYPE
+#undef RYNUI_FIXED_NAME
+#undef RYNUI_FIXED_DIGITS
+
+#define RYNUI_FIXED_TYPE EffectNarrow
+#define RYNUI_FIXED_NAME(name) EffectNarrow##name
+#define RYNUI_FIXED_DIGITS 12
+#include "effect_linear_fixed.hlsli"
+#undef RYNUI_FIXED_TYPE
+#undef RYNUI_FIXED_NAME
+#undef RYNUI_FIXED_DIGITS
+
 void EffectExactProduct(inout EffectExact sum, uint a, uint b, uint c, bool subtract) {
-    uint aSignificand = EffectSignificand(a);
-    uint bSignificand = EffectSignificand(b);
-    uint cSignificand = EffectSignificand(c);
-    [branch] if (aSignificand == 0u || bSignificand == 0u || cSignificand == 0u) {
-        return;
-    }
-    // Called only for 24-bit significands: the two stages are <2^48 and <2^72.
-    // All positive partial rows fit in 5 digits (80 bits), so discarded carries
-    // are zero; the top digit uses at most 8 bits. Expand only this exact product.
-    EffectExactSmallProduct small = (EffectExactSmallProduct)0;
-    small.digit[0] = aSignificand & 65535u;
-    small.digit[1] = aSignificand >> 16u;
-    small = EffectExactSmallTimesSignificand(small, bSignificand);
-    small = EffectExactSmallTimesSignificand(small, cSignificand);
-    EffectExact product = (EffectExact)0;
-    [unroll] for (uint i = 0u; i < 5u; ++i) {
-        product.digit[i] = small.digit[i];
-    }
-    // Finite raw inputs shift by at most 3*253; 72+759 < 1152, no high bits lost.
-    product = EffectExactShift(product, EffectIntegerShift(a) + EffectIntegerShift(b) + EffectIntegerShift(c));
-    sum = EffectExactAdd(sum, product, subtract != (((a ^ b ^ c) >> 31u) != 0u));
+    EffectExactFactorProduct(sum, EffectRawFactor(a), EffectRawFactor(b), EffectRawFactor(c), 0, subtract);
 }
 
 void EffectLinearAxis(uint sample_position, uint start, uint end, uint translation, uint scale, inout EffectExact n,
                       inout EffectExact d) {
-    // Degree-two terms gain an exact factor 1 so all terms use 2^-447.
-    const uint one = 0x3f800000u;
-    EffectExactProduct(n, sample_position, end, one, false);
-    EffectExactProduct(n, sample_position, start, one, true);
-    EffectExactProduct(n, scale, translation, end, true);
-    EffectExactProduct(n, scale, translation, start, false);
-    EffectExactProduct(n, scale, start, end, true);
-    EffectExactProduct(n, scale, start, start, false);
-    EffectExactProduct(d, scale, end, end, false);
-    EffectExactProduct(d, scale, end, start, true);
-    EffectExactProduct(d, scale, end, start, true);
-    EffectExactProduct(d, scale, start, start, false);
+    // Raw one=(2^23,126), not canonical (1,0). Preserve the original grid.
+    EffectExactAxis(EffectRawFactor(sample_position), EffectRawFactor(start), EffectRawFactor(end),
+                    EffectRawFactor(translation), EffectRawFactor(scale), EffectRawFactor(0x3f800000u), 0, n, d);
 }
 
 EffectExact EffectExactStopProduct(EffectExact d, float stop) {
@@ -137,37 +113,82 @@ EffectExact EffectExactStopProduct(EffectExact d, float stop) {
     return result;
 }
 
-bool EffectExactLess(EffectExact a, EffectExact b) {
-    uint aSign = a.digit[RYNUI_EFFECT_EXACT_DIGITS - 1] >> 15u;
-    uint bSign = b.digit[RYNUI_EFFECT_EXACT_DIGITS - 1] >> 15u;
-    if (aSign != bSign) {
-        return aSign != 0u;
-    }
-    [loop] for (int i = RYNUI_EFFECT_EXACT_DIGITS - 1; i >= 0; --i) {
-        if (a.digit[i] != b.digit[i]) {
-            return a.digit[i] < b.digit[i];
+// Private failure codes mirror CPU Failure; no resource/mode/ABI field is added.
+static const uint EffectLinearFailureNone = 0u;
+static const uint EffectLinearFailureInput = 1u;
+static const uint EffectLinearFailureSetup = 2u;
+static const uint EffectLinearFailureDenominator = 3u;
+static const uint EffectLinearFailureComparison = 4u;
+static const uint EffectLinearFailurePair = 5u;
+
+struct EffectSetup192 {
+    EffectFactor coordinates[8];
+    EffectFactor scale;
+    int q;
+    int high;
+};
+
+uint EffectSetupLinear192(uint2 sample_position, uint4 domain, uint4 affine, out EffectSetup192 result) {
+    result = (EffectSetup192)0;
+    uint raw[8] = {sample_position.x, sample_position.y, domain.x, domain.y, domain.z, domain.w, affine.x, affine.y};
+    int b = 0;
+    int h = 1;
+    [unroll] for (uint i = 0u; i < 8u; ++i) {
+        if (!EffectDecode(raw[i], result.coordinates[i])) {
+            return EffectLinearFailureInput;
+        }
+        EffectFactor value = result.coordinates[i];
+        if (value.m != 0u) {
+            b = min(b, value.e);
+            h = max(h, value.e + value.l);
         }
     }
-    return false;
+    if (!EffectDecode(affine.z, result.scale) || result.scale.m == 0u || result.scale.negative) {
+        return EffectLinearFailureInput;
+    }
+    result.q = 2 * b + min(0, result.scale.e);
+    result.high = 2 * h + max(0, result.scale.e + result.scale.l) + 4;
+    return result.high - result.q + 1 <= 192 ? EffectLinearFailureNone : EffectLinearFailureSetup;
 }
 
-float EffectExactUnitRatio(EffectExact remainder, EffectExact denominator) {
-    uint fraction = 0u;
-    // Endpoint selection established 0 <= remainder < denominator.
-    // Absolute fraction error is <= 2^-25, independent of stop spacing.
-    [loop] for (uint i = 0u; i < 25u; ++i) {
-        remainder = EffectExactShift(remainder, 1u);
-        fraction <<= 1u;
-        if (!EffectExactLess(remainder, denominator)) {
-            remainder = EffectExactAdd(remainder, denominator, true);
-            fraction |= 1u;
-        }
+void EffectCoordinate192(EffectSetup192 setup, out EffectNarrow n, out EffectNarrow d) {
+    n = (EffectNarrow)0;
+    d = (EffectNarrow)0;
+    EffectFactor one = (EffectFactor)0;
+    one.m = 1u;
+    one.l = 1;
+    EffectNarrowAxis(setup.coordinates[0], setup.coordinates[2], setup.coordinates[4], setup.coordinates[6],
+                     setup.scale, one, setup.q, n, d);
+    EffectNarrowAxis(setup.coordinates[1], setup.coordinates[3], setup.coordinates[5], setup.coordinates[7],
+                     setup.scale, one, setup.q, n, d);
+}
+
+struct EffectStopGrid {
+    int k;
+    int g;
+};
+
+void EffectIncludeStop(inout EffectStopGrid grid, EffectFactor stop) {
+    if (stop.m != 0u) {
+        grid.k = min(grid.k, stop.e);
+        grid.g = max(grid.g, stop.e + stop.l);
     }
-    uint rounded = fraction >> 1u;
-    if ((fraction & 1u) != 0u && ((rounded & 1u) != 0u || EffectExactLess((EffectExact)0, remainder))) {
-        ++rounded;
+}
+
+bool EffectFits192(EffectSetup192 setup, EffectStopGrid grid, int headroom) {
+    return setup.high + grid.g - (setup.q + grid.k) + headroom <= 192;
+}
+
+EffectNarrow EffectStop192(EffectNarrow d, EffectFactor stop, EffectStopGrid grid) {
+    if (stop.m == 0u) {
+        return (EffectNarrow)0;
     }
-    return (float)rounded * (1.0 / 16777216.0);
+    EffectNarrow result = EffectNarrowTimesSignificand(d, stop.m);
+    result = EffectNarrowShift(result, (uint)(stop.e - grid.k));
+    if (stop.negative) {
+        result = EffectNarrowAdd((EffectNarrow)0, result, true);
+    }
+    return result;
 }
 
 #endif

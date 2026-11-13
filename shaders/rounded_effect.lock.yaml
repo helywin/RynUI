@@ -30,12 +30,16 @@
       "bytes": 2797
     },
     "shaders/effect_linear_exact.hlsli": {
-      "sha256": "ad9345e2e0bd996de463340d2f01fe5fd8d05a510a8ae1ac25aa633d9ad3f30f",
-      "bytes": 6852
+      "sha256": "ce51a9d2a942e4fef5be0dbc53d80a14a5247236e02a9dae72299ddc579182d9",
+      "bytes": 6619
+    },
+    "shaders/effect_linear_fixed.hlsli": {
+      "sha256": "2da6e824893291ad4711372db4d0ddcedc40b152051d7fc5e107f8bd96348b75",
+      "bytes": 4965
     },
     "shaders/effect_paint_sampling.hlsli": {
-      "sha256": "261215341a394db7054e6fe02f81887ab76b4e4a98c47c155d44b476902b20c9",
-      "bytes": 3028
+      "sha256": "4695fc2e61fda55c78aa2d4af0dcfc235a27ecd19410e5ca0d33a311ad8304e1",
+      "bytes": 6825
     },
     "shaders/glyph.hlsl": {
       "sha256": "24c5a0f8998b2c15ce49e90bab052b90c727319644ab61b53dfc562b563c732b",
@@ -135,12 +139,13 @@
         "shaders/cap_number.hlsli",
         "shaders/effect_conic_candidate.hlsli",
         "shaders/effect_linear_exact.hlsli",
+        "shaders/effect_linear_fixed.hlsli",
         "shaders/effect_paint_sampling.hlsli",
         "shaders/rounded_effect_coverage.hlsli",
         "shaders/rounded_effect_paint.hlsl",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "4da725200bc6befdb1df7a8d50608d8133808b86eb7735b15fc4df4754ad41c9",
+      "closure_sha256": "d8a689a06eaf68a0f220d2502eaf3f1f7c6f623a4aca107142f36a740da9a2b9",
       "vertex_inputs": [
         "float4",
         "float4",
@@ -328,13 +333,14 @@
         "shaders/cap_number.hlsli",
         "shaders/effect_conic_candidate.hlsli",
         "shaders/effect_linear_exact.hlsli",
+        "shaders/effect_linear_fixed.hlsli",
         "shaders/effect_paint_sampling.hlsli",
         "shaders/rounded_effect_coverage.hlsli",
         "shaders/rounded_effect_paint.hlsl",
         "shaders/rounded_effect_paint_composition.hlsl",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "59bf4bb0f2dace2c6f788d47b1a9004db71a53593b441349247b416f58285922",
+      "closure_sha256": "b5dd76f2732905b244ebee4b9d2d2564406c069b045d32fe7d2cec654af9a770",
       "vertex_inputs": [
         "float4",
         "float4",
