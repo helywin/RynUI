@@ -1,6 +1,6 @@
 # Web / native demo 自动差分
 
-109 的唯一入口是 `python -B tools/run_demo_differential.py`。协议与覆盖基础已实施；Web/native 执行、比较、校准及真实 pilot 仍按 109 任务追踪，不能把 inventory 校验称作视觉或行为通过。工具不以人工或 Agent 读图裁决。
+109 的唯一入口是 `python -B tools/run_demo_differential.py`。现有 inventory 入口保留，增加 `list`、有限 `run` 和失败集 `replay`。runner 调用已有锁定官方 Web prepare/execute API 与原生 scenario CLI；实际 pilot、有效平台校准与完整 factory 适配尚未验收，不能把 source/单元控制称作视觉或行为通过。工具不以人工或 Agent 读图裁决。
 
 ## 有序 inventory 与分母
 
@@ -44,3 +44,57 @@ ctest --preset linux-gcc-headless-release --no-tests=error -R '^rynui\.demo_diff
 当前协议基础仅用 Python 标准库，不安装或隐式发现第三方依赖。内置 validator 仅解释这些 schema 实际使用的 JSON Schema 2020-12 vocabulary，遇到未知 vocabulary 失败；不承诺任意外部 schema 的完整实现。JSON 限制为 16 MiB、48 层，重复字段、非有限数字、未知协议字段、危险相对路径、重复身份/step、时钟回退、无 action 的 checkpoint、缺 oracle 和 native-derived expected 均拒绝。公开 Props/数据等领域 map 允许声明的 JSON 数据，不接受可执行 grammar。
 
 所有原始 inventory、报告、日志、源码副本、图片与二进制只写 ignored out。上述自动测试验证协议/覆盖与 CPU 编译 registry，不证明 Web、GPU readback、真实呈现、Windows 或系统 IME/AT。
+
+## 有限 pilot runner
+
+```text
+python -B tools/run_demo_differential.py list --suite pilot
+python -B tools/run_demo_differential.py run --suite pilot --reference locked --preset linux-gcc-release --binary out/build/linux-gcc/examples/Release/rynui_token_gallery --profile-file out/demo-differential/calibration/profile.json --output out/demo-differential/pilot-fresh
+python -B tools/run_demo_differential.py replay --failure out/demo-differential/pilot-fresh/report.json --binary <fixed-gallery-binary> --output out/demo-differential/pilot-replay-fresh
+```
+
+`run` 的 prepare 自动调用既有 `bootstrap.py --mode BUNDLED` 和中央字体资源准备；已有独立安装可显式传 `--prepared <out/prepared>`、`--font-files <out/fonts/font-files.json>`，仍逐项验证。`--comparison-site` 只接受独立 bootstrap 校验过的 Pillow 安装；不发现全局库、不改锁。当前 Pillow wheel 需要 CPython 3.14 ABI，Windows Web browser artifact 仍缺锁；这些环境缺口非零，不能用 Python 3.10 单元测试替代。
+
+状态顺序为 select/inventory → prepare → preflight → execute → validate → compare → report → cleanup。`--preset` 是 build preset，由 CMakePresets 解析 configure preset/configuration 并核 hello；HEADLESS/Recording 不能用于 paired。native preflight 使用同一真实 sample 的首个 checkpoint scenario 读取实际 DPR，再仅将 DPR 输入传给 Web；不从 native measured bounds 或 pixels 生成 Web 样式/expected。显式 `--dpr` 必须匹配实际 native metrics，默认 `native`。Linux 始终使用既有私有 Wayland/DBus wrapper，Windows 使用 hidden native 路径及无 console/错误弹窗的进程创建。单 native、单 Web 串行，不另造帧泵、组件或 renderer。
+
+两侧原始 v1 记录口径保留：native receipt 在 checkpoint 前且 capture nonce 独立；Web checkpoint 在 receipt 前，使用 run nonce、step、递增 paint sequence 证明新 readback。runner 分别严格验证顺序、完整集合、hash、scene/fence 与实际 metrics，不重写原始文件。oracle view 只映射 Web 实测 focus 字段名及输入层名称；callback 的 target/key/value、重复、顺序全部保留，继续使用既有独立 `oracle.py`。
+
+退出码：0 为全部选中要求通过；1 为完整证据有差异；2 为配置/schema/coverage/reference drift；3 为准备/实际环境/校准错误；4 为 crash/timeout/缺动作、图、complete、新帧或中断。多个 case 失败取 `4 > 3 > 2 > 1`，每例保留原因。畸形路径字段属于 schema 2；已声明但缺失的当前图、旧 nonce/frame 属于 incomplete 4。旧 output 拒绝复用，超时清理本次拥有的进程树；缺私有 compositor 不回退桌面。
+
+启动 adapter 前预写失败 `report.json`；结束原子发布 strict report v1、JUnit 和 escaped 本地 `index.html`。原始 streams/images/logs、source manifest、resolved definition、比较指标、geometry、规范化 trace 和可生成的 diff PNG 全在该新目录，case 结果指向相对路径。报告保留 selected/expected/completed/passed 原始身份集合、首次分歧 step、层分类、阈值来源及 replay argv。`replay` 保留旧目录并核原 case/fixture/oracle/profile hash，允许换 binary/preset；定义或 profile 改动拒绝伪称同条件修复。`--affected`、全量选择/CI 尚未实现；有限真实 fault 的外层入口见下节，平台红绿仍须实跑。
+
+三个 source-bound 定义位于 `tools/demo_differential/pilots.py`，绑定真实 sample/function/header、完整有序 legacy target、固定 official demo/组件 hash，以及 Small/Middle、default 局部 Theme、中文标签、260 宽度、Input 前后缀/32 上限、desktop/service/unavailable 数据和受控 accept/reject。`pilot-coverage.json` 是现有 coverage v1 的 pilot 子账本，保持 `planned`；完整样例/实际输入接口与校准尚缺时绝不能计 pass。`profiles/pilot-pinned-font.uncalibrated.json` 仅是拒绝通过的 schema 模板，零摘要/指标不是校准证据。
+
+具体待接接口：native 的 `resources.actual_initial_inputs` 需要独立导出实际 slots/default 局部 Theme/composition 与 Input status，不能把 fixture echo 当消费证明；实际字体、token 和文字局部 bounds 仍需完整查询。Web 有限 composition grammar 尚不能表达 Select 原 factory 的全部 numeric/variants、局部 Theme/prefix，以及嵌套 multiple/tags/virtual/async 上下文；Select 定义明确要求完整来源并由现有 grammar 拒绝，不执行四控件替身。Input 非空 warning 在本 pilot 保持非空，不将动态 status 或反馈绑定的后续扩展写成完成。下述真实故障开关与外层控制已接入；平台红绿由 5.2/11.3 的实际执行验证。
+
+本阶段纯 Python 验证：
+
+```text
+python -B -m unittest discover -s tests -p 'demo_differential_runner*_tests.py'
+python -B -m unittest discover -s tests -p 'demo_differential_pilots_tests.py'
+python -B -m unittest discover -s tests -p 'demo_differential_native_resources_tests.py'
+python -B -m unittest discover -s tests -p 'demo_differential_font_requirements_tests.py'
+```
+
+runner 测试可注入有限故障 adapter 和 analytic comparator；它们输出的 report 显式带 `mechanism_controls=true`。这些验证编排、退出优先级、原始身份与拒绝路径，不证明真实 browser/native/GPU pilot 通过；没有自动更新任何 tasks/support checkbox。
+
+## Pilot 故障外层
+
+```text
+python -B tools/run_demo_differential.py meta-test --suite pilot --reference locked --preset linux-gcc-release --binary out/build/linux-gcc/examples/Release/rynui_token_gallery --profile-file out/demo-differential/calibration/profile.json --output out/demo-differential/meta-fresh
+python -B tools/run_demo_differential.py run --suite pilot --fault button-padding-plus-one --reference locked --preset linux-gcc-release --binary out/build/linux-gcc/examples/Release/rynui_token_gallery --profile-file out/demo-differential/calibration/profile.json --output out/demo-differential/padding-fresh
+```
+
+`--fault` 仅进入 acceptance scenario，普通产品路径仍为 `none`。有限集合为 `button-padding-plus-one`（真实 Small/default Button token）、`input-reject-commit` 和 `duplicate-callback`（真实受控 Input 回调）；不修改已保存图片或报告。普通 faulted run 永远不 pass；只有 marker 而无独立差分时返回协议错误 2，不能冒充成功检出的差分 1。
+
+meta 先要求完整三例正控制绿，再逐 fault 要求指定 case 为差分 1、其他两例绿、首次失败分类正确，随后去 fault 的三例复跑绿，共七个 fresh ordinary run。padding 可由 layout/token/visual 检出，错误受控提交为 state/logic，重复回调为 logic。环境错误、漏动作/图/complete、错层失败、仅有 marker 或恢复仍红，都使 meta 自身非零；正控制未绿不执行“预期失败即通过”的捷径。
+
+所有 meta 子运行及显式 fault run 都禁止 reference cache publish；cache hit 仍验证完整性、实际 browser environment 与图像 hash，cache miss 仍执行 Web 动作。四个 binding 固定参考 cache keys、完整有序 case definitions、profile hash 和 native source hash，逐轮检查输入及先前产物不被修改。正常 schema-v1 report/JUnit 保留真实 verdict，不注入 `expected_failure`。开始子运行后的外层报告在 `<output>/runs/meta-report.json`，prepare 失败报告在 `<output>/meta-report.json`。CPU 机制结果见 [evidence09](../../openspec/changes/109-20261112-add-web-native-demo-differential-tests/evidence/09-runner-meta-controls.md)；它不代替实际平台红绿。
+
+## Native 3.4–3.6 冻结接口对接
+
+兼容层消费 [native 观测接口](demo-differential-native.md) 的 observation v1 resource maps，不改顶层 schema。checkpoint 必须提供 `resources.readback` 的本次 nonce/checkpoint、严格递增 readback/fence id、scene revision、稳定 renderer owner/device epoch、actual metrics、actual source channel 及 source/binary hash；相同 scene revision 仍须有新 readback/fence。capture 的 RGBA 是 normalized readback bytes，`framebuffer_format/source_channel_order` 保留实际 RGBA/BGRA target，不把 BMP 存储通道混作 renderer 通道。
+
+`resources.lifecycle` 按实际 serialization 的平面字段验证：sample `owner_generation`、带 component/page generation 的 `owners`、带整数 `active`/nullable deadline 的 `animation_scopes`、实际存在的 `auxiliary_deadlines`、sample live counts 与 focus/capture/session/retired；独立保留 `window_deadline_us`、`shell_owner_present` 和 `shared_font_cache_policy`。window 非空 deadline、合法 shell 与 window-owned retained font cache 不算 sample 泄漏；不猜造 `cache_count`。`idle_observation=not-sampled` 不证明 passive idle，readback 的 compositor/presented null 也不证明显示器呈现。
+
+当前 pinned 准备链只有两个 regular 400 face。真实 Gallery shell/Select 还需要 **noto-sans 的 upright 600** 和 **noto-sans-cjk-sc 的 upright 600**（各自真实 face index/bytes/source URL/SHA256/license）。这些资源尚未在中央锁和 Web regular-only validator 中具备，runner 会在 native probe 前返回 setup/environment **3**，列出缺失资源；不会把 regular 重新标记为 600、用系统字体补齐或将其称为 paired 通过。`font_requirements.py` 核对显式文件 bytes/hash、实际 SFNT OS/2 weight/slant 及有序链；普通 Gallery 系统字体默认不受影响。父侧需协调真实 600 字体与 Web 请求/selected-face 校验的锁扩展；本次不猜填未验证 hash，也不改 C++/资源锁。

@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "identity": "pilot-pinned-font",
+  "environment_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "algorithm_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "corpus_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "source_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "font_hashes": [
+    "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+    "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b"
+  ],
+  "repetitions": 5,
+  "calibrated": false,
+  "metrics": [
+    {
+      "identity": "geometry.logical_px",
+      "threshold": 0,
+      "hard_cap": 0.25,
+      "quantization_floor": 0,
+      "positive_max": 0,
+      "margin": 0,
+      "negative_min": 0
+    },
+    {
+      "identity": "pixels.max_channel_residual",
+      "threshold": 0,
+      "hard_cap": 0,
+      "quantization_floor": 0,
+      "positive_max": 0,
+      "margin": 0,
+      "negative_min": 0
+    },
+    {
+      "identity": "pixels.coverage_mass_relative_error",
+      "threshold": 0,
+      "hard_cap": 0.05,
+      "quantization_floor": 0,
+      "positive_max": 0,
+      "margin": 0,
+      "negative_min": 0
+    },
+    {
+      "identity": "pixels.contour_distance_px",
+      "threshold": 0,
+      "hard_cap": 0.5,
+      "quantization_floor": 0,
+      "positive_max": 0,
+      "margin": 0,
+      "negative_min": 0
+    },
+    {
+      "identity": "text.coverage_mass_relative_error",
+      "threshold": 0,
+      "hard_cap": 0.05,
+      "quantization_floor": 0,
+      "positive_max": 0,
+      "margin": 0,
+      "negative_min": 0
+    },
+    {
+      "identity": "text.contour_distance_px",
+      "threshold": 0,
+      "hard_cap": 1,
+      "quantization_floor": 0,
+      "positive_max": 0,
+      "margin": 0,
+      "negative_min": 0
+    }
+  ],
+  "masks": [],
+  "color": {
+    "profile": "sRGB-SDR",
+    "channel_order": "RGBA",
+    "alpha": "opaque"
+  },
+  "font_policy": "pinned"
+}

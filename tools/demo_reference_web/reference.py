@@ -280,13 +280,14 @@ def validate_observations(directory, request):
     return records
 
 
-def execute(request, prepared_dir, output, *, reference='locked'):
+def execute(request, prepared_dir, output, *, reference='locked', publish_cache=True):
     prepared_dir = output_path(prepared_dir)
     prepared = verify_prepared(prepared_dir)
     definition = validate_request(request, prepared)
     output = output_path(output)
     require(not output.exists(), 'execution output already exists')
     require(reference in ('locked', 'rebuild'), 'unknown reference cache mode')
+    require(type(publish_cache) is bool, 'cache publication policy must be boolean')
     output.mkdir(parents=True)
     for name in ('tmp', 'cache', 'config'):
         (output / name).mkdir()
@@ -354,7 +355,7 @@ def execute(request, prepared_dir, output, *, reference='locked'):
         old = verify_cache(cache, key)
         require(old['browser_environment'] == browser_environment, 'reference cache browser/GPU environment mismatch')
         require(old['capture_hashes'] == captures, 'same-input reference capture drift')
-    else:
+    elif publish_cache:
         cache.parent.mkdir(parents=True, exist_ok=True)
         temporary = Path(tempfile.mkdtemp(prefix='.pending-', dir=cache.parent))
         try:
@@ -371,6 +372,7 @@ def execute(request, prepared_dir, output, *, reference='locked'):
                 temporary.chmod(0o755)
                 shutil.rmtree(temporary)
     result = {'executed': True, 'paired': False, 'cache_key': key, 'cache_hit': cache_hit,
+              'cache_published': not cache_hit and publish_cache,
               'steps': len(definition['actions']), 'checkpoints': len(definition['checkpoints']),
               'observations': str(output / 'observations.jsonl')}
     (output / 'result.json').write_bytes(canonical(result) + b'\n')
@@ -388,6 +390,7 @@ def main():
     run.add_argument('--prepared', required=True)
     run.add_argument('--output', required=True)
     run.add_argument('--reference', choices=['locked', 'rebuild'], default='locked')
+    run.add_argument('--no-cache-publish', action='store_true', help='Execute and validate normally without publishing a cache miss')
     args = parser.parse_args()
     try:
         if args.command == 'identity':
@@ -395,7 +398,8 @@ def main():
         elif args.command == 'fonts':
             result = prepare_fonts(args.output)
         else:
-            result = execute(read(args.request), args.prepared, args.output, reference=args.reference)
+            result = execute(read(args.request), args.prepared, args.output, reference=args.reference,
+                             publish_cache=not args.no_cache_publish)
         print(json.dumps(result))
     except (PreparationError, ProtocolError, OSError, ValueError, subprocess.SubprocessError) as error:
         print('Web reference failed: ' + str(error), file=sys.stderr)

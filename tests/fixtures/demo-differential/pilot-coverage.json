@@ -1,0 +1,710 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "94ad9bf0cd0a383265d37e253d83625ea611e692",
+  "rows": [
+    {
+      "identity": "sample/gallery.sample.button.basics",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "",
+      "feature_id": "default-visible-context",
+      "role": "sample",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "include/ryn/button.hpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "sample/gallery.sample.input.basics",
+      "component_id": "ant.component.input",
+      "family": "input",
+      "sample_id": "gallery.sample.input.basics",
+      "target_id": "",
+      "feature_id": "default-visible-context",
+      "role": "sample",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "include/ryn/input.hpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/input/demo/allowClear.tsx"
+      ],
+      "cases": [
+        "antd665.input.controlled-edit.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "sample/gallery.sample.select.options",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "",
+      "feature_id": "default-visible-context",
+      "role": "sample",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "include/ryn/select.hpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.state.default",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "gallery.state.default",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.state.primary",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "gallery.state.primary",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.state.danger",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "gallery.state.danger",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.state.hover",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "gallery.state.hover",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.state.active",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "gallery.state.active",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.state.focus-visible",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "gallery.state.focus-visible",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.state.disabled",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "gallery.state.disabled",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.state.loading",
+      "component_id": "ant.component.button",
+      "family": "input",
+      "sample_id": "gallery.sample.button.basics",
+      "target_id": "gallery.state.loading",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/button/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.button.basic-states.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.input.controlled",
+      "component_id": "ant.component.input",
+      "family": "input",
+      "sample_id": "gallery.sample.input.basics",
+      "target_id": "gallery.input.controlled",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/input/demo/allowClear.tsx"
+      ],
+      "cases": [
+        "antd665.input.controlled-edit.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.input.uncontrolled",
+      "component_id": "ant.component.input",
+      "family": "input",
+      "sample_id": "gallery.sample.input.basics",
+      "target_id": "gallery.input.uncontrolled",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/input/demo/allowClear.tsx"
+      ],
+      "cases": [
+        "antd665.input.controlled-edit.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.controlled-search",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.controlled-search",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.numeric",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.numeric",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.disabled",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.disabled",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.loading",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.loading",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.empty",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.empty",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.controlled-open",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.controlled-open",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.outlined",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.outlined",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.filled",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.filled",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.borderless",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.borderless",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.underlined",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.underlined",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.small",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.small",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.middle",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.middle",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.large",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.large",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.warning",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.warning",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.error",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.error",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.component-theme",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.component-theme",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.focus",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.focus",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.toggle-open",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.toggle-open",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    },
+    {
+      "identity": "target/gallery.select.dynamic-options",
+      "component_id": "ant.component.select",
+      "family": "input",
+      "sample_id": "gallery.sample.select.options",
+      "target_id": "gallery.select.dynamic-options",
+      "feature_id": "target-observation",
+      "role": "observation",
+      "source_paths": [
+        "examples/token_gallery/token_gallery_definition.cpp",
+        "examples/token_gallery/gallery_test_inventory.cpp"
+      ],
+      "mapping": "paired",
+      "implementation": "planned",
+      "official_demo_ids": [
+        "components/select/demo/basic.tsx"
+      ],
+      "cases": [
+        "antd665.select.popup-lifecycle.v1"
+      ],
+      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+    }
+  ]
+}
