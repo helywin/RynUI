@@ -1114,6 +1114,22 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
                               attachment().metrics(),
                               true,
                               format == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM};
+        auto& evidence = candidate.evidence;
+        evidence.clear_rgba = {clear_color_.red(), clear_color_.green(), clear_color_.blue(), clear_color_.alpha()};
+        evidence.raw_total_pixels = static_cast<std::uint64_t>(width) * height;
+        evidence.raw_alpha_min = 255;
+        evidence.raw_rgba_fnv1a64 = 14695981039346656037ULL;
+        for (std::size_t index = 0; index < candidate.pixels.size(); ++index) {
+            const auto byte = std::to_integer<std::uint8_t>(candidate.pixels[index]);
+            evidence.raw_rgba_fnv1a64 ^= byte;
+            evidence.raw_rgba_fnv1a64 *= 1099511628211ULL;
+            if (index % 4 == 3) {
+                evidence.raw_alpha_min = std::min(evidence.raw_alpha_min, byte);
+                evidence.raw_alpha_max = std::max(evidence.raw_alpha_max, byte);
+                evidence.raw_opaque_pixels += byte == 255;
+            }
+        }
+        evidence.raw_alpha_available = evidence.raw_total_pixels != 0;
         output = std::move(candidate);
         return true;
     } catch (const std::exception& error) {

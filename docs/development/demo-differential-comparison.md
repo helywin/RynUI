@@ -44,14 +44,38 @@ Windows Web CPU 控制需要 `out/demo-differential/archives` 中的真实 Node/
 
 `comparison.py` 复用上述 regions API：每 checkpoint 固定完整 sample origin，仅作一次刚性平移；共同 logical union 用 floor/ceil × actual DPR，再加入至少 2 physical px guard。control、context 与 guard 分开登记，缺图/边界、裁图尺寸、未校准的 fractional origin phase 失败；不 tight crop 各 target、不 resize 或搜索配准。纯背景和小图标各自有局部 foreground、mass、contour 与最大 byte residual 门槛，不以全图均值判绿。
 
-现阶段明确的 metric identity/hard cap：`geometry.logical_px <= 0.25`，`pixels.coverage_mass_relative_error <= 0.05`，`pixels.contour_distance_px <= 0.5`，`text.coverage_mass_relative_error <= 0.05`，`text.contour_distance_px <= 1`。未有独立颜色转换/噪声校准前，`pixels.max_channel_residual` hard cap 为严格 `0`，不任意采用宽 byte 阈值。每个有效 profile 必须包含这些指标且无重复/未知项；实际 threshold 必须等于 `max(quantization_floor, positive_max + margin)`，不超过声明和代码 hard cap，且 `negative_min > threshold`。pilot masks 必须空。
+有限 profile 的指标由 `calibration.POLICY` 精确枚举：geometry 上限 0.25 logical px、text geometry 0.5 logical px、flat/text interior DeltaE00 1、shape/text mass 0.05、shape contour 0.5 physical px、text contour 1 physical px、固定 2×2 local coverage / 每组行列 projection 0.05。整数 contour 的非零最小值仍为 1；0.5 上限保持更严含义。原始 byte residual 全量报告；只有独立 opaque transport sentinel 保留 byte=0 门，不用全 context 零 byte AND 否决合法 AA，也不把 bytecap 换成宽阈值。AA 来自已验 reference/geometry，最多 1 physical px，自身仍验 coverage/contour/projection；无法分离材料时报校准失败。pilot masks 必须空。
 
-profile 使用既有 strict v1 schema，要求 `calibrated=true`、至少 5 次正控制，以及匹配 comparator/regions algorithm hash、完整 source closure、两侧 browser/native GPU/driver/metrics/font 环境 hash、字体 bytes/face 和独立 corpus hash。绑定值来自 `binding()`，报告记录该值以供独立校准使用；runner 不从当前待判差异生成 threshold 或正控制。缺匹配校准、色域/channel/alpha 或有效字体时 environment/calibration 非零，不能把 capture 存在当 pass。当前原生 `native-encoded-SDR`/premultiplied 与浏览器 SDR/straight 还没有可默认为等价的校准，保留这个失败边界。
+profile 是 strict v1 的严格扩展，必须声明 `calibration_kind=pilot-independent-v1`、首批三例完整 identity、zh-CN/LTR/default/motion-disabled/pinned 七字体、actual DPR、有限材料/字号/字重与可重建证据。旧手填 calibrated 声明失效。algorithm hash 包括实际数学、区域、校准、比较代码和 profile schema；完整 native source、实际 binary/configuration、工具/安装、OS/GPU/driver/browser/library、实际 font raster policy、bytes/face/weight/size 继续绑定。必需来源缺失不能用 None 计算出“已绑定”的 hash。
+
+native 保留真实 `native-encoded-SDR/premultiplied`、actual source format/channel/clear；Web 保留 PNG RGB8/RGBA8/straight-or-opaque、实际 sRGB launch args、PNG color chunks 与 CRC。opaque 工作域必须同时有 owned raw RGBA 全 A255 扫描和 decoded 全 A255，普通 BMP 还核对 raw 字节摘要。透明控制只使用独立新 fence 的 raw RGBA；opaque raw 与生产 BMP 的两次 readback 分别保留 receipt，并先证明稳定场景字节相同。固定标准转换按 [W3C sRGB](https://www.w3.org/TR/css-color-4/#color-conversion-code) 和 [Sharma/Wu/Dalal 的 CIEDE2000 方程与数据](https://hajim.rochester.edu/ece/sites/gsharma/ciede2000/) 独立实现，不拟合 gamma/LUT 或失败直方图。
+
+只有独立 `calibrate --suite pilot` 可以原子发布 profile。它不调用普通 run，不把 Button/Input/Select 图像作为正控制；普通 Gallery probe 仅用于来源/实际环境。固定 train/holdout、负例和 policy 在采集前写入 out，至少五次新 fence 与一次独立重启。逐侧几何/材料/font/SFNT cmap/hmtx/outline/解析颜色先验通过后才进入 positive。`candidate=max(quantization_floor, positive_max+fixed_margin)`，须不超过 hard cap、holdout 不超限且每个指定 negative 有固定 safety gap。消费时重开内容寻址 manifest、stream、raw/codec captures 并重算，不信任伪造 summary。失败只写报告，不发布有效 profile。
+
+实际运行入口（平台结果与拒绝边界见 [Windows 阶段结论](../../openspec/changes/109-20261112-add-web-native-demo-differential-tests/evidence/13-finite-paint-calibration-windows.md)）：
+
+```text
+<compatible-python> -B tools/run_demo_differential.py calibrate --suite pilot --preset <actual-build-preset> --binary <rebuilt-gallery> --control-binary <rebuilt-rynui_demo_differential_calibration> --prepared <verified-out-prepared> --font-files <verified-out-font-files.json> --comparison-site <verified-out-site> --offline --dpr native --repetitions 5 --output out/demo-differential/calibration-fresh
+```
+
+Linux control binary 自动使用既有 private Wayland wrapper；Windows 要求实际 hidden D3D12，Linux 要求实际 Vulkan，设备名称照实记录，软件 Vulkan 不写成硬件。两平台 profile 不互用。未知材料/阴影、缺 tiles、缺实际 glyph/target、scope 或环境漂移均非零。代码与机制检查不代表有效 profile、三例 paired 或真实 fault meta 已通过；6.3–6.5 全域任务继续开放。
 
 基础 Token 比较显式映射 border width/radius/font size 的 logical 单位；缺原生实际 Token 字段报接口缺失。文字先验内容/顺序、实际选中字体 hash/face/coverage、禁止未锁 synthesis/fallback；局部文本/run bounds 与独立 raster ink 缺一失败。Web computed font family 不代替 CDP selected faces；native `invalid-UTF8-repairs` 不代替 nominal glyph coverage。正文、icon 与 editor selected/placeholder 原始 layers 保留，后两者的完整 glyph/selection/line/clip 扩展留阶段 6–9。
 
-文字/图标存在性使用锁定 Web 实际 computed background 作为独立材料输入，当前只支持透明继承已声明白底或 opaque RGB；未知/半透明材料等待后续颜色校准，非零失败。presence 单独检查 run/icon 内部，不让外侧白色 guard 或主色按钮背景充当 glyph ink。case 声明的正文和 icon 即使两侧同时缺失也会失败；expected 不来自 native 图像或测量值。
+固定 retained host content anchor 与内容并集分开；只减 host/fixed wrapper 原点一次，再检查内容相对位置、独立容器 width/padding。文字消费 `GlyphPrimitive.coverage` 的 byte/line ownership 和实际 Range/UA-shadow Text 分组；未观察到真实分组不退回整框。空白按 advance 验证，边框、圆角背景和 guard 不得冒充 glyph。Input/Select 材料读取 `InputPaintSnapshot` 的真实 retained fragment/effect 副本和 owner/generation；未同步、clipped、hidden 和 absent 保持不同事实，查询不触发 refresh/frame。
 
 对接 native 冻结接口后，普通 pinned text 只接受声明 bytes/face 的 `source=pinned-file`；system、unknown、bundled-fallback 或把 icon source 用作正文均失败。实际 600 文件先通过独立 SFNT weight admission，不能 regular 改标签。component flag 按 Button/Input/Select 的实际适用字段比较，保留其他字段的 null；适用字段未知不得默认为 false，sample aggregate 不冒充最后一个子控件状态。
 
 `demo_differential_runner_comparison_tests.py` 使用程序生成的局部像素与字体元数据控制，验证 1 logical px、小图标删除、局部空白、guard 外漏、错误字体、缺文字 bounds、无校准/过宽 threshold/mask 的拒绝。它们不运行 Pillow、浏览器、native 或 GPU，不是实际平台校准。完整 colors/gradient/shadow/alpha、长图 tiles、字体排版及真实 fault corpus 仍是后续范围。
+
+## 有限 paint inventory 消费
+
+`resources.paint_stack` 分别记录实际 `submitter.visible` 展开后的 command/instance membership、fragment publication revision、owner/fragment/surface/effect generation、composition program/group/coverage role，以及实际 glyph scene/atlas/font 来源。Input 的 role 数组不是绘制次序；使用其 `published_commands` 和 `command_ordinal`。const query 不同步、不请求下一帧。采图前后重读完整 paint 与 glyph inventory，变化即失败；capture binding 保留独立 run/capture nonce、step、scene revision、fence、renderer owner 和 device epoch。
+
+Web 读取 `DOMSnapshot.getSnapshot` 的真实 paintOrder、stacking context、UA Text 与 pseudo；保留 selector/affix/popup/option 的各层，而不是把整个控件视为单一背景。四边 border、四角 radius、完整 shadow list、outline、clip、opacity group、实际 SVG paths 和 selection/caret 分别观测。shadow parser 只在括号外拆逗号。`caret-animation: manual` 和原截图 caret 行为保持；DOM 只暴露 collapsed Range edge 时，caret 宽度来自未遮蔽像素的局部贡献测量，不宣称 DOM 提供了 caret 厚度。正式图标仅消费共享 `formal_icon_source.py`；SFNT witness 使用共享 `font_priors` / `font_priors_from_bytes` / `outline_point`，不复制资源或栅格 oracle。
+
+比较先验证 source、geometry、order 和 capture coherence，再按 flat / hard edge / glyph / soft shadow / joint / guard 分区；主分类数量之和必须等于完整 crop。已知材料的错误像素记录 visual/typography 差异，退出码为 1；缺 capture 或未覆盖完整 support 为 4；未知支持域为 3；schema/身份协议的非法字段仍按既有 2/4 处理。crop 包含两侧实际 paint support、popup、阴影尾部、outline 与至少 2 physical px guard，越出实际捕获范围时不 clamp、不缩小分母。
+
+最多三个 source-only 可见色轴使用固定小矩阵、秩/条件数/量化、非负/和约束及实际 source-over endpoint domain；同色或共线来源只给 joint contrast plane，逐层来源身份不合并，不反推出任意 layer alpha。真正的 opacity group 完成后只应用一次。shadow profile/tail 输入是实际可见 alpha/contribution，包含 source alpha、paint opacity、group 和上层遮挡，不把弱阴影除以其 opacity 后套用 tail 上限。flat DeltaE、局部 mass/projection/contour、独立 SFNT 墨迹 witness、shadow profile/tail、joint 与 guard 全部 AND；raw byte residual 仅作诊断。
+
+有限域明确拒绝 gradient/image、非平移变换、非标准 blend/filter、椭圆 radius、多色 border corner、未支持的 pseudo text/text shadow，以及确实切入 paint support 的 rounded mask/backdrop。仅证明不切入当前 paint support 的实际祖先 rounded mask 可以继续消费。不存在有效控制间隔或来源事实不足时保持非零，不能借此声明 6.3–6.5 完成。所有 C++/GPU/browser 行为、312 controls / 26 negatives / 16 metrics 的最终校准与普通 pilot/meta 结果均以父线程在最终整合源码上的实际执行为准；源码与纯 Python 测试不替代这些证据。

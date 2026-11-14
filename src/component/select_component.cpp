@@ -398,6 +398,25 @@ std::optional<animation::AnimationTime> SelectComponentHost::motion_deadline(run
     return state->motion.deadline();
 }
 
+std::optional<SelectPaintOwnerSnapshot> SelectComponentHost::paint_owners(runtime::ComponentId id) const {
+    const auto* state = select_state(*services_, id);
+    if (!state) {
+        return std::nullopt;
+    }
+    SelectPaintOwnerSnapshot result{id,
+                                    state->selector,
+                                    {state->popup, state->background, {}},
+                                    {state->clear_wrapper, state->clear_background, {}},
+                                    {}};
+    for (const auto row_id : state->rows) {
+        const auto* row = std::as_const(services_->components()).state<SelectRow>(row_id);
+        if (row) {
+            result.rows.push_back({row_id, row->surface, row->key});
+        }
+    }
+    return result;
+}
+
 SelectSnapshot SelectComponentHost::snapshot(runtime::ComponentId id) const {
     const auto* s = select_state(*services_, id);
     if (!s) {

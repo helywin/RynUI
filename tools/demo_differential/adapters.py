@@ -57,12 +57,14 @@ def stop_tree(process):
     process.wait(timeout=15)
 
 
-def process(argv, directory, timeout, *, failure_code=4):
+def process(argv, directory, timeout, *, failure_code=4, launch_id=None):
     directory.mkdir(parents=True, exist_ok=True)
     from .reporting import write_json
     write_json(directory / 'argv.json', [str(arg) for arg in argv])
     options = {'start_new_session': True} if os.name != 'nt' else {
         'creationflags': subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP}
+    if launch_id is not None:
+        options['env']={**os.environ,'RYNUI_CONTROL_LAUNCH_ID':launch_id}
     old_mode = None
     if os.name == 'nt':
         import ctypes
@@ -71,6 +73,10 @@ def process(argv, directory, timeout, *, failure_code=4):
         with (directory / 'stdout.log').open('wb') as stdout, (directory / 'stderr.log').open('wb') as stderr:
             try:
                 child = subprocess.Popen([str(a) for a in argv], cwd=ROOT, stdout=stdout, stderr=stderr, **options)
+                if launch_id is not None:
+                    import time
+                    write_json(directory/'launch.json',dict(launch_id=launch_id,pid=child.pid,parent_pid=os.getpid(),
+                        started_ns=time.time_ns(),argv=[str(a) for a in argv]))
             except OSError as error:
                 raise RunError(3, 'environment', 'cannot start adapter: ' + str(error)) from error
             try:

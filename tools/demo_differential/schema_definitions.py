@@ -158,16 +158,40 @@ def schemas():
         'callbacks': arr(ref('trace')), 'targets': arr(ref('target_observation')),
         'captures': arr(ref('capture')), 'resources': ref('map'),
         'completed_steps': arr(ID, unique=True), 'completed_checkpoints': arr(ID, unique=True)})
+    nullable = lambda rule: {'anyOf': [rule, {'type': 'null'}]}
     profile = obj({'schema_version': VERSION, 'identity': ID, 'environment_hash': SHA,
-        'algorithm_hash': SHA, 'corpus_hash': SHA, 'source_hash': SHA, 'font_hashes': arr(SHA, 1, unique=True),
-        'repetitions': {'type': 'integer', 'minimum': 5}, 'calibrated': BOOL,
+        'algorithm_hash': SHA, 'corpus_hash': SHA, 'source_hash': SHA, 'font_hashes': arr(SHA, 7, 7, unique=True),
+        'calibration_kind': {'const': 'pilot-independent-v1'}, 'tool_hash': SHA,
+        'scope': obj({'cases': arr(ID,3,3,unique=True), 'locale': {'const':'zh-CN'},
+            'direction': {'const':'ltr'}, 'theme': {'const':'default'}, 'motion': {'const':'disabled'},
+            'font_policy': {'const':'pinned'}, 'actual_dpr': nullable({'type':'number','exclusiveMinimum':0,'maximum':4}),
+            'origin_phase_px': arr(N,2,2), 'materials': arr(ID,1,unique=True),
+            'font_sizes_weights': arr(obj({'size':N,'weight':U}),12,12,unique=True)}),
+        'repetitions': {'type': 'integer', 'minimum': 5, 'maximum':15}, 'calibrated': BOOL,
         'metrics': arr(obj({'identity': ID, 'threshold': N, 'hard_cap': N, 'quantization_floor': N,
-                            'positive_max': N, 'margin': N, 'negative_min': N}), 1),
+                            'positive_max': N, 'margin': N, 'negative_min': N,
+                            'unit':ID, 'domain':ID, 'holdout_max':N, 'safety_gap':N,
+                            'positive_ids':arr(ID,1,unique=True), 'holdout_ids':arr(ID,1,unique=True),
+                            'negative_ids':arr(ID,1,26,unique=True)}), 0,16),
         'masks': arr(obj({'identity': ID, 'reason': S, 'area_fraction': {'type': 'number', 'minimum': 0, 'maximum': .01},
-                          'rect': ref('rect'), 'protected_intersection': {'const': False}})),
-        'color': obj({'profile': {'const': 'sRGB-SDR'}, 'channel_order': enum('RGBA', 'BGRA'),
-                       'alpha': enum('straight', 'premultiplied', 'opaque')}),
-        'font_policy': enum('pinned', 'system')})
+                          'rect': ref('rect'), 'protected_intersection': {'const': False}}),0,0),
+        'color': nullable(obj({
+            'native':obj({'framebuffer_format':enum('RGBA8_UNORM','BGRA8_UNORM'),
+                'source_channel_order':enum('RGBA','BGRA'), 'decoded_channel_order':{'const':'RGBA'},
+                'encoding':{'const':'native-encoded-SDR'}, 'alpha':{'const':'premultiplied'},
+                'clear_rgba':arr(N,4,4), 'opaque_required':{'const':True}, 'codec_policy':{'const':'opaque-BMP-rawRGBA-v1'}}),
+            'web':obj({'file_formats':arr(enum('PNG RGB8','PNG RGBA8'),1,2,unique=True),
+                'decoded_channel_order':{'const':'RGBA'}, 'encoding':{'const':'sRGB-SDR'},
+                'alpha_policy':{'const':'RGB-opaque-or-verified-RGBA-opaque'},
+                'launch_args_hash':SHA, 'png_color_chunks_policy':{'const':'record-and-verify-chunks-CRC-v1'},
+                'png_color_chunks':arr(obj({'type':enum('sRGB','gAMA','cHRM','iCCP'),'sha256':SHA,'bytes':U}),0,4)}),
+            'comparison':obj({'domain':{'const':'sRGB-encoded-opaque'},
+                'conversion':{'const':'verified-opaque-identity-v1'}, 'lab':{'const':'sRGB-D65-CIEDE2000-v1'}}),
+            'control_evidence_sha256':SHA})),
+        'evidence':nullable(obj({'path':PATH,'sha256':SHA,'train_ids':arr(ID,6,16,unique=True),
+            'holdout_ids':arr(ID,6,16,unique=True),'negative_ids':arr(ID,26,26,unique=True),
+            'control_definition_sha256':SHA,'policy_sha256':SHA,'observations_and_captures_manifest_sha256':SHA})),
+        'font_policy': {'const':'pinned'}})
     report = obj({'schema_version': VERSION, 'nonce': S, 'status': VERDICT,
         'exit_code': {'type': 'integer', 'minimum': 0, 'maximum': 4},
         'selected': arr(ID, unique=True), 'expected': arr(ID, unique=True),
@@ -212,7 +236,7 @@ def main():
             if path.read_text(encoding='utf-8') != data:
                 raise SystemExit(f'stale schema: {path}')
         else:
-            path.write_text(data, encoding='utf-8')
+            path.write_bytes(data.encode('utf-8'))
 
 
 if __name__ == '__main__':

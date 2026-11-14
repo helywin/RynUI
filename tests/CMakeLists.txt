@@ -202,6 +202,20 @@ foreach(drawer_motion_case IN ITEMS edges reversal completion input geometry nes
     add_test(NAME rynui.drawer_motion_${drawer_motion_case} COMMAND rynui_drawer_motion_tests ${drawer_motion_case})
 endforeach()
 
+add_executable(rynui_demo_differential_control_geometry_tests demo_differential_control_geometry_tests.cpp)
+rynui_configure_cpp_target(rynui_demo_differential_control_geometry_tests)
+target_include_directories(rynui_demo_differential_control_geometry_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_demo_differential_control_geometry_tests PRIVATE rynui_graphics rynui_text)
+add_test(NAME rynui.demo_differential_control_geometry COMMAND rynui_demo_differential_control_geometry_tests)
+
+add_executable(rynui_input_paint_snapshot_tests input_paint_snapshot_tests.cpp)
+rynui_configure_cpp_target(rynui_input_paint_snapshot_tests)
+target_link_libraries(rynui_input_paint_snapshot_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_input_paint_snapshot_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.input_paint_snapshot COMMAND rynui_input_paint_snapshot_tests)
+
 if(NOT RYNUI_HAS_SDL_GPU)
     add_executable(rynui_tooltip_component_tests tooltip_component_tests.cpp)
     rynui_configure_cpp_target(rynui_tooltip_component_tests)
@@ -3416,6 +3430,17 @@ if(TARGET shadercross)
 endif()
 
 if(RYNUI_HAS_SDL_GPU)
+    add_executable(rynui_demo_differential_calibration demo_differential_calibration_main.cpp)
+    rynui_configure_cpp_target(rynui_demo_differential_calibration)
+    target_link_libraries(rynui_demo_differential_calibration PRIVATE
+        rynui_token_gallery_definition rynui_components rynui_renderer_sdl rynui_renderer_common SDL3::SDL3)
+    target_include_directories(rynui_demo_differential_calibration PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    target_compile_definitions(rynui_demo_differential_calibration PRIVATE
+        "RYNUI_CONTROL_SOURCE_ROOT=\"${PROJECT_SOURCE_DIR}\""
+        "RYNUI_CONTROL_PRESET=\"${RYNUI_CONFIGURE_PRESET}\""
+        "RYNUI_CONTROL_TOOLCHAIN=\"${CMAKE_CXX_COMPILER_ID}\""
+        "RYNUI_CONTROL_CONFIGURATION=\"$<CONFIG>\"")
+    rynui_embed_target_shaders(rynui_demo_differential_calibration)
     add_test(NAME rynui.composition_shader_layout
         COMMAND "${Python3_EXECUTABLE}" -B "${PROJECT_SOURCE_DIR}/tools/verify_composition_spirv.py"
             "${RYNUI_GENERATED_SHADER_DIRECTORY}"

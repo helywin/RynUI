@@ -442,6 +442,14 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                 {"logical_pixel_size", static_cast<std::int64_t>(metrics.metrics.logical_pixel_size)},
                 {"raster_pixel_size", static_cast<std::int64_t>(metrics.metrics.raster_pixel_size)},
                 {"display_scale", metrics.metrics.display_scale},
+                {"raster_policy",
+                 GalleryDemoJson::Object{
+                     {"antialias", source->raster_policy.antialias},
+                     {"hinting", source->raster_policy.hinting},
+                     {"hint_style", static_cast<std::int64_t>(source->raster_policy.hint_style)},
+                     {"subpixel_order", static_cast<std::int64_t>(source->raster_policy.subpixel_order)},
+                     {"lcd_filter", static_cast<std::int64_t>(source->raster_policy.lcd_filter)},
+                     {"embedded_bitmap", source->raster_policy.embedded_bitmap}}},
                 {"source", "unknown"},
                 {"path", nullptr}};
             auto& details = std::get<GalleryDemoJson::Object>(info.value);
@@ -516,7 +524,15 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                         "native-encoded-SDR",
                         receipt.fence_completed,
                         gallery_demo_native_build_manifest().at("source_hash").string(),
-                        gallery_demo_file_sha256(demo_binary_path)};
+                        gallery_demo_file_sha256(demo_binary_path),
+                        receipt.raw_alpha_available,
+                        receipt.raw_alpha_min,
+                        receipt.raw_alpha_max,
+                        receipt.raw_opaque_pixels,
+                        receipt.raw_total_pixels,
+                        std::to_string(receipt.raw_rgba_fnv1a64),
+                        GalleryDemoJson::Array{receipt.clear_rgba[0], receipt.clear_rgba[1], receipt.clear_rgba[2],
+                                               receipt.clear_rgba[3]}};
                 },
                 font_info,
                 [&](font::FontIdentity identity, char32_t codepoint) {
@@ -525,7 +541,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                         throw std::runtime_error("scenario nominal-glyph query failed");
                     }
                     return result.glyph.glyph_id;
-                }});
+                },
+                [&]() -> const graphics::OrderedScene& { return submitter.visible; }});
         result.cases = 1;
         result.passed = true; // Protocol execution only; the Python oracle owns the differential verdict.
         write_gallery_page_acceptance(options.output, result);

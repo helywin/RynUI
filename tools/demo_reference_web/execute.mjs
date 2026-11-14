@@ -10,6 +10,7 @@ const [configPath] = process.argv.slice(2);
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 // Keep copied fault-control workers bound to this frozen font helper closure.
 const { fontStyle, platformFontRuns } = await import(config.font_worker);
+const { observePaintStack } = await import(new URL('paint_observer.mjs',config.font_worker));
 const { prepared, request, output, build, provenance } = config;
 const { definition, nonce, font_files: fonts } = request;
 const fixture = definition.fixture;
@@ -28,6 +29,33 @@ let lastTimestamp = 0;
 const completedSteps = [], completedCheckpoints = [];
 const savedRects = new Map();
 const outputStream = fs.createWriteStream(path.join(output, 'observations.jsonl'), { flags: 'wx' });
+
+// Runs in the document or against a resolved UA-shadow Text node. No estimated
+// input rectangle, equal-width splitting, canvas advance, or image search.
+function observedTextGroups(node = this) {
+  if (node.nodeType !== Node.TEXT_NODE) throw new Error('semantic glyph source is not a real Text node');
+  const content = node.textContent;
+  const rect = value => ({ x: value.x, y: value.y, width: value.width, height: value.height });
+  const encoder = new TextEncoder();
+  const groups = [];
+  const lines = [];
+  for (const part of new Intl.Segmenter('zh-CN', { granularity: 'grapheme' }).segment(content)) {
+    const range = document.createRange();
+    range.setStart(node, part.index); range.setEnd(node, part.index + part.segment.length);
+    const boxes = [...range.getClientRects()].filter(box => box.width > 0 && box.height > 0).map(rect);
+    if (!boxes.length && part.segment.trim()) throw new Error('printable grapheme lacks an actual Range rectangle');
+    const top = boxes[0]?.y;
+    if (top !== undefined && !lines.includes(top)) lines.push(top);
+    const style = getComputedStyle(node.parentElement);
+    let opacity=1;
+    for(let element=node.parentElement;element;element=element.parentElement)opacity*=Number(getComputedStyle(element).opacity);
+    groups.push({ byte_begin: encoder.encode(content.slice(0,part.index)).length,
+      byte_end: encoder.encode(content.slice(0,part.index+part.segment.length)).length,
+      boxes, advance: boxes.reduce((sum,box) => sum+box.width,0), line: top === undefined ? 0 : lines.indexOf(top),
+      color: style.color, opacity, font_size: style.fontSize, font_weight: style.fontWeight });
+  }
+  return groups;
+}
 
 function record(type, step = '', values = {}) {
   const result = { schema_version: 1, type, nonce, case: definition.identity, step,
@@ -78,6 +106,7 @@ try {
   });
   context.on('page', page => { if (context.pages().length > 1) { errors.push('unexpected popup page'); page.close(); } });
   const page = await context.newPage();
+  await page.addInitScript({ content: 'window.__observedTextGroups = (' + observedTextGroups.toString() + ');' });
   page.setDefaultTimeout(5000);
   page.on('pageerror', error => errors.push('page error: ' + error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push('console: ' + message.text()); });
@@ -288,6 +317,8 @@ try {
         if (!element) throw new Error('missing checkpoint target: ' + identity);
         const bounds = element.getBoundingClientRect();
         const computed = getComputedStyle(element);
+        const paintOwner = element.matches('.ant-select') ? element.querySelector('.ant-select-selector') ?? element : element;
+        const paintComputed = getComputedStyle(paintOwner);
         const input = element.matches('input,textarea') ? element : element.querySelector('input,textarea');
         const control = controls[identity];
         const visible = computed.display !== 'none' && computed.visibility !== 'hidden' && bounds.width > 0 && bounds.height > 0;
@@ -306,6 +337,7 @@ try {
           if (!node.textContent) continue;
           const range = document.createRange(); range.selectNodeContents(node);
           text.push({ content: node.textContent, boxes: [...range.getClientRects()].map(rect),
+            semantic_groups: window.__observedTextGroups(node),
             font_family: getComputedStyle(node.parentElement).fontFamily, font_size: getComputedStyle(node.parentElement).fontSize,
             font_weight: getComputedStyle(node.parentElement).fontWeight, direction: getComputedStyle(node.parentElement).direction });
         }
@@ -313,11 +345,42 @@ try {
           bounds_source: 'pending Chromium DOMSnapshot textBoxes, never input bounding box',
           font_family: getComputedStyle(input).fontFamily, direction: getComputedStyle(input).direction,
           font_size: getComputedStyle(input).fontSize, font_weight: getComputedStyle(input).fontWeight });
-        const icons = [...element.querySelectorAll('[role="img"],svg')].map(icon => ({ identity: icon.getAttribute('aria-label') ?? '',
-          bounds: rect(icon.getBoundingClientRect()), markup: icon.outerHTML }));
+        const icons = [...element.querySelectorAll('[role="img"]')].map(icon => {
+          const svg=icon.matches('svg')?icon:icon.querySelector('svg');
+          if(!svg)throw new Error('formal icon has no actual SVG');
+          return { identity:icon.getAttribute('aria-label') ?? '',source_kind:'svg',bounds:rect(svg.getBoundingClientRect()),markup:svg.outerHTML,
+            view_box:svg.getAttribute('viewBox'), paths:[...svg.querySelectorAll('path')].map((part,ordinal)=>{
+              let opacity=1;for(let ancestor=part;ancestor;ancestor=ancestor.parentElement)opacity*=Number(getComputedStyle(ancestor).opacity);
+              const ancestry=[];for(let ancestor=part;ancestor;ancestor=ancestor.parentElement){
+                const style=getComputedStyle(ancestor);ancestry.push({transform_attr:ancestor.getAttribute('transform'),
+                  transform_css:style.transform,clip_path:style.clipPath,mask:style.maskImage,filter:style.filter});
+                if(ancestor===svg)break;
+              }
+              return {ordinal,d:part.getAttribute('d'),fill:getComputedStyle(part).fill,opacity,ancestry,
+                fill_rule:getComputedStyle(part).fillRule,stroke:getComputedStyle(part).stroke,
+                fill_opacity:getComputedStyle(part).fillOpacity,transform:part.getAttribute('transform')};}) };
+        });
         const tokens = {};
+        let contentUnion = rect(bounds);
+        if (identity === window.__request.definition.native.sample_id) {
+          const padding = { left: parseFloat(computed.paddingLeft), top: parseFloat(computed.paddingTop),
+            right: parseFloat(computed.paddingRight), bottom: parseFloat(computed.paddingBottom) };
+          if ([computed.borderLeftWidth,computed.borderTopWidth,computed.borderRightWidth,computed.borderBottomWidth]
+              .some(width => parseFloat(width) !== 0)) throw new Error('fixed sample wrapper has an undeclared border');
+          tokens.sample_anchor = { source: 'fixed-web-wrapper', container: rect(bounds), padding,
+            content: { x: bounds.x+padding.left, y: bounds.y+padding.top,
+              width: bounds.width-padding.left-padding.right, height: bounds.height-padding.top-padding.bottom } };
+          const roots = [...element.children].filter(child => !['STYLE','SCRIPT','LINK'].includes(child.tagName))
+            .map(child => child.getBoundingClientRect()).filter(box => box.width > 0 && box.height > 0);
+          if (!roots.length) throw new Error('sample has no actual content roots');
+          const x=Math.min(...roots.map(box => box.x)), y=Math.min(...roots.map(box => box.y));
+          contentUnion = { x,y, width: Math.max(...roots.map(box => box.right))-x,
+            height: Math.max(...roots.map(box => box.bottom))-y };
+        }
         for (const name of ['color', 'backgroundColor', 'borderColor', 'borderWidth', 'borderRadius', 'padding', 'gap',
-          'paddingInlineStart', 'paddingInlineEnd', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'opacity', 'boxShadow', 'direction', 'overflow']) tokens[name] = computed[name];
+          'paddingInlineStart', 'paddingInlineEnd', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'opacity', 'boxShadow', 'direction', 'overflow'])
+          tokens[name] = ['backgroundColor','borderColor','borderWidth','borderRadius','boxShadow'].includes(name) ? paintComputed[name] : computed[name];
+        tokens.paint_owner = {tag:paintOwner.tagName,class_name:paintOwner.className,bounds:rect(paintOwner.getBoundingClientRect()),source:'actual paint-bearing selector/affix/control'};
         tokens.pseudo_before = { content: getComputedStyle(element, '::before').content,
           background: getComputedStyle(element, '::before').backgroundColor };
         let clip = { x: 0, y: 0, width: innerWidth, height: innerHeight };
@@ -330,7 +393,7 @@ try {
               height: Math.max(0, Math.min(clip.y + clip.height, bounds.bottom) - y) };
           }
         }
-        result.push({ identity, key: '', bounds: rect(bounds), clip,
+        result.push({ identity, key: '', bounds: contentUnion, clip,
           scroll: { x: element.scrollLeft, y: element.scrollTop, width: element.scrollWidth, height: element.scrollHeight },
           state, text, icons, tokens, owner_generation: r.generation(), scene_revision: r.revision() });
       }
@@ -367,7 +430,9 @@ try {
           expect(child.nodeId, 'editable DOM input missing');
           editor = (await cdp.send('DOM.describeNode', { nodeId: child.nodeId })).node;
         }
-        const boxes = [], runs = [];
+        const boxes = [], runs = [], semanticGroups = [];
+        const groupedNodes = new Set();
+        let byteOffset = 0;
         const rootIndex = layoutSnapshot.domNodes.findIndex(node => node.backendNodeId === editor.backendNodeId);
         expect(rootIndex >= 0, 'editable UA-shadow snapshot owner missing');
         const descendants = new Set();
@@ -379,6 +444,20 @@ try {
         visit(rootIndex);
         for (const layout of layoutSnapshot.layoutTreeNodes) {
           if (!descendants.has(layout.domNodeIndex) || !layout.layoutText) continue;
+          if (!groupedNodes.has(layout.domNodeIndex)) {
+            groupedNodes.add(layout.domNodeIndex);
+            const backendNodeId = layoutSnapshot.domNodes[layout.domNodeIndex].backendNodeId;
+            const resolved = await cdp.send('DOM.resolveNode', { backendNodeId });
+            expect(resolved.object.objectId, 'actual UA-shadow Text node cannot be resolved');
+            try {
+              const actual = await cdp.send('Runtime.callFunctionOn', { objectId: resolved.object.objectId,
+                functionDeclaration: observedTextGroups.toString(), returnByValue: true });
+              expect(!actual.exceptionDetails && Array.isArray(actual.result.value), 'actual UA Range glyph boxes unavailable');
+              semanticGroups.push(...actual.result.value.map(group => ({ ...group,
+                byte_begin: group.byte_begin+byteOffset, byte_end: group.byte_end+byteOffset })));
+              byteOffset += Buffer.byteLength(layout.layoutText,'utf8');
+            } finally { await cdp.send('Runtime.releaseObject', { objectId: resolved.object.objectId }); }
+          }
           for (const inline of layout.inlineTextNodes ?? []) {
             boxes.push(inline.boundingBox);
             runs.push({ content: layout.layoutText, start: inline.startCharacterIndex,
@@ -390,6 +469,7 @@ try {
         expect(fullText === text.content, 'editable layout text differs from actual input value: ' + target.identity);
         text.boxes = boxes;
         text.layout_runs = runs;
+        text.semantic_groups = semanticGroups;
         text.bounds_source = 'Chromium DOMSnapshot.getSnapshot actual UA-shadow inlineTextNodes';
       }
     }
@@ -483,9 +563,18 @@ try {
       await paint();
       settledInputs = await page.evaluate(step => window.__reference.consumedInputs(step).actual_inputs, action.step);
       const observed = await snapshot(declaration.targets);
+      const paintIdentities = await page.evaluate(() => {
+        const controls=Object.keys(window.__reference.controls());
+        return [window.__request.definition.native.sample_id,...controls,...controls.map(id=>id+'.popup')];
+      });
+      const observePaint = () => observePaintStack(cdp,paintIdentities,{nonce,step:action.step,
+        revision:observed.revision,viewport:realRAF});
+      const paintStack=await observePaint();
       const pngPath = 'capture-' + sequence++ + '.png';
       const screenshot = await page.screenshot({ path: path.join(output, pngPath), animations: 'allow', caret: 'initial',
         scale: 'device', timeout: 5000 });
+      expect(paintStack.snapshot_digest === (await observePaint()).snapshot_digest,
+        'actual DOM paint stack changed across screenshot');
       expect(screenshot.readUInt32BE(16) === Math.round(fixture.viewport.width * fixture.viewport.dpr), 'capture width/DPR mismatch');
       expect(screenshot[24] === 8 && [2, 6].includes(screenshot[25]), 'unsupported PNG channel encoding');
       expect(screenshot.readUInt32BE(20) === Math.round(fixture.viewport.height * fixture.viewport.dpr), 'capture height/DPR mismatch');
@@ -496,7 +585,10 @@ try {
       completedCheckpoints.push(action.step);
       record('checkpoint', action.step, { effective_inputs: effective, targets: observed.targets, callbacks: observed.callbacks,
         state: { focused: observed.focus, controls: observed.controls }, captures: [capture],
-        resources: { actual_inputs: settledInputs, paint_receipt: { nonce, step: action.step, sequence, sha256: capture.sha256, fresh_readback: true, completion: 'Chromium screenshot Promise resolved; not a native GPU fence' },
+        resources: { actual_inputs: settledInputs, paint_stack:{...paintStack,
+          capture_binding:{run_nonce:nonce,capture_nonce:capture.nonce,checkpoint:action.step,
+            scene_revision:observed.revision,sequence,capture_sha256:capture.sha256}},
+          paint_receipt: { nonce, step: action.step, sequence, sha256: capture.sha256, fresh_readback: true, completion: 'Chromium screenshot Promise resolved; not a native GPU fence' },
           animations: await page.evaluate(() => document.getAnimations().map(a => ({ currentTime: a.currentTime,
             playState: a.playState, timing: a.effect?.getTiming(), id: a.id }))) } });
       hit = action.target; sent = true; consumed = true;

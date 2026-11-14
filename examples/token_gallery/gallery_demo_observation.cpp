@@ -1,14 +1,18 @@
 #include "gallery_demo_observation.hpp"
 #include "gallery_demo_hash.hpp"
 #include "component/button_component.hpp"
+#include "component/input_component.hpp"
+#include "component/select_component.hpp"
 #include "component/flex_component.hpp"
 #include "component/space_component.hpp"
 #include "icons/bundled_icon_catalog.hpp"
 #include "theme/theme_runtime.hpp"
+#include "text/text_scene_service.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <map>
 #include <set>
 #include <stdexcept>
 #include <tuple>
@@ -27,6 +31,380 @@ bool same_face(const Json& left, const Json& right) {
            left.at("face_index").integer() == right.at("face_index").integer();
 }
 } // namespace
+
+GalleryDemoJson gallery_demo_input_paint_snapshot(const ryn::detail::InputPaintSnapshot& paint) {
+    using namespace ryn;
+    const auto rectangle = [](runtime::Rect r) -> Json {
+        return Json::Object{{"x", r.x}, {"y", r.y}, {"width", r.width}, {"height", r.height}};
+    };
+    const auto identity = [](auto id) -> Json {
+        return Json::Object{{"index", static_cast<std::int64_t>(id.index)},
+                            {"generation", static_cast<std::int64_t>(id.generation)}};
+    };
+    Json::Array layers;
+    Json::Array published_commands;
+    for (const auto& command : paint.commands) {
+        published_commands.emplace_back(
+            Json::Object{{"kind", static_cast<std::int64_t>(command.kind)},
+                         {"first_instance", static_cast<std::int64_t>(command.first_instance)},
+                         {"instance_count", static_cast<std::int64_t>(command.instance_count)},
+                         {"atlas_page", static_cast<std::int64_t>(command.atlas_page)}});
+    }
+    for (const auto& item : paint.layers) {
+        const auto role = item.role == ryn::detail::InputPaintLayerRole::outer_shadow   ? "outer-shadow"
+                          : item.role == ryn::detail::InputPaintLayerRole::border       ? "border"
+                          : item.role == ryn::detail::InputPaintLayerRole::background   ? "background"
+                          : item.role == ryn::detail::InputPaintLayerRole::inset_shadow ? "inset-shadow"
+                                                                                        : "focus";
+        Json::Object layer{
+            {"primitive", identity(item.primitive)},
+            {"role", role},
+            {"corner", static_cast<std::int64_t>(item.corner)},
+            {"exists", item.exists},
+            {"in_fragment", item.in_fragment},
+            {"clipped", item.clipped},
+            {"hidden", item.hidden},
+            {"packed_index", item.packed_index ? Json{static_cast<std::int64_t>(*item.packed_index)} : Json{}}};
+        layer.emplace("command_ordinal",
+                      item.command_ordinal ? Json{static_cast<std::int64_t>(*item.command_ordinal)} : Json{});
+        if (item.retained) {
+            const auto& geometry = item.retained->geometry;
+            const auto& material = item.retained->material;
+            layer.emplace(
+                "actual",
+                Json::Object{{"bounds", rectangle(geometry.shape.rect)},
+                             {"radius", geometry.shape.radius},
+                             {"kind", static_cast<std::int64_t>(geometry.kind)},
+                             {"offset", Json::Array{geometry.offset.x, geometry.offset.y}},
+                             {"blur", geometry.blur},
+                             {"spread", geometry.spread},
+                             {"outline_width", geometry.outline_width},
+                             {"outline_offset", geometry.outline_offset},
+                             {"translation", Json::Array{geometry.translation.x, geometry.translation.y}},
+                             {"clip", geometry.ancestor_clip ? rectangle(geometry.ancestor_clip->bounds) : Json{}},
+                             {"clip_identity", geometry.ancestor_clip
+                                                   ? Json{static_cast<std::int64_t>(geometry.ancestor_clip->identity)}
+                                                   : Json{}},
+                             {"color", Json::Array{material.color.red(), material.color.green(), material.color.blue(),
+                                                   material.color.alpha()}},
+                             {"opacity", material.opacity},
+                             {"visible", material.visible},
+                             {"paint_present", material.paint.has_value()}});
+        } else {
+            layer.emplace("actual", Json{});
+        }
+        layers.emplace_back(std::move(layer));
+    }
+    return Json::Object{{"source", "published-retained-input-fragment"},
+                        {"status", paint.status == ryn::detail::InputPaintStatus::published        ? "published"
+                                   : paint.status == ryn::detail::InputPaintStatus::unsynchronized ? "unsynchronized"
+                                                                                                   : "absent"},
+                        {"owner", identity(paint.owner)},
+                        {"branch_active", paint.branch_active},
+                        {"editor", identity(paint.editor)},
+                        {"container_fragment", identity(paint.container_fragment)},
+                        {"selection_surface", identity(paint.selection_surface)},
+                        {"overlay_surface", identity(paint.overlay_surface)},
+                        {"fragment_clip", paint.fragment_clip ? rectangle(*paint.fragment_clip) : Json{}},
+                        {"publication_revision", static_cast<std::int64_t>(paint.publication_revision)},
+                        {"published_commands", std::move(published_commands)},
+                        {"layers", std::move(layers)}};
+}
+
+GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
+                                         std::span<const ryn::runtime::ComponentId> roots,
+                                         const ryn::graphics::OrderedScene& submitted) {
+    using namespace ryn;
+    const auto identity = [](auto id) -> Json {
+        return Json::Object{{"index", static_cast<std::int64_t>(id.index)},
+                            {"generation", static_cast<std::int64_t>(id.generation)}};
+    };
+    const auto rectangle = [](runtime::Rect r) -> Json {
+        return Json::Object{{"x", r.x}, {"y", r.y}, {"width", r.width}, {"height", r.height}};
+    };
+    const auto array = [](const auto& values) -> Json {
+        Json::Array result;
+        for (const auto value : values) {
+            result.emplace_back(value);
+        }
+        return result;
+    };
+    const auto in_roots = [&](runtime::ComponentId owner) {
+        for (auto current = std::optional{owner}; current; current = app.components().parent(*current)) {
+            if (std::ranges::find(roots, *current) != roots.end()) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& commands = submitted.commands();
+    Json::Array final_commands;
+    for (std::size_t ordinal = 0; ordinal < commands.size(); ++ordinal) {
+        const auto& command = commands[ordinal];
+        final_commands.emplace_back(Json::Object{{"ordinal", static_cast<std::int64_t>(ordinal)},
+                                                 {"kind", static_cast<std::int64_t>(command.kind)},
+                                                 {"first", static_cast<std::int64_t>(command.first_instance)},
+                                                 {"count", static_cast<std::int64_t>(command.instance_count)},
+                                                 {"atlas_page", static_cast<std::int64_t>(command.atlas_page)}});
+    }
+    Json::Array composition;
+    Json::Array requests;
+    std::vector<std::vector<std::uint32_t>> command_groups(commands.size());
+    std::vector<graphics::DrawCoverageRole> command_coverage(commands.size(), graphics::DrawCoverageRole::Normal);
+    if (const auto& program = submitted.composition()) {
+        for (const auto& request : program->requests) {
+            requests.emplace_back(Json::Object{{"owner", identity(request.owner)},
+                                               {"hard_clip", rectangle(request.hard_clip)},
+                                               {"shape", rectangle(request.shape.bounds)},
+                                               {"radius", request.shape.radius},
+                                               {"backdrop", request.backdrop},
+                                               {"sigma", request.sigma},
+                                               {"activation", request.activation}});
+        }
+        std::vector<std::uint32_t> open;
+        for (const auto& op : program->operations) {
+            composition.emplace_back(Json::Object{{"kind", static_cast<std::int64_t>(op.kind)},
+                                                  {"first", static_cast<std::int64_t>(op.first)},
+                                                  {"count", static_cast<std::int64_t>(op.count)},
+                                                  {"request", static_cast<std::int64_t>(op.request)},
+                                                  {"coverage", static_cast<std::int64_t>(op.coverage)}});
+            if (op.kind == graphics::SceneCompositionOpKind::BeginMaskedGroup) {
+                open.push_back(op.request);
+            } else if (op.kind == graphics::SceneCompositionOpKind::EndMaskedGroup) {
+                if (open.empty() || open.back() != op.request) {
+                    throw std::runtime_error("actual submitted composition group is unbalanced");
+                }
+                open.pop_back();
+            } else if (op.kind == graphics::SceneCompositionOpKind::DrawRange) {
+                for (std::uint32_t ordinal = op.first; ordinal < op.first + op.count; ++ordinal) {
+                    if (ordinal >= commands.size()) {
+                        throw std::runtime_error("actual composition range escapes submitted commands");
+                    }
+                    command_groups[ordinal] = open;
+                    command_coverage[ordinal] = op.coverage;
+                }
+            }
+        }
+        if (!open.empty()) {
+            throw std::runtime_error("actual submitted composition group remains open");
+        }
+    }
+
+    // Resolve identities from existing owning records, never from packed indices alone.
+    struct EffectSource final {
+        graphics::RoundedEffectId id;
+        std::string role;
+    };
+
+    std::map<std::uint32_t, EffectSource> effect_sources;
+    std::map<std::uint32_t, component::RetainedSurfaceId> quad_sources;
+    std::map<std::uint32_t, std::string> quad_roles;
+    const auto add_surface = [&](component::RetainedSurfaceId id) {
+        const auto snapshot = app.services().surfaces().paint_snapshot(id);
+        if (!snapshot) {
+            return;
+        }
+        for (std::uint32_t offset = 0; offset < snapshot->range.count; ++offset) {
+            quad_sources.emplace(snapshot->range.first + offset, id);
+        }
+        const auto add = [&](const auto& effects, const char* role) {
+            for (const auto& effect : effects) {
+                if (effect.packed_index) {
+                    effect_sources.emplace(*effect.packed_index, EffectSource{effect.id, role});
+                }
+            }
+        };
+        add(snapshot->shadows, "shadow");
+        add(snapshot->focus, "focus");
+        add(snapshot->clipped_fills, "fill");
+        add(snapshot->content_effects, "content-effect");
+    };
+    for (const auto& button : app.mounted_buttons()) {
+        if (in_roots(button.component)) {
+            add_surface(button.scene);
+        }
+    }
+    if (const auto* inputs = app.services().input_runtime()) {
+        for (const auto& input : inputs->mounted_inputs()) {
+            if (!in_roots(input.component)) {
+                continue;
+            }
+            const auto paint = inputs->paint_snapshot(input.component);
+            add_surface(paint.selection_surface);
+            add_surface(paint.overlay_surface);
+            if (const auto selection = app.services().surfaces().paint_snapshot(paint.selection_surface)) {
+                for (std::uint32_t offset = 0; offset < selection->range.count; ++offset) {
+                    quad_roles.emplace(selection->range.first + offset, "selection");
+                }
+            }
+            if (const auto overlay = app.services().surfaces().paint_snapshot(paint.overlay_surface)) {
+                for (std::uint32_t offset = 0; offset < overlay->range.count; ++offset) {
+                    quad_roles.emplace(
+                        overlay->range.first + offset,
+                        paint.caret_surface_offset && offset == *paint.caret_surface_offset ? "caret" : "composition");
+                }
+            }
+            for (const auto& layer : paint.layers) {
+                if (!layer.packed_index) {
+                    continue;
+                }
+                const auto role = layer.role == ryn::detail::InputPaintLayerRole::outer_shadow   ? "shadow"
+                                  : layer.role == ryn::detail::InputPaintLayerRole::border       ? "border"
+                                  : layer.role == ryn::detail::InputPaintLayerRole::background   ? "fill"
+                                  : layer.role == ryn::detail::InputPaintLayerRole::inset_shadow ? "inset-shadow"
+                                                                                                 : "focus";
+                effect_sources.emplace(*layer.packed_index, EffectSource{layer.primitive, role});
+            }
+        }
+    }
+    for (const auto owner : app.services().select().mounted()) {
+        if (in_roots(owner)) {
+            if (const auto paint = app.services().select().paint_owners(owner)) {
+                add_surface(paint->popup.surface);
+                add_surface(paint->clear.surface);
+                for (const auto& row : paint->rows) {
+                    add_surface(row.surface);
+                }
+            }
+        }
+    }
+    Json::Array layers;
+    for (const auto& entry : app.components().paint_traversal()) {
+        if (!in_roots(entry.component)) {
+            continue;
+        }
+        const auto binding = app.scene_composer().paint_snapshot(entry.fragment);
+        if (!binding) {
+            continue;
+        }
+        for (std::size_t local = 0; local < binding->commands.size(); ++local) {
+            const auto& command = binding->commands[local];
+            for (std::uint32_t offset = 0; offset < command.instance_count; ++offset) {
+                const auto instance = command.first_instance + offset;
+                Json::Array membership;
+                for (std::size_t final = 0; final < commands.size(); ++final) {
+                    const auto& draw = commands[final];
+                    if (draw.kind == command.kind && draw.atlas_page == command.atlas_page &&
+                        draw.first_instance <= instance && instance - draw.first_instance < draw.instance_count) {
+                        Json::Array groups;
+                        for (const auto group : command_groups[final]) {
+                            groups.emplace_back(static_cast<std::int64_t>(group));
+                        }
+                        membership.emplace_back(
+                            Json::Object{{"command", static_cast<std::int64_t>(final)},
+                                         {"instance", static_cast<std::int64_t>(instance - draw.first_instance)},
+                                         {"composition_group_path", std::move(groups)},
+                                         {"coverage_role", static_cast<std::int64_t>(command_coverage[final])}});
+                    }
+                }
+                const auto source_id =
+                    std::to_string(entry.component.index) + ":" + std::to_string(entry.component.generation) + "/" +
+                    std::to_string(entry.fragment.index) + ":" + std::to_string(entry.fragment.generation) + "/" +
+                    std::to_string(binding->publication_revision) + "/" + std::to_string(local) + "/" +
+                    std::to_string(offset);
+                Json::Object layer{
+                    {"source_material_id", source_id},
+                    {"owner", identity(entry.component)},
+                    {"fragment", identity(entry.fragment)},
+                    {"publication_revision", static_cast<std::int64_t>(binding->publication_revision)},
+                    {"fragment_command", static_cast<std::int64_t>(local)},
+                    {"kind", static_cast<std::int64_t>(command.kind)},
+                    {"packed_index", static_cast<std::int64_t>(instance)},
+                    {"atlas_page", static_cast<std::int64_t>(command.atlas_page)},
+                    {"in_fragment", true},
+                    {"in_submitted_scene", !membership.empty()},
+                    {"submitted_membership", std::move(membership)},
+                    {"outside_own_mask", binding->outside_own_mask},
+                    {"coverage_role", static_cast<std::int64_t>(binding->coverage)},
+                    {"fragment_clip", binding->interaction_clip ? rectangle(*binding->interaction_clip) : Json{}},
+                    {"window_layer", app.components().in_window_layer(entry.component)}};
+                if (command.kind == graphics::SceneDrawKind::quad) {
+                    const auto& quad = app.services().surfaces().instances().at(instance);
+                    const auto role = quad_roles.find(instance);
+                    layer.emplace("role", role != quad_roles.end() ? role->second : "fill");
+                    layer.emplace("actual", Json::Object{{"bounds", rectangle({quad.bounds[0], quad.bounds[1],
+                                                                               quad.bounds[2], quad.bounds[3]})},
+                                                         {"radius", quad.corner_radius},
+                                                         {"translation", array(quad.translation)},
+                                                         {"color", array(quad.color)},
+                                                         {"opacity", quad.opacity},
+                                                         {"visible", quad.opacity > 0},
+                                                         {"paint_present", false}});
+                    if (const auto found = quad_sources.find(instance); found != quad_sources.end()) {
+                        layer.emplace("surface", identity(found->second));
+                        layer.emplace("content_range", found->second.content_range);
+                    }
+                } else if (command.kind == graphics::SceneDrawKind::rounded_effect) {
+                    const auto& effect = app.rounded_effects().packed_instances()[instance];
+                    const auto& g = effect.geometry;
+                    const auto& m = effect.material;
+                    layer.emplace(
+                        "actual",
+                        Json::Object{
+                            {"bounds", rectangle(g.shape.rect)},
+                            {"radius", g.shape.radius},
+                            {"effect_kind", static_cast<std::int64_t>(g.kind)},
+                            {"offset", Json::Array{g.offset.x, g.offset.y}},
+                            {"blur", g.blur},
+                            {"spread", g.spread},
+                            {"outline_width", g.outline_width},
+                            {"outline_offset", g.outline_offset},
+                            {"translation", Json::Array{g.translation.x, g.translation.y}},
+                            {"clip", g.ancestor_clip ? rectangle(g.ancestor_clip->bounds) : Json{}},
+                            {"clip_identity",
+                             g.ancestor_clip ? Json{static_cast<std::int64_t>(g.ancestor_clip->identity)} : Json{}},
+                            {"color", Json::Array{m.color.red(), m.color.green(), m.color.blue(), m.color.alpha()}},
+                            {"opacity", m.opacity},
+                            {"visible", m.visible},
+                            {"paint_present", m.paint.has_value()}});
+                    std::get<Json::Object>(layer.at("actual").value)
+                        .emplace("path_present", !std::holds_alternative<std::monostate>(g.path));
+                    if (const auto found = effect_sources.find(instance); found != effect_sources.end()) {
+                        layer.emplace("primitive", identity(found->second.id));
+                        layer.emplace("role", found->second.role);
+                    } else {
+                        layer.emplace("role", "unmapped-effect");
+                    }
+                } else if (command.kind == graphics::SceneDrawKind::glyph) {
+                    const auto& glyph = app.text().scene_service().glyph_scene().instances().at(instance);
+                    layer.emplace("role", "glyph");
+                    layer.emplace(
+                        "actual",
+                        Json::Object{
+                            {"bounds", rectangle({glyph.position_size[0], glyph.position_size[1],
+                                                  glyph.position_size[2], glyph.position_size[3]})},
+                            {"clip_bounds", array(glyph.clip_bounds)},
+                            {"translation", Json::Array{glyph.translation_opacity[0], glyph.translation_opacity[1]}},
+                            {"color", array(glyph.color)},
+                            {"opacity", glyph.translation_opacity[2]},
+                            {"uv_rect", array(glyph.uv_rect)},
+                            {"angle", glyph.transform.angle_degrees},
+                            {"pivot", Json::Array{glyph.transform.pivot.x, glyph.transform.pivot.y}}});
+                } else {
+                    layer.emplace("role", "unsupported-image");
+                }
+                layers.emplace_back(std::move(layer));
+            }
+        }
+    }
+    Json::Object stack{
+        {"status", app.scene_composer().needs_rebuild() ? "unsynchronized" : "published"},
+        {"source", "actual-submitter-visible"},
+        {"scene_revision", static_cast<std::int64_t>(submitted.revision())},
+        {"composition_version",
+         static_cast<std::int64_t>(submitted.composition() ? submitted.composition()->version : 0)},
+        {"composition_scene_revision",
+         static_cast<std::int64_t>(submitted.composition() ? submitted.composition()->scene_revision : 0)},
+        {"commands", std::move(final_commands)},
+        {"composition", std::move(composition)},
+        {"composition_requests", std::move(requests)},
+        {"layers", std::move(layers)}};
+    const auto serialized = Json{stack}.dump();
+    stack.emplace(
+        "snapshot_digest",
+        gallery_demo_sha256(std::span{reinterpret_cast<const unsigned char*>(serialized.data()), serialized.size()}));
+    return stack;
+}
 
 void gallery_demo_validate_capture(const GalleryDemoCaptureEvidence& evidence, std::uint64_t previous_readback,
                                    std::uint64_t revision, const Json& metrics, const Json& fixture,

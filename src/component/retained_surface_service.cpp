@@ -743,6 +743,58 @@ bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip, std::opt
     return true;
 }
 
+std::optional<RetainedSurfacePaintSnapshot> RetainedSurfaceService::paint_snapshot(RetainedSurfaceId id) const {
+    ensure_owner_thread();
+    RetainedSurfacePaintSnapshot result;
+    result.id = id;
+    const auto append_effects = [&](auto ids, auto& destination) {
+        for (const auto effect : ids) {
+            if (effect_scene_.store().contains(effect)) {
+                destination.push_back(
+                    {effect, effect_scene_.store().packed_index(effect), effect_scene_.store().at(effect)});
+            }
+        }
+    };
+    if (id.content_range) {
+        if (!id.valid() || id.index >= content_slots_.size()) {
+            return std::nullopt;
+        }
+        const auto& slot = content_slots_[id.index];
+        if (!slot.record || slot.record->id != id || !components_->contains(slot.record->fragment)) {
+            return std::nullopt;
+        }
+        const auto& record = *slot.record;
+        result.fragment = record.fragment;
+        result.owner = components_->fragment_component(record.fragment);
+        result.node = components_->root(result.owner);
+        result.range = record.range;
+        result.paint_pending = record.paint_pending;
+        append_effects(record.effects, result.content_effects);
+        append_effects(record.clipped_fill_ids, result.clipped_fills);
+    } else {
+        const auto* record = find(id);
+        if (!record) {
+            return std::nullopt;
+        }
+        result.owner = record->component;
+        result.node = record->node;
+        result.fragment = record->fragment;
+        result.range = record->range;
+        result.paint_pending = record->paint_pending;
+        append_effects(record->shadow_ids, result.shadows);
+        if (record->focus_id.valid()) {
+            append_effects(std::span{&record->focus_id, 1}, result.focus);
+        }
+        append_effects(record->corner_focus_ids, result.focus);
+        append_effects(record->clipped_fill_ids, result.clipped_fills);
+    }
+    for (std::uint32_t offset = 0; offset < result.range.count; ++offset) {
+        result.quads.push_back(instances_.at(result.range.first + offset));
+    }
+    result.binding = composer_->paint_snapshot(result.fragment);
+    return result;
+}
+
 graphics::QuadInstanceRange RetainedSurfaceService::visual_range(RetainedSurfaceId id) const {
     ensure_owner_thread();
     if (id.content_range) {

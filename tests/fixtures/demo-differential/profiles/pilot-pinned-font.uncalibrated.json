@@ -7,71 +7,99 @@
   "source_hash": "0000000000000000000000000000000000000000000000000000000000000000",
   "font_hashes": [
     "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
-    "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b"
+    "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+    "1ada997ccb67bf2404828e25528e5257d6db10c80287e77684abf6737a5d198f",
+    "87a8b90ece1e89746b544e4e086f85a3710e41485a8078f9be874837dfad45d5",
+    "4137d864b16d2670304ca58d1f884e20a2656d19230b8f497e0ce53584fa3d2a",
+    "7bbe267354704c6ad18bde24b1dbc756c8e4380ca1c3f3c25c45ec5c4471510b",
+    "feef2a772298a640a5d9a68185b12c068b8ce824b6edaa96d0979a290fe5a251"
   ],
   "repetitions": 5,
   "calibrated": false,
-  "metrics": [
-    {
-      "identity": "geometry.logical_px",
-      "threshold": 0,
-      "hard_cap": 0.25,
-      "quantization_floor": 0,
-      "positive_max": 0,
-      "margin": 0,
-      "negative_min": 0
-    },
-    {
-      "identity": "pixels.max_channel_residual",
-      "threshold": 0,
-      "hard_cap": 0,
-      "quantization_floor": 0,
-      "positive_max": 0,
-      "margin": 0,
-      "negative_min": 0
-    },
-    {
-      "identity": "pixels.coverage_mass_relative_error",
-      "threshold": 0,
-      "hard_cap": 0.05,
-      "quantization_floor": 0,
-      "positive_max": 0,
-      "margin": 0,
-      "negative_min": 0
-    },
-    {
-      "identity": "pixels.contour_distance_px",
-      "threshold": 0,
-      "hard_cap": 0.5,
-      "quantization_floor": 0,
-      "positive_max": 0,
-      "margin": 0,
-      "negative_min": 0
-    },
-    {
-      "identity": "text.coverage_mass_relative_error",
-      "threshold": 0,
-      "hard_cap": 0.05,
-      "quantization_floor": 0,
-      "positive_max": 0,
-      "margin": 0,
-      "negative_min": 0
-    },
-    {
-      "identity": "text.contour_distance_px",
-      "threshold": 0,
-      "hard_cap": 1,
-      "quantization_floor": 0,
-      "positive_max": 0,
-      "margin": 0,
-      "negative_min": 0
-    }
-  ],
+  "metrics": [],
   "masks": [],
-  "color": {
-    "profile": "sRGB-SDR",
-    "channel_order": "RGBA",
-    "alpha": "opaque"
-  },
-  "font_policy": "pinned"
+  "color": null,
+  "font_policy": "pinned",
+  "calibration_kind": "pilot-independent-v1",
+  "tool_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "evidence": null,
+  "scope": {
+    "cases": [
+      "antd665.button.basic-states.v1",
+      "antd665.input.controlled-edit.v1",
+      "antd665.select.popup-lifecycle.v1"
+    ],
+    "locale": "zh-CN",
+    "direction": "ltr",
+    "theme": "default",
+    "motion": "disabled",
+    "font_policy": "pinned",
+    "actual_dpr": null,
+    "origin_phase_px": [
+      0,
+      0
+    ],
+    "materials": [
+      "opaque-solid",
+      "encoded-source-over",
+      "border-1",
+      "radius-4",
+      "radius-6",
+      "radius-8",
+      "fixed-clip",
+      "formal-icon",
+      "pinned-glyph",
+      "popup-shadow-6"
+    ],
+    "font_sizes_weights": [
+      {
+        "size": 12,
+        "weight": 400
+      },
+      {
+        "size": 12,
+        "weight": 500
+      },
+      {
+        "size": 12,
+        "weight": 600
+      },
+      {
+        "size": 14,
+        "weight": 400
+      },
+      {
+        "size": 14,
+        "weight": 500
+      },
+      {
+        "size": 14,
+        "weight": 600
+      },
+      {
+        "size": 16,
+        "weight": 400
+      },
+      {
+        "size": 16,
+        "weight": 500
+      },
+      {
+        "size": 16,
+        "weight": 600
+      },
+      {
+        "size": 20,
+        "weight": 400
+      },
+      {
+        "size": 20,
+        "weight": 500
+      },
+      {
+        "size": 20,
+        "weight": 600
+      }
+    ]
+  }
 }

@@ -45,6 +45,7 @@ void ComponentSceneComposer::set_fragment(runtime::SceneFragmentId fragment,
     replacement.commands.assign(commands.begin(), commands.end());
     replacement.interaction = interaction;
     replacement.interaction_clip = interaction_clip;
+    replacement.publication_revision = ++publication_revision_;
     if (previous) {
         replacement.outside_own_mask = previous->outside_own_mask;
         replacement.coverage = previous->coverage;
@@ -79,7 +80,24 @@ void ComponentSceneComposer::set_fragment_composition(runtime::SceneFragmentId f
     binding->outside_own_mask = outside;
     binding->coverage = coverage;
     binding->backdrop = std::move(backdrop);
+    binding->publication_revision = ++publication_revision_;
     bindings_dirty_ = true;
+}
+
+std::optional<FragmentPaintSnapshot> ComponentSceneComposer::paint_snapshot(runtime::SceneFragmentId fragment) const {
+    ensure_owner_thread();
+    const auto* binding = find_binding(fragment);
+    if (!binding || !components_->contains(fragment)) {
+        return std::nullopt;
+    }
+    return FragmentPaintSnapshot{fragment,
+                                 components_->fragment_component(fragment),
+                                 binding->publication_revision,
+                                 binding->commands,
+                                 binding->interaction_clip,
+                                 binding->outside_own_mask,
+                                 binding->coverage,
+                                 binding->backdrop};
 }
 
 void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<runtime::Rect> document_clip) {

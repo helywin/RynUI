@@ -144,6 +144,7 @@ struct FontSourceView final {
     std::string style;
     bool bold{};
     bool italic{};
+    FontRasterPolicy raster_policy{};
 };
 
 struct FontLoadResult {

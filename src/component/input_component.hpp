@@ -46,6 +46,41 @@ struct InputTextLayers {
     TextSceneId placeholder;
 };
 
+enum class InputPaintStatus { absent, unsynchronized, published };
+
+enum class InputPaintLayerRole { outer_shadow, border, background, inset_shadow, focus };
+
+struct InputPaintLayerSnapshot final {
+    graphics::RoundedEffectId primitive;
+    InputPaintLayerRole role{};
+    std::size_t corner{};
+    bool exists{};
+    // Membership in the last published retained fragment, independently of
+    // hidden material or clipping. This is not a GPU submission receipt.
+    bool in_fragment{};
+    bool clipped{};
+    bool hidden{};
+    std::optional<std::uint32_t> packed_index;
+    std::optional<std::size_t> command_ordinal;
+    std::optional<graphics::RoundedEffectInstance> retained;
+};
+
+struct InputPaintSnapshot final {
+    runtime::ComponentId owner;
+    input::TextInputOwnerId editor;
+    InputPaintStatus status{InputPaintStatus::absent};
+    // Current owner branch visibility is separate from its last publication.
+    bool branch_active{};
+    runtime::SceneFragmentId container_fragment;
+    component::RetainedSurfaceId selection_surface;
+    component::RetainedSurfaceId overlay_surface;
+    std::optional<std::size_t> caret_surface_offset;
+    std::optional<runtime::Rect> fragment_clip;
+    std::uint64_t publication_revision{};
+    std::vector<graphics::SceneDrawCommand> commands;
+    std::vector<InputPaintLayerSnapshot> layers;
+};
+
 // Read-only applied input metadata, queried only by finite acceptance tooling.
 struct InputInputSnapshot final {
     bool controlled{};
@@ -124,6 +159,9 @@ public:
     void configure_form_reset(runtime::ComponentId, std::function<void()>);
     void set_active(runtime::ComponentId, bool);
     [[nodiscard]] InputLayoutSnapshot layout_snapshot(runtime::ComponentId) const;
+    // Pure observation of the last retained publication. Never synchronizes,
+    // refreshes, requests a frame, or derives paint from a Theme recipe.
+    [[nodiscard]] InputPaintSnapshot paint_snapshot(runtime::ComponentId) const;
     void set_horizontal_scroll(runtime::ComponentId, float offset);
     [[nodiscard]] TextSceneId text_scene(runtime::ComponentId) const;
     [[nodiscard]] InputTextLayers text_layers(runtime::ComponentId) const;

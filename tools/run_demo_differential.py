@@ -25,6 +25,19 @@ def main():
     listing = commands.add_parser('list', help='List source-bound pilot definitions; does not execute')
     running = commands.add_parser('run', help='Run the finite pilot with actual native/locked official Web adapters')
     meta = commands.add_parser('meta-test', help='Require full pilot green, every real acceptance fault red, then green')
+    calibrating = commands.add_parser('calibrate', help='Independently capture fixed pilot controls; atomically publish only reconstructible evidence')
+    calibrating.add_argument('--suite', choices=['pilot'], required=True)
+    calibrating.add_argument('--binary', type=Path, required=True)
+    calibrating.add_argument('--control-binary', type=Path, required=True)
+    calibrating.add_argument('--preset', required=True)
+    calibrating.add_argument('--output', type=Path, required=True)
+    calibrating.add_argument('--prepared', type=Path)
+    calibrating.add_argument('--font-files', type=Path)
+    calibrating.add_argument('--comparison-site', type=Path)
+    calibrating.add_argument('--offline', action='store_true')
+    calibrating.add_argument('--dpr', choices=['native'], default='native')
+    calibrating.add_argument('--repetitions', type=int, default=5)
+    calibrating.add_argument('--timeout', type=int, choices=range(1,121), default=60)
     for command in (listing, running, meta):
         command.add_argument('--suite', choices=['pilot'], default='pilot')
         command.add_argument('--case', dest='cases', action='append', default=[])
@@ -51,13 +64,17 @@ def main():
     replay.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     try:
+        if args.command == 'calibrate':
+            from demo_differential.calibration import calibrate
+            return calibrate(vars(args))
         if args.command == 'list':
             print(json.dumps([{'identity': case['identity'], 'sample': case['native']['sample_id'],
                                'targets': case['native']['targets'], 'profile': case['profile'],
                                'execution': 'not-run'} for case in select(pilots.definitions(), vars(args))], indent=2))
             return 0
         if args.command == 'run':
-            return run(vars(args), pilots.definitions())
+            from demo_differential.calibration import preflight_profile
+            return run(preflight_profile(vars(args)), pilots.definitions())
         if args.command == 'meta-test':
             result = run_pilot_meta(vars(args), pilots.definitions())
             print(json.dumps({'meta_report': str(result.report_path), 'exit_code': result.exit_code}))
@@ -81,7 +98,8 @@ def main():
                     raise ProtocolError('case/fixture/oracle changed; replay requires an explicit definition migration')
             options.update(cases=cases, output=args.output, binary=args.binary or options['binary'],
                            preset=args.preset or options['preset'], command='run')
-            return run(options, definitions)
+            from demo_differential.calibration import preflight_profile
+            return run(preflight_profile(options), definitions)
         output = output_path(args.output)
         if output.exists():
             raise ProtocolError('output already exists; use a fresh directory')

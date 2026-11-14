@@ -6,7 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from demo_differential.comparison import CAPS, compare_checkpoint, profile_thresholds
+from demo_differential.comparison import LEGACY_DIAGNOSTIC_CAPS as CAPS, compare_checkpoint, profile_thresholds
 from demo_differential.adapters import RunError
 from demo_differential.protocol import ProtocolError
 
@@ -20,10 +20,19 @@ def pixels(ink):
                     for y in range(100) for x in range(200))
 
 
+def synthetic_glyph():
+    # Explicit CPU mechanism metadata, never a real native/DOM observation.
+    return {'semantic_groups': [{'byte_begin': 0, 'byte_end': 1, 'line': 0, 'advance': 3,
+                                'boxes': [area(20,20,3,5)]}],
+            'ink_instances': [{'byte_begin': 0, 'byte_end': 1, 'line': 0,
+                              'color': [0,0,0,1], 'opacity': 1, 'rotation_degrees': 0,
+                              'translation': [0,0], 'clip': [20,20,23,25], 'bounds': area(20,20,3,5)}]}
+
+
 def controls():
     font = {'identity': 'control-font', 'sha256': 'a' * 64, 'face_index': 0, 'weight': 400}
     case = {'native': {'sample_id': 'sample'}, 'fixture': {'viewport': {'dpr': 1}, 'fonts': [font],
-            'theme': {'token': {'colorBgContainer': '#ffffff'}}}}
+            'theme': {'token': {'colorBgContainer': '#ffffff'}}, 'container': {'width': 40, 'padding': 0}}}
     declaration = {'step': 'initial', 'targets': ['sample'], 'rois': [
         {'identity': 'context', 'kind': 'sample-context', 'target': 'sample', 'guard_px': 2},
         {'identity': 'guard', 'kind': 'guard-band', 'target': 'sample', 'guard_px': 2}]}
@@ -32,6 +41,9 @@ def controls():
     native = {'targets': [deepcopy(target)], 'provenance': {}}
     web = {'targets': [deepcopy(target)], 'provenance': {'actual_font_sources': [
         {'sha256': 'a' * 64, 'face_index': 0, 'names': {'6': ['ControlFont']}}]}}
+    for observed,source in ((native,'retained-host-layout'),(web,'fixed-web-wrapper')):
+        observed['targets'][0]['tokens']['sample_anchor'] = {'source': source, 'container': area(), 'content': area(),
+                                                            'padding': dict(left=0,top=0,right=0,bottom=0)}
     ink = {(x, y) for x in range(20, 23) for y in range(20, 25)}
     return case, declaration, native, web, ink
 
@@ -48,6 +60,37 @@ class ComparisonTests(unittest.TestCase):
         self.assertEqual(self.compare(values)[0], [])
         values[2]['targets'][0]['bounds']['width'] += 1
         self.assertIn('layout', {f['category'] for f in self.compare(values)[0]})
+
+    def test_fixed_anchor_rejects_all_content_shift_and_accepts_shell_origin(self):
+        values=controls()
+        values[2]['targets'][0]['bounds']['x']+=1
+        self.assertIn('layout',{f['category'] for f in self.compare(values)[0]})
+        values=controls()
+        target=values[2]['targets'][0]
+        target['bounds']['x']+=50
+        for key in ('container','content'):
+            target['tokens']['sample_anchor'][key]['x']+=50
+        moved={(x+50,y) for x,y in values[4]}
+        self.assertEqual(self.compare(values,moved)[0],[])
+
+    def test_anchor_is_required_not_derived_from_content(self):
+        values=controls()
+        values[2]['targets'][0]['tokens'].pop('sample_anchor')
+        with self.assertRaises(ProtocolError):
+            self.compare(values)
+
+    def test_both_glyphs_absent_with_full_frame_border_is_red(self):
+        values=controls()
+        n,w=values[2]['targets'][0],values[3]['targets'][0]
+        n['text']=[dict(content='X',bounds=area(),**synthetic_glyph(),font_coverage_available=True,
+            missing_font_scalars=[],replacement_count=0,font_runs=[{'font':{
+                'sha256':'a'*64,'face_index':0,'logical_pixel_size':14,'bold':False,'italic':False,'source':'pinned-file'}}])]
+        w['text']=[dict(content='X',boxes=[area(20,20,3,5)],**synthetic_glyph())]
+        w['tokens']['platform_fonts']=[{'postScriptName':'ControlFont','isCustomFont':True}]
+        values[4].clear()
+        values[4].update({(x,y) for x in range(10,50) for y in (10,39)} |
+                         {(x,y) for y in range(10,40) for x in (10,49)})
+        self.assertTrue(any(f['category']=='typography' and 'missing' in f['message'] for f in self.compare(values)[0]))
 
     def test_button_input_token_units_keep_both_padding_sides(self):
         for component in ('Button', 'Input'):
@@ -82,10 +125,10 @@ class ComparisonTests(unittest.TestCase):
     def test_actual_text_local_ink_font_and_required_bounds(self):
         values = controls()
         native, web = values[2]['targets'][0], values[3]['targets'][0]
-        native['text'] = [{'content': 'X', 'bounds': area(20, 20, 3, 5), 'font_coverage_available': True,
+        native['text'] = [{'content': 'X', **synthetic_glyph(), 'bounds': area(20, 20, 3, 5), 'font_coverage_available': True,
             'missing_font_scalars': [], 'replacement_count': 0, 'font_runs': [{'font': {
             'sha256': 'a' * 64, 'face_index': 0, 'logical_pixel_size': 14, 'bold': False, 'italic': False, 'source': 'pinned-file'}}]}]
-        web['text'] = [{'content': 'X', 'boxes': [area(20, 20, 3, 5)]}]
+        web['text'] = [{'content': 'X', **synthetic_glyph(), 'boxes': [area(20, 20, 3, 5)]}]
         web['tokens']['platform_fonts'] = [{'postScriptName': 'ControlFont', 'isCustomFont': True}]
         self.assertEqual(self.compare(values)[0], [])
         self.assertTrue(any(f['category'] == 'typography' for f in self.compare(values, set())[0]))
@@ -94,7 +137,7 @@ class ComparisonTests(unittest.TestCase):
             self.compare(values)
         self.assertEqual(error.exception.code, 3)
         native['text'][0]['font_runs'][0]['font']['sha256'] = 'a' * 64
-        web['text'][0].pop('boxes')
+        web['text'][0].pop('semantic_groups')
         with self.assertRaises(ProtocolError):
             self.compare(values)
 
@@ -102,9 +145,9 @@ class ComparisonTests(unittest.TestCase):
         values = controls()
         native, web = values[2]['targets'][0], values[3]['targets'][0]
         font = {'sha256': 'a' * 64, 'face_index': 0, 'logical_pixel_size': 14, 'bold': False, 'italic': False}
-        native['text'] = [{'content': 'X', 'bounds': area(20, 20, 3, 5), 'font_coverage_available': True,
+        native['text'] = [{'content': 'X', **synthetic_glyph(), 'bounds': area(20, 20, 3, 5), 'font_coverage_available': True,
             'missing_font_scalars': [], 'replacement_count': 0, 'font_runs': [{'font': font}]}]
-        web['text'] = [{'content': 'X', 'boxes': [area(20, 20, 3, 5)]}]
+        web['text'] = [{'content': 'X', **synthetic_glyph(), 'boxes': [area(20, 20, 3, 5)]}]
         web['tokens']['platform_fonts'] = [{'postScriptName': 'ControlFont', 'isCustomFont': True}]
         for source in ('system-file', 'bundled-fallback', 'unknown', 'bundled-icon', None):
             font['source'] = source
@@ -130,10 +173,10 @@ class ComparisonTests(unittest.TestCase):
     def test_colored_material_and_white_guard_do_not_count_as_glyph_ink(self):
         values = controls()
         native, web = values[2]['targets'][0], values[3]['targets'][0]
-        native['text'] = [{'content': 'X', 'bounds': area(20, 20, 3, 5), 'font_coverage_available': True,
+        native['text'] = [{'content': 'X', **synthetic_glyph(), 'bounds': area(20, 20, 3, 5), 'font_coverage_available': True,
             'missing_font_scalars': [], 'replacement_count': 0, 'font_runs': [{'font': {
             'sha256': 'a' * 64, 'face_index': 0, 'logical_pixel_size': 14, 'bold': False, 'italic': False, 'source': 'pinned-file'}}]}]
-        web['text'] = [{'content': 'X', 'boxes': [area(20, 20, 3, 5)]}]
+        web['text'] = [{'content': 'X', **synthetic_glyph(), 'boxes': [area(20, 20, 3, 5)]}]
         web['tokens'].update(backgroundColor='rgb(22, 119, 255)', platform_fonts=[{'postScriptName': 'ControlFont', 'isCustomFont': True}])
         # A material-colored run rectangle surrounded by white guards has no
         # glyph ink, even though both images and all font/content metadata agree.
@@ -153,7 +196,9 @@ class ComparisonTests(unittest.TestCase):
             'color': {'profile': 'sRGB-SDR', 'channel_order': 'RGBA', 'alpha': 'opaque'},
             'metrics': [{'identity': name, 'threshold': 0, 'hard_cap': cap, 'positive_max': 0,
                          'quantization_floor': 0, 'margin': 0, 'negative_min': 1} for name, cap in CAPS.items()]}
-        self.assertEqual(set(profile_thresholds(profile, binding, 'control')), set(CAPS))
+        with self.assertRaises(RunError) as rejected:
+            profile_thresholds(profile, binding, 'control')
+        self.assertEqual(rejected.exception.code,3)
         for fault in ('uncalibrated', 'source', 'threshold', 'negative', 'missing', 'mask'):
             candidate = deepcopy(profile)
             if fault == 'uncalibrated':

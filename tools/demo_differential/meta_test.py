@@ -381,6 +381,8 @@ def run_pilot_meta(options: Mapping, definitions: Sequence[Mapping]) -> MetaResu
     directory = output_path(raw_output)
     directory.mkdir(parents=True, exist_ok=False)
     try:
+        from .calibration import preflight_profile
+        options=preflight_profile(options)
         cases = select(definitions, options)
         if [case['identity'] for case in cases] != list(PILOT) or options.get('reference', 'locked') != 'locked':
             raise ProtocolError('meta-test requires the whole pilot and the same locked reference')
@@ -404,6 +406,12 @@ def run_pilot_meta(options: Mapping, definitions: Sequence[Mapping]) -> MetaResu
                      ROOT / 'tools/run_demo_differential.py']
         protected.extend(ROOT / row['path'] for row in source_manifest(ROOT)['files'])
         protected.extend(Path(font['path']) for font in prepared['fonts'])
+        calibration_profile = read(options['profile_file'])
+        if calibration_profile.get('evidence'):
+            from .calibration import evidence_manifest
+            calibration_manifest, _, calibration_root = evidence_manifest(calibration_profile)
+            protected.append(calibration_root)
+            protected.extend(ROOT / item['path'] for item in calibration_manifest['tools']['files'])
         def invoke_run(fault_id, child):
             child_options = dict(options, output=child, fault=fault_id, prepared=prepared['prepared'],
                                  font_files=str(fonts), reference='locked', reference_publish=False, command='run')

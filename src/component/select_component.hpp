@@ -56,6 +56,20 @@ struct SelectInputSnapshot final {
     runtime::ComponentId list_root;
 };
 
+struct SelectSurfaceOwnerSnapshot final {
+    runtime::ComponentId owner;
+    component::RetainedSurfaceId surface;
+    String key;
+};
+
+struct SelectPaintOwnerSnapshot final {
+    runtime::ComponentId owner;
+    runtime::ComponentId selector;
+    SelectSurfaceOwnerSnapshot popup;
+    SelectSurfaceOwnerSnapshot clear;
+    std::vector<SelectSurfaceOwnerSnapshot> rows;
+};
+
 class SelectComponentHost final : public WindowComponentParticipant {
 public:
     explicit SelectComponentHost(WindowComponentServices& services);
@@ -69,6 +83,7 @@ public:
 
     [[nodiscard]] SelectSnapshot snapshot(runtime::ComponentId id) const;
     [[nodiscard]] SelectInputSnapshot input_snapshot(runtime::ComponentId id) const;
+    [[nodiscard]] std::optional<SelectPaintOwnerSnapshot> paint_owners(runtime::ComponentId id) const;
     [[nodiscard]] std::optional<animation::AnimationTime> motion_deadline(runtime::ComponentId) const;
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;

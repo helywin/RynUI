@@ -515,7 +515,8 @@ std::optional<FontSourceView> FontRuntime::source(FontIdentity font) const {
                           record->face->family_name ? record->face->family_name : "",
                           record->face->style_name ? record->face->style_name : "",
                           bool(record->face->style_flags & FT_STYLE_FLAG_BOLD),
-                          bool(record->face->style_flags & FT_STYLE_FLAG_ITALIC)};
+                          bool(record->face->style_flags & FT_STYLE_FLAG_ITALIC),
+                          record->raster_policy};
 }
 
 GlyphLookupResult FontRuntime::glyph_index(FontIdentity font, char32_t codepoint) const {

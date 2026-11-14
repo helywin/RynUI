@@ -55,6 +55,15 @@ struct SceneReadbackEvidence final {
     SceneDeviceMetrics scene_metrics;
     bool fence_completed{};
     bool source_bgra{};
+    // Unavailable until the completed owned RGBA rows have actually been scanned.
+    bool raw_alpha_available{};
+    std::uint8_t raw_alpha_min{};
+    std::uint8_t raw_alpha_max{};
+    std::uint64_t raw_opaque_pixels{};
+    std::uint64_t raw_total_pixels{};
+    // Tight normalized RGBA bytes; diagnostic FNV-1a, not a cryptographic source identity.
+    std::uint64_t raw_rgba_fnv1a64{};
+    std::array<float, 4> clear_rgba{};
 };
 
 struct SceneRgbaReadback final {

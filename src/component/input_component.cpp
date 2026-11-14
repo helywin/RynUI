@@ -262,6 +262,7 @@ struct InputState {
     std::weak_ptr<CompactContext> compact_context;
     std::optional<InputContainerPresentation> container_presentation;
     std::vector<graphics::SceneDrawCommand> container_commands;
+    std::optional<InputPaintSnapshot> published_paint;
     std::optional<runtime::Rect> container_clip;
     runtime::Rect next_container_clip;
     layout::InputContentLayout layout;
@@ -278,6 +279,7 @@ struct InputState {
     std::vector<TextCoverageClip> selected_clips;
     std::vector<graphics::QuadInstance> selection_quads;
     std::vector<graphics::QuadInstance> overlay_quads;
+    std::optional<std::size_t> caret_surface_offset;
     std::uint64_t measured_value_revision{};
     std::unique_ptr<TextAreaState> textarea;
     std::shared_ptr<OTPInputCellConfig> otp;
@@ -2568,6 +2570,26 @@ InputLayoutSnapshot InputComponentHost::layout_snapshot(runtime::ComponentId com
     return state->geometry;
 }
 
+InputPaintSnapshot InputComponentHost::paint_snapshot(runtime::ComponentId component) const {
+    const auto* state = std::as_const(host_->components()).state<InputState>(component);
+    if (!state) {
+        InputPaintSnapshot result;
+        result.owner = component;
+        return result;
+    }
+    if (state->published_paint) {
+        auto result = *state->published_paint;
+        result.branch_active = state->active && host_->components().branch_active(component);
+        return result;
+    }
+    InputPaintSnapshot result;
+    result.owner = component;
+    result.editor = state->mounted.editor;
+    result.status = InputPaintStatus::unsynchronized;
+    result.branch_active = state->active && host_->components().branch_active(component);
+    return result;
+}
+
 TextSceneId InputComponentHost::text_scene(runtime::ComponentId component) const {
     const auto* state = host_->components().state<InputState>(component);
     if (!state) {
@@ -3108,6 +3130,7 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
             state->overlay_quads.push_back(
                 clipped_quad(state->geometry.underline, state->geometry.clip, window, foreground, 0));
         }
+        state->caret_surface_offset = state->overlay_quads.size();
         state->overlay_quads.push_back(
             clipped_quad(state->geometry.caret, state->geometry.clip, window, channels(presentation.colors[4]),
                          state->focused && !state->disabled && !state->read_only &&
@@ -3218,6 +3241,64 @@ bool InputComponentHost::synchronize_auxiliary_fragments() {
             state->container_commands.assign(commands.begin(), commands.end());
             state->container_clip = state->next_container_clip;
             changed = true;
+        }
+        if (!state->published_paint) {
+            state->published_paint.emplace();
+        }
+        auto& paint = *state->published_paint;
+        paint.owner = mounted.component;
+        paint.editor = mounted.editor;
+        paint.status = InputPaintStatus::published;
+        paint.container_fragment = state->container_fragment;
+        paint.selection_surface = state->selection_surface;
+        paint.overlay_surface = state->overlay_surface;
+        paint.caret_surface_offset = state->caret_surface_offset;
+        paint.fragment_clip = state->container_clip;
+        const auto binding = host_->scene_composer().paint_snapshot(state->container_fragment);
+        paint.publication_revision = binding ? binding->publication_revision : 0;
+        paint.commands = state->container_commands;
+        paint.layers.clear();
+        paint.layers.reserve(state->container_effects.size());
+        for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
+            const auto role = layer < input_shadow_layer_capacity ? InputPaintLayerRole::outer_shadow
+                              : layer == input_border_layer       ? InputPaintLayerRole::border
+                              : layer == input_background_layer   ? InputPaintLayerRole::background
+                              : layer < input_focus_layer         ? InputPaintLayerRole::inset_shadow
+                                                                  : InputPaintLayerRole::focus;
+            for (std::size_t corner = 0; corner < stride; ++corner) {
+                InputPaintLayerSnapshot item;
+                item.primitive = state->container_effects[layer * stride + corner];
+                item.role = role;
+                item.corner = corner;
+                item.exists = host_->rounded_effects().contains(item.primitive);
+                if (item.exists) {
+                    item.retained = host_->rounded_effects().at(item.primitive);
+                    item.packed_index = host_->rounded_effects().packed_index(item.primitive);
+                    item.in_fragment =
+                        item.packed_index && std::ranges::any_of(state->container_commands, [&](const auto& command) {
+                            return command.kind == graphics::SceneDrawKind::rounded_effect &&
+                                   command.first_instance <= *item.packed_index &&
+                                   *item.packed_index - command.first_instance < command.instance_count;
+                        });
+                    if (item.in_fragment) {
+                        for (std::size_t ordinal = 0; ordinal < state->container_commands.size(); ++ordinal) {
+                            const auto& command = state->container_commands[ordinal];
+                            if (command.kind == graphics::SceneDrawKind::rounded_effect &&
+                                command.first_instance <= *item.packed_index &&
+                                *item.packed_index - command.first_instance < command.instance_count) {
+                                item.command_ordinal = ordinal;
+                                break;
+                            }
+                        }
+                    }
+                    const auto& material = item.retained->material;
+                    item.hidden = !material.visible || material.opacity <= 0 || material.color.alpha() <= 0;
+                    // The compacted store excludes off-window and clipped
+                    // visuals; hidden and absent remain distinct observations.
+                    item.clipped = !item.hidden && !item.packed_index;
+                }
+                paint.layers.push_back(std::move(item));
+            }
         }
         auto& pending = state->pending_text_commands;
         pending.clear();

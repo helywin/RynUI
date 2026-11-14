@@ -23,6 +23,8 @@ struct GalleryDemoNativeActions final {
     std::function<GalleryDemoCaptureEvidence(const std::filesystem::path&)> capture;
     std::function<GalleryDemoJson(ryn::font::FontIdentity)> font_info;
     std::function<std::uint32_t(ryn::font::FontIdentity, char32_t)> nominal_glyph;
+    // The exact finalized scene passed to resources.attach/renderer.attach_scene.
+    std::function<const ryn::graphics::OrderedScene&()> submitted_scene;
 };
 
 // Uses the const scene query so editor selection/placeholder views remain read-only.

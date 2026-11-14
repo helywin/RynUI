@@ -8,6 +8,7 @@ from .observations import IncompleteRun, image_extent, read_observations
 from .oracle import exact
 from .protocol import ProtocolError, loads, relative_path, validate
 from .adapters import RunError
+from .device_metrics import stable_device_metrics
 
 
 def sha(path):
@@ -128,6 +129,10 @@ def web(path, case, nonce):
 def metrics(observed, side):
     if side == 'native':
         value = next(iter(observed['checkpoints'].values()))['resources'].get('metrics', {})
+        try:
+            return stable_device_metrics(value)
+        except ProtocolError as error:
+            raise IncompleteRun('native has invalid actual device metrics: ' + str(error)) from error
     else:
         value = observed['hello']['effective_inputs'].get('actual_environment', {})
         value = {'dpr': value.get('ratio'), 'logical_width': value.get('width'), 'logical_height': value.get('height')}

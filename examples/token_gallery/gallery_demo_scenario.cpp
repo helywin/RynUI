@@ -1,6 +1,7 @@
 #include "gallery_demo_scenario.hpp"
 #include "gallery_demo_hash.hpp"
 #include "component/select_component.hpp"
+#include "component/flex_component.hpp"
 #include "theme/theme_runtime.hpp"
 #include "icons/bundled_icon_catalog.hpp"
 #include "theme/input_tokens.hpp"
@@ -116,6 +117,7 @@ public:
     std::uint64_t sample_generation{};
     std::uint64_t last_readback{};
     Json readback_evidence;
+    Json captured_paint;
 
     std::vector<runtime::ComponentId> all_components() {
         std::vector<runtime::ComponentId> result;
@@ -323,7 +325,7 @@ public:
     }
 
     [[nodiscard]] Json text_record(ryn::detail::TextSceneId scene, runtime::ComponentId component, bool icon = false) {
-        return gallery_demo_text_snapshot(
+        auto result = gallery_demo_text_snapshot(
             actions.app.text().scene_service(), scene, bounds(actions.app, component),
             [&](auto font) {
                 auto info = actions.font_info(font);
@@ -331,6 +333,10 @@ public:
                 return info;
             },
             actions.nominal_glyph);
+        std::get<Json::Object>(result.value)
+            .emplace("owner",
+                     Json::Object{{"index", count(component.index)}, {"generation", count(component.generation)}});
+        return result;
     }
 
     [[nodiscard]] Json snapshot(std::string_view name) {
@@ -434,6 +440,7 @@ public:
                 tokens["editor_clip"] = rect(layout.clip);
                 tokens["editor_baseline"] = layout.baseline;
                 tokens["scroll_offset"] = layout.scroll_offset;
+                tokens["paint"] = gallery_demo_input_paint_snapshot(actions.inputs.paint_snapshot(input.component));
             }
             const auto layers = actions.inputs.text_layers(input.component);
             for (const auto& [kind, scene] :
@@ -453,6 +460,7 @@ public:
                 state["value"] = selected(select.value);
                 state["open"] = select.visible;
                 state["query"] = std::string{select.query.bytes()};
+                tokens["paint"] = gallery_demo_input_paint_snapshot(actions.inputs.paint_snapshot(select.selector));
                 tokens["popup_bounds"] = rect(select.popup);
                 tokens["popup_scroll"] = select.scroll;
                 state["active_option_index"] = select.active ? count(*select.active) : Json{};
@@ -483,8 +491,18 @@ public:
                 if (const auto bundled = icon.source.bundled_name(); bundled && !icon.layers.empty()) {
                     is_icon = true;
                     Json::Array layers;
-                    for (const auto layer : icon.layers) {
-                        layers.push_back(text_record(layer, text.component, true));
+                    const auto source_layers = ryn::detail::bundled_layers(*bundled);
+                    for (std::size_t ordinal = 0; ordinal < icon.layers.size(); ++ordinal) {
+                        auto layer = text_record(icon.layers[ordinal], text.component, true);
+                        auto& fields = std::get<Json::Object>(layer.value);
+                        fields.emplace("layer_ordinal", count(ordinal));
+                        const auto& scalars =
+                            actions.app.text().scene_service().text_state(icon.layers[ordinal]).shaped().scalars;
+                        fields.emplace("codepoint", scalars.size() == 1 ? count(scalars.front().value) : Json{});
+                        fields.emplace("role", ordinal < source_layers.size()
+                                                   ? (source_layers[ordinal].secondary ? "secondary" : "primary")
+                                                   : "unavailable");
+                        layers.push_back(std::move(layer));
                     }
                     icons.emplace_back(
                         Json::Object{{"identity", std::string{ryn::detail::bundled_icon_entry(*bundled).name}},
@@ -501,6 +519,36 @@ public:
             texts.push_back(std::move(text_item));
         }
         if (sample) {
+            std::vector<runtime::ComponentId> anchor_roots;
+            for (const auto root : factory_roots) {
+                if (actions.app.components().contains(root)) {
+                    anchor_roots.push_back(root);
+                }
+            }
+            if (anchor_roots.empty()) {
+                throw std::runtime_error("sample content anchor has no retained factory roots");
+            }
+            const auto host = actions.app.components().parent(anchor_roots.front());
+            if (!host || std::ranges::any_of(
+                             anchor_roots, [&](auto root) { return actions.app.components().parent(root) != host; })) {
+                throw std::runtime_error("sample content anchor has no common retained host");
+            }
+            const auto* flex = std::as_const(actions.app.components()).state<ryn::detail::FlexComponentState>(*host);
+            if (!flex) {
+                throw std::runtime_error("sample retained host layout is unavailable");
+            }
+            const auto container = bounds(actions.app, *host);
+            const auto padding = flex->model.padding;
+            tokens["sample_anchor"] =
+                Json::Object{{"source", "retained-host-layout"},
+                             {"container", rect(container)},
+                             {"content", rect({container.x + padding.left, container.y + padding.top,
+                                               container.width - padding.left - padding.right,
+                                               container.height - padding.top - padding.bottom})},
+                             {"padding", Json::Object{{"left", padding.left},
+                                                      {"top", padding.top},
+                                                      {"right", padding.right},
+                                                      {"bottom", padding.bottom}}}};
             Json::Object controls;
             Json::Object control_tokens;
             for (const auto& identity : input_targets()) {
@@ -554,6 +602,7 @@ public:
                                {"actual_inputs", observed_inputs},
                                {"lifecycle", lifecycle()},
                                {"readback", captures.empty() ? Json{} : readback_evidence}};
+        resources.emplace("paint_stack", captures.empty() ? Json{} : captured_paint);
         Json::Object effective = actions.context->fixture.object();
         std::get<Json::Object>(effective.at("viewport").value).insert_or_assign("dpr", actions.metrics().at("dpr"));
         Json::Object consumed;
@@ -644,6 +693,9 @@ gallery_demo_text_snapshot(const ryn::detail::TextSceneService& service, ryn::de
     }
     Json::Array ink;
     const auto& primitive = service.primitive(scene);
+    if (primitive.coverage.size() != primitive.instances.count) {
+        throw std::runtime_error("glyph instance ownership coverage is unavailable");
+    }
     for (std::uint32_t index = 0; index < primitive.instances.count; ++index) {
         const auto& instance = service.glyph_scene().instances().at(primitive.instances.first + index);
         ink.emplace_back(
@@ -654,25 +706,86 @@ gallery_demo_text_snapshot(const ryn::detail::TextSceneService& service, ryn::de
                          {"translation", Json::Array{instance.translation_opacity[0], instance.translation_opacity[1]}},
                          {"opacity", instance.translation_opacity[2]}});
         auto& item = std::get<Json::Object>(ink.back().value);
+        const auto& coverage = primitive.coverage[index];
+        item.emplace("byte_begin", count(coverage.byte_begin));
+        item.emplace("byte_end", count(coverage.byte_end));
+        item.emplace("line", count(coverage.line));
+        item.emplace("advance_x", coverage.x);
+        item.emplace("advance_width", coverage.width);
         item.emplace("color", Json::Array{instance.color[0], instance.color[1], instance.color[2], instance.color[3]});
         item.emplace("rotation_degrees", instance.transform.angle_degrees);
+        item.emplace("instance_index", count(primitive.instances.first + index));
+        item.emplace("packed_index", count(primitive.instances.first + index));
+        item.emplace("atlas_uv",
+                     Json::Array{instance.uv_rect[0], instance.uv_rect[1], instance.uv_rect[2], instance.uv_rect[3]});
+        for (const auto& range : primitive.draw_ranges) {
+            if (range.instances.first <= primitive.instances.first + index &&
+                primitive.instances.first + index - range.instances.first < range.instances.count) {
+                item.emplace("atlas_page", count(range.atlas_page));
+                break;
+            }
+        }
+        item.emplace("paint_opacity", instance.translation_opacity[2]);
+        for (const auto& entry : service.atlas().entries()) {
+            if (entry.uv.left == instance.uv_rect[0] && entry.uv.top == instance.uv_rect[1] &&
+                entry.uv.right == instance.uv_rect[2] && entry.uv.bottom == instance.uv_rect[3] &&
+                item.contains("atlas_page") && item.at("atlas_page").integer() == entry.page) {
+                item.emplace("atlas_source", Json::Object{{"glyph_id", count(entry.key.glyph_id)},
+                                                          {"font", font_info(entry.key.font)},
+                                                          {"phase", count(static_cast<std::uint8_t>(entry.key.phase))},
+                                                          {"bearing_x", entry.bearing_x},
+                                                          {"bearing_y", entry.bearing_y},
+                                                          {"padding", count(graphics::glyph_atlas_padding)},
+                                                          {"display_scale", entry.display_scale},
+                                                          {"coverage_width", count(entry.coverage_rect.width)},
+                                                          {"coverage_height", count(entry.coverage_rect.height)}});
+                break;
+            }
+        }
     }
-    return Json::Object{{"index_unit", "UTF-8-bytes"},
-                        {"content", std::string{state.content().bytes()}},
-                        {"display_content", std::string{state.display_content().bytes()}},
-                        {"bounds", rect(area)},
-                        {"lines", std::move(lines)},
-                        {"font_runs", std::move(runs)},
-                        {"glyphs", std::move(glyphs)},
-                        {"ink_instances", std::move(ink)},
-                        {"replacement_count", count(state.shaped().replacement_count)},
-                        {"replacement_count_unit", "invalid-UTF8-repairs"},
-                        {"font_coverage_available", static_cast<bool>(nominal_glyph)},
-                        {"missing_font_scalars", std::move(missing)},
-                        {"overflow", measurement.overflow},
-                        {"width", measurement.width},
-                        {"height", measurement.height},
-                        {"first_baseline", measurement.first_baseline}};
+    Json::Array groups;
+    for (std::size_t line_index = 0; line_index < measurement.lines.size(); ++line_index) {
+        const auto& line = measurement.lines[line_index];
+        for (std::size_t index = line.cluster_begin; index < line.cluster_begin + line.cluster_count; ++index) {
+            const auto& cluster = measurement.visual_clusters.at(index);
+            Json::Array boxes;
+            for (const auto& item : ink) {
+                if (item.at("byte_begin").integer() == static_cast<std::int64_t>(cluster.byte_start) &&
+                    item.at("byte_end").integer() == static_cast<std::int64_t>(cluster.byte_end)) {
+                    auto box = item.at("bounds");
+                    auto& fields = std::get<Json::Object>(box.value);
+                    fields["x"] = box.at("x").number() + item.at("translation").array()[0].number();
+                    fields["y"] = box.at("y").number() + item.at("translation").array()[1].number();
+                    boxes.push_back(std::move(box));
+                }
+            }
+            groups.emplace_back(Json::Object{{"byte_begin", count(cluster.byte_start)},
+                                             {"byte_end", count(cluster.byte_end)},
+                                             {"line", count(line_index)},
+                                             {"advance", cluster.width},
+                                             {"boxes", std::move(boxes)}});
+        }
+    }
+    return Json::Object{
+        {"index_unit", "UTF-8-bytes"},
+        {"scene_identity", Json::Object{{"index", count(scene.index)}, {"generation", count(scene.generation)}}},
+        {"content", std::string{state.content().bytes()}},
+        {"display_content", std::string{state.display_content().bytes()}},
+        {"layer_opacity", state.material().opacity},
+        {"bounds", rect(area)},
+        {"lines", std::move(lines)},
+        {"font_runs", std::move(runs)},
+        {"glyphs", std::move(glyphs)},
+        {"ink_instances", std::move(ink)},
+        {"semantic_groups", std::move(groups)},
+        {"replacement_count", count(state.shaped().replacement_count)},
+        {"replacement_count_unit", "invalid-UTF8-repairs"},
+        {"font_coverage_available", static_cast<bool>(nominal_glyph)},
+        {"missing_font_scalars", std::move(missing)},
+        {"overflow", measurement.overflow},
+        {"width", measurement.width},
+        {"height", measurement.height},
+        {"first_baseline", measurement.first_baseline}};
 }
 
 Json GalleryDemoInputBridge::query_inputs(std::span<const runtime::ComponentId> factory_roots, std::string_view step,
@@ -1304,11 +1417,45 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
             }
             const auto revision = observer.actions.scene_revision();
             const auto metrics = observer.actions.metrics();
+            const auto observe_paint = [&]() -> Json {
+                if (!observer.actions.submitted_scene) {
+                    return Json::Object{{"status", "unsupported"},
+                                        {"reason", "actual submitter scene query unavailable"}};
+                }
+                auto stack = gallery_demo_paint_stack(observer.actions.app, observer.factory_roots,
+                                                      observer.actions.submitted_scene());
+                auto& stack_fields = std::get<Json::Object>(stack.value);
+                for (auto& layer : std::get<Json::Array>(stack_fields.at("layers").value)) {
+                    const auto& owner = layer.at("owner");
+                    const runtime::ComponentId component{static_cast<std::uint32_t>(owner.at("index").integer()),
+                                                         static_cast<std::uint32_t>(owner.at("generation").integer())};
+                    Json::Array owners;
+                    for (const auto& name : observer.input_targets()) {
+                        const auto semantic_owner = observer.actions.pages.target(name);
+                        if (semantic_owner.valid() && observer.actions.app.components().contains(semantic_owner) &&
+                            owns(observer.actions.app, semantic_owner, component)) {
+                            owners.emplace_back(name);
+                        }
+                    }
+                    std::get<Json::Object>(layer.value).emplace("owner_targets", std::move(owners));
+                }
+                stack_fields.emplace("glyph_inventory", observer.snapshot(scenario.route.sample_identity).at("text"));
+                stack_fields.erase("snapshot_digest");
+                const auto bytes = stack.dump();
+                stack_fields.emplace(
+                    "snapshot_digest",
+                    gallery_demo_sha256(std::span{reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size()}));
+                return stack;
+            };
+            auto paint_before = observe_paint();
             const auto evidence = observer.actions.capture(path);
             gallery_demo_validate_capture(evidence, observer.last_readback, revision, metrics,
                                           scenario.definition.at("fixture"), observer.provenance);
             if (!std::filesystem::is_regular_file(path) || observer.actions.scene_revision() != revision) {
                 throw std::runtime_error("scenario current GPU checkpoint readback failed");
+            }
+            if (paint_before.dump() != observe_paint().dump()) {
+                throw std::runtime_error("actual paint publication changed across checkpoint capture");
             }
             observer.last_readback = evidence.readback_id;
             const auto nonce = scenario.nonce + "-capture-" + std::to_string(index);
@@ -1324,6 +1471,17 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
                                                       {"source_channel_order", evidence.source_channel_order},
                                                       {"source_hash", evidence.source_hash},
                                                       {"binary_sha256", evidence.binary_sha256}};
+            auto& raw = std::get<Json::Object>(observer.readback_evidence.value);
+            raw.emplace("raw_alpha_available", evidence.raw_alpha_available);
+            raw.emplace("raw_alpha_min", count(evidence.raw_alpha_min));
+            raw.emplace("raw_alpha_max", count(evidence.raw_alpha_max));
+            raw.emplace("raw_opaque_pixels", count(evidence.raw_opaque_pixels));
+            raw.emplace("raw_total_pixels", count(evidence.raw_total_pixels));
+            raw.emplace("raw_rgba_fnv1a64", evidence.raw_rgba_fnv1a64);
+            raw.emplace("clear_rgba", evidence.clear_rgba);
+            observer.captured_paint = std::move(paint_before);
+            auto& paint = std::get<Json::Object>(observer.captured_paint.value);
+            paint.emplace("capture_binding", observer.readback_evidence);
             observer.completed_checkpoints.emplace_back(action.step);
             const auto capture = Json::Object{{"path", filename},
                                               {"sha256", gallery_demo_file_sha256(path)},

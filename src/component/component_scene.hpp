@@ -26,6 +26,18 @@ struct VisibleSceneStats final {
     std::uint64_t fragments_visible{};
 };
 
+// A copy of an existing binding; querying never rebuilds or publishes a scene.
+struct FragmentPaintSnapshot final {
+    runtime::SceneFragmentId fragment;
+    runtime::ComponentId owner;
+    std::uint64_t publication_revision{};
+    std::vector<graphics::SceneDrawCommand> commands;
+    std::optional<runtime::Rect> interaction_clip;
+    bool outside_own_mask{};
+    graphics::DrawCoverageRole coverage{};
+    std::optional<graphics::SceneCompositionRequest> backdrop;
+};
+
 class ComponentSceneComposer final {
 public:
     ComponentSceneComposer(runtime::ComponentHost& components, input::InteractionRegistry& interactions,
@@ -54,6 +66,7 @@ public:
                                                         graphics::OrderedScene& destination) const;
 
     [[nodiscard]] const graphics::OrderedScene& ordered_scene() const noexcept;
+    [[nodiscard]] std::optional<FragmentPaintSnapshot> paint_snapshot(runtime::SceneFragmentId fragment) const;
     [[nodiscard]] std::span<const input::HitTestPaintEntry> interaction_order() const noexcept;
     [[nodiscard]] const ComponentSceneDiagnostics& diagnostics() const noexcept;
 
@@ -66,6 +79,7 @@ private:
         bool outside_own_mask{};
         graphics::DrawCoverageRole coverage{};
         std::optional<graphics::SceneCompositionRequest> backdrop;
+        std::uint64_t publication_revision{};
     };
 
     [[nodiscard]] FragmentBinding* find_binding(runtime::SceneFragmentId fragment) noexcept;
@@ -80,6 +94,7 @@ private:
     std::vector<input::HitTestPaintEntry> interaction_order_;
     ComponentSceneDiagnostics diagnostics_;
     bool bindings_dirty_{};
+    std::uint64_t publication_revision_{};
 };
 
 } // namespace ryn::component

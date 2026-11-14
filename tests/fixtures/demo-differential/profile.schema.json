@@ -63,13 +63,120 @@
         "type": "string",
         "pattern": "^[0-9a-f]{64}$"
       },
-      "minItems": 1,
-      "maxItems": 100000,
+      "minItems": 7,
+      "maxItems": 7,
       "uniqueItems": true
+    },
+    "calibration_kind": {
+      "const": "pilot-independent-v1"
+    },
+    "tool_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "locale": {
+          "const": "zh-CN"
+        },
+        "direction": {
+          "const": "ltr"
+        },
+        "theme": {
+          "const": "default"
+        },
+        "motion": {
+          "const": "disabled"
+        },
+        "font_policy": {
+          "const": "pinned"
+        },
+        "actual_dpr": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 4
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin_phase_px": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": false
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "minItems": 1,
+          "maxItems": 100000,
+          "uniqueItems": true
+        },
+        "font_sizes_weights": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "size": {
+                "type": "number"
+              },
+              "weight": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "size",
+              "weight"
+            ]
+          },
+          "minItems": 12,
+          "maxItems": 12,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "cases",
+        "locale",
+        "direction",
+        "theme",
+        "motion",
+        "font_policy",
+        "actual_dpr",
+        "origin_phase_px",
+        "materials",
+        "font_sizes_weights"
+      ]
     },
     "repetitions": {
       "type": "integer",
-      "minimum": 5
+      "minimum": 5,
+      "maximum": 15
     },
     "calibrated": {
       "type": "boolean"
@@ -102,6 +209,55 @@
           },
           "negative_min": {
             "type": "number"
+          },
+          "unit": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "domain": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+            "maxLength": 256
+          },
+          "holdout_max": {
+            "type": "number"
+          },
+          "safety_gap": {
+            "type": "number"
+          },
+          "positive_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "minItems": 1,
+            "maxItems": 100000,
+            "uniqueItems": true
+          },
+          "holdout_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "minItems": 1,
+            "maxItems": 100000,
+            "uniqueItems": true
+          },
+          "negative_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+              "maxLength": 256
+            },
+            "minItems": 1,
+            "maxItems": 26,
+            "uniqueItems": true
           }
         },
         "required": [
@@ -111,11 +267,18 @@
           "quantization_floor",
           "positive_max",
           "margin",
-          "negative_min"
+          "negative_min",
+          "unit",
+          "domain",
+          "holdout_max",
+          "safety_gap",
+          "positive_ids",
+          "holdout_ids",
+          "negative_ids"
         ]
       },
-      "minItems": 1,
-      "maxItems": 100000,
+      "minItems": 0,
+      "maxItems": 16,
       "uniqueItems": false
     },
     "masks": {
@@ -155,44 +318,263 @@
         ]
       },
       "minItems": 0,
-      "maxItems": 100000,
+      "maxItems": 0,
       "uniqueItems": false
     },
     "color": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "profile": {
-          "const": "sRGB-SDR"
-        },
-        "channel_order": {
-          "type": "string",
-          "enum": [
-            "RGBA",
-            "BGRA"
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "native": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "framebuffer_format": {
+                  "type": "string",
+                  "enum": [
+                    "RGBA8_UNORM",
+                    "BGRA8_UNORM"
+                  ]
+                },
+                "source_channel_order": {
+                  "type": "string",
+                  "enum": [
+                    "RGBA",
+                    "BGRA"
+                  ]
+                },
+                "decoded_channel_order": {
+                  "const": "RGBA"
+                },
+                "encoding": {
+                  "const": "native-encoded-SDR"
+                },
+                "alpha": {
+                  "const": "premultiplied"
+                },
+                "clear_rgba": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "uniqueItems": false
+                },
+                "opaque_required": {
+                  "const": true
+                },
+                "codec_policy": {
+                  "const": "opaque-BMP-rawRGBA-v1"
+                }
+              },
+              "required": [
+                "framebuffer_format",
+                "source_channel_order",
+                "decoded_channel_order",
+                "encoding",
+                "alpha",
+                "clear_rgba",
+                "opaque_required",
+                "codec_policy"
+              ]
+            },
+            "web": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "file_formats": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "PNG RGB8",
+                      "PNG RGBA8"
+                    ]
+                  },
+                  "minItems": 1,
+                  "maxItems": 2,
+                  "uniqueItems": true
+                },
+                "decoded_channel_order": {
+                  "const": "RGBA"
+                },
+                "encoding": {
+                  "const": "sRGB-SDR"
+                },
+                "alpha_policy": {
+                  "const": "RGB-opaque-or-verified-RGBA-opaque"
+                },
+                "launch_args_hash": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "png_color_chunks_policy": {
+                  "const": "record-and-verify-chunks-CRC-v1"
+                },
+                "png_color_chunks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "sRGB",
+                          "gAMA",
+                          "cHRM",
+                          "iCCP"
+                        ]
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "sha256",
+                      "bytes"
+                    ]
+                  },
+                  "minItems": 0,
+                  "maxItems": 4,
+                  "uniqueItems": false
+                }
+              },
+              "required": [
+                "file_formats",
+                "decoded_channel_order",
+                "encoding",
+                "alpha_policy",
+                "launch_args_hash",
+                "png_color_chunks_policy",
+                "png_color_chunks"
+              ]
+            },
+            "comparison": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "domain": {
+                  "const": "sRGB-encoded-opaque"
+                },
+                "conversion": {
+                  "const": "verified-opaque-identity-v1"
+                },
+                "lab": {
+                  "const": "sRGB-D65-CIEDE2000-v1"
+                }
+              },
+              "required": [
+                "domain",
+                "conversion",
+                "lab"
+              ]
+            },
+            "control_evidence_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "native",
+            "web",
+            "comparison",
+            "control_evidence_sha256"
           ]
         },
-        "alpha": {
-          "type": "string",
-          "enum": [
-            "straight",
-            "premultiplied",
-            "opaque"
-          ]
+        {
+          "type": "null"
         }
-      },
-      "required": [
-        "profile",
-        "channel_order",
-        "alpha"
+      ]
+    },
+    "evidence": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string",
+              "format": "relative-path",
+              "maxLength": 4096
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "train_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                "maxLength": 256
+              },
+              "minItems": 6,
+              "maxItems": 16,
+              "uniqueItems": true
+            },
+            "holdout_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                "maxLength": 256
+              },
+              "minItems": 6,
+              "maxItems": 16,
+              "uniqueItems": true
+            },
+            "negative_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$",
+                "maxLength": 256
+              },
+              "minItems": 26,
+              "maxItems": 26,
+              "uniqueItems": true
+            },
+            "control_definition_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "policy_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "observations_and_captures_manifest_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "train_ids",
+            "holdout_ids",
+            "negative_ids",
+            "control_definition_sha256",
+            "policy_sha256",
+            "observations_and_captures_manifest_sha256"
+          ]
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "font_policy": {
-      "type": "string",
-      "enum": [
-        "pinned",
-        "system"
-      ]
+      "const": "pinned"
     }
   },
   "required": [
@@ -203,11 +585,15 @@
     "corpus_hash",
     "source_hash",
     "font_hashes",
+    "calibration_kind",
+    "tool_hash",
+    "scope",
     "repetitions",
     "calibrated",
     "metrics",
     "masks",
     "color",
+    "evidence",
     "font_policy"
   ]
 }

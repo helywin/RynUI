@@ -5,7 +5,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from demo_differential.regions import geometry, union, physical_box, crop_rgba, raster_metrics, contour_distance
+from demo_differential.regions import (geometry, union, physical_box, crop_rgba, raster_metrics, contour_distance,
+                                       coverage_metrics,reference_aa_is_bounded)
 from demo_differential.protocol import ProtocolError
 
 
@@ -19,6 +20,23 @@ def pixels(width, height, points):
 
 
 class RegionTests(unittest.TestCase):
+    def test_reference_aa_band_cannot_expand_with_native_residual(self):
+        self.assertTrue(reference_aa_is_bounded([0,.25,1,1,.25,0],(6,1)))
+        self.assertFalse(reference_aa_is_bounded([.1,.25,.4,1,1,.4,.25,.1],(8,1)))
+
+    def test_local_coverage_and_projection_catch_last_glyph_pixel(self):
+        reference=[1.]*100
+        native=reference[:]
+        native[-1]=0
+        result=coverage_metrics(reference,native,(10,10))
+        self.assertLess(result['coverage_mass_relative_error'],.05)
+        self.assertGreater(result['coverage_local_relative_error'],.05)
+        self.assertGreater(result['projection_relative_error'],.05)
+        self.assertEqual(result['contour_distance_px'],1)
+        blank=coverage_metrics([0]*4,[0]*4,(2,2))
+        self.assertFalse(blank['required_ink_present'])
+        self.assertIsNone(blank['contour_distance_px'])
+
     def test_only_declared_sample_origin_can_translate(self):
         a, b = rectangle(12, 24), rectangle(112, 224)
         self.assertEqual(geometry(a, b, rectangle(10, 20), rectangle(110, 220)), dict(x=0, y=0, width=0, height=0))

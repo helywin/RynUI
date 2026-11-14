@@ -10,7 +10,11 @@ AREAS = ('include', 'src', 'examples/token_gallery', 'shaders', 'cmake', 'galler
 SUFFIXES = {'.cpp', '.c', '.h', '.hpp', '.hlsl', '.hlsli', '.inc', '.cmake', '.json', '.yaml', '.yml'}
 EXPLICIT = ('CMakeLists.txt', 'CMakePresets.json', 'examples/CMakeLists.txt',
             'tools/generate_gallery_source.py',
-            'tools/demo_differential/source_closure.py')
+            'tools/demo_differential/source_closure.py',
+            'tests/CMakeLists.txt', 'tests/demo_differential_calibration_main.cpp',
+            'tests/demo_differential_control_geometry.hpp',
+            'docs/renderer-contract.md',
+            'tests/fixtures/demo-differential/pilot-calibration.json')
 
 
 def source_manifest(root):

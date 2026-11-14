@@ -68,6 +68,27 @@ struct RetainedSurfaceDiagnostics final {
     std::uint64_t stale_rejections{0};
 };
 
+struct RetainedEffectPaintSnapshot final {
+    graphics::RoundedEffectId id;
+    std::optional<std::uint32_t> packed_index;
+    graphics::RoundedEffectInstance actual;
+};
+
+struct RetainedSurfacePaintSnapshot final {
+    RetainedSurfaceId id;
+    runtime::ComponentId owner;
+    runtime::NodeId node;
+    runtime::SceneFragmentId fragment;
+    graphics::QuadInstanceRange range;
+    std::vector<graphics::QuadInstance> quads;
+    std::vector<RetainedEffectPaintSnapshot> shadows;
+    std::vector<RetainedEffectPaintSnapshot> focus;
+    std::vector<RetainedEffectPaintSnapshot> clipped_fills;
+    std::vector<RetainedEffectPaintSnapshot> content_effects;
+    std::optional<FragmentPaintSnapshot> binding;
+    bool paint_pending{};
+};
+
 class RetainedSurfaceService final {
 public:
     RetainedSurfaceService(runtime::ComponentHost& components, runtime::NodeStore& nodes,
@@ -106,6 +127,7 @@ public:
                                        std::optional<float> logical_antialias_guard = {});
 
     [[nodiscard]] graphics::QuadInstanceRange visual_range(RetainedSurfaceId id) const;
+    [[nodiscard]] std::optional<RetainedSurfacePaintSnapshot> paint_snapshot(RetainedSurfaceId id) const;
     [[nodiscard]] const graphics::RoundedEffectInstance& focus_effect(RetainedSurfaceId id) const;
     [[nodiscard]] std::span<const graphics::RoundedEffectId> shadow_effects(RetainedSurfaceId id) const;
     [[nodiscard]] graphics::QuadInstanceStore& instances() noexcept;

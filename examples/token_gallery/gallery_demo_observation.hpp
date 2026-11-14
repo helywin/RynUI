@@ -2,10 +2,12 @@
 
 #include "gallery_demo_protocol.hpp"
 #include "runtime/component_host.hpp"
+#include "graphics/glyph_scene.hpp"
 
 namespace ryn::detail {
 class ButtonComponentHost;
-}
+struct InputPaintSnapshot;
+} // namespace ryn::detail
 
 namespace rynui::example {
 
@@ -25,6 +27,13 @@ struct GalleryDemoCaptureEvidence final {
     bool fence_completed{};
     std::string source_hash;
     std::string binary_sha256;
+    bool raw_alpha_available{};
+    std::uint8_t raw_alpha_min{};
+    std::uint8_t raw_alpha_max{};
+    std::uint64_t raw_opaque_pixels{};
+    std::uint64_t raw_total_pixels{};
+    std::string raw_rgba_fnv1a64;
+    GalleryDemoJson clear_rgba;
 };
 
 void gallery_demo_validate_capture(const GalleryDemoCaptureEvidence&, std::uint64_t previous_readback,
@@ -43,5 +52,9 @@ gallery_demo_retained_tree(ryn::detail::ButtonComponentHost&, std::span<const ry
                            std::optional<ryn::runtime::ComponentId> origin = {},
                            std::span<const std::pair<std::string, ryn::runtime::ComponentId>> feedback_targets = {});
 GalleryDemoJson gallery_demo_applied_theme(ryn::detail::ButtonComponentHost&, ryn::runtime::ComponentId);
+GalleryDemoJson gallery_demo_input_paint_snapshot(const ryn::detail::InputPaintSnapshot&);
+GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost&,
+                                         std::span<const ryn::runtime::ComponentId> roots,
+                                         const ryn::graphics::OrderedScene& submitted);
 
 } // namespace rynui::example
