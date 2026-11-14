@@ -40,8 +40,9 @@ struct ShaderSelection {
 
 [[nodiscard]] SDL_GPUShader* create_shader(SDL_GPUDevice* device, std::string_view filename, SDL_GPUShaderFormat format,
                                            SDL_GPUShaderStage stage, Uint32 sampler_count, Uint32 uniform_count = 0,
-                                           Uint32 storage_buffer_count = 0) {
-    const auto code = builtin_shader_bytes(filename);
+                                           Uint32 storage_buffer_count = 0,
+                                           std::span<const std::byte> override_code = {}) {
+    const auto code = override_code.empty() ? builtin_shader_bytes(filename) : override_code;
     SDL_GPUShaderCreateInfo info{};
     info.code_size = code.size();
     info.code = reinterpret_cast<const Uint8*>(code.data());
@@ -553,8 +554,12 @@ bool SdlSceneRenderer::ensure_effect_paint_pipeline(bool cap_geometry) {
     SDL_GPUShader* fragment = nullptr;
     SDL_GPUGraphicsPipeline* candidate = nullptr;
     try {
+        std::span<const std::byte> linear_test_code;
+#if defined(RYNUI_SDL_TEST_HOOKS)
+        linear_test_code = linear_test_fragment_;
+#endif
         fragment = create_shader(device, shader + ".fragment." + selection.extension, selection.format,
-                                 SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 0, 2);
+                                 SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 0, 2, linear_test_code);
         if (fragment) {
             const std::array buffers{
                 SDL_GPUVertexBufferDescription{0, sizeof(RoundedEffectGpuInstance), SDL_GPU_VERTEXINPUTRATE_INSTANCE,
@@ -1236,6 +1241,15 @@ bool SdlSceneRenderer::begin_pending_paint_validation_for_test() noexcept {
         return false;
     }
     pending_paint_validation_ = true;
+    return true;
+}
+
+bool SdlSceneRenderer::use_linear_test_fragment_for_test(std::span<const std::byte> code) {
+    if (!platform_->is_owner_thread() || !pending_paint_validation_ || upload_batch_active_ || active_render_pass_ ||
+        effect_paint_pipeline_ || !linear_test_fragment_.empty() || code.empty()) {
+        return false;
+    }
+    linear_test_fragment_.assign(code.begin(), code.end());
     return true;
 }
 

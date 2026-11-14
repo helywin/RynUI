@@ -2,6 +2,10 @@
 #include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "effect_linear_source_oracle.hpp"
+#if defined(RYNUI_LINEAR_S2_VARIANT_DIRECTORY)
+#include "effect_linear_s2_tests.hpp"
+#include "renderer/common/composition_packing.hpp"
+#endif
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -1426,6 +1430,9 @@ void validation_scope_exit_reject(SdlSceneRenderer& renderer, PlatformState& pla
                 renderer.counters().buffer_transfer_creations == before.buffer_transfer_creations,
             "scope exit did not reject the same live source before begin");
 }
+#if defined(RYNUI_LINEAR_S2_VARIANT_DIRECTORY)
+#include "effect_linear_s2_native.hpp"
+#endif
 } // namespace
 
 int main(int argc, char** argv) {
@@ -1442,7 +1449,11 @@ int main(int argc, char** argv) {
         const std::string expected_driver = argv[2];
         const std::string suite = argv[4];
         require((expected_driver == "direct3d12" || expected_driver == "vulkan") &&
-                    (suite == "transport" || suite == "caps" || suite == "all" || suite == "linear-cost"),
+                    (suite == "transport" || suite == "caps" || suite == "all" || suite == "linear-cost"
+#if defined(RYNUI_LINEAR_S2_VARIANT_DIRECTORY)
+                     || suite == "linear-s2"
+#endif
+                     ),
                 "Unknown driver or suite");
         LinearCostOptions cost_options;
         bool size_set{};
@@ -1478,6 +1489,18 @@ int main(int argc, char** argv) {
                 "1920x1080 requires exactly one explicit case/layer selection; run 128x96 first");
         output_directory = argv[6];
         std::filesystem::create_directories(output_directory);
+#if defined(RYNUI_LINEAR_S2_VARIANT_DIRECTORY)
+        if (suite == "linear-s2") {
+            require(argc == 7, "S2 uses only the fixed 32x24 matrix");
+            cost_options.width = 32;
+            cost_options.height = 24;
+            std::ifstream identity(std::filesystem::path(RYNUI_LINEAR_S2_VARIANT_DIRECTORY) / "manifest.json");
+            require(bool(identity), "S2 requires separate variant closure/defines/artifact identities");
+            std::ofstream identity_copy(output_directory / "shader-variants.json", std::ios::binary);
+            identity_copy << identity.rdbuf();
+            require(bool(identity_copy), "S2 variant identity copy");
+        }
+#endif
         const auto closure_id = closure_identity(suite == "caps" ? "rounded_effect_cap" : "rounded_effect_paint");
         const auto host_started = CostClock::now();
         if (suite == "linear-cost") {
@@ -1491,6 +1514,17 @@ int main(int argc, char** argv) {
         require(bool(host), "Hidden platform creation failed");
         check_hidden(*host.state);
         const auto host_finished = CostClock::now();
+#if defined(RYNUI_LINEAR_S2_VARIANT_DIRECTORY)
+        if (suite == "linear-s2") {
+            linear_s2_native(*host.state, expected_driver, started);
+            linear_s2_composition_crop(*host.state, expected_driver, started);
+            check_hidden(*host.state);
+            require(CostClock::now() - started < std::chrono::seconds(55), "S2 exceeded unchanged 55-second workload");
+            std::cout << "linear_s2 driver=" << expected_driver << " config=" << RYNUI_TEST_CONFIG << " cases=" << cases
+                      << " checks=" << checks << " elapsed_ms=" << cost_ms(started) << '\n';
+            return 0;
+        }
+#endif
         SdlSceneRenderer renderer(*host.state);
         if (suite == "linear-cost") {
             require(host.state->window_metrics().pixel_width == cost_options.width &&

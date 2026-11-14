@@ -162,6 +162,8 @@ public:
     // Explicit validation scope only; the production capability stays false.
     bool begin_pending_cap_validation_for_test() noexcept;
     void end_pending_cap_validation_for_test() noexcept;
+    // One fixed Linear fragment variant per fresh renderer, in the pending scope.
+    bool use_linear_test_fragment_for_test(std::span<const std::byte> code);
 #endif
 
     [[nodiscard]] SceneDeviceDescription device_description() const;
@@ -273,6 +275,7 @@ private:
     bool fail_upload_finish_{};
     bool pending_cap_validation_{};
     bool pending_paint_validation_{};
+    std::vector<std::byte> linear_test_fragment_;
 #endif
     // Opaque handles are tombstone addresses, never reusable native SDK pointers.
     std::unordered_map<void*, std::unique_ptr<Resource>> resources_;

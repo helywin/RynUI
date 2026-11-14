@@ -3445,6 +3445,46 @@ if(RYNUI_HAS_SDL_GPU)
         "RYNUI_EFFECT_SHADER_LOCK=\"${PROJECT_SOURCE_DIR}/shaders/rounded_effect.lock.yaml\""
         "RYNUI_TEST_CONFIG=\"$<CONFIG>\"")
     rynui_embed_target_shaders(rynui_effect_paint_native_readback_tests)
+    # Fixed S2 test-only variants. No product flag, sidecar or ordinary recipe changes.
+    set(linear_s2_shader_directory
+        "${PROJECT_SOURCE_DIR}/out/linear-s2-native/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/shaders")
+    execute_process(COMMAND "${Python3_EXECUTABLE}" -B "${PROJECT_SOURCE_DIR}/tools/effect_shader_closure.py"
+        --root "${PROJECT_SOURCE_DIR}" --entry rounded_effect_paint --list-dependencies
+        OUTPUT_VARIABLE linear_s2_dependencies OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+    add_custom_command(OUTPUT "${linear_s2_shader_directory}/manifest.json"
+        COMMAND "${Python3_EXECUTABLE}" -B "${PROJECT_SOURCE_DIR}/tools/linear_s2_test_shaders.py"
+            --root "${PROJECT_SOURCE_DIR}" --output "${linear_s2_shader_directory}"
+            --config "$<CONFIG>" --compiler "${RYNUI_SHADERCROSS_COMMAND}"
+        DEPENDS ${linear_s2_dependencies} ${RYNUI_SHADERCROSS_DEPENDENCY}
+            "${PROJECT_SOURCE_DIR}/shaders/rounded_effect.lock.yaml"
+            "${PROJECT_SOURCE_DIR}/tools/effect_shader_closure.py"
+            "${PROJECT_SOURCE_DIR}/tools/linear_s2_test_shaders.py"
+        VERBATIM)
+    add_custom_target(rynui_linear_s2_test_shaders DEPENDS "${linear_s2_shader_directory}/manifest.json")
+    add_executable(rynui_linear_s2_native_tests effect_paint_native_readback_tests.cpp)
+    rynui_configure_cpp_target(rynui_linear_s2_native_tests)
+    target_link_libraries(rynui_linear_s2_native_tests PRIVATE rynui_renderer_sdl rynui_renderer_common SDL3::SDL3)
+    target_compile_definitions(rynui_linear_s2_native_tests PRIVATE
+        "RYNUI_EFFECT_SHADER_LOCK=\"${PROJECT_SOURCE_DIR}/shaders/rounded_effect.lock.yaml\""
+        "RYNUI_TEST_CONFIG=\"$<CONFIG>\""
+        "RYNUI_LINEAR_S2_VARIANT_DIRECTORY=\"${linear_s2_shader_directory}\"")
+    rynui_embed_target_shaders(rynui_linear_s2_native_tests)
+    add_dependencies(rynui_linear_s2_native_tests rynui_linear_s2_test_shaders)
+    if(WIN32)
+        add_test(NAME rynui.linear_s2_d3d12_hidden COMMAND rynui_linear_s2_native_tests
+            --expect-driver direct3d12 --suite linear-s2
+            --output "${PROJECT_SOURCE_DIR}/out/linear-s2-native/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/rgba")
+        set_tests_properties(rynui.linear_s2_d3d12_hidden PROPERTIES
+            ENVIRONMENT "SDL_GPU_DRIVER=direct3d12" TIMEOUT 60 RUN_SERIAL TRUE LABELS "windows;gpu;hidden;linear-s2")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME rynui.linear_s2_vulkan_private
+            COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_background_wayland.py"
+                --timeout 55 --log-dir "${PROJECT_SOURCE_DIR}/out/linear-s2-native/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/wayland"
+                -- "$<TARGET_FILE:rynui_linear_s2_native_tests>" --expect-driver vulkan --suite linear-s2
+                --output "${PROJECT_SOURCE_DIR}/out/linear-s2-native/${RYNUI_CONFIGURE_PRESET}/$<CONFIG>/rgba")
+        set_tests_properties(rynui.linear_s2_vulkan_private PROPERTIES
+            ENVIRONMENT "SDL_GPU_DRIVER=vulkan" TIMEOUT 60 RUN_SERIAL TRUE LABELS "linux;gpu;private-wayland;linear-s2")
+    endif()
     if(WIN32)
         add_test(NAME rynui.effect_paint_d3d12_hidden
             COMMAND rynui_effect_paint_native_readback_tests --expect-driver direct3d12

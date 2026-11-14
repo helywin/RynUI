@@ -2,6 +2,9 @@
 #include "rounded_effect_coverage.hlsli"
 #if defined(RYNUI_FRAGMENT_SHADER)
 #include "effect_paint_sampling.hlsli"
+#if defined(RYNUI_TEST_LINEAR_PROBE)
+#include "effect_linear_test_probe.hlsli"
+#endif
 #endif
 
 struct VertexOutput {
@@ -54,6 +57,15 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
     if (any(samplePosition < input.clipBounds.xy) || any(samplePosition >= input.clipBounds.zw)) {
         discard;
     }
+#if defined(RYNUI_TEST_LINEAR_PROBE)
+    // Shadercross compacts unused PS inputs when translating SPIR-V to DXIL.
+    // Keep the production VS/PS register signature for every byte probe.
+    if (!all(isfinite(input.shapeRect)) || !all(isfinite(input.color)) || !all(isfinite(input.shadowParams)) ||
+        !all(isfinite(input.effectParams)) || !all(isfinite(input.materialParams))) {
+        discard;
+    }
+    return EffectLinearTestProbe(samplePosition, input.paintLink.xy);
+#endif
     float coverage;
 #if defined(RYNUI_CAP_GEOMETRY)
     if (input.effectParams.w == 3.0 && input.paintLink.z != 0u) {
