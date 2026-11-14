@@ -4,12 +4,11 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
+import re
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
-import struct
 import sys
 import tempfile
 import uuid
@@ -20,6 +19,8 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from demo_differential.protocol import ProtocolError, output_path, read, validate
 from demo_reference_web.bootstrap import (PreparationError, canonical, digest, fetch, load_lock, readonly, require,
                        sha, verify_cache, verify_prepared, verify_source)
+from demo_reference_web.font_metadata import font_metadata
+from demo_reference_web.font_resources import admit_font, central_fonts, prepare_fonts
 
 ADAPTER_ID = 'antd665.reference-web.v1'
 
@@ -33,67 +34,32 @@ def code_hash():
                    if p.suffix in ('.py', '.mjs', '.tsx', '.json', '.yaml')})
 
 
-def central_fonts():
-    text = (ROOT / 'cmake/dependencies/RynUIDependencyLock.cmake').read_text()
-    variables = dict(re.findall(r'set\((RYNUI_[A-Z0-9_]+)\s+"([^"]+)"\)', text))
-    result = []
-    for name, identity, filename in [('RYNUI_NOTO_SANS', 'noto-sans', 'NotoSans-Regular.ttf'),
-                                     ('RYNUI_NOTO_SANS_CJK_SC', 'noto-sans-cjk-sc', 'NotoSansCJKsc-Regular.otf')]:
-        result.append({'identity': identity, 'url': variables[name + '_SOURCE_URL'],
-                       'sha256': variables[name + '_SOURCE_SHA256'], 'license': variables[name + '_LICENSE'],
-                       'version': variables[name + '_VERSION'], 'filename': filename, 'face_index': 0, 'weight': 400})
-    return result
-
-
-def font_metadata(path):
-    data = Path(path).read_bytes()
-    offset = struct.unpack_from('>I', data, 12)[0] if data[:4] == b'ttcf' else 0
-    count = struct.unpack_from('>H', data, offset + 4)[0]
-    names = {}
-    for index in range(count):
-        tag, _, table_offset, length = struct.unpack_from('>4sIII', data, offset + 12 + index * 16)
-        if tag != b'name':
-            continue
-        _, record_count, strings = struct.unpack_from('>HHH', data, table_offset)
-        for row in range(record_count):
-            platform_id, _, _, name_id, size, start = struct.unpack_from('>HHHHHH', data, table_offset + 6 + row * 12)
-            if name_id not in (1, 2, 4, 6, 16, 17):
-                continue
-            raw = data[table_offset + strings + start:table_offset + strings + start + size]
-            if platform_id in (0, 3):
-                value = raw.decode('utf-16-be')
-            elif platform_id == 1:
-                value = raw.decode('mac_roman')
-            else:
-                continue
-            names.setdefault(str(name_id), [])
-            if value not in names[str(name_id)]:
-                names[str(name_id)].append(value)
-    require(bool(names.get('6')), 'font has no actual PostScript face identity')
-    return {'sha256': sha(path), 'face_index': 0, 'names': names}
-
-
-def prepare_fonts(output):
-    output = output_path(output)
-    require(not output.exists(), 'font output already exists')
-    output.mkdir(parents=True)
-    records = []
-    for row in central_fonts():
-        archive = fetch(row, ROOT / 'out/demo-differential/archives')
-        target = output / row['filename']
-        shutil.copy2(archive, target)
-        records.append({key: row[key] for key in ('identity', 'sha256', 'face_index', 'weight')} | {'path': str(target)})
-    (output / 'font-files.json').write_bytes(canonical(records) + b'\n')
-    return records
-
-
 PUBLIC_PROPS = {
     'Button': {'type', 'size', 'disabled', 'loading', 'danger', 'ghost', 'shape', 'block', 'htmlType', 'variant', 'color'},
     'Input': {'size', 'disabled', 'allowClear', 'maxLength', 'minLength', 'placeholder', 'readOnly', 'type',
               'status', 'variant', 'autoComplete', 'name'},
     'Select': {'size', 'disabled', 'loading', 'allowClear', 'placeholder', 'showSearch', 'open', 'defaultOpen',
-               'virtual', 'listHeight', 'popupMatchSelectWidth', 'mode', 'status', 'variant', 'optionFilterProp'},
+               'virtual', 'listHeight', 'popupMatchSelectWidth', 'mode', 'status', 'variant', 'optionFilterProp',
+               'notFoundContent', 'direction', 'maxTagCount', 'maxTagTextLength', 'maxCount', 'tokenSeparators'},
 }
+
+SELECT_RECIPES = { 'gallery.select.' + name: 'select-' + recipe for name, recipe in (
+    ('focus', 'focus'), ('toggle-open', 'toggle-open'), ('dynamic-options', 'dynamic-options'),
+    ('multiple', 'multiple'), ('tags', 'tags'), ('virtual', 'virtual'), ('async', 'async'),
+    ('authority', 'authority'), ('prefix', 'prefix'), ('deliver', 'deliver')) }
+
+
+def validate_local_theme(value):
+    require(isinstance(value, dict) and set(value) <= {'algorithm', 'components'}, 'unknown local Theme/CSS')
+    if 'algorithm' in value:
+        require(value['algorithm'] == 'default', 'pilot local algorithm must be explicit default')
+    if 'components' in value:
+        require(set(value['components']) == {'Select'}, 'pilot local component Theme')
+        tokens = value['components']['Select']
+        require(set(tokens) == {'algorithm', 'colorPrimary', 'optionHeight'} and tokens['algorithm'] is True,
+                'pilot Select component algorithm/tokens')
+        require(isinstance(tokens['colorPrimary'], str) and re.fullmatch('#[0-9a-fA-F]{6}', tokens['colorPrimary']), 'local primary color')
+        require(type(tokens['optionHeight']) in (int, float) and 0 < tokens['optionHeight'] <= 4096, 'local optionHeight')
 
 
 def validate_composition(tree, controls, slots):
@@ -108,13 +74,19 @@ def validate_composition(tree, controls, slots):
         require(depth <= 24 and count <= 512, 'composition depth/node limit exceeded')
         require(isinstance(node, dict), 'composition node must be an object')
         component = node.get('component')
+        if component == 'source-feedback':
+            require(set(node) == {'component', 'identity', 'content'} and node['identity'] == 'select-multi' and
+                    isinstance(node['content'], str), 'unknown source feedback')
+            return
         if component == 'control':
             require(set(node) == {'component', 'target'} and node['target'] in controls, 'invalid control composition leaf')
             seen.append(node['target'])
             return
         require(component in properties, 'unsupported composition component/DOM')
-        allowed = {'component', 'props', 'content', 'target', 'slot'} if component == 'Typography.Text' else {'component', 'props', 'children'}
+        allowed = {'component', 'props', 'content', 'target', 'slot'} if component == 'Typography.Text' else {'component', 'props', 'children', 'width'}
         require(set(node) <= allowed, 'unknown composition field')
+        if 'width' in node:
+            require(type(node['width']) in (int, float) and 0 < node['width'] <= 16384, 'composition external width limit')
         props = node.get('props', {})
         require(isinstance(props, dict) and set(props) <= properties[component], 'unknown composition public prop/CSS')
         for key, value in props.items():
@@ -146,6 +118,12 @@ def validate_composition(tree, controls, slots):
             for child in node['children']:
                 visit(child, depth + 1)
     visit(tree)
+    for target, values in slots.items():
+        for key in ('prefix', 'popup'):
+            value = values.get(key)
+            if isinstance(value, dict) and 'control' in value:
+                require(set(value) == {'control'} and value['control'] in controls, 'unknown nested slot control')
+                seen.append(value['control'])
     require(len(seen) == len(set(seen)) and set(seen) == set(controls), 'composition must consume each control exactly once')
 
 
@@ -163,37 +141,48 @@ def validate_request(request, prepared):
     for item in official['source_paths']:
         require(sha(source / item['path']) == item['sha256'], 'declared source closure mismatch: ' + item['path'])
     fixture = definition['fixture']
+    if fixture['container']['layout'].startswith('composition-v'):
+        from demo_differential.actual_inputs import validate_popup_plan
+        validate_popup_plan(definition)
     require(type(fixture['viewport']['dpr']) in (float, int), 'resolve actual native DPR before Web execution')
     require(fixture['theme'].get('algorithm', 'default') in ('default', 'dark', 'compact'), 'unsupported theme algorithm')
     require(set(fixture['theme']) <= {'algorithm', 'token', 'components', 'inherit', 'hashed', 'cssVar'}, 'unknown theme input')
-    require(fixture['container']['layout'] in ('row', 'column', 'wrap', 'composition-v1'), 'unsupported fixture layout')
+    require(fixture['container']['layout'] in ('row', 'column', 'wrap', 'composition-v1', 'composition-v2'), 'unsupported fixture layout')
     require(fixture['parent_policy'] in ('accept', 'reject'), 'scripted parent policy is not implemented')
     require(fixture['locale'] in ('zh-CN', 'en-US'), 'unsupported component locale')
     require(fixture['format_locale'] == fixture['locale'], 'independent format locale adapter is not implemented')
     require(fixture['fonts'] and len(request['font_files']) == len(fixture['fonts']), 'font chain missing')
-    fonts = []
-    pinned = {r['sha256'] for r in central_fonts()}
     for expected, actual in zip(fixture['fonts'], request['font_files']):
-        require(set(actual) == {'identity', 'path', 'sha256', 'face_index', 'weight'}, 'font descriptor fields')
-        require({k: actual[k] for k in expected} == expected, 'font descriptor mismatch')
-        path = output_path(actual['path'])
-        require(path.is_file() and sha(path) == expected['sha256'], 'font bytes mismatch')
+        admit_font(expected, actual, fixture['font_policy'])
         require(actual['face_index'] == 0, 'nonzero font collection face not implemented')
-        require(actual['weight'] == 400, 'unlocked font weight/synthesis policy')
-        if fixture['font_policy'] == 'pinned':
-            require(actual['sha256'] in pinned, 'pinned font must use central native resource lock')
-        fonts.append(actual)
     if official['mode'] == 'official-component-adapted':
-        require(set(fixture['props']) == ({'controls', 'composition'} if fixture['container']['layout'] == 'composition-v1' else {'controls'}),
+        require(set(fixture['props']) == ({'controls', 'composition'} if fixture['container']['layout'].startswith('composition-v') else {'controls'}),
                 'adapted props require declared controls/composition map')
         controls = fixture['props']['controls']
         require(isinstance(controls, dict) and controls, 'no controls declared')
         require(set(fixture['data']) <= set(controls) and set(fixture['slots']) <= set(controls), 'unconsumed fixture data/slots')
-        slot_fields = {'Button': {'content', 'prefix', 'caption'}, 'Input': {'prefix', 'suffix', 'caption'}, 'Select': {'caption'}}
+        slot_fields = {'Button': {'content', 'prefix', 'caption'}, 'Input': {'prefix', 'suffix', 'caption'}, 'Select': {'caption', 'prefix', 'popup'}}
         data_fields = {'Button': set(), 'Input': {'value', 'defaultValue'}, 'Select': {'value', 'defaultValue', 'options'}}
         for target, entry in controls.items():
             require(entry.get('component') in PUBLIC_PROPS, 'unsupported official component')
-            require(set(entry) <= PUBLIC_PROPS[entry['component']] | {'component', 'width'}, 'unknown/unconsumed public props: ' + target)
+            require(set(entry) <= PUBLIC_PROPS[entry['component']] | {'component', 'width', 'localTheme', 'recipe', 'marginBlock'}, 'unknown/unconsumed public props: ' + target)
+            if 'localTheme' in entry:
+                validate_local_theme(entry['localTheme'])
+            if 'recipe' in entry:
+                require(SELECT_RECIPES.get(target) == entry['recipe'], 'unknown source parameter wrapper')
+            if 'marginBlock' in entry:
+                require(type(entry['marginBlock']) in (int, float) and 0 <= entry['marginBlock'] <= 4096, 'external margin')
+            for field in ('status', 'variant', 'mode', 'direction', 'optionFilterProp'):
+                if field in entry:
+                    require(entry[field] in {'status': ('warning', 'error', ''), 'variant': ('outlined', 'filled', 'borderless', 'underlined'),
+                        'mode': ('multiple', 'tags'), 'direction': ('ltr', 'rtl'), 'optionFilterProp': ('label', 'value')}[field], 'unknown public enum: ' + field)
+            if 'tokenSeparators' in entry:
+                require(isinstance(entry['tokenSeparators'], list) and 0 < len(entry['tokenSeparators']) <= 16 and
+                        all(isinstance(v, str) and 0 < len(v) <= 16 for v in entry['tokenSeparators']), 'token separator limit')
+            for field in ('maxTagCount', 'maxTagTextLength', 'maxCount', 'listHeight'):
+                if field in entry:
+                    require((field == 'maxTagCount' and entry[field] == 'responsive') or
+                            type(entry[field]) is int and 0 <= entry[field] <= 10000, 'public count/height limit')
             if 'width' in entry:
                 require(type(entry['width']) in (int, float) and 0 < entry['width'] <= 16384, 'width must be a finite external layout number')
             for key in ('disabled', 'loading', 'danger', 'ghost', 'block', 'allowClear', 'readOnly', 'open', 'defaultOpen', 'virtual'):
@@ -209,18 +198,32 @@ def validate_request(request, prepared):
                 scalar = type(value) in (str, int, float)
                 icon = (key in ('prefix', 'suffix') and isinstance(value, dict) and set(value) == {'icon'} and
                         isinstance(value['icon'], str) and re.fullmatch(r'[A-Z][A-Za-z0-9]*(Outlined|Filled|TwoTone)', value['icon']))
-                require(scalar or icon, 'unsupported slot content/CSS/JS: ' + key)
+                nested = (key in ('prefix', 'popup') and isinstance(value, dict) and set(value) == {'control'} and
+                          target in ('gallery.select.virtual', 'gallery.select.async') and value['control'] in controls)
+                require(scalar or icon or nested, 'unsupported slot content/CSS/JS: ' + key)
             if entry['component'] == 'Select':
-                require(isinstance(data.get('options'), list) and data['options'], 'Select options required')
+                require(isinstance(data.get('options'), list) and len(data['options']) <= 10000, 'Select options required/limit')
+                flat = []
                 for option in data['options']:
-                    require(set(option) <= {'value', 'label', 'disabled'} and {'value', 'label'} <= set(option), 'invalid option')
-                require(len({x['value'] for x in data['options']}) == len(data['options']), 'duplicate option key')
-        if fixture['container']['layout'] == 'composition-v1':
+                    if 'options' in option:
+                        require(set(option) == {'label', 'title', 'options'} and isinstance(option['label'], str) and
+                                isinstance(option['title'], str) and isinstance(option['options'], list), 'invalid option group')
+                        flat.extend(option['options'])
+                    else: flat.append(option)
+                require(len(flat) <= 10000, 'Select flat option limit')
+                for option in flat:
+                    require(set(option) <= {'value', 'label', 'disabled'} and {'value', 'label'} <= set(option) and
+                            type(option['value']) in (str, int) and isinstance(option['label'], str) and
+                            type(option.get('disabled', False)) is bool, 'invalid option')
+                require(len({(type(x['value']), x['value']) for x in flat}) == len(flat), 'duplicate option key')
+        if fixture['container']['layout'].startswith('composition-v'):
             validate_composition(fixture['props']['composition'], controls, fixture['slots'])
         # Every changed input is declared, with an independent reason, rather than a silent adaptation.
         fields = ('props', 'slots', 'data', 'container', 'theme', 'parent_policy')
+        if definition['native']['source_function'] in ('add_button_base_samples', 'add_input_base_samples', 'add_select_samples'):
+            fields += ('fonts',)
         require(len(official['adaptation']) == len(fields) and all(row['reason'].strip() for row in official['adaptation']),
-                'adaptation requires six unique input fields with nonempty source reasons')
+                'adaptation requires all unique input fields with nonempty source reasons (pilot includes locked fonts)')
         changes = {row['field']: row['value'] for row in official['adaptation']}
         require(set(changes) == set(fields), 'unknown/duplicate adaptation field')
         for key in fields:
@@ -245,7 +248,7 @@ def validate_observations(directory, request):
     directory = output_path(directory)
     path = directory / 'observations.jsonl'
     require(path.is_file() and path.stat().st_size > 0, 'missing observations')
-    text = path.read_text()
+    text = path.read_text(encoding='utf-8')
     require(text.endswith('\n'), 'truncated JSONL')
     from demo_differential.protocol import loads
     records = [validate('observation', loads(line)) for line in text.splitlines()]
@@ -277,6 +280,9 @@ def validate_observations(directory, request):
                 'missing new paint receipt')
     require(records[-1]['completed_steps'] == expected_steps and
             records[-1]['completed_checkpoints'] == [c['step'] for c in definition['checkpoints']], 'incomplete completion sets')
+    if definition['fixture']['container']['layout'].startswith('composition-v'):
+        from demo_differential.actual_inputs import validate_timeline
+        validate_timeline(definition, {'records': records}, 'web')
     return records
 
 
@@ -327,10 +333,13 @@ def execute(request, prepared_dir, output, *, reference='locked', publish_cache=
                   'adapter_sha256': adapter_sha256(), 'adapter_closure_sha256': code_hash(),
                   'fixture_sha256': digest(definition['fixture']), 'case_sha256': digest(definition), 'protocol': key_inputs['protocol'],
                   'font_lock_sha256': sha(ROOT / lock['font_lock']),
-                  'font_files': environment['font_files'], 'actual_font_sources': [font_metadata(x['path']) for x in request['font_files']],
+                  'font_files': environment['font_files'],
+                  'actual_font_sources': [admit_font(expected, actual, definition['fixture']['font_policy'])
+                                          for expected, actual in zip(definition['fixture']['fonts'], request['font_files'])],
                   'environment': environment, 'cache_key': key,
                   'python': sys.version, 'python_libraries': []}
-    config = {'prepared': prepared, 'request': request, 'output': str(output), 'build': str(bundle), 'provenance': provenance}
+    config = {'prepared': prepared, 'request': request, 'output': str(output), 'build': str(bundle), 'provenance': provenance,
+              'font_worker': (HERE / 'font_faces.mjs').as_uri()}
     (output / 'worker.json').write_bytes(canonical(config) + b'\n')
     (output / 'request.json').write_bytes(canonical(request) + b'\n')
     with (output / 'execute.log').open('wb') as log:
@@ -385,6 +394,11 @@ def main():
     sub.add_parser('identity')
     fonts = sub.add_parser('fonts')
     fonts.add_argument('--output', required=True)
+    fonts.add_argument('--weights', nargs='+', type=int, choices=(400, 500, 600), default=[400, 500, 600])
+    fonts.add_argument('--without-emoji', action='store_true')
+    fonts.add_argument('--fonttools-mode', choices=('BUNDLED', 'SYSTEM'), default='BUNDLED')
+    fonts.add_argument('--fonttools-lib')
+    fonts.add_argument('--offline', action='store_true')
     run = sub.add_parser('run')
     run.add_argument('--request', required=True)
     run.add_argument('--prepared', required=True)
@@ -396,7 +410,8 @@ def main():
         if args.command == 'identity':
             result = {'adapter_id': ADAPTER_ID, 'adapter_sha256': adapter_sha256(), 'code_sha256': code_hash()}
         elif args.command == 'fonts':
-            result = prepare_fonts(args.output)
+            result = prepare_fonts(args.output, weights=args.weights, emoji=not args.without_emoji,
+                                   mode=args.fonttools_mode, fonttools_lib=args.fonttools_lib, offline=args.offline)
         else:
             result = execute(read(args.request), args.prepared, args.output, reference=args.reference,
                              publish_cache=not args.no_cache_publish)

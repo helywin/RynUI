@@ -31,6 +31,29 @@ struct SelectInputSnapshot final {
     bool allow_clear{};
     bool controlled_value{};
     bool controlled_open{};
+    SelectMode mode{};
+    ControlSize size{};
+    InputVariant variant{};
+    InputStatus status{};
+    String placeholder;
+    String not_found;
+    float list_height{};
+    TextDirection direction{};
+    bool virtual_list{};
+    bool option_renderer{};
+    bool tag_renderer{};
+    bool popup_renderer{};
+    bool async_source{};
+    std::size_t max_tag_count{};
+    std::size_t max_tag_text{};
+    std::size_t max_count{};
+    bool responsive_tags{};
+    std::vector<String> separators;
+    runtime::ComponentId selected_root;
+    SelectOptionField filter_field{};
+    runtime::ComponentId popup_root;
+    runtime::ComponentId popup_body;
+    runtime::ComponentId list_root;
 };
 
 class SelectComponentHost final : public WindowComponentParticipant {

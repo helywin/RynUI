@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -104,6 +105,7 @@ public:
     std::set<std::pair<std::uint32_t, std::uint32_t>> before_factory;
     std::vector<runtime::ComponentId> factory_roots;
     Json observed_initial_inputs;
+    Json observed_inputs;
     std::vector<animation::AnimationScopeId> before_scopes;
     std::vector<animation::AnimationScopeId> sample_scopes;
     std::vector<runtime::ComponentId> sample_components;
@@ -297,20 +299,27 @@ public:
         if (name != "sample" && name != scenario.route.sample_identity) {
             return bounds(actions.app, target(name));
         }
-        if (factory_roots.empty()) {
-            throw std::runtime_error("sample factory boundary was not observed");
-        }
-        auto area = bounds(actions.app, factory_roots.front());
+        std::optional<runtime::Rect> area;
         for (const auto root : factory_roots) {
+            if (!actions.app.components().contains(root)) {
+                continue;
+            }
             const auto value = bounds(actions.app, root);
-            const auto right = std::max(area.x + area.width, value.x + value.width);
-            const auto bottom = std::max(area.y + area.height, value.y + value.height);
-            area.x = std::min(area.x, value.x);
-            area.y = std::min(area.y, value.y);
-            area.width = right - area.x;
-            area.height = bottom - area.y;
+            if (!area) {
+                area = value;
+                continue;
+            }
+            const auto right = std::max(area->x + area->width, value.x + value.width);
+            const auto bottom = std::max(area->y + area->height, value.y + value.height);
+            area->x = std::min(area->x, value.x);
+            area->y = std::min(area->y, value.y);
+            area->width = right - area->x;
+            area->height = bottom - area->y;
         }
-        return area;
+        if (!area) {
+            throw std::runtime_error("sample factory has no live retained roots");
+        }
+        return *area;
     }
 
     [[nodiscard]] Json text_record(ryn::detail::TextSceneId scene, runtime::ComponentId component, bool icon = false) {
@@ -337,6 +346,8 @@ public:
         const auto* capture =
             pointer && pointer->capture ? actions.app.interactions().find(*pointer->capture) : nullptr;
         Json::Object state{{"focused", focus && contains(name, focus->component)},
+                           {"instance", std::to_string(page.generation) + ":" + std::to_string(id.index) + ":" +
+                                            std::to_string(id.generation)},
                            {"captured", capture && contains(name, capture->component)},
                            {"branch_active", actions.app.components().branch_active(id)},
                            {"key_source", "static-semantic-target"},
@@ -492,11 +503,12 @@ public:
         if (sample) {
             Json::Object controls;
             Json::Object control_tokens;
-            for (const auto& item : scenario.definition.at("native").at("targets").array()) {
-                if (item.string() != "sample" && item.string() != scenario.route.sample_identity) {
-                    const auto control = snapshot(item.string());
-                    controls.emplace(item.string(), control.at("state"));
-                    control_tokens.emplace(item.string(), control.at("tokens"));
+            for (const auto& identity : input_targets()) {
+                const auto id = actions.pages.target(identity);
+                if (id.valid() && actions.app.components().contains(id)) {
+                    const auto control = snapshot(identity);
+                    controls.emplace(identity, control.at("state"));
+                    control_tokens.emplace(identity, control.at("tokens"));
                 }
             }
             state["controls"] = std::move(controls);
@@ -516,77 +528,6 @@ public:
                             {"tokens", std::move(tokens)},
                             {"owner_generation", count(page.generation)},
                             {"scene_revision", count(actions.scene_revision())}};
-    }
-
-    Json applied_inputs() {
-        Json::Object controls;
-        Json::Object data;
-        const auto& requested = actions.context->fixture.at("props").at("controls").object();
-        for (const auto& [name, declaration] : requested) {
-            const auto id = target(name);
-            Json::Object actual{{"width", target_bounds(name).width}};
-            Json::Object values;
-            const auto size_name = [](ControlSize size) {
-                return size == ControlSize::Small ? "small" : size == ControlSize::Large ? "large" : "middle";
-            };
-            if (declaration.at("component").string() == "Button") {
-                const auto value = actions.app.snapshot(id);
-                actual.emplace("component", "Button");
-                actual.emplace("disabled", value.disabled);
-                actual.emplace("loading", value.loading);
-                actual.emplace("size", size_name(value.size));
-                const auto type = value.type == ButtonType::Primary || value.type == ButtonType::Danger ? "primary"
-                                  : value.type == ButtonType::Text                                      ? "text"
-                                  : value.type == ButtonType::Dashed                                    ? "dashed"
-                                  : value.type == ButtonType::Link                                      ? "link"
-                                                                                                        : "default";
-                actual.emplace("type", type);
-                actual.emplace("danger", value.type == ButtonType::Danger || value.color == ButtonColor::Danger);
-            } else if (declaration.at("component").string() == "Input") {
-                const auto value = actions.inputs.input_snapshot(id);
-                actual.emplace("component", "Input");
-                actual.emplace("disabled", value.disabled);
-                actual.emplace("readOnly", value.read_only);
-                actual.emplace("allowClear", value.allow_clear);
-                actual.emplace("placeholder", std::string{value.placeholder.bytes()});
-                actual.emplace("size", size_name(actions.inputs.size(id)));
-                if (value.max_length) {
-                    actual.emplace("maxLength", count(*value.max_length));
-                }
-                const auto mounted = std::ranges::find(actions.inputs.mounted_inputs(), id,
-                                                       &ryn::detail::MountedInputComponent::component);
-                if (mounted == actions.inputs.mounted_inputs().end()) {
-                    throw std::runtime_error("declared Input does not resolve to an actual mounted editor");
-                }
-                values.emplace(value.controlled ? "value" : "defaultValue",
-                               std::string{actions.inputs.editors().require(mounted->editor).value()});
-            } else if (declaration.at("component").string() == "Select") {
-                const auto value = actions.app.services().select().input_snapshot(id);
-                const auto state = actions.app.services().select().snapshot(id);
-                actual.emplace("component", "Select");
-                actual.emplace("disabled", value.disabled);
-                actual.emplace("loading", value.loading);
-                actual.emplace("showSearch", value.show_search);
-                actual.emplace("allowClear", value.allow_clear);
-                if (value.controlled_open) {
-                    actual.emplace("open", state.visible);
-                }
-                Json::Array options;
-                for (const auto& option : value.options) {
-                    options.emplace_back(Json::Object{{"value", selected(SelectSelection{option.value})},
-                                                      {"label", std::string{option.label.bytes()}},
-                                                      {"disabled", option.disabled},
-                                                      {"group", option.group}});
-                }
-                values.emplace("options", std::move(options));
-                values.emplace(value.controlled_value ? "value" : "defaultValue", selected(state.value));
-            } else {
-                throw std::runtime_error("native source input query has no declared component adapter");
-            }
-            controls.emplace(name, std::move(actual));
-            data.emplace(name, std::move(values));
-        }
-        return Json::Object{{"controls", std::move(controls)}, {"data", std::move(data)}};
     }
 
     void emit(std::string_view type, std::string_view step, Json receipt, Json::Array targets = {},
@@ -610,6 +551,7 @@ public:
                                {"input_setup", "WindowInputEvent::focus_gained"},
                                {"factory_root_count", count(factory_roots.size())},
                                {"actual_initial_inputs", observed_initial_inputs},
+                               {"actual_inputs", observed_inputs},
                                {"lifecycle", lifecycle()},
                                {"readback", captures.empty() ? Json{} : readback_evidence}};
         Json::Object effective = actions.context->fixture.object();
@@ -733,11 +675,414 @@ gallery_demo_text_snapshot(const ryn::detail::TextSceneService& service, ryn::de
                         {"first_baseline", measurement.first_baseline}};
 }
 
+Json GalleryDemoInputBridge::query_inputs(std::span<const runtime::ComponentId> factory_roots, std::string_view step,
+                                          bool initial) {
+    Json::Object controls;
+    Json::Object data;
+    Json::Object slots;
+    Json::Object themes;
+    Json::Object slot_targets;
+    Json::Object slot_composition;
+    Json::Object contexts;
+    Json::Object instances;
+    Json::Object current;
+    Json::Object aliases;
+    Json::Array ordered;
+    const auto generation = actions.pages.snapshot().generation;
+    const auto sequence = ++input_query_sequence;
+    const auto names = input_targets();
+    const auto live = [&](runtime::ComponentId id) {
+        return id.valid() && actions.app.components().contains(id) && actions.app.components().scope(id).active() &&
+               actions.app.components().config_scope(id)->active() &&
+               std::ranges::any_of(factory_roots, [&](auto root) {
+                   return actions.app.components().contains(root) && owns(actions.app, root, id);
+               });
+    };
+    const auto scope_token = [](auto& scopes, const auto& scope) {
+        for (std::size_t i = 0; i < scopes.size(); ++i) {
+            if (scopes[i].lock() == scope) {
+                return std::to_string(i + 1);
+            }
+        }
+        scopes.emplace_back(scope);
+        return std::to_string(scopes.size());
+    };
+    std::vector<std::pair<std::string, runtime::ComponentId>> named;
+    for (const auto& name : names) {
+        const auto id = actions.pages.target(name);
+        if (live(id)) {
+            named.emplace_back(name, id);
+        }
+    }
+    for (const auto& name : names) {
+        ordered.emplace_back(name);
+        const auto id = actions.pages.target(name);
+        if (!live(id)) {
+            instances.emplace(name, Json::Object{{"status", "missing"},
+                                                 {"instance", ""},
+                                                 {"owner_generation", count(generation)},
+                                                 {"parent_target", ""},
+                                                 {"slot", ""},
+                                                 {"first_observed_query", 0},
+                                                 {"reason", "no-live-host"}});
+            continue;
+        }
+        const auto token =
+            std::to_string(generation) + ":" + std::to_string(id.index) + ":" + std::to_string(id.generation);
+        const auto [first, inserted] = input_first_observed.emplace(token, sequence);
+        Json::Object instance{
+            {"status", "mounted"}, {"instance", token}, {"owner_generation", count(generation)},
+            {"parent_target", ""}, {"slot", ""},        {"first_observed_query", count(first->second)}};
+        const auto* focused = actions.app.focus().state().focused
+                                  ? actions.app.interactions().find(*actions.app.focus().state().focused)
+                                  : nullptr;
+        Json::Object live{{"focused", focused && semantic(actions.app.focus().state().focused) == name}};
+        const auto config = actions.app.components().config_scope(id);
+        const auto theme = actions.app.components().theme_scope(id);
+        config->ensure_live();
+        const auto& applied = config->snapshot();
+        contexts.emplace(name,
+                         Json::Object{{"config_scope", scope_token(input_config_scopes, config)},
+                                      {"theme_scope", scope_token(input_theme_scopes, theme)},
+                                      {"config_generation", count(config->generation())},
+                                      {"theme_generation", count(theme->generation())},
+                                      {"locale", applied.locale.effective.value()},
+                                      {"format_locale", applied.format_locale.effective.value()},
+                                      {"direction", applied.direction == TextDirection::RightToLeft ? "rtl" : "ltr"}});
+        for (const auto& [parent_name, parent_id] : named) {
+            if (parent_id == id || std::ranges::find(actions.app.services().select().mounted(), parent_id) ==
+                                       actions.app.services().select().mounted().end()) {
+                continue;
+            }
+            const auto parent = actions.app.services().select().input_snapshot(parent_id);
+            const auto selector =
+                actions.inputs.input_snapshot(actions.app.services().select().snapshot(parent_id).selector);
+            for (const auto& [slot, root] :
+                 {std::pair{"prefix", selector.prefix}, std::pair{"popup", parent.popup_root}}) {
+                if (root.valid() && actions.app.components().contains(root) && owns(actions.app, root, id)) {
+                    instance["parent_target"] = parent_name;
+                    instance["slot"] = slot;
+                }
+            }
+        }
+        const auto& node = actions.app.nodes().require(actions.app.components().root(id));
+        Json::Object actual;
+        if (node.external_layout.width) {
+            actual.emplace("width", *node.external_layout.width);
+        }
+        if (node.external_layout.margin.top || node.external_layout.margin.bottom) {
+            if (node.external_layout.margin.top == node.external_layout.margin.bottom) {
+                actual.emplace("marginBlock", node.external_layout.margin.top);
+            } else {
+                actual.emplace("marginTop", node.external_layout.margin.top);
+                actual.emplace("marginBottom", node.external_layout.margin.bottom);
+            }
+        }
+        Json::Object values;
+        Json::Object content;
+        themes.emplace(name, gallery_demo_applied_theme(actions.app, id));
+        const auto size_name = [](ControlSize size) {
+            return size == ControlSize::Small ? "small" : size == ControlSize::Large ? "large" : "middle";
+        };
+        const auto variant_name = [](InputVariant value) {
+            return value == InputVariant::Filled       ? "filled"
+                   : value == InputVariant::Borderless ? "borderless"
+                   : value == InputVariant::Underlined ? "underlined"
+                                                       : "outlined";
+        };
+        const auto status_name = [](InputStatus value) {
+            return value == InputStatus::Warning ? "warning" : value == InputStatus::Error ? "error" : "";
+        };
+        // Choose by the actual mounted host identity, never the fixture's
+        // claimed component type. A wrong declaration must be detectable.
+        if (std::ranges::find(actions.app.mounted_buttons(), id, &ryn::detail::MountedButtonComponent::component) !=
+            actions.app.mounted_buttons().end()) {
+            const auto value = actions.app.snapshot(id);
+            actual.emplace("component", "Button");
+            actual.emplace("disabled", value.disabled);
+            actual.emplace("loading", value.loading);
+            actual.emplace("size", size_name(value.size));
+            const auto type = value.type == ButtonType::Primary || value.type == ButtonType::Danger ? "primary"
+                              : value.type == ButtonType::Text                                      ? "text"
+                              : value.type == ButtonType::Dashed                                    ? "dashed"
+                              : value.type == ButtonType::Link                                      ? "link"
+                                                                                                    : "default";
+            actual.emplace("type", type);
+            actual.emplace("danger", value.type == ButtonType::Danger || value.color == ButtonColor::Danger);
+            content.emplace("content", gallery_demo_retained_content(actions.app, id));
+        } else if (std::ranges::find(actions.inputs.mounted_inputs(), id,
+                                     &ryn::detail::MountedInputComponent::component) !=
+                   actions.inputs.mounted_inputs().end()) {
+            const auto value = actions.inputs.input_snapshot(id);
+            actual.emplace("component", "Input");
+            actual.emplace("disabled", value.disabled);
+            actual.emplace("readOnly", value.read_only);
+            actual.emplace("allowClear", value.allow_clear);
+            actual.emplace("placeholder", std::string{value.placeholder.bytes()});
+            actual.emplace("size", size_name(actions.inputs.size(id)));
+            actual.emplace("status", status_name(actions.inputs.status(id)));
+            actual.emplace("variant", variant_name(actions.inputs.variant(id)));
+            content.emplace("prefix", gallery_demo_retained_content(actions.app, value.prefix));
+            content.emplace("suffix", gallery_demo_retained_content(actions.app, value.suffix));
+            if (value.max_length) {
+                actual.emplace("maxLength", count(*value.max_length));
+            }
+            const auto mounted =
+                std::ranges::find(actions.inputs.mounted_inputs(), id, &ryn::detail::MountedInputComponent::component);
+            if (mounted == actions.inputs.mounted_inputs().end()) {
+                throw std::runtime_error("declared Input does not resolve to an actual mounted editor");
+            }
+            const auto& editor = actions.inputs.editors().require(mounted->editor);
+            values.emplace(value.controlled ? "value" : "defaultValue", std::string{editor.value()});
+            live.emplace("value", std::string{editor.value()});
+            const auto selection = editor.selection();
+            live.emplace("selection", Json::Object{{"start", count(selection.anchor)},
+                                                   {"end", count(selection.caret)},
+                                                   {"unit", "UTF-8-bytes"}});
+        } else if (std::ranges::find(actions.app.services().select().mounted(), id) !=
+                   actions.app.services().select().mounted().end()) {
+            const auto value = actions.app.services().select().input_snapshot(id);
+            const auto state = actions.app.services().select().snapshot(id);
+            if (value.popup_renderer && value.popup_root.valid() &&
+                actions.app.components().contains(value.popup_root)) {
+                aliases.emplace(name + ".popup",
+                                Json::Object{{"parent_target", name},
+                                             {"owner_generation", count(generation)},
+                                             {"instance", std::to_string(generation) + ":" +
+                                                              std::to_string(value.popup_root.index) + ":" +
+                                                              std::to_string(value.popup_root.generation)}});
+            }
+            actual.emplace("component", "Select");
+            actual.emplace("disabled", value.disabled);
+            actual.emplace("loading", value.loading);
+            actual.emplace("showSearch", value.show_search);
+            actual.emplace("allowClear", value.allow_clear);
+            actual.emplace("size", size_name(value.size));
+            actual.emplace("status", status_name(value.status));
+            actual.emplace("variant", variant_name(value.variant));
+            actual.emplace("placeholder", std::string{value.placeholder.bytes()});
+            actual.emplace("notFoundContent", std::string{value.not_found.bytes()});
+            actual.emplace("listHeight", value.list_height);
+            actual.emplace("direction", value.direction == TextDirection::RightToLeft ? "rtl" : "ltr");
+            actual.emplace("virtual", value.virtual_list);
+            actual.emplace("optionFilterProp", value.filter_field == SelectOptionField::Label ? "label" : "value");
+            if (value.mode != SelectMode::Single) {
+                actual.emplace("mode", value.mode == SelectMode::Tags ? "tags" : "multiple");
+            }
+            if (value.responsive_tags) {
+                actual.emplace("maxTagCount", "responsive");
+            } else if (value.max_tag_count != std::numeric_limits<std::size_t>::max()) {
+                actual.emplace("maxTagCount", count(value.max_tag_count));
+            }
+            if (value.max_tag_text != std::numeric_limits<std::size_t>::max()) {
+                actual.emplace("maxTagTextLength", count(value.max_tag_text));
+            }
+            if (value.max_count != std::numeric_limits<std::size_t>::max()) {
+                actual.emplace("maxCount", count(value.max_count));
+            }
+            Json::Array separators;
+            for (const auto& separator : value.separators) {
+                separators.emplace_back(std::string{separator.bytes()});
+            }
+            actual.emplace("tokenSeparators", separators);
+            actual.emplace("applied_renderers", Json::Object{{"option", value.option_renderer},
+                                                             {"tag", value.tag_renderer},
+                                                             {"popup", value.popup_renderer},
+                                                             {"async_source", value.async_source}});
+            const auto selector = actions.inputs.input_snapshot(state.selector);
+            content.emplace("prefix", gallery_demo_retained_content(actions.app, selector.prefix, value.selected_root));
+            Json::Object members;
+            for (const auto& [slot, root] :
+                 {std::pair{"prefix", selector.prefix}, std::pair{"popup", value.popup_root}}) {
+                Json::Array targets;
+                if (root.valid() && actions.app.components().contains(root)) {
+                    for (const auto& [identity, child] : named) {
+                        if (owns(actions.app, root, child)) {
+                            targets.emplace_back(Json::Object{{"control", identity}});
+                        }
+                    }
+                }
+                members.emplace(slot, targets);
+            }
+            slot_targets.emplace(name, members);
+            if (value.popup_body.valid() && actions.app.components().contains(value.popup_body) &&
+                value.list_root.valid() && actions.app.components().contains(value.list_root)) {
+                const std::array roots{value.popup_body};
+                const auto tree = gallery_demo_retained_tree(actions.app, roots, named, value.list_root);
+                slot_composition.emplace(name, Json::Object{{"popup", tree.at("roots").array().front()}});
+            }
+            live.emplace("open", state.visible);
+            live.emplace("query", std::string{state.query.bytes()});
+            if (value.controlled_open) {
+                actual.emplace("open", state.visible);
+            }
+            Json::Array options;
+            for (const auto& option : value.options) {
+                options.emplace_back(Json::Object{{"value", selected(SelectSelection{option.value})},
+                                                  {"label", std::string{option.label.bytes()}},
+                                                  {"disabled", option.disabled},
+                                                  {"key", std::string{option.key.bytes()}},
+                                                  {"group", option.group}});
+            }
+            values.emplace("options", std::move(options));
+            if (value.mode == SelectMode::Single) {
+                live.emplace("value", selected(state.value));
+                values.emplace(value.controlled_value ? "value" : "defaultValue", selected(state.value));
+            } else {
+                Json::Array selected_values;
+                for (const auto& item : state.values) {
+                    selected_values.push_back(selected(SelectSelection{item}));
+                }
+                live.emplace("value", selected_values);
+                values.emplace(value.controlled_value ? "value" : "defaultValue", selected_values);
+            }
+        } else {
+            throw std::runtime_error("native source input query has no declared component adapter");
+        }
+        if (const auto seed = values.find("defaultValue"); seed != values.end()) {
+            const auto [saved, fresh] = input_uncontrolled_seeds.emplace(token, seed->second);
+            seed->second = saved->second;
+        }
+        instances.emplace(name, std::move(instance));
+        current.emplace(name, std::move(live));
+        controls.emplace(name, std::move(actual));
+        data.emplace(name, std::move(values));
+        slots.emplace(name, std::move(content));
+    }
+    std::vector<runtime::ComponentId> live_roots;
+    for (const auto root : factory_roots) {
+        if (actions.app.components().contains(root) && actions.app.components().scope(root).active()) {
+            live_roots.push_back(root);
+        }
+    }
+    std::vector<std::pair<std::string, runtime::ComponentId>> feedback_targets;
+    const auto collect_targets = [&](auto&& self, const Json& node) -> void {
+        if (node.at("component").string() == "source-feedback") {
+            const auto& identity = node.at("identity").string();
+            const auto target = actions.pages.target("gallery.source-feedback." + identity);
+            if (live(target)) {
+                feedback_targets.emplace_back(identity, target);
+            }
+        }
+        if (node.contains("children")) {
+            for (const auto& child : node.at("children").array()) {
+                self(self, child);
+            }
+        }
+    };
+    if (scenario.definition.contains("fixture")) {
+        const auto& props = scenario.definition.at("fixture").at("props");
+        if (props.contains("composition")) {
+            collect_targets(collect_targets, props.at("composition"));
+        }
+    }
+    auto composition = gallery_demo_retained_tree(actions.app, live_roots, named, {}, feedback_targets);
+    Json::Object feedbacks;
+    const auto collect_text = [&](auto&& self, const Json& node) -> void {
+        if (node.at("component").string() == "source-feedback" &&
+            !feedbacks.emplace(node.at("identity").string(), node.at("content")).second) {
+            throw std::runtime_error("authored feedback identity is duplicated");
+        }
+        if (node.contains("children")) {
+            for (const auto& child : node.at("children").array()) {
+                self(self, child);
+            }
+        }
+    };
+    for (const auto& root : composition.at("roots").array()) {
+        collect_text(collect_text, root);
+    }
+    return Json::Object{{"version", 1},
+                        {"phase", initial ? "initial" : "settled"},
+                        {"step", step},
+                        {"query_seq", count(sequence)},
+                        {"page_generation", count(generation)},
+                        {"ordered_targets", std::move(ordered)},
+                        {"instances", std::move(instances)},
+                        {"contexts", std::move(contexts)},
+                        {"current", std::move(current)},
+                        {"aliases", std::move(aliases)},
+                        {"slot_composition", std::move(slot_composition)},
+                        {"source", "mounted hosts, applied editor state, retained slots/ThemeScope/layout"},
+                        {"controls", std::move(controls)},
+                        {"data", std::move(data)},
+                        {"slots", std::move(slots)},
+                        {"themes", std::move(themes)},
+                        {"slot_targets", std::move(slot_targets)},
+                        {"composition", std::move(composition)},
+                        {"feedbacks", std::move(feedbacks)}};
+}
+
 GalleryDemoInputBridge::GalleryDemoInputBridge(const GalleryDemoScenario& value, GalleryDemoNativeActions ports)
     : scenario(value), actions(std::move(ports)) {}
 
+std::vector<std::string> GalleryDemoInputBridge::input_targets() const {
+    std::vector<std::string> result;
+    if (!scenario.definition.contains("fixture")) {
+        // The isolated bridge-routing contract does not request input evidence.
+        for (const auto& name : scenario.definition.at("native").at("targets").array()) {
+            result.push_back(name.string());
+        }
+        return result;
+    }
+    const auto& controls = scenario.definition.at("fixture").at("props").at("controls").object();
+    const auto& slots = scenario.definition.at("fixture").at("slots").object();
+    for (const auto& name : scenario.definition.at("native").at("targets").array()) {
+        if (controls.contains(name.string())) {
+            result.push_back(name.string());
+        }
+    }
+    const auto add = [&](auto&& self, const std::string& name) -> void {
+        if (std::ranges::find(result, name) != result.end()) {
+            return;
+        }
+        result.push_back(name);
+        if (const auto found = slots.find(name); found != slots.end()) {
+            for (const auto key : {"prefix", "suffix", "popup"}) {
+                if (found->second.contains(key) && std::holds_alternative<Json::Object>(found->second.at(key).value) &&
+                    found->second.at(key).contains("control")) {
+                    self(self, found->second.at(key).at("control").string());
+                }
+            }
+        }
+    };
+    const auto visit = [&](auto&& self, const Json& node) -> void {
+        if (node.at("component").string() == "control") {
+            add(add, node.at("target").string());
+        }
+        if (node.contains("children")) {
+            for (const auto& child : node.at("children").array()) {
+                self(self, child);
+            }
+        }
+    };
+    visit(visit, scenario.definition.at("fixture").at("props").at("composition"));
+    for (std::size_t i = 0; i < result.size(); ++i) {
+        const auto found = slots.find(result[i]);
+        if (found != slots.end()) {
+            for (const auto key : {"prefix", "suffix", "popup"}) {
+                if (found->second.contains(key) && std::holds_alternative<Json::Object>(found->second.at(key).value) &&
+                    found->second.at(key).contains("control")) {
+                    add(add, found->second.at(key).at("control").string());
+                }
+            }
+        }
+    }
+    if (result.size() != controls.size()) {
+        throw std::runtime_error("input query composition/slot identity set is incomplete");
+    }
+    return result;
+}
+
 runtime::ComponentId GalleryDemoInputBridge::target(std::string_view name) {
-    const auto owner = actions.pages.target(name == "sample" ? scenario.route.sample_identity : name);
+    auto owner = actions.pages.target(name == "sample" ? scenario.route.sample_identity : name);
+    if (!owner.valid() && name.ends_with(".popup")) {
+        const auto parent = actions.pages.target(name.substr(0, name.size() - 6));
+        const auto& selectors = actions.app.services().select();
+        if (std::ranges::find(selectors.mounted(), parent) != selectors.mounted().end()) {
+            owner = selectors.input_snapshot(parent).popup_root;
+        }
+    }
     if (!owner.valid() || !actions.app.components().contains(owner)) {
         throw std::runtime_error("scenario semantic target is absent: " + std::string{name});
     }
@@ -752,13 +1097,18 @@ std::string GalleryDemoInputBridge::semantic(std::optional<input::InteractionId>
     if (!record) {
         return {};
     }
-    for (const auto& name : scenario.definition.at("native").at("targets").array()) {
-        const auto id = actions.pages.target(name.string());
-        if (id.valid() && owns(actions.app, id, record->component)) {
-            return name.string();
+    std::string result{"shell-or-other"};
+    runtime::ComponentId deepest;
+    for (const auto& name : input_targets()) {
+        const auto id = actions.pages.target(name);
+        if (id.valid() && actions.app.components().contains(id) && actions.app.components().scope(id).active() &&
+            actions.app.components().config_scope(id)->active() && owns(actions.app, id, record->component) &&
+            (!deepest.valid() || owns(actions.app, deepest, id))) {
+            result = name;
+            deepest = id;
         }
     }
-    return "shell-or-other";
+    return result;
 }
 
 Json GalleryDemoInputBridge::dispatch(const GalleryDemoAction& action) {
@@ -781,6 +1131,14 @@ Json GalleryDemoInputBridge::dispatch(const GalleryDemoAction& action) {
         const float y =
             area.y +
             area.height * static_cast<float>(params.contains("y_fraction") ? params.at("y_fraction").number() : .5);
+        const auto metrics = actions.metrics();
+        const runtime::Rect viewport{0, 0, static_cast<float>(metrics.at("logical_width").number()),
+                                     static_cast<float>(metrics.at("logical_height").number())};
+        const auto clip = actions.app.services().component_clip(owner, {viewport.width, viewport.height}, viewport);
+        if (x < clip.x || y < clip.y || x >= clip.x + clip.width || y >= clip.y + clip.height || x < 0 || y < 0 ||
+            x >= viewport.width || y >= viewport.height) {
+            throw std::runtime_error("pointer semantic target is outside its visible viewport/clip");
+        }
         const auto hit = actions.app.hit_test().hit_test({x, y});
         receipt["hit"] = semantic(hit);
         const auto kind = action.kind == "pointer-move"   ? input::PointerAction::move
@@ -916,15 +1274,20 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
 
     observer.actions.pages.request(scenario.route);
     observer.actions.pages.process();
+    if (observer.actions.pages.snapshot().failed) {
+        throw std::runtime_error("scenario page construction failed: " + observer.actions.pages.last_error());
+    }
     observer.actions.set_time(0);
     observer.actions.render();
     observer.sample_generation = observer.actions.pages.snapshot().generation;
     observer.remember_components();
-    observer.observed_initial_inputs = observer.applied_inputs();
+    observer.observed_initial_inputs = observer.query_inputs(observer.factory_roots, "setup", true);
+    observer.observed_inputs = observer.observed_initial_inputs;
     for (const auto& action : scenario.actions) {
         observer.remember_components();
         const auto receipt = observer.dispatch(action);
         observer.actions.render();
+        observer.observed_inputs = observer.query_inputs(observer.factory_roots, action.step);
         observer.completed_steps.emplace_back(action.step);
         observer.emit("receipt", action.step, receipt);
         if (action.kind == "checkpoint") {
@@ -949,7 +1312,8 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
             }
             observer.last_readback = evidence.readback_id;
             const auto nonce = scenario.nonce + "-capture-" + std::to_string(index);
-            observer.readback_evidence = Json::Object{{"nonce", nonce},
+            observer.readback_evidence = Json::Object{{"run_nonce", scenario.nonce},
+                                                      {"nonce", nonce},
                                                       {"checkpoint", action.step},
                                                       {"readback_id", count(evidence.readback_id)},
                                                       {"fence_id", count(evidence.fence_id)},

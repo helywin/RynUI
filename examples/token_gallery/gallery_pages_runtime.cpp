@@ -4243,6 +4243,24 @@ int run_gallery_pages(int argc, char** argv) {
             !(SDL_GetWindowFlags(static_cast<SDL_Window*>(platform.state->window())) & SDL_WINDOW_HIDDEN)) {
             throw std::runtime_error("Visual acceptance requires a hidden native window");
         }
+        if (demo_scenario) {
+            // Fixture dimensions are CSS/native logical units. Window coordinates
+            // are physical pixels on Windows and density-independent on Wayland.
+            const auto metrics = platform.state->window_metrics();
+            const auto& viewport = demo_context->fixture.at("viewport");
+            const double coordinate_scale = metrics.display_scale / metrics.pixel_density;
+            const auto width = static_cast<int>(std::lround(viewport.at("width").number() * coordinate_scale));
+            const auto height = static_cast<int>(std::lround(viewport.at("height").number() * coordinate_scale));
+            auto* window = static_cast<SDL_Window*>(platform.state->window());
+            if (width <= 0 || height <= 0 || !SDL_SetWindowSize(window, width, height) || !SDL_SyncWindow(window)) {
+                throw std::runtime_error("scenario logical viewport resize failed");
+            }
+            const auto resized = platform.state->window_metrics();
+            if (std::abs(resized.logical_width() - viewport.at("width").number()) > .001 ||
+                std::abs(resized.logical_height() - viewport.at("height").number()) > .001) {
+                throw std::runtime_error("scenario actual logical viewport differs from declared fixture");
+            }
+        }
         auto font_runtime = font::FontRuntime::create();
         if (!font_runtime) {
             throw std::runtime_error(font_runtime.error.diagnostic);

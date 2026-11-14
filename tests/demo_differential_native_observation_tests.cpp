@@ -107,6 +107,14 @@ void capture_controls() {
     std::get<Json::Object>(std::get<Json::Object>(forced_dpr.value).at("viewport").value)["dpr"] = 1.25;
     rejects([&] { gallery_demo_validate_capture(evidence(), 0, 7, metrics(), forced_dpr, provenance()); },
             "requested DPR was silently rewritten to native");
+    auto sized_fixture = fixture;
+    auto& viewport = std::get<Json::Object>(std::get<Json::Object>(sized_fixture.value).at("viewport").value);
+    viewport["width"] = 1440;
+    viewport["height"] = 900;
+    gallery_demo_validate_capture(evidence(), 0, 7, metrics(), sized_fixture, provenance());
+    viewport["width"] = 960;
+    rejects([&] { gallery_demo_validate_capture(evidence(), 0, 7, metrics(), sized_fixture, provenance()); },
+            "physical window coordinates masqueraded as declared logical viewport");
 }
 
 #if defined(RYNUI_DEMO_RECORDING_OBSERVATION)
@@ -172,6 +180,23 @@ GalleryDemoScenario font_scenario() {
 void font_controls() {
     auto scenario = font_scenario();
     gallery_demo_validate_font_chain(scenario);
+    auto variants = scenario;
+    // Descriptor admission is distinct from the real SFNT/glyph resource tests.
+    // A family may have a separately declared face at another weight.
+    auto semibold = variants.font_files.array().front();
+    std::get<Json::Object>(semibold.value)["weight"] = 600;
+    std::get<Json::Object>(semibold.value)["path"] = "metadata-only/SemiBold.ttf";
+    std::get<Json::Object>(semibold.value)["sha256"] = std::string(64, 'a');
+    auto semibold_declaration = semibold;
+    std::get<Json::Object>(semibold_declaration.value).erase("path");
+    std::get<Json::Array>(variants.font_files.value).push_back(semibold);
+    auto& fixture = std::get<Json::Object>(variants.definition.value).at("fixture");
+    auto& declarations = std::get<Json::Object>(fixture.value).at("fonts");
+    std::get<Json::Array>(declarations.value).push_back(semibold_declaration);
+    gallery_demo_validate_font_chain(variants);
+    std::get<Json::Array>(variants.font_files.value).push_back(semibold);
+    std::get<Json::Array>(declarations.value).push_back(semibold_declaration);
+    rejects([&] { gallery_demo_validate_font_chain(variants); }, "duplicate family/face/weight was accepted");
     auto font = scenario.font_files.array().front();
     std::get<Json::Object>(font.value)["source"] = "pinned-file";
     gallery_demo_validate_font_source(scenario, font, false);
@@ -241,8 +266,10 @@ void semantic_and_retirement_controls() {
     definition["native"] = Json::Object{{"targets", Json::Array{"gallery.state.default"}}};
     auto& configuration = std::get<Json::Object>(definition.at("fixture").value);
     configuration["data"] = Json::Object{};
-    configuration["props"] =
-        Json::Object{{"controls", Json::Object{{"gallery.state.default", Json::Object{{"component", "Button"}}}}}};
+    configuration["props"] = Json::Object{
+        {"controls", Json::Object{{"gallery.state.default", Json::Object{{"component", "Input"}, {"maxLength", 999}}}}},
+        {"composition", Json::Object{{"component", "control"}, {"target", "gallery.state.default"}}}};
+    configuration["slots"] = Json::Object{};
     configuration["parent_policy"] = "accept";
     configuration["viewport"] = Json::Object{{"dpr", "native"}};
     definition["checkpoints"] = Json::Array{Json::Object{{"targets", Json::Array{"gallery.state.default", "sample"}}},
@@ -304,6 +331,15 @@ void semantic_and_retirement_controls() {
             "non-editor default selection was fabricated");
     require(!target.at("text").array().empty() && target.at("tokens").contains("padding_inline"),
             "actual Button text/effective tokens missing");
+    const auto& applied = initial.at("resources").at("actual_initial_inputs");
+    require(applied.at("controls").at("gallery.state.default").at("component").string() == "Button" &&
+                !applied.at("controls").at("gallery.state.default").contains("maxLength"),
+            "actual input query echoed the fixture's deliberately wrong component/props");
+    require(!applied.at("composition").at("roots").array().empty() &&
+                applied.at("slots").at("gallery.state.default").at("content").dump().find("默认") !=
+                    std::string::npos &&
+                applied.at("themes").at("gallery.state.default").at("colorBgContainer").string() == "#ffffff",
+            "actual retained authoring composition/slot/Theme evidence missing");
     const auto& lifetime = retired.at("resources").at("lifecycle");
     require(lifetime.at("retired").boolean() && lifetime.at("live_components").integer() == 0 &&
                 lifetime.at("shell_owner_present").boolean() && fixture.buttons.animations().contains(shell),

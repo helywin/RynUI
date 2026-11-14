@@ -356,10 +356,37 @@ SelectInputSnapshot SelectComponentHost::input_snapshot(runtime::ComponentId id)
     if (!state || !services_->components().scope(id).active() || !services_->nodes().find(state->node)) {
         throw std::out_of_range("Select component is stale");
     }
-    return {state->model.options(), state->disabled,
-            state->loading,         state->show_search,
-            state->allow_clear,     state->authority.has_value() || state->values_authority.has_value(),
-            state->controlled_open};
+    const auto* inputs = services_->input_runtime();
+    return {state->model.options(),
+            state->disabled,
+            state->loading,
+            state->show_search,
+            state->allow_clear,
+            state->authority.has_value() || state->values_authority.has_value(),
+            state->controlled_open,
+            state->mode,
+            inputs->size(state->selector),
+            inputs->variant(state->selector),
+            inputs->status(state->selector),
+            state->external_placeholder,
+            state->empty_label,
+            state->list_height,
+            state->direction.get(),
+            state->virtual_list,
+            bool(state->option_renderer),
+            bool(state->tag_renderer),
+            state->popup_renderer != SelectPopupRenderer{},
+            bool(state->source),
+            state->max_tag_count,
+            state->max_tag_text,
+            state->max_count,
+            state->responsive_tags,
+            state->separators,
+            state->selected_root,
+            state->filter_field,
+            state->popup,
+            state->popup_body,
+            state->list};
 }
 
 std::optional<animation::AnimationTime> SelectComponentHost::motion_deadline(runtime::ComponentId id) const {

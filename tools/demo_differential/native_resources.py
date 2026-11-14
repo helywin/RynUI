@@ -102,10 +102,11 @@ def validate(observed, manifest, binary_hash):
         if row['type'] != 'checkpoint':
             require('readback' in resources and readback is None, 'non-checkpoint readback must be null')
             continue
-        fields = {'nonce', 'checkpoint', 'readback_id', 'fence_id', 'scene_revision', 'renderer_owner',
+        fields = {'run_nonce', 'nonce', 'checkpoint', 'readback_id', 'fence_id', 'scene_revision', 'renderer_owner',
                   'device_epoch', 'metrics', 'source_channel_order', 'source_hash', 'binary_sha256'}
         require(isinstance(readback, dict) and fields <= set(readback), 'checkpoint lacks real readback/fence evidence')
-        require(readback['nonce'] == row['nonce'] and readback['checkpoint'] == row['step'], 'readback belongs to another run/checkpoint')
+        require(readback['run_nonce'] == row['nonce'] and readback['checkpoint'] == row['step'], 'readback belongs to another run/checkpoint')
+        require(readback['nonce'] != readback['run_nonce'], 'readback image needs its own checkpoint nonce')
         require(integer(readback['readback_id'], 1) and readback['readback_id'] > last_readback and
                 integer(readback['fence_id'], 1) and readback['fence_id'] > last_fence,
                 'old readback/fence reused even though the scene may be unchanged')
@@ -116,11 +117,18 @@ def validate(observed, manifest, binary_hash):
         current_renderer = (readback['renderer_owner'], readback['device_epoch'])
         require(renderer is None or renderer == current_renderer, 'readback renderer owner/device epoch changed')
         renderer = current_renderer
-        require(exact(readback['metrics'], resources['metrics']), 'readback metrics differ from actual window metrics')
+        metric_fields = ('logical_width', 'logical_height', 'pixel_width', 'pixel_height', 'dpr')
+        window_metrics = resources.get('metrics', {})
+        require(all(key in readback['metrics'] and key in window_metrics for key in metric_fields) and
+                exact({key: readback['metrics'][key] for key in metric_fields},
+                      {key: window_metrics[key] for key in metric_fields}),
+                'readback metrics differ from actual window metrics')
         require(readback['source_hash'] == manifest['source_hash'] and readback['binary_sha256'] == binary_hash,
                 'checkpoint readback source/binary differs from requested build')
         require(readback['source_channel_order'] in ('RGBA', 'BGRA'), 'unknown actual readback source channel order')
         for capture in row['captures']:
+            require(readback['nonce'] == capture['nonce'] and readback['checkpoint'] == capture['checkpoint'],
+                    'readback belongs to another saved current capture')
             require(readback['scene_revision'] == capture['scene_revision'], 'readback scene revision differs from saved current capture')
             require(capture['channel_order'] == 'RGBA' and capture['framebuffer_format'] ==
                     readback['source_channel_order'] + '8_UNORM', 'source format or normalized RGBA channel contract differs')

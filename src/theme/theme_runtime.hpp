@@ -50,6 +50,12 @@ public:
     bool update(const ThemeConfig& config);
 
     [[nodiscard]] const ThemeSnapshot& snapshot() const;
+
+    // Internal retained configuration, already applied; never reevaluates a Prop.
+    [[nodiscard]] const ThemeConfig& applied_config() const noexcept {
+        return config_;
+    }
+
     [[nodiscard]] std::uint64_t generation() const;
     [[nodiscard]] Diagnostics diagnostics() const;
     [[nodiscard]] std::span<const TokenIdentity> changed_identities() const;

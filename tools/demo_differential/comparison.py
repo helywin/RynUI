@@ -189,8 +189,13 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
         if any(abs(clipped(a['clip'], origins[0])[k] - clipped(b['clip'], origins[1])[k]) >
                thresholds['geometry.logical_px'] for k in ('x', 'y', 'width', 'height')):
             fail('layout', target, 'effective context clip differs')
-        for source, destination in (('borderWidth', 'border_width'), ('borderRadius', 'border_radius'),
-                                    ('fontSize', 'font_size')):
+        component = case['fixture'].get('props', {}).get('controls', {}).get(target, {}).get('component')
+        pairs = [('borderWidth', 'border_width'), ('borderRadius', 'border_radius'), ('fontSize', 'font_size')]
+        if component in ('Button', 'Input'):
+            # Logical CSS px and native logical component metrics. Preserve
+            # each side separately so asymmetric padding cannot average away.
+            pairs += [('paddingInlineStart', 'padding_inline'), ('paddingInlineEnd', 'padding_inline')]
+        for source, destination in pairs:
             if target == name:
                 continue
             if source not in a['tokens'] or destination not in b['tokens']:
@@ -198,7 +203,6 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
             if abs(_css_number(a['tokens'][source]) - _css_number(b['tokens'][destination])) > thresholds['geometry.logical_px']:
                 fail('token', target, 'effective token differs', token=destination,
                      expected=a['tokens'][source], actual=b['tokens'][destination])
-        component = case['fixture'].get('props', {}).get('controls', {}).get(target, {}).get('component')
         applicable = {'Button': ('disabled', 'loading'), 'Input': ('disabled', 'value'),
                       'Select': ('disabled', 'loading', 'value', 'open')}.get(component, ())
         for field in applicable:

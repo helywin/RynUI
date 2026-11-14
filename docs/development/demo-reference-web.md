@@ -26,7 +26,7 @@ Windows 先按 [比较器解释器准备](demo-differential-comparison.md#window
 
 Windows `browser_libraries` 由 CPU PE 解析记录 executable、全部 bundled DLL 和递归 eager imports 的实际 System32 文件 SHA256，API-set 经 System32-only loader 解析；不搜索 PATH，也不安装系统库。该指纹不证明 delay-load、运行时 GPU/driver 模块或浏览器页面执行，后者仍由实际 browser/CDP 验收提供。`--version` 只证明该锁定 executable 能报告版本。准备时清除 npm/pnpm/Node/esbuild 外部覆盖环境，安装仍仅使用锁定 Node/pnpm 与本次 loopback registry。
 
-字体从唯一 `cmake/dependencies/RynUIDependencyLock.cmake` 读取 URL/version/hash/license，下载到 out，不另造漂移的字体版本。缺文件、错误 bytes/face/weight、意外系统 fallback 失败。当前 Web 输入支持 face index 0 / weight 400 的锁定 regular 链；其他 face/字重必须先明确扩展锁与 synthesis 合同，不能静默替换。
+字体从唯一 `cmake/dependencies/RynUIDependencyLock.cmake` 读取 URL/version/hash/license，下载到 out，不另造漂移的字体版本。缺文件、错误 bytes/face/weight、意外系统 fallback 失败。验收链包含真实 Latin/CJK 400/500/600 和覆盖 U+1F642 的单色 Emoji 400；按需准备、实际 SFNT/轮廓校验、显式工具模式和未测平台边界见 [差分验收专用字体](demo-differential-fonts.md)。关闭 synthesis，按文本节点实际 weight/slant 与 Chromium selected PostScript face 对应显式来源；普通产品系统字体默认链不变。
 
 `refresh_lock.py` 是独立维护操作，下载和校验已精确指定的解析结果后生成锁；prepare/run 不会调用它。变更锁需要独立提交与对应回归，不能用 native 输出迁移参考。
 
@@ -61,8 +61,10 @@ Python API 为 `demo_reference_web.reference.execute(request, prepared_dir, outp
 
 页面加载前安装 Playwright JS clock，CSS 通过独立 Web Animations/CDP 控制；自动 canary 分别检查 JS timer 与 CSS 中间 opacity。截图不自动完成动画，不以 wall sleep 证明时钟。此阶段记录静态 motion-disabled 的真实 smoke/输入证据；完整动态反向、transitionend、隐藏取消和 native 同时点采样仍由后续时钟阶段验收。
 
+UA 输入光标不属于 Web Animations。motion-disabled 使用浏览器实际支持的 `caret-animation: manual` 停止闪烁，截图保持 `caret: initial`，不隐藏光标或改变其颜色、选区；缺支持或实际焦点 editor 未应用该时钟策略时失败。clock provenance 记录该策略，同输入的新进程执行仍须得到一致截图，不能覆盖漂移缓存。
+
 reference key 包含官方 source/dependency/adapter、完整 case/fixture/profile、font bytes/face、viewport/DPR/theme/locale/timezone/direction、实际 browser/OS 等环境；不含 native 输出。实际 GPU/backend 身份通过 CDP 查询并在 cache-hit 时另行精确核对，初始化耗时不作为兼容身份。缓存原子发布为只读目录，命中时检查完整文件集合与 SHA256，并重新执行全部浏览器动作与观察。错 key、截断或同条件截图漂移失败；不是拿旧图或旧 receipt 冒充本次执行。`--reference rebuild` 也执行并验证锁定参考，不能覆盖漂移的旧缓存消红。
 
 截图、bundle/官方源码、完整 provenance、运行 JSON/日志和缓存仅在 out。tracked 内容只包括可复用代码、确定性锁和简短结论。这些测试不提供 native GPU、实际桌面 present、跨显示器、Windows/MSVC/D3D12、OS IME/AT 或校准后双侧视觉通过证据。
 
-主线完整 factory 接线的后续扩展由 main 单点接手：局部 ConfigProvider theme 节点、Select prefix（含 control slot 且全图恰一次）、Input nonempty-warning/statusPolicy 与 feedback Text 绑定。当前有限 grammar 对这些尚未支持的字段明确失败；不能删掉原上下文或以此宣称完整 pilot 已就绪。
+有限 factory 接线包含局部 ConfigProvider theme、Select prefix/control slot、multiple/tags/virtual/async、Input 非空 warning 与真实 feedback Text。已挂载后关闭的 popup 仍须从实际 committed portal 保留其 owner，不能因 aria-controls 被移除而伪造 missing/deferred。popup origin 只匹配实际传入并已提交的 React 元素身份，额外容器不能被折叠掉。source-feedback 的内容变化由独立逐步 equals literal 验证；未知字段或未消费子树继续失败。这些输入与行为证据不代替独立颜色校准及 paired 通过。

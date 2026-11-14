@@ -54,6 +54,8 @@ struct InputInputSnapshot final {
     bool allow_clear{};
     String placeholder;
     std::optional<std::size_t> max_length;
+    runtime::ComponentId prefix;
+    runtime::ComponentId suffix;
 };
 
 struct InputSyncProfile final {

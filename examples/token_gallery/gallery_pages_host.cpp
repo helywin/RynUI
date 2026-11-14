@@ -2041,6 +2041,10 @@ const GalleryPageModel& GalleryPagesHost::model() const noexcept {
     return impl_->pages;
 }
 
+std::string GalleryPagesHost::last_error() const {
+    return impl_->controller ? impl_->controller->last_error() : std::string{};
+}
+
 runtime::ComponentId GalleryPagesHost::target(std::string_view identity) const {
     return impl_->target(identity);
 }

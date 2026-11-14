@@ -8,6 +8,8 @@ import { createRequire } from 'node:module';
 
 const [configPath] = process.argv.slice(2);
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+// Keep copied fault-control workers bound to this frozen font helper closure.
+const { fontStyle, platformFontRuns } = await import(config.font_worker);
 const { prepared, request, output, build, provenance } = config;
 const { definition, nonce, font_files: fonts } = request;
 const fixture = definition.fixture;
@@ -38,8 +40,7 @@ function record(type, step = '', values = {}) {
   return result;
 }
 
-const fontCSS = fonts.map((font, index) => `@font-face{font-family:ReferenceFont${index};src:url('/font/${index}');font-weight:${font.weight};font-style:normal;font-display:block;}`).join('');
-const html = `<!doctype html><html><head><meta charset="utf-8"><style>${fontCSS}body{margin:0;font-family:${fonts.map((_, i) => 'ReferenceFont' + i).join(',')};}</style></head><body><div id="root"></div><script src="/request.js"></script><script src="/app.js"></script></body></html>`;
+const html = `<!doctype html><html><head><meta charset="utf-8"><style>${fontStyle(fonts)}</style></head><body><div id="root"></div><script src="/request.js"></script><script src="/app.js"></script></body></html>`;
 const assets = new Map([
   ['/', [Buffer.from(html), 'text/html; charset=utf-8']],
   ['/app.js', [fs.readFileSync(path.join(build, 'app.js')), 'application/javascript']],
@@ -101,6 +102,16 @@ try {
   await page.goto(origin, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__ready === true);
   await page.evaluate(async () => { await document.fonts.ready; });
+  const caretClock = await page.evaluate(disabled => {
+    if (!disabled) return { mode: 'not-controlled' };
+    if (!CSS.supports('caret-animation', 'manual')) throw new Error('disabled-motion caret clock is unavailable');
+    // The UA caret is not a Web Animation. Stop its clock while retaining the
+    // actual caret, color and selection; screenshot caret:'hide' would remove ink.
+    const style = document.createElement('style');
+    style.textContent = 'input,textarea,[contenteditable] { caret-animation: manual; }';
+    document.head.append(style);
+    return { mode: 'manual', screenshot: 'initial', hidden: false };
+  }, fixture.motion === 'disabled');
   const cdp = await context.newCDPSession(page);
   await cdp.send('DOM.enable');
   await cdp.send('CSS.enable');
@@ -145,11 +156,15 @@ try {
         if (!metadata || typeof metadata.duration !== 'number') throw new Error('unsupported CSS animation timing');
       }
       document.documentElement.getBoundingClientRect();
+      const active = document.activeElement;
+      if (window.__request.definition.fixture.motion === 'disabled' &&
+          active?.matches('input,textarea,[contenteditable]') && getComputedStyle(active).caretAnimation !== 'manual')
+        throw new Error('actual focused editor caret clock is not stopped');
     });
   }
 
   const identity = await page.evaluate(() => ({ imports: window.__officialImports,
-    fibers: window.__reference.fibers(), ...window.__reference.consumedInputs(),
+    fibers: window.__reference.fibers(), ...window.__reference.consumedInputs('setup', true),
     container: (() => { const element = window.__reference.element(window.__request.definition.native.sample_id);
       const rect = element.getBoundingClientRect(); return { bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
         declared_height_style: element.style.height, overflow: getComputedStyle(element).overflow }; })() }));
@@ -158,15 +173,16 @@ try {
   if (definition.official.mode === 'official-demo') {
     expect(identity.fibers.some(fiber => fiber.component === 'OfficialDemo'), 'official demo export did not execute');
   } else {
-    if (fixture.container.layout === 'composition-v1') {
+    if (fixture.container.layout.startsWith('composition-v')) {
       function verifyNode(node, identity = 'composition') {
         if (node.component === 'control') return;
-        const actual = identityFibers.find(f => f.component === node.component && f.props['data-reference-composition'] === identity);
+        const actual = identityFibers.find(f => f.component === (node.component === 'source-feedback' ? 'Typography.Text' : node.component) && f.props['data-reference-composition'] === identity);
         expect(Boolean(actual), 'actual official composition did not execute: ' + identity);
+        if (node.width !== undefined) expect(actual.props.style?.width === node.width, 'composition external width mismatch: ' + identity);
         for (const [key, value] of Object.entries(node.props ?? {})) {
           expect(JSON.stringify(actual.props[key]) === JSON.stringify(value), 'effective composition prop mismatch: ' + identity + '.' + key);
         }
-        if (node.component === 'Typography.Text') {
+        if (['Typography.Text', 'source-feedback'].includes(node.component)) {
           const content = node.slot ? fixture.slots[node.target][node.slot] : node.content;
           expect(actual.props.children === content, 'effective context text mismatch: ' + identity);
         } else node.children.forEach((child, index) => verifyNode(child, identity + '.' + index));
@@ -176,12 +192,22 @@ try {
     }
     for (const [target, entry] of Object.entries(fixture.props.controls)) {
       const actual = identity.fibers.find(fiber => fiber.component === entry.component && fiber.target === target);
+      const deferred = Object.entries(fixture.slots).find(([, slots]) => slots.popup?.control === target);
+      if (!actual && deferred) {
+        const parent = identity.controls[deferred[0]];
+        expect(parent?.slots.popup?.control === target, 'deferred slot has no applied official popupRender');
+        expect(identity.actual_inputs.instances[deferred[0]]?.status === 'mounted' &&
+          identity.actual_inputs.current[deferred[0]]?.open === false &&
+          identity.actual_inputs.instances[target]?.status === 'deferred', 'absent child is not a live closed popup');
+        continue; // Dormant content is not claimed as mounted/consumed input.
+      }
       expect(Boolean(actual), 'actual official component did not execute: ' + target);
-      const { component, width, ...props } = entry;
+      const { component, width, localTheme, recipe, marginBlock, ...props } = entry;
       for (const [key, expected] of Object.entries(props)) {
         expect(JSON.stringify(actual.props[key]) === JSON.stringify(expected), 'effective public prop mismatch: ' + target + '.' + key);
       }
       if (width !== undefined) expect(actual.props.style?.width === width, 'effective public width mismatch');
+      if (marginBlock !== undefined) expect(actual.props.style?.marginBlock === marginBlock, 'effective public marginBlock mismatch');
       const slots = fixture.slots[target] ?? {};
       if (entry.component === 'Button' && slots.content != null) expect(actual.props.children === slots.content, 'effective content mismatch');
       if (entry.component === 'Input') {
@@ -207,17 +233,20 @@ try {
   provenance.actual_module_identity = identity.imports;
   provenance.executed_component_fibers = identity.fibers;
   provenance.clock_canary = { js_timer: true, css_animation_half_opacity: canary, css_control: 'Web Animations + CDP playbackRate=0',
-    paint: 'fresh screenshot compositor readback', js_clock_is_not_css_clock: true };
+    paint: 'fresh screenshot compositor readback', js_clock_is_not_css_clock: true, caret_control: caretClock };
   const canonical = value => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
     ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
   const actualProps = Object.fromEntries(Object.entries(identity.controls).map(([id, control]) => [id,
-    { component: control.component, ...control.props, ...(Object.hasOwn(control, 'width') ? { width: control.width } : {}) }]));
+    { component: control.component, ...control.props, ...(Object.hasOwn(control, 'width') ? { width: control.width } : {}),
+      ...(Object.hasOwn(control, 'marginBlock') ? { marginBlock: control.marginBlock } : {}) }]));
   const actualData = Object.fromEntries(Object.entries(identity.controls).filter(([, c]) => Object.keys(c.data).length).map(([id, c]) => [id, c.data]));
   const actualSlots = Object.fromEntries(Object.entries(identity.controls).filter(([, c]) => Object.keys(c.slots).length).map(([id, c]) => [id, c.slots]));
+  const deferredControls = Object.entries(identity.actual_inputs.instances).filter(([, value]) => value.status === 'deferred').map(([target]) => target);
+  const active = values => Object.fromEntries(Object.entries(values).filter(([target]) => !deferredControls.includes(target)));
   if (definition.official.mode === 'official-component-adapted') {
-    expect(canonical(actualProps) === canonical(fixture.props.controls), 'actual consumed props differ from fixture');
-    expect(canonical(actualData) === canonical(fixture.data), 'actual consumed data differ from fixture');
-    expect(canonical(actualSlots) === canonical(fixture.slots), 'actual consumed slots differ from fixture');
+    expect(canonical(actualProps) === canonical(active(fixture.props.controls)), 'actual consumed props differ from fixture');
+    expect(canonical(actualData) === canonical(active(fixture.data)), 'actual consumed data differ from fixture');
+    expect(canonical(actualSlots) === canonical(active(fixture.slots)), 'actual consumed slots differ from fixture');
   }
   expect(identity.parent_policy === fixture.parent_policy, 'actual parent policy mismatch');
   expect(identity.provider.direction === fixture.direction, 'actual Provider direction mismatch');
@@ -225,11 +254,14 @@ try {
   if (fixture.container.height === 0) expect(identity.container.declared_height_style === '', 'natural context height was forced');
   const effective = { ...fixture,
     ...(definition.official.mode === 'official-component-adapted' ? {
-      props: { ...fixture.props, controls: actualProps }, data: actualData, slots: actualSlots } : {}),
+      props: { ...fixture.props, controls: fixture.props.controls }, data: fixture.data, slots: fixture.slots } : {}),
+    actual_initial_inputs: JSON.parse(JSON.stringify(identity.actual_inputs)),
     parent_policy: identity.parent_policy, actual_controls: identity.controls, actual_provider: identity.provider, actual_container: { ...identity.container,
       height_policy: fixture.container.height === 0 ? 'natural' : 'fixed' }, actual_environment: realRAF,
     actual_composition: identity.fibers.filter(f => f.props['data-reference-composition']) };
-  record('hello', '', { effective_inputs: effective, resources: { network, isolated_context: true, desktop_fallback: false } });
+  let settledInputs = identity.actual_inputs;
+  record('hello', '', { effective_inputs: effective, resources: { network, isolated_context: true, desktop_fallback: false,
+    actual_inputs: settledInputs } });
 
   async function targetRect(target, allowSaved = false) {
     const result = await page.evaluate(target => {
@@ -261,7 +293,8 @@ try {
         const visible = computed.display !== 'none' && computed.visibility !== 'hidden' && bounds.width > 0 && bounds.height > 0;
         const selection = input && typeof input.selectionStart === 'number' ?
           { start: input.selectionStart, end: input.selectionEnd, direction: input.selectionDirection, unit: 'UTF-16' } : null;
-        const state = { value: control?.component === 'Select' ? control.value : input?.value ?? control?.value ?? null,
+        const state = { instance: r.instance(element), value: control?.component === 'Select' ? control.value : input?.value ?? control?.value ?? null,
+          query: control?.component === 'Select' ? input?.value ?? '' : null,
           proposed_value: control?.proposed_value ?? null, focused: element === document.activeElement || element.contains(document.activeElement),
           disabled: Boolean(input?.disabled ?? element.disabled ?? element.getAttribute('aria-disabled') === 'true'),
           loading: element.classList.contains('ant-btn-loading') || element.classList.contains('ant-select-loading'),
@@ -276,13 +309,15 @@ try {
             font_family: getComputedStyle(node.parentElement).fontFamily, font_size: getComputedStyle(node.parentElement).fontSize,
             font_weight: getComputedStyle(node.parentElement).fontWeight, direction: getComputedStyle(node.parentElement).direction });
         }
-        if (input) text.push({ content: input.value, editable: true, font_family: getComputedStyle(input).fontFamily,
+        if (input && input.value) text.push({ content: input.value, editable: true, boxes: [],
+          bounds_source: 'pending Chromium DOMSnapshot textBoxes, never input bounding box',
+          font_family: getComputedStyle(input).fontFamily, direction: getComputedStyle(input).direction,
           font_size: getComputedStyle(input).fontSize, font_weight: getComputedStyle(input).fontWeight });
         const icons = [...element.querySelectorAll('[role="img"],svg')].map(icon => ({ identity: icon.getAttribute('aria-label') ?? '',
           bounds: rect(icon.getBoundingClientRect()), markup: icon.outerHTML }));
         const tokens = {};
         for (const name of ['color', 'backgroundColor', 'borderColor', 'borderWidth', 'borderRadius', 'padding', 'gap',
-          'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'opacity', 'boxShadow', 'direction', 'overflow']) tokens[name] = computed[name];
+          'paddingInlineStart', 'paddingInlineEnd', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'opacity', 'boxShadow', 'direction', 'overflow']) tokens[name] = computed[name];
         tokens.pseudo_before = { content: getComputedStyle(element, '::before').content,
           background: getComputedStyle(element, '::before').backgroundColor };
         let clip = { x: 0, y: 0, width: innerWidth, height: innerHeight };
@@ -303,16 +338,70 @@ try {
         focus: window.__reference.semantic(document.activeElement),
         controls: Object.fromEntries(Object.entries(controls).map(([id, c]) => [id, { value: c.value, proposed_value: c.proposed_value }])) };
     }, targets);
-    const documentNode = await cdp.send('DOM.getDocument', { depth: -1 });
+    const documentNode = await cdp.send('DOM.getDocument', { depth: -1, pierce: true });
+    async function semanticNode(identity) {
+      // Resolve the same real element used by geometry/input, including popup
+      // aliases. No synthetic data-testid or detached observation node is made.
+      const result = await cdp.send('Runtime.evaluate', {
+        expression: 'window.__reference.element(' + JSON.stringify(identity) + ')',
+        objectGroup: 'reference-checkpoint-nodes' });
+      expect(result.result.objectId, 'semantic font owner is absent: ' + identity);
+      try { return await cdp.send('DOM.requestNode', { objectId: result.result.objectId }); }
+      finally { await cdp.send('Runtime.releaseObject', { objectId: result.result.objectId }); }
+    }
+    // DOM Range cannot address an input's UA shadow text. Chromium's layout
+    // text boxes are actual shaped runs with UTF-16 ranges; never substitute
+    // the input/control rectangle or estimate a canvas advance.
+    // The locked Chromium captureSnapshot omits UA-shadow layout text. The
+    // explicit UA-shadow snapshot exposes its real inline text boxes instead.
+    const layoutSnapshot = await cdp.send('DOMSnapshot.getSnapshot', {
+      computedStyleWhitelist: [], includeUserAgentShadowTree: true });
+    for (const target of observed.targets) {
+      for (const text of target.text.filter(t => t.editable && t.content)) {
+        const owner = await semanticNode(target.identity);
+        expect(owner.nodeId, 'editable semantic owner missing');
+        const ownerNode = await cdp.send('DOM.describeNode', { nodeId: owner.nodeId });
+        let editor = ownerNode.node;
+        if (!['INPUT', 'TEXTAREA'].includes(editor.nodeName)) {
+          const child = await cdp.send('DOM.querySelector', { nodeId: owner.nodeId, selector: 'input,textarea' });
+          expect(child.nodeId, 'editable DOM input missing');
+          editor = (await cdp.send('DOM.describeNode', { nodeId: child.nodeId })).node;
+        }
+        const boxes = [], runs = [];
+        const rootIndex = layoutSnapshot.domNodes.findIndex(node => node.backendNodeId === editor.backendNodeId);
+        expect(rootIndex >= 0, 'editable UA-shadow snapshot owner missing');
+        const descendants = new Set();
+        const visit = index => {
+          expect(!descendants.has(index), 'editable UA-shadow snapshot tree repeats a node');
+          descendants.add(index);
+          for (const child of layoutSnapshot.domNodes[index].childNodeIndexes ?? []) visit(child);
+        };
+        visit(rootIndex);
+        for (const layout of layoutSnapshot.layoutTreeNodes) {
+          if (!descendants.has(layout.domNodeIndex) || !layout.layoutText) continue;
+          for (const inline of layout.inlineTextNodes ?? []) {
+            boxes.push(inline.boundingBox);
+            runs.push({ content: layout.layoutText, start: inline.startCharacterIndex,
+              length: inline.numCharacters, unit: 'UTF-16' });
+          }
+        }
+        expect(boxes.length > 0, 'editable actual Chromium text boxes unavailable: ' + target.identity);
+        const fullText = [...new Set(runs.map(run => run.content))].join('');
+        expect(fullText === text.content, 'editable layout text differs from actual input value: ' + target.identity);
+        text.boxes = boxes;
+        text.layout_runs = runs;
+        text.bounds_source = 'Chromium DOMSnapshot.getSnapshot actual UA-shadow inlineTextNodes';
+      }
+    }
     for (const target of observed.targets) {
       // Ask Chromium which actual faces painted this target; computed CSS alone is not font provenance.
-      const selector = '[data-testid="' + target.identity.replaceAll('"', '\\"') + '"]';
-      const node = await cdp.send('DOM.querySelector', { nodeId: documentNode.root.nodeId, selector });
-      if (node.nodeId) {
-        const actual = await cdp.send('CSS.getPlatformFontsForNode', { nodeId: node.nodeId });
-        target.tokens.platform_fonts = actual.fonts;
-        const knownFaces = provenance.actual_font_sources.flatMap(font => font.names['6']);
-        expect(actual.fonts.every(font => font.isCustomFont && knownFaces.includes(font.postScriptName)), 'unexpected font source/fallback: ' + target.identity);
+      const node = await semanticNode(target.identity);
+      expect(node.nodeId, 'semantic actual font owner missing: ' + target.identity);
+      {
+        const runs = await platformFontRuns(cdp, node.nodeId, provenance.actual_font_sources,
+          target.text.some(run => run.content.trim()));
+        target.tokens.font_runs = runs;
+        target.tokens.platform_fonts = runs.flatMap(run => run.sources);
       }
     }
     return observed;
@@ -341,6 +430,8 @@ try {
       expect(inputRect.width > 0 && inputRect.height > 0, 'no visible wheel/pointer target intersection');
       const x = inputRect.x + inputRect.width * (parameters.x_fraction ?? 0.5);
       const y = inputRect.y + inputRect.height * (parameters.y_fraction ?? 0.5);
+      expect(x >= 0 && y >= 0 && x < fixture.viewport.width && y < fixture.viewport.height,
+        'pointer/wheel target is outside the visible viewport');
       await page.mouse.move(x, y);
       hit = await page.evaluate(({ x, y }) => window.__reference.semantic(document.elementFromPoint(x, y)), { x, y });
       if (action.kind === 'pointer-down') await page.mouse.down({ button: parameters.button === 'primary' ? 'left' : 'right' });
@@ -390,6 +481,7 @@ try {
       const declaration = definition.checkpoints.find(item => item.step === action.step);
       expect(Boolean(declaration), 'missing checkpoint declaration');
       await paint();
+      settledInputs = await page.evaluate(step => window.__reference.consumedInputs(step).actual_inputs, action.step);
       const observed = await snapshot(declaration.targets);
       const pngPath = 'capture-' + sequence++ + '.png';
       const screenshot = await page.screenshot({ path: path.join(output, pngPath), animations: 'allow', caret: 'initial',
@@ -404,7 +496,7 @@ try {
       completedCheckpoints.push(action.step);
       record('checkpoint', action.step, { effective_inputs: effective, targets: observed.targets, callbacks: observed.callbacks,
         state: { focused: observed.focus, controls: observed.controls }, captures: [capture],
-        resources: { paint_receipt: { nonce, step: action.step, sequence, sha256: capture.sha256, fresh_readback: true, completion: 'Chromium screenshot Promise resolved; not a native GPU fence' },
+        resources: { actual_inputs: settledInputs, paint_receipt: { nonce, step: action.step, sequence, sha256: capture.sha256, fresh_readback: true, completion: 'Chromium screenshot Promise resolved; not a native GPU fence' },
           animations: await page.evaluate(() => document.getAnimations().map(a => ({ currentTime: a.currentTime,
             playState: a.playState, timing: a.effect?.getTiming(), id: a.id }))) } });
       hit = action.target; sent = true; consumed = true;
@@ -414,6 +506,7 @@ try {
       sent = true; consumed = true; hit = action.target;
     } else fail('unsupported Web action: ' + action.kind);
     await paint();
+    if (action.kind !== 'checkpoint') settledInputs = await page.evaluate(step => window.__reference.consumedInputs(step).actual_inputs, action.step);
     const inputs = await page.evaluate(before => window.__inputLog.slice(before), before);
     if (['pointer-move', 'pointer-down', 'pointer-up', 'key-down', 'key-up', 'text-commit', 'wheel'].includes(action.kind)) {
       const eventType = { 'pointer-move': 'pointermove', 'pointer-down': 'pointerdown', 'pointer-up': 'pointerup',
@@ -429,13 +522,14 @@ try {
     }
     completedSteps.push(action.step);
     record('receipt', action.step, { receipt: { dispatched: sent, hit, consumed, layer: action.layer },
-      resources: { input_events: inputs }, callbacks: await page.evaluate(() => [...window.__reference.callbacks]) });
+      resources: { input_events: inputs, actual_inputs: settledInputs, actual_initial_inputs: effective.actual_initial_inputs }, callbacks: await page.evaluate(() => [...window.__reference.callbacks]) });
     expect(errors.length === 0, errors.join('\n'));
   }
   expect(completedSteps.length === definition.actions.length, 'incomplete action execution');
   expect(completedCheckpoints.length === definition.checkpoints.length, 'incomplete checkpoint execution');
   record('complete', '', { effective_inputs: effective, callbacks: await page.evaluate(() => [...window.__reference.callbacks]),
-    resources: { network, isolated_context: true, desktop_fallback: false, source_identity_verified: true } });
+    resources: { network, isolated_context: true, desktop_fallback: false, source_identity_verified: true,
+      actual_inputs: settledInputs, actual_initial_inputs: effective.actual_initial_inputs } });
 } catch (error) {
   fs.writeFileSync(path.join(output, 'error.json'), JSON.stringify({ error: String(error.stack ?? error), network, errors }, null, 2));
   process.stderr.write(String(error.stack ?? error) + '\n');

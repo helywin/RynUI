@@ -65,7 +65,9 @@ python -B tools/run_demo_differential.py replay --failure out/demo-differential/
 
 三个 source-bound 定义位于 `tools/demo_differential/pilots.py`，绑定真实 sample/function/header、完整有序 legacy target、固定 official demo/组件 hash，以及 Small/Middle、default 局部 Theme、中文标签、260 宽度、Input 前后缀/32 上限、desktop/service/unavailable 数据和受控 accept/reject。`pilot-coverage.json` 是现有 coverage v1 的 pilot 子账本，保持 `planned`；完整样例/实际输入接口与校准尚缺时绝不能计 pass。`profiles/pilot-pinned-font.uncalibrated.json` 仅是拒绝通过的 schema 模板，零摘要/指标不是校准证据。
 
-具体待接接口：native 的 `resources.actual_initial_inputs` 需要独立导出实际 slots/default 局部 Theme/composition 与 Input status，不能把 fixture echo 当消费证明；实际字体、token 和文字局部 bounds 仍需完整查询。Web 有限 composition grammar 尚不能表达 Select 原 factory 的全部 numeric/variants、局部 Theme/prefix，以及嵌套 multiple/tags/virtual/async 上下文；Select 定义明确要求完整来源并由现有 grammar 拒绝，不执行四控件替身。Input 非空 warning 在本 pilot 保持非空，不将动态 status 或反馈绑定的后续扩展写成完成。下述真实故障开关与外层控制已接入；平台红绿由 5.2/11.3 的实际执行验证。
+输入消费证据使用不可变 `resources.actual_initial_inputs` 和每次动作后的 `resources.actual_inputs`，从 mounted host、实际 editor、retained slot/ThemeScope/布局及官方 committed fiber/connected host 读取。Select 保留完整 factory 的 numeric/variants、multiple/tags/virtual/async、局部 Theme、prefix 和真实 popup 子控件；Web 初始关闭的合法 popup 可保持 deferred，首次挂载与声明的截止检查点仍须证明实际实例、seed、归属及真实输入消费。静态 options/说明结构继续逐次核对，异步数据由独立动作 oracle 校验。反馈通过真实 Text 实例及 `feedbacks` map 观察，逐步预期只取独立声明的 equals literal。它们不构成成对视觉通过或通用动态 status 覆盖。
+
+pilot 的 1280×900 表示 logical/CSS viewport；Windows 窗口坐标先按实际 display scale/pixel density 转换，再核对真实 logical/physical metrics。样例内宽 672 来自 `GalleryPagesHost` 的 `gallery_page_layout.hpp` 及样例 padding 声明，不读 native measured bounds 回填 Web。分组标题的内部不可选 marker 与 Web public disabled-group 分开，子选项 value 类型、顺序、label、disabled 始终独立核对；native 无法表达的 public disabled-group=true 明确拒绝。
 
 本阶段纯 Python 验证：
 
@@ -93,8 +95,8 @@ meta 先要求完整三例正控制绿，再逐 fault 要求指定 case 为差�
 
 ## Native 3.4–3.6 冻结接口对接
 
-兼容层消费 [native 观测接口](demo-differential-native.md) 的 observation v1 resource maps，不改顶层 schema。checkpoint 必须提供 `resources.readback` 的本次 nonce/checkpoint、严格递增 readback/fence id、scene revision、稳定 renderer owner/device epoch、actual metrics、actual source channel 及 source/binary hash；相同 scene revision 仍须有新 readback/fence。capture 的 RGBA 是 normalized readback bytes，`framebuffer_format/source_channel_order` 保留实际 RGBA/BGRA target，不把 BMP 存储通道混作 renderer 通道。
+兼容层消费 [native 观测接口](demo-differential-native.md) 的 observation v1 resource maps，不改顶层 schema。checkpoint 的 `resources.readback.run_nonce` 绑定当前 run，独立 `nonce` 与该保存 capture 的 nonce/step 相等；另核严格递增 readback/fence id、scene revision、稳定 renderer owner/device epoch、五个实际 device metrics 字段、actual source channel 及 source/binary hash。窗口坐标和提交/读回统计保留在原始 metrics，不能与 GPU device metrics 混淆；相同 scene revision 仍须有新 readback/fence。capture 的 RGBA 是 normalized readback bytes，`framebuffer_format/source_channel_order` 保留实际 RGBA/BGRA target，不把 BMP 存储通道混作 renderer 通道。
 
 `resources.lifecycle` 按实际 serialization 的平面字段验证：sample `owner_generation`、带 component/page generation 的 `owners`、带整数 `active`/nullable deadline 的 `animation_scopes`、实际存在的 `auxiliary_deadlines`、sample live counts 与 focus/capture/session/retired；独立保留 `window_deadline_us`、`shell_owner_present` 和 `shared_font_cache_policy`。window 非空 deadline、合法 shell 与 window-owned retained font cache 不算 sample 泄漏；不猜造 `cache_count`。`idle_observation=not-sampled` 不证明 passive idle，readback 的 compositor/presented null 也不证明显示器呈现。
 
-当前 pinned 准备链只有两个 regular 400 face。真实 Gallery shell/Select 还需要 **noto-sans 的 upright 600** 和 **noto-sans-cjk-sc 的 upright 600**（各自真实 face index/bytes/source URL/SHA256/license）。这些资源尚未在中央锁和 Web regular-only validator 中具备，runner 会在 native probe 前返回 setup/environment **3**，列出缺失资源；不会把 regular 重新标记为 600、用系统字体补齐或将其称为 paired 通过。`font_requirements.py` 核对显式文件 bytes/hash、实际 SFNT OS/2 weight/slant 及有序链；普通 Gallery 系统字体默认不受影响。父侧需协调真实 600 字体与 Web 请求/selected-face 校验的锁扩展；本次不猜填未验证 hash，也不改 C++/资源锁。
+当前 pinned 准备链为七文件：Latin/CJK 各有真实 upright 400/500/600，以及覆盖 U+1F642 的单色 emoji400。Gallery source/support paragraph 需要 500，shell/Select 需要 600；缺任一需求时 runner 在 native probe 前返回 environment **3**，不会重标 regular、合成字重或用系统字体补齐。`font_requirements.py` 核对显式文件 bytes/hash、实际 SFNT face/weight/slant、有序链和重复身份；资源来源与准备命令见 [差分验收专用字体](demo-differential-fonts.md)。普通 Gallery 系统字体默认不受影响，源码与 CPU 检查不表示 paired 已通过。

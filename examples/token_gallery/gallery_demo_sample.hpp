@@ -9,6 +9,9 @@
 
 namespace rynui::example {
 
+// CORE-only source counterexamples; no scenario/CLI mapping or cache publication.
+enum class GalleryDemoInputFault { none, popup_placeholder, popup_label, popup_theme, popup_order, popup_owner };
+
 struct GalleryDemoSampleContext final {
     GalleryDemoJson fixture;
     std::function<void(std::string_view, bool)> factory_boundary;
@@ -17,6 +20,8 @@ struct GalleryDemoSampleContext final {
     std::string step{"setup"};
     std::string parent_policy{"accept"};
     std::string fault{"none"};
+    GalleryDemoInputFault input_fault{};
+    std::size_t popup_body_runs{};
     std::map<std::string, std::function<GalleryDemoJson()>> values;
     std::map<std::string, std::function<GalleryDemoJson()>> opens;
     std::set<std::string> controlled_values;

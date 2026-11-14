@@ -946,9 +946,12 @@ void remember_target(const std::shared_ptr<GalleryState>& state, std::string_vie
         }
         throw std::logic_error("Gallery test target identity is duplicated: " + key);
     }
-    build.on_resource_cleanup(component, [weak = std::weak_ptr{state}, key] {
+    build.on_resource_cleanup(component, [weak = std::weak_ptr{state}, key, component] {
         if (const auto state = weak.lock()) {
-            state->targets.erase(key);
+            const auto found = state->targets.find(key);
+            if (found != state->targets.end() && found->second == component) {
+                state->targets.erase(found);
+            }
         }
     });
 }
@@ -967,6 +970,65 @@ public:
 private:
     std::weak_ptr<GalleryState> previous_;
 };
+
+// Real late popup renderer calls restore only the Gallery registration context.
+// Theme/Config mounting continues to be owned by the existing Select runtime.
+std::function<void()> gallery_select_popup_body(const std::shared_ptr<GalleryState>& state,
+                                                std::function<void()> body) {
+    const auto captured = ryn::runtime::require_component_build_context().capture_context();
+    return [weak = std::weak_ptr{state}, owner = captured.component_owner, lifetime = captured.owner,
+            body = std::move(body)] {
+        const auto state = weak.lock();
+        auto& build = ryn::runtime::require_component_build_context();
+        if (!state || lifetime.expired() || !owner || !build.host().contains(*owner) || !build.has_ancestor(*owner)) {
+            return;
+        }
+        const GalleryDraftBuild registration{state};
+        body();
+    };
+}
+
+std::function<void(bool)> gallery_select_observe_open(const std::shared_ptr<GalleryState>& state, std::string target) {
+    if (!state->demo) {
+        return {};
+    }
+    return [context = state->demo, target = std::move(target)](bool value) {
+        context->invoke(target, "open-change", value, {});
+    };
+}
+
+std::function<void(ryn::String)> gallery_select_observe_text(const std::shared_ptr<GalleryState>& state,
+                                                             std::string target, std::string event) {
+    if (!state->demo) {
+        return {};
+    }
+    return [context = state->demo, target = std::move(target), event = std::move(event)](ryn::String value) {
+        context->invoke(target, event, std::string{value.bytes()}, {});
+    };
+}
+
+void gallery_target(std::string_view identity);
+
+void gallery_select_popup_note(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    const auto mount = [state] {
+        auto props = InputProps{}
+                         .placeholder(gallery_text("gallery.copy.property.067"))
+                         .onChange(gallery_select_observe_text(state, "gallery.select.popup-note", "change"));
+        if (state->demo && state->demo->input_fault == GalleryDemoInputFault::popup_placeholder) {
+            props.placeholder(u8"wrong actual placeholder");
+        }
+        Input(props);
+        gallery_target("gallery.select.popup-note");
+    };
+    if (state->demo && state->demo->input_fault == GalleryDemoInputFault::popup_theme) {
+        ThemeConfig config;
+        config.algorithms = {ThemeAlgorithm::Dark};
+        Theme(ThemeProps{}.config(config), ThemeContent{mount});
+    } else {
+        mount();
+    }
+}
 
 template <typename T> T gallery_initial_value(std::string_view identity, const T& fallback) {
     const auto state = active_gallery_draft.lock();
@@ -6871,9 +6933,19 @@ void add_complete_select_samples(const std::shared_ptr<GalleryState>& state) {
     Button(ButtonProps{}.onClick([state] { state->select_multi_accept = !state->select_multi_accept; }),
            ButtonContent{[] { gallery_label("gallery.copy.sample.379"); }});
     gallery_target("gallery.select.authority");
+    const auto tag_groups = gallery_group_labels<SelectOptionGroup>(
+        std::vector<SelectOptionGroup>{
+            {u8"platform", u8"平台", {{u8"desktop", u8"桌面"}, {u8"service", u8"服务"}}},
+            {u8"priority", u8"优先级", {{u8"1", u8"高"}, {u8"2", u8"低"}, {u8"3", u8"停用", true}}}},
+        {{u8"platform", "gallery.complete.copy.356"}, {u8"priority", "gallery.complete.copy.357"}},
+        {{u8"desktop", "gallery.complete.copy.358"},
+         {u8"service", "gallery.complete.copy.359"},
+         {u8"1", "gallery.complete.copy.360"},
+         {u8"2", "gallery.complete.copy.361"},
+         {u8"3", "gallery.complete.copy.362"}});
     Select(SelectProps{}
                .mode(SelectMode::Tags)
-               .groups(groups)
+               .groups(tag_groups)
                .tokenSeparators({u8",", u8"；"})
                .responsiveMaxTagCount()
                .maxTagTextLength(std::size_t{8})
@@ -6890,6 +6962,7 @@ void add_complete_select_samples(const std::shared_ptr<GalleryState>& state) {
                .layout(LayoutStyle{}.margin_top(dp(4)).margin_bottom(dp(4)).width(dp(340))));
     remember_target(state, "gallery.select.tags");
     Text(TextProps{}.content(state->select_multi_feedback));
+    remember_target(state, "gallery.source-feedback.select-multi");
     gallery_label("gallery.copy.sample.380");
     std::vector<SelectOption> many;
     for (int i = 0; i < 10000; ++i) {
@@ -6907,13 +6980,27 @@ void add_complete_select_samples(const std::shared_ptr<GalleryState>& state) {
                .showSearch()
                .listHeight(160)
                .direction(TextDirection::RightToLeft)
+               .onOpenChange(gallery_select_observe_open(state, "gallery.select.virtual"))
+               .onSearch(gallery_select_observe_text(state, "gallery.select.virtual", "search"))
                .optionRender(SelectOptionRenderer{[](SelectRenderInfo info) { Text(TextProps{}.content(info.label)); }})
-               .popupRender(SelectPopupRenderer{[](std::function<void()> origin) {
-                   Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[origin] {
+               .popupRender(SelectPopupRenderer{[state](std::function<void()> origin) {
+                   Flex(FlexProps{}.vertical(true).gap(dp(4)),
+                        FlexContent{gallery_select_popup_body(state, [state, origin] {
+                            if (state->demo) {
+                                ++state->demo->popup_body_runs;
+                            }
+                            const bool reverse =
+                                state->demo && state->demo->input_fault == GalleryDemoInputFault::popup_order;
+                            const bool other_owner =
+                                state->demo && state->demo->input_fault == GalleryDemoInputFault::popup_owner;
+                            if (reverse) {
+                                gallery_select_popup_note(state);
+                            }
                             origin();
-                            Input(InputProps{}.placeholder(gallery_text("gallery.copy.property.067")));
-                            gallery_target("gallery.select.popup-note");
-                        }});
+                            if (!reverse && !other_owner) {
+                                gallery_select_popup_note(state);
+                            }
+                        })});
                }})
                .placeholder(gallery_text("gallery.copy.property.068"))
                .layout(LayoutStyle{}.margin_top(dp(4)).margin_bottom(dp(4)).width(dp(340))),
@@ -6923,6 +7010,9 @@ void add_complete_select_samples(const std::shared_ptr<GalleryState>& state) {
                }),
                       ButtonContent{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }});
                gallery_target("gallery.select.prefix");
+               if (state->demo && state->demo->input_fault == GalleryDemoInputFault::popup_owner) {
+                   gallery_select_popup_note(state);
+               }
            }});
     remember_target(state, "gallery.select.virtual");
     gallery_label("gallery.copy.sample.381");
@@ -6943,26 +7033,46 @@ void add_complete_select_samples(const std::shared_ptr<GalleryState>& state) {
                         }};
     Select(SelectProps{}
                .source(source)
+               .onOpenChange(gallery_select_observe_open(state, "gallery.select.async"))
+               .onSearch(gallery_select_observe_text(state, "gallery.select.async", "search"))
                .notFoundContent(gallery_text("gallery.copy.property.069"))
                .popupRender(SelectPopupRenderer{[state](std::function<void()> origin) {
-                   Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[state, origin] {
+                   Flex(FlexProps{}.vertical(true).gap(dp(4)),
+                        FlexContent{gallery_select_popup_body(state, [state, origin] {
+                            if (state->demo) {
+                                ++state->demo->popup_body_runs;
+                            }
                             origin();
                             Button(ButtonProps{}.onClick([state] {
-                                auto jobs = std::move(state->completion_jobs);
-                                state->completion_jobs.clear();
-                                for (auto& job : jobs) {
-                                    job();
+                                const auto deliver = [state] {
+                                    auto jobs = std::move(state->completion_jobs);
+                                    state->completion_jobs.clear();
+                                    for (auto& job : jobs) {
+                                        job();
+                                    }
+                                    auto posts = std::move(state->owner_posts);
+                                    state->owner_posts.clear();
+                                    for (auto& post : posts) {
+                                        post();
+                                    }
+                                    state->select_multi_feedback.set(GalleryMessage{"gallery.feedback.111", {}});
+                                };
+                                if (state->demo) {
+                                    state->demo->invoke("gallery.select.deliver", "activate", nullptr, deliver);
+                                } else {
+                                    deliver();
                                 }
-                                auto posts = std::move(state->owner_posts);
-                                state->owner_posts.clear();
-                                for (auto& post : posts) {
-                                    post();
-                                }
-                                state->select_multi_feedback.set(GalleryMessage{"gallery.feedback.111", {}});
                             }),
-                                   ButtonContent{[] { gallery_label("gallery.copy.sample.382"); }});
+                                   ButtonContent{[state] {
+                                       if (state->demo &&
+                                           state->demo->input_fault == GalleryDemoInputFault::popup_label) {
+                                           Text(u8"wrong actual deliver label");
+                                       } else {
+                                           gallery_label("gallery.copy.sample.382");
+                                       }
+                                   }});
                             gallery_target("gallery.select.deliver");
-                        }});
+                        })});
                }})
                .showSearch()
                .placeholder(gallery_text("gallery.copy.property.070"))

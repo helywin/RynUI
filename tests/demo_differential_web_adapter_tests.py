@@ -6,6 +6,7 @@ not skip. Generated requests, screenshots, reports and negative artifacts stay u
 from copy import deepcopy
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -31,7 +32,7 @@ def action(step, kind, target='sample', parameters=None, **extra):
 
 def request(demo='components/button/demo/basic.tsx', controls=None, data=None, slots=None, actions=None):
     lock = bootstrap.load_lock()
-    fonts = json.loads(FONT_FILE.read_text())
+    fonts = json.loads(FONT_FILE.read_text(encoding='utf-8'))
     fixture = {'props': {'controls': controls} if controls else {}, 'data': data or {}, 'slots': slots or {},
                'parent_policy': 'accept', 'clock_epoch_us': 1760000000000000, 'seed': 1, 'timezone': 'UTC',
                'viewport': {'width': 640, 'height': 420, 'dpr': 1},
@@ -45,7 +46,7 @@ def request(demo='components/button/demo/basic.tsx', controls=None, data=None, s
                    for a in actions if a['kind'] == 'checkpoint']
     source_path = 'components/' + demo.split('/')[1] + '/' + {
         'button': 'Button.tsx', 'input': 'Input.tsx', 'select': 'index.tsx'}[demo.split('/')[1]]
-    source = Path(json.loads((PREPARED / 'prepared.json').read_text())['source'])
+    source = Path(json.loads((PREPARED / 'prepared.json').read_text(encoding='utf-8'))['source'])
     definition = {'schema_version': 1, 'identity': 'antd665.' + demo.split('/')[1] + '.web-contract.v1',
                   'revision': 1, 'official': {'repository': lock['source']['repository'], 'commit': lock['source']['commit'],
                     'demo_path': demo, 'demo_sha256': lock['source']['demos'][demo],
@@ -124,6 +125,14 @@ class WebBrowserTests(unittest.TestCase):
         self.assertEqual(records[0]['effective_inputs'], checkpoints[-1]['effective_inputs'])
         state = next(t['state'] for t in checkpoints[-1]['targets'] if t['identity'] == target)
         self.assertEqual(state['selection']['unit'], 'UTF-16')
+        repeated = deepcopy(req)
+        repeated['nonce'] = uuid.uuid4().hex
+        _, replayed, _ = self.execute(repeated)
+        self.assertNotEqual(records[0]['nonce'], replayed[0]['nonce'])
+        self.assertEqual([[c['sha256'] for c in r['captures']] for r in checkpoints],
+                         [[c['sha256'] for c in r['captures']] for r in replayed if r['type'] == 'checkpoint'])
+        self.assertEqual(replayed[0]['provenance']['clock_canary']['caret_control'],
+                         {'mode': 'manual', 'screenshot': 'initial', 'hidden': False})
 
     def test_clear_uses_real_affix_target_and_keeps_outer_geometry(self):
         steps = click('editor') + [action('type', 'text-commit', 'editor', {'text': 'abc'})]
@@ -285,6 +294,60 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
         self.assertEqual(observed['slots'], req['definition']['fixture']['slots'])
         self.assertNotIn('disabled', observed['props']['controls']['editor'])
 
+    def test_full_select_deferred_children_have_real_portal_instances_and_input_receipts(self):
+        from demo_differential import pilots
+        from demo_differential.adapters import web_definition
+        from demo_differential.actual_inputs import validate_timeline
+        from demo_differential.oracle import evaluate
+        definition = web_definition(pilots.select_case())
+        definition['fixture']['viewport']['dpr'] = 1
+        req = {'schema_version': 1, 'nonce': uuid.uuid4().hex, 'definition': definition,
+               'font_files': json.loads(FONT_FILE.read_text(encoding='utf-8'))}
+        _, rows, output = self.execute(req)
+        observed = {'records': rows, 'callbacks': rows[-1]['callbacks'],
+            'receipts': {r['step']: r for r in rows if r['type'] == 'receipt'},
+            'checkpoints': {r['step']: r for r in rows if r['type'] == 'checkpoint'}}
+        validate_timeline(definition, observed, 'web')
+        self.assertFalse(evaluate(definition, observed, 'web'))
+        self.assertEqual(rows[0]['provenance']['clock_canary']['caret_control'],
+                         {'mode': 'manual', 'screenshot': 'initial', 'hidden': False})
+        initial = deepcopy(rows[0]['effective_inputs']['actual_initial_inputs'])
+        self.assertEqual(initial['instances']['gallery.select.popup-note']['status'], 'deferred')
+        self.assertEqual(initial['instances']['gallery.select.deliver']['status'], 'deferred')
+        self.assertEqual(rows[-1]['effective_inputs']['actual_initial_inputs'], initial)
+        drafted = observed['checkpoints']['virtual-drafted']['resources']['actual_inputs']
+        closed = observed['checkpoints']['async-mounted']['resources']['actual_inputs']
+        retained = closed['instances']['gallery.select.popup-note']
+        self.assertEqual(retained['instance'], drafted['instances']['gallery.select.popup-note']['instance'])
+        self.assertEqual((retained['parent_target'], retained['slot']), ('gallery.select.virtual', 'popup'))
+        self.assertFalse(closed['current']['gallery.select.virtual']['open'])
+        insertion = 'const props = { ...publicProps, "data-testid": identity };'
+        def wrong_placeholder(text):
+            self.assertIn(insertion, text)
+            return text.replace(insertion, insertion + '\nif (identity === "gallery.select.popup-note") props.placeholder = "wrong actual placeholder";')
+        result, negative = self.worker_control(output, wrong_placeholder)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        with self.assertRaisesRegex(ValueError, 'placeholder'):
+            web.validate_observations(negative, req)
+        def extra_origin_wrapper(text):
+            pattern = r'(\w+\.default\.createElement)\((Flex\w*), \{ vertical: true, gap: 4 \}, origin, slot\(slots\.popup\)\)'
+            changed, count = re.subn(pattern, lambda match: (
+                f'{match[1]}({match[2]}, {{ vertical: true, gap: 4 }}, '
+                f'{match[1]}({match[2]}, {{ vertical: true, gap: 40 }}, origin), slot(slots.popup))'), text)
+            self.assertEqual(count, 1, 'actual popup renderer source was not changed')
+            return changed
+        result, negative = self.worker_control(output, extra_origin_wrapper)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        with self.assertRaisesRegex(ValueError, 'popup wrapper/origin/order'):
+            web.validate_observations(negative, req)
+        binding = 'props.popupRender.sourceControl = slots.popup.control;'
+        def bound_but_never_consumed(text):
+            self.assertIn(binding, text)
+            return text.replace(binding, binding + '\nif (identity === "gallery.select.virtual") { const empty = () => null; empty.sourceControl = slots.popup.control; props.popupRender = empty; }')
+        result, negative = self.worker_control(output, bound_but_never_consumed)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('missing checkpoint target', (negative / 'error.json').read_text(encoding='utf-8'))
+
     def test_missing_target_fails_real_browser(self):
         req = request()
         req['definition']['checkpoints'][0]['targets'] = ['absent']
@@ -297,7 +360,7 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
         # Instead append an explicit resource request to a test worker's bundle after its real official build.
         # This validates the worker's network boundary; it is never a product/reference code path.
         _, _, output = self.execute(req)
-        config = json.loads((output / 'worker.json').read_text())
+        config = json.loads((output / 'worker.json').read_text(encoding='utf-8'))
         negative = OUT / uuid.uuid4().hex
         negative.mkdir()
         for name in ('tmp', 'cache', 'config'):
@@ -311,7 +374,7 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
         result = bootstrap.subprocess.run([config['prepared']['node'], str(web.HERE / 'execute.mjs'), str(negative / 'worker.json')],
                                           capture_output=True, timeout=40)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('execute network denied', (negative / 'error.json').read_text())
+        self.assertIn('execute network denied', (negative / 'error.json').read_text(encoding='utf-8'))
 
     def test_protocol_rejects_skipped_input_missing_frame_complete_and_wrong_nonce(self):
         req = request()
@@ -330,7 +393,7 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
                 web.validate_observations(modified, req)
 
     def worker_control(self, output, transform, driver_transform=None):
-        config = json.loads((output / 'worker.json').read_text())
+        config = json.loads((output / 'worker.json').read_text(encoding='utf-8'))
         negative = OUT / uuid.uuid4().hex
         negative.mkdir()
         for name in ('tmp', 'cache', 'config'):
@@ -338,13 +401,13 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
         bundle = negative / 'bundle'
         shutil.copytree(output / 'bundle', bundle)
         app = bundle / 'app.js'
-        app.write_text(transform(app.read_text()))
+        app.write_text(transform(app.read_text(encoding='utf-8')), encoding='utf-8')
         config.update(output=str(negative), build=str(bundle))
         (negative / 'worker.json').write_text(json.dumps(config))
         driver = web.HERE / 'execute.mjs'
         if driver_transform:
             transformed = negative / 'execute.mjs'
-            transformed.write_text(driver_transform(driver.read_text()))
+            transformed.write_text(driver_transform(driver.read_text(encoding='utf-8')), encoding='utf-8')
             driver = transformed
         result = bootstrap.subprocess.run([config['prepared']['node'], str(driver), str(negative / 'worker.json')],
                                           capture_output=True, timeout=40)
@@ -360,10 +423,10 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
             return text.replace(insertion, insertion + '\nprops.disabled = true;')
         result, negative = self.worker_control(output, wrong_props)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('effective public prop mismatch', (negative / 'error.json').read_text())
+        self.assertIn('effective public prop mismatch', (negative / 'error.json').read_text(encoding='utf-8'))
         result, negative = self.worker_control(output, lambda text: text + '\nwindow.__reference.fibers = () => [];\n')
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('actual official component did not execute', (negative / 'error.json').read_text())
+        self.assertIn('actual official component did not execute', (negative / 'error.json').read_text(encoding='utf-8'))
 
     def test_real_skipped_mouse_dispatch_is_detected(self):
         req = request(controls={'button': {'component': 'Button'}}, slots={'button': {'content': 'Dispatch negative'}},
@@ -375,7 +438,7 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
             return text.replace(original, 'void 0; // test deliberately omitted actual dispatch')
         result, negative = self.worker_control(output, lambda text: text, skip_down)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('input not executed/trusted', (negative / 'error.json').read_text())
+        self.assertIn('input not executed/trusted', (negative / 'error.json').read_text(encoding='utf-8'))
 
     def test_actual_options_mismatch_is_detected(self):
         req = request('components/select/demo/basic.tsx', {'selector': {'component': 'Select', 'width': 200}},
@@ -387,7 +450,7 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
             return text.replace(original, 'props.options = [...data.options].reverse();')
         result, negative = self.worker_control(output, wrong_options)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('effective options mismatch', (negative / 'error.json').read_text())
+        self.assertIn('effective options mismatch', (negative / 'error.json').read_text(encoding='utf-8'))
 
     def test_hidden_saved_position_still_sends_real_input(self):
         steps = [action('save-position', 'pointer-move', 'button', {'x_fraction': .5, 'y_fraction': .5})]

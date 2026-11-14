@@ -190,6 +190,8 @@ std::optional<NumberValue> parse_number(const InputNumberState& state, String dr
 }
 
 struct InputState {
+    runtime::ComponentId applied_prefix;
+    runtime::ComponentId applied_suffix;
     MountedInputComponent mounted;
     bool controlled{};
     std::optional<Prop<String>> authoritative_value;
@@ -865,6 +867,7 @@ struct InputPropsAccess {
                     return slot;
                 };
                 const auto prefix_component = make_slot();
+                state.applied_prefix = prefix_component;
                 if (prefix) {
                     slots.mount_slot_with_semantic_text_style(prefix_component, *prefix,
                                                               Prop<runtime::SemanticForeground>{state.slot_foreground},
@@ -881,6 +884,7 @@ struct InputPropsAccess {
                     slots.register_scene_fragment(editable, runtime::SceneFragmentPlacement::before_children);
                 host.layout().set_layout(state.viewport, layout::LeafLayout{});
                 const auto suffix_component = make_slot();
+                state.applied_suffix = suffix_component;
                 layout::FlexLayout suffix_layout;
                 suffix_layout.align = layout::FlexAlign::center;
                 suffix_layout.item_policy = layout::FlexItemPolicy::sequential;
@@ -2585,8 +2589,8 @@ InputInputSnapshot InputComponentHost::input_snapshot(runtime::ComponentId compo
     if (!state) {
         throw std::out_of_range("Input component is stale");
     }
-    return {state->controlled,  state->disabled,    state->read_only,
-            state->allow_clear, state->placeholder, state->hard_max};
+    return {state->controlled,  state->disabled, state->read_only,      state->allow_clear,
+            state->placeholder, state->hard_max, state->applied_prefix, state->applied_suffix};
 }
 
 InputDisplaySnapshot InputComponentHost::display_snapshot(runtime::ComponentId component) const {

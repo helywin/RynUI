@@ -36,7 +36,7 @@ pointer/key/text/composition/wheel 进入实际 `pages.dispatch`，外部策略�
 
 顶层、target 和 capture 仍符合既有 observation v1 schema，新增事实只进入其可扩展 map：
 
-- `resources.readback` 在 checkpoint 包含 `nonce/checkpoint/readback_id/fence_id/scene_revision/renderer_owner/device_epoch/metrics/source_channel_order/source_hash/binary_sha256`，其他记录为 null。`capture.channel_order=RGBA` 表示 readback 已归一化的像素；`framebuffer_format` 和 `source_channel_order` 保留实际 RGBA/BGRA target。BMP 的文件存储通道由解码器处理。alpha 为未反预乘的 framebuffer bytes，`native-encoded-SDR` 不声称浏览器 sRGB 校准已完成。
+- `resources.readback` 在 checkpoint 包含 `run_nonce/nonce/checkpoint/readback_id/fence_id/scene_revision/renderer_owner/device_epoch/metrics/source_channel_order/source_hash/binary_sha256`，其他记录为 null。`run_nonce` 与 run 相等；独立 `nonce` 与当前保存 capture 的 nonce 相等，不能用 run nonce 冒充图片身份。五个 device metrics 字段逐项与窗口观察核对，coordinate extent/提交与读回统计是独立诊断字段。`capture.channel_order=RGBA` 表示 readback 已归一化的像素；`framebuffer_format` 和 `source_channel_order` 保留实际 RGBA/BGRA target。BMP 的文件存储通道由解码器处理。alpha 为未反预乘的 framebuffer bytes，`native-encoded-SDR` 不声称浏览器 sRGB 校准已完成。
 - `resources.compositor_callback/presented` 为 null，`presentation_evidence=not-observed-by-checkpoint-readback`。readback 不观察实际显示器呈现，不能把默认 false 当作已经测得“未呈现”。
 - static target 的 `key` 为实际 semantic identity，`state.key_source=static-semantic-target`；Select 的 `option_keys` 是当前 model 的有序 value。这里不宣称通用动态 List/Table key 观测。sample 的 `state.controls` 保留逐 target 状态，不将最后一个后代的 disabled/value 覆盖成整个 sample 的状态。
 - 非编辑组件的 selection、没有相应语义的 disabled/loading/open 为 null；实际 snapshot 查询到的 false 才写 false。文本和 icon 数组来自当前 retained scene 的枚举，icon 各层带实际文本/字体/ink/clip。未知或过期 font source 抛错，不以空数组、零 repair count 或 fallback 标记判绿。

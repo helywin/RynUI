@@ -1056,7 +1056,8 @@ DefaultUiFontResolver make_default_ui_font_resolver(font::FontRuntime& fonts, De
                 identities.push_back(loaded.font);
             }
             if (identities.empty()) {
-                throw std::runtime_error("Explicit font chain has no file for requested weight/slant");
+                throw std::runtime_error("Explicit font chain has no file for requested weight/slant: weight=" +
+                                         std::to_string(weight) + ", italic=" + (italic ? "true" : "false"));
             }
             state->cache.emplace(key, identities);
             return identities;

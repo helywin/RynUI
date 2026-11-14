@@ -540,8 +540,9 @@ class OrdinaryFaultPlumbingTests(unittest.TestCase):
             original = pilots.input_case()
             case.update(identity=INPUT, native=original['native'])
             case['fixture']['props'] = deepcopy(original['fixture']['props'])
-            case['fixture']['props'].pop('composition')
             case['fixture']['data'] = deepcopy(original['fixture']['data'])
+            case['fixture']['slots'] = deepcopy(original['fixture']['slots'])
+            case['fixture']['theme'] = deepcopy(original['fixture']['theme'])
             case['checkpoints'] = [{**deepcopy(original['checkpoints'][0]), 'step': 'capture'}]
             case['actions'][0]['target'] = case['native']['targets'][0]
             case['actions'][1]['target'] = case['native']['sample_id']
@@ -556,6 +557,21 @@ class OrdinaryFaultPlumbingTests(unittest.TestCase):
                 # never claim the native C++ hook or a GPU was executed.
                 for row in rows:
                     row['provenance']['fault'] = active
+                    row['resources']['actual_initial_inputs']['slots'] = {
+                        target: {key: [deepcopy(value)] for key, value in fields.items()}
+                        for target, fields in definition['fixture']['slots'].items()}
+                    composition = definition['fixture']['props']['composition']
+                    if composition['component'] == 'Flex':
+                        row['resources']['actual_initial_inputs']['composition'].update(
+                            host=deepcopy(composition.get('props', {})), roots=deepcopy(composition.get('children', [])))
+                    # Keep the parent's root-Flex correction; the strict query
+                    # contract additionally requires explicit empty slot maps.
+                    from demo_differential_input_controls import actual_input_control
+                    applied = actual_input_control(definition, 'native')
+                    row['resources']['actual_initial_inputs']['slots'] = deepcopy(applied['slots'])
+                    row['resources']['actual_inputs']['slots'] = deepcopy(applied['slots'])
+                    row['resources']['actual_initial_inputs']['composition'] = deepcopy(applied['composition'])
+                    row['resources']['actual_inputs']['composition'] = deepcopy(applied['composition'])
                     if detect and active == 'button-padding-plus-one':
                         for target in row['targets']:
                             target['tokens']['padding_inline'] = 1

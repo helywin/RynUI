@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 import struct
 
@@ -12,12 +13,18 @@ from .protocol import output_path
 def required_faces(case):
     if case['fixture']['font_policy'] != 'pinned':
         return []
-    # The real Gallery shell and Select request upright weight 600. There is no
-    # permission to relabel regular bytes or silently select a system face.
-    return [{'identity': identity, 'weight': 600, 'slant': 'upright', 'face_index': 0,
-             'required_by': 'native Gallery shell / Select', 'lock_status': 'missing-real-weight-600-resource',
+    # Gallery source/support paragraphs request 500; the shell and Select also
+    # request 600. Neither can use relabeled regular bytes or a system fallback.
+    result = [{'identity': identity, 'weight': weight, 'slant': 'upright', 'face_index': 0,
+             'required_by': ('native Gallery source/support paragraphs' if weight == 500 else
+                             'native Gallery shell / Select'), 'lock_status': 'central-resource-lock',
              'required_resource_fields': ['source_url', 'sha256', 'license', 'face_index', 'weight']}
-            for identity in ('noto-sans', 'noto-sans-cjk-sc')]
+            for weight in (500, 600) for identity in ('noto-sans', 'noto-sans-cjk-sc')]
+    if '\U0001f642' in json.dumps([case['fixture'], case.get('actions', [])], ensure_ascii=False):
+        result.append({'identity': 'noto-emoji', 'weight': 400, 'slant': 'upright', 'face_index': 0,
+                       'required_by': 'Input actual U+1F642 at weight 400', 'lock_status': 'central-resource-lock',
+                       'required_resource_fields': ['source_url', 'sha256', 'license', 'face_index', 'weight']})
+    return result
 
 
 def sfnt_weight(path, face_index):
@@ -49,6 +56,9 @@ def preflight(case, files):
     expected = case['fixture']['fonts']
     if [{k: f[k] for k in ('identity', 'sha256', 'face_index', 'weight')} for f in files] != expected:
         raise RunError(3, 'environment', 'pinned requested font chain differs from explicit file chain')
+    available = {(f['identity'], f['weight']) for f in files}
+    if len(available) != len(files):
+        raise RunError(3, 'environment', 'duplicate explicit font identity/weight')
     for item in files:
         path = output_path(item['path'])
         if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != item['sha256']:
@@ -58,11 +68,23 @@ def preflight(case, files):
         except ValueError as error:
             raise RunError(3, 'environment', str(error)) from error
         if weight != item['weight'] or italic:
-            raise RunError(3, 'environment', 'actual font weight/slant differs; regular bytes cannot be relabeled 600: ' + item['identity'])
-    available = {(f['identity'], f['weight']) for f in files}
+            raise RunError(3, 'environment', 'actual font weight/slant differs; regular bytes cannot be relabeled 500/600: ' + item['identity'])
     missing = [f for f in required_faces(case) if (f['identity'], f['weight']) not in available]
     if missing:
-        error = RunError(3, 'environment', 'missing real upright 600 faces for Gallery shell/Select; central resource and Web regular-only locks need an explicit extension')
+        error = RunError(3, 'environment', 'missing actual required font faces; prepare the central acceptance font chain')
         error.details = {'missing_font_faces': missing, 'implicit_fallback': False,
                          'normal_gallery_system_default': 'unchanged'}
         raise error
+    # Same exact bytes, face, weight and PostScript identity as the Web loader.
+    from demo_reference_web.font_resources import admit_font
+    try:
+        for requested, actual in zip(expected, files):
+            admit_font(requested, actual, case['fixture']['font_policy'])
+        if any(row['identity'] == 'noto-emoji' for row in required_faces(case)):
+            from demo_reference_web.font_metadata import font_metadata
+            emoji = next(row for row in files if row['identity'] == 'noto-emoji' and row['weight'] == 400)
+            metadata = font_metadata(emoji['path'], emoji['face_index'], [0x1f642])
+            if not metadata['nominal_glyphs'][str(0x1f642)]:
+                raise ValueError('explicit weight-400 emoji face has no nominal U+1F642 glyph')
+    except (ValueError, OSError) as error:
+        raise RunError(3, 'environment', str(error)) from error

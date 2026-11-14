@@ -75,6 +75,7 @@ public:
     void set_messages(const ryn::MessageCatalog& messages);
     [[nodiscard]] ryn::LocaleId locale() const;
     [[nodiscard]] GalleryPagesSnapshot snapshot() const;
+    [[nodiscard]] std::string last_error() const;
     [[nodiscard]] const GalleryPagesWork& work() const noexcept;
     [[nodiscard]] const GalleryPageModel& model() const noexcept;
     [[nodiscard]] ryn::runtime::ComponentId target(std::string_view identity) const;

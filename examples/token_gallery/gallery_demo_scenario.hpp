@@ -39,10 +39,18 @@ public:
     [[nodiscard]] GalleryDemoJson dispatch(const GalleryDemoAction&);
     [[nodiscard]] ryn::runtime::ComponentId target(std::string_view name);
     [[nodiscard]] std::string semantic(std::optional<ryn::input::InteractionId>);
+    [[nodiscard]] std::vector<std::string> input_targets() const;
+    [[nodiscard]] GalleryDemoJson query_inputs(std::span<const ryn::runtime::ComponentId> factory_roots,
+                                               std::string_view step, bool initial = false);
 
     const GalleryDemoScenario& scenario;
     GalleryDemoNativeActions actions;
     std::map<std::string, ryn::input::TextInputSessionStamp> sessions;
+    std::uint64_t input_query_sequence{};
+    std::map<std::string, std::uint64_t> input_first_observed;
+    std::map<std::string, GalleryDemoJson> input_uncontrolled_seeds;
+    std::vector<std::weak_ptr<ryn::runtime::ConfigScope>> input_config_scopes;
+    std::vector<std::weak_ptr<ryn::theme_runtime::ThemeScope>> input_theme_scopes;
 };
 
 void run_gallery_demo_scenario(const GalleryDemoScenario&, const std::filesystem::path& observations,

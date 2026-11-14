@@ -147,33 +147,9 @@ def effective_inputs(case, native_observed, web_observed):
                     if key in ('fonts', 'font_policy', 'viewport'):
                         raise RunError(3, 'environment', side + ' effective environment differs: ' + key)
                     raise ProtocolError(side + ' effective input differs: ' + key)
-    # Native effective_inputs is an echo; require the separate actual production
-    # input query and compare every declared prop/data field. Unknown defaults
-    # remain in raw evidence, rather than deleting them from the observations.
-    actual = next((r['resources'].get('actual_initial_inputs') for r in native_observed['records']
-                   if r['resources'].get('actual_initial_inputs')), None)
-    if not actual:
-        raise ProtocolError('native lacks independently observed actual_initial_inputs')
-    for target, declaration in fixture['props']['controls'].items():
-        current = actual.get('controls', {}).get(target, {})
-        for key, expected in declaration.items():
-            if key not in current or not exact(current[key], expected):
-                raise ProtocolError('native actual public input differs/missing: ' + target + '.' + key)
-        for key, expected in fixture['data'].get(target, {}).items():
-            value = actual.get('data', {}).get(target, {}).get(key)
-            if key == 'options' and isinstance(value, list):
-                # Native explicit defaults are equivalent only for these pinned
-                # public option fields. Preserve order, keys, labels, disabled.
-                value = [{k: v for k, v in item.items() if k != 'group' or v} for item in value]
-                expected = [{'disabled': False, **item} for item in expected]
-            if not exact(value, expected):
-                raise ProtocolError('native actual initial data differs: ' + target + '.' + key)
-    # Slots, local Theme and composition must be observed independently too.
-    # Baseline adapter does not yet export these; fail closed, never bless echoes.
-    for key in ('slots', 'theme', 'composition'):
-        expected = fixture['props'].get(key) if key == 'composition' else fixture[key]
-        if expected and not exact(actual.get(key), expected):
-            raise ProtocolError('native actual input query lacks/mismatches ' + key)
+    from .actual_inputs import validate_timeline
+    validate_timeline(case, native_observed, 'native')
+    validate_timeline(case, web_observed, 'web')
     for side, observed in (('native', native_observed), ('web', web_observed)):
         current = metrics(observed, side)
         for key, expected in (('dpr', fixture['viewport']['dpr']), ('logical_width', fixture['viewport']['width']),
@@ -185,3 +161,139 @@ def effective_inputs(case, native_observed, web_observed):
                 if (capture['dpr'] != current['dpr'] or abs(capture['width'] - current['logical_width'] * current['dpr']) > .01 or
                         abs(capture['height'] - current['logical_height'] * current['dpr']) > .01):
                     raise IncompleteRun(side + ' checkpoint actual DPR/extent changed')
+
+
+def native_actual_inputs(fixture, actual):
+    if actual.get('source') != 'mounted hosts, applied editor state, retained slots/ThemeScope/layout':
+        raise ProtocolError('native actual input query is missing its independent state source')
+    for target, declaration in fixture['props']['controls'].items():
+        current = actual.get('controls', {}).get(target, {})
+        if not current:
+            gap = next((row.get('reason') for row in actual.get('unobserved', []) if row.get('target') == target), 'no mounted host query')
+            raise ProtocolError('native actual input unobserved: ' + target + ': ' + gap)
+        for key, expected in declaration.items():
+            if key in ('localTheme', 'recipe'):
+                continue
+            if key not in current or not exact(current[key], expected):
+                raise ProtocolError('native actual public input differs/missing: ' + target + '.' + key)
+        for key, expected in fixture['data'].get(target, {}).items():
+            value = actual.get('data', {}).get(target, {}).get(key)
+            if key == 'options' and isinstance(value, list):
+                value = native_options(value)
+                expected = web_options(expected)
+            if not exact(value, expected):
+                raise ProtocolError('native actual initial data differs: ' + target + '.' + key)
+        verify_theme(fixture, target, declaration.get('localTheme'), actual.get('themes', {}).get(target))
+        verify_recipe(target, declaration.get('recipe'), current)
+    verify_slots(fixture, actual)
+    verify_composition(fixture, actual.get('composition'))
+
+
+def web_options(rows):
+    result = []
+    for row in rows:
+        if 'options' in row:
+            if row.get('disabled', False):
+                raise ProtocolError('native SelectOptionGroup has no public disabled-group input')
+            result.append({'group': True, 'key': row['title'], 'label': row['label']})
+            result.extend(web_options(row['options']))
+        else:
+            result.append({'value': row['value'], 'label': row['label'], 'disabled': row.get('disabled', False), 'key': ''})
+    return result
+
+
+def native_options(rows):
+    result = []
+    for row in rows:
+        if row.get('group'):
+            if row['disabled'] is not True:
+                raise ProtocolError('native Select group heading must remain nonselectable')
+            result.append({'group': True, 'key': row['key'], 'label': row['label']})
+        else:
+            result.append({'value': row['value'], 'label': row['label'], 'disabled': row['disabled'], 'key': row.get('key', '')})
+    return result
+
+
+def verify_theme(fixture, target, local, observed):
+    if not observed or observed.get('source') not in ('retained ThemeScope applied config and resolved snapshot',
+            'committed ConfigProvider ancestry and applied public Theme'):
+        raise ProtocolError('native lacks actual ThemeScope: ' + target)
+    expected_algorithm = (local or {}).get('algorithm', fixture['theme'].get('algorithm', 'default'))
+    algorithms = observed.get('algorithms') or ['default']
+    if algorithms != [expected_algorithm] or observed.get('colorBgContainer') != fixture['theme'].get('token', {}).get('colorBgContainer', '#ffffff'):
+        raise ProtocolError('native actual local/global Theme differs: ' + target)
+    if local and 'components' in local:
+        expected = local['components']['Select']
+        if not exact(observed.get('Select'), expected) or observed.get('select_option_height') != expected['optionHeight']:
+            raise ProtocolError('native applied Select local Theme differs: ' + target)
+
+
+def verify_recipe(target, recipe, observed):
+    if not recipe:
+        return
+    from demo_reference_web.reference import SELECT_RECIPES
+    if SELECT_RECIPES.get(target) != recipe:
+        raise ProtocolError('unknown same-source wrapper: ' + target)
+    fields = {'select-virtual': {'option': True, 'popup': True}, 'select-tags': {'tag': True},
+              'select-async': {'popup': True, 'async_source': True}}.get(recipe, {})
+    for key, value in fields.items():
+        if observed.get('applied_renderers', {}).get(key) is not value:
+            raise ProtocolError('native applied source renderer missing: ' + target + '.' + key)
+    # Callback behavior is checked by the independent action oracle. The recipe
+    # name itself is source binding, not evidence that a callback was executed.
+
+
+def verify_slots(fixture, actual):
+    for target, slots in fixture['slots'].items():
+        for key, value in slots.items():
+            if key == 'caption':
+                continue # Checked in its real retained composition position.
+            observed = actual.get('slots', {}).get(target, {}).get(key)
+            if isinstance(value, str):
+                content = ''.join(item for item in (observed or []) if isinstance(item, str))
+                if content != value:
+                    raise ProtocolError('native actual slot text differs: ' + target + '.' + key)
+            elif isinstance(value, dict) and 'icon' in value:
+                source = actual.get('slots', {}).get(target, {}).get('content') if fixture['props']['controls'][target]['component'] == 'Button' else observed
+                if [item for item in (source or []) if isinstance(item, dict) and 'icon' in item] != [value]:
+                    raise ProtocolError('native actual slot icon differs: ' + target + '.' + key)
+            else:
+                if actual.get('slot_targets', {}).get(target, {}).get(key) != [value]:
+                    # A dormant popup has no applied children to observe. Keep
+                    # this gap nonzero rather than assert fixture equivalence.
+                    raise ProtocolError('native nested slot needs applied child identity evidence: ' + target + '.' + key)
+
+
+def verify_composition(fixture, observed, feedback_values=None):
+    if not observed or observed.get('source') != 'retained component tree and applied layout models':
+        raise ProtocolError('native lacks independently retained composition')
+    def projected(node, native=False):
+        component = node['component']
+        if component == 'retained':
+            children = [projected(n, True) for n in node['children']]
+            if len(children) != 1:
+                raise ProtocolError('unknown retained authoring structure; cannot prove equivalence')
+            return children[0]
+        if component == 'control':
+            return {'component': component, 'target': node['target']}
+        if component == 'source-feedback':
+            value = node['content'] if native or feedback_values is None else feedback_values[node['identity']]
+            return {'component': component, 'identity': node['identity'], 'content': value}
+        if component == 'Typography.Text':
+            value = fixture['slots'][node['target']][node['slot']] if 'slot' in node else node['content']
+            return {'component': 'Typography.Text', 'content': value}
+        props = node.get('props', {})
+        align = props.get('align', 'center' if component == 'Space' else 'stretch')
+        align = {'flex-start': 'start', 'flex-end': 'end'}.get(align, align)
+        gap = props.get('gap', props.get('size', 8 if component == 'Space' else 0))
+        return {'component': component, **({'width': node['width']} if 'width' in node else {}), 'props': {'vertical': props.get('vertical', props.get('direction') == 'vertical'),
+                'gap': gap, 'wrap': props.get('wrap', False), 'align': align},
+                'children': [projected(n, native) for n in node.get('children', [])]}
+    expected = projected(fixture['props']['composition'])
+    roots = observed.get('roots', [])
+    if len(roots) == 1 and expected['component'] != 'Flex':
+        actual = projected(roots[0], True)
+    else:
+        actual = projected({'component': 'Flex', 'props': observed.get('host') or {}, 'children': roots}, True)
+    if not exact(actual, expected):
+        raise ProtocolError('native actual authored composition/text/order differs')

@@ -49,6 +49,25 @@ class ComparisonTests(unittest.TestCase):
         values[2]['targets'][0]['bounds']['width'] += 1
         self.assertIn('layout', {f['category'] for f in self.compare(values)[0]})
 
+    def test_button_input_token_units_keep_both_padding_sides(self):
+        for component in ('Button', 'Input'):
+            values = controls()
+            case, declaration, native, web = values[:4]
+            case['fixture']['props'] = {'controls': {'control': {'component': component}}}
+            declaration['targets'].append('control')
+            for observed in (native, web):
+                row = deepcopy(observed['targets'][0])
+                row['identity'] = 'control'
+                row['state'] = {'disabled': False, 'loading': False, 'value': ''}
+                observed['targets'].append(row)
+            native['targets'][1]['tokens'].update(border_width=1, border_radius=6, font_size=14, padding_inline=11)
+            web['targets'][1]['tokens'].update(borderWidth='1px', borderRadius='6px', fontSize='14px',
+                                              paddingInlineStart='11px', paddingInlineEnd='11px')
+            self.assertEqual(self.compare(values)[0], [])
+            web['targets'][1]['tokens']['paddingInlineEnd'] = '12px'
+            self.assertTrue(any(row['category'] == 'token' and row.get('token') == 'padding_inline'
+                                for row in self.compare(values)[0]))
+
     def test_local_missing_icon_and_double_background_cannot_pass(self):
         values = controls()
         icon = area(20, 20, 3, 5)

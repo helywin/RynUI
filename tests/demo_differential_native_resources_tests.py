@@ -32,10 +32,11 @@ def stream_control():
                      'presented': None, 'presentation_evidence': 'not-observed-by-checkpoint-readback', 'readback': None}
         captures = []
         if kind == 'checkpoint':
-            resources['readback'] = {'nonce': 'unit-run', 'checkpoint': step, 'readback_id': serial, 'fence_id': serial,
+            capture_nonce = 'unit-run-capture-' + str(serial)
+            resources['readback'] = {'run_nonce': 'unit-run', 'nonce': capture_nonce, 'checkpoint': step, 'readback_id': serial, 'fence_id': serial,
                 'scene_revision': 7, 'renderer_owner': 3, 'device_epoch': 2, 'metrics': deepcopy(metrics),
                 'source_channel_order': 'BGRA', 'source_hash': 'a' * 64, 'binary_sha256': 'b' * 64}
-            captures = [{'scene_revision': 7, 'channel_order': 'RGBA', 'framebuffer_format': 'BGRA8_UNORM'}]
+            captures = [{'nonce': capture_nonce, 'checkpoint': step, 'scene_revision': 7, 'channel_order': 'RGBA', 'framebuffer_format': 'BGRA8_UNORM'}]
         rows.append({'type': kind, 'step': step, 'nonce': 'unit-run', 'resources': resources, 'captures': captures})
     return {'records': rows}
 
@@ -44,8 +45,17 @@ class NativeResourcesTests(unittest.TestCase):
     def test_same_scene_new_fence_and_normalized_bgra_readback(self):
         validate(stream_control(), {'source_hash': 'a' * 64}, 'b' * 64)
 
+    def test_window_diagnostic_counters_are_separate_from_actual_device_metrics(self):
+        observed = stream_control()
+        for row in observed['records']:
+            row['resources']['metrics'].update(coordinate_width=16, completed_readbacks=1, gpu_submissions=0)
+        validate(observed, {'source_hash': 'a' * 64}, 'b' * 64)
+        observed['records'][1]['resources']['metrics']['pixel_width'] = 17
+        with self.assertRaisesRegex(IncompleteRun, 'metrics'):
+            validate(observed, {'source_hash': 'a' * 64}, 'b' * 64)
+
     def test_old_fence_readback_epoch_scene_metrics_source_binary_and_channel_fail(self):
-        for fault in ('fence', 'readback', 'epoch', 'scene', 'metrics', 'source', 'binary', 'channel', 'nonce'):
+        for fault in ('fence', 'readback', 'epoch', 'scene', 'metrics', 'source', 'binary', 'channel', 'nonce', 'run-nonce', 'run-as-capture', 'capture-checkpoint'):
             observed = stream_control()
             readback = observed['records'][2]['resources']['readback']
             if fault == 'fence':
@@ -64,6 +74,13 @@ class NativeResourcesTests(unittest.TestCase):
                 readback['binary_sha256'] = '0' * 64
             elif fault == 'channel':
                 readback['source_channel_order'] = 'RGBA'
+            elif fault == 'run-nonce':
+                readback['run_nonce'] = 'old-run'
+            elif fault == 'run-as-capture':
+                readback['nonce'] = 'unit-run'
+                observed['records'][2]['captures'][0]['nonce'] = 'unit-run'
+            elif fault == 'capture-checkpoint':
+                observed['records'][2]['captures'][0]['checkpoint'] = 'old-checkpoint'
             else:
                 readback['nonce'] = 'old-run'
             with self.subTest(fault=fault), self.assertRaises(IncompleteRun):

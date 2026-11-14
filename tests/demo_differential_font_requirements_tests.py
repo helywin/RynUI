@@ -37,12 +37,21 @@ class FontRequirementsTests(unittest.TestCase):
                                                             for f in files]}}
 
     def test_missing_real_600_lists_both_exact_family_weight_requirements(self):
-        files = [self.file(identity, 400) for identity in ('noto-sans', 'noto-sans-cjk-sc')]
+        files = [self.file(identity, weight) for weight in (400, 500) for identity in ('noto-sans', 'noto-sans-cjk-sc')]
         with self.assertRaises(RunError) as error:
             preflight(self.case(files), files)
         self.assertEqual(error.exception.code, 3)
         missing = error.exception.details['missing_font_faces']
         self.assertEqual([(r['identity'], r['weight']) for r in missing], [('noto-sans', 600), ('noto-sans-cjk-sc', 600)])
+        self.assertFalse(error.exception.details['implicit_fallback'])
+
+    def test_missing_real_500_lists_both_exact_family_weight_requirements(self):
+        files = [self.file(identity, weight) for weight in (400, 600) for identity in ('noto-sans', 'noto-sans-cjk-sc')]
+        with self.assertRaises(RunError) as error:
+            preflight(self.case(files), files)
+        self.assertEqual(error.exception.code, 3)
+        missing = error.exception.details['missing_font_faces']
+        self.assertEqual([(r['identity'], r['weight']) for r in missing], [('noto-sans', 500), ('noto-sans-cjk-sc', 500)])
         self.assertFalse(error.exception.details['implicit_fallback'])
 
     def test_regular_relabelled_600_and_unlocked_slant_are_rejected(self):

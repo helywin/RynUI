@@ -36,7 +36,6 @@ def control_case():
     case['fixture']['viewport'] = {'width': 16, 'height': 16, 'dpr': 'native'}
     case['fixture']['slots'] = {}
     case['fixture']['theme'] = {}
-    case['fixture']['props'].pop('composition')
     case['actions'] = [pilots.action('send', 'pointer-down', case['native']['targets'][0],
                        {'button': 'primary', 'x_fraction': .5, 'y_fraction': .5}),
                        pilots.action('capture', 'checkpoint', case['native']['sample_id'])]
@@ -111,18 +110,29 @@ class AdapterControl:
         fixture = deepcopy(case['fixture'])
         fixture['viewport']['dpr'] = 1
         effective = {**fixture, 'actual_environment': {'ratio': 1, 'width': 16, 'height': 16}}
-        actual = {'controls': deepcopy(case['fixture']['props']['controls']), 'data': deepcopy(case['fixture']['data'])}
+        # Mechanism substitute only: the native CORE controls separately prove
+        # retained reads rather than fixture echo on the production path.
+        from demo_differential_input_controls import actual_input_control
+        actual = actual_input_control(case, side)
+        if side == 'web':
+            effective['actual_initial_inputs'] = deepcopy(actual)
         if fault == 'props':
             actual['controls'][case['native']['targets'][0]]['size'] = 'large'
         records, completed, checked = [], [], []
         def record(kind, step=''):
             from demo_differential_native_resources_tests import lifecycle_control
+            current = deepcopy(actual)
+            if step:
+                current.update(phase='settled', step=step,
+                    query_seq=2 + next(i for i, a in enumerate(case['actions']) if a['step'] == step))
+            elif kind == 'complete':
+                current.update(phase='settled', step=case['actions'][-1]['step'], query_seq=1 + len(case['actions']))
             return {'schema_version': 1, 'type': kind, 'nonce': nonce, 'case': case['identity'], 'step': step,
                 'adapter': 'rynui-gallery-native-v1' if side == 'native' else case['official']['adapter_id'],
                 'provenance': provenance, 'effective_inputs': effective,
                 'receipt': {'dispatched': kind == 'receipt', 'hit': '', 'consumed': False, 'layer': 'observer'},
                 'state': {}, 'callbacks': [], 'targets': [], 'captures': [],
-                'resources': {'metrics': metrics, 'actual_initial_inputs': actual, 'readback': None,
+                'resources': {'metrics': metrics, 'actual_initial_inputs': deepcopy(actual), 'actual_inputs': current, 'readback': None,
                               'lifecycle': lifecycle_control(), 'compositor_callback': None, 'presented': None,
                               'presentation_evidence': 'not-observed-by-checkpoint-readback'},
                 'completed_steps': list(completed), 'completed_checkpoints': list(checked)}
@@ -152,7 +162,7 @@ class AdapterControl:
                 row['captures'] = [capture]
                 if side == 'native':
                     capture['framebuffer_format'] = 'RGBA8_UNORM'
-                    row['resources']['readback'] = {'nonce': nonce, 'checkpoint': step,
+                    row['resources']['readback'] = {'run_nonce': nonce, 'nonce': capture['nonce'], 'checkpoint': step,
                         'readback_id': len(checked), 'fence_id': len(checked), 'scene_revision': 1,
                         'renderer_owner': 1, 'device_epoch': 1, 'metrics': deepcopy(metrics),
                         'source_channel_order': 'RGBA', 'source_hash': provenance['source']['source_hash'],

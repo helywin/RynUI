@@ -64,8 +64,10 @@ def case_coverage(case, inventory):
     targets = [r['identity'] for r in inventory['targets'] if r['sample'] == sample['identity']]
     if case['native']['targets'] != targets:
         raise ProtocolError('pilot must preserve all ordered original sample target identities')
+    from .actual_inputs import checkpoint_input_targets
+    observed_targets = checkpoint_input_targets(case, targets)
     for declaration in case['checkpoints']:
-        if not set(declaration['targets']) <= set(targets) | {sample['identity']}:
+        if not set(declaration['targets']) <= observed_targets:
             raise ProtocolError('pilot checkpoint substitutes an unregistered target')
         if not {'geometry', 'token', 'pixels', 'text'} <= set(declaration['layers']):
             raise ProtocolError('pilot checkpoint omitted a required comparison layer')
@@ -73,7 +75,7 @@ def case_coverage(case, inventory):
         if not {'sample-context', 'control', 'guard-band'} <= kinds:
             raise ProtocolError('pilot omitted context/control/guard coverage')
         unique(declaration['rois'])
-        controls = {r['target'] for r in declaration['rois'] if r['kind'] == 'control'}
+        controls = {r['target'] for r in declaration['rois'] if r['kind'] in ('control', 'popup')}
         if controls != set(declaration['targets']) - {sample['identity']}:
             raise ProtocolError('pilot omitted an observed control ROI')
     return targets
