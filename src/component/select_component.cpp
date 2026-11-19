@@ -2868,6 +2868,7 @@ void SelectComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
         effects.shape = {{bounds.x, bounds.y, bounds.width, bounds.height}, token.metrics.border_radius};
         effects.shadows = token.shadow;
         effects.shadow_opacity = s->motion.opacity;
+        effects.opaque_shadow_caster = token.colors.popup_background.alpha() == 1.0F && s->motion.opacity == 1.0F;
         effects.ancestor_clip = graphics::EffectClip{1, window};
         static_cast<void>(services_->surfaces().update_effects(s->background, effects));
         const float padding = std::min(token.metrics.popup_padding, std::min(bounds.width, bounds.height) / 2);

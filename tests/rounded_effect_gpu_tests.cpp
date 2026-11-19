@@ -124,6 +124,7 @@ void test_exterior_shadow_masks_the_unshifted_caster() {
     const ShadowLayer layer{ShadowKind::outer, {7, 4}, 6, 0, Color::rgba8(10, 20, 30, 128)};
     const graphics::LogicalRoundedRect caster{{20, 20, 50, 34}, 0};
     const auto shadow = graphics::make_exterior_shadow_effect(caster, layer, {2, 3});
+    const auto opaque = graphics::make_exterior_shadow_effect(caster, layer, {2, 3}, std::nullopt, true);
     const auto full = graphics::make_shadow_effect(caster, layer, {2, 3});
     graphics::RoundedEffectStore store;
     static_cast<void>(store.add(shadow));
@@ -142,6 +143,7 @@ void test_exterior_shadow_masks_the_unshifted_caster() {
     for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
         const detail::SceneDeviceMetrics metrics{256, 192, scale};
         const auto packed = detail::pack_rounded_effect_instance(shadow, metrics);
+        const auto packed_opaque = detail::pack_rounded_effect_instance(opaque, metrics);
         const auto packed_full = detail::pack_rounded_effect_instance(full, metrics);
         const auto coverage = [&](runtime::Point p, const auto& instance) {
             return detail::rounded_effect_gpu_coverage_reference({p.x * scale, p.y * scale}, instance);
@@ -151,11 +153,17 @@ void test_exterior_shadow_masks_the_unshifted_caster() {
                 "a translucent caster still received shadow underneath its fill");
         require(near(coverage({72, 45}, packed), .5F * expected(72)),
                 "caster boundary failed physical-pixel antialiasing");
+        require(near(packed_opaque.effect_params[2], scale) &&
+                    near(coverage({71, 45}, packed_opaque), .5F * expected(71)) &&
+                    near(coverage({72, 45}, packed_opaque), expected(72)) && coverage({68, 45}, packed_opaque) == 0,
+                "opaque caster removed coverage needed beneath its own anti-aliased edge");
         require(near(coverage({74, 45}, packed), expected(74)) && coverage({74, 45}, packed) > 0,
                 "knockout was translated with the shifted shadow");
         for (const auto p : {runtime::Point{65, 45}, runtime::Point{72, 45}, runtime::Point{74, 45}}) {
             require(near(coverage(p, packed), graphics::rounded_effect_coverage(p, shadow, 1 / scale)),
                     "packed knockout disagreed with logical coverage");
+            require(near(coverage(p, packed_opaque), graphics::rounded_effect_coverage(p, opaque, 1 / scale)),
+                    "packed opaque knockout disagreed with logical coverage");
         }
     }
 

@@ -15,7 +15,8 @@ bool clips_shadow_caster(const RetainedSurfaceEffects& effects, const ShadowLaye
 
 graphics::RoundedEffectInstance make_surface_shadow(const RetainedSurfaceEffects& effects, const ShadowLayer& layer) {
     if (clips_shadow_caster(effects, layer)) {
-        return graphics::make_exterior_shadow_effect(effects.shape, layer, effects.translation, effects.ancestor_clip);
+        return graphics::make_exterior_shadow_effect(effects.shape, layer, effects.translation, effects.ancestor_clip,
+                                                     effects.opaque_shadow_caster);
     }
     return graphics::make_shadow_effect(effects.shadow_shape.value_or(effects.shape), layer, effects.translation,
                                         effects.ancestor_clip);
@@ -81,6 +82,7 @@ RetainedSurfaceId RetainedSurfaceService::create_record(runtime::ComponentId com
         }
         auto painted_effects = effects;
         painted_effects.shadow_opacity *= factor;
+        painted_effects.opaque_shadow_caster = effects.opaque_shadow_caster && factor == 1.0F;
         painted_effects.focus_opacity *= factor;
         range = instances_.append(std::span{painted}.first(visuals.size()));
         slot.record.emplace(Record{
@@ -512,6 +514,7 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
     had_paint_opacity_ = had_paint_opacity_ || factor != 1;
     record.paint_pending = record.paint_pending || factor != record.paint_factor;
     effects.shadow_opacity *= factor;
+    effects.opaque_shadow_caster = source.opaque_shadow_caster && factor == 1.0F;
     effects.focus_opacity *= factor;
     if (effects.shadow_fill_offset > record.range.count) {
         throw std::invalid_argument("shadow fill offset exceeds surface visuals");

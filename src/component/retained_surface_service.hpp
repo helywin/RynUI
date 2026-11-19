@@ -37,6 +37,7 @@ struct RetainedSurfaceEffects final {
     // shadow. Remaining quads cover the shadow's interior.
     std::uint32_t shadow_fill_offset{};
     std::optional<std::array<bool, 4>> rounded_corners;
+    bool opaque_shadow_caster{};
 
     friend bool operator==(const RetainedSurfaceEffects&, const RetainedSurfaceEffects&) = default;
 };

@@ -264,7 +264,10 @@ float LegacyEffectCoverage(float2 samplePosition, float4 shapeRect, float4 shado
         radius = clamp(radius + spread, 0.0, 0.5 * min(shape.z, shape.w));
         shape.xy += offset;
         if (kind == 6.0) {
-            float outside = 1.0 - RoundedRectFillCoverage(samplePosition, shapeRect, shadowParams.x, materialParams.y);
+            float inset = effectParams.z;
+            float4 casterRect = float4(shapeRect.xy + inset.xx, max(0.0, shapeRect.zw - 2.0 * inset.xx));
+            float casterRadius = max(0.0, shadowParams.x - inset);
+            float outside = 1.0 - RoundedRectFillCoverage(samplePosition, casterRect, casterRadius, materialParams.y);
             if (outside > 0.0) {
                 coverage = outside * RoundedShadowGaussian(samplePosition, shape, radius, 0.5 * blur, materialParams.y);
             }

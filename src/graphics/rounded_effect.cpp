@@ -297,12 +297,14 @@ RoundedEffectInstance make_shadow_effect(LogicalRoundedRect shape, const ShadowL
 }
 
 RoundedEffectInstance make_exterior_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer,
-                                                  runtime::Point translation, std::optional<EffectClip> ancestor_clip) {
+                                                  runtime::Point translation, std::optional<EffectClip> ancestor_clip,
+                                                  bool opaque_caster) {
     if (layer.kind != ShadowKind::outer || layer.blur <= 0.0F) {
         throw std::invalid_argument("Exterior shadow requires a blurred outer layer");
     }
     auto result = make_shadow_effect(shape, layer, translation, std::move(ancestor_clip));
     result.geometry.kind = RoundedEffectKind::exterior_shadow;
+    result.geometry.shadow_caster_inset = opaque_caster ? 1.0F : 0.0F;
     return result;
 }
 
@@ -393,7 +395,9 @@ void validate_rounded_effect(const RoundedEffectInstance& instance) {
         !finite(geometry.offset.x) || !finite(geometry.offset.y) || !finite(geometry.blur) || geometry.blur < 0.0F ||
         !finite(geometry.spread) || !finite(geometry.outline_width) || geometry.outline_width < 0.0F ||
         !finite(geometry.outline_offset) || geometry.outline_offset < 0.0F || !finite(geometry.translation.x) ||
-        !finite(geometry.translation.y)) {
+        !finite(geometry.translation.y) || !finite(geometry.shadow_caster_inset) ||
+        geometry.shadow_caster_inset < 0.0F ||
+        (geometry.kind != RoundedEffectKind::exterior_shadow && geometry.shadow_caster_inset != 0.0F)) {
         throw std::invalid_argument("Rounded effect geometry is invalid");
     }
     switch (geometry.kind) {
@@ -667,7 +671,8 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
         shadow.rect.x += geometry.offset.x;
         shadow.rect.y += geometry.offset.y;
         if (geometry.kind == RoundedEffectKind::exterior_shadow) {
-            const float outside = 1 - rounded_rect_fill_coverage(point, base, antialias_width);
+            const auto caster = spread_shape(base, -geometry.shadow_caster_inset);
+            const float outside = 1.0F - rounded_rect_fill_coverage(point, caster, antialias_width);
             return outside > 0 ? outside * rounded_shadow_gaussian(point, shadow, geometry.blur * .5F, antialias_width)
                                : 0;
         }

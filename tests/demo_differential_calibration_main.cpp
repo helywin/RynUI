@@ -230,6 +230,7 @@ struct Board final {
         source.insert_or_assign("outline_width", g.outline_width);
         source.insert_or_assign("outline_offset", g.outline_offset);
         source.insert_or_assign("caster_knockout", g.kind == RoundedEffectKind::exterior_shadow);
+        source.insert_or_assign("caster_inset", g.shadow_caster_inset);
         source.insert_or_assign("translation", Json::Array{g.translation.x, g.translation.y});
         if (g.ancestor_clip) {
             source.insert_or_assign("clip_rect", rectangle(g.ancestor_clip->bounds));
@@ -523,6 +524,8 @@ struct Board final {
                 source["foreground"] = shadow.at("rgb");
                 source["alpha"] = shadow.at("alpha");
                 const auto c = rgba(shadow.at("rgb"), static_cast<float>(shadow.at("alpha").number()));
+                const auto& occlusion = cell.at("occluding_fill");
+                const auto fill_alpha = static_cast<float>(occlusion.at("alpha").number());
                 const auto effect = effects.add(
                     make_exterior_shadow_effect({area, static_cast<float>(cell.at("radius").number())},
                                                 {ShadowKind::outer,
@@ -530,15 +533,13 @@ struct Board final {
                                                   static_cast<float>(shadow.at("offset").array()[1].number())},
                                                  static_cast<float>(shadow.at("blur").number()),
                                                  static_cast<float>(shadow.at("spread").number()),
-                                                 Color{c[0], c[1], c[2], c[3]}}));
+                                                 Color{c[0], c[1], c[2], c[3]}},
+                                                {}, std::nullopt, fill_alpha == 1.0F));
                 pending.push_back({{}, effect});
                 observed_area = actual_effect(source, effect);
-                const auto& occlusion = cell.at("occluding_fill");
                 Json::Object fill_source;
-                static_cast<void>(actual_quad(
-                    fill_source,
-                    fill(area, rgba(occlusion.at("rgb"), static_cast<float>(occlusion.at("alpha").number())),
-                         static_cast<float>(cell.at("radius").number()))));
+                static_cast<void>(actual_quad(fill_source, fill(area, rgba(occlusion.at("rgb"), fill_alpha),
+                                                                static_cast<float>(cell.at("radius").number()))));
                 source.emplace("occluding_fill", std::move(fill_source));
                 if (cell.contains("reverse_shadow_order")) {
                     std::iter_swap(pending.end() - 1, pending.end() - 2);

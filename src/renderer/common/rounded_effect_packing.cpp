@@ -190,7 +190,10 @@ RoundedEffectGpuInstance pack_effect_paint_base_instance(const RoundedEffectInst
         {
             instance.geometry.spread * scale,
             instance.geometry.outline_width * scale,
-            instance.geometry.outline_offset * scale,
+            ((instance.geometry.kind == graphics::RoundedEffectKind::exterior_shadow)
+                 ? instance.geometry.shadow_caster_inset
+                 : instance.geometry.outline_offset) *
+                scale,
             encode_kind(instance.geometry.kind),
         },
         {instance.material.opacity, 1.0F, 0.0F, 0.0F},
@@ -254,7 +257,7 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
     switch (kind) {
     case RoundedEffectKind::outer_shadow:
     case RoundedEffectKind::exterior_shadow: {
-        const auto caster = shape;
+        auto caster = shape;
         shape.rect.x -= spread;
         shape.rect.y -= spread;
         shape.rect.width = std::max(0.0F, shape.rect.width + 2.0F * spread);
@@ -266,6 +269,12 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
         if (kind == RoundedEffectKind::exterior_shadow) {
+            const float inset = instance.effect_params[2];
+            caster.rect.x += inset;
+            caster.rect.y += inset;
+            caster.rect.width = std::max(0.0F, caster.rect.width - 2.0F * inset);
+            caster.rect.height = std::max(0.0F, caster.rect.height - 2.0F * inset);
+            caster.radius = std::max(0.0F, caster.radius - inset);
             const float outside = 1 - rounded_rect_fill_coverage(point_pixels, caster, antialias_width);
             return outside > 0
                        ? outside * graphics::rounded_shadow_gaussian(point_pixels, shape, blur * .5F, antialias_width)

@@ -38,7 +38,7 @@ NDC x 向右、y 向上；完整视口范围 [-1, 1]。Glyph packer 绕 logical 
 
 RoundedEffect 的内部 path kind 3/4/5 分别表示有限圆弧、圆角虚线和 Tooltip 联合填充；原 0/1/2 的阴影/outline 编码不变，实例仍为 112 bytes。圆弧以圆形 centerline、顺时针起止角和 stroke 表达，零 sweep 为空，端点使用圆端帽；rail 与进度各只合成一次。虚线使用完整 rounded-rect 周长参数，整周均匀拟合 dash/gap 比例，角点不重启 phase，Compact 的四角 mask 保留。Tooltip 用主体外边界替换内部 base 段并接到两条三角斜边，单次 SDF/alpha 消除 glyph 像素相位白缝和透明重叠加深。
 
-Kind 6 表示带镂空的模糊外阴影。偏移和 spread 作用于阴影轮廓，未偏移的圆角主体以一物理像素 AA 从阴影中镂空，半透明填充下也不会透出内部阴影。GPU 复用原 112-byte 字段，backend 显式声明 `exterior_shadows`，SceneResources 在上传前检查所有 live effect。现有 kind 0 继续支持无镂空的阴影与零模糊填充。当前对均匀圆角的标准 surface shadow 启用 kind 6，分角和显式过渡轮廓沿用原路径。
+Kind 6 表示带镂空的模糊外阴影。偏移和 spread 作用于阴影轮廓，未偏移的圆角主体以一物理像素 AA 从阴影中镂空，半透明填充下也不会透出内部阴影。GPU 复用原 112-byte 字段，backend 显式声明 `exterior_shadows`，SceneResources 在上传前检查所有 live effect。`effect_params.z` 在 kind 6 中表示镂空向内收缩的物理像素距离。覆盖主体的不透明填充可将镂空向内收缩一个逻辑像素，保留抗锯齿边缘下的阴影。半透明填充和淡入淡出沿用完整镂空。现有 kind 0 继续支持无镂空的阴影与零模糊填充。当前对均匀圆角的标准 surface shadow 启用 kind 6，分角和显式过渡轮廓沿用原路径。
 
 Kind 6 使用投影形状上的二维 Gaussian 积分，σ 为模糊半径的一半。矩形和圆角之间的中央条带使用可分离积分，左右圆角条带使用有界的八点数值积分。主体镂空覆盖为零时省去模糊采样。
 
