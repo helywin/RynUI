@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
     png_metadata,verify_profile_evidence,evidence_manifest,outline_point,outline_witness,measure_controls,
-    weak_fill_pixel_matches,control_icon_outlines,control_text_origin)
+    weak_fill_pixel_matches,control_icon_outlines,control_text_origin,software_box_source_over)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 
@@ -234,6 +234,45 @@ class CalibrationTests(unittest.TestCase):
             name='geometry.independent-shape-or-guard'
             self.assertIn(name,failures)
             self.assertEqual(details['first_hard_failures'][name]['physical_pixel'],[8,10])
+
+    def test_independent_overlap_allows_the_exact_software_edge_byte_encoding(self):
+        background=[0,0,0]
+        first,second=[17,83,201],[201,17,83]
+        rect=dict(x=10.75,y=10.75,width=8,height=8)
+        cell=dict(identity='p0.sourceover',kind='sourceover',rect=rect,foreground=first,background=background,
+                  rgb=first,source_alpha=.5,second_rgb=second,second_alpha=.5)
+        row=dict(identity=cell['identity'],kind='sourceover',rect=rect,source=dict(
+            foreground=first,alpha=.5,source_alpha=.5,paint_opacity=1,encoded_rgba=[*[v/255 for v in first],.5],
+            opacity=1,second_foreground=second,second_alpha=.5,primitive_index=0,primitive_index_commands=[0],
+            second_primitive_index=1,second_primitive_index_commands=[1],clip_kind='viewport',translation=[0,0],
+            second_translation=[0,0]))
+        prov=dict(browser=dict(version='141.0.7390.37',headless=True,actual_gpu=dict(feature_status=dict(
+            rasterization='disabled_software',gpu_compositing='disabled_software'))))
+        commands=[dict(kind='quad',first_instance=i,instance_count=1) for i in range(2)]
+        observations=[dict(capture={'dpr':1},controls=[row],submitted_commands=commands),
+                      dict(capture={'dpr':1},controls=[row],provenance=prov)]
+        web=bytearray((0,0,0,255)*32*32)
+        native=web.copy()
+        for y in range(10,19):
+            for x in range(10,19):
+                k=(min(x+1,18.75)-max(x,10.75))*(min(y+1,18.75)-max(y,10.75))
+                i=4*(y*32+x)
+                web[i:i+3]=bytes(software_box_source_over(background,(first,second),(.5,.5),k))
+                a=.5*k
+                native[i:i+3]=bytes(round(v*a+round(u*a)*(1-a)) for u,v in zip(first,second))
+        i=4*(10*32+10)
+        self.assertEqual(tuple(web[i:i+3]),(6,1,7))
+        with patch('demo_differential.calibration.control_cells',return_value=[cell]), \
+                patch('demo_differential.calibration.canvas_guard',return_value=({},set())):
+            inputs=({'alpha':[]},{'board':'holdout'},observations,[(native,(32,32)),(web,(32,32))],{})
+            values,failures=measure_controls(*inputs)
+            self.assertEqual(failures,[])
+            self.assertGreater(values['overlap.contribution_max_error'],0)
+            observations[1].pop('provenance')
+            self.assertIn('overlap.output-material',measure_controls(*inputs)[1])
+            observations[1]['provenance']=prov
+            web[i+1]=0
+            self.assertIn('overlap.output-material',measure_controls(*inputs)[1])
 
     def test_seven_font_scope_and_fixed_glyph_layout(self):
         from demo_differential.pilots import FONTS

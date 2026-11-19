@@ -762,6 +762,18 @@ def mutated_cells(corpus,board,fault):
     return cells
 
 
+def software_box_source_over(background, colors, alphas, coverage):
+    """Known opaque RGBA8 box path, with separately quantized source-over draws."""
+    dest=tuple(background)
+    mask=math.floor(255*coverage+.5)+1
+    for color,opacity in zip(colors,alphas):
+        alpha=math.floor(255*opacity+.5)
+        source=tuple(((channel*alpha+127)//255)*mask//256 for channel in color)
+        alpha=alpha*mask//256
+        dest=tuple(min(255,src+d*(256-alpha)//256) for src,d in zip(source,dest))
+    return dest
+
+
 def measure_controls(corpus,trial,observations,images,priors,*,details=None):
     """Recompute from full raw planes and observed control geometry/material/font.
 
@@ -792,6 +804,10 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                     measurement['physical_pixel']=pixel
                 details['metrics'][name]=measurement
     dpr=observations[0]['capture']['dpr']
+    browser=observations[1].get('provenance',{}).get('browser',{})
+    features=browser.get('actual_gpu',{}).get('feature_status',{})
+    locked_software_box=(browser.get('version')=='141.0.7390.37' and browser.get('headless') is True and
+                         features.get('rasterization')==features.get('gpu_compositing')=='disabled_software')
     for record in observations:
         if [c['identity'] for c in record['controls']] != [c['identity'] for c in cells]:
             raise RunError(4,'protocol','control stream is missing/reordered actual controls')
@@ -906,9 +922,17 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
         background=cell['background']
         foreground=cell.get('rgb',cell['foreground'])
         alpha=cell.get('source_alpha',1)*cell.get('paint_opacity',1)
+        overlap_basis=None
         if cell['kind']=='sourceover':
             second=cell['second_alpha']
+            overlap_colors=(foreground,cell['second_rgb'])
+            overlap_alphas=(alpha,second)
+            overlap_basis=visible_basis([v/255 for v in background],[[v/255 for v in color] for color in overlap_colors])
+            if overlap_basis['mode']!='visible-contribution':
+                raise ProtocolError('source-over controls require two identifiable colors')
             combined=second+(1-second)*alpha
+            if combined<=0:
+                raise ProtocolError('source-over controls require visible alpha')
             foreground=[(second*b+(1-second)*alpha*a)/combined for a,b in zip(foreground,cell['second_rgb'])]
             alpha=combined
         if cell['kind']=='shadow':
@@ -962,23 +986,15 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
         weak_fill=cell['kind']=='fill' and alpha==1 and 0<math.dist(foreground,background)<=4
         flat_rgb=[round(v*255) for v in source_over([v/255 for v in foreground],[v/255 for v in background],alpha)]
         planes=[[],[]]
-        overlap_basis=visible_basis([v/255 for v in background],[[v/255 for v in cell['rgb']],[v/255 for v in cell['second_rgb']]]) if cell['kind']=='sourceover' else None
         for pixel in range(width*height):
             x,y=box[0]+pixel%width+.5,box[1]+pixel//width+.5
             lx,ly=x/dpr,y/dpr
-            inside=r['x'] <= lx < r['x']+r['width'] and r['y'] <= ly < r['y']+r['height']
             observed=[list(data[pixel*4:pixel*4+3]) for data in crops]
             if weak_fill:
                 distance=rounded_distance(lx,ly,r,0)*dpr
                 if not all(weak_fill_pixel_matches(rgb,foreground,background,distance) for rgb in observed):
                     fail('color.independent-weak-contrast-fill')
                 continue
-            if overlap_basis is not None:
-                solved=[solve_visible_contributions([v/255 for v in rgb],overlap_basis,
-                    alphas=[cell['source_alpha']*cell['paint_opacity'],cell['second_alpha']]) for rgb in observed]
-                if any(not s['valid'] for s in solved):fail('overlap.output-material')
-                vectors=[s['contributions'] if s['contributions'] is not None else (s['joint_contrast'],) for s in solved]
-                collect('overlap.contribution_max_error',max(abs(a-b) for a,b in zip(*vectors)))
             if not is_text:
                 distance=rounded_distance(lx,ly,r,cell.get('radius',0))*dpr
                 if cell['kind']=='clip':distance=max(distance,(lx-r['x']-cell['clip_width'])*dpr)
@@ -990,16 +1006,35 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                         if rgb8_delta_e00(rgb,expected_rgb)>1:
                             fail('geometry.independent-shape-or-guard',side=('native','web')[side],
                                  physical_pixel=[int(x),int(y)])
-            if not is_text and cell['kind'] in ('fill','alpha','sourceover') and inside:
+            if cell['kind'] in ('fill','alpha','sourceover') and distance<=-1:
                 # Keep transport zero only on integer-phase opaque flat sentinels.
                 # Per-side correctness is independent of paired agreement.
-                if min(lx-r['x'],ly-r['y'],r['x']+r['width']-lx,r['y']+r['height']-ly)*dpr >= 1:
-                    collect('color.flat_delta_e00',rgb8_delta_e00(*observed))
-                    if alpha==1 and cell['kind']=='fill' and cell['identity'].split('.')[1].startswith('rgb'):
-                        collect('transport.max_channel_residual',max(abs(a-b) for a,b in zip(*observed)))
-                    for rgb in observed:
-                        if rgb8_delta_e00(rgb,flat_rgb)>1:
-                            fail('color.independent-source-over')
+                collect('color.flat_delta_e00',rgb8_delta_e00(*observed))
+                if alpha==1 and cell['kind']=='fill' and cell['identity'].split('.')[1].startswith('rgb'):
+                    collect('transport.max_channel_residual',max(abs(a-b) for a,b in zip(*observed)))
+                for rgb in observed:
+                    if rgb8_delta_e00(rgb,flat_rgb)>1:
+                        fail('color.independent-source-over')
+            if overlap_basis is not None:
+                vectors=[]
+                for side,rgb in enumerate(observed):
+                    solved=solve_visible_contributions([v/255 for v in rgb],overlap_basis,alphas=overlap_alphas)
+                    if not solved['valid']:
+                        matches=False
+                        if side==1 and locked_software_box:
+                            width_hit=max(0,min(x+.5,(r['x']+r['width'])*dpr)-max(x-.5,r['x']*dpr))
+                            height_hit=max(0,min(y+.5,(r['y']+r['height'])*dpr)-max(y-.5,r['y']*dpr))
+                            matches=tuple(rgb)==software_box_source_over(background,overlap_colors,overlap_alphas,
+                                                                         width_hit*height_hit)
+                        if not matches:
+                            fail('overlap.output-material',side=('native','web')[side],physical_pixel=[int(x),int(y)])
+                    weights=solved['contributions']
+                    vectors.append(weights)
+                    # The sum is total visible alpha of two draws. A single
+                    # fixed foreground would imply the wrong edge layer ratio.
+                    planes[side].append(min(1,max(0,sum(weights)/alpha)))
+                collect('overlap.contribution_max_error',max(abs(a-b) for a,b in zip(*vectors)))
+                continue
             if foreground==background or alpha==0:
                 if any(rgb!=background for rgb in observed):fail('guard.unidentifiable-flat-output')
                 continue
