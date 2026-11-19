@@ -16,7 +16,7 @@ bool clips_shadow_caster(const RetainedSurfaceEffects& effects, const ShadowLaye
 graphics::RoundedEffectInstance make_surface_shadow(const RetainedSurfaceEffects& effects, const ShadowLayer& layer) {
     if (clips_shadow_caster(effects, layer)) {
         return graphics::make_exterior_shadow_effect(effects.shape, layer, effects.translation, effects.ancestor_clip,
-                                                     effects.opaque_shadow_caster);
+                                                     effects.opaque_shadow_caster, effects.shadow_filter);
     }
     return graphics::make_shadow_effect(effects.shadow_shape.value_or(effects.shape), layer, effects.translation,
                                         effects.ancestor_clip);

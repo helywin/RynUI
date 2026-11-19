@@ -29,6 +29,7 @@ enum class RoundedEffectKind : std::uint8_t {
 };
 
 enum class ArcCap : std::uint8_t { Round, Butt, Square };
+enum class RoundedShadowFilter : std::uint8_t { gaussian, device_box };
 
 struct RoundedArcPath final {
     float start_radians{};
@@ -83,6 +84,7 @@ struct RoundedEffectGeometry final {
     std::optional<EffectClip> ancestor_clip;
     RoundedEffectPath path;
     float shadow_caster_inset{};
+    RoundedShadowFilter shadow_filter{RoundedShadowFilter::gaussian};
 
     friend bool operator==(const RoundedEffectGeometry&, const RoundedEffectGeometry&) = default;
 };
@@ -109,10 +111,10 @@ struct RoundedEffectInstance final {
 
 // Blurred outer box shadow with an unshifted caster knockout. An opaque fill may
 // cover the inner pixel of the shadow without cutting away its edge coverage.
-[[nodiscard]] RoundedEffectInstance make_exterior_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer,
-                                                                runtime::Point translation = {},
-                                                                std::optional<EffectClip> ancestor_clip = std::nullopt,
-                                                                bool opaque_caster = false);
+[[nodiscard]] RoundedEffectInstance
+make_exterior_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer, runtime::Point translation = {},
+                            std::optional<EffectClip> ancestor_clip = std::nullopt, bool opaque_caster = false,
+                            RoundedShadowFilter filter = RoundedShadowFilter::gaussian);
 
 [[nodiscard]] RoundedEffectInstance make_outline_effect(LogicalRoundedRect shape, float width, float offset,
                                                         Color color, float opacity = 1.0F,
@@ -164,6 +166,8 @@ make_corner_shadow_effects(LogicalRoundedRect shape, std::array<bool, 4> rounded
 [[nodiscard]] float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shape) noexcept;
 [[nodiscard]] float rounded_rect_fill_coverage(runtime::Point point, LogicalRoundedRect shape,
                                                float antialias_width) noexcept;
+[[nodiscard]] float rounded_rect_pixel_coverage(runtime::Point point, LogicalRoundedRect shape,
+                                                float pixel_width) noexcept;
 
 struct RoundedPathSample final {
     float distance{};
@@ -249,6 +253,7 @@ struct RoundedEffectRequirements final {
     bool paint{};
     bool nonround_caps{};
     bool exterior_shadow{};
+    bool device_box_shadow{};
 
     friend constexpr bool operator==(RoundedEffectRequirements, RoundedEffectRequirements) = default;
 };

@@ -53,6 +53,7 @@ struct SceneBackendCapabilities final {
     std::uint64_t maximum_gaussian_weight_bytes{};
     bool exterior_shadows{};
     bool glyph_coverage_transfer{};
+    bool device_box_shadows{};
 };
 
 [[nodiscard]] constexpr SceneBackendCapabilities baseline_scene_capabilities() noexcept {

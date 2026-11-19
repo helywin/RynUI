@@ -40,6 +40,8 @@ RoundedEffect 的内部 path kind 3/4/5 分别表示有限圆弧、圆角虚线�
 
 Kind 6 表示带镂空的模糊外阴影。偏移和 spread 作用于阴影轮廓，未偏移的圆角主体以一物理像素 AA 从阴影中镂空，半透明填充下也不会透出内部阴影。GPU 复用原 112-byte 字段，backend 显式声明 `exterior_shadows`，SceneResources 在上传前检查所有 live effect。`effect_params.z` 在 kind 6 中表示镂空向内收缩的物理像素距离。覆盖主体的不透明填充可将镂空向内收缩一个逻辑像素，保留抗锯齿边缘下的阴影。半透明填充和淡入淡出沿用完整镂空。现有 kind 0 继续支持无镂空的阴影与零模糊填充。当前对均匀圆角的标准 surface shadow 启用 kind 6，分角和显式过渡轮廓沿用原路径。
 
+Kind 6 可选择物理像素上的三段 box 卷积。`material_params.z` 为 1 时，两轴分别在离散像素上积分，镂空使用圆角主体在单像素内的面积，输出 alpha 量化至 8 bit。窗口超过 64 个物理像素时使用连续高斯近似。选择此模式要求 backend 显式声明 `device_box_shadows`，原能力 preflight 同时生效。
+
 Kind 6 使用投影形状上的二维 Gaussian 积分，σ 为模糊半径的一半。矩形和圆角之间的中央条带使用可分离积分，左右圆角条带使用有界的八点数值积分。主体镂空覆盖为零时省去模糊采样。
 
 新 path 的 CPU geometry 为 typed variant，验证类型、有限数值、角度范围、描边及箭头 base 必须落在直边内；CPU 类型无 packed layout 承诺。packed `shadow_params.yzw` 在 kind 3 为不随 DPI 缩放的 start/sweep radians（末项为零），kind 4 为物理 fitted dash/gap/phase，kind 5 为沿边 center/half-width/length；`material_params.z` 为 kind 4 的四角 bitmask 或 kind 5 的方向。draw bounds 包含整个 path 和 AA guard，ancestor/viewport clip 仍为硬边界。新 path 使用共同资源上传、reference 和 HLSL，不增加组件私有上传或 backend 分支。

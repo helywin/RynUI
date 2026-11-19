@@ -196,7 +196,7 @@ RoundedEffectGpuInstance pack_effect_paint_base_instance(const RoundedEffectInst
                 scale,
             encode_kind(instance.geometry.kind),
         },
-        {instance.material.opacity, 1.0F, 0.0F, 0.0F},
+        {instance.material.opacity, 1.0F, static_cast<float>(instance.geometry.shadow_filter), 0.0F},
     };
     const auto& geometry = instance.geometry;
     if (const auto* arc = std::get_if<graphics::RoundedArcPath>(&geometry.path)) {
@@ -275,10 +275,18 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
             caster.rect.width = std::max(0.0F, caster.rect.width - 2.0F * inset);
             caster.rect.height = std::max(0.0F, caster.rect.height - 2.0F * inset);
             caster.radius = std::max(0.0F, caster.radius - inset);
-            const float outside = 1 - rounded_rect_fill_coverage(point_pixels, caster, antialias_width);
-            return outside > 0
-                       ? outside * graphics::rounded_shadow_gaussian(point_pixels, shape, blur * .5F, antialias_width)
-                       : 0;
+            const bool box_filter = instance.material_params[2] == 1.0F;
+            const float outside =
+                1 - (box_filter ? graphics::rounded_rect_pixel_coverage(point_pixels, caster, antialias_width)
+                                : rounded_rect_fill_coverage(point_pixels, caster, antialias_width));
+            if (outside <= 0) {
+                return 0;
+            }
+            const auto sigma = blur * .5F;
+            const auto blurred = box_filter
+                                     ? graphics::rounded_shadow_device_box(point_pixels, shape, sigma, antialias_width)
+                                     : graphics::rounded_shadow_gaussian(point_pixels, shape, sigma, antialias_width);
+            return outside * blurred;
         }
         return blur > 0 ? gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F, antialias_width)
                         : rounded_rect_fill_coverage(point_pixels, shape, antialias_width);
@@ -329,11 +337,15 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
 std::array<float, 4> rounded_effect_gpu_fragment_reference(runtime::Point point_pixels,
                                                            const RoundedEffectGpuInstance& instance) {
     const float coverage = rounded_effect_gpu_coverage_reference(point_pixels, instance);
+    float alpha = instance.color[3] * instance.material_params[0] * coverage;
+    if (instance.effect_params[3] == 6.0F && instance.material_params[2] == 1.0F) {
+        alpha = std::floor(alpha * 255) / 255;
+    }
     return {
         instance.color[0],
         instance.color[1],
         instance.color[2],
-        instance.color[3] * instance.material_params[0] * coverage,
+        alpha,
     };
 }
 

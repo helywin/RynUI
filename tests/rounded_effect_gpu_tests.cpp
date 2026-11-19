@@ -184,6 +184,44 @@ std::array<float, 4> source_over(std::array<float, 4> source, std::array<float, 
     };
 }
 
+void test_device_box_shadow_uses_the_physical_lattice() {
+    using namespace ryn;
+    const graphics::LogicalRoundedRect caster{{0, 0, 10, 6}, 0};
+    require(near(graphics::rounded_rect_pixel_coverage({.25F, 3}, caster, 1), .75F) &&
+                near(graphics::rounded_rect_pixel_coverage({.25F, .25F}, caster, 1), .5625F),
+            "box shadow knockout did not preserve the straight-edge pixel area");
+    const auto effect = graphics::make_exterior_shadow_effect(
+        {{20, 20, 1, 1}, 0}, {ShadowKind::outer, {48, 0}, 6, 0, Color{0, 0, 0, .5F}}, {}, std::nullopt, false,
+        graphics::RoundedShadowFilter::device_box);
+    graphics::RoundedEffectStore store;
+    static_cast<void>(store.add(effect));
+    auto capabilities = detail::baseline_scene_capabilities();
+    capabilities.exterior_shadows = true;
+    require_invalid([&] { detail::validate_scene_effect_requirements(capabilities, store.live_requirements()); },
+                    "exterior Gaussian support silently admitted device box coverage");
+    capabilities.device_box_shadows = true;
+    detail::validate_scene_effect_requirements(capabilities, store.live_requirements());
+
+    const runtime::Point center{68.5F, 20.5F};
+    const auto native = detail::pack_rounded_effect_instance(effect, {120, 80, 1});
+    // The centered weight of three box passes of widths 6, 6, and 7 is
+    // 30/252. Applied to one solid sample, the two axes round to 30 then 4.
+    require(native.material_params[2] == 1 &&
+                near(detail::rounded_effect_gpu_coverage_reference(center, native), 4.0F / 255) &&
+                near(detail::rounded_effect_gpu_fragment_reference(center, native)[3], 2.0F / 255),
+            "device box kernel or encoded source alpha differs at the impulse");
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        const auto packed = detail::pack_rounded_effect_instance(
+            effect, {static_cast<std::uint32_t>(120 * scale), static_cast<std::uint32_t>(80 * scale), scale});
+        for (const float x : {64.25F, 68.5F, 69.75F, 80.5F}) {
+            const runtime::Point sample{x, 20.5F};
+            require(near(graphics::rounded_effect_coverage(sample, effect, 1.0F / scale),
+                         detail::rounded_effect_gpu_coverage_reference({sample.x * scale, sample.y * scale}, packed)),
+                    "device box logical and packed sample disagree at fractional scale");
+        }
+    }
+}
+
 void test_straight_alpha_and_overlapping_layer_contract() {
     auto shadow = outer();
     shadow.material.color = ryn::Color(0.2F, 0.4F, 0.8F, 0.5F);
@@ -382,6 +420,7 @@ int main() {
         test_shader_reference_matches_logical_reference();
         test_inset_translation_and_density_reference();
         test_exterior_shadow_masks_the_unshifted_caster();
+        test_device_box_shadow_uses_the_physical_lattice();
         test_straight_alpha_and_overlapping_layer_contract();
         test_invalid_metrics_rejected_and_clipped_pack_is_degenerate();
         test_zero_blur_pixel_coverage_and_quadrant_seams();

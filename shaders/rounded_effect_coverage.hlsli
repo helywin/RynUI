@@ -245,6 +245,124 @@ float TooltipDistance(float2 samplePoint, float4 shape, float radius, float3 arr
     return inBody || inArrow ? -distance : distance;
 }
 
+int BoxTriangleCount(int index) {
+    return index < 0 ? 0 : (index + 1) * (index + 2) * (index + 3) / 6;
+}
+
+int BoxCumulativeCount(int index, int boxWidth, int lastWidth, int limit, int divisor) {
+    if (index < 0) {
+        return 0;
+    }
+    if (index >= limit) {
+        return divisor;
+    }
+    return BoxTriangleCount(index) - 2 * BoxTriangleCount(index - boxWidth) - BoxTriangleCount(index - lastWidth) +
+           BoxTriangleCount(index - 2 * boxWidth) + 2 * BoxTriangleCount(index - boxWidth - lastWidth) -
+           BoxTriangleCount(index - 2 * boxWidth - lastWidth);
+}
+
+float BoxHorizontal(float offset, int boxWidth, int lastWidth, int limit, int divisor) {
+    if (offset <= 0) {
+        return 0.0;
+    }
+    if (offset >= float(limit + 1)) {
+        return 1.0;
+    }
+    int column = int(floor(offset));
+    int completed = BoxCumulativeCount(column - 1, boxWidth, lastWidth, limit, divisor);
+    int next = BoxCumulativeCount(column, boxWidth, lastWidth, limit, divisor);
+    return (float(completed) + (offset - float(column)) * float(next - completed)) / float(divisor);
+}
+
+float BoxRoundedRow(float row, float xOffset, float width, float height, float radius, int boxWidth, int lastWidth,
+                    int limit, int divisor) {
+    float offset = max(0.0, max(radius - row, row - (height - radius)));
+    float inset = radius - sqrt(max(0.0, radius * radius - offset * offset));
+    return BoxHorizontal(xOffset + width - inset, boxWidth, lastWidth, limit, divisor) -
+           BoxHorizontal(xOffset + inset, boxWidth, lastWidth, limit, divisor);
+}
+
+float RoundedRectPixelSpan(float row, float x, float2 size, float radius) {
+    float offset = max(0.0, max(radius - row, row - (size.y - radius)));
+    float inset = radius - sqrt(max(0.0, radius * radius - offset * offset));
+    return max(0.0, min(size.x - inset, x + 0.5) - max(inset, x - 0.5));
+}
+
+float RoundedRectPixelCoverage(float2 position, float4 rect, float radius, float pixelWidth) {
+    float2 size = rect.zw / pixelWidth;
+    float2 local = (position - rect.xy) / pixelWidth;
+    radius /= pixelWidth;
+    float lo = max(0.0, local.y - 0.5);
+    float hi = min(size.y, local.y + 0.5);
+    if (lo >= hi || local.x + 0.5 <= 0.0 || local.x - 0.5 >= size.x || size.x <= 0.0) {
+        return 0.0;
+    }
+    float midpoint = (lo + hi) * 0.5;
+    float halfHeight = (hi - lo) * 0.5;
+    float offset = halfHeight * 0.774596669;
+    float first = RoundedRectPixelSpan(midpoint - offset, local.x, size, radius);
+    float middle = RoundedRectPixelSpan(midpoint, local.x, size, radius);
+    float last = RoundedRectPixelSpan(midpoint + offset, local.x, size, radius);
+    return ((first + last) * (5.0 / 9.0) + middle * (8.0 / 9.0)) * halfHeight;
+}
+
+float RoundedShadowDeviceBox(float2 samplePosition, float4 shape, float radius, float sigma, float pixelWidth) {
+    float windows = floor(sigma / pixelWidth * 1.879971206 + 0.5);
+    if (windows > 64.0) {
+        return RoundedShadowGaussian(samplePosition, shape, radius, sigma, pixelWidth);
+    }
+    float2 local = (samplePosition - shape.xy) / pixelWidth;
+    float2 size = shape.zw / pixelWidth;
+    radius /= pixelWidth;
+    int boxWidth = max(1, int(windows));
+    int lastWidth = boxWidth + (boxWidth % 2 == 0 ? 1 : 0);
+    int limit = 2 * boxWidth + lastWidth - 3;
+    int border = limit / 2;
+    int divisor = boxWidth * boxWidth * lastWidth;
+    float xOffset = float(border) + 0.5 - local.x;
+    float horizontal = BoxHorizontal(xOffset + size.x, boxWidth, lastWidth, limit, divisor) -
+                       BoxHorizontal(xOffset, boxWidth, lastWidth, limit, divisor);
+    int firstFlat = 0;
+    int lastFlat = -1;
+    if (size.y >= radius * 2.0 + 1.0) {
+        firstFlat = int(clamp(ceil(radius + 0.5 - local.y + float(border)), 0.0, float(limit + 1)));
+        lastFlat = int(clamp(floor(size.y - radius - 0.5 - local.y + float(border)), -1.0, float(limit)));
+    }
+    int total = firstFlat <= lastFlat ? int(floor(horizontal * 255.0 + 0.5)) *
+                                            (BoxCumulativeCount(lastFlat, boxWidth, lastWidth, limit, divisor) -
+                                             BoxCumulativeCount(firstFlat - 1, boxWidth, lastWidth, limit, divisor))
+                                      : 0;
+    [loop] for (int i = 0; i <= limit; ++i) {
+        if (i >= firstFlat && i <= lastFlat) {
+            i = lastFlat;
+            continue;
+        }
+        float center = local.y + float(i - border);
+        float lo = max(0.0, center - 0.5);
+        float hi = min(size.y, center + 0.5);
+        if (lo >= hi) {
+            continue;
+        }
+        float midpoint = (lo + hi) * 0.5;
+        float halfHeight = (hi - lo) * 0.5;
+        float position = halfHeight * 0.774596669;
+        float first =
+            BoxRoundedRow(midpoint - position, xOffset, size.x, size.y, radius, boxWidth, lastWidth, limit, divisor);
+        float middle = BoxRoundedRow(midpoint, xOffset, size.x, size.y, radius, boxWidth, lastWidth, limit, divisor);
+        float last =
+            BoxRoundedRow(midpoint + position, xOffset, size.x, size.y, radius, boxWidth, lastWidth, limit, divisor);
+        float rows = (first * (5.0 / 9.0) + middle * (8.0 / 9.0) + last * (5.0 / 9.0)) * halfHeight;
+        int count = BoxCumulativeCount(i, boxWidth, lastWidth, limit, divisor) -
+                    BoxCumulativeCount(i - 1, boxWidth, lastWidth, limit, divisor);
+        total += int(floor(rows * 255.0 + 0.5)) * count;
+    }
+    return float((total + divisor / 2) / divisor) / 255.0;
+}
+
+float EffectOutputAlpha(float alpha, float kind, float filterMode) {
+    return kind == 6.0 && filterMode == 1.0 ? floor(alpha * 255.0) / 255.0 : alpha;
+}
+
 float LegacyEffectCoverage(float2 samplePosition, float4 shapeRect, float4 shadowParams, float4 effectParams,
                            float4 materialParams) {
     float4 shape = shapeRect;
@@ -267,9 +385,16 @@ float LegacyEffectCoverage(float2 samplePosition, float4 shapeRect, float4 shado
             float inset = effectParams.z;
             float4 casterRect = float4(shapeRect.xy + inset.xx, max(0.0, shapeRect.zw - 2.0 * inset.xx));
             float casterRadius = max(0.0, shadowParams.x - inset);
-            float outside = 1.0 - RoundedRectFillCoverage(samplePosition, casterRect, casterRadius, materialParams.y);
+            bool boxFilter = materialParams.z == 1.0;
+            float caster = boxFilter
+                               ? RoundedRectPixelCoverage(samplePosition, casterRect, casterRadius, materialParams.y)
+                               : RoundedRectFillCoverage(samplePosition, casterRect, casterRadius, materialParams.y);
+            float outside = 1.0 - caster;
             if (outside > 0.0) {
-                coverage = outside * RoundedShadowGaussian(samplePosition, shape, radius, 0.5 * blur, materialParams.y);
+                float blurred =
+                    boxFilter ? RoundedShadowDeviceBox(samplePosition, shape, radius, 0.5 * blur, materialParams.y)
+                              : RoundedShadowGaussian(samplePosition, shape, radius, 0.5 * blur, materialParams.y);
+                coverage = outside * blurred;
             }
         } else {
             coverage = blur > 0.0 ? GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.5 * blur,

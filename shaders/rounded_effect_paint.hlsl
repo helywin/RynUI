@@ -80,7 +80,8 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
     }
 #endif
     [branch] if (input.paintLink.x == 0xffffffffu) {
-        return float4(input.color.rgb, input.color.a * input.materialParams.x * coverage);
+        float alpha = input.color.a * input.materialParams.x * coverage;
+        return float4(input.color.rgb, EffectOutputAlpha(alpha, input.effectParams.w, input.materialParams.z));
     }
     float factor = coverage * input.materialParams.x;
     [branch] if (factor == 0.0) {
@@ -94,6 +95,7 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
     if (combined.a <= 0.0) {
         return 0.0;
     }
-    return float4(combined.rgb / combined.a, combined.a * factor);
+    float alpha = EffectOutputAlpha(combined.a * factor, input.effectParams.w, input.materialParams.z);
+    return float4(combined.rgb / combined.a, alpha);
 }
 #endif

@@ -14,6 +14,7 @@ enum class RecordingFailure { none, begin, create, upload, commit, upload_except
 [[nodiscard]] constexpr SceneBackendCapabilities recording_scene_capabilities() noexcept {
     auto value = baseline_scene_capabilities();
     value.exterior_shadows = true;
+    value.device_box_shadows = true;
     value.glyph_coverage_transfer = true;
     value.effect_paints = true;
     value.effect_arc_caps = true;

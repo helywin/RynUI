@@ -298,13 +298,15 @@ RoundedEffectInstance make_shadow_effect(LogicalRoundedRect shape, const ShadowL
 
 RoundedEffectInstance make_exterior_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer,
                                                   runtime::Point translation, std::optional<EffectClip> ancestor_clip,
-                                                  bool opaque_caster) {
+                                                  bool opaque_caster, RoundedShadowFilter filter) {
     if (layer.kind != ShadowKind::outer || layer.blur <= 0.0F) {
         throw std::invalid_argument("Exterior shadow requires a blurred outer layer");
     }
     auto result = make_shadow_effect(shape, layer, translation, std::move(ancestor_clip));
     result.geometry.kind = RoundedEffectKind::exterior_shadow;
     result.geometry.shadow_caster_inset = opaque_caster ? 1.0F : 0.0F;
+    result.geometry.shadow_filter = filter;
+    validate_rounded_effect(result);
     return result;
 }
 
@@ -396,8 +398,9 @@ void validate_rounded_effect(const RoundedEffectInstance& instance) {
         !finite(geometry.spread) || !finite(geometry.outline_width) || geometry.outline_width < 0.0F ||
         !finite(geometry.outline_offset) || geometry.outline_offset < 0.0F || !finite(geometry.translation.x) ||
         !finite(geometry.translation.y) || !finite(geometry.shadow_caster_inset) ||
-        geometry.shadow_caster_inset < 0.0F ||
-        (geometry.kind != RoundedEffectKind::exterior_shadow && geometry.shadow_caster_inset != 0.0F)) {
+        geometry.shadow_caster_inset < 0.0F || geometry.shadow_filter > RoundedShadowFilter::device_box ||
+        (geometry.kind != RoundedEffectKind::exterior_shadow &&
+         (geometry.shadow_caster_inset != 0.0F || geometry.shadow_filter != RoundedShadowFilter::gaussian))) {
         throw std::invalid_argument("Rounded effect geometry is invalid");
     }
     switch (geometry.kind) {
@@ -654,6 +657,119 @@ float rounded_shadow_gaussian(runtime::Point point, LogicalRoundedRect shape, fl
     return static_cast<float>(std::clamp(coverage, 0.0, 1.0));
 }
 
+float rounded_rect_pixel_coverage(runtime::Point point, LogicalRoundedRect shape, float pixel_width) noexcept {
+    if (!(pixel_width > 0) || shape.rect.width <= 0 || shape.rect.height <= 0) {
+        return 0;
+    }
+    const float width = shape.rect.width / pixel_width;
+    const float height = shape.rect.height / pixel_width;
+    const float radius = shape.radius / pixel_width;
+    const float x = (point.x - shape.rect.x) / pixel_width;
+    const float y = (point.y - shape.rect.y) / pixel_width;
+    const float lo = std::max(0.0F, y - .5F);
+    const float hi = std::min(height, y + .5F);
+    if (lo >= hi || x + .5F <= 0 || x - .5F >= width) {
+        return 0;
+    }
+    const auto span = [&](float row) {
+        const float offset = std::max({0.0F, radius - row, row - (height - radius)});
+        const float inset = radius - std::sqrt(std::max(0.0F, radius * radius - offset * offset));
+        return std::max(0.0F, std::min(width - inset, x + .5F) - std::max(inset, x - .5F));
+    };
+    const float midpoint = (lo + hi) * .5F;
+    const float half = (hi - lo) * .5F;
+    const float offset = half * .774596669F;
+    return ((span(midpoint - offset) + span(midpoint + offset)) * (5.0F / 9.0F) + span(midpoint) * (8.0F / 9.0F)) *
+           half;
+}
+
+float rounded_shadow_device_box(runtime::Point point, LogicalRoundedRect shape, float sigma,
+                                float pixel_width) noexcept {
+    if (!(pixel_width > 0)) {
+        return rounded_shadow_gaussian(point, shape, sigma, pixel_width);
+    }
+    const auto width = shape.rect.width / pixel_width;
+    const auto height = shape.rect.height / pixel_width;
+    const auto radius = shape.radius / pixel_width;
+    const auto x = (point.x - shape.rect.x) / pixel_width;
+    const auto y = (point.y - shape.rect.y) / pixel_width;
+    const float windows = std::floor(sigma / pixel_width * 1.879971206F + .5F);
+    if (windows > 64) {
+        // Large kernels tend to the smooth Gaussian. Above this range the
+        // finite rise of the integer cumulative kernel exceeds the fast path.
+        return rounded_shadow_gaussian(point, shape, sigma, pixel_width);
+    }
+    const int window = std::max(1, static_cast<int>(windows));
+    const int last = window + (window % 2 == 0);
+    const int maximum = 2 * window + last - 3;
+    const int border = maximum / 2;
+    const int divisor = window * window * last;
+    const auto triangle = [](int k) {
+        return k < 0 ? 0 : (k + 1) * (k + 2) * (k + 3) / 6;
+    };
+    const auto cdf = [&](int k) {
+        if (k < 0) {
+            return 0;
+        }
+        if (k >= maximum) {
+            return divisor;
+        }
+        return triangle(k) - 2 * triangle(k - window) - triangle(k - last) + triangle(k - 2 * window) +
+               2 * triangle(k - window - last) - triangle(k - 2 * window - last);
+    };
+    const auto horizontal = [&](float edge) {
+        const auto offset = edge - x + static_cast<float>(border) + .5F;
+        if (offset <= 0) {
+            return 0.0F;
+        }
+        if (offset >= static_cast<float>(maximum + 1)) {
+            return 1.0F;
+        }
+        const auto column = static_cast<int>(std::floor(offset));
+        const auto completed = cdf(column - 1);
+        return (static_cast<float>(completed) +
+                (offset - static_cast<float>(column)) * static_cast<float>(cdf(column) - completed)) /
+               static_cast<float>(divisor);
+    };
+    const auto flat = static_cast<int>(std::round((horizontal(width) - horizontal(0)) * 255));
+    // Entirely straight rows collapse to one cumulative sum. At a corner,
+    // integrate the horizontal weighted span over the physical sample row.
+    int first_flat = 0;
+    int last_flat = -1;
+    if (height >= radius * 2 + 1) {
+        const auto flat_top = radius + .5F - y + border;
+        const auto flat_bottom = height - radius - .5F - y + border;
+        first_flat = static_cast<int>(std::clamp(std::ceil(flat_top), 0.0F, static_cast<float>(maximum + 1)));
+        last_flat = static_cast<int>(std::clamp(std::floor(flat_bottom), -1.0F, static_cast<float>(maximum)));
+    }
+    int total = first_flat <= last_flat ? flat * (cdf(last_flat) - cdf(first_flat - 1)) : 0;
+    for (int i = 0; i <= maximum; ++i) {
+        if (i >= first_flat && i <= last_flat) {
+            i = last_flat;
+            continue;
+        }
+        const auto center = y + i - border;
+        const auto lo = std::max(0.0F, center - .5F);
+        const auto hi = std::min(height, center + .5F);
+        if (lo >= hi) {
+            continue;
+        }
+        const auto midpoint = (lo + hi) * .5F;
+        const auto half = (hi - lo) * .5F;
+        const auto span = [&](float sample) {
+            const auto offset = std::max({0.0F, radius - sample, sample - (height - radius)});
+            const auto inset = radius - std::sqrt(std::max(0.0F, radius * radius - offset * offset));
+            return horizontal(width - inset) - horizontal(inset);
+        };
+        const auto position = half * .774596669F;
+        const auto rows = (span(midpoint - position) * (5.0F / 9.0F) + span(midpoint) * (8.0F / 9.0F) +
+                           span(midpoint + position) * (5.0F / 9.0F)) *
+                          half;
+        total += static_cast<int>(std::round(rows * 255)) * (cdf(i) - cdf(i - 1));
+    }
+    return static_cast<float>((total + divisor / 2) / divisor) / 255;
+}
+
 float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance& instance, float antialias_width) {
     validate_rounded_effect(instance);
     if (!finite(antialias_width) || antialias_width <= 0.0F) {
@@ -672,9 +788,16 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
         shadow.rect.y += geometry.offset.y;
         if (geometry.kind == RoundedEffectKind::exterior_shadow) {
             const auto caster = spread_shape(base, -geometry.shadow_caster_inset);
-            const float outside = 1.0F - rounded_rect_fill_coverage(point, caster, antialias_width);
-            return outside > 0 ? outside * rounded_shadow_gaussian(point, shadow, geometry.blur * .5F, antialias_width)
-                               : 0;
+            const bool box_filter = geometry.shadow_filter == RoundedShadowFilter::device_box;
+            const float outside = 1.0F - (box_filter ? rounded_rect_pixel_coverage(point, caster, antialias_width)
+                                                     : rounded_rect_fill_coverage(point, caster, antialias_width));
+            if (outside <= 0) {
+                return 0;
+            }
+            const float sigma = geometry.blur * .5F;
+            const auto blurred = box_filter ? rounded_shadow_device_box(point, shadow, sigma, antialias_width)
+                                            : rounded_shadow_gaussian(point, shadow, sigma, antialias_width);
+            return outside * blurred;
         }
         return geometry.blur > 0
                    ? gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F, antialias_width)
@@ -1135,10 +1258,12 @@ RoundedEffectRequirements RoundedEffectStore::live_requirements() const noexcept
         result.paint = result.paint || slot.instance->material.paint.has_value();
         result.exterior_shadow =
             result.exterior_shadow || slot.instance->geometry.kind == RoundedEffectKind::exterior_shadow;
+        result.device_box_shadow =
+            result.device_box_shadow || slot.instance->geometry.shadow_filter == RoundedShadowFilter::device_box;
         if (const auto* arc = std::get_if<RoundedArcPath>(&slot.instance->geometry.path)) {
             result.nonround_caps = result.nonround_caps || arc->cap != ArcCap::Round;
         }
-        if (result.paint && result.nonround_caps && result.exterior_shadow) {
+        if (result.paint && result.nonround_caps && result.exterior_shadow && result.device_box_shadow) {
             break;
         }
     }

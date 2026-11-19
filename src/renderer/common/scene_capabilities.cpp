@@ -42,6 +42,9 @@ void validate_scene_effect_requirements(const SceneBackendCapabilities& capabili
     if (requirements.exterior_shadow && !capabilities.exterior_shadows) {
         throw std::invalid_argument("Backend lacks required exterior shadow capability");
     }
+    if (requirements.device_box_shadow && !capabilities.device_box_shadows) {
+        throw std::invalid_argument("Backend lacks required device box shadow capability");
+    }
     if (requirements.paint && !capabilities.effect_paints) {
         throw std::invalid_argument("Backend lacks required Effect paint capability");
     }

@@ -708,7 +708,8 @@ def verify_native_control_geometry(cell,row,commands):
     if cell['kind']=='shadow':
         shadow=membership(source,'packed_index','rounded_effect')
         expected_inset = 1 if cell['occluding_fill']['alpha'] == 1 else 0
-        if source.get('caster_knockout') is not True or source.get('caster_inset') != expected_inset:
+        if (source.get('caster_knockout') is not True or source.get('caster_inset') != expected_inset or
+                source.get('caster_filter') != 1):
             raise ProtocolError('actual box shadow caster knockout differs from its fill')
         fill=membership(source.get('occluding_fill',{}))
         if shadow[0]>=fill[0]:raise ProtocolError('actual shadow must precede its occluding fill')

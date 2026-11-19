@@ -319,6 +319,7 @@ struct Board final {
         source.insert_or_assign("outline_offset", g.outline_offset);
         source.insert_or_assign("caster_knockout", g.kind == RoundedEffectKind::exterior_shadow);
         source.insert_or_assign("caster_inset", g.shadow_caster_inset);
+        source.insert_or_assign("caster_filter", static_cast<std::int64_t>(g.shadow_filter));
         source.insert_or_assign("translation", Json::Array{g.translation.x, g.translation.y});
         if (g.ancestor_clip) {
             source.insert_or_assign("clip_rect", rectangle(g.ancestor_clip->bounds));
@@ -622,7 +623,7 @@ struct Board final {
                                                  static_cast<float>(shadow.at("blur").number()),
                                                  static_cast<float>(shadow.at("spread").number()),
                                                  Color{c[0], c[1], c[2], c[3]}},
-                                                {}, std::nullopt, fill_alpha == 1.0F));
+                                                {}, std::nullopt, fill_alpha == 1.0F, RoundedShadowFilter::device_box));
                 pending.push_back({{}, effect});
                 observed_area = actual_effect(source, effect);
                 Json::Object fill_source;

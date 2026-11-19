@@ -56,6 +56,7 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
         }
     }
 #endif
-    return float4(input.color.rgb, input.color.a * input.materialParams.x * coverage);
+    float alpha = input.color.a * input.materialParams.x * coverage;
+    return float4(input.color.rgb, EffectOutputAlpha(alpha, input.effectParams.w, input.materialParams.z));
 }
 #endif

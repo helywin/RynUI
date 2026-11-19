@@ -38,6 +38,7 @@ struct RetainedSurfaceEffects final {
     std::uint32_t shadow_fill_offset{};
     std::optional<std::array<bool, 4>> rounded_corners;
     bool opaque_shadow_caster{};
+    graphics::RoundedShadowFilter shadow_filter{graphics::RoundedShadowFilter::gaussian};
 
     friend bool operator==(const RetainedSurfaceEffects&, const RetainedSurfaceEffects&) = default;
 };
