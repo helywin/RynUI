@@ -14,6 +14,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <cstdlib>
 #if defined(_WIN32)
@@ -23,6 +24,7 @@
 #endif
 #include <stdexcept>
 #include <sstream>
+#include <tuple>
 
 namespace {
 using namespace ryn;
@@ -167,6 +169,8 @@ struct Board final {
     SceneDeviceMetrics metrics;
     font::FontRasterPolicy raster_policy;
     Json::Array observations;
+    std::map<std::tuple<int, int, bool>, std::vector<font::FontIdentity>> font_chains;
+    std::map<std::pair<std::uint32_t, std::uint32_t>, std::string> font_digests;
 
     Board(SdlSceneRenderer& renderer, font::FontRuntime& fonts, text::TextEngine& engine, SceneDeviceMetrics metrics)
         : renderer(renderer), fonts(fonts), text(fonts, engine, frames), resources(renderer), metrics(metrics) {}
@@ -228,7 +232,20 @@ struct Board final {
         return g.shape.rect;
     }
 
-    std::vector<font::FontIdentity> chain(const Json& files, int size, int weight, bool replace) {
+    const std::string& font_digest(font::FontIdentity identity, std::span<const std::byte> actual_bytes) {
+        const auto key = std::pair{identity.slot, identity.generation};
+        if (const auto existing = font_digests.find(key); existing != font_digests.end()) {
+            return existing->second;
+        }
+        const auto bytes = std::span{reinterpret_cast<const unsigned char*>(actual_bytes.data()), actual_bytes.size()};
+        return font_digests.emplace(key, gallery_demo_sha256(bytes)).first->second;
+    }
+
+    const std::vector<font::FontIdentity>& chain(const Json& files, int size, int weight, bool replace) {
+        const auto key = std::tuple{size, weight, replace};
+        if (const auto existing = font_chains.find(key); existing != font_chains.end()) {
+            return existing->second;
+        }
         std::vector<font::FontIdentity> result;
         for (const auto& file : files.array()) {
             if (file.at("weight").integer() != weight || file.at("identity").string() == "noto-emoji") {
@@ -236,7 +253,6 @@ struct Board final {
             }
             const auto path = owned_path(file.at("path").string());
             require(std::filesystem::file_size(path) <= 32 * 1024 * 1024, "control font exceeds 32 MiB");
-            require(gallery_demo_file_sha256(path) == file.at("sha256").string(), "control font bytes differ");
             if (replace && file.at("identity").string() == "noto-sans-cjk-sc") {
                 continue;
             }
@@ -244,10 +260,13 @@ struct Board final {
                 path, static_cast<long>(file.at("face_index").integer()),
                 font::FontRasterConfig{static_cast<std::uint32_t>(size), metrics.display_scale, raster_policy});
             require(bool(loaded), "control pinned font load failed");
+            const auto source = fonts.source(loaded.font);
+            require(source && font_digest(loaded.font, source->bytes) == file.at("sha256").string(),
+                    "control font bytes differ");
             result.push_back(loaded.font);
         }
         require(!result.empty(), "control font chain is empty");
-        return result;
+        return font_chains.emplace(key, std::move(result)).first->second;
     }
 
     void glyph(const Json& cell, const Json& files, Json::Object& source) {
@@ -255,7 +274,7 @@ struct Board final {
         const auto size = static_cast<int>(cell.at("font_size").integer());
         const auto weight = static_cast<int>(cell.at("font_weight").integer());
         const auto is_icon = cell.at("kind").string() == "icon";
-        auto selected = chain(files, size, weight, cell.contains("replace_font"));
+        const auto& selected = chain(files, size, weight, cell.contains("replace_font"));
         const auto name = cell.contains("render_icon") ? cell.at("render_icon").string() : cell.at("content").string();
         if (!is_icon) {
             const bool black_panel = cell.at("background").array()[0].integer() == 0;
@@ -297,8 +316,7 @@ struct Board final {
             source.insert_or_assign("glyph_id", integer(shaped.glyphs.front().glyph_id));
             const auto actual_source = fonts.source(shaped.glyphs.front().font);
             require(actual_source.has_value(), "actual control font source unavailable");
-            actual_hash = gallery_demo_sha256(
-                {reinterpret_cast<const unsigned char*>(actual_source->bytes.data()), actual_source->bytes.size()});
+            actual_hash = font_digest(shaped.glyphs.front().font, actual_source->bytes);
             const auto font_metrics = fonts.metrics(shaped.glyphs.front().font);
             require(bool(font_metrics), "actual control font metrics unavailable");
             source.insert_or_assign("font_size", integer(font_metrics.metrics.logical_pixel_size));

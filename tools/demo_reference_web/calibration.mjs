@@ -132,9 +132,11 @@ try {
     }
     return {identity:cell.identity,kind:cell.kind,rect:rect(r),source};
   }),request.cells);
+  // DOM.getDocument resets frontend node identities. Keep one document root and
+  // resolve the controls again on each read so a replaced node still fails.
+  const documentNode=await cdp.send('DOM.getDocument',{depth:-1,pierce:true});
   const observedSnapshot=async()=>{
     const observed=await observe();
-    const documentNode=await cdp.send('DOM.getDocument',{depth:-1,pierce:true});
     for(const cell of observed.filter(c=>c.kind==='text')){
       const node=await cdp.send('DOM.querySelector',{nodeId:documentNode.root.nodeId,selector:'[data-control="'+cell.identity+'"]'});
       const runs=await platformFontRuns(cdp,node.nodeId,actual_font_sources,true);
@@ -156,7 +158,13 @@ try {
     const snapshotJSON=JSON.stringify({controls:observed,commands:[]});
     // Static controls; allow means screenshot cannot fast-forward an animation.
     const png=await page.screenshot({type:'png',scale:'device',fullPage:false,animations:'allow',caret:'initial'});
-    expect(JSON.stringify({controls:await observedSnapshot(),commands:[]})===snapshotJSON,'actual source snapshot changed during capture');
+    const after=await observedSnapshot();
+    if(JSON.stringify({controls:after,commands:[]})!==snapshotJSON){
+      const changed=observed.findIndex((cell,index)=>JSON.stringify(cell)!==JSON.stringify(after[index]));
+      const name=observed[changed]?.identity ?? 'unknown';
+      fs.writeFileSync(path.join(output,'snapshot-drift.json'),JSON.stringify({before:observed[changed],after:after[changed]})+'\n',{flag:'wx'});
+      throw new Error(`actual source snapshot changed during capture: ${name}`);
+    }
     const decoded=decodePNG(png);const raw=decoded.data;
     const name='capture-'+i+'.png',rawName='capture-'+i+'.rgba';
     fs.writeFileSync(path.join(output,name),png,{flag:'wx'});fs.writeFileSync(path.join(output,rawName),raw,{flag:'wx'});

@@ -6,7 +6,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from demo_differential.comparison import LEGACY_DIAGNOSTIC_CAPS as CAPS, compare_checkpoint, profile_thresholds
+from demo_differential.comparison import (
+    LEGACY_DIAGNOSTIC_CAPS as CAPS, compare_checkpoint, digest, environment_description, profile_thresholds,
+)
 from demo_differential.adapters import RunError
 from demo_differential.protocol import ProtocolError
 
@@ -49,6 +51,39 @@ def controls():
 
 
 class ComparisonTests(unittest.TestCase):
+    def test_d3d12_binding_preserves_reported_version_and_optional_driver_strings(self):
+        case = controls()[0]
+        native = dict(preset='windows-msvc', configuration='Release', toolchain='MSVC', platform='Windows',
+                      backend='direct3d12', shader='DXIL', font_policy='pinned',
+                      gpu=dict(name='Adapter', driver_version='32.0.0.1', driver_name='', driver_info=''))
+        web = dict(browser=dict(version='141', executable_sha256='a' * 64, revision='1194', launch_args=['--headless'],
+                                actual_gpu={'renderer': 'software'}, os='win32', release='10', arch='x64'),
+                   environment=dict(browser_libraries={'mode': 'locked'}, browser_sha256='a' * 64,
+                                    node_sha256='b' * 64))
+        metrics = dict(logical_width=1280, logical_height=900, pixel_width=1920, pixel_height=1350, dpr=1.5)
+
+        def binding(provenance):
+            return environment_description(case, provenance, web, metrics, {})
+
+        original = binding(native)
+        self.assertEqual(original['native']['gpu'], native['gpu'])
+        for field, changed in (('driver_version', '32.0.0.2'), ('driver_name', 'Driver'), ('driver_info', 'Details')):
+            with self.subTest(field=field):
+                updated = deepcopy(native)
+                updated['gpu'][field] = changed
+                self.assertNotEqual(digest(original), digest(binding(updated)))
+        for field in ('name', 'driver_version'):
+            with self.subTest(field=field), self.assertRaisesRegex(RunError, f'unavailable: {field}'):
+                updated = deepcopy(native)
+                updated['gpu'][field] = ' '
+                binding(updated)
+        with self.assertRaisesRegex(RunError, 'lacks the driver observation fields'):
+            updated = deepcopy(native)
+            del updated['gpu']['driver_info']
+            binding(updated)
+        with self.assertRaisesRegex(RunError, 'unavailable: driver_name'):
+            binding(dict(native, backend='vulkan'))
+
     def compare(self, values, ink_native=None):
         case, declaration, native, web, ink = values
         images = [(pixels(ink), (200, 100)), (pixels(ink if ink_native is None else ink_native), (200, 100))]

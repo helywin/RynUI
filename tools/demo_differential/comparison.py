@@ -80,7 +80,16 @@ def environment_description(case,native,web,actual_metrics,capture_facts):
     from .device_metrics import stable_device_metrics
     native_fields=('preset','configuration','toolchain','platform','backend','shader','gpu','font_policy')
     n=required(native,native_fields,'native environment')
-    required(n['gpu'],('name','driver_name','driver_version','driver_info'),'actual native GPU')
+    gpu = n['gpu']
+    gpu_fields = ('name', 'driver_version', 'driver_name', 'driver_info')
+    if not isinstance(gpu, dict) or any(type(gpu.get(key)) is not str for key in gpu_fields):
+        raise RunError(3, 'calibration', 'actual native GPU binding lacks the driver observation fields')
+    # SDL's D3D12 backend records the adapter description and DXGI UMD version.
+    # Keep the recorded empty strings in the binding so a change still invalidates it.
+    required_gpu_fields = gpu_fields[:2] if n['backend'].lower() in ('d3d12', 'direct3d12') else gpu_fields
+    for key in required_gpu_fields:
+        if not gpu[key].strip():
+            raise RunError(3, 'calibration', 'actual native GPU binding unavailable: ' + key)
     required(web,('browser','environment'),'Web environment')
     required(web['browser'],('version','executable_sha256','revision','launch_args','actual_gpu','os','release','arch'),'actual browser')
     libraries=required(web['environment'],('browser_libraries','browser_sha256','node_sha256'),'browser library/tool closure')

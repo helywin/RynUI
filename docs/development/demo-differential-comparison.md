@@ -48,6 +48,8 @@ Windows Web CPU 控制需要 `out/demo-differential/archives` 中的真实 Node/
 
 profile 是 strict v1 的严格扩展，必须声明 `calibration_kind=pilot-independent-v1`、首批三例完整 identity、zh-CN/LTR/default/motion-disabled/pinned 七字体、actual DPR、有限材料/字号/字重与可重建证据。旧手填 calibrated 声明失效。algorithm hash 包括实际数学、区域、校准、比较代码和 profile schema；完整 native source、实际 binary/configuration、工具/安装、OS/GPU/driver/browser/library、实际 font raster policy、bytes/face/weight/size 继续绑定。必需来源缺失不能用 None 计算出“已绑定”的 hash。
 
+Windows D3D12 的 GPU 指纹必须包含 SDL 从实际 DXGI adapter 读取的名称和用户态驱动版本。该 SDL 后端未填报 `driver_name` 和 `driver_info` 时，指纹保留这两个字段的原始空字符串。两字段一旦有值，其变化同样使旧 profile 失效。Vulkan 继续检查已有的驱动名称、版本和详述。
+
 native 保留真实 `native-encoded-SDR/premultiplied`、actual source format/channel/clear；Web 保留 PNG RGB8/RGBA8/straight-or-opaque、实际 sRGB launch args、PNG color chunks 与 CRC。opaque 工作域必须同时有 owned raw RGBA 全 A255 扫描和 decoded 全 A255，普通 BMP 还核对 raw 字节摘要。透明控制只使用独立新 fence 的 raw RGBA；opaque raw 与生产 BMP 的两次 readback 分别保留 receipt，并先证明稳定场景字节相同。固定标准转换按 [W3C sRGB](https://www.w3.org/TR/css-color-4/#color-conversion-code) 和 [Sharma/Wu/Dalal 的 CIEDE2000 方程与数据](https://hajim.rochester.edu/ece/sites/gsharma/ciede2000/) 独立实现，不拟合 gamma/LUT 或失败直方图。
 
 只有独立 `calibrate --suite pilot` 可以原子发布 profile。它不调用普通 run，不把 Button/Input/Select 图像作为正控制；普通 Gallery probe 仅用于来源/实际环境。固定 train/holdout、负例和 policy 在采集前写入 out，至少五次新 fence 与一次独立重启。逐侧几何/材料/font/SFNT cmap/hmtx/outline/解析颜色先验通过后才进入 positive。`candidate=max(quantization_floor, positive_max+fixed_margin)`，须不超过 hard cap、holdout 不超限且每个指定 negative 有固定 safety gap。消费时重开内容寻址 manifest、stream、raw/codec captures 并重算，不信任伪造 summary。失败只写报告，不发布有效 profile。

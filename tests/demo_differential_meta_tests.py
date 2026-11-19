@@ -18,7 +18,7 @@ from demo_differential.meta_test import (
     MetaResult, fault_for_case, guard_ordinary_run, guard_reference_publish,
     reference_cache_publish_allowed, run_meta_test,
 )
-from demo_differential.protocol import ProtocolError, read
+from demo_differential.protocol import FIXTURES, ProtocolError, read
 from demo_differential_observation_tests import records_for
 from demo_differential_protocol_tests import valid_case
 
@@ -440,6 +440,7 @@ class MetaTests(unittest.TestCase):
 
     def test_cli_dispatches_real_meta_and_acceptance_only_fault_option(self):
         import run_demo_differential as cli
+        from demo_differential import calibration
         arguments = ['tools/run_demo_differential.py', 'meta-test', '--suite', 'pilot',
                      '--binary', 'unit-binary', '--preset', 'windows-msvc-release',
                      '--profile-file', 'unit-profile', '--output', str(self.directory / 'cli')]
@@ -449,8 +450,10 @@ class MetaTests(unittest.TestCase):
             self.assertEqual(meta.call_args.args[0]['suite'], 'pilot')
         arguments[1] = 'run'
         arguments += ['--fault', 'duplicate-callback']
-        with patch.object(sys, 'argv', arguments), patch.object(cli, 'run', return_value=1) as ordinary:
+        with patch.object(sys, 'argv', arguments), patch.object(cli, 'run', return_value=1) as ordinary, \
+                patch.object(calibration, 'preflight_profile', side_effect=lambda options: options) as preflight:
             self.assertEqual(cli.main(), 1)
+            self.assertEqual(preflight.call_args.args[0]['profile_file'], Path('unit-profile'))
             self.assertEqual(ordinary.call_args.args[0]['fault'], 'duplicate-callback')
         arguments[-1] = 'invented-hook'
         with patch.object(sys, 'argv', arguments), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -484,7 +487,7 @@ class MetaTests(unittest.TestCase):
             adapter.web(self.cases[1], 'unit', destination, prepared, options)
 
     def test_production_meta_wrapper_prepares_once_and_calls_ordinary_runner_seven_times(self):
-        from demo_differential import meta_test, runner, source_closure
+        from demo_differential import calibration, meta_test, runner, source_closure
         from demo_differential.adapters import RealAdapters
         from demo_reference_web import bootstrap
         prepared = self.directory / 'prepared'
@@ -496,7 +499,7 @@ class MetaTests(unittest.TestCase):
             (self.directory / name).mkdir(parents=True)
         (self.directory / 'tools/run_demo_differential.py').write_text('unit source', encoding='utf-8')
         profile = self.directory / 'unit-profile'
-        profile.write_text('unit profile', encoding='utf-8')
+        profile.write_bytes((FIXTURES / 'profiles/pilot-pinned-font.uncalibrated.json').read_bytes())
         calls = []
         def ordinary(options, cases):
             calls.append(options)
@@ -509,9 +512,11 @@ class MetaTests(unittest.TestCase):
                 patch.object(source_closure, 'source_manifest', return_value={'files': []}), \
                 patch.object(bootstrap, 'verify_prepared', return_value={'source': str(self.protected[0])}), \
                 patch.object(RealAdapters, 'prepare', return_value={'prepared': str(prepared), 'fonts': [{'path': str(font)}]}) as prepare, \
-                patch.object(RealAdapters, 'cleanup'), patch.object(runner, 'run', side_effect=ordinary):
+                patch.object(RealAdapters, 'cleanup'), patch.object(runner, 'run', side_effect=ordinary), \
+                patch.object(calibration, 'preflight_profile', side_effect=lambda options: options) as preflight:
             result = meta_test.run_pilot_meta(options, self.cases)
         self.assertEqual(result.exit_code, 0, read(result.report_path))
+        self.assertEqual(preflight.call_count, 1)
         self.assertEqual(prepare.call_count, 1)
         self.assertEqual(len(calls), 7)
 

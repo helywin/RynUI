@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from demo_differential import pilots, runner
 from demo_differential.adapters import RunError, native_command, process
-from demo_differential.protocol import ProtocolError, read, validate
+from demo_differential.protocol import FIXTURES, ProtocolError, read, validate
 from demo_differential.reporting import write_json
 from demo_differential.source_closure import source_manifest
 from demo_differential.inventory import source_inventory, obligations
@@ -218,12 +218,9 @@ class RunnerTests(unittest.TestCase):
         self.binary = self.directory / 'unit-binary'
         self.binary.write_bytes(b'unit-only; not a native executable')
         self.profile = self.directory / 'profile.json'
-        write_json(self.profile, {'schema_version': 1, 'identity': 'pilot-pinned-font', 'environment_hash': 'a' * 64,
-            'algorithm_hash': 'a' * 64, 'corpus_hash': 'b' * 64, 'source_hash': 'c' * 64,
-            'font_hashes': [f['sha256'] for f in pilots.FONTS], 'repetitions': 5, 'calibrated': True,
-            'metrics': [{'identity': 'unit-only', 'threshold': 0, 'hard_cap': 0, 'quantization_floor': 0,
-                         'positive_max': 0, 'margin': 0, 'negative_min': 1}], 'masks': [],
-            'color': {'profile': 'sRGB-SDR', 'channel_order': 'RGBA', 'alpha': 'opaque'}, 'font_policy': 'pinned'})
+        profile = read(FIXTURES / 'profiles/pilot-pinned-font.uncalibrated.json')
+        # The injected comparator exercises runner routing. Production still rejects this input without evidence.
+        write_json(self.profile, dict(profile, calibrated=True))
         self.options = {'binary': self.binary, 'preset': 'windows-msvc-release' if platform.system() == 'Windows' else 'linux-gcc-release',
             'timeout': 1, 'reference': 'locked', 'profile_file': self.profile, 'output': self.directory / 'run',
             'suite': 'pilot', 'repro_argv': ['unit-mechanism-only']}
