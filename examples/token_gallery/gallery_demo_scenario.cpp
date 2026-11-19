@@ -403,7 +403,7 @@ public:
             tokens["color"] = color(button_state.presentation_foreground);
         }
         for (const auto& input : actions.inputs.mounted_inputs()) {
-            if (!contains(name, input.component)) {
+            if (!contains(name, input.component) || !actions.app.components().branch_active(input.component)) {
                 continue;
             }
             const auto display = actions.inputs.display_snapshot(input.component);
@@ -479,7 +479,7 @@ public:
             }
         }
         for (const auto& text : actions.app.text().mounted_texts()) {
-            if (!contains(name, text.component)) {
+            if (!contains(name, text.component) || !actions.app.components().branch_active(text.component)) {
                 continue;
             }
             bool is_icon{};

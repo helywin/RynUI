@@ -52,6 +52,13 @@ class PilotDefinitionTests(unittest.TestCase):
         self.assertTrue(controls['gallery.state.disabled']['disabled'])
         self.assertTrue(controls['gallery.state.loading']['loading'])
         self.assertEqual(case['fixture']['slots']['gallery.state.default']['content'], '默认')
+        self.assertEqual(pilots.displayed_slot_text(case['fixture'], 'gallery.state.default', 'content', '默认'),
+                         '默 认')
+        self.assertEqual(pilots.displayed_slot_text(case['fixture'], 'gallery.state.focus-visible', 'content',
+                                                    '键盘焦点'), '键盘焦点')
+        controls['gallery.state.default']['autoInsertSpace'] = False
+        self.assertEqual(pilots.displayed_slot_text(case['fixture'], 'gallery.state.default', 'content', '默认'),
+                         '默认')
         reference.validate_composition(case['fixture']['props']['composition'], controls, case['fixture']['slots'])
 
     def test_input_prefix_suffix_limit_data_warning_and_accept_reject_are_declared(self):

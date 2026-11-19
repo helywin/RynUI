@@ -160,6 +160,8 @@ void routing() {
     dispatch("external-props", "sample", Json::Object{{"values", Json::Object{{"parent_policy", "reject"}}}});
     dispatch("text-commit", "gallery.input.controlled", Json::Object{{"text", "x"}});
     require(context->values.at("gallery.input.controlled")().string() == "abc🙂", "reject parent committed proposal");
+    require(fixture.inputs.display_snapshot(input_owner).text == "abc🙂",
+            "rejected parent proposal remained in the actual editor display");
     require(!context->callbacks.back().at("payload").at("accepted").boolean(), "reject callback metadata is false");
     context->fault = "input-reject-commit";
     dispatch("text-commit", "gallery.input.controlled", Json::Object{{"text", "y"}});

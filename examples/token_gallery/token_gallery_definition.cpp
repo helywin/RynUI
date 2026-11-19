@@ -11,6 +11,7 @@
 #include "gallery_i18n.hpp"
 #include "reference_surface.hpp"
 #include "icon_samples.hpp"
+#include "text/text_engine.hpp"
 
 #include <ryn/rynui.hpp>
 
@@ -1652,7 +1653,18 @@ void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view 
                    const ryn::ThemeConfig& config, ryn::ButtonType type = ryn::ButtonType::Default,
                    ryn::ControlSize size = ryn::ControlSize::Small, ryn::Prop<bool> disabled = false,
                    ryn::Prop<bool> loading = false, std::function<void()> on_click = {}) {
-    const auto text = gallery_text(caption);
+    const auto text = ryn::bind([caption = gallery_text(caption), type] {
+        auto label = caption.get();
+        const auto scalars = ryn::text::decode_utf8(label.view());
+        if (type != ryn::ButtonType::Text && type != ryn::ButtonType::Link && scalars.size() == 2 &&
+            std::ranges::all_of(
+                scalars, [](const auto& scalar) { return scalar.value >= U'\u4e00' && scalar.value <= U'\u9fa5'; })) {
+            std::string rendered{label.bytes()};
+            rendered.insert(scalars.front().byte_end, 1, ' ');
+            return ryn::String::from_utf8(rendered).value();
+        }
+        return label;
+    });
     // Keep the large ThemeConfig-bearing props off the native thread's stack.
     auto theme_props = std::make_unique<ryn::ThemeProps>();
     if (state->demo && state->demo->fault == "button-padding-plus-one" && test_id == "gallery.state.default") {
@@ -1663,35 +1675,41 @@ void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view 
     } else {
         theme_props->config(config);
     }
-    ryn::Theme(std::move(*theme_props),
-               ryn::ThemeContent{[state, text, type, size, disabled = std::move(disabled), loading = std::move(loading),
-                                  on_click = std::move(on_click), test_id]() mutable {
-                   ++state->telemetry.theme_content_runs;
-                   auto props = ryn::ButtonProps{}
-                                    .type(type)
-                                    .size(size)
-                                    .disabled(std::move(disabled))
-                                    .loading(std::move(loading))
-                                    .layout(ryn::LayoutStyle{}.width(state->cell_width).flex_shrink(1.0F));
-                   if (state->demo) {
-                       const auto context = state->demo;
-                       const auto key = std::string{test_id};
-                       context->consume(
-                           key, GalleryDemoJson::Object{{"size", size == ryn::ControlSize::Small   ? "small"
-                                                                 : size == ryn::ControlSize::Large ? "large"
-                                                                                                   : "middle"},
-                                                        {"type", type == ryn::ButtonType::Primary  ? "primary"
-                                                                 : type == ryn::ButtonType::Danger ? "danger"
-                                                                                                   : "default"}});
-                       props.onClick([context, key, original = std::move(on_click)] {
-                           context->invoke(key, "activate", nullptr, original);
-                       });
-                   } else if (on_click) {
-                       props.onClick(std::move(on_click));
-                   }
-                   ryn::Button(std::move(props), [text] { ryn::Text(ryn::TextProps{}.content(text)); });
-                   ++state->telemetry.live_samples;
-               }});
+    ryn::Theme(
+        std::move(*theme_props),
+        ryn::ThemeContent{[state, text, type, size, disabled = std::move(disabled), loading = std::move(loading),
+                           on_click = std::move(on_click), test_id]() mutable {
+            ++state->telemetry.theme_content_runs;
+            auto props = ryn::ButtonProps{}
+                             .type(type)
+                             .size(size)
+                             .disabled(std::move(disabled))
+                             .loading(std::move(loading))
+                             .layout(ryn::LayoutStyle{}.width(state->cell_width).flex_shrink(1.0F));
+            if (state->demo) {
+                const auto context = state->demo;
+                const auto key = std::string{test_id};
+                context->consume(key, GalleryDemoJson::Object{{"size", size == ryn::ControlSize::Small   ? "small"
+                                                                       : size == ryn::ControlSize::Large ? "large"
+                                                                                                         : "middle"},
+                                                              {"type", type == ryn::ButtonType::Primary  ? "primary"
+                                                                       : type == ryn::ButtonType::Danger ? "danger"
+                                                                                                         : "default"}});
+                props.onClick([context, key, original = std::move(on_click)] {
+                    context->invoke(key, "activate", nullptr, original);
+                });
+            } else if (on_click) {
+                props.onClick(std::move(on_click));
+            }
+            ryn::ButtonSlots slots{.content =
+                                       ryn::ButtonContent{[text] { ryn::Text(ryn::TextProps{}.content(text)); }}};
+            if (test_id == "gallery.state.loading") {
+                slots.loading = ryn::ButtonLoadingIcon{
+                    [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::LoadingOutlined).spin(true)); }};
+            }
+            ryn::Button(std::move(props), std::move(slots));
+            ++state->telemetry.live_samples;
+        }});
     remember_target(state, test_id, true);
 }
 
@@ -7008,7 +7026,7 @@ void add_complete_select_samples(const std::shared_ptr<GalleryState>& state) {
                Button(ButtonProps{}.size(ControlSize::Small).onClick([state] {
                    state->select_multi_feedback.set(GalleryMessage{"gallery.feedback.110", {}});
                }),
-                      ButtonContent{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }});
+                      ButtonSlots{.icon = ButtonIcon{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }}});
                gallery_target("gallery.select.prefix");
                if (state->demo && state->demo->input_fault == GalleryDemoInputFault::popup_owner) {
                    gallery_select_popup_note(state);

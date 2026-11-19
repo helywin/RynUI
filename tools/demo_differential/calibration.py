@@ -1658,6 +1658,12 @@ def font_priors(fonts,corpus,library):
     return _sfnt_priors(fonts,corpus,library)
 
 
+def scenario_font_priors(fonts,scalars,library):
+    """Find the scalar in each pinned face, including shared punctuation."""
+    corpus=dict(train=dict(text=scalars),holdout=dict(text=[]))
+    return _sfnt_priors(fonts,corpus,library,control_assignment=False)
+
+
 def all_font_priors(fonts,corpus,library):
     from .formal_icon_source import resource,official_font_bytes
     result=font_priors(fonts,corpus,library)
@@ -1684,7 +1690,7 @@ def font_priors_from_bytes(data,codepoints,library,face_index=0):
     return _sfnt_priors([descriptor],corpus,library,{fingerprint:data})
 
 
-def _sfnt_priors(fonts,corpus,library,in_memory=None):
+def _sfnt_priors(fonts,corpus,library,in_memory=None,*,control_assignment=True):
     import sys
     import io
     library=Path(library).resolve()
@@ -1745,9 +1751,12 @@ def _sfnt_priors(fonts,corpus,library,in_memory=None):
                 cmap=font.getBestCmap()
                 chars=corpus['train']['text']+corpus['holdout']['text']
                 for char in chars:
-                    if (ord(char)<128)!=(descriptor['identity']=='noto-sans'):continue
+                    if control_assignment and (ord(char)<128)!=(descriptor['identity']=='noto-sans'):continue
                     name=cmap.get(ord(char))
-                    if not name:raise RunError(3,'calibration','independent SFNT cmap has no control scalar')
+                    if not name:
+                        if control_assignment:
+                            raise RunError(3,'calibration','independent SFNT cmap has no control scalar')
+                        continue
                     pen=OutlinePen();glyphset[name].draw(pen)
                     bounds=BoundsPen(glyphset);glyphset[name].draw(bounds)
                     if not pen.contours or bounds.bounds is None:

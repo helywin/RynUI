@@ -410,7 +410,7 @@ void semantic_and_retirement_controls() {
                 !applied.at("controls").at("gallery.state.default").contains("maxLength"),
             "actual input query echoed the fixture's deliberately wrong component/props");
     require(!applied.at("composition").at("roots").array().empty() &&
-                applied.at("slots").at("gallery.state.default").at("content").dump().find("默认") !=
+                applied.at("slots").at("gallery.state.default").at("content").dump().find("默 认") !=
                     std::string::npos &&
                 applied.at("themes").at("gallery.state.default").at("colorBgContainer").string() == "#ffffff",
             "actual retained authoring composition/slot/Theme evidence missing");

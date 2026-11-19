@@ -139,6 +139,8 @@ struct InputContentLayout final {
     bool prefix{};
     bool suffix{};
     bool flush_suffix{};
+    bool right_to_left{};
+    bool fit_affixes{};
     friend constexpr bool operator==(InputContentLayout, InputContentLayout) = default;
 };
 

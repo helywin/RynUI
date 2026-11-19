@@ -8,7 +8,8 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.comparison import (_layered_context,_actual_material,css_shadows,_composite_point,
-                                          _layer_coverage,_native_paint_inventory)
+                                          _layer_coverage,_native_paint_inventory,_paint_bins,_contains,_inset,
+                                          _support,_PAINT_BIN_PHYSICAL_PX)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 
@@ -61,6 +62,31 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_fractional_dpi_keeps_a_gapped_focus_outline_separate(self):
+        fill=dict(kind='fill',bounds=box(10,10,40,24),radii=4)
+        focus=dict(fill,kind='outline',offset_width=1,width=3)
+        # At 150% DPI the distinct shape edges are 1.5 physical px apart.
+        self.assertEqual(_layer_coverage(fill,(30,9.5),1.5),(0,False))
+        self.assertEqual(_layer_coverage(focus,(30,9.5),1.5),(0,False))
+        self.assertEqual(_layer_coverage(fill,(30,9.75),1.5),(0,True))
+        self.assertEqual(_layer_coverage(focus,(30,9.25),1.5),(0,True))
+
+    def test_sparse_physical_bins_preserve_guard_shadow_and_paint_order(self):
+        layers=[dict(identity='fill',kind='fill',bounds=box(-34.25,0,57,51)),
+                dict(identity='shadow',kind='shadow',bounds=box(5.5,9.5,40,24),offset=(1,4),spread=2,blur=6),
+                dict(identity='outline',kind='outline',bounds=box(21,37,10,20),offset_width=3,width=1)]
+        frame=(-60,-12,100,96)
+        for dpr in (1,1.5):
+            index=_paint_bins(layers,frame,dpr)
+            step=_PAINT_BIN_PHYSICAL_PX
+            for y in range(frame[1],frame[3]):
+                for x in range(frame[0],frame[2]):
+                    point=((x+.5)/dpr,(y+.5)/dpr)
+                    actual=[row['identity'] for row,support in index.get((x//step,y//step),())
+                            if _contains(support,point)]
+                    expected=[row['identity'] for row in layers if _contains(_inset(_support(row),-1/dpr),point)]
+                    self.assertEqual(actual,expected)
+
     def test_identical_known_white_fill_is_flat_and_visible_border_still_present(self):
         failures,measurements=_layered_context(*synthetic())
         self.assertEqual(failures,[])

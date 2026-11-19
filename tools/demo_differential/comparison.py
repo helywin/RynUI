@@ -18,6 +18,7 @@ from .protocol import ProtocolError, validate
 from .regions import crop_rgba, geometry, physical_box, raster_metrics, rect, relative, union, sample_anchor, text_groups
 from .runner_evidence import artifact, metrics
 from .calibration import CAPS
+from .pilots import displayed_slot_text
 
 LEGACY_DIAGNOSTIC_CAPS = {'geometry.logical_px': .25, 'pixels.max_channel_residual': 0,
         'pixels.coverage_mass_relative_error': .05, 'pixels.contour_distance_px': .5,
@@ -31,7 +32,7 @@ def digest(value):
 def algorithm_hash():
     from .protocol import FIXTURES
     files={name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-           for name in ('comparison.py', 'regions.py', 'color_metrics.py','calibration.py','schema_definitions.py')}
+           for name in ('comparison.py', 'regions.py', 'color_metrics.py','calibration.py','schema_definitions.py','pilots.py')}
     files['profile.schema.json']=hashlib.sha256((FIXTURES/'profile.schema.json').read_bytes()).hexdigest()
     return digest(files)
 
@@ -183,8 +184,11 @@ def _css_number(value):
 def _text_rows(target, side):
     # Selected/placeholder layers remain in original evidence. For this pilot,
     # editing assertions use the actual base/display text, not duplicate layers.
-    return [t for t in target['text'] if t.get('content') and
-            t.get('kind') not in ('editor-selected', 'editor-placeholder', 'icon-font')]
+    rows=[t for t in target['text'] if t.get('content') and
+          t.get('kind') not in ('editor-selected','editor-placeholder','icon-font')]
+    # DOM text and UA editor text are independent semantic streams. Preserve
+    # their respective source order without comparing enumeration across APIs.
+    return sorted(rows,key=lambda t: bool(t.get('editable') or t.get('kind')=='editor-base'))
 
 
 def _declared_text(case, target):
@@ -201,7 +205,8 @@ def _declared_text(case, target):
         visit(fixture.get('props', {}).get('composition', {}))
         return required
     slots = fixture.get('slots', {}).get(target, {})
-    return [value for key, value in slots.items() if key in ('content', 'prefix', 'suffix') and isinstance(value, str) and value]
+    return [displayed_slot_text(fixture,target,key,value) for key,value in slots.items()
+            if key in ('content','prefix','suffix') and isinstance(value,str) and value]
 
 
 def _local_background(target, context_background):
@@ -334,6 +339,27 @@ def _contains(bounds,point):
     return bounds['x']<=point[0]<bounds['x']+bounds['width'] and bounds['y']<=point[1]<bounds['y']+bounds['height']
 
 
+_PAINT_BIN_PHYSICAL_PX = 32
+
+
+def _paint_bins(layers,box,dpr):
+    """Index conservative physical support while preserving source paint order."""
+    bins={}
+    block=_PAINT_BIN_PHYSICAL_PX
+    for row in layers:
+        support=_inset(_support(row),-1/dpr)
+        left=max(math.floor(support['x']*dpr),box[0])
+        top=max(math.floor(support['y']*dpr),box[1])
+        right=min(math.ceil((support['x']+support['width'])*dpr),box[2])
+        bottom=min(math.ceil((support['y']+support['height'])*dpr),box[3])
+        if right<=left or bottom<=top:
+            continue
+        for y in range(top//block,(bottom-1)//block+1):
+            for x in range(left//block,(right-1)//block+1):
+                bins.setdefault((x,y),[]).append((row,support))
+    return bins
+
+
 def _shape_distance(point,bounds,radii):
     from .calibration import rounded_distance
     radius=radii[(0 if point[1]<bounds['y']+bounds['height']/2 else 3) if point[0]<bounds['x']+bounds['width']/2
@@ -347,6 +373,9 @@ def _layer_coverage(layer,point,dpr):
     if any(not _contains(clip,point) for clip in layer.get('clips',[])):return 0,False
     b=layer['bounds'];kind=layer['kind'];r=layer.get('radii',0)
     distance=_shape_distance(point,b,r)
+    # A hard shape can partially cover a unit pixel only if an edge reaches
+    # its square aperture. The half diagonal bounds every edge direction.
+    pixel_reach=math.sqrt(.5)
     if kind in ('glyph','caret'):
         return (1 if _contains(b,point) else 0),_contains(b,point)
     if kind in ('shadow','inset-shadow'):
@@ -363,21 +392,24 @@ def _layer_coverage(layer,point,dpr):
         else:
             shift=dict(shape,x=shape['x']+layer['offset'][0],y=shape['y']+layer['offset'][1])
             edge=_shape_distance(point,shift,radius);value=float(edge<=0)
+            if kind=='shadow' and (edge*dpr>pixel_reach or
+                    layer.get('knockout') and distance*dpr < -pixel_reach):
+                return 0,False
         if kind=='inset-shadow':value=1-value
         elif layer.get('knockout') and distance<0:value=0
         if layer['blur']>0:return value,True
-        return value,abs(edge)*dpr<=1 or layer.get('knockout') and abs(distance)*dpr<=1
+        return value,abs(edge)*dpr<=pixel_reach or layer.get('knockout') and abs(distance)*dpr<=pixel_reach
     if kind=='outline':
         outer=_inset(b,-layer['offset_width']-layer['width'])
         inner=_inset(b,-layer['offset_width'])
         od=_shape_distance(point,outer,r+layer['offset_width']+layer['width'])
         ind=_shape_distance(point,inner,r+layer['offset_width'])
-        return float(od<=0 and ind>=0),min(abs(od),abs(ind))*dpr<=1
+        return float(od<=0 and ind>=0),min(abs(od),abs(ind))*dpr<=pixel_reach
     if kind=='border':
         inner=_inset(b,layer['widths']);inner_r=tuple(max(0,v-max(layer['widths'])) for v in r)
         inner_distance=_shape_distance(point,inner,inner_r) if inner['width'] and inner['height'] else math.inf
-        return float(distance<=0 and inner_distance>=0),min(abs(distance),abs(inner_distance))*dpr<=1
-    return float(distance<=0),abs(distance)*dpr<=1
+        return float(distance<=0 and inner_distance>=0),min(abs(distance),abs(inner_distance))*dpr<=pixel_reach
+    return float(distance<=0),abs(distance)*dpr<=pixel_reach
 
 
 def _native_paint_inventory(checkpoint,origin,dpr=1):
@@ -726,7 +758,7 @@ def _hard_paint_gates(native_layers,web_layers,step):
 
 
 def _glyph_priors_for_run(native,manifest):
-    from .calibration import font_priors,font_priors_from_bytes
+    from .calibration import scenario_font_priors,font_priors_from_bytes
     from .formal_icon_source import official_font_bytes
     from .protocol import ROOT,relative_path
     ordinary=set();icons=set()
@@ -735,7 +767,7 @@ def _glyph_priors_for_run(native,manifest):
             destination=icons if text.get('kind')=='icon-font' else ordinary
             destination.update(char for char in text['content'] if not char.isspace())
     library=ROOT/relative_path(manifest['fonttools_library'])
-    result=font_priors(manifest['fonts'],dict(train=dict(text=''.join(sorted(ordinary))),holdout=dict(text='')),library)
+    result=scenario_font_priors(manifest['fonts'],sorted(ordinary),library)
     if icons:result.update(font_priors_from_bytes(official_font_bytes(),[ord(c) for c in sorted(icons)],library))
     return result
 
@@ -802,14 +834,16 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
     def fail(category,message,**data):
         if len(failures)<64:failures.append(dict(category=category,step=declaration['step'],target=sample,message=message,**data))
     basis_cache={};domain_cache={};presence={};paired_planes={};joint_planes={};max_joint=0.;max_color=0.;glyph_witnesses={}
+    bins=[_paint_bins(rows,box,dpr) for rows in inventories]
     for index in range(size[0]*size[1]):
-        point=((box[0]+index%size[0]+.5)/dpr,(box[1]+index//size[0]+.5)/dpr)
+        x,y=box[0]+index%size[0],box[1]+index//size[0]
+        point=((x+.5)/dpr,(y+.5)/dpr)
+        key_bin=(x//_PAINT_BIN_PHYSICAL_PX,y//_PAINT_BIN_PHYSICAL_PX)
         sides=[]
-        for side,rows in enumerate(inventories):
+        for side,indexed in enumerate(bins):
             active=[];coverages=[];variable=[]
-            for row in rows:
-                support=_support(row)
-                if not _contains(_inset(support,-1/dpr),point):continue
+            for row,support in indexed.get(key_bin,()):
+                if not _contains(support,point):continue
                 value,transition=_layer_coverage(row,point,dpr)
                 if value==0 and not transition:continue
                 active.append(row);coverages.append(value)

@@ -42,6 +42,7 @@ struct InputNumberPropsAccess;
 struct InputNumberConfig;
 class OTPComponentHost;
 class AutoCompleteComponentHost;
+class SelectComponentHost;
 
 struct InputPropsData final {
     bool config_resolved_{};
@@ -285,6 +286,7 @@ private:
 class InputProps final : public InputPropsBase<InputProps> {
 private:
     friend class detail::OTPComponentHost;
+    friend class detail::SelectComponentHost;
     friend struct detail::InputPropsAccess;
     friend struct detail::PasswordPropsAccess;
     friend struct detail::TextAreaPropsAccess;
@@ -296,6 +298,8 @@ private:
     std::shared_ptr<detail::TextAreaPropsData> textarea_;
     std::shared_ptr<detail::OTPInputCellConfig> otp_;
     std::shared_ptr<detail::InputNumberConfig> number_;
+    bool fit_affixes_{};
+    bool mirror_affixes_{};
 };
 
 struct InputPrefixSlot final {};

@@ -859,24 +859,31 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                                                            content_constraint.max_width)
                                               : content_constraint.max_width;
                 const float inner_width = subtract_extent(outer_width, frame);
-                const float height = std::min(current.control_height, content_constraint.max_height);
-                const float inner_height =
-                    subtract_extent(height, 2.0F * (current.border_width + current.padding_block));
+                const float block_frame = 2.0F * (current.border_width + current.padding_block);
+                const float suffix_frame = current.flush_suffix ? 2 * current.border_width : block_frame;
+                const float affix_limit = current.fit_affixes
+                                              ? content_constraint.max_height
+                                              : std::min(current.control_height, content_constraint.max_height);
                 const float gaps =
                     current.gap * (static_cast<float>(current.prefix) + static_cast<float>(current.suffix));
                 auto remaining = subtract_extent(inner_width, gaps);
-                const auto prefix =
-                    measure_node(node.children[0], {0, current.prefix ? remaining : 0, 0, inner_height});
+                const auto prefix = measure_node(node.children[0], {0, current.prefix ? remaining : 0, 0,
+                                                                    subtract_extent(affix_limit, block_frame)});
                 remaining = subtract_extent(remaining, prefix.width);
-                const float suffix_height =
-                    current.flush_suffix ? subtract_extent(height, 2 * current.border_width) : inner_height;
-                const auto suffix =
-                    measure_node(node.children[2], {0, current.suffix ? remaining : 0, 0, suffix_height});
+                const auto suffix = measure_node(node.children[2], {0, current.suffix ? remaining : 0, 0,
+                                                                    subtract_extent(affix_limit, suffix_frame)});
                 remaining = subtract_extent(remaining, suffix.width);
+                auto control_height = current.control_height;
+                if (current.fit_affixes) {
+                    control_height =
+                        std::max({control_height, prefix.height + block_frame, suffix.height + suffix_frame});
+                }
+                const auto inner_height =
+                    subtract_extent(std::min(control_height, content_constraint.max_height), block_frame);
                 const auto editable = measure_node(
                     node.children[1], {std::isfinite(remaining) ? remaining : 0, remaining, 0, inner_height});
                 measured = content_constraint.constrain(
-                    {prefix.width + editable.width + suffix.width + gaps + frame, current.control_height});
+                    {prefix.width + editable.width + suffix.width + gaps + frame, control_height});
                 const auto& viewport = nodes_->require(node.children[1]);
                 if (viewport.first_baseline.has_value()) {
                     const auto top = std::min(measured.height * .5F, current.border_width + current.padding_block);
@@ -1100,10 +1107,10 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                 }
                 const auto inset = std::min(node.bounds.width * 0.5F, current.padding_inline + current.border_width);
                 const auto top = std::min(node.bounds.height * 0.5F, current.border_width + current.padding_block);
-                float cursor = node.bounds.x + inset;
-                const auto right_inset =
+                float cursor = inset;
+                const auto end_inset =
                     current.flush_suffix ? std::min(node.bounds.width / 2, current.border_width) : inset;
-                const auto end = node.bounds.x + node.bounds.width - right_inset;
+                const auto end = node.bounds.width - end_inset;
                 const auto suffix_width =
                     std::min(nodes_->require(node.children[2]).layout_size.width, std::max(0.0F, end - cursor));
                 for (std::size_t index = 0; index < 3; ++index) {
@@ -1117,10 +1124,11 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                                                 ? std::min(node.bounds.height / 2, current.border_width)
                                                 : top;
                     const auto child_height = std::min(std::max(0.0F, node.bounds.height - 2 * child_top), size.height);
-                    place_node(
-                        child,
-                        {cursor, node.bounds.y + (node.bounds.height - child_height) * 0.5F, width, child_height},
-                        index == 1, false);
+                    const auto left = current.right_to_left ? node.bounds.width - cursor - width : cursor;
+                    place_node(child,
+                               {node.bounds.x + left, node.bounds.y + (node.bounds.height - child_height) * 0.5F, width,
+                                child_height},
+                               index == 1, false);
                     cursor += width;
                     if ((index == 0 && current.prefix) || (index == 1 && current.suffix)) {
                         cursor = std::min(end, cursor + current.gap);

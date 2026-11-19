@@ -9,6 +9,7 @@ from .oracle import exact
 from .protocol import ProtocolError, loads, relative_path, validate
 from .adapters import RunError
 from .device_metrics import stable_device_metrics
+from .pilots import displayed_slot_text
 
 
 def sha(path):
@@ -256,7 +257,7 @@ def verify_slots(fixture, actual):
             observed = actual.get('slots', {}).get(target, {}).get(key)
             if isinstance(value, str):
                 content = ''.join(item for item in (observed or []) if isinstance(item, str))
-                if content != value:
+                if content != displayed_slot_text(fixture,target,key,value):
                     raise ProtocolError('native actual slot text differs: ' + target + '.' + key)
             elif isinstance(value, dict) and 'icon' in value:
                 source = actual.get('slots', {}).get(target, {}).get('content') if fixture['props']['controls'][target]['component'] == 'Button' else observed

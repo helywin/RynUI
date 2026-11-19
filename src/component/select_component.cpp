@@ -1854,8 +1854,10 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                                            }});
                       }};
                       const auto selector_child_index = services.components().children(id).size();
-                      Input(InputProps{}
-                                .value(s.display)
+                      InputProps input_props;
+                      input_props.fit_affixes_ = prefix.has_value() || suffix.has_value();
+                      input_props.mirror_affixes_ = true;
+                      Input(input_props.value(s.display)
                                 .placeholder(s.placeholder)
                                 .readOnly(s.read_only)
                                 .disabled(props.disabled_)

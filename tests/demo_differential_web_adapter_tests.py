@@ -253,7 +253,8 @@ class WebBrowserTests(unittest.TestCase):
 
     def test_official_composition_preserves_context_geometry_and_text(self):
         controls = {'first': {'component': 'Input', 'width': 200}, 'second': {'component': 'Input', 'width': 200}}
-        req = request('components/input/demo/allowClear.tsx', controls, {'first': {'value': ''}, 'second': {'defaultValue': ''}},
+        req = request('components/input/demo/allowClear.tsx', controls,
+                      {'first': {'value': 'First editor'}, 'second': {'defaultValue': 'Second editor'}},
                       {'first': {'caption': 'Controlled caption'}, 'second': {'caption': 'Uncontrolled caption'}})
         fixture = req['definition']['fixture']
         fixture['container']['layout'] = 'composition-v1'
@@ -276,6 +277,11 @@ class WebBrowserTests(unittest.TestCase):
         context_text = ''.join(t['content'] for t in targets[0]['text'])
         self.assertIn('Full sample context', context_text)
         self.assertIn('Feedback remains in context', context_text)
+        editor_rows = [row for row in targets[0]['text'] if row.get('editable')]
+        self.assertEqual([row['content'] for row in editor_rows], ['First editor', 'Second editor'])
+        self.assertEqual([row['editor_ordinal'] for row in editor_rows], [0, 1])
+        self.assertTrue(all(row['boxes'] and row['semantic_groups'] for row in editor_rows))
+        self.assertNotEqual(editor_rows[0]['boxes'], editor_rows[1]['boxes'])
         for mutation in [lambda x: x.update(component='div'), lambda x: x['props'].update(style={'padding': 1}),
                          lambda x: x['children'].append({'component': 'control', 'target': 'first'})]:
             tree = deepcopy(fixture['props']['composition'])

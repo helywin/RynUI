@@ -14,6 +14,7 @@
 #include "component/otp_input_cell.hpp"
 #include "component/input_number_actions.hpp"
 #include "i18n/number_format.hpp"
+#include "reactive/untracked.hpp"
 #include "runtime/config_context.hpp"
 #include <ryn/password.hpp>
 #include <ryn/text.hpp>
@@ -857,6 +858,8 @@ struct InputPropsAccess {
         }
         state.layout.prefix = prefix.has_value();
         state.layout.suffix = state.custom_suffix || state.clear_visible.get();
+        state.layout.right_to_left = props.mirror_affixes_ && direction == TextDirection::RightToLeft;
+        state.layout.fit_affixes = props.fit_affixes_;
         build.mount_slot(
             component, Content{[&] {
                 auto& slots = runtime::require_component_build_context();
@@ -932,7 +935,8 @@ struct InputPropsAccess {
                 }
             }));
         };
-        connect(props.common_.direction_, [](auto& owner, auto& current, TextDirection value) {
+        connect(props.common_.direction_, [mirror_affixes = props.mirror_affixes_](auto& owner, auto& current,
+                                                                                   TextDirection value) {
             if (!text::valid_text_direction(value)) {
                 throw std::invalid_argument("Invalid Input text direction");
             }
@@ -943,6 +947,11 @@ struct InputPropsAccess {
             static_cast<void>(scene.set_direction(current.text_scene, value));
             current.direction = value;
             current.affinity = text::TextCaretAffinity::Downstream;
+            const auto right_to_left = mirror_affixes && value == TextDirection::RightToLeft;
+            if (!current.textarea && current.layout.right_to_left != right_to_left) {
+                current.layout.right_to_left = right_to_left;
+                owner.configure_layout(current.mounted.component);
+            }
             if (current.textarea) {
                 current.textarea->preferred_x.reset();
                 current.textarea->reveal_caret = true;
@@ -3720,6 +3729,7 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
     auto callback = state->on_change;
     auto value = String::from_utf8(editor->value()).value();
     check(editor->note_emitted_value());
+    const auto proposed_revision = editor->revision();
     update_text(component);
     if (state->number) {
         state->number->edited = true;
@@ -3758,6 +3768,23 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
     }
     if (callback && host_->components().state<InputState>(component) && editors_.find(editor_id)) {
         callback(std::move(value));
+        state = host_->components().state<InputState>(component);
+        editor = editors_.find(editor_id);
+        if (!state || !editor || editor->revision() != proposed_revision || !state->authoritative_value) {
+            return;
+        }
+        const auto authority = *state->authoritative_value;
+        String accepted;
+        run_untracked([&] { accepted = read_prop(authority); });
+        editor = editors_.find(editor_id);
+        if (!editor || editor->revision() != proposed_revision) {
+            return;
+        }
+        const auto settled = editor->reconcile(accepted.bytes());
+        check(settled.edit);
+        if (settled.edit.value_changed) {
+            update_text(component);
+        }
     }
 }
 

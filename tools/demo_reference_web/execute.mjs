@@ -341,15 +341,22 @@ try {
           const node = walker.currentNode;
           if (!node.textContent) continue;
           const range = document.createRange(); range.selectNodeContents(node);
-          text.push({ content: node.textContent, boxes: [...range.getClientRects()].map(rect),
+          const boxes = [...range.getClientRects()].map(rect);
+          if (!boxes.length) continue;
+          text.push({ content: node.textContent, boxes,
             semantic_groups: window.__observedTextGroups(node),
             font_family: getComputedStyle(node.parentElement).fontFamily, font_size: getComputedStyle(node.parentElement).fontSize,
             font_weight: getComputedStyle(node.parentElement).fontWeight, direction: getComputedStyle(node.parentElement).direction });
         }
-        if (input && input.value) text.push({ content: input.value, editable: true, boxes: [],
-          bounds_source: 'pending Chromium DOMSnapshot textBoxes, never input bounding box',
-          font_family: getComputedStyle(input).fontFamily, direction: getComputedStyle(input).direction,
-          font_size: getComputedStyle(input).fontSize, font_weight: getComputedStyle(input).fontWeight });
+        const editors = element.matches('input,textarea') ? [element] : [...element.querySelectorAll('input,textarea')];
+        for (const [editorOrdinal, editor] of editors.entries()) {
+          if (!editor.value || !editor.getClientRects().length) continue;
+          const editorStyle = getComputedStyle(editor);
+          text.push({ content: editor.value, editable: true, editor_ordinal: editorOrdinal, boxes: [],
+            bounds_source: 'pending Chromium DOMSnapshot textBoxes, never input bounding box',
+            font_family: editorStyle.fontFamily, direction: editorStyle.direction,
+            font_size: editorStyle.fontSize, font_weight: editorStyle.fontWeight });
+        }
         const icons = [...element.querySelectorAll('[role="img"]')].map(icon => {
           const svg=icon.matches('svg')?icon:icon.querySelector('svg');
           if(!svg)throw new Error('formal icon has no actual SVG');
@@ -420,17 +427,33 @@ try {
     // explicit UA-shadow snapshot exposes its real inline text boxes instead.
     const layoutSnapshot = await cdp.send('DOMSnapshot.getSnapshot', {
       computedStyleWhitelist: [], includeUserAgentShadowTree: true });
+    const editorObservations = new Map();
     for (const target of observed.targets) {
-      for (const text of target.text.filter(t => t.editable && t.content)) {
+      const editable = target.text.filter(t => t.editable && t.content);
+      if (editable.length) {
         const owner = await semanticNode(target.identity);
         expect(owner.nodeId, 'editable semantic owner missing');
         const ownerNode = await cdp.send('DOM.describeNode', { nodeId: owner.nodeId });
-        let editor = ownerNode.node;
-        if (!['INPUT', 'TEXTAREA'].includes(editor.nodeName)) {
-          const child = await cdp.send('DOM.querySelector', { nodeId: owner.nodeId, selector: 'input,textarea' });
-          expect(child.nodeId, 'editable DOM input missing');
-          editor = (await cdp.send('DOM.describeNode', { nodeId: child.nodeId })).node;
+        const isEditor = ['INPUT', 'TEXTAREA'].includes(ownerNode.node.nodeName);
+        const children = isEditor ? [owner.nodeId] :
+          (await cdp.send('DOM.querySelectorAll', { nodeId: owner.nodeId, selector: 'input,textarea' })).nodeIds;
+        for (const text of editable) {
+          const nodeId = children[text.editor_ordinal];
+          expect(nodeId, 'editable DOM input missing');
+          const editor = isEditor ? ownerNode.node : (await cdp.send('DOM.describeNode', { nodeId })).node;
+          const key = editor.backendNodeId;
+          if (!editorObservations.has(key)) editorObservations.set(key, await editorSnapshot(editor));
+          const { boxes, runs, semanticGroups, fullText } = editorObservations.get(key);
+          expect(fullText === text.content, 'editable layout text differs from actual input value: ' + target.identity);
+          text.boxes = boxes;
+          text.layout_runs = runs;
+          text.semantic_groups = semanticGroups;
+          text.bounds_source = 'Chromium DOMSnapshot.getSnapshot actual UA-shadow inlineTextNodes';
         }
+      }
+    }
+
+    async function editorSnapshot(editor) {
         const boxes = [], runs = [], semanticGroups = [];
         const groupedNodes = new Set();
         let byteOffset = 0;
@@ -465,14 +488,9 @@ try {
               length: inline.numCharacters, unit: 'UTF-16' });
           }
         }
-        expect(boxes.length > 0, 'editable actual Chromium text boxes unavailable: ' + target.identity);
+        expect(boxes.length > 0, 'editable actual Chromium text boxes unavailable');
         const fullText = [...new Set(runs.map(run => run.content))].join('');
-        expect(fullText === text.content, 'editable layout text differs from actual input value: ' + target.identity);
-        text.boxes = boxes;
-        text.layout_runs = runs;
-        text.semantic_groups = semanticGroups;
-        text.bounds_source = 'Chromium DOMSnapshot.getSnapshot actual UA-shadow inlineTextNodes';
-      }
+        return { boxes, runs, semanticGroups, fullText };
     }
     for (const target of observed.targets) {
       // Ask Chromium which actual faces painted this target; computed CSS alone is not font provenance.

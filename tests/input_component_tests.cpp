@@ -456,6 +456,39 @@ void invalid_mount() {
             "dual mode acquired identities");
 }
 
+void controlled_rejection_restores_the_authority() {
+    Fixture f;
+    Signal<String> value{String{u8"seed"}};
+    bool accept = false;
+    std::vector<String> proposals;
+    f.inputs.mount(Content{[&] {
+        Input(InputProps{}.value(value).autoFocus().onChange([&](String next) {
+            proposals.push_back(next);
+            if (accept) {
+                value.set(std::move(next));
+            }
+        }));
+    }});
+    f.synchronize();
+    const auto input = f.inputs.mounted_inputs().front();
+    auto& editor = f.inputs.editors().require(input.editor);
+    const auto session = f.inputs.sessions().active();
+    require(bool(editor.move(TextCaretMove::end)), "Cannot move the controlled editor caret");
+    require(bool(f.inputs.dispatch(TextCommitted{String{u8"x"}, session})), "Controlled proposal was not dispatched");
+    require(proposals == std::vector<String>{String{u8"seedx"}} && editor.value() == "seed" &&
+                f.inputs.display_snapshot(input.component).text == "seed" && f.inputs.sessions().active() == session,
+            "Rejected authoritative edit left its proposal in the visible editor");
+
+    accept = true;
+    require(bool(editor.move(TextCaretMove::end)), "Cannot move the accepted editor caret");
+    batch([&] {
+        require(bool(f.inputs.dispatch(TextCommitted{String{u8"y"}, session})), "Accepted proposal was not dispatched");
+    });
+    require(proposals.size() == 2 && proposals.back() == String{u8"seedy"} && value.get() == String{u8"seedy"} &&
+                editor.value() == "seedy" && editor.history().undo_count == 1 && editor.selection().caret == 5,
+            "Batched authoritative echo lost history or selection");
+}
+
 void self_destroy(bool submit) {
     Fixture f;
     runtime::ComponentId id;
@@ -1390,6 +1423,7 @@ int main() {
         reference_nested_rollback_and_blur_unmount();
         lifecycle();
         invalid_mount();
+        controlled_rejection_restores_the_authority();
         self_destroy(false);
         self_destroy(true);
         reuse_and_rollback();

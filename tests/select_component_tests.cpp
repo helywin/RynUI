@@ -35,6 +35,54 @@ runtime::Rect bounds(Fixture& f, runtime::ComponentId id) {
     return f.nodes.require(f.services.components().root(id)).bounds;
 }
 
+void direction_and_rich_affix_size() {
+    Fixture f;
+    Signal<TextDirection> direction{TextDirection::RightToLeft};
+    int clicks = 0;
+    f.inputs.mount(Content{[&] {
+        Select(SelectProps{}.showSearch().direction(direction).layout(LayoutStyle{}.width(dp(180))), SelectPrefix{[&] {
+                   Button(ButtonProps{}.size(ControlSize::Small).onClick([&] { ++clicks; }),
+                          ButtonSlots{.icon = ButtonIcon{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }}});
+               }},
+               SelectSuffix{[] {
+                   Button(ButtonProps{}.size(ControlSize::Small),
+                          ButtonSlots{.icon = ButtonIcon{[] { Icon(IconProps{}.name(IconName::CheckOutlined)); }}});
+               }});
+        Select(SelectProps{}.layout(LayoutStyle{}.width(dp(180)).height(dp(32))), SelectPrefix{[] {
+                   Button(ButtonProps{}.size(ControlSize::Small),
+                          ButtonSlots{.icon = ButtonIcon{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }}});
+               }});
+    }});
+    f.synchronize();
+    const auto prefix = f.buttons.mounted_buttons()[0].component;
+    const auto suffix = f.buttons.mounted_buttons()[1].component;
+    const auto limited_prefix = f.buttons.mounted_buttons()[2].component;
+    const auto input = f.inputs.mounted_inputs().front();
+    const auto selector = bounds(f, input.component);
+    const auto viewport = f.inputs.layout_snapshot(input.component).viewport;
+    const auto rtl_prefix = bounds(f, prefix);
+    const auto rtl_suffix = bounds(f, suffix);
+    check(selector.height == 34 && rtl_prefix.width == 24 && rtl_prefix.height == 24 && rtl_suffix.height == 24 &&
+              viewport.x >= rtl_suffix.x + rtl_suffix.width && viewport.x + viewport.width <= rtl_prefix.x,
+          "RTL Select truncated its affixes or placed an affix on the wrong side");
+    check(bounds(f, limited_prefix).height == 22, "Explicit Select height no longer constrains its affixes");
+    click(f, rtl_prefix);
+    check(clicks == 1, "Mirrored Select prefix did not receive pointer input");
+
+    direction.set(TextDirection::LeftToRight);
+    f.synchronize();
+    const auto ltr_prefix = bounds(f, prefix);
+    const auto ltr_suffix = bounds(f, suffix);
+    const auto ltr_viewport = f.inputs.layout_snapshot(input.component).viewport;
+    check(ltr_prefix.x == selector.x + selector.width - (rtl_prefix.x - selector.x) - rtl_prefix.width &&
+              ltr_prefix.x + ltr_prefix.width <= ltr_viewport.x &&
+              ltr_viewport.x + ltr_viewport.width <= ltr_suffix.x &&
+              f.inputs.mounted_inputs().front().editor == input.editor,
+          "Changing Select direction did not mirror the existing affixes and editor");
+    click(f, ltr_prefix);
+    check(clicks == 2, "Retained Select prefix did not receive input after changing direction");
+}
+
 void pointer_keyboard_and_clear() {
     SelectRef reference;
     int focused = 0;
@@ -508,6 +556,7 @@ int main() {
 #endif
     try {
         pointer_keyboard_and_clear();
+        direction_and_rich_affix_size();
         search_ime_and_dynamic_options();
         controlled_close_preserves_search_until_accepted();
         scrolling_edges_and_idle();

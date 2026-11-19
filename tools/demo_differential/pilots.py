@@ -2,8 +2,20 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import re
 
 from .protocol import validate
+
+
+def displayed_slot_text(fixture,target,key,value):
+    """Pinned Button displays two plain Han characters with one space."""
+    props=fixture['props']['controls'].get(target,{})
+    slots=fixture.get('slots',{}).get(target,{})
+    if (key=='content' and props.get('component')=='Button' and props.get('autoInsertSpace') is not False and
+            props.get('type') not in ('text','link') and props.get('variant') not in ('text','link') and
+            not props.get('icon') and 'prefix' not in slots and re.fullmatch(r'[\u4e00-\u9fa5]{2}',value)):
+        return ' '.join(value)
+    return value
 
 TARGETS = {
     'button': ['gallery.state.' + key for key in
