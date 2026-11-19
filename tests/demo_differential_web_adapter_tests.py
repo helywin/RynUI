@@ -486,9 +486,9 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
                       {'selector': {'value': 'a', 'options': [{'value': 'a', 'label': 'Alpha'}, {'value': 'b', 'label': 'Beta'}]}})
         _, _, output = self.execute(req)
         def wrong_options(text):
-            original = 'props.options = data.options;'
+            original = 'props.options = options;'
             self.assertEqual(text.count(original), 1)
-            return text.replace(original, 'props.options = [...data.options].reverse();')
+            return text.replace(original, 'props.options = [...options].reverse();')
         result, negative = self.worker_control(output, wrong_options)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('effective options mismatch', (negative / 'error.json').read_text(encoding='utf-8'))
