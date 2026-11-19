@@ -154,9 +154,9 @@ def _projection_relative_error(reference, native, width, height):
     return max(_peak_relative_difference(reference, native, axis) for axis in (rows, columns))
 
 
-def _coverage_segments(coverage, size, full_contrast_rgb8):
+def _coverage_segments(coverage, size, full_contrast_rgb8, level):
     width, height = size
-    if full_contrast_rgb8:
+    if full_contrast_rgb8 and level == .5:
         coverage = [.5 if k in (127/255,128/255) else k for k in coverage]
     empty = [0] * (width+2)
     rows = [empty, *([0]+list(coverage[offset:offset+width])+[0] for offset in range(0,width*height,width)), empty]
@@ -164,17 +164,17 @@ def _coverage_segments(coverage, size, full_contrast_rgb8):
     for y,(top,bottom) in enumerate(zip(rows,rows[1:])):
         for x in range(width+1):
             a,b,c,d = top[x],top[x+1],bottom[x+1],bottom[x]
-            if min(a,b,c,d)>=.5 or max(a,b,c,d)<.5:
+            if min(a,b,c,d)>=level or max(a,b,c,d)<level:
                 continue
             cuts = {}
             for i,(v,next_value) in enumerate(((a,b),(b,c),(d,c),(a,d))):
-                if (v>=.5)==(next_value>=.5):
+                if (v>=level)==(next_value>=level):
                     continue
-                t = (.5-v)/(next_value-v)
+                t = (level-v)/(next_value-v)
                 cuts[i] = ((x+t,y),(x+1,y+t),(x+t,y+1),(x,y+t))[i]
             if len(cuts)==2:
                 segments[x,y] = [tuple(cuts.values())]
-            elif (a-.5)*(c-.5) >= (b-.5)*(d-.5):
+            elif (a-level)*(c-level) >= (b-level)*(d-level):
                 segments[x,y] = [(cuts[0],cuts[1]),(cuts[2],cuts[3])]
             else:
                 segments[x,y] = [(cuts[0],cuts[3]),(cuts[1],cuts[2])]
@@ -221,12 +221,15 @@ def _coverage_contour_distance(first, second, *, bound=8):
     return maximum
 
 
-def coverage_metrics(reference, native, size, *, full_contrast_rgb8=False):
+def coverage_metrics(reference, native, size, *, full_contrast_rgb8=False, thin_ink=False):
     """Material-unmixed coverage, per semantic group; never a whole-context mean.
 
     Interpolate the physical .5 contour between pixel centers. For opaque
     black/white RGB8 both adjacent middle codes can represent exact half
     coverage. The raw coverage planes still contribute to mass/local metrics.
+    A subpixel icon can have real ink below half coverage. If neither plane
+    has a half contour, its quarter contour still measures the displacement
+    in physical pixels. A missing contour on just one side remains a failure.
     """
     width, height = size
     if width <= 0 or height <= 0 or len(reference) != width*height or len(native) != len(reference):
@@ -237,7 +240,9 @@ def coverage_metrics(reference, native, size, *, full_contrast_rgb8=False):
     mass = [sum(plane) for plane in (reference, native)]
     local = ([yy*width+xx for yy in range(y, min(y+2,height)) for xx in range(x,min(x+2,width))]
              for y in range(0,height,2) for x in range(0,width,2))
-    contours = [_coverage_segments(plane,size,full_contrast_rgb8) for plane in (reference,native)]
+    contours = [_coverage_segments(plane,size,full_contrast_rgb8,.5) for plane in (reference,native)]
+    if thin_ink and not any(contours):
+        contours = [_coverage_segments(plane,size,False,.25) for plane in (reference,native)]
     return {'required_ink_present': all(v > 0 for v in mass),
             'coverage_mass_relative_error': abs(mass[0]-mass[1])/mass[0] if mass[0] else None,
             'contour_distance_px': _coverage_contour_distance(*contours),

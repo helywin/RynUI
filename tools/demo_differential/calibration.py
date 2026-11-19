@@ -1103,7 +1103,8 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
             # A square corner may legitimately touch four partially covered pixels.
             contrast_rgb8=(not is_text and alpha==1 and
                            {tuple(foreground),tuple(background)}=={(0,0,0),(255,255,255)})
-            measured=coverage_metrics(planes[1],planes[0],(width,height),full_contrast_rgb8=contrast_rgb8)
+            measured=coverage_metrics(planes[1],planes[0],(width,height),full_contrast_rgb8=contrast_rgb8,
+                                      thin_ink=cell['kind']=='icon')
             prefix='text' if cell['kind']=='text' else 'pixels'
             if not measured['required_ink_present']:
                 fail('presence.glyph' if cell['kind']=='text' else 'presence.icon' if cell['kind']=='icon' else 'presence.shape')

@@ -58,6 +58,16 @@ class RegionTests(unittest.TestCase):
         missing=[0,126/255,126/255,0]
         self.assertIsNone(coverage_metrics(reference,missing,(4,1),full_contrast_rgb8=True)['contour_distance_px'])
 
+    def test_thin_ink_keeps_subpixel_contour_and_requires_matching_presence(self):
+        reference = [0, .3, .46, .33, 0, 0]
+        dims = (len(reference), 1)
+        self.assertIsNone(coverage_metrics(reference, reference, dims)['contour_distance_px'])
+        self.assertEqual(coverage_metrics(reference, reference, dims, thin_ink=True)['contour_distance_px'], 0)
+        moved = [0] + reference[:-1]
+        self.assertGreaterEqual(coverage_metrics(reference, moved, dims, thin_ink=True)['contour_distance_px'], 1)
+        for invalid in ([0]*6, [value/2 for value in reference], [0, .3, .55, .33, 0, 0]):
+            self.assertIsNone(coverage_metrics(reference, invalid, dims, thin_ink=True)['contour_distance_px'])
+
     def test_local_coverage_and_projection_catch_last_glyph_pixel(self):
         reference=[1.]*100
         native=reference[:]
