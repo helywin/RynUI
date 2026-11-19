@@ -9,12 +9,15 @@
 
 #if defined(_WIN32)
 #include "platform/directwrite_grayscale.hpp"
+#elif defined(RYNUI_HAS_FONTATIONS_GRAYSCALE)
+#include "platform/fontations_grayscale.hpp"
 #endif
 
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -101,6 +104,91 @@ void write(const std::filesystem::path& path, std::span<const std::byte> bytes) 
 void write_json(const std::filesystem::path& path, const Json& value) {
     const auto bytes = value.dump() + '\n';
     write(path, std::as_bytes(std::span{bytes.data(), bytes.size()}));
+}
+
+std::shared_ptr<font::PlatformFontRasterizer> control_rasterizer(std::string_view identity) {
+#if defined(_WIN32)
+    if (identity == "directwrite-3x1") {
+        return make_directwrite_grayscale_rasterizer();
+    }
+#elif defined(RYNUI_HAS_FONTATIONS_GRAYSCALE)
+    if (identity == "fontations-skia-a8") {
+        return make_fontations_grayscale_rasterizer();
+    }
+#else
+    static_cast<void>(identity);
+#endif
+    return {};
+}
+
+void write_glyph_witnesses(const Json& request, const std::filesystem::path& output) {
+    // This source probe uses independently requested glyph IDs and CPU font
+    // coverage. It does not create a window, scene, atlas or renderer.
+    const auto& identity = request.at("rasterizer").string();
+    const auto backend = control_rasterizer(identity);
+    require(bool(backend), "trusted glyph witness rasterizer is unavailable");
+    const auto& files = request.at("fonts").array();
+    const auto& glyphs = request.at("glyphs").array();
+    require(!files.empty() && files.size() <= 16 && !glyphs.empty() && glyphs.size() <= 384,
+            "glyph witness inputs exceed the fixed control bounds");
+    std::vector<std::unique_ptr<font::PlatformFontFace>> faces;
+    for (const auto& resource : files) {
+        const auto path = owned_path(resource.at("path").string());
+        const auto length = std::filesystem::file_size(path);
+        require(length > 0 && length <= 32U * 1024U * 1024U, "glyph witness font extent");
+        require(gallery_demo_file_sha256(path) == resource.at("sha256").string(), "glyph witness source hash differs");
+        std::ifstream input(path, std::ios::binary);
+        input.exceptions(std::ios::badbit | std::ios::failbit);
+        std::vector<std::byte> font_bytes(static_cast<std::size_t>(length));
+        input.read(reinterpret_cast<char*>(font_bytes.data()), static_cast<std::streamsize>(length));
+        const auto bytes = std::make_shared<const std::vector<std::byte>>(std::move(font_bytes));
+        const auto face_index = resource.at("face_index").integer();
+        require(face_index >= 0 && face_index <= LONG_MAX, "glyph witness face index range");
+        font::FontError error;
+        auto face = backend->create_face(bytes, static_cast<long>(face_index), error);
+        require(!error && bool(face), "glyph witness could not create the admitted face");
+        faces.push_back(std::move(face));
+    }
+    const auto& policy = request.at("policy");
+    const auto hint_style = policy.at("hint_style").integer();
+    require(hint_style >= 0 && hint_style <= 4 && policy.at("antialias").boolean(), "invalid glyph witness policy");
+    font::FontRasterPolicy raster_policy;
+    raster_policy.hinting = policy.at("hinting").boolean();
+    raster_policy.hint_style = static_cast<font::FontHintStyle>(hint_style);
+    constexpr std::string_view hex = "0123456789abcdef";
+    Json::Array masks;
+    for (const auto& glyph : glyphs) {
+        const auto index = glyph.at("font").integer();
+        const auto id = glyph.at("glyph_id").integer();
+        const auto phase = glyph.at("phase").integer();
+        const auto em = glyph.at("physical_em").number();
+        require(index >= 0 && static_cast<std::size_t>(index) < faces.size() && id > 0 && id <= UINT32_MAX &&
+                    phase >= 0 && phase <= 3 && em > 0 && em <= 128,
+                "invalid glyph witness placement");
+        font::GlyphBitmap bitmap;
+        const auto error = faces[static_cast<std::size_t>(index)]->rasterize(
+            static_cast<std::uint32_t>(id), static_cast<float>(em), static_cast<font::GlyphRasterPhase>(phase),
+            raster_policy, bitmap);
+        require(!error && bitmap.width && bitmap.height && bitmap.width <= 256 && bitmap.height <= 256 &&
+                    bitmap.row_stride >= bitmap.width &&
+                    bitmap.coverage.size() == static_cast<std::size_t>(bitmap.row_stride) * bitmap.height,
+                "glyph witness has no valid R8 bitmap");
+        std::string coverage;
+        coverage.reserve(2U * bitmap.width * bitmap.height);
+        for (std::uint32_t y = 0; y < bitmap.height; ++y) {
+            for (std::uint32_t x = 0; x < bitmap.width; ++x) {
+                const auto v = bitmap.coverage[static_cast<std::size_t>(y) * bitmap.row_stride + x];
+                coverage.push_back(hex[v >> 4]);
+                coverage.push_back(hex[v & 15]);
+            }
+        }
+        masks.emplace_back(Json::Object{{"left", static_cast<std::int64_t>(bitmap.bearing_x)},
+                                        {"top", -static_cast<std::int64_t>(bitmap.bearing_y)},
+                                        {"width", integer(bitmap.width)},
+                                        {"height", integer(bitmap.height)},
+                                        {"r8", std::move(coverage)}});
+    }
+    write_json(output / "glyph-witnesses.json", Json::Object{{"rasterizer", identity}, {"masks", std::move(masks)}});
 }
 
 runtime::Rect rect(const Json& value) {
@@ -648,12 +736,18 @@ int main(int argc, char** argv) {
                 return SDL_ASSERTION_ABORT;
             },
             nullptr);
-        require(argc == 5 && std::string_view{argv[1]} == "--request" && std::string_view{argv[3]} == "--output",
-                "expected --request <owned.json> --output <fresh-out>");
+        const bool witness = argc == 5 && std::string_view{argv[1]} == "--glyph-witnesses";
+        require(argc == 5 && (witness || std::string_view{argv[1]} == "--request") &&
+                    std::string_view{argv[3]} == "--output",
+                "expected --request or --glyph-witnesses <owned.json> --output <fresh-out>");
         const auto request = read_json(owned_path(argv[2]));
         const auto output = owned_path(argv[4]);
         require(!std::filesystem::exists(output), "control output must be fresh");
         std::filesystem::create_directories(output);
+        if (witness) {
+            write_glyph_witnesses(request, output);
+            return 0;
+        }
         require(request.at("calibration_kind").string() == "pilot-independent-v1", "unknown control kind");
         const auto repetitions = request.at("repetitions").integer();
         require(repetitions >= 1 && repetitions <= 16, "control repetitions exceed bound");
@@ -703,16 +797,12 @@ int main(int argc, char** argv) {
                     policy.at("lcd_filter").integer() >= 0 && policy.at("lcd_filter").integer() <= 4,
                 "unknown actual font raster policy");
         const auto rasterizer_name = policy.contains("rasterizer") ? policy.at("rasterizer").string() : "freetype";
-        auto rasterizer = font::FontRasterizer::freetype;
         font::FontRuntimeOptions font_options;
-#if defined(_WIN32)
-        if (rasterizer_name == "directwrite-3x1") {
-            font_options.platform_rasterizer = make_directwrite_grayscale_rasterizer();
-            rasterizer = font::FontRasterizer::platform_grayscale;
-        }
-#endif
-        require(rasterizer_name == "freetype" || rasterizer == font::FontRasterizer::platform_grayscale,
+        font_options.platform_rasterizer = control_rasterizer(rasterizer_name);
+        require(rasterizer_name == "freetype" || bool(font_options.platform_rasterizer),
                 "requested control rasterizer is unavailable");
+        const auto rasterizer = font_options.platform_rasterizer ? font::FontRasterizer::platform_grayscale
+                                                                 : font::FontRasterizer::freetype;
         auto runtime = font::FontRuntime::create(std::move(font_options));
         require(bool(runtime.runtime), "control font runtime failed");
         text::TextEngine engine(*runtime.runtime);

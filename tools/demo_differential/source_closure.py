@@ -13,6 +13,9 @@ EXPLICIT = ('CMakeLists.txt', 'CMakePresets.json', 'examples/CMakeLists.txt',
             'tools/demo_differential/source_closure.py',
             'tests/CMakeLists.txt', 'tests/demo_differential_calibration_main.cpp',
             'tests/demo_differential_control_geometry.hpp',
+            'src/platform/fontations/Cargo.toml',
+            'src/platform/fontations/Cargo.lock',
+            'src/platform/fontations/src/lib.rs',
             'docs/renderer-contract.md',
             'tests/fixtures/demo-differential/pilot-calibration.json')
 

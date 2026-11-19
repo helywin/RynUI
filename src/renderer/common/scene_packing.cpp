@@ -93,7 +93,8 @@ std::array<float, 4> quad_gpu_fragment_reference(runtime::Point point_pixels, co
 GlyphGpuInstance pack_glyph_instance(const graphics::GlyphInstance& instance, SceneDeviceMetrics metrics) {
     const auto viewport = scene_logical_viewport(metrics);
     if (instance.coverage_transfer != font::GlyphCoverageTransfer::direct &&
-        instance.coverage_transfer != font::GlyphCoverageTransfer::text_contrast_srgb) {
+        instance.coverage_transfer != font::GlyphCoverageTransfer::text_contrast_srgb &&
+        instance.coverage_transfer != font::GlyphCoverageTransfer::text_contrast_gamma12) {
         throw std::invalid_argument("Unknown glyph coverage transfer.");
     }
     auto bounds = instance.position_size;

@@ -441,6 +441,10 @@ void test_platform_rasterizer_owns_a_generation() {
             return "unit-platform";
         }
 
+        bool snaps_horizontal() const noexcept override {
+            return true;
+        }
+
         std::unique_ptr<PlatformFontFace> create_face(std::shared_ptr<const std::vector<std::byte>> bytes, long index,
                                                       FontError&) override {
             require(index == 0 && !bytes->empty(), "platform rasterizer did not receive admitted bytes");
@@ -462,6 +466,8 @@ void test_platform_rasterizer_owns_a_generation() {
     require(bool(runtime), "platform raster fixture could not initialize");
     const auto font = runtime.runtime->load_font_bytes(bytes, 0, config);
     require(bool(font), "platform raster fixture could not load the font");
+    require(runtime.runtime->metrics(font.font).metrics.snaps_horizontal,
+            "platform rasterizer lost its physical grid policy");
     const auto source = runtime.runtime->source(font.font);
     require(source && source->rasterizer_name == "unit-platform" && std::ranges::equal(source->bytes, bytes),
             "platform font source differs from the admitted resource");

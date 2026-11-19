@@ -52,7 +52,7 @@ struct SceneBackendCapabilities final {
     std::uint32_t maximum_gaussian_radius{};
     std::uint64_t maximum_gaussian_weight_bytes{};
     bool exterior_shadows{};
-    bool glyph_srgb_contrast{};
+    bool glyph_coverage_transfer{};
 };
 
 [[nodiscard]] constexpr SceneBackendCapabilities baseline_scene_capabilities() noexcept {

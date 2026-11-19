@@ -337,6 +337,9 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
         raise RunError(3,'calibration','locked image decoder is required to reconstruct calibration')
     verify_bootstrap(manifest,paths,root)
     corpus=manifest['corpus']
+    from .glyph_witness import build as build_glyph_witnesses
+    witnesses = build_glyph_witnesses(manifest, root,
+                                     control_cells(corpus, 'train') + control_cells(corpus, 'holdout'))
     trials=manifest['trials']
     if not trials or len({t['identity'] for t in trials}) != len(trials):
         raise ProtocolError('missing/duplicate calibration trial')
@@ -459,7 +462,8 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
             if control['kind']=='text' and control['source'].get('raster_policy') not in manifest['environment']['native_capture']['font_raster_policies']:
                 raise RunError(3,'calibration','actual native control font raster policy differs')
         details = None if measurements is None else {}
-        values,hard_failures=measure_controls(corpus,trial,observations,images,manifest['font_priors'],details=details)
+        values,hard_failures=measure_controls(corpus,trial,observations,images,manifest['font_priors'],
+                                              details=details,witnesses=witnesses)
         if measurements is not None:
             measurements.append(dict(identity=trial['identity'],partition=partition,fault=trial['fault'],**details))
         if partition=='negative':
@@ -775,7 +779,7 @@ def software_box_source_over(background, colors, alphas, coverage):
     return dest
 
 
-def measure_controls(corpus,trial,observations,images,priors,*,details=None):
+def measure_controls(corpus,trial,observations,images,priors,*,details=None,witnesses=None):
     """Recompute from full raw planes and observed control geometry/material/font.
 
     Every control is checked on its own before entering the positive partition.
@@ -817,6 +821,7 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
         actual=[record['controls'][index] for record in observations]
         text_origins=[None,None]
         text_outlines=[None,None]
+        text_witnesses=[None,None]
         for side,row in enumerate(actual):
             required(row,('identity','rect','kind','source'),'actual control')
             if row['kind'] != cell['kind']:
@@ -896,7 +901,11 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                         try:
                             text_origins[side]=control_text_origin(source,cell['rect'],priors[primary+':line'],
                                                                   cell['font_size'],dpr,native=side==0)
-                            if prior is not None:
+                            if (witnesses is not None and source.get('actual_font_sha256') in allowed and
+                                    source.get('content') == cell['content'] and source.get('font_size') == cell['font_size']):
+                                from .glyph_witness import place
+                                text_witnesses[side] = place(witnesses, source, cell['font_size'], text_origins[side], dpr)
+                            elif prior is not None:
                                 scale=cell['font_size']/prior['units']
                                 text_outlines[side]=(prior,text_origins[side],scale,1/(scale*dpr))
                         except ProtocolError:
@@ -1060,10 +1069,16 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
             ink_core=0
             if cell['kind']=='text':
                 for side,outline in enumerate(text_outlines):
-                    if outline is None:continue
-                    prior,origin,scale,tolerance=outline
-                    px,py=(lx-origin[0])/scale,(origin[1]-ly)/scale
-                    ink=outline_witness(prior,px,py,tolerance)
+                    if text_witnesses[side] is not None:
+                        witness, ox, oy = text_witnesses[side]
+                        byte = witness.at(int(x)-ox, int(y)-oy)
+                        ink = True if byte == 255 else False if byte == 0 else None
+                    elif outline is not None:
+                        prior,origin,scale,tolerance=outline
+                        px,py=(lx-origin[0])/scale,(origin[1]-ly)/scale
+                        ink=outline_witness(prior,px,py,tolerance)
+                    else:
+                        continue
                     ink_core+=ink is True
                     k=planes[side][-1]
                     if ink is True and k<.98 or ink is False and k>1/255:
@@ -1071,14 +1086,14 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                              expected='ink' if ink else 'clear',observed_rgb=observed[side])
             if icon_outlines is not None:
                 for side,outlines in enumerate(icon_outlines):
-                    witnesses=[outline_witness(prior,(lx-origin[0])/scale,(origin[1]-ly)/scale,1/(scale*dpr))
-                               for prior,origin,scale in outlines]
-                    ink_core+=any(witness is True for witness in witnesses)
-                    if None not in witnesses:
+                    icon_witnesses=[outline_witness(prior,(lx-origin[0])/scale,(origin[1]-ly)/scale,1/(scale*dpr))
+                                    for prior,origin,scale in outlines]
+                    ink_core+=any(witness is True for witness in icon_witnesses)
+                    if None not in icon_witnesses:
                         k=planes[side][-1]
-                        if any(witnesses) and k<.98 or not any(witnesses) and k>1/255:
+                        if any(icon_witnesses) and k<.98 or not any(icon_witnesses) and k>1/255:
                             fail('icon.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
-                                 expected='ink' if any(witnesses) else 'clear',observed_rgb=observed[side])
+                                 expected='ink' if any(icon_witnesses) else 'clear',observed_rgb=observed[side])
             # Both outlines must prove solid ink before a pixel enters the
             # interior color gate. Edge pixels still participate in coverage.
             if ink_core==2:
@@ -1220,7 +1235,9 @@ def control_text_origin(source,rect,line,size,dpr,*,native):
     if not native:
         return layout
     raster=observed_origin(source.get('raster_origin'))
-    if abs(raster[0]-layout[0])*dpr>.125+1e-4 or abs(raster[1]-layout[1])*dpr>.5+1e-4:
+    snaps_x = source.get('raster_policy', {}).get('rasterizer') == 'fontations-skia-a8'
+    max_x = .5 if snaps_x else .125
+    if abs(raster[0]-layout[0])*dpr>max_x+1e-4 or abs(raster[1]-layout[1])*dpr>.5+1e-4:
         raise ProtocolError('atlas glyph exceeds source placement quantization')
     return raster
 

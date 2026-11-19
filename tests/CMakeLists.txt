@@ -3434,7 +3434,7 @@ if(RYNUI_HAS_SDL_GPU)
     rynui_configure_cpp_target(rynui_demo_differential_calibration)
     target_link_libraries(rynui_demo_differential_calibration PRIVATE
         rynui_token_gallery_definition rynui_components rynui_renderer_sdl rynui_renderer_common SDL3::SDL3)
-    if(WIN32)
+    if(WIN32 OR TARGET rynui_platform_font_raster)
         target_link_libraries(rynui_demo_differential_calibration PRIVATE rynui_default_fonts)
     endif()
     target_include_directories(rynui_demo_differential_calibration PRIVATE "${PROJECT_SOURCE_DIR}/src")

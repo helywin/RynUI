@@ -30,7 +30,7 @@ RoundedEffectMaterial 在旧 color/opacity/visible 前缀后增加可选 paint�
 | 颜色 | RGBA 浮点 token 值直接传入现有 shader；RGB 使用 source-alpha 混合，alpha 使用 `one + one-minus-source-alpha`；现有路径未增加统一线性/sRGB 转换 |
 | 顺序 | OrderedScene 的 Quad/Glyph/RoundedEffect 顺序必须保持；仅已有场景合同允许合并相邻兼容 draw |
 
-Glyph 的可选 sRGB 文字对比度随 R8 字形来源进入 logical 实例，packer 使用 translation/opacity 向量的第四分量编码。支持该语义的 backend 声明 `glyph_srgb_contrast`。shader 在采样字形覆盖之后按前景明度转换覆盖，再各乘一次色彩 alpha 和绘制 opacity。普通与 composition pass 使用同一实现，字形实例仍为 96 字节。
+Glyph 的可选 sRGB 或 gamma 1.2 文字对比度随 R8 字形来源进入 logical 实例，packer 使用 translation/opacity 向量的第四分量编码。支持该语义的 backend 声明 `glyph_coverage_transfer`。shader 在采样字形覆盖之后按前景明度转换覆盖，再各乘一次色彩 alpha 和绘制 opacity。普通与 composition pass 使用同一实现，字形实例仍为 96 字节。
 
 Quad、零 blur RoundedEffect 和 composition mask 按一个固定物理像素计算形状覆盖。方角矩形按矩形与像素的相交面积计算 alpha，两个方向分别求交后相乘。方角描边以外矩形覆盖减去内矩形覆盖，一次合成边条与角部。具有有效半径的形状按一物理像素 SDF smooth coverage 计算。Insets 和外部镂空阴影使用同一填充形状覆盖作为 mask，blur 大于 0 的强度由 Gaussian 表达。draw bounds 包含 AA guard，真实 viewport 与 ancestor clip 仍为硬裁剪。四象限独立圆角 fill 共享 coverage，分割线按既有 scissor 划分。logical reference 的 AA width 由调用者换算（1/display_scale），packed reference 与 HLSL 使用 material_params.y=1。Quad vertex stage 读取实际 render target 物理尺寸的 16-byte uniform，在原 shape 外提交一物理像素 guard 并外延局部坐标，保留 shape 尺寸、圆角和 48-byte instance ABI。普通 Scene、Quad 专用 renderer 与截图导出共用该规则，零面积 Quad 不扩成可见区域。
 

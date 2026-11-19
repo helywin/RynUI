@@ -1,5 +1,17 @@
 include_guard(GLOBAL)
 
+# Optional CPU rasterizer used by pinned Linux Gallery acceptance. Cargo.lock
+# records the exact crates and checksums for the Fontations outline extractor.
+set(RYNUI_SKIA_RASTER_COMMIT "5eefbe51d17d2e379fa2d7353827e0ccb1e1f601")
+set(RYNUI_SKIA_RASTER_SOURCE_URL "https://codeload.github.com/google/skia/tar.gz/${RYNUI_SKIA_RASTER_COMMIT}")
+set(RYNUI_SKIA_RASTER_SOURCE_SHA256 "82e6bc16ff14886bc1b09c3614a1279c239008d2fff3befaefbef3d8fc7bcd6c")
+set(RYNUI_SKIA_RASTER_LICENSE "BSD-3-Clause")
+set(RYNUI_SKIA_RASTER_GN_REVISION "b2afae122eeb6ce09c52d63f67dc53fc517dbdc8")
+set(RYNUI_SKIA_RASTER_GN_URL "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:${RYNUI_SKIA_RASTER_GN_REVISION}")
+set(RYNUI_SKIA_RASTER_GN_SHA256 "6a3bfc53d825bccac5e5b4b7bdcc10ce9396a04a689ac684ec3308ca5c7f3d9c")
+set(RYNUI_SKIA_RASTER_GN_LICENSE "BSD-3-Clause")
+set(RYNUI_FONTATIONS_SKIRFA_LICENSE "MIT OR Apache-2.0")
+
 set(RYNUI_SHEENBIDI_VERSION "3.0.0")
 set(RYNUI_SHEENBIDI_COMMIT "cfe430e7375a7845b679adae9d51dac6deaa8858")
 set(RYNUI_SHEENBIDI_SOURCE_URL

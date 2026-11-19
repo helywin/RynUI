@@ -15,9 +15,24 @@ from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_ce
     weak_fill_pixel_matches,control_icon_outlines,control_text_origin,software_box_source_over)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
+from demo_differential.glyph_witness import GlyphWitness, place
 
 
 class CalibrationTests(unittest.TestCase):
+    def test_hinted_witness_uses_physical_origin_and_its_own_phase(self):
+        source = dict(actual_font_sha256='face', content='A')
+        ink = GlyphWitness(-1, -2, 2, 2, bytes((0, 128, 255, 0)))
+        x = 20.5
+        y = 40.5
+        directwrite = ('directwrite-3x1', {('face','A',12,3): ink})
+        fontations = ('fontations-skia-a8', {('face','A',12,0): ink})
+        self.assertEqual(place(directwrite,source,12,(x,y),1.5),(ink,30,61))
+        self.assertEqual(place(fontations,source,12,(x,y),1.5),(ink,31,61))
+        self.assertEqual(ink.at(-1,-1),255)
+        self.assertEqual(ink.at(-2,-1),0)
+        with self.assertRaises(ProtocolError):
+            place(directwrite,{**source,'actual_font_sha256':'other'},12,(x,y),1.5)
+
     def test_weak_fill_checks_exact_endpoints_and_the_edge_envelope(self):
         for fg,bg in (([1]*3,[0]*3),([2]*3,[0]*3),([254]*3,[255]*3)):
             self.assertTrue(weak_fill_pixel_matches(fg,fg,bg,-1.5))

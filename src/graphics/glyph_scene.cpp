@@ -32,7 +32,10 @@ struct QuantizedPhysicalOrigin final {
     font::GlyphRasterPhase phase{font::GlyphRasterPhase::zero};
 };
 
-[[nodiscard]] QuantizedPhysicalOrigin quantize_physical_x(float value) noexcept {
+[[nodiscard]] QuantizedPhysicalOrigin quantize_physical_x(float value, bool snap_horizontal) noexcept {
+    if (snap_horizontal) {
+        return {std::round(value), font::GlyphRasterPhase::zero};
+    }
     const float position = std::round(value * 4.0F) * 0.25F;
     const float integer_position = std::floor(position);
     auto phase_index = static_cast<std::uint8_t>(std::lround((position - integer_position) * 4.0F));
@@ -118,7 +121,7 @@ void validate_placement(const GlyphPlacement& placement) {
                 placement.origin_pixels.x + pen_x + glyph.offset_x + placement.translation_pixels.x;
             const float baseline_y =
                 placement.origin_pixels.y + line.baseline - glyph.offset_y + placement.translation_pixels.y;
-            const auto physical_x = quantize_physical_x(baseline_x * display_scale);
+            const auto physical_x = quantize_physical_x(baseline_x * display_scale, metrics.metrics.snaps_horizontal);
             const float physical_y = std::round(baseline_y * display_scale);
             const GlyphAtlasResult atlas_result = atlas.ensure(fonts, glyph.font, glyph.glyph_id, physical_x.phase);
             if (!atlas_result) {

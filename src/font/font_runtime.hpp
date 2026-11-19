@@ -87,6 +87,7 @@ struct FontMetrics {
     std::uint32_t raster_pixel_size{};
     float display_scale{1.0F};
     float raster_scale{1.0F};
+    bool snaps_horizontal{};
 
     friend bool operator==(const FontMetrics&, const FontMetrics&) = default;
 };
@@ -208,7 +209,7 @@ struct GlyphBounds {
     std::uint32_t height{};
 };
 
-enum class GlyphCoverageTransfer : std::uint8_t { direct, text_contrast_srgb };
+enum class GlyphCoverageTransfer : std::uint8_t { direct, text_contrast_srgb, text_contrast_gamma12 };
 
 struct GlyphBitmap {
     std::vector<std::uint8_t> coverage;
@@ -237,6 +238,11 @@ class PlatformFontRasterizer {
 public:
     virtual ~PlatformFontRasterizer() = default;
     [[nodiscard]] virtual std::string_view name() const noexcept = 0;
+
+    [[nodiscard]] virtual bool snaps_horizontal() const noexcept {
+        return false;
+    }
+
     [[nodiscard]] virtual std::unique_ptr<PlatformFontFace>
     create_face(std::shared_ptr<const std::vector<std::byte>> bytes, long face_index, FontError& error) = 0;
 };

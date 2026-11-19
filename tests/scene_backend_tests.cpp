@@ -275,6 +275,9 @@ void glyph_coverage_transfer_requires_capability() {
     const SceneDeviceMetrics metrics{64, 64, 1};
     const auto packed = pack_glyph_instance(glyph, metrics);
     check(packed.translation_opacity[3] == 1, "glyph coverage transfer lost its packed value");
+    glyph.coverage_transfer = font::GlyphCoverageTransfer::text_contrast_gamma12;
+    check(pack_glyph_instance(glyph, metrics).translation_opacity[3] == 2,
+          "gamma 1.2 glyph coverage transfer lost its packed value");
 
     RecordingRenderer backend(baseline_scene_capabilities());
     SceneResources resources(backend);

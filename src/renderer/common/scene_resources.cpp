@@ -190,7 +190,8 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
                                         data.atlas.config().page_height > capabilities.maximum_texture_height)) {
             throw std::length_error("Scene atlas extent exceeds renderer input limit");
         }
-        if (!capabilities.glyph_srgb_contrast && std::ranges::any_of(data.glyphs.instances(), [](const auto& glyph) {
+        if (!capabilities.glyph_coverage_transfer &&
+            std::ranges::any_of(data.glyphs.instances(), [](const auto& glyph) {
                 return glyph.coverage_transfer != font::GlyphCoverageTransfer::direct;
             })) {
             throw std::invalid_argument("Backend lacks the required glyph coverage transfer.");

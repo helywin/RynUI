@@ -12,6 +12,8 @@
 #include "gallery_demo_hash.hpp"
 #if defined(_WIN32)
 #include "platform/directwrite_grayscale.hpp"
+#elif defined(RYNUI_HAS_FONTATIONS_GRAYSCALE)
+#include "platform/fontations_grayscale.hpp"
 #endif
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
@@ -4288,7 +4290,12 @@ int run_gallery_pages(int argc, char** argv) {
         if (pinned_fonts) {
             font_options.platform_rasterizer = ryn::detail::make_directwrite_grayscale_rasterizer();
         }
+#elif defined(RYNUI_HAS_FONTATIONS_GRAYSCALE)
+        if (pinned_fonts) {
+            font_options.platform_rasterizer = ryn::detail::make_fontations_grayscale_rasterizer();
+        }
 #endif
+        const bool platform_grayscale = static_cast<bool>(font_options.platform_rasterizer);
         auto font_runtime = font::FontRuntime::create(std::move(font_options));
         if (!font_runtime) {
             throw std::runtime_error(font_runtime.error.diagnostic);
@@ -4299,9 +4306,9 @@ int run_gallery_pages(int argc, char** argv) {
         request.raster = {14, scale};
         if (pinned_fonts) {
             request.allow_system_fallback = false;
-#if defined(_WIN32)
-            request.raster.policy.rasterizer = font::FontRasterizer::platform_grayscale;
-#endif
+            if (platform_grayscale) {
+                request.raster.policy.rasterizer = font::FontRasterizer::platform_grayscale;
+            }
             for (const auto& font : demo_scenario->font_files.array()) {
                 request.preferred_fonts.push_back(
                     {font.at("path").string(), static_cast<long>(font.at("face_index").integer()),

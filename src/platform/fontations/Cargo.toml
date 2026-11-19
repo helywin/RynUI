@@ -1,0 +1,14 @@
+[package]
+name = "rynui-fontations"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+read-fonts = "=0.32.0"
+skrifa = "=0.34.0"
+
+[profile.release]
+panic = "abort"

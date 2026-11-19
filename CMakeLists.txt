@@ -11,6 +11,7 @@ include(cmake/dependencies/RynUIUtf8proc.cmake)
 include(cmake/dependencies/RynUIStbImage.cmake)
 include(cmake/dependencies/RynUIQrCodeGen.cmake)
 include(cmake/dependencies/RynUISheenBidi.cmake)
+include(cmake/dependencies/RynUIPinnedLinuxFontRaster.cmake)
 include(RynUIShaders)
 include(CTest)
 
@@ -43,6 +44,7 @@ rynui_resolve_utf8proc()
 rynui_resolve_stb_image()
 rynui_resolve_qrcodegen()
 rynui_resolve_sheenbidi()
+rynui_resolve_pinned_linux_font_raster()
 rynui_resolve_validation_fonts(
     RYNUI_VALIDATION_LATIN_FONT_FILE
     RYNUI_VALIDATION_CJK_FONT_FILE

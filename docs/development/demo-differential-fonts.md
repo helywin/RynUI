@@ -53,6 +53,17 @@ RYNUI_WEB_FONTS=out/demo-differential/fonts/font-files.json python -B -m unittes
 
 ## Web 与 native 对接边界
 
+固定字体验收在 Windows 使用 DirectWrite 三通道灰度。Linux x64 可启用锁定的 Fontations 轮廓与 Skia A8 光栅。两个入口都使用原有字形 atlas 与真实 GPU 回读。普通 Gallery 继续使用默认字体链。
+
+```sh
+cmake --preset linux-gcc -DRYNUI_ENABLE_PINNED_LINUX_FONT_RASTER=ON
+cmake --build --preset linux-gcc-release --target rynui_token_gallery rynui_demo_differential_calibration
+```
+
+Linux 入口使用 BUNDLED。Skia 源码和 GN 经中央 SHA256 检查，Rust 依赖由 Cargo.lock 固定。离线构建可通过 `RYNUI_SKIA_SOURCE_ARCHIVE` 与 `RYNUI_GN_LINUX_ARCHIVE` 提供两个已锁归档，并提前准备 Cargo 缓存。
+
+独立校准先从锁定 SFNT 的 cmap 读取 glyph ID，再用 CPU 字体覆盖生成实际 hinting 的见证，分别核验 native 与 Web 回读中的空白和完全实墨。比较阶段继续检查成对的布局、覆盖、轮廓与投影。
+
 native scenario JSON 保持 16 MiB 上限；显式字体资源另限每文件 32 MiB、最多 16 文件，并保留 checkout/out 路径与实际 SHA256 校验。两者分开，才能接受锁定的约 21.6 MB CJK 600 文件；不接受路径逃逸或超限字体，也不改变普通产品字体读取接口。
 
 相同 identity 的 400/500/600 文件共享同一个 CSS family alias，`@font-face` 使用各文件的真实 weight，关闭 synthesis。字体加载列表只证明资源加载；每个 checkpoint 还通过 Chromium `CSS.getPlatformFontsForNode` 按实际文本节点（含 input shadow tree）查询 selected PostScript faces，并按该节点实际 weight/slant 关联到唯一显式文件 SHA256/face。未知 face、system fallback、缺实际字体选择证据或只有 regular 的 500/600 选择都失败。system profile 可以使用真实且匹配的显式系统 face，保留其差异，不能冒称中央 pinned face。

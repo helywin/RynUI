@@ -47,18 +47,21 @@ float EncodeGlyphSrgb(float linearValue) {
     return linearValue <= 0.0031308 ? linearValue * 12.92 : 1.055 * pow(linearValue, 1.0 / 2.4) - 0.055;
 }
 
-float TextContrastCoverage(float coverage, float3 encodedColor) {
+float TextContrastCoverage(float coverage, float3 encodedColor, bool srgb) {
     if (coverage <= 0.0 || coverage >= 1.0) {
         return coverage;
     }
     float foreground = saturate(dot(encodedColor, float3(0.2126, 0.7152, 0.0722)));
     float backdrop = 1.0 - foreground;
-    float backdropLinear = DecodeGlyphSrgb(backdrop);
-    float adjusted = coverage + (1.0 - coverage) * coverage * backdropLinear;
+    float backdropLinear = srgb ? DecodeGlyphSrgb(backdrop) : pow(backdrop, 1.2);
+    float contrast = srgb ? 1.0 : 0.2;
+    float adjusted = coverage + (1.0 - coverage) * coverage * backdropLinear * contrast;
     float range = foreground - backdrop;
     if (abs(range) > 1.0 / 256.0) {
-        float linearValue = lerp(backdropLinear, DecodeGlyphSrgb(foreground), adjusted);
-        adjusted = (EncodeGlyphSrgb(linearValue) - backdrop) / range;
+        float foregroundLinear = srgb ? DecodeGlyphSrgb(foreground) : pow(foreground, 1.2);
+        float linearValue = lerp(backdropLinear, foregroundLinear, adjusted);
+        float encoded = srgb ? EncodeGlyphSrgb(linearValue) : pow(linearValue, 1.0 / 1.2);
+        adjusted = (encoded - backdrop) / range;
     }
     return floor(255.0 * saturate(adjusted) + 0.5) / 255.0;
 }
@@ -68,8 +71,8 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
                              min(input.clipBounds.y - input.clipPosition.y, input.clipPosition.y - input.clipBounds.w));
     clip(clipDistance);
     float coverage = AtlasTexture.Sample(AtlasSampler, input.uv).r;
-    if (input.coverageTransfer == 1) {
-        coverage = TextContrastCoverage(coverage, input.color.rgb);
+    if (input.coverageTransfer != 0) {
+        coverage = TextContrastCoverage(coverage, input.color.rgb, input.coverageTransfer == 1);
     }
     return float4(input.color.rgb, input.color.a * input.opacity * coverage);
 }

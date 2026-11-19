@@ -457,6 +457,7 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
                                    "Platform font rasterizer did not produce a face."));
         }
         record.metrics.raster_scale = raster.display_scale;
+        record.metrics.snaps_horizontal = impl_->platform_rasterizer->snaps_horizontal();
     } else if (raster.policy.rasterizer != FontRasterizer::freetype) {
         return fail(make_error(FontErrorStage::face_creation, FontErrorKind::runtime_unavailable,
                                "Unknown font rasterizer policy."));
