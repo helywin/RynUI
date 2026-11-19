@@ -26,6 +26,46 @@ float GaussianEdge(float signedDistance, float sigma, float antialiasWidth) {
     return saturate(0.5 * (1.0 - ErfApprox(signedDistance * 0.7071067811865475 / sigma)));
 }
 
+float GaussianInterval(float first, float last) {
+    return 0.5 * (ErfApprox(0.7071067811865475 * last) - ErfApprox(0.7071067811865475 * first));
+}
+
+float RoundedShadowStrip(float fromSide, float y, float height, float radius, float sigma) {
+    float first = max(-4.0, -fromSide / sigma);
+    float last = min(4.0, (radius - fromSide) / sigma);
+    if (first >= last) {
+        return 0.0;
+    }
+    const float4 nodes = float4(0.1834346425, 0.5255324099, 0.7966664774, 0.9602898565);
+    const float4 weights = float4(0.3626837834, 0.3137066459, 0.2223810345, 0.1012285363);
+    float middle = 0.5 * (first + last);
+    float span = 0.5 * (last - first);
+    float coverage = 0.0;
+    [unroll] for (int i = 0; i < 4; ++i) {
+        float2 t = middle + span * nodes[i] * float2(-1.0, 1.0);
+        float2 inward = clamp(fromSide + sigma * t, 0.0, radius);
+        float2 inset = radius - sqrt(max(0.0, inward * (2.0 * radius - inward)));
+        float2 vertical = float2(GaussianInterval((inset.x - y) / sigma, (height - inset.x - y) / sigma),
+                                 GaussianInterval((inset.y - y) / sigma, (height - inset.y - y) / sigma));
+        coverage += span * weights[i] * 0.3989422804014327 * dot(exp(-0.5 * t * t), vertical);
+    }
+    return coverage;
+}
+
+float RoundedShadowGaussian(float2 samplePosition, float4 shape, float radius, float sigma, float antialiasWidth) {
+    if (sigma <= 0.0) {
+        return GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.0, antialiasWidth);
+    }
+    float2 local = samplePosition - shape.xy;
+    float coverage = GaussianInterval((radius - local.x) / sigma, (shape.z - radius - local.x) / sigma) *
+                     GaussianInterval(-local.y / sigma, (shape.w - local.y) / sigma);
+    if (radius > 0.0) {
+        coverage += RoundedShadowStrip(local.x, local.y, shape.w, radius, sigma);
+        coverage += RoundedShadowStrip(shape.z - local.x, local.y, shape.w, radius, sigma);
+    }
+    return saturate(coverage);
+}
+
 float PositiveMod(float value, float period) {
     float result = fmod(value, period);
     return result < 0.0 ? result + period : result;
@@ -214,10 +254,14 @@ float LegacyEffectCoverage(float2 samplePosition, float4 shapeRect, float4 shado
         clip(min(shape.z, shape.w));
         radius = clamp(radius + spread, 0.0, 0.5 * min(shape.z, shape.w));
         shape.xy += offset;
-        coverage = GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.5 * blur, materialParams.y);
         if (kind == 6.0) {
             float casterDistance = RoundedRectDistance(samplePosition, shapeRect, shadowParams.x);
-            coverage *= GaussianEdge(-casterDistance, 0.0, materialParams.y);
+            float outside = GaussianEdge(-casterDistance, 0.0, materialParams.y);
+            if (outside > 0.0) {
+                coverage = outside * RoundedShadowGaussian(samplePosition, shape, radius, 0.5 * blur, materialParams.y);
+            }
+        } else {
+            coverage = GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.5 * blur, materialParams.y);
         }
     } else if (kind < 1.5) {
         float surfaceDistance = RoundedRectDistance(samplePosition, shape, radius);

@@ -1,4 +1,5 @@
 #include "renderer/common/rounded_effect_packing.hpp"
+#include "graphics/rounded_shadow.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -262,12 +263,14 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
         shape.radius = std::clamp(shape.radius + spread, 0.0F, 0.5F * std::min(shape.rect.width, shape.rect.height));
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
-        const float coverage =
-            gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F, antialias_width);
         if (kind == RoundedEffectKind::exterior_shadow) {
-            return coverage * gaussian_edge(-rounded_rect_signed_distance(point_pixels, caster), 0.0F, antialias_width);
+            const float outside =
+                gaussian_edge(-rounded_rect_signed_distance(point_pixels, caster), 0, antialias_width);
+            return outside > 0
+                       ? outside * graphics::rounded_shadow_gaussian(point_pixels, shape, blur * .5F, antialias_width)
+                       : 0;
         }
-        return coverage;
+        return gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F, antialias_width);
     }
     case RoundedEffectKind::inset_shadow: {
         const float surface_coverage =

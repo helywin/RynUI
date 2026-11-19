@@ -122,7 +122,7 @@ void test_inset_translation_and_density_reference() {
 void test_exterior_shadow_masks_the_unshifted_caster() {
     using namespace ryn;
     const ShadowLayer layer{ShadowKind::outer, {7, 4}, 6, 0, Color::rgba8(10, 20, 30, 128)};
-    const graphics::LogicalRoundedRect caster{{20, 20, 50, 34}, 8};
+    const graphics::LogicalRoundedRect caster{{20, 20, 50, 34}, 0};
     const auto shadow = graphics::make_exterior_shadow_effect(caster, layer, {2, 3});
     const auto full = graphics::make_shadow_effect(caster, layer, {2, 3});
     graphics::RoundedEffectStore store;
@@ -133,6 +133,12 @@ void test_exterior_shadow_masks_the_unshifted_caster() {
     capabilities.exterior_shadows = true;
     detail::validate_scene_effect_requirements(capabilities, store.live_requirements());
 
+    const auto expected = [](float x) {
+        const auto interval = [](float a, float b) {
+            return .5F * (std::erf(b / (3.0F * std::sqrt(2.0F))) - std::erf(a / (3.0F * std::sqrt(2.0F))));
+        };
+        return interval(29 - x, 79 - x) * interval(27 - 45, 61 - 45);
+    };
     for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
         const detail::SceneDeviceMetrics metrics{256, 192, scale};
         const auto packed = detail::pack_rounded_effect_instance(shadow, metrics);
@@ -143,15 +149,22 @@ void test_exterior_shadow_masks_the_unshifted_caster() {
         require(packed.effect_params[3] == 6 && packed_full.effect_params[3] == 0, "shadow kinds shared one encoding");
         require(coverage({65, 45}, packed) == 0 && coverage({65, 45}, packed_full) > .9F,
                 "a translucent caster still received shadow underneath its fill");
-        require(near(coverage({72, 45}, packed), .5F * coverage({72, 45}, packed_full)),
+        require(near(coverage({72, 45}, packed), .5F * expected(72)),
                 "caster boundary failed physical-pixel antialiasing");
-        require(near(coverage({74, 45}, packed), coverage({74, 45}, packed_full)) && coverage({74, 45}, packed) > 0,
+        require(near(coverage({74, 45}, packed), expected(74)) && coverage({74, 45}, packed) > 0,
                 "knockout was translated with the shifted shadow");
         for (const auto p : {runtime::Point{65, 45}, runtime::Point{72, 45}, runtime::Point{74, 45}}) {
             require(near(coverage(p, packed), graphics::rounded_effect_coverage(p, shadow, 1 / scale)),
                     "packed knockout disagreed with logical coverage");
         }
     }
+
+    const auto circle = graphics::make_exterior_shadow_effect(
+        {{20, 20, 30, 30}, 15}, {ShadowKind::outer, {42, 0}, 15, 0, Color::rgba8(0, 0, 0, 128)});
+    // The Gaussian mass within a radius of two sigmas has a closed form.
+    const float circle_mass = 1 - std::exp(-2.0F);
+    require(near(graphics::rounded_effect_coverage({77, 35}, circle, 1), circle_mass, .002F),
+            "rounded shadow corners did not contribute the finite two-dimensional blur");
 }
 
 std::array<float, 4> source_over(std::array<float, 4> source, std::array<float, 4> destination) {

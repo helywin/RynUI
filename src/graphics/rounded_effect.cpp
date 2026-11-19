@@ -1,5 +1,6 @@
 #include "graphics/rounded_effect.hpp"
 #include "graphics/arc_cap.hpp"
+#include "graphics/rounded_shadow.hpp"
 
 #include <algorithm>
 #include <array>
@@ -593,6 +594,52 @@ float tooltip_signed_distance(runtime::Point point, LogicalRoundedRect shape, To
     return in_body || in_arrow ? -distance : distance;
 }
 
+float rounded_shadow_gaussian(runtime::Point point, LogicalRoundedRect shape, float sigma,
+                              float antialias_width) noexcept {
+    if (sigma <= 0) {
+        return gaussian_edge(rounded_rect_signed_distance(point, shape), 0, antialias_width);
+    }
+    constexpr double inverse_sqrt_two = 0.7071067811865475;
+    constexpr double inverse_sqrt_tau = 0.3989422804014327;
+    const auto probability = [inverse_sqrt_two](double first, double last) {
+        return .5 * (std::erf(last * inverse_sqrt_two) - std::erf(first * inverse_sqrt_two));
+    };
+    const double x = double(point.x) - shape.rect.x;
+    const double y = double(point.y) - shape.rect.y;
+    const double width = shape.rect.width;
+    const double height = shape.rect.height;
+    const double radius = std::clamp(double(shape.radius), 0.0, .5 * std::min(width, height));
+    const auto vertical = [&](double inset) {
+        return probability((inset - y) / sigma, (height - inset - y) / sigma);
+    };
+    double coverage = probability((radius - x) / sigma, (width - radius - x) / sigma) * vertical(0);
+    if (radius == 0) {
+        return static_cast<float>(coverage);
+    }
+
+    // Integrate the rounded left and right strips. The middle strip and each
+    // sample's vertical interval have exact separable Gaussian integrals.
+    constexpr std::array<double, 4> nodes{.1834346424956498, .5255324099163290, .7966664774136267, .9602898564975362};
+    constexpr std::array<double, 4> weights{.3626837833783620, .3137066458778873, .2223810344533745, .1012285362903763};
+    for (const double from_side : {x, width - x}) {
+        const double first = std::max(-4.0, -from_side / sigma);
+        const double last = std::min(4.0, (radius - from_side) / sigma);
+        if (first >= last) {
+            continue;
+        }
+        const double middle = .5 * (first + last);
+        const double span = .5 * (last - first);
+        for (std::size_t i = 0; i < nodes.size(); ++i) {
+            for (const double t : {middle - span * nodes[i], middle + span * nodes[i]}) {
+                const double inward = std::clamp(from_side + sigma * t, 0.0, radius);
+                const double inset = radius - std::sqrt(inward * (2 * radius - inward));
+                coverage += span * weights[i] * std::exp(-.5 * t * t) * inverse_sqrt_tau * vertical(inset);
+            }
+        }
+    }
+    return static_cast<float>(std::clamp(coverage, 0.0, 1.0));
+}
+
 float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance& instance, float antialias_width) {
     validate_rounded_effect(instance);
     if (!finite(antialias_width) || antialias_width <= 0.0F) {
@@ -609,12 +656,12 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
         }
         shadow.rect.x += geometry.offset.x;
         shadow.rect.y += geometry.offset.y;
-        const float coverage =
-            gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F, antialias_width);
         if (geometry.kind == RoundedEffectKind::exterior_shadow) {
-            return coverage * gaussian_edge(-rounded_rect_signed_distance(point, base), 0.0F, antialias_width);
+            const float outside = gaussian_edge(-rounded_rect_signed_distance(point, base), 0, antialias_width);
+            return outside > 0 ? outside * rounded_shadow_gaussian(point, shadow, geometry.blur * .5F, antialias_width)
+                               : 0;
         }
-        return coverage;
+        return gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F, antialias_width);
     }
     case RoundedEffectKind::inset_shadow: {
         const float surface_coverage = gaussian_edge(rounded_rect_signed_distance(point, base), 0.0F, antialias_width);
