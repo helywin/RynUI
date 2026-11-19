@@ -98,8 +98,12 @@ class WebBrowserTests(unittest.TestCase):
                     'disabled': {'component': 'Button', 'disabled': True, 'size': 'middle'},
                     'loading': {'component': 'Button', 'loading': True}}
         steps = click('normal') + click('disabled', 'disabled') + click('loading', 'loading') + [action('capture', 'checkpoint')]
-        req = request(controls=controls, slots={x: {'content': x} for x in controls}, actions=steps)
+        req = request(controls=controls, slots={'normal': {'content': '默认'}, 'disabled': {'content': 'disabled'},
+                                               'loading': {'content': 'loading'}}, actions=steps)
         _, records, _ = self.execute(req)
+        self.assertEqual(records[0]['effective_inputs']['actual_initial_inputs']['slots']['normal']['content'], '默认')
+        normal = next(t for r in records if r['type'] == 'checkpoint' for t in r['targets'] if t['identity'] == 'normal')
+        self.assertIn('默 认', ''.join(text['content'] for text in normal['text']))
         stream = records[-1]['callbacks']
         self.assertEqual([(x['target'], x['event']) for x in stream], [('normal', 'activate')])
         self.assertTrue(all(x['receipt']['dispatched'] for x in records if x['type'] == 'receipt'))

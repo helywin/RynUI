@@ -33,13 +33,13 @@ class PilotDefinitionTests(unittest.TestCase):
                 self.assertEqual({r['field']: r['value'] for r in official['adaptation']},
                                  {key: case['fixture'][key] for key in ('props', 'slots', 'data', 'container', 'theme', 'parent_policy', 'fonts')})
 
-    def test_pilot_ledger_and_uncalibrated_template_do_not_claim_ready_or_pass(self):
+    def test_ready_pilot_definitions_do_not_calibrate_the_template(self):
         ledger = validate('coverage', read(FIXTURES / 'pilot-coverage.json'))
         for case in pilots.definitions():
             rows = [r for r in ledger['rows'] if case['identity'] in r['cases']]
             self.assertEqual({r['identity'] for r in rows}, {'sample/' + case['native']['sample_id']} |
                              {'target/' + target for target in case['native']['targets']})
-            self.assertTrue(all(r['mapping'] == 'paired' and r['implementation'] == 'planned' for r in rows))
+            self.assertTrue(all(r['mapping'] == 'paired' and r['implementation'] == 'ready' for r in rows))
         profile = validate('profile', read(FIXTURES / 'profiles/pilot-pinned-font.uncalibrated.json'))
         self.assertFalse(profile['calibrated'])
 

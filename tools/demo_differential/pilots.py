@@ -92,7 +92,7 @@ def _base(component, controls, data, slots, composition, actions, oracle, target
             'demo_path': f'components/{component}/demo/{demo}', 'demo_sha256': demo_hash,
             'source_paths': [{'path': f'components/{component}/{source}', 'sha256': source_hash}],
             'adapter_id': 'antd665.reference-web.v1',
-            'adapter_sha256': 'eb92e49212b41b59f29626fd5bea5dd2f1593d0cf256cf4683721609ff25085e',
+            'adapter_sha256': '57bca1cbc11633290a1e967cef4c5ed1b7106ebe0590d0a4aff3611dff4f86b5',
             'mode': 'official-component-adapted', 'adaptation': [
                 {'field': field, 'value': deepcopy(fixture[field]),
                  'reason': f'{function}: declared public {field}; original sample content and default local Theme remain required; no measured native input'}

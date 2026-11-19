@@ -15,14 +15,14 @@
         "include/ryn/button.hpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "sample/gallery.sample.input.basics",
@@ -37,14 +37,14 @@
         "include/ryn/input.hpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/input/demo/allowClear.tsx"
       ],
       "cases": [
         "antd665.input.controlled-edit.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "sample/gallery.sample.select.options",
@@ -59,14 +59,14 @@
         "include/ryn/select.hpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.state.default",
@@ -81,14 +81,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.state.primary",
@@ -103,14 +103,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.state.danger",
@@ -125,14 +125,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.state.hover",
@@ -147,14 +147,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.state.active",
@@ -169,14 +169,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.state.focus-visible",
@@ -191,14 +191,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.state.disabled",
@@ -213,14 +213,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.state.loading",
@@ -235,14 +235,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/button/demo/basic.tsx"
       ],
       "cases": [
         "antd665.button.basic-states.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.input.controlled",
@@ -257,14 +257,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/input/demo/allowClear.tsx"
       ],
       "cases": [
         "antd665.input.controlled-edit.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.input.uncontrolled",
@@ -279,14 +279,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/input/demo/allowClear.tsx"
       ],
       "cases": [
         "antd665.input.controlled-edit.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.controlled-search",
@@ -301,14 +301,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.numeric",
@@ -323,14 +323,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.disabled",
@@ -345,14 +345,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.loading",
@@ -367,14 +367,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.empty",
@@ -389,14 +389,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.controlled-open",
@@ -411,14 +411,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.outlined",
@@ -433,14 +433,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.filled",
@@ -455,14 +455,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.borderless",
@@ -477,14 +477,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.underlined",
@@ -499,14 +499,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.small",
@@ -521,14 +521,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.middle",
@@ -543,14 +543,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.large",
@@ -565,14 +565,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.warning",
@@ -587,14 +587,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.error",
@@ -609,14 +609,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.component-theme",
@@ -631,14 +631,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.focus",
@@ -653,14 +653,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.toggle-open",
@@ -675,14 +675,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     },
     {
       "identity": "target/gallery.select.dynamic-options",
@@ -697,14 +697,14 @@
         "examples/token_gallery/gallery_test_inventory.cpp"
       ],
       "mapping": "paired",
-      "implementation": "planned",
+      "implementation": "ready",
       "official_demo_ids": [
         "components/select/demo/basic.tsx"
       ],
       "cases": [
         "antd665.select.popup-lifecycle.v1"
       ],
-      "reason": "Source-bound pilot definition; actual input/context adapters and calibrated platform comparison remain incomplete"
+      "reason": "Source-bound pilot with verified input observation. Visual and callback verdicts remain run results"
     }
   ]
 }

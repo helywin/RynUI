@@ -6,6 +6,7 @@ import * as Antd from 'antd';
 import * as Icons from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
+import { SpaceContextProvider } from 'antd/space/context';
 import ButtonBasic from 'official-demo:components/button/demo/basic.tsx';
 import InputClear from 'official-demo:components/input/demo/allowClear.tsx';
 import InputAffixes from 'official-demo:components/input/demo/presuffix.tsx';
@@ -377,7 +378,15 @@ function consumedInputs(queryStep = 'setup', initial = false) {
       select_option_height: select.optionHeight ?? 32 };
     const input: any = connected.matches('input,textarea') ? connected : connected.querySelector('input,textarea');
     const slotHost = fiber.component === 'Input' ? connected.closest('.ant-input-affix-wrapper') ?? connected : connected;
-    if (fiber.component === 'Button' && Object.hasOwn(slots, 'content')) slots.content = connected.textContent ?? '';
+    if (fiber.component === 'Button' && Object.hasOwn(slots, 'content')) {
+      const authored = slots.content;
+      const rendered = connected.textContent ?? '';
+      // The pinned Button adds one display space to eligible two-character labels.
+      const hasDisplaySpace = typeof authored === 'string' && /^[\u4e00-\u9fa5]{2}$/.test(authored) &&
+        !actual.icon && actual.autoInsertSpace !== false &&
+        !connected.matches('.ant-btn-variant-text,.ant-btn-variant-link') && rendered === authored.split('').join(' ');
+      slots.content = hasDisplaySpace ? authored : rendered;
+    }
     if (fiber.component === 'Input') {
       if (!input?.isConnected) throw new Error('actual Input has no connected editor: ' + fiber.target);
       for (const key of ['placeholder', 'disabled', 'readOnly', 'maxLength']) if (Object.hasOwn(props, key)) props[key] = input[key];
@@ -439,9 +448,17 @@ function consumedInputs(queryStep = 'setup', initial = false) {
       childRoot = find(fiber) ?? fiber;
     }
     const children = [];
-    for (let child = childRoot.child; child; child = child.sibling) {
+    const append = (child: any) => {
       const projected = project(child, origin);
       if (projected !== null) children.push(projected);
+    };
+    for (let child = childRoot.child; child; child = child.sibling) {
+      // Space's own context provider is not a host. Keep each real Item branch.
+      if (official?.component === 'Space' && child.type === SpaceContextProvider && !child.stateNode) {
+        for (let item = child.child; item; item = item.sibling) append(item);
+      } else {
+        append(child);
+      }
     }
     if (official && ['Flex', 'Space'].includes(official.component)) {
       const p = official.props;
