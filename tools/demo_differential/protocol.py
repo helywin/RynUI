@@ -22,6 +22,11 @@ SCHEMA_KEYWORDS = frozenset({
 })
 JSON_TYPES = {'object': (dict,), 'array': (list,), 'string': (str,), 'integer': (int,),
               'number': (int, float), 'boolean': (bool,), 'null': (type(None),)}
+_JSON_VALUE = {'anyOf': [
+    {'type': ['string', 'number', 'boolean', 'null']},
+    {'type': 'array', 'items': {'$ref': '#/$defs/json'}},
+    {'type': 'object', 'additionalProperties': {'$ref': '#/$defs/json'}},
+]}
 
 
 class ProtocolError(ValueError):
@@ -96,7 +101,24 @@ def _matches_type(actual_type, expected):
     return any(actual_type in JSON_TYPES[item] for item in expected)
 
 
+def _plain_json(value):
+    # The finite/depth walk runs before schema validation. This rule has just
+    # the interpreter's default string/array limits and recurses into itself.
+    kind = type(value)
+    if kind is dict:
+        return all(_plain_json(item) for item in value.values())
+    if kind is list:
+        return len(value) <= 1000000 and all(_plain_json(item) for item in value)
+    if kind is str:
+        return len(value) <= MAX_BYTES
+    return kind in (int, float, bool, type(None))
+
+
 def _validate(value, rule, document, location='$'):
+    if rule is _JSON_VALUE:
+        if not _plain_json(value):
+            raise ProtocolError(f'{location}: invalid JSON value')
+        return
     if not SCHEMA_KEYWORDS.issuperset(rule):
         raise ProtocolError(f'unsupported schema vocabulary: {set(rule) - SCHEMA_KEYWORDS}')
     if '$ref' in rule:
@@ -166,6 +188,10 @@ def _validate(value, rule, document, location='$'):
 def validate(kind, value):
     finite(value)
     document = read(FIXTURES / f'{kind}.schema.json')
+    # Only use the specialized traversal for the exact unconstrained rule.
+    # Any added property or constraint keeps the ordinary schema interpretation.
+    if document.get('$defs', {}).get('json') == _JSON_VALUE:
+        document['$defs']['json'] = _JSON_VALUE
     _validate(value, document, document)
     if kind == 'case':
         unique(value['actions'], 'step')

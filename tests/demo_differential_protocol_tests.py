@@ -3,10 +3,11 @@ from copy import deepcopy
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from demo_differential.protocol import ProtocolError, _validate, validate, loads
+from demo_differential.protocol import ProtocolError, _JSON_VALUE, _validate, validate, loads
 
 
 def valid_case():
@@ -85,6 +86,21 @@ class ProtocolTests(unittest.TestCase):
     def test_json_limits(self):
         with self.assertRaises(ProtocolError):
             loads('['*60+'0'+']'*60)
+
+    def test_recursive_json_shortcut_preserves_nested_types_and_modified_schemas(self):
+        document = {'$defs': {'json': deepcopy(_JSON_VALUE)}, '$ref': '#/$defs/json'}
+        value = {'nested': [None, True, 7, 7.0, '中', {'value': 'ok'}]}
+        with patch('demo_differential.protocol.read', return_value=deepcopy(document)):
+            self.assertIs(validate('test', value), value)
+            for invalid in ((1, 2), float('inf'), object()):
+                with self.subTest(invalid=invalid), self.assertRaises(ProtocolError):
+                    validate('test', {'nested': [invalid]})
+
+        document['$defs']['json']['anyOf'][1]['maxItems'] = 1
+        with patch('demo_differential.protocol.read', return_value=document):
+            with self.assertRaises(ProtocolError):
+                validate('test', value)
+            self.assertEqual(validate('test', {'nested': ['one']}), {'nested': ['one']})
 
     def test_schema_unions_keep_exact_types_and_unique_matches(self):
         numbers = {'oneOf': [{'type': 'integer'}, {'type': 'number'}]}
