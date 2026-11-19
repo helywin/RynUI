@@ -7,7 +7,8 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
-from demo_differential.comparison import _layered_context,_actual_material,css_shadows,_composite_point
+from demo_differential.comparison import (_layered_context,_actual_material,css_shadows,_composite_point,
+                                          _layer_coverage,_native_paint_inventory)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 
@@ -181,7 +182,7 @@ class LayeredTests(unittest.TestCase):
         for layer in stack['layers']:layer['submitted_membership'][0]['command']+=1
         stack['commands'].insert(0,dict(ordinal=0,kind=2,first=0,count=1,atlas_page=4294967295))
         actual=dict(bounds=box(),color=[0,0,0,.2],opacity=1,translation=[0,0],radius=0,
-                    effect_kind=0,outline_width=0,outline_offset=0,offset=[0,0],blur=2,spread=0)
+                    effect_kind=6,outline_width=0,outline_offset=0,offset=[0,0],blur=2,spread=0)
         stack['layers'].append(dict(source_material_id='effect:1',owner=dict(index=0,generation=1),fragment=dict(index=0,generation=1),
             publication_revision=1,in_fragment=True,in_submitted_scene=True,packed_index=0,kind=2,atlas_page=4294967295,
             submitted_membership=[dict(command=0,instance=0)],primitive=dict(index=0,generation=1),actual=actual,role='shadow'))
@@ -202,6 +203,17 @@ class LayeredTests(unittest.TestCase):
         failures,measured=_layered_context(*values)
         self.assertEqual(failures,[])
         self.assertTrue(any(row['category']=='shadow' for row in measured))
+        shifted_origin=box(0,0)
+        rows,_=_native_paint_inventory(native,shifted_origin)
+        shadow=next(row for row in rows if row['kind']=='shadow')
+        self.assertTrue(shadow['knockout'])
+        self.assertEqual(_layer_coverage(shadow,(12,20),1),(0,False))
+        self.assertEqual(_layer_coverage(shadow,(10.5,20),1),(0,False))
+        actual['effect_kind']=0
+        rows,_=_native_paint_inventory(native,shifted_origin)
+        legacy=next(row for row in rows if row['kind']=='shadow')
+        self.assertFalse(legacy['knockout'])
+        self.assertGreater(_layer_coverage(legacy,(12,20),1)[0],.9)
 
 
 if __name__=='__main__':unittest.main()

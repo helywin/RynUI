@@ -27,8 +27,14 @@ class RegionTests(unittest.TestCase):
             return [ink if 1<=x<=7 and 1<=y<=7 else 0 for y in range(9) for x in range(9)]
         self.assertTrue(reference_aa_is_bounded(square(.994),(9,9),uncertainty=.008))
         self.assertFalse(reference_aa_is_bounded(square(.99),(9,9),uncertainty=.008))
+        bounds=[.008]*81
+        self.assertTrue(reference_aa_is_bounded(square(.994),(9,9),uncertainty=bounds))
+        bounds[40]=.004
+        self.assertFalse(reference_aa_is_bounded(square(.994),(9,9),uncertainty=bounds))
         with self.assertRaises(ProtocolError):
             reference_aa_is_bounded([.5],(1,1),uncertainty=.5)
+        with self.assertRaises(ProtocolError):
+            reference_aa_is_bounded(square(.994),(9,9),uncertainty=bounds[:-1])
 
     def test_opaque_rgb8_midpoint_codes_keep_the_same_frame_contour(self):
         reference=[0,128/255,128/255,0]

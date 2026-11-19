@@ -86,4 +86,6 @@ Web 读取 `DOMSnapshot.getSnapshot` 的真实 paintOrder、stacking context、U
 
 单字控制以主字体的 SFNT 行度量验证排版原点，以实际选中字形的 SFNT 轮廓检查墨迹。Web 从真实 inline baseline 取坐标，原生从 Text 行度量及提交的 glyph atlas 位置分别取得排版和栅格原点。两侧排版差继续计入 0.5 logical px 上限，字形轮廓以各自经核验的原点取样，保留一个物理像素的轮廓见证误差以及固定 ROI。
 
+正式比较按每个 Web 像素的有效材料色差取得覆盖率量化界，局部背景或上层合成改变时保留各自的界，继续使用固定的一物理像素 AA 带。原生外部镂空阴影保留真实提交的形状、模糊和 knockout；旧的非镂空阴影仍以自己的覆盖语义核验。
+
 有限域明确拒绝 gradient/image、非平移变换、非标准 blend/filter、椭圆 radius、多色 border corner、未支持的 pseudo text/text shadow，以及确实切入 paint support 的 rounded mask/backdrop。仅证明不切入当前 paint support 的实际祖先 rounded mask 可以继续消费。不存在有效控制间隔或来源事实不足时保持非零，不能借此声明 6.3–6.5 完成。所有 C++/GPU/browser 行为、312 controls / 26 negatives / 16 metrics 的最终校准与普通 pilot/meta 结果均以父线程在最终整合源码上的实际执行为准；源码与纯 Python 测试不替代这些证据。

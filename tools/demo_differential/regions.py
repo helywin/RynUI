@@ -212,11 +212,17 @@ def reference_aa_is_bounded(coverage,size,*,uncertainty=1/255):
     width,height=size
     if len(coverage)!=width*height:
         raise ProtocolError('reference AA coverage extent differs')
-    if not math.isfinite(uncertainty) or not 0<=uncertainty<.5:
+    if type(uncertainty) in (int,float):
+        bounds=(uncertainty,)*len(coverage)
+    elif isinstance(uncertainty,(list,tuple)) and len(uncertainty)==len(coverage):
+        bounds=uncertainty
+    else:
+        raise ProtocolError('reference AA quantization extent differs')
+    if any(type(bound) not in (int,float) or not math.isfinite(bound) or not 0<=bound<.5 for bound in bounds):
         raise ProtocolError('reference AA quantization bound is invalid')
     boundary=contour({(i%width,i//width) for i,v in enumerate(coverage) if v>=.5})
-    for i,value in enumerate(coverage):
-        if uncertainty<value<1-uncertainty:
+    for i,(value,bound) in enumerate(zip(coverage,bounds)):
+        if bound<value<1-bound:
             x,y=i%width,i//width
             if not any((x+dx,y+dy) in boundary for dx,dy in ((0,0),(-1,0),(1,0),(0,-1),(0,1))):
                 return False

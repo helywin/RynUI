@@ -460,6 +460,9 @@ def _native_paint_inventory(checkpoint,origin,dpr=1):
             if effect in (0,1) and (a['blur']>0 or a['spread'] or a['offset']!=[0,0] or layer.get('role') in ('shadow','inset-shadow')):
                 row.update(kind='shadow' if effect==0 else 'inset-shadow',offset=a['offset'],blur=a['blur'],spread=a['spread'],knockout=False)
             elif effect==2:row.update(kind='outline',width=a['outline_width'],offset_width=a['outline_offset'])
+            elif effect==6:
+                if a['blur']<=0:raise ProtocolError('actual exterior shadow has no blur')
+                row.update(kind='shadow',offset=a['offset'],blur=a['blur'],spread=a['spread'],knockout=True)
             elif effect not in (0,1):raise RunError(3,'calibration','non-round effect unsupported in finite pilot')
         for group in group_paths[actual[0]['command']]:
             requests=stack.get('composition_requests',[])
@@ -913,19 +916,25 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             low=reference['coverages'].copy();high=reference['coverages'].copy();low[position]=0.;high[position]=1.
             lower=_composite_point(reference['active'],low);upper=_composite_point(reference['active'],high)
             values=[]
+            reference_uncertainty=None
             soft=row['kind'] in ('shadow','inset-shadow') and row.get('blur',0)>0
             maximum=_visible_weight(reference['active'],reference['coverages'],position) if soft else 1.
-            for rgb in (a,b):
+            for side,rgb in enumerate((a,b)):
                 try:
                     if soft:
                         solved=visible_segment(tuple(v/255 for v in rgb),lower,upper,maximum)
                         value=solved['contribution'] if solved['valid'] else None
-                    else:value=unmix_coverage(tuple(v/255 for v in rgb),upper,lower,1.,byte_error=1/255)['coverage']
+                    else:
+                        unmixed=unmix_coverage(tuple(v/255 for v in rgb),upper,lower,1.,byte_error=1/255)
+                        value=unmixed['coverage']
+                        if side==0:reference_uncertainty=unmixed['quantization_bound']
                 except ProtocolError:value=None
                 values.append(None if value is None else min(1.,max(0.,value)))
             if all(v is not None for v in values):
-                if row['identity'] not in paired_planes:paired_planes[row['identity']]=(row,{}, {})
-                for plane,value in zip(paired_planes[row['identity']][1:],values):plane[index]=value
+                if row['identity'] not in paired_planes:paired_planes[row['identity']]=(row,{},{},{})
+                _,first,second,uncertainty=paired_planes[row['identity']]
+                first[index],second[index]=values
+                if reference_uncertainty is not None:uncertainty[index]=reference_uncertainty
                 if row['kind'] in ('glyph','caret') and values[0]>=.98:
                     error=rgb8_delta_e00(a,b)
                     if error>thresholds['color.text_interior_delta_e00']:fail('typography','high contrast glyph/caret interior color differs',pixel=point,actual=error)
@@ -952,17 +961,18 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                             if key not in joint_planes:joint_planes[key]=({}, {})
                             joint_planes[key][0][index]=min(1.,max(0.,first));joint_planes[key][1][index]=min(1.,max(0.,second))
     if sum(counts.values())!=size[0]*size[1]:raise ProtocolError('paint strata did not account for the entire crop exactly once')
-    for identity,(row,reference,native_plane) in paired_planes.items():
+    for identity,(row,reference,native_plane,uncertainty) in paired_planes.items():
         if not reference:continue
         coordinates=[(i%size[0],i//size[0]) for i in reference]
         left=min(x for x,y in coordinates);right=max(x for x,y in coordinates)+1
         top=min(y for x,y in coordinates);bottom=max(y for x,y in coordinates)+1
         local_size=(right-left,bottom-top)
-        local=[[],[]];tail=[]
+        local=[[],[]];tail=[];local_uncertainty=[]
         for y in range(top,bottom):
             for x in range(left,right):
                 index=y*size[0]+x;local_index=(y-top)*local_size[0]+x-left
                 for values,plane in zip(local,(reference,native_plane)):values.append(plane.get(index,0.))
+                if uncertainty:local_uncertainty.append(uncertainty.get(index,0.))
                 point=((box[0]+x+.5)/dpr,(box[1]+y+.5)/dpr)
                 if not _contains(_inset(row['bounds'],-max(1/dpr,row.get('blur',0)/2)),point):tail.append(local_index)
         soft=row['kind'] in ('shadow','inset-shadow') and row['blur']>0
@@ -970,7 +980,8 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
         result=shadow_profile_metrics(*local,local_size,tail_indices=tail) if soft else coverage_metrics(*local,local_size)
         if not soft:
             from .regions import reference_aa_is_bounded
-            if not reference_aa_is_bounded(local[0],local_size):fail('typography' if prefix=='text' else 'visual','reference hard-edge transition exceeds the fixed one physical pixel AA bound',source=identity)
+            if not reference_aa_is_bounded(local[0],local_size,uncertainty=local_uncertainty):
+                fail('typography' if prefix=='text' else 'visual','reference hard-edge transition exceeds the fixed one physical pixel AA bound',source=identity)
         if not result['required_ink_present']:fail('typography' if prefix=='text' else 'visual','required independently exposed paint ink missing',source=identity)
         fields=('coverage_mass_relative_error','projection_relative_error','profile_max_error','tail_max_error') if soft else (
             'coverage_mass_relative_error','contour_distance_px','projection_relative_error' if prefix=='text' else 'coverage_local_relative_error')
