@@ -83,9 +83,10 @@ class WebBrowserTests(unittest.TestCase):
         records = web.validate_observations(output, req)
         return result, records, output
 
-    def test_fractional_calibration_border_samples_actual_paint_phase(self):
+    def test_fractional_calibration_border_and_text_sample_actual_paint_phase(self):
         from demo_differential.adapters import process
         from demo_differential.calibration import KIND, request_bytes
+        from demo_differential.pilots import FONTS
         from demo_differential.reporting import write_json
 
         parent = OUT / uuid.uuid4().hex
@@ -99,26 +100,37 @@ class WebBrowserTests(unittest.TestCase):
                  tools / 'calibration.tsx'], parent / 'build-process', 90)
         launch = uuid.uuid4().hex
         rect = dict(x=64.5, y=48.5, width=40, height=24)
+        text_rect = dict(x=20.5, y=20.5, width=30, height=32)
+        fonts = json.loads(FONT_FILE.read_bytes())
+        admitted = [web.admit_font(expected, actual, 'pinned') for expected, actual in zip(FONTS, fonts)]
         request = parent / 'request.json'
         request.write_bytes(request_bytes(dict(calibration_kind=KIND, nonce=uuid.uuid4().hex,
             process_launch_id=launch, board='holdout', fault='none', restart=False, repetitions=1,
-            actual_dpr=1.5, binding={}, font_files=[],
+            actual_dpr=1.5, binding={}, font_files=fonts,
             panels=[dict(x=0,y=0,width=128,height=96,rgb=[0,0,0])],
-            cells=[dict(identity='p0.border',kind='border',rect=rect,radius=0,foreground=[255,255,255])])))
+            cells=[dict(identity='p0.border',kind='border',rect=rect,radius=0,foreground=[255,255,255]),
+                   dict(identity='p0.text',kind='text',rect=text_rect,content='H',font_size=20,font_weight=400,
+                        foreground=[255,255,255],background=[0,0,0])])))
         config = output / 'worker.json'
         write_json(config, dict(prepared=prepared,request_path=str(request),output=str(output),
-                                build=str(bundle),actual_font_sources=[]))
+                                build=str(bundle),actual_font_sources=admitted))
         process([prepared['node'], tools / 'calibration.mjs', config], output / 'process', 90, launch_id=launch)
         observation = json.loads((output / 'stream-0.json').read_bytes())
-        row, = observation['controls']
+        row, glyph = observation['controls']
         self.assertEqual(row['rect'],rect)
         self.assertEqual(row['source']['paint_origin'],[64,48])
         self.assertEqual(row['source']['paint_translation'],[.5,.5])
+        self.assertEqual(glyph['rect'],text_rect)
+        self.assertEqual(glyph['source']['paint_origin'],[20,20])
+        self.assertEqual(glyph['source']['paint_translation'],[.5,.5])
+        self.assertEqual(glyph['source']['layout_origin'][0],text_rect['x'])
+        self.assertEqual(glyph['source']['actual_font_sha256'],fonts[0]['sha256'])
         raw = (output / 'capture-0.rgba').read_bytes()
         width = observation['capture']['width']
         rows = [raw[4*(y*width+126)] for y in range(71,76)]
         self.assertEqual([rows[i] for i in (0,2,4)],[0,255,0])
         self.assertTrue(all(rows[i] in (63,64) for i in (1,3)),rows)
+        self.assertTrue(any(raw[4*(y*width+x)] == 255 for y in range(39,70) for x in range(36,52)))
 
     def test_five_official_exports_really_execute(self):
         for demo in bootstrap.load_lock()['source']['demos']:
