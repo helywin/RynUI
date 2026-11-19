@@ -82,8 +82,8 @@
       "bytes": 64
     },
     "shaders/rounded_effect_coverage.hlsli": {
-      "sha256": "e4095044db1cc20c875879b5b385d085d88069a98b1c2616aae67493631489a6",
-      "bytes": 12247
+      "sha256": "f77902273b2af0c90bde98d64a20f1b4d67bb6da82538760cc158f9c1fdd35d2",
+      "bytes": 12476
     },
     "shaders/rounded_effect_paint.hlsl": {
       "sha256": "2a33793b43c6fc252a8c830713b8a5fd9b5b41b095c13da36d6d09e0c051d9c5",
@@ -106,7 +106,7 @@
         "shaders/rounded_effect_coverage.hlsli",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "07261f865f7019e125597991ebd8859eaa878e1ff67d4000204373e7bfadc58b",
+      "closure_sha256": "68affdc79b6f557dc1f7f20cecef4eee785527632ba927fef9af621dbaa7a807",
       "vertex_inputs": [
         "float4",
         "float4",
@@ -150,7 +150,7 @@
         "shaders/rounded_effect_paint.hlsl",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "f2021161c7fa220c5305758ba6ad95d346ecae533cd4925f71a53d89bf2eb775",
+      "closure_sha256": "d9c33940acbcfa9e08fed7b322a48b357bd9ee9f1668cb7b7dac051bb854b50d",
       "vertex_inputs": [
         "float4",
         "float4",
@@ -301,7 +301,7 @@
         "shaders/rounded_effect_coverage.hlsli",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "e8ca1fc5f8557d00d4efde7df2370d0c614b8c9c48669c91e82c08445433fbfe",
+      "closure_sha256": "002cc90e3210ddbb51ef578f7e74ff242d8ff5c325be6c84df93ec5c0583ba56",
       "vertex_inputs": [
         "float4",
         "float4",
@@ -346,7 +346,7 @@
         "shaders/rounded_effect_paint_composition.hlsl",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "fe9d2de8d5b31aee29089bf91f91bd4eee1bc1cc074781a57d7c4a9208ccd431",
+      "closure_sha256": "a93479d55fa2391e52b34eb11542e15ab86032f9560f30692af609b72397b3e0",
       "vertex_inputs": [
         "float4",
         "float4",
@@ -384,7 +384,7 @@
         "shaders/masked_group.hlsl",
         "shaders/rounded_effect_coverage.hlsli"
       ],
-      "closure_sha256": "f6cf468e6fd59cdaf1a14a1d5b1f97eb5e47e52a638885787bbe323d5b5539e0",
+      "closure_sha256": "3dd609a701a85a7283342c278af03cf2913781728fb2b585419eff44cba0614c",
       "vertex_inputs": [],
       "fragment_storage_buffers": 0,
       "vertex_uniform_buffers": 0,
@@ -441,7 +441,7 @@
         "shaders/backdrop_composite.hlsl",
         "shaders/rounded_effect_coverage.hlsli"
       ],
-      "closure_sha256": "a12906aad92dda818e0c4d246e698c972fc942fd46a914fcdcddce481565944b",
+      "closure_sha256": "8d738392ede691dc853526e0b3c610c3424bf82f28049959dc4ad5b375f1ced6",
       "vertex_inputs": [],
       "fragment_storage_buffers": 0,
       "vertex_uniform_buffers": 0,

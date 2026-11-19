@@ -25,6 +25,7 @@ enum class RoundedEffectKind : std::uint8_t {
     arc,
     dashed_outline,
     tooltip_fill,
+    exterior_shadow,
 };
 
 enum class ArcCap : std::uint8_t { Round, Butt, Square };
@@ -104,6 +105,11 @@ struct RoundedEffectInstance final {
 [[nodiscard]] RoundedEffectInstance make_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer,
                                                        runtime::Point translation = {},
                                                        std::optional<EffectClip> ancestor_clip = std::nullopt);
+
+// Blurred outer box shadow with an unshifted caster knockout.
+[[nodiscard]] RoundedEffectInstance make_exterior_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer,
+                                                                runtime::Point translation = {},
+                                                                std::optional<EffectClip> ancestor_clip = std::nullopt);
 
 [[nodiscard]] RoundedEffectInstance make_outline_effect(LogicalRoundedRect shape, float width, float offset,
                                                         Color color, float opacity = 1.0F,
@@ -237,6 +243,7 @@ struct RoundedEffectStoreDiagnostics final {
 struct RoundedEffectRequirements final {
     bool paint{};
     bool nonround_caps{};
+    bool exterior_shadow{};
 
     friend constexpr bool operator==(RoundedEffectRequirements, RoundedEffectRequirements) = default;
 };

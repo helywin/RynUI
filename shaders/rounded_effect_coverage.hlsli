@@ -208,13 +208,17 @@ float LegacyEffectCoverage(float2 samplePosition, float4 shapeRect, float4 shado
     float kind = effectParams.w;
     float coverage = 0.0;
 
-    if (kind < 0.5) {
+    if (kind < 0.5 || kind == 6.0) {
         shape.xy -= spread.xx;
         shape.zw += 2.0 * spread.xx;
         clip(min(shape.z, shape.w));
         radius = clamp(radius + spread, 0.0, 0.5 * min(shape.z, shape.w));
         shape.xy += offset;
         coverage = GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.5 * blur, materialParams.y);
+        if (kind == 6.0) {
+            float casterDistance = RoundedRectDistance(samplePosition, shapeRect, shadowParams.x);
+            coverage *= GaussianEdge(-casterDistance, 0.0, materialParams.y);
+        }
     } else if (kind < 1.5) {
         float surfaceDistance = RoundedRectDistance(samplePosition, shape, radius);
         float surfaceCoverage = GaussianEdge(surfaceDistance, 0.0, materialParams.y);

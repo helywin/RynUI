@@ -68,6 +68,9 @@ namespace {
     if (encoded == 5.0F) {
         return RoundedEffectKind::tooltip_fill;
     }
+    if (encoded == 6.0F) {
+        return RoundedEffectKind::exterior_shadow;
+    }
     throw std::invalid_argument("Rounded effect GPU kind is invalid");
 }
 
@@ -85,6 +88,8 @@ namespace {
         return 4.0F;
     case RoundedEffectKind::tooltip_fill:
         return 5.0F;
+    case RoundedEffectKind::exterior_shadow:
+        return 6.0F;
     }
     throw std::invalid_argument("Rounded effect kind is invalid");
 }
@@ -242,8 +247,11 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
     const float outline_offset = instance.effect_params[2];
     const float antialias_width = instance.material_params[1];
 
-    switch (decode_kind(instance.effect_params[3])) {
+    const auto kind = decode_kind(instance.effect_params[3]);
+    switch (kind) {
     case RoundedEffectKind::outer_shadow:
+    case RoundedEffectKind::exterior_shadow: {
+        const auto caster = shape;
         shape.rect.x -= spread;
         shape.rect.y -= spread;
         shape.rect.width = std::max(0.0F, shape.rect.width + 2.0F * spread);
@@ -254,7 +262,13 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
         shape.radius = std::clamp(shape.radius + spread, 0.0F, 0.5F * std::min(shape.rect.width, shape.rect.height));
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
-        return gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F, antialias_width);
+        const float coverage =
+            gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F, antialias_width);
+        if (kind == RoundedEffectKind::exterior_shadow) {
+            return coverage * gaussian_edge(-rounded_rect_signed_distance(point_pixels, caster), 0.0F, antialias_width);
+        }
+        return coverage;
+    }
     case RoundedEffectKind::inset_shadow: {
         const float surface_coverage =
             gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), 0.0F, antialias_width);

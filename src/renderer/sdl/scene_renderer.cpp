@@ -108,6 +108,7 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
     capabilities_ = baseline_scene_capabilities();
+    capabilities_.exterior_shadows = true;
     capabilities_.effect_paints = false;
     // Integer geometry/union is still a candidate. Numerical certification and
     // actual platform readback must precede production capability opt-in.

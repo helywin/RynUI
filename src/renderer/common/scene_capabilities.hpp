@@ -51,6 +51,7 @@ struct SceneBackendCapabilities final {
     std::uint32_t maximum_composition_ops{};
     std::uint32_t maximum_gaussian_radius{};
     std::uint64_t maximum_gaussian_weight_bytes{};
+    bool exterior_shadows{};
 };
 
 [[nodiscard]] constexpr SceneBackendCapabilities baseline_scene_capabilities() noexcept {

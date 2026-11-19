@@ -39,6 +39,9 @@ void validate_scene_capabilities(const SceneBackendCapabilities& value) {
 
 void validate_scene_effect_requirements(const SceneBackendCapabilities& capabilities,
                                         graphics::RoundedEffectRequirements requirements) {
+    if (requirements.exterior_shadow && !capabilities.exterior_shadows) {
+        throw std::invalid_argument("Backend lacks required exterior shadow capability");
+    }
     if (requirements.paint && !capabilities.effect_paints) {
         throw std::invalid_argument("Backend lacks required Effect paint capability");
     }

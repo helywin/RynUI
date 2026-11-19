@@ -1,4 +1,5 @@
 #include "renderer/common/rounded_effect_packing.hpp"
+#include "renderer/common/scene_capabilities.hpp"
 
 #include <array>
 #include <cmath>
@@ -114,6 +115,41 @@ void test_inset_translation_and_density_reference() {
                          ryn::detail::rounded_effect_gpu_coverage_reference({point.x * scale, point.y * scale}, packed),
                          0.00001F),
                     "inset GPU reference drifted from logical coverage");
+        }
+    }
+}
+
+void test_exterior_shadow_masks_the_unshifted_caster() {
+    using namespace ryn;
+    const ShadowLayer layer{ShadowKind::outer, {7, 4}, 6, 0, Color::rgba8(10, 20, 30, 128)};
+    const graphics::LogicalRoundedRect caster{{20, 20, 50, 34}, 8};
+    const auto shadow = graphics::make_exterior_shadow_effect(caster, layer, {2, 3});
+    const auto full = graphics::make_shadow_effect(caster, layer, {2, 3});
+    graphics::RoundedEffectStore store;
+    static_cast<void>(store.add(shadow));
+    auto capabilities = detail::baseline_scene_capabilities();
+    require_invalid([&] { detail::validate_scene_effect_requirements(capabilities, store.live_requirements()); },
+                    "a backend without the knockout capability accepted the scene");
+    capabilities.exterior_shadows = true;
+    detail::validate_scene_effect_requirements(capabilities, store.live_requirements());
+
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        const detail::SceneDeviceMetrics metrics{256, 192, scale};
+        const auto packed = detail::pack_rounded_effect_instance(shadow, metrics);
+        const auto packed_full = detail::pack_rounded_effect_instance(full, metrics);
+        const auto coverage = [&](runtime::Point p, const auto& instance) {
+            return detail::rounded_effect_gpu_coverage_reference({p.x * scale, p.y * scale}, instance);
+        };
+        require(packed.effect_params[3] == 6 && packed_full.effect_params[3] == 0, "shadow kinds shared one encoding");
+        require(coverage({65, 45}, packed) == 0 && coverage({65, 45}, packed_full) > .9F,
+                "a translucent caster still received shadow underneath its fill");
+        require(near(coverage({72, 45}, packed), .5F * coverage({72, 45}, packed_full)),
+                "caster boundary failed physical-pixel antialiasing");
+        require(near(coverage({74, 45}, packed), coverage({74, 45}, packed_full)) && coverage({74, 45}, packed) > 0,
+                "knockout was translated with the shifted shadow");
+        for (const auto p : {runtime::Point{65, 45}, runtime::Point{72, 45}, runtime::Point{74, 45}}) {
+            require(near(coverage(p, packed), graphics::rounded_effect_coverage(p, shadow, 1 / scale)),
+                    "packed knockout disagreed with logical coverage");
         }
     }
 }
@@ -324,6 +360,7 @@ int main() {
         test_100_150_200_percent_scale_contract();
         test_shader_reference_matches_logical_reference();
         test_inset_translation_and_density_reference();
+        test_exterior_shadow_masks_the_unshifted_caster();
         test_straight_alpha_and_overlapping_layer_contract();
         test_invalid_metrics_rejected_and_clipped_pack_is_degenerate();
         test_zero_blur_pixel_coverage_and_quadrant_seams();

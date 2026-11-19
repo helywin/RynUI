@@ -696,6 +696,8 @@ def verify_native_control_geometry(cell,row,commands):
             membership(source,'packed_index','rounded_effect')
     if cell['kind']=='shadow':
         shadow=membership(source,'packed_index','rounded_effect')
+        if source.get('caster_knockout') is not True:
+            raise ProtocolError('actual box shadow lacks the caster knockout')
         fill=membership(source.get('occluding_fill',{}))
         if shadow[0]>=fill[0]:raise ProtocolError('actual shadow must precede its occluding fill')
     if cell['kind']=='sourceover':
@@ -882,11 +884,9 @@ def measure_controls(corpus,trial,observations,images,priors):
                     if not result['valid']:failures.add('shadow.output-material')
                     contribution=result['contributions'][0]
                     planes[side].append(min(1,max(0,contribution)))
-                    # CSS outer shadow knocks out the original box. Native's
-                    # full shadow is occluded by the actual fill once. A real
-                    # translucent mismatch fails this independent prior.
+                    # The border box clips the shadow before the fill composites.
                     if abs(distance)>1:
-                        shadow_alpha=alpha*gaussian*(1-cell['occluding_fill']['alpha'] if distance<0 else 1)
+                        shadow_alpha=0 if distance<0 else alpha*gaussian
                         predicted=source_over([v/255 for v in foreground],[v/255 for v in background],shadow_alpha)
                         if max(abs(a-b) for a,b in zip(rgb,predicted))>2/255:
                             failures.add('shadow.independent-gaussian-profile')

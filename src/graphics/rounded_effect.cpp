@@ -294,6 +294,16 @@ RoundedEffectInstance make_shadow_effect(LogicalRoundedRect shape, const ShadowL
     return instance;
 }
 
+RoundedEffectInstance make_exterior_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer,
+                                                  runtime::Point translation, std::optional<EffectClip> ancestor_clip) {
+    if (layer.kind != ShadowKind::outer || layer.blur <= 0.0F) {
+        throw std::invalid_argument("Exterior shadow requires a blurred outer layer");
+    }
+    auto result = make_shadow_effect(shape, layer, translation, std::move(ancestor_clip));
+    result.geometry.kind = RoundedEffectKind::exterior_shadow;
+    return result;
+}
+
 RoundedEffectInstance make_outline_effect(LogicalRoundedRect shape, float width, float offset, Color color,
                                           float opacity, runtime::Point translation,
                                           std::optional<EffectClip> ancestor_clip) {
@@ -386,9 +396,11 @@ void validate_rounded_effect(const RoundedEffectInstance& instance) {
     }
     switch (geometry.kind) {
     case RoundedEffectKind::outer_shadow:
+    case RoundedEffectKind::exterior_shadow:
     case RoundedEffectKind::inset_shadow:
         if (geometry.outline_width != 0.0F || geometry.outline_offset != 0.0F ||
-            !std::holds_alternative<std::monostate>(geometry.path)) {
+            !std::holds_alternative<std::monostate>(geometry.path) ||
+            (geometry.kind == RoundedEffectKind::exterior_shadow && geometry.blur <= 0.0F)) {
             throw std::invalid_argument("Shadow effect cannot contain outline geometry");
         }
         break;
@@ -589,11 +601,20 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
     const auto& geometry = instance.geometry;
     const auto base = translated(geometry.shape, geometry.translation);
     switch (geometry.kind) {
-    case RoundedEffectKind::outer_shadow: {
+    case RoundedEffectKind::outer_shadow:
+    case RoundedEffectKind::exterior_shadow: {
         auto shadow = spread_shape(base, geometry.spread);
+        if (empty(shadow.rect)) {
+            return 0.0F;
+        }
         shadow.rect.x += geometry.offset.x;
         shadow.rect.y += geometry.offset.y;
-        return gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F, antialias_width);
+        const float coverage =
+            gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F, antialias_width);
+        if (geometry.kind == RoundedEffectKind::exterior_shadow) {
+            return coverage * gaussian_edge(-rounded_rect_signed_distance(point, base), 0.0F, antialias_width);
+        }
+        return coverage;
     }
     case RoundedEffectKind::inset_shadow: {
         const float surface_coverage = gaussian_edge(rounded_rect_signed_distance(point, base), 0.0F, antialias_width);
@@ -671,7 +692,8 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
         return {bounds.x, bounds.y, 0, 0};
     }
     switch (geometry.kind) {
-    case RoundedEffectKind::outer_shadow: {
+    case RoundedEffectKind::outer_shadow:
+    case RoundedEffectKind::exterior_shadow: {
         const auto spread = spread_shape({bounds, geometry.shape.radius}, geometry.spread);
         if (empty(spread.rect)) {
             return spread.rect;
@@ -1041,10 +1063,12 @@ RoundedEffectRequirements RoundedEffectStore::live_requirements() const noexcept
             continue;
         }
         result.paint = result.paint || slot.instance->material.paint.has_value();
+        result.exterior_shadow =
+            result.exterior_shadow || slot.instance->geometry.kind == RoundedEffectKind::exterior_shadow;
         if (const auto* arc = std::get_if<RoundedArcPath>(&slot.instance->geometry.path)) {
             result.nonround_caps = result.nonround_caps || arc->cap != ArcCap::Round;
         }
-        if (result.paint && result.nonround_caps) {
+        if (result.paint && result.nonround_caps && result.exterior_shadow) {
             break;
         }
     }
