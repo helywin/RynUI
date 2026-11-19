@@ -1,5 +1,6 @@
 #include "graphics/rounded_effect.hpp"
 #include "graphics/arc_cap.hpp"
+#include "graphics/rect_coverage.hpp"
 #include "graphics/rounded_shadow.hpp"
 
 #include <algorithm>
@@ -482,6 +483,15 @@ float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shap
     return outside + inside - radius;
 }
 
+float rounded_rect_fill_coverage(runtime::Point point, LogicalRoundedRect shape, float antialias_width) noexcept {
+    if (shape.radius <= 0) {
+        const auto& rect = shape.rect;
+        const runtime::Point offset{point.x - (rect.x + rect.width * .5F), point.y - (rect.y + rect.height * .5F)};
+        return rect_sample_coverage(offset, {rect.width, rect.height}, antialias_width);
+    }
+    return gaussian_edge(rounded_rect_signed_distance(point, shape), 0, antialias_width);
+}
+
 RoundedPathSample rounded_rect_path_sample(runtime::Point point, LogicalRoundedRect shape,
                                            std::array<bool, 4> rounded_corners) {
     const auto r = std::clamp(shape.radius, 0.0F, std::min(shape.rect.width, shape.rect.height) / 2);
@@ -597,7 +607,7 @@ float tooltip_signed_distance(runtime::Point point, LogicalRoundedRect shape, To
 float rounded_shadow_gaussian(runtime::Point point, LogicalRoundedRect shape, float sigma,
                               float antialias_width) noexcept {
     if (sigma <= 0) {
-        return gaussian_edge(rounded_rect_signed_distance(point, shape), 0, antialias_width);
+        return rounded_rect_fill_coverage(point, shape, antialias_width);
     }
     constexpr double inverse_sqrt_two = 0.7071067811865475;
     constexpr double inverse_sqrt_tau = 0.3989422804014327;
@@ -657,14 +667,16 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
         shadow.rect.x += geometry.offset.x;
         shadow.rect.y += geometry.offset.y;
         if (geometry.kind == RoundedEffectKind::exterior_shadow) {
-            const float outside = gaussian_edge(-rounded_rect_signed_distance(point, base), 0, antialias_width);
+            const float outside = 1 - rounded_rect_fill_coverage(point, base, antialias_width);
             return outside > 0 ? outside * rounded_shadow_gaussian(point, shadow, geometry.blur * .5F, antialias_width)
                                : 0;
         }
-        return gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F, antialias_width);
+        return geometry.blur > 0
+                   ? gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F, antialias_width)
+                   : rounded_rect_fill_coverage(point, shadow, antialias_width);
     }
     case RoundedEffectKind::inset_shadow: {
-        const float surface_coverage = gaussian_edge(rounded_rect_signed_distance(point, base), 0.0F, antialias_width);
+        const float surface_coverage = rounded_rect_fill_coverage(point, base, antialias_width);
         auto shifted = base;
         shifted.rect.x += geometry.offset.x;
         shifted.rect.y += geometry.offset.y;
@@ -672,6 +684,12 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
         return surface_coverage * gaussian_edge(distance_inside, geometry.blur * 0.5F, antialias_width);
     }
     case RoundedEffectKind::outline: {
+        if (base.radius == 0) {
+            const auto rect = base.rect;
+            const runtime::Point offset{point.x - (rect.x + rect.width * .5F), point.y - (rect.y + rect.height * .5F)};
+            return rect_outline_sample_coverage(offset, {rect.width, rect.height}, geometry.outline_width,
+                                                geometry.outline_offset, antialias_width);
+        }
         const float distance = rounded_rect_signed_distance(point, base);
         const float half_aa = antialias_width * 0.5F;
         const float inner = smoothstep(geometry.outline_offset - half_aa, geometry.outline_offset + half_aa, distance);

@@ -1,4 +1,5 @@
 #include "scene_pass.hlsli"
+#include "rect_coverage.hlsli"
 #if defined(RYNUI_VERTEX_SHADER)
 #if !defined(RYNUI_COMPOSITION_PASS)
 cbuffer QuadViewport : register(b0, space1) {
@@ -55,9 +56,14 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
         return float4(input.color.rgb, 0.0);
     }
     float radiusPixels = saturate(input.cornerRadius) * min(pixelExtent.x, pixelExtent.y);
-    float2 roundedBox = abs(input.centeredPixels) - (0.5 * pixelExtent - float2(radiusPixels, radiusPixels));
-    float distance = length(max(roundedBox, 0.0)) + min(max(roundedBox.x, roundedBox.y), 0.0) - radiusPixels;
-    float coverage = 1.0 - smoothstep(-0.5, 0.5, distance);
+    float coverage;
+    if (radiusPixels == 0.0) {
+        coverage = RectSampleCoverage(input.centeredPixels, pixelExtent, 1.0);
+    } else {
+        float2 roundedBox = abs(input.centeredPixels) - (0.5 * pixelExtent - radiusPixels.xx);
+        float distance = length(max(roundedBox, 0.0)) + min(max(roundedBox.x, roundedBox.y), 0.0) - radiusPixels;
+        coverage = 1.0 - smoothstep(-0.5, 0.5, distance);
+    }
 #if defined(RYNUI_COMPOSITION_PASS)
     if (drawCoverageControl.x == 1u) {
         coverage = 1.0;

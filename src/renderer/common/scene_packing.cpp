@@ -1,4 +1,5 @@
 #include "renderer/common/scene_packing.hpp"
+#include "graphics/rect_coverage.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -74,12 +75,17 @@ std::array<float, 4> quad_gpu_fragment_reference(runtime::Point point_pixels, co
         const auto center_y = (py(first.position_ndc.y) + py(last.position_ndc.y)) * 0.5F;
         const auto radius = std::clamp(instance.corner_radius, 0.0F, 1.0F) *
                             std::min(first.pixel_extent.width, first.pixel_extent.height);
-        const auto qx = std::abs(point_pixels.x - center_x) - (first.pixel_extent.width * 0.5F - radius);
-        const auto qy = std::abs(point_pixels.y - center_y) - (first.pixel_extent.height * 0.5F - radius);
-        const auto distance =
-            std::hypot(std::max(qx, 0.0F), std::max(qy, 0.0F)) + std::min(std::max(qx, qy), 0.0F) - radius;
-        const auto t = std::clamp(distance + 0.5F, 0.0F, 1.0F);
-        coverage = 1 - t * t * (3 - 2 * t);
+        const runtime::Point offset{point_pixels.x - center_x, point_pixels.y - center_y};
+        if (radius == 0) {
+            coverage = graphics::rect_sample_coverage(offset, first.pixel_extent, 1);
+        } else {
+            const auto qx = std::abs(offset.x) - (first.pixel_extent.width * 0.5F - radius);
+            const auto qy = std::abs(offset.y) - (first.pixel_extent.height * 0.5F - radius);
+            const auto distance =
+                std::hypot(std::max(qx, 0.0F), std::max(qy, 0.0F)) + std::min(std::max(qx, qy), 0.0F) - radius;
+            const auto t = std::clamp(distance + 0.5F, 0.0F, 1.0F);
+            coverage = 1 - t * t * (3 - 2 * t);
+        }
     }
     return {instance.color[0], instance.color[1], instance.color[2], instance.color[3] * instance.opacity * coverage};
 }

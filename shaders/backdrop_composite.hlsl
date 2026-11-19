@@ -39,7 +39,7 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
     float4 b = Background.Load(address);
     float4 f = Filtered.Load(address);
     float4 e = tintPM + f * (1.0 - tintPM.a);
-    float m = GaussianEdge(RoundedRectDistance(p, shapeRect, radiusAA.x), 0.0, radiusAA.y) * activation.x;
+    float m = RoundedRectFillCoverage(p, shapeRect, radiusAA.x, radiusAA.y) * activation.x;
     // A replacement pass: the pipeline MUST disable hardware blending.
     return lerp(b, e, m);
 }

@@ -1,6 +1,8 @@
 #ifndef RYNUI_ROUNDED_EFFECT_COVERAGE
 #define RYNUI_ROUNDED_EFFECT_COVERAGE
 
+#include "rect_coverage.hlsli"
+
 float RoundedRectDistance(float2 samplePosition, float4 rect, float radius) {
     radius = clamp(radius, 0.0, 0.5 * min(rect.z, rect.w));
     float2 center = rect.xy + 0.5 * rect.zw;
@@ -24,6 +26,13 @@ float GaussianEdge(float signedDistance, float sigma, float antialiasWidth) {
         return 1.0 - smoothstep(-halfAntialias, halfAntialias, signedDistance);
     }
     return saturate(0.5 * (1.0 - ErfApprox(signedDistance * 0.7071067811865475 / sigma)));
+}
+
+float RoundedRectFillCoverage(float2 samplePosition, float4 rect, float radius, float antialiasWidth) {
+    if (radius <= 0.0) {
+        return RectSampleCoverage(samplePosition - (rect.xy + rect.zw * 0.5), rect.zw, antialiasWidth);
+    }
+    return GaussianEdge(RoundedRectDistance(samplePosition, rect, radius), 0.0, antialiasWidth);
 }
 
 float GaussianInterval(float first, float last) {
@@ -54,7 +63,7 @@ float RoundedShadowStrip(float fromSide, float y, float height, float radius, fl
 
 float RoundedShadowGaussian(float2 samplePosition, float4 shape, float radius, float sigma, float antialiasWidth) {
     if (sigma <= 0.0) {
-        return GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.0, antialiasWidth);
+        return RoundedRectFillCoverage(samplePosition, shape, radius, antialiasWidth);
     }
     float2 local = samplePosition - shape.xy;
     float coverage = GaussianInterval((radius - local.x) / sigma, (shape.z - radius - local.x) / sigma) *
@@ -255,21 +264,25 @@ float LegacyEffectCoverage(float2 samplePosition, float4 shapeRect, float4 shado
         radius = clamp(radius + spread, 0.0, 0.5 * min(shape.z, shape.w));
         shape.xy += offset;
         if (kind == 6.0) {
-            float casterDistance = RoundedRectDistance(samplePosition, shapeRect, shadowParams.x);
-            float outside = GaussianEdge(-casterDistance, 0.0, materialParams.y);
+            float outside = 1.0 - RoundedRectFillCoverage(samplePosition, shapeRect, shadowParams.x, materialParams.y);
             if (outside > 0.0) {
                 coverage = outside * RoundedShadowGaussian(samplePosition, shape, radius, 0.5 * blur, materialParams.y);
             }
         } else {
-            coverage = GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.5 * blur, materialParams.y);
+            coverage = blur > 0.0 ? GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.5 * blur,
+                                                 materialParams.y)
+                                  : RoundedRectFillCoverage(samplePosition, shape, radius, materialParams.y);
         }
     } else if (kind < 1.5) {
-        float surfaceDistance = RoundedRectDistance(samplePosition, shape, radius);
-        float surfaceCoverage = GaussianEdge(surfaceDistance, 0.0, materialParams.y);
+        float surfaceCoverage = RoundedRectFillCoverage(samplePosition, shape, radius, materialParams.y);
         shape.xy += offset;
         float distanceInside = -RoundedRectDistance(samplePosition, shape, radius) - spread;
         coverage = surfaceCoverage * GaussianEdge(distanceInside, 0.5 * blur, materialParams.y);
     } else if (kind < 2.5) {
+        if (radius == 0.0) {
+            return RectOutlineSampleCoverage(samplePosition - (shape.xy + shape.zw * 0.5), shape.zw, outlineWidth,
+                                             outlineOffset, materialParams.y);
+        }
         float distance = RoundedRectDistance(samplePosition, shape, radius);
         float halfAntialias = 0.5 * materialParams.y;
         float inner = smoothstep(outlineOffset - halfAntialias, outlineOffset + halfAntialias, distance);

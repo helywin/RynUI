@@ -182,6 +182,19 @@ void test_shape_raster_guard_and_composited_edges() {
     require(saw_outside_coverage, "raster regression did not exercise coverage outside nominal shape bounds");
 }
 
+void test_square_quad_integrates_the_pixel_area() {
+    using namespace ryn;
+    const auto viewport = detail::quad_viewport_uniform(100, 80);
+    const auto sample = [&](std::array<float, 4> bounds) {
+        const auto quad = detail::pack_quad_instance({bounds, {1, 0, 0, 1}, 1, 0, {}}, {100, 80, 1});
+        return detail::quad_gpu_fragment_reference({20.5F, 20.5F}, quad, viewport)[3];
+    };
+    require(std::abs(sample({20.25F, 20.25F, 16, 16}) - .5625F) < 1e-5F,
+            "fractional corner must be the intersection of both pixel intervals");
+    require(std::abs(sample({20.375F, 20.25F, .25F, .5F}) - .125F) < 1e-5F,
+            "opposite edges of a subpixel rectangle gained or lost coverage");
+}
+
 void test_zero_area_and_viewport_raster_clipping() {
     using namespace ryn;
     const auto viewport = detail::quad_viewport_uniform(100, 80);
@@ -449,6 +462,7 @@ int main() {
     try {
         test_instance_layout_matches_shader_contract();
         test_shape_raster_guard_and_composited_edges();
+        test_square_quad_integrates_the_pixel_area();
         test_zero_area_and_viewport_raster_clipping();
         test_initial_upload_preserves_instance_bytes();
         test_full_retry_after_batch_submit_failure();

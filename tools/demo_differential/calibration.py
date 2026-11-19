@@ -27,10 +27,10 @@ POLICY = {
     'color.flat_delta_e00': ('delta-e00','srgb-D65-flat',1,0,.01,.1),
     'color.text_interior_delta_e00': ('delta-e00','srgb-D65-ink-core',1,0,.01,.1),
     'pixels.coverage_mass_relative_error': ('relative','per-shape',.05,0,.001,.002),
-    'pixels.contour_distance_px': ('physical-px','integer-coverage-half-isocontour',.5,0,0,.5),
+    'pixels.contour_distance_px': ('physical-px','sampled-coverage-half-isocontour',.5,0,0,.5),
     'pixels.coverage_local_relative_error': ('relative','fixed-2x2-coverage-cells',.05,0,.001,.002),
     'text.coverage_mass_relative_error': ('relative','per-semantic-group',.05,0,.001,.002),
-    'text.contour_distance_px': ('physical-px','integer-coverage-half-isocontour',1,0,0,.5),
+    'text.contour_distance_px': ('physical-px','sampled-coverage-half-isocontour',1,0,0,.5),
     'text.projection_relative_error': ('relative','per-group-row-and-column',.05,0,.001,.002),
     'shadow.coverage_mass_relative_error': ('relative','soft-shadow-visible-support',.05,0,.001,.002),
     'shadow.projection_relative_error': ('relative','soft-shadow-row-and-column',.05,0,.001,.002),
@@ -676,7 +676,7 @@ def verify_native_control_geometry(cell,row,commands):
         if kind=='quad' and part.get('clip_kind')!='viewport':raise ProtocolError('actual control clip kind unavailable')
         return matches[0],index
     if cell['kind']=='border':
-        if cell['radius']==0:
+        if cell['radius']==0 and 'quad_parts' in source:
             expected=[dict(x=r['x'],y=r['y'],width=r['width'],height=1),
                 dict(x=r['x'],y=r['y']+r['height']-1,width=r['width'],height=1),
                 dict(x=r['x'],y=r['y']+1,width=1,height=r['height']-2),
@@ -690,7 +690,7 @@ def verify_native_control_geometry(cell,row,commands):
                     raise ProtocolError('actual square border material differs')
         else:
             shape={**r,'x':r['x']+1,'y':r['y']+1,'width':r['width']-2,'height':r['height']-2}
-            if (source.get('actual_shape')!=shape or source.get('actual_shape_radius')!=cell['radius']-1 or
+            if (source.get('actual_shape')!=shape or source.get('actual_shape_radius')!=max(0,cell['radius']-1) or
                     source.get('outline_width')!=1 or source.get('outline_offset')!=0):
                 raise ProtocolError('actual inset outline/canonical border mapping differs')
             membership(source,'packed_index','rounded_effect')
@@ -1023,7 +1023,9 @@ def measure_controls(corpus,trial,observations,images,priors):
             # directly. A thin stroke may have no half-coverage pixel nearby.
             if not is_text and not reference_aa_is_bounded(planes[1],(width,height),uncertainty=reference_uncertainty):
                 failures.add('geometry.reference-aa-exceeds-one-physical-pixel')
-            measured=coverage_metrics(planes[1],planes[0],(width,height))
+            contrast_rgb8=(not is_text and alpha==1 and
+                           {tuple(foreground),tuple(background)}=={(0,0,0),(255,255,255)})
+            measured=coverage_metrics(planes[1],planes[0],(width,height),full_contrast_rgb8=contrast_rgb8)
             prefix='text' if cell['kind']=='text' else 'pixels'
             if not measured['required_ink_present']:
                 failures.add('presence.glyph' if cell['kind']=='text' else 'presence.icon' if cell['kind']=='icon' else 'presence.shape')

@@ -4,12 +4,12 @@
 
 int main() {
     const ryn::runtime::Rect area{12.5F, 16.5F, 40, 24};
-    for (const auto radius : {4.0F, 8.0F}) {
+    for (const auto radius : {0.0F, 4.0F, 8.0F}) {
         const auto effect = rynui::test::inside_border(area, radius, ryn::Color{0, 0, 0, 1});
         ryn::graphics::validate_rounded_effect(effect);
         const auto canonical = rynui::test::border_box(effect);
         if (canonical.rect != area || canonical.radius != radius || effect.geometry.outline_offset != 0 ||
-            effect.geometry.shape.rect.x != area.x + 1 || effect.geometry.shape.radius != radius - 1) {
+            effect.geometry.shape.rect.x != area.x + 1 || effect.geometry.shape.radius != std::max(0.0F, radius - 1)) {
             return 1;
         }
     }

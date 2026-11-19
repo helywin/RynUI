@@ -297,12 +297,10 @@ struct Board final {
         const auto name = cell.contains("render_icon") ? cell.at("render_icon").string() : cell.at("content").string();
         if (!is_icon) {
             const bool black_panel = cell.at("background").array()[0].integer() == 0;
-            const std::array<float, 4> border_color =
-                black_panel ? std::array{1.0F, 1.0F, 1.0F, 1.0F} : std::array{0.0F, 0.0F, 0.0F, 1.0F};
-            fill({area.x - 4, area.y - 4, area.width + 8, 1}, border_color);
-            fill({area.x - 4, area.y + area.height + 3, area.width + 8, 1}, border_color);
-            fill({area.x - 4, area.y - 4, 1, area.height + 8}, border_color);
-            fill({area.x + area.width + 3, area.y - 4, 1, area.height + 8}, border_color);
+            const Color border_color = black_panel ? Color{1, 1, 1, 1} : Color{0, 0, 0, 1};
+            const auto frame = effects.add(
+                rynui::test::inside_border({area.x - 4, area.y - 4, area.width + 8, area.height + 8}, 0, border_color));
+            pending.push_back({{}, frame});
         }
         std::vector<std::pair<std::string, font::FontIdentity>> layers;
         if (is_icon) {
@@ -539,7 +537,7 @@ struct Board final {
             } else if (kind == "border") {
                 const auto color = rgba(rgb);
                 const auto radius = static_cast<float>(cell.at("radius").number());
-                if (radius == 0) {
+                if (radius == 0 && cell.contains("omit_right_edge")) {
                     Json::Array parts;
                     const auto edges = rynui::test::square_border(area);
                     for (std::size_t i = 0; i < edges.size(); ++i) {

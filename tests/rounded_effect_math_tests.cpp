@@ -86,6 +86,15 @@ void test_rounded_rect_signed_distance_and_golden_mask() {
     }
 }
 
+void test_square_outline_has_single_pixel_coverage() {
+    using namespace ryn;
+    const auto effect = graphics::make_outline_effect({{21.5F, 21.5F, 17, 17}, 0}, 1.5F, 0, Color{0, 0, 0, 1});
+    require(std::abs(graphics::rounded_effect_coverage({21.5F, 21.5F}, effect, 1) - .75F) < 1e-6F,
+            "square outline corner must subtract the inner pixel area");
+    require(std::abs(graphics::rounded_effect_coverage({20.25F, 20.25F}, effect, 1) - .5625F) < 1e-6F,
+            "square outline rounded or overfilled its outer edge");
+}
+
 void test_shadow_and_outline_coverage() {
     const LogicalRoundedRect shape{{0.0F, 0.0F, 20.0F, 20.0F}, 4.0F};
     const auto blurred = outer(shape, 8.0F, 2.0F);
@@ -291,6 +300,7 @@ int main() {
     try {
         test_instance_value_contract();
         test_rounded_rect_signed_distance_and_golden_mask();
+        test_square_outline_has_single_pixel_coverage();
         test_shadow_and_outline_coverage();
         test_bounds_and_validation();
         test_zero_blur_and_inset_curved_edges_are_antialiased();

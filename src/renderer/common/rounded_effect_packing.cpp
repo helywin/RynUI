@@ -1,4 +1,5 @@
 #include "renderer/common/rounded_effect_packing.hpp"
+#include "graphics/rect_coverage.hpp"
 #include "graphics/rounded_shadow.hpp"
 
 #include <algorithm>
@@ -13,6 +14,7 @@ using graphics::RoundedEffectKind;
 using graphics::intersect_effect_bounds;
 using graphics::rounded_effect_bounds;
 using graphics::rounded_rect_signed_distance;
+using graphics::rounded_rect_fill_coverage;
 using graphics::validate_rounded_effect;
 
 namespace {
@@ -264,23 +266,29 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
         if (kind == RoundedEffectKind::exterior_shadow) {
-            const float outside =
-                gaussian_edge(-rounded_rect_signed_distance(point_pixels, caster), 0, antialias_width);
+            const float outside = 1 - rounded_rect_fill_coverage(point_pixels, caster, antialias_width);
             return outside > 0
                        ? outside * graphics::rounded_shadow_gaussian(point_pixels, shape, blur * .5F, antialias_width)
                        : 0;
         }
-        return gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F, antialias_width);
+        return blur > 0 ? gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F, antialias_width)
+                        : rounded_rect_fill_coverage(point_pixels, shape, antialias_width);
     }
     case RoundedEffectKind::inset_shadow: {
-        const float surface_coverage =
-            gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), 0.0F, antialias_width);
+        const float surface_coverage = rounded_rect_fill_coverage(point_pixels, shape, antialias_width);
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
         return surface_coverage *
                gaussian_edge(-rounded_rect_signed_distance(point_pixels, shape) - spread, blur * 0.5F, antialias_width);
     }
     case RoundedEffectKind::outline: {
+        if (shape.radius == 0) {
+            const auto rect = shape.rect;
+            const runtime::Point offset{point_pixels.x - (rect.x + rect.width * .5F),
+                                        point_pixels.y - (rect.y + rect.height * .5F)};
+            return graphics::rect_outline_sample_coverage(offset, {rect.width, rect.height}, outline_width,
+                                                          outline_offset, antialias_width);
+        }
         const float distance = rounded_rect_signed_distance(point_pixels, shape);
         const float half_aa = antialias_width * 0.5F;
         const float inner = smoothstep(outline_offset - half_aa, outline_offset + half_aa, distance);

@@ -159,6 +159,8 @@ make_corner_shadow_effects(LogicalRoundedRect shape, std::array<bool, 4> rounded
                            runtime::Point translation = {}, std::optional<EffectClip> ancestor_clip = {});
 
 [[nodiscard]] float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shape) noexcept;
+[[nodiscard]] float rounded_rect_fill_coverage(runtime::Point point, LogicalRoundedRect shape,
+                                               float antialias_width) noexcept;
 
 struct RoundedPathSample final {
     float distance{};

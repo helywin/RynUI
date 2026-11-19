@@ -16,7 +16,8 @@ if(NOT lock_result EQUAL 0)
 endif()
 file(READ "${SHADER_SOURCE}" shader_source)
 file(READ "${shader_root}/rounded_effect_coverage.hlsli" coverage_source)
-string(APPEND shader_source "\n${coverage_source}")
+file(READ "${shader_root}/rect_coverage.hlsli" rect_coverage_source)
+string(APPEND shader_source "\n${coverage_source}\n${rect_coverage_source}")
 
 foreach(contract IN ITEMS
         "nointerpolation float4 shapeRect"
@@ -30,7 +31,9 @@ foreach(contract IN ITEMS
         "samplePosition < input.clipBounds.xy"
         "samplePosition >= input.clipBounds.zw"
         "discard;"
-        "float surfaceDistance"
+        "RoundedRectFillCoverage"
+        "RectSampleCoverage"
+        "RectOutlineSampleCoverage"
         "float surfaceCoverage"
         "float antialiasWidth"
         "float outlineOffset"
@@ -88,7 +91,8 @@ foreach(artifact IN ITEMS
         message(FATAL_ERROR "Rounded-effect shader artifact is missing: ${artifact}")
     endif()
     file(TIMESTAMP "${artifact_path}" artifact_time "%s")
-    foreach(source IN ITEMS "${SHADER_SOURCE}" "${shader_root}/rounded_effect_coverage.hlsli" "${SHADER_LOCK}")
+    foreach(source IN ITEMS "${SHADER_SOURCE}" "${shader_root}/rounded_effect_coverage.hlsli"
+            "${shader_root}/rect_coverage.hlsli" "${SHADER_LOCK}")
         file(TIMESTAMP "${source}" source_time "%s")
         if(artifact_time LESS source_time)
             message(FATAL_ERROR "Rounded-effect shader artifact is stale: ${artifact} vs ${source}")
