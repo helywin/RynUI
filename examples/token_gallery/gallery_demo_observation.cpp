@@ -268,6 +268,14 @@ GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
             }
         }
     }
+    for (const auto id : app.rounded_effects().live_ids()) {
+        if (const auto packed = app.rounded_effects().packed_index(id)) {
+            const auto [source, inserted] = effect_sources.try_emplace(*packed, EffectSource{id, "unmapped-effect"});
+            if (!inserted && source->second.id != id) {
+                throw std::runtime_error("rounded effect role contradicts the retained identity");
+            }
+        }
+    }
     Json::Array layers;
     for (const auto& entry : app.components().paint_traversal()) {
         if (!in_roots(entry.component)) {
@@ -335,6 +343,10 @@ GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
                         layer.emplace("content_range", found->second.content_range);
                     }
                 } else if (command.kind == graphics::SceneDrawKind::rounded_effect) {
+                    const auto source = effect_sources.find(instance);
+                    if (source == effect_sources.end()) {
+                        throw std::runtime_error("actual rounded effect has no retained identity");
+                    }
                     const auto& effect = app.rounded_effects().packed_instances()[instance];
                     const auto& g = effect.geometry;
                     const auto& m = effect.material;
@@ -359,12 +371,8 @@ GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
                             {"paint_present", m.paint.has_value()}});
                     std::get<Json::Object>(layer.at("actual").value)
                         .emplace("path_present", !std::holds_alternative<std::monostate>(g.path));
-                    if (const auto found = effect_sources.find(instance); found != effect_sources.end()) {
-                        layer.emplace("primitive", identity(found->second.id));
-                        layer.emplace("role", found->second.role);
-                    } else {
-                        layer.emplace("role", "unmapped-effect");
-                    }
+                    layer.emplace("primitive", identity(source->second.id));
+                    layer.emplace("role", source->second.role);
                 } else if (command.kind == graphics::SceneDrawKind::glyph) {
                     const auto& glyph = app.text().scene_service().glyph_scene().instances().at(instance);
                     layer.emplace("role", "glyph");

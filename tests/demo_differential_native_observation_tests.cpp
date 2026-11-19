@@ -1,5 +1,6 @@
 #include "gallery_demo_scenario.hpp"
 #include "gallery_demo_hash.hpp"
+#include "gallery_demo_observation.hpp"
 #include "component/selection_component.hpp"
 #include "support/input_fixture.hpp"
 #if defined(RYNUI_DEMO_RECORDING_OBSERVATION)
@@ -75,6 +76,30 @@ GalleryDemoCaptureEvidence evidence(std::uint64_t id = 1) {
             true,
             std::string(64, 'a'),
             std::string(64, 'b')};
+}
+
+void observe_non_button_effect_identity() {
+    ryn_test::input_component::Fixture fixture;
+    fixture.buttons.mount([] { Tag(TagProps{}, TagContent{[] { Text(u8"Retained tag"); }}); });
+    fixture.synchronize();
+    const auto& scene = fixture.buttons.scene_composer().ordered_scene();
+    auto& store = fixture.buttons.rounded_effects();
+    const auto observed =
+        gallery_demo_paint_stack(fixture.buttons, fixture.buttons.components().root_components(), scene);
+    bool found = false;
+    for (const auto& layer : observed.at("layers").array()) {
+        if (layer.at("kind").integer() != static_cast<std::int64_t>(graphics::SceneDrawKind::rounded_effect) ||
+            !layer.at("in_submitted_scene").boolean() || layer.at("role").string() != "unmapped-effect") {
+            continue;
+        }
+        const auto& primitive = layer.at("primitive");
+        const graphics::RoundedEffectId id{static_cast<std::uint32_t>(primitive.at("index").integer()),
+                                           static_cast<std::uint32_t>(primitive.at("generation").integer())};
+        require(store.packed_index(id) == static_cast<std::uint32_t>(layer.at("packed_index").integer()),
+                "observed effect lost its retained generation or packed membership");
+        found = true;
+    }
+    require(found, "ordinary Tag produced no submitted effect outside the Button/Input/Select role tables");
 }
 
 void capture_controls() {
@@ -355,6 +380,7 @@ void semantic_and_retirement_controls() {
 int main() {
     try {
         capture_controls();
+        observe_non_button_effect_identity();
 #if defined(RYNUI_DEMO_RECORDING_OBSERVATION)
         recording_controls();
 #endif
