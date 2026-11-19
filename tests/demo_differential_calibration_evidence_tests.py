@@ -46,7 +46,7 @@ class EvidenceTests(unittest.TestCase):
         manifest=self.manifest()
         native=self.request(manifest,partition='negative',board='train',fault='opacity-squared',identity='opacity-squared',repetitions=1)
         web=self.request(manifest,side='web',partition='negative',board='train',fault='opacity-squared',identity='opacity-squared',repetitions=1)
-        self.assertEqual(len(native['cells']),312)
+        self.assertEqual(len(native['cells']),384)
         pair=next((a,b) for a,b in zip(native['cells'],web['cells']) if a['kind']=='alpha' and a['paint_opacity']!=b['paint_opacity'])
         self.assertEqual(pair[0]['source_alpha'],pair[1]['source_alpha'])
         self.assertEqual(pair[0]['paint_opacity'],pair[1]['paint_opacity']**2)

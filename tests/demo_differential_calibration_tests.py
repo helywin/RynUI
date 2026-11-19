@@ -160,10 +160,18 @@ class CalibrationTests(unittest.TestCase):
         corpus=read(FIXTURES/'pilot-calibration.json')
         before=deepcopy(corpus)
         a,b=control_cells(corpus,'train'),control_cells(corpus,'holdout')
-        self.assertEqual(len(a),312) # Seven-font baseline306 + dual-factor2 + shadow-fill4.
+        self.assertEqual(len(a),384)
         self.assertLessEqual(len(a),384)
-        self.assertEqual(len(a),len(b))
+        self.assertEqual(len(b),312)
         self.assertTrue(set(corpus['train']['text']).isdisjoint(corpus['holdout']['text']))
+        self.assertTrue(set(corpus['train']['phase_text']).isdisjoint(corpus['holdout']['text']))
+        holdout_ids={cell['identity'] for cell in b}
+        holdout_rects=[cell['rect'] for cell in b]
+        for kind in ('clip','icon','sourceover','shadow','text'):
+            extra=[cell for cell in a if cell['identity'] not in holdout_ids and cell['kind']==kind]
+            self.assertTrue(extra)
+            self.assertTrue(all(cell['rect'] not in holdout_rects for cell in extra))
+            self.assertTrue(all(any(coordinate%1 for coordinate in (cell['rect']['x'],cell['rect']['y'])) for cell in extra))
         moved=mutated_cells(corpus,'train','translate-all')
         self.assertTrue(all(y['rect']['x']==x['rect']['x']+1 for x,y in zip(a,moved)))
         erased=mutated_cells(corpus,'train','delete-icon')

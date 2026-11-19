@@ -660,9 +660,9 @@ def control_cells(corpus, board):
     phase=corpus[board]['phase']
     for panel_index,panel in enumerate(corpus['panels']):
         foreground=[255,255,255] if panel_index==0 else [0,0,0]
-        def add(name,kind,x,y,w,h,**fields):
+        def add(name,kind,x,y,w,h,*,phase_offset=(0,0),**fields):
             cells.append(dict(identity=f'p{panel_index}.{name}',kind=kind,
-                rect=dict(x=panel['x']+x+phase,y=panel['y']+y+phase,width=w,height=h),
+                rect=dict(x=panel['x']+x+phase+phase_offset[0],y=panel['y']+y+phase+phase_offset[1],width=w,height=h),
                 background=panel['rgb'],foreground=foreground,alpha=1,**fields))
         for i,rgb in enumerate(corpus['rgb_sentinels']):
             add('rgb'+str(i),'fill',12+64*i,16,28,24,rgb=rgb)
@@ -696,6 +696,29 @@ def control_cells(corpus, board):
             occluding_fill=dict(rgb=panel['rgb'],alpha=.5))
         add('shadow-no-fill','shadow',368,760,40,24,radius=6,shadow=corpus['shadow'],
             occluding_fill=dict(rgb=panel['rgb'],alpha=0))
+        if board=='train':
+            offsets=corpus[board]['phase_offsets']
+            for i,position in enumerate(offsets):
+                add('phase-clip'+str(i),'clip',12+128*i,191,32+4*i,22,
+                    phase_offset=position,radius=3+i,border=0,clip_width=20+i)
+            for i,(size,icon) in enumerate(zip(corpus['icon_sizes'],
+                    ('LoadingOutlined','CheckOutlined','DownOutlined','CloseCircleFilled'),strict=True)):
+                add('phase-icon'+str(i),'icon',12+64*i,810,size,size,
+                    phase_offset=(.5,.5),content=icon,font_size=size,font_weight=400)
+            add('phase-sourceover','sourceover',470,108,29,25,phase_offset=(.5,.5),
+                rgb=[24,112,218],source_alpha=.5,paint_opacity=1,second_rgb=[209,42,105],second_alpha=.5)
+            for i,fill in enumerate((.5,0)):
+                add('phase-shadow'+str(i),'shadow',345+124*i,820,31+8*i,18+2*i,phase_offset=offsets[i+1],
+                    radius=7-i,shadow=corpus['shadow'],occluding_fill=dict(rgb=panel['rgb'],alpha=fill))
+            add('phase-shadow-wide','shadow',245,820,38,22,phase_offset=offsets[1],
+                radius=4,shadow=corpus['shadow'],occluding_fill=dict(rgb=panel['rgb'],alpha=.5))
+            for size in corpus['font_sizes']:
+                for weight in corpus['font_weights']:
+                    for char in corpus[board]['phase_text']:
+                        offset=offsets[index%len(offsets)]
+                        add('glyph'+str(index),'text',12+(index%12)*44,340+(index//12)*40,30,32,
+                            phase_offset=offset,content=char,font_size=size,font_weight=weight)
+                        index+=1
     return validate_control_count(cells)
 
 
@@ -1749,7 +1772,7 @@ def _sfnt_priors(fonts,corpus,library,in_memory=None,*,control_assignment=True):
                             point=tuple(sum(math.comb(degree,i)*(1-t)**(degree-i)*t**i*p[j] for i,p in enumerate(points)) for j in (0,1))
                             self._lineTo(point)
                 cmap=font.getBestCmap()
-                chars=corpus['train']['text']+corpus['holdout']['text']
+                chars=[*corpus['train']['text'],*corpus['holdout']['text'],*corpus['train'].get('phase_text',())]
                 for char in chars:
                     if control_assignment and (ord(char)<128)!=(descriptor['identity']=='noto-sans'):continue
                     name=cmap.get(ord(char))

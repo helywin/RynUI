@@ -3,7 +3,13 @@
   "calibration_kind": "pilot-independent-v1",
   "viewport": {"width": 1280, "height": 900},
   "panels": [{"x": 16, "y": 16, "width": 560, "height": 868, "rgb": [0, 0, 0]}, {"x": 608, "y": 16, "width": 560, "height": 868, "rgb": [255, 255, 255]}],
-  "train": {"identity": "independent-train-v1", "text": ["H", "I", "M", "8", "中", "口", "田", "日"], "phase": 0},
+  "train": {
+    "identity": "independent-train-v2",
+    "text": ["H", "I", "M", "8", "中", "口", "田", "日"],
+    "phase": 0,
+    "phase_offsets": [[0.25, 0.75], [0.5, 0.5], [0.75, 0.25], [0.5, 0]],
+    "phase_text": ["l", "小"]
+  },
   "holdout": {"identity": "independent-holdout-v1", "text": ["N", "W", "A", "3", "木", "山", "川", "土"], "phase": 0.5},
   "rgb_sentinels": [[255, 0, 0], [0, 255, 0], [0, 0, 255], [0, 255, 255], [255, 0, 255], [255, 255, 0], [17, 83, 201], [255, 255, 255]],
   "gray_ramp": [0, 1, 2, 4, 8, 16, 32, 64, 96, 128, 160, 192, 224, 254, 255],
