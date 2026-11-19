@@ -759,7 +759,7 @@ def measure_controls(corpus,trial,observations,images,priors):
     Every control is checked on its own before entering the positive partition.
     Whole-board background/guard remains a hard independent prior.
     """
-    expected=control_cells(corpus,trial['board'])
+    cells=control_cells(corpus,trial['board'])
     values={}
     failures=set()
     def collect(name,value):
@@ -769,9 +769,9 @@ def measure_controls(corpus,trial,observations,images,priors):
             values[name]=max(values.get(name,0),value)
     dpr=observations[0]['capture']['dpr']
     for record in observations:
-        if [c['identity'] for c in record['controls']] != [c['identity'] for c in expected]:
+        if [c['identity'] for c in record['controls']] != [c['identity'] for c in cells]:
             raise RunError(4,'protocol','control stream is missing/reordered actual controls')
-    for index,cell in enumerate(expected):
+    for index,cell in enumerate(cells):
         actual=[record['controls'][index] for record in observations]
         for side,row in enumerate(actual):
             required(row,('identity','rect','kind','source'),'actual control')
@@ -886,8 +886,8 @@ def measure_controls(corpus,trial,observations,images,priors):
                     # full shadow is occluded by the actual fill once. A real
                     # translucent mismatch fails this independent prior.
                     if abs(distance)>1:
-                        expected=alpha*gaussian*(1-cell['occluding_fill']['alpha'] if distance<0 else 1)
-                        predicted=source_over([v/255 for v in foreground],[v/255 for v in background],expected)
+                        shadow_alpha=alpha*gaussian*(1-cell['occluding_fill']['alpha'] if distance<0 else 1)
+                        predicted=source_over([v/255 for v in foreground],[v/255 for v in background],shadow_alpha)
                         if max(abs(a-b) for a,b in zip(rgb,predicted))>2/255:
                             failures.add('shadow.independent-gaussian-profile')
             shifted={**r,'x':r['x']+cell['shadow']['offset'][0],'y':r['y']+cell['shadow']['offset'][1]}
@@ -1001,7 +1001,7 @@ def measure_controls(corpus,trial,observations,images,priors):
             key='projection_relative_error' if cell['kind']=='text' else 'coverage_local_relative_error'
             collect(prefix+'.'+key,measured[key])
     for index,declared_alpha in enumerate(corpus['alpha']):
-        pair=[next(c for c in expected if c['identity']==f'p{panel}.alpha{index}') for panel in (0,1)]
+        pair=[next(c for c in cells if c['identity']==f'p{panel}.alpha{index}') for panel in (0,1)]
         for raw,size in images:
             observed=[]
             for cell in pair:

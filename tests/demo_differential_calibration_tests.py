@@ -5,12 +5,13 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import zlib
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
-    png_metadata,verify_profile_evidence,evidence_manifest,outline_point)
+    png_metadata,verify_profile_evidence,evidence_manifest,outline_point,measure_controls)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 
@@ -79,6 +80,32 @@ class CalibrationTests(unittest.TestCase):
             pairs=[(a,b) for a,b in zip(cells,mutated) if a['kind']=='alpha']
             self.assertTrue(any(a[changed]!=b[changed] for a,b in pairs))
             self.assertTrue(all(a[stable]==b[stable] and b[changed]==a[changed]**2 for a,b in pairs))
+
+    def test_translucent_shadow_still_checks_dual_background_alpha(self):
+        black, white = [0, 0, 0], [255, 255, 255]
+        shadow = dict(identity='shadow', kind='shadow', rect=dict(x=24, y=24, width=12, height=12),
+                      radius=2, foreground=black, background=white,
+                      shadow=dict(rgb=black, alpha=.5, offset=[0, 0], blur=4, spread=0),
+                      occluding_fill=dict(rgb=white, alpha=.5))
+        cells = [shadow]
+        observed = [dict(identity='shadow', kind='shadow', rect=shadow['rect'], source=dict(
+            foreground=black, alpha=.5, source_alpha=.5, paint_opacity=1, encoded_rgba=[0, 0, 0, .5], opacity=1,
+            radius=2, offset=[0, 0], blur=4, spread=0,
+            occluding_fill=dict(foreground=white, source_alpha=.5, paint_opacity=1)))]
+        for panel, background in enumerate((black, white)):
+            identity = f'p{panel}.alpha0'
+            rect = dict(x=4 + 8 * panel, y=4, width=4, height=4)
+            cells.append(dict(identity=identity, kind='alpha', rect=rect, foreground=black, background=background,
+                              source_alpha=.5, paint_opacity=1))
+            observed.append(dict(identity=identity, kind='alpha', rect=rect, source=dict(foreground=black, alpha=.5,
+                source_alpha=.5, paint_opacity=1, encoded_rgba=[0, 0, 0, .5], opacity=1)))
+        snapshots = [dict(capture={'dpr': 1}, controls=observed)] * 2
+        images = [(bytes([255]) * (64 * 64 * 4), (64, 64))] * 2
+        with patch('demo_differential.calibration.control_cells', return_value=cells), \
+                patch('demo_differential.calibration.canvas_guard', return_value=({}, set())):
+            _, failures = measure_controls({'alpha': [.5], 'alpha_rgb': black}, {'board': 'train'}, snapshots, images, {})
+        self.assertIn('shadow.independent-gaussian-profile', failures)
+        self.assertIn('alpha.independent-unmix', failures)
 
     def test_seven_font_scope_and_fixed_glyph_layout(self):
         from demo_differential.pilots import FONTS
