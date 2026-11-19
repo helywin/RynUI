@@ -97,6 +97,16 @@ try {
     if(cell.kind==='text'||cell.kind==='icon')color=parseColor(getComputedStyle(owner.firstElementChild).color);
     const opacity=Number(computed.opacity);
     const source={foreground:color.rgb,alpha:color.alpha*opacity,source_alpha:color.alpha,paint_opacity:opacity};
+    if(cell.kind!=='text'&&cell.kind!=='icon'){
+      const x=Math.floor(cell.rect.x),y=Math.floor(cell.rect.y);
+      const matrix=new DOMMatrixReadOnly(computed.transform==='none'?undefined:computed.transform);
+      if(!matrix.is2D||matrix.a!==1||matrix.b!==0||matrix.c!==0||matrix.d!==1||
+          parseFloat(computed.left)!==x||parseFloat(computed.top)!==y||
+          Math.abs(matrix.e-(cell.rect.x-x))>1/64||Math.abs(matrix.f-(cell.rect.y-y))>1/64)
+        throw new Error('actual box paint origin or translation differs');
+      source.paint_origin=[parseFloat(computed.left),parseFloat(computed.top)];
+      source.paint_translation=[matrix.e,matrix.f];
+    }
     if(cell.kind==='border')source.border_width=parseFloat(computed.borderTopWidth);
     if(cell.kind==='shadow'){
       const values=computed.boxShadow.replace(/rgba?\([^)]+\)/,'').trim().split(/\s+/).map(parseFloat);

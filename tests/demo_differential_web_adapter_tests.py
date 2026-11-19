@@ -83,6 +83,43 @@ class WebBrowserTests(unittest.TestCase):
         records = web.validate_observations(output, req)
         return result, records, output
 
+    def test_fractional_calibration_border_samples_actual_paint_phase(self):
+        from demo_differential.adapters import process
+        from demo_differential.calibration import KIND, request_bytes
+        from demo_differential.reporting import write_json
+
+        parent = OUT / uuid.uuid4().hex
+        output = parent / 'frame'
+        for folder in ('tmp', 'cache', 'config'):
+            (output / folder).mkdir(parents=True)
+        prepared = json.loads((PREPARED / 'prepared.json').read_bytes())
+        tools = ROOT / 'tools/demo_reference_web'
+        bundle = parent / 'bundle'
+        process([prepared['node'], tools / 'build.mjs', PREPARED / 'prepared.json', bundle,
+                 tools / 'calibration.tsx'], parent / 'build-process', 90)
+        launch = uuid.uuid4().hex
+        rect = dict(x=64.5, y=48.5, width=40, height=24)
+        request = parent / 'request.json'
+        request.write_bytes(request_bytes(dict(calibration_kind=KIND, nonce=uuid.uuid4().hex,
+            process_launch_id=launch, board='holdout', fault='none', restart=False, repetitions=1,
+            actual_dpr=1.5, binding={}, font_files=[],
+            panels=[dict(x=0,y=0,width=128,height=96,rgb=[0,0,0])],
+            cells=[dict(identity='p0.border',kind='border',rect=rect,radius=0,foreground=[255,255,255])])))
+        config = output / 'worker.json'
+        write_json(config, dict(prepared=prepared,request_path=str(request),output=str(output),
+                                build=str(bundle),actual_font_sources=[]))
+        process([prepared['node'], tools / 'calibration.mjs', config], output / 'process', 90, launch_id=launch)
+        observation = json.loads((output / 'stream-0.json').read_bytes())
+        row, = observation['controls']
+        self.assertEqual(row['rect'],rect)
+        self.assertEqual(row['source']['paint_origin'],[64,48])
+        self.assertEqual(row['source']['paint_translation'],[.5,.5])
+        raw = (output / 'capture-0.rgba').read_bytes()
+        width = observation['capture']['width']
+        rows = [raw[4*(y*width+126)] for y in range(71,76)]
+        self.assertEqual([rows[i] for i in (0,2,4)],[0,255,0])
+        self.assertTrue(all(rows[i] in (63,64) for i in (1,3)),rows)
+
     def test_five_official_exports_really_execute(self):
         for demo in bootstrap.load_lock()['source']['demos']:
             with self.subTest(demo=demo):

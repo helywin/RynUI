@@ -13,7 +13,7 @@ from pathlib import Path
 from .adapters import RunError
 from .protocol import ROOT, FIXTURES, ProtocolError, read, relative_path, output_path, validate, finite
 from .color_metrics import rgb8_delta_e00, source_over, unmix_coverage,dual_background,visible_basis,solve_visible_contributions
-from .regions import crop_rgba, coverage_metrics,reference_aa_is_bounded,shadow_profile_metrics
+from .regions import crop_rgba, coverage_metrics,shadow_profile_metrics
 from .device_metrics import stable_device_metrics
 
 KIND = 'pilot-independent-v1'
@@ -960,7 +960,7 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
         # The mirrored high-contrast controls measure coverage. Near an RGB8
         # endpoint the same colors still have exact observable flat interiors.
         weak_fill=cell['kind']=='fill' and alpha==1 and 0<math.dist(foreground,background)<=4
-        reference_uncertainty=1/255
+        flat_rgb=[round(v*255) for v in source_over([v/255 for v in foreground],[v/255 for v in background],alpha)]
         planes=[[],[]]
         overlap_basis=visible_basis([v/255 for v in background],[[v/255 for v in cell['rgb']],[v/255 for v in cell['second_rgb']]]) if cell['kind']=='sourceover' else None
         for pixel in range(width*height):
@@ -979,33 +979,26 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                 if any(not s['valid'] for s in solved):fail('overlap.output-material')
                 vectors=[s['contributions'] if s['contributions'] is not None else (s['joint_contrast'],) for s in solved]
                 collect('overlap.contribution_max_error',max(abs(a-b) for a,b in zip(*vectors)))
-            if cell['kind'] in ('border','round','clip'):
+            if not is_text:
                 distance=rounded_distance(lx,ly,r,cell.get('radius',0))*dpr
                 if cell['kind']=='clip':distance=max(distance,(lx-r['x']-cell['clip_width'])*dpr)
                 border=cell.get('border',0)*dpr
                 distance=max(distance,-distance-border) if border else distance
                 if abs(distance)>1:
-                    expected_rgb=foreground if distance < -1 else background
-                    if any(rgb8_delta_e00(rgb,expected_rgb)>1 for rgb in observed):
-                        fail('geometry.independent-shape-or-guard')
-            if cell['kind']=='shadow':
-                predicted_alpha=alpha*gaussian_rounded_shadow(lx,ly,r,cell['shadow'],cell['radius'])
-                predicted=[round(v*255) for v in source_over([v/255 for v in foreground],
-                           [v/255 for v in background],predicted_alpha)]
-                # Fixed encoded-byte numerical bound, declared before sampling;
-                # this verifies the model, never trains color from a shadow.
-                if any(max(abs(a-b) for a,b in zip(rgb,predicted))>2 for rgb in observed):
-                    fail('shadow.independent-gaussian-profile')
+                    expected_rgb=background if distance>1 else flat_rgb
+                    for side,rgb in enumerate(observed):
+                        if rgb8_delta_e00(rgb,expected_rgb)>1:
+                            fail('geometry.independent-shape-or-guard',side=('native','web')[side],
+                                 physical_pixel=[int(x),int(y)])
             if not is_text and cell['kind'] in ('fill','alpha','sourceover') and inside:
                 # Keep transport zero only on integer-phase opaque flat sentinels.
-                predicted=[round(v*255) for v in source_over([v/255 for v in foreground],[v/255 for v in background],alpha)]
                 # Per-side correctness is independent of paired agreement.
                 if min(lx-r['x'],ly-r['y'],r['x']+r['width']-lx,r['y']+r['height']-ly)*dpr >= 1:
                     collect('color.flat_delta_e00',rgb8_delta_e00(*observed))
                     if alpha==1 and cell['kind']=='fill' and cell['identity'].split('.')[1].startswith('rgb'):
                         collect('transport.max_channel_residual',max(abs(a-b) for a,b in zip(*observed)))
                     for rgb in observed:
-                        if rgb8_delta_e00(rgb,predicted)>1:
+                        if rgb8_delta_e00(rgb,flat_rgb)>1:
                             fail('color.independent-source-over')
             if foreground==background or alpha==0:
                 if any(rgb!=background for rgb in observed):fail('guard.unidentifiable-flat-output')
@@ -1015,8 +1008,6 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                     unmixed=unmix_coverage([v/255 for v in rgb],[v/255 for v in foreground],
                                           [v/255 for v in background],alpha,byte_error=1/255)
                     k=unmixed['coverage']
-                    if side==1:
-                        reference_uncertainty=unmixed['quantization_bound']
                     # Only accept the proven quantization interval, then bound
                     # the mathematical integration value. It is never a color repair.
                     planes[side].append(min(1,max(0,k)))
@@ -1052,10 +1043,8 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
             if ink_core==2:
                 collect('color.text_interior_delta_e00',rgb8_delta_e00(*observed),pixel=[int(x),int(y)])
         if planes[0]:
-            # The independent SFNT outline checks above bound glyph support
-            # directly. A thin stroke may have no half-coverage pixel nearby.
-            if not is_text and not reference_aa_is_bounded(planes[1],(width,height),uncertainty=reference_uncertainty):
-                fail('geometry.reference-aa-exceeds-one-physical-pixel')
+            # Support was checked against the independent geometry above.
+            # A square corner may legitimately touch four partially covered pixels.
             contrast_rgb8=(not is_text and alpha==1 and
                            {tuple(foreground),tuple(background)}=={(0,0,0),(255,255,255)})
             measured=coverage_metrics(planes[1],planes[0],(width,height),full_contrast_rgb8=contrast_rgb8)

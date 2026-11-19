@@ -18,11 +18,23 @@ if(!Array.isArray(input.cells)||input.cells.length>384)throw new Error('control 
 // Full official import closure is retained and audited, without executing pilots.
 w.__controlSourceImports={ButtonBasic,InputClear,InputAffixes,SelectBasic,SelectSearch,enUS};
 const color=(rgb:number[],alpha=1) => `rgba(${rgb.join(',')},${alpha})`;
+
+function boxPaintPosition(x:number,y:number):React.CSSProperties {
+  const left=Math.floor(x);
+  const top=Math.floor(y);
+  const dx=x-left;
+  const dy=y-top;
+  // Use an integer layout origin for box painting and sample its fractional
+  // phase after layout. Blink otherwise rounds the box before painting it.
+  return {left,top,transform:dx||dy?`translate(${dx}px,${dy}px)`:undefined};
+}
+
 function Cell({cell}:any) {
   const {rect:r,kind}=cell;
   const rgb=cell.rgb ?? cell.foreground;
   const alpha=cell.source_alpha ?? 1;
-  const style:any={position:'absolute',left:r.x,top:r.y,width:r.width,height:r.height,boxSizing:'border-box'};
+  const placement=kind==='text'||kind==='icon' ? {left:r.x,top:r.y} : boxPaintPosition(r.x,r.y);
+  const style:any={position:'absolute',...placement,width:r.width,height:r.height,boxSizing:'border-box'};
   let child:any=null;
   if (['fill','alpha','sourceover','round','clip'].includes(kind)) {
     Object.assign(style,{background:color(rgb,alpha),borderRadius:cell.radius ?? 0});
@@ -52,7 +64,7 @@ function Cell({cell}:any) {
     }
     if (cell.clip_glyph_right_px) Object.assign(style,{overflow:'hidden'});
   } else throw new Error('unknown independent material');
-  return <>{kind==='text' && <div data-control-frame={cell.identity} style={{position:'absolute',left:r.x-4,top:r.y-4,
+  return <>{kind==='text' && <div data-control-frame={cell.identity} style={{position:'absolute',...boxPaintPosition(r.x-4,r.y-4),
     width:r.width+8,height:r.height+8,boxSizing:'border-box',border:'1px solid '+color(cell.background[0]===0?[255,255,255]:[0,0,0])}} />}
     <div data-control={cell.identity} style={style}>{child}</div></>;
 }

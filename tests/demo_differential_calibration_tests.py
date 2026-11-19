@@ -209,6 +209,32 @@ class CalibrationTests(unittest.TestCase):
                 if is_core:
                     self.assertEqual(details['metrics']['color.text_interior_delta_e00']['physical_pixel'],[x,y])
 
+    def test_fractional_box_uses_its_source_geometry_to_bound_antialiasing(self):
+        rect=dict(x=10.75,y=10.75,width=8,height=8)
+        cell=dict(identity='p0.fill',kind='fill',rect=rect,foreground=[255]*3,background=[0]*3)
+        row=dict(identity=cell['identity'],kind='fill',rect=rect,source=dict(foreground=[255]*3,alpha=1,
+                 source_alpha=1,paint_opacity=1,encoded_rgba=[1,1,1,1],opacity=1))
+        observations=[dict(capture={'dpr':1},controls=[row])]*2
+        image=bytearray((0,0,0,255)*32*32)
+        for y in range(10,19):
+            for x in range(10,19):
+                width=min(x+1,18.75)-max(x,10.75)
+                height=min(y+1,18.75)-max(y,10.75)
+                i=4*(y*32+x)
+                image[i:i+3]=bytes([round(255*width*height)]*3)
+        with patch('demo_differential.calibration.control_cells',return_value=[cell]), \
+                patch('demo_differential.calibration.canvas_guard',return_value=({},set())):
+            inputs=({'alpha':[]},{'board':'holdout'},observations,[(image,(32,32))]*2,{})
+            self.assertEqual(measure_controls(*inputs)[1],[])
+            # Even the same leaked pixel on both sides must fail the source gate.
+            i=4*(10*32+8)
+            image[i:i+3]=bytes([32]*3)
+            details={}
+            _,failures=measure_controls(*inputs,details=details)
+            name='geometry.independent-shape-or-guard'
+            self.assertIn(name,failures)
+            self.assertEqual(details['first_hard_failures'][name]['physical_pixel'],[8,10])
+
     def test_seven_font_scope_and_fixed_glyph_layout(self):
         from demo_differential.pilots import FONTS
         corpus=read(FIXTURES/'pilot-calibration.json')
