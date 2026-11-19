@@ -62,6 +62,27 @@ function actualNode() {
   return result;
 }
 
+async function readActualNodes(cdp, nodes) {
+  const records = new Map();
+  const batchSize = 16;
+  const declaration = actualNode.toString();
+  for (let start = 0; start < nodes.length; start += batchSize) {
+    await Promise.all(nodes.slice(start, start + batchSize).map(async id => {
+      const remote = await cdp.send('DOM.resolveNode', {backendNodeId: id});
+      if (!remote.object.objectId) return;
+      try {
+        const query = await cdp.send('Runtime.callFunctionOn', {objectId: remote.object.objectId,
+          functionDeclaration: declaration, returnByValue: true});
+        if (query.exceptionDetails) throw new Error('actual paint-bearing node query failed');
+        records.set(id, query.result.value);
+      } finally {
+        await cdp.send('Runtime.releaseObject', {objectId: remote.object.objectId});
+      }
+    }));
+  }
+  return records;
+}
+
 export async function observePaintStack(cdp, identities, {nonce,step,revision,viewport}) {
   const liveViewport=(await cdp.send('Runtime.evaluate',{expression:'({scroll_x:scrollX,scroll_y:scrollY,width:innerWidth,height:innerHeight,dpr:devicePixelRatio})',returnByValue:true})).result.value;
   const roots=[];
@@ -84,24 +105,25 @@ export async function observePaintStack(cdp, identities, {nonce,step,revision,vi
     for(let current=index;current!==undefined;current=parent.get(current))if(current===root.index)return true;
     return false;
   }).map(root=>root.identity);
-  const layers=[];
+  const ownedLayouts=[];
+  const backendNodes=new Set();
   for(let ordinal=0;ordinal<snapshot.layoutTreeNodes.length;ordinal++) {
     const layout=snapshot.layoutTreeNodes[ordinal], node=snapshot.domNodes[layout.domNodeIndex];
     const owned=owners(layout.domNodeIndex);
     if(!owned.length)continue;
+    ownedLayouts.push({ordinal,layout,node,owned});
+    if(!node.pseudoType)backendNodes.add(node.backendNodeId);
+  }
+  // Read each real node once per snapshot, even when it has multiple layout
+  // fragments. Keep the final layer and ancestry order from DOMSnapshot.
+  const actualNodes=await readActualNodes(cdp,[...backendNodes]);
+  const layers=[];
+  for(const {ordinal,layout,node,owned} of ownedLayouts) {
     const style=Object.fromEntries((snapshot.computedStyles[layout.styleIndex]?.properties??[]).map(p=>[p.name,p.value]));
     const ancestry=[];
     for(let current=layout.domNodeIndex;current!==undefined;current=parent.get(current))ancestry.push(snapshot.domNodes[current].backendNodeId);
-    let actual={status:'unavailable',reason:'pseudo node has snapshot style/geometry only'};
-    if(!node.pseudoType) {
-      const remote=await cdp.send('DOM.resolveNode',{backendNodeId:node.backendNodeId});
-      if(remote.object.objectId)try {
-        const query=await cdp.send('Runtime.callFunctionOn',{objectId:remote.object.objectId,
-          functionDeclaration:actualNode.toString(),returnByValue:true});
-        if(query.exceptionDetails)throw new Error('actual paint-bearing node query failed');
-        actual=query.result.value;
-      } finally {await cdp.send('Runtime.releaseObject',{objectId:remote.object.objectId});}
-    }
+    const actual=actualNodes.get(node.backendNodeId)??{status:'unavailable',reason:node.pseudoType
+      ?'pseudo node has snapshot style/geometry only':'real node is unavailable in the current snapshot'};
     layers.push({source_material_id:nonce+'/'+node.backendNodeId+'/'+(node.pseudoType??'node'),
       backend_node_id:node.backendNodeId,owner_targets:owned,ancestry,pseudo:node.pseudoType??null,
       node_name:node.nodeName,node_type:node.nodeType,node_value:node.nodeValue,
