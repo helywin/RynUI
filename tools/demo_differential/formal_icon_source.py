@@ -59,7 +59,8 @@ def resource(name):
     return entry,ET.fromstring(raw),manifest,cmap
 
 
-def verify_web_icon(name, observed):
+def verify_web_icon(name, observed, *, calibration_offset=None):
+    """The calibration fixture may translate only its outer, measured owner."""
     entry,svg,_,_=resource(name)
     need(observed.get('source_kind')=='svg' and 'actual_font_sha256' not in observed,
          'Web SVG may not claim a native font')
@@ -79,10 +80,27 @@ def verify_web_icon(name, observed):
         need(actual.get('fill_rule')==rule and abs(float(actual.get('fill_opacity',-1))-opacity)<1e-6,'fill rule/opacity differs')
         chain=actual.get('ancestry')
         need(isinstance(chain,list) and chain,'missing actual SVG ancestry')
+        seen_svg=False
+        seen_owner=False
         for node in chain:
-            need(node.get('transform_attr') in (None,'') and node.get('transform_css') in ('none','matrix(1, 0, 0, 1, 0, 0)')
-                 and node.get('clip_path')=='none' and node.get('mask')=='none' and node.get('filter')=='none',
-                 'actual transform/clip/mask/filter differs')
+            need(node.get('transform_attr') in (None,'') and node.get('clip_path')=='none' and
+                 node.get('mask')=='none' and node.get('filter')=='none','actual transform/clip/mask/filter differs')
+            transform=node.get('transform_css')
+            if calibration_offset is not None and node.get('calibration_owner') is True:
+                need(seen_svg and not seen_owner and node.get('svg_root') is not True,'invalid calibration owner')
+                seen_owner=True
+                matrix=(1.,0.,0.,1.,0.,0.) if transform=='none' else ()
+                if isinstance(transform,str) and transform.startswith('matrix(') and transform.endswith(')'):
+                    try:matrix=tuple(float(field) for field in transform[7:-1].split(','))
+                    except ValueError:matrix=()
+                need(matrix==(1.,0.,0.,1.,*calibration_offset),'actual calibration owner translation differs')
+            else:
+                need(transform in ('none','matrix(1, 0, 0, 1, 0, 0)'),'actual SVG transform differs')
+            if node.get('svg_root') is True:
+                need(not seen_svg,'duplicate actual SVG root')
+                seen_svg=True
+        if calibration_offset is not None:
+            need(seen_owner,'missing actual calibration owner')
         need(actual.get('stroke')=='none','unexpected SVG stroke')
     return entry
 

@@ -97,7 +97,7 @@ try {
     if(cell.kind==='text'||cell.kind==='icon')color=parseColor(getComputedStyle(owner.firstElementChild).color);
     const opacity=Number(computed.opacity);
     const source={foreground:color.rgb,alpha:color.alpha*opacity,source_alpha:color.alpha,paint_opacity:opacity};
-    if(cell.kind!=='text'&&cell.kind!=='icon'){
+    if(cell.kind!=='text'){
       const x=Math.floor(cell.rect.x),y=Math.floor(cell.rect.y);
       const matrix=new DOMMatrixReadOnly(computed.transform==='none'?undefined:computed.transform);
       if(!matrix.is2D||matrix.a!==1||matrix.b!==0||matrix.c!==0||matrix.d!==1||
@@ -151,7 +151,7 @@ try {
           const style=getComputedStyle(part);const ancestry=[];
           for(let node=part;node;node=node.parentElement){
             const s=getComputedStyle(node);ancestry.push({transform_attr:node.getAttribute('transform'),transform_css:s.transform,
-              clip_path:s.clipPath,mask:s.maskImage,filter:s.filter});
+              clip_path:s.clipPath,mask:s.maskImage,filter:s.filter,svg_root:node===svg,calibration_owner:node===owner});
           }
           return {ordinal,d:part.getAttribute('d'),fill_rule:style.fillRule,fill_opacity:style.fillOpacity,fill:style.fill,
             stroke:style.stroke,ancestry};})};

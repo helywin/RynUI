@@ -53,6 +53,27 @@ class FormalIconTests(unittest.TestCase):
             else:web['paths'][0]['stroke']='rgb(0,0,0)'
             with self.subTest(fault=fault),self.assertRaises(ProtocolError):verify_web_icon('SearchOutlined',web)
 
+    def test_fractional_svg_accepts_only_the_declared_outer_calibration_translation(self):
+        web,_,_=self.receipts()
+        for path in web['paths']:
+            neutral=path['ancestry'][0]
+            path['ancestry']=[neutral,dict(neutral,svg_root=True),
+                dict(neutral,calibration_owner=True,transform_css='matrix(1, 0, 0, 1, 0.5, 0.5)')]
+        verify_web_icon('SearchOutlined',web,calibration_offset=(.5,.5))
+        with self.assertRaises(ProtocolError):verify_web_icon('SearchOutlined',web)
+        with self.assertRaises(ProtocolError):verify_web_icon('SearchOutlined',web,calibration_offset=(.25,.5))
+        for fault in ('path','svg','clip','scale','missing-owner','owner-inside-svg'):
+            bad=deepcopy(web)
+            chain=bad['paths'][0]['ancestry']
+            if fault=='path':chain[0]['transform_css']='matrix(1,0,0,1,0.5,0.5)'
+            elif fault=='svg':chain[1]['transform_css']='matrix(1,0,0,1,0.5,0.5)'
+            elif fault=='clip':chain[2]['clip_path']='inset(1px)'
+            elif fault=='scale':chain[2]['transform_css']='matrix(1.2,0,0,1,0.5,0.5)'
+            elif fault=='missing-owner':chain.pop()
+            else:chain[1],chain[2]=chain[2],chain[1]
+            with self.subTest(fault=fault),self.assertRaises(ProtocolError):
+                verify_web_icon('SearchOutlined',bad,calibration_offset=(.5,.5))
+
     def test_native_layer_glyph_face_atlas_and_final_membership(self):
         for fault in ('layer','codepoint','glyph','font','face','atlas','command','generation'):
             _,native,commands=self.receipts()

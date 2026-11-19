@@ -33,7 +33,7 @@ function Cell({cell}:any) {
   const {rect:r,kind}=cell;
   const rgb=cell.rgb ?? cell.foreground;
   const alpha=cell.source_alpha ?? 1;
-  const placement=kind==='text'||kind==='icon' ? {left:r.x,top:r.y} : boxPaintPosition(r.x,r.y);
+  const placement=kind==='text' ? {left:r.x,top:r.y} : boxPaintPosition(r.x,r.y);
   const style:any={position:'absolute',...placement,width:r.width,height:r.height,boxSizing:'border-box'};
   let child:any=null;
   if (['fill','alpha','sourceover','round','clip'].includes(kind)) {

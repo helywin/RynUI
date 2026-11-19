@@ -866,7 +866,10 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                 if cell['kind']=='icon':
                     from .formal_icon_source import verify_web_icon,verify_native_icon
                     try:
-                        if side:verify_web_icon(cell['content'],source.get('svg',{}))
+                        if side:
+                            position=tuple(cell['rect'][axis] for axis in ('x','y'))
+                            verify_web_icon(cell['content'],source.get('svg',{}),
+                                            calibration_offset=tuple(value-math.floor(value) for value in position))
                         else:verify_native_icon(cell['content'],source.get('icon_layers'),observations[side].get('submitted_commands'))
                     except ProtocolError:fail('source.formal-icon')
                 if cell['kind']=='text':
