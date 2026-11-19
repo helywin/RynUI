@@ -170,12 +170,16 @@ def candidate_rows(positives, holdouts, negatives):
             if not vector or any(type(v) not in (int,float) or not math.isfinite(v) or v < 0 for _,v in vector):
                 raise RunError(3,'calibration',label+' controls missing/non-finite: '+name)
             vectors.append(vector)
-        positive=max(v for _,v in vectors[0])
-        holdout=max(v for _,v in vectors[1])
-        negative=min(v for _,v in vectors[2])
+        positive_id,positive=max(vectors[0],key=lambda row:row[1])
+        holdout_id,holdout=max(vectors[1],key=lambda row:row[1])
+        negative_id,negative=min(vectors[2],key=lambda row:row[1])
         candidate=max(floor,positive+margin)
-        if candidate > cap or holdout > candidate or negative < candidate+gap:
-            raise RunError(3,'calibration','controls not separable inside fixed hard cap: '+name)
+        if candidate > cap:
+            raise RunError(3,'calibration',f'{name}: train {positive_id} candidate {candidate:.6g} exceeds cap {cap:.6g}')
+        if holdout > candidate:
+            raise RunError(3,'calibration',f'{name}: holdout {holdout_id} measured {holdout:.6g} exceeds {candidate:.6g}')
+        if negative < candidate+gap:
+            raise RunError(3,'calibration',f'{name}: negative {negative_id} measured {negative:.6g} is below {candidate+gap:.6g}')
         rows.append(dict(identity=name,unit=unit,domain=domain,threshold=candidate,hard_cap=cap,
             quantization_floor=floor,positive_max=positive,margin=margin,holdout_max=holdout,
             negative_min=negative,safety_gap=gap,positive_ids=[i for i,_ in vectors[0]],
@@ -328,7 +332,7 @@ def preflight_profile(options):
     return {**options,'comparison_site':str(site)}
 
 
-def evaluate_trials(manifest, paths, root, *, image_module=None):
+def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=None):
     if image_module is None:
         raise RunError(3,'calibration','locked image decoder is required to reconstruct calibration')
     verify_bootstrap(manifest,paths,root)
@@ -454,7 +458,10 @@ def evaluate_trials(manifest, paths, root, *, image_module=None):
         for control in observations[0]['controls']:
             if control['kind']=='text' and control['source'].get('raster_policy') not in manifest['environment']['native_capture']['font_raster_policies']:
                 raise RunError(3,'calibration','actual native control font raster policy differs')
-        values,hard_failures=measure_controls(corpus,trial,observations,images,manifest['font_priors'])
+        details = None if measurements is None else {}
+        values,hard_failures=measure_controls(corpus,trial,observations,images,manifest['font_priors'],details=details)
+        if measurements is not None:
+            measurements.append(dict(identity=trial['identity'],partition=partition,fault=trial['fault'],**details))
         if partition=='negative':
             definition=next((r for r in corpus['negative'] if r['identity']==trial['identity']),None)
             if not definition or definition['fault'] != trial['fault']:
@@ -755,7 +762,7 @@ def mutated_cells(corpus,board,fault):
     return cells
 
 
-def measure_controls(corpus,trial,observations,images,priors):
+def measure_controls(corpus,trial,observations,images,priors,*,details=None):
     """Recompute from full raw planes and observed control geometry/material/font.
 
     Every control is checked on its own before entering the positive partition.
@@ -764,72 +771,88 @@ def measure_controls(corpus,trial,observations,images,priors):
     cells=control_cells(corpus,trial['board'])
     values={}
     failures=set()
-    def collect(name,value):
+    if details is not None:
+        details['metrics']={}
+        details['first_hard_failures']={}
+    location={}
+
+    def fail(name,**witness):
+        if details is not None and name not in failures:
+            details['first_hard_failures'][name]={**location,**witness}
+        failures.add(name)
+
+    def collect(name,value,*,pixel=None):
         if value is None or not math.isfinite(value):
-            failures.add(name)
-        else:
-            values[name]=max(values.get(name,0),value)
+            fail(name)
+        elif name not in values or value>values[name]:
+            values[name]=value
+            if details is not None:
+                measurement=dict(location,value=value,hard_cap=CAPS[name])
+                if pixel is not None:
+                    measurement['physical_pixel']=pixel
+                details['metrics'][name]=measurement
     dpr=observations[0]['capture']['dpr']
     for record in observations:
         if [c['identity'] for c in record['controls']] != [c['identity'] for c in cells]:
             raise RunError(4,'protocol','control stream is missing/reordered actual controls')
     for index,cell in enumerate(cells):
+        location={'control':cell['identity'],'logical_rect':cell['rect']}
         actual=[record['controls'][index] for record in observations]
         text_origins=[None,None]
         for side,row in enumerate(actual):
             required(row,('identity','rect','kind','source'),'actual control')
             if row['kind'] != cell['kind']:
-                failures.add('source.material')
+                fail('source.material',side=('native','web')[side],observed_kind=row['kind'])
             source=row['source']
             if side==0:
                 try:verify_native_control_geometry(cell,row,observations[side].get('submitted_commands',[]))
-                except ProtocolError:failures.add('source.geometry-order-membership')
+                except ProtocolError:fail('source.geometry-order-membership')
             expected_foreground=cell['shadow']['rgb'] if cell['kind']=='shadow' else cell.get('rgb',cell['foreground'])
             expected_source_alpha=cell['shadow']['alpha'] if cell['kind']=='shadow' else cell.get('source_alpha',1)
             expected_opacity=cell.get('paint_opacity',1)
             expected_alpha=expected_source_alpha*expected_opacity
             if (source.get('foreground') != expected_foreground or type(source.get('alpha')) not in (int,float) or
                     abs(source['alpha']-expected_alpha)>1e-6):
-                failures.add('source.material')
+                fail('source.material')
             if (abs(source.get('source_alpha',-1)-expected_source_alpha)>1e-6 or
                     abs(source.get('paint_opacity',-1)-expected_opacity)>1e-6):
-                failures.add('source.alpha-opacity-factors')
+                fail('source.alpha-opacity-factors')
             if side==0:
                 encoded=source.get('encoded_rgba');opacity=source.get('opacity')
                 if (not isinstance(encoded,list) or len(encoded)!=4 or type(opacity) not in (int,float) or
                         any(type(v) not in (int,float) or not 0<=v<=1 for v in encoded) or not 0<=opacity<=1 or
                         any(abs(v-rgb/255)>1e-6 for v,rgb in zip(encoded[:3],expected_foreground)) or
                         abs(encoded[3]*opacity-expected_alpha)>1e-6):
-                    failures.add('source.actual-retained-material')
+                    fail('source.actual-retained-material')
             if 'radius' in cell and source.get('radius')!=cell['radius']:
-                failures.add('source.material')
+                fail('source.material')
             if cell['kind']=='sourceover' and (source.get('second_foreground')!=cell['second_rgb'] or source.get('second_alpha')!=cell['second_alpha']):
-                failures.add('source.material')
+                fail('source.material')
             if cell['kind']=='shadow' and (source.get('offset')!=cell['shadow']['offset'] or
                     source.get('blur')!=cell['shadow']['blur'] or source.get('spread')!=cell['shadow']['spread']):
-                failures.add('source.material')
+                fail('source.material')
             if cell['kind']=='shadow':
                 fill=source.get('occluding_fill',{})
                 if (fill.get('foreground')!=cell['occluding_fill']['rgb'] or
                         abs(fill.get('source_alpha',-1)-cell['occluding_fill']['alpha'])>1e-6 or
-                        fill.get('paint_opacity')!=1):failures.add('source.shadow-occlusion')
+                        fill.get('paint_opacity')!=1):fail('source.shadow-occlusion')
             if cell['kind']=='border' and source.get('border_width',source.get('outline_width'))!=cell['border']:
-                failures.add('source.material')
+                fail('source.material')
             if cell['kind']=='clip' and source.get('clip_rect')!={**cell['rect'],'width':cell['clip_width']}:
-                failures.add('source.clip')
+                fail('source.clip')
             collect('geometry.logical_px',max(abs(row['rect'][k]-cell['rect'][k]) for k in cell['rect']))
             if cell['kind'] in ('text','icon'):
                 source=row['source']
                 if cell['kind']=='text' and source.get('content') != cell['content'] or source.get('font_size') != cell['font_size']:
-                    failures.add('font.identity')
+                    fail('font.identity')
                 if source.get('font_weight') != cell['font_weight']:
-                    failures.add('font.identity')
+                    fail('font.identity')
                 if cell['kind']=='icon':
                     from .formal_icon_source import verify_web_icon,verify_native_icon
                     try:
                         if side:verify_web_icon(cell['content'],source.get('svg',{}))
                         else:verify_native_icon(cell['content'],source.get('icon_layers'),observations[side].get('submitted_commands'))
-                    except ProtocolError:failures.add('source.formal-icon')
+                    except ProtocolError:fail('source.formal-icon')
                 if cell['kind']=='text':
                     from .pilots import FONTS
                     primary=next(f['sha256'] for f in FONTS if f['identity']=='noto-sans' and
@@ -837,28 +860,28 @@ def measure_controls(corpus,trial,observations,images,priors):
                     allowed=[f['sha256'] for f in FONTS if f['weight']==cell['font_weight'] and
                              f['identity']==('noto-sans' if ord(cell['content'])<128 else 'noto-sans-cjk-sc')]
                     if source.get('actual_font_sha256') not in allowed:
-                        failures.add('font.identity')
+                        fail('font.identity')
                     prior=priors.get(source.get('actual_font_sha256','')+':'+cell['content'])
                     if prior is None:
-                        failures.add('font.identity')
+                        fail('font.identity')
                     else:
                         advance=prior['advance']*cell['font_size']/prior['units']
                         collect('text.geometry_logical_px',abs(source.get('advance',-1)-advance))
                         if side==0 and source.get('glyph_id')!=prior['glyph_id']:
-                            failures.add('font.cmap')
+                            fail('font.cmap')
                     if source.get('primary_font_sha256')!=primary or primary+':line' not in priors:
-                        failures.add('font.primary-line-face')
+                        fail('font.primary-line-face')
                     else:
                         try:
                             text_origins[side]=control_text_origin(source,cell['rect'],priors[primary+':line'],
                                                                   cell['font_size'],dpr,native=side==0)
                         except ProtocolError:
-                            failures.add('font.independent-line-placement')
+                            fail('font.independent-line-placement')
                 if not source.get('ink_boxes'):
-                    failures.add('presence.glyph' if cell['kind']=='text' else 'presence.icon')
+                    fail('presence.glyph' if cell['kind']=='text' else 'presence.icon')
                 if cell['kind']=='text':
                     if type(source.get('advance')) not in (int,float):
-                        failures.add('font.identity')
+                        fail('font.identity')
                     elif side:
                         collect('text.geometry_logical_px',abs(source['advance']-actual[0]['source']['advance']))
         if all(origin is not None for origin in text_origins):
@@ -873,7 +896,7 @@ def measure_controls(corpus,trial,observations,images,priors):
             try:
                 icon_outlines=control_icon_outlines(cell,actual,icon_priors,dpr)
             except ProtocolError:
-                failures.add('icon.independent-placement')
+                fail('icon.independent-placement')
         r=cell['rect']
         guard=20 if cell['kind']=='shadow' else 2
         box=(math.floor(r['x']*dpr)-guard,math.floor(r['y']*dpr)-guard,
@@ -894,7 +917,7 @@ def measure_controls(corpus,trial,observations,images,priors):
             if foreground==background:
                 # Black-on-black is visually unidentifiable; still validate source/order.
                 if any(list(data[p:p+3])!=background for data in crops for p in range(0,len(data),4)):
-                    failures.add('shadow.unidentifiable-flat-output')
+                    fail('shadow.unidentifiable-flat-output')
                 continue
             basis=visible_basis([v/255 for v in background],[[v/255 for v in foreground]])
             planes=[[],[]]
@@ -905,7 +928,9 @@ def measure_controls(corpus,trial,observations,images,priors):
                 for side,data in enumerate(crops):
                     rgb=[v/255 for v in data[pixel*4:pixel*4+3]]
                     result=solve_visible_contributions(rgb,basis,alphas=[alpha])
-                    if not result['valid']:failures.add('shadow.output-material')
+                    if not result['valid']:
+                        fail('shadow.output-material',side=('native','web')[side],
+                             physical_pixel=[box[0]+pixel%width,box[1]+pixel//width])
                     contribution=result['contributions'][0]
                     planes[side].append(min(1,max(0,contribution)))
                     # The border box clips the shadow before the fill composites.
@@ -913,12 +938,13 @@ def measure_controls(corpus,trial,observations,images,priors):
                         shadow_alpha=0 if distance<0 else alpha*gaussian
                         predicted=source_over([v/255 for v in foreground],[v/255 for v in background],shadow_alpha)
                         if max(abs(a-b) for a,b in zip(rgb,predicted))>2/255:
-                            failures.add('shadow.independent-gaussian-profile')
+                            fail('shadow.independent-gaussian-profile',side=('native','web')[side],
+                                 physical_pixel=[box[0]+pixel%width,box[1]+pixel//width])
             shifted={**r,'x':r['x']+cell['shadow']['offset'][0],'y':r['y']+cell['shadow']['offset'][1]}
             tails=tuple(i for i in range(width*height) if rounded_distance(
                 (box[0]+i%width+.5)/dpr,(box[1]+i//width+.5)/dpr,shifted,cell['radius'])>cell['shadow']['blur'])
             measured=shadow_profile_metrics(planes[1],planes[0],(width,height),tail_indices=tails)
-            if not measured['required_ink_present']:failures.add('presence.shadow')
+            if not measured['required_ink_present']:fail('presence.shadow')
             for key in ('coverage_mass_relative_error','projection_relative_error','profile_max_error','tail_max_error'):
                 collect('shadow.'+key,measured[key])
             continue
@@ -945,12 +971,12 @@ def measure_controls(corpus,trial,observations,images,priors):
             if weak_fill:
                 distance=rounded_distance(lx,ly,r,0)*dpr
                 if not all(weak_fill_pixel_matches(rgb,foreground,background,distance) for rgb in observed):
-                    failures.add('color.independent-weak-contrast-fill')
+                    fail('color.independent-weak-contrast-fill')
                 continue
             if overlap_basis is not None:
                 solved=[solve_visible_contributions([v/255 for v in rgb],overlap_basis,
                     alphas=[cell['source_alpha']*cell['paint_opacity'],cell['second_alpha']]) for rgb in observed]
-                if any(not s['valid'] for s in solved):failures.add('overlap.output-material')
+                if any(not s['valid'] for s in solved):fail('overlap.output-material')
                 vectors=[s['contributions'] if s['contributions'] is not None else (s['joint_contrast'],) for s in solved]
                 collect('overlap.contribution_max_error',max(abs(a-b) for a,b in zip(*vectors)))
             if cell['kind'] in ('border','round','clip'):
@@ -961,7 +987,7 @@ def measure_controls(corpus,trial,observations,images,priors):
                 if abs(distance)>1:
                     expected_rgb=foreground if distance < -1 else background
                     if any(rgb8_delta_e00(rgb,expected_rgb)>1 for rgb in observed):
-                        failures.add('geometry.independent-shape-or-guard')
+                        fail('geometry.independent-shape-or-guard')
             if cell['kind']=='shadow':
                 predicted_alpha=alpha*gaussian_rounded_shadow(lx,ly,r,cell['shadow'],cell['radius'])
                 predicted=[round(v*255) for v in source_over([v/255 for v in foreground],
@@ -969,7 +995,7 @@ def measure_controls(corpus,trial,observations,images,priors):
                 # Fixed encoded-byte numerical bound, declared before sampling;
                 # this verifies the model, never trains color from a shadow.
                 if any(max(abs(a-b) for a,b in zip(rgb,predicted))>2 for rgb in observed):
-                    failures.add('shadow.independent-gaussian-profile')
+                    fail('shadow.independent-gaussian-profile')
             if not is_text and cell['kind'] in ('fill','alpha','sourceover') and inside:
                 # Keep transport zero only on integer-phase opaque flat sentinels.
                 predicted=[round(v*255) for v in source_over([v/255 for v in foreground],[v/255 for v in background],alpha)]
@@ -980,9 +1006,9 @@ def measure_controls(corpus,trial,observations,images,priors):
                         collect('transport.max_channel_residual',max(abs(a-b) for a,b in zip(*observed)))
                     for rgb in observed:
                         if rgb8_delta_e00(rgb,predicted)>1:
-                            failures.add('color.independent-source-over')
+                            fail('color.independent-source-over')
             if foreground==background or alpha==0:
-                if any(rgb!=background for rgb in observed):failures.add('guard.unidentifiable-flat-output')
+                if any(rgb!=background for rgb in observed):fail('guard.unidentifiable-flat-output')
                 continue
             for side,rgb in enumerate(observed):
                 try:
@@ -995,10 +1021,10 @@ def measure_controls(corpus,trial,observations,images,priors):
                     # the mathematical integration value. It is never a color repair.
                     planes[side].append(min(1,max(0,k)))
                 except ProtocolError:
-                    failures.add('material.unmix')
+                    fail('material.unmix')
                     planes[side].append(0)
             if is_text and planes[1][-1]>=.98:
-                collect('color.text_interior_delta_e00',rgb8_delta_e00(*observed))
+                collect('color.text_interior_delta_e00',rgb8_delta_e00(*observed),pixel=[int(x),int(y)])
             if cell['kind']=='text':
                 for side,row in enumerate(actual):
                     prior=priors.get(row['source'].get('actual_font_sha256','')+':'+cell['content'])
@@ -1009,7 +1035,8 @@ def measure_controls(corpus,trial,observations,images,priors):
                     ink=outline_witness(prior,px,py,1/(scale*dpr))
                     k=planes[side][-1]
                     if ink is True and k<.98 or ink is False and k>1/255:
-                        failures.add('font.independent-outline')
+                        fail('font.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
+                             expected='ink' if ink else 'clear',observed_rgb=observed[side])
             if icon_outlines is not None:
                 for side,outlines in enumerate(icon_outlines):
                     witnesses=[outline_witness(prior,(lx-origin[0])/scale,(origin[1]-ly)/scale,1/(scale*dpr))
@@ -1017,24 +1044,26 @@ def measure_controls(corpus,trial,observations,images,priors):
                     if None not in witnesses:
                         k=planes[side][-1]
                         if any(witnesses) and k<.98 or not any(witnesses) and k>1/255:
-                            failures.add('icon.independent-outline')
+                            fail('icon.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
+                                 expected='ink' if any(witnesses) else 'clear',observed_rgb=observed[side])
         if planes[0]:
             # The independent SFNT outline checks above bound glyph support
             # directly. A thin stroke may have no half-coverage pixel nearby.
             if not is_text and not reference_aa_is_bounded(planes[1],(width,height),uncertainty=reference_uncertainty):
-                failures.add('geometry.reference-aa-exceeds-one-physical-pixel')
+                fail('geometry.reference-aa-exceeds-one-physical-pixel')
             contrast_rgb8=(not is_text and alpha==1 and
                            {tuple(foreground),tuple(background)}=={(0,0,0),(255,255,255)})
             measured=coverage_metrics(planes[1],planes[0],(width,height),full_contrast_rgb8=contrast_rgb8)
             prefix='text' if cell['kind']=='text' else 'pixels'
             if not measured['required_ink_present']:
-                failures.add('presence.glyph' if cell['kind']=='text' else 'presence.icon' if cell['kind']=='icon' else 'presence.shape')
+                fail('presence.glyph' if cell['kind']=='text' else 'presence.icon' if cell['kind']=='icon' else 'presence.shape')
             for key in ('coverage_mass_relative_error','contour_distance_px'):
                 collect(prefix+'.'+key,measured[key])
             key='projection_relative_error' if cell['kind']=='text' else 'coverage_local_relative_error'
             collect(prefix+'.'+key,measured[key])
     for index,declared_alpha in enumerate(corpus['alpha']):
         pair=[next(c for c in cells if c['identity']==f'p{panel}.alpha{index}') for panel in (0,1)]
+        location={'controls':[cell['identity'] for cell in pair]}
         for raw,size in images:
             observed=[]
             for cell in pair:
@@ -1045,14 +1074,16 @@ def measure_controls(corpus,trial,observations,images,priors):
                 solved=dual_background(*observed,(0,0,0),(1,1,1),tolerance=1/255)
                 effective_alpha=pair[0]['source_alpha']*pair[0]['paint_opacity']
                 if abs(solved['alpha']-effective_alpha)>2/255:
-                    failures.add('alpha.independent-unmix')
+                    fail('alpha.independent-unmix')
                 if declared_alpha and solved['foreground'] is not None and any(abs(a-b/255)>2/(255*declared_alpha) for a,b in zip(solved['foreground'],corpus['alpha_rgb'])):
-                    failures.add('color.independent-unmix')
+                    fail('color.independent-unmix')
             except ProtocolError:
-                failures.add('alpha.independent-unmix')
+                fail('alpha.independent-unmix')
     canvas_values,canvas_failures=canvas_guard(corpus,trial,observations,images)
+    location={'scope':'canvas'}
     for name,value in canvas_values.items():collect(name,value)
-    failures.update(canvas_failures)
+    for name in sorted(canvas_failures):
+        fail(name)
     return values,sorted(failures)
 
 
@@ -1406,7 +1437,9 @@ def calibrate(options):
                 manifest['artifacts'].append(dict(path=p.relative_to(directory).as_posix(),sha256=sha(p),bytes=p.stat().st_size))
         color['control_evidence_sha256']=digest(manifest['artifacts'])
         manifest['color']=color
-        rows=evaluate_trials(manifest,{a['path']:directory/a['path'] for a in manifest['artifacts']},directory,image_module=library)
+        report['measurements']=[]
+        rows=evaluate_trials(manifest,{a['path']:directory/a['path'] for a in manifest['artifacts']},directory,
+                             image_module=library,measurements=report['measurements'])
         encoded=json.dumps(manifest,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()+b'\n'
         evidence_sha=hashlib.sha256(encoded).hexdigest();evidence_path=directory/(evidence_sha+'.json')
         evidence_path.write_bytes(encoded)

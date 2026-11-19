@@ -93,6 +93,14 @@ class CalibrationTests(unittest.TestCase):
             else:p['simulated-train'][name]=float('nan')
             with self.subTest(fault=fault),self.assertRaises(RunError):candidate_rows(p,h,n)
 
+    def test_failed_candidate_identifies_the_control_and_measured_bound(self):
+        train={'train-0':{name:0 for name in POLICY}}
+        holdout={'holdout-5':{name:0 for name in POLICY}}
+        negatives={'negative-1':{name:1 for name in POLICY}}
+        holdout['holdout-5']['pixels.coverage_mass_relative_error']=.038
+        with self.assertRaisesRegex(RunError, r'pixels\.coverage_mass_relative_error: holdout holdout-5 measured 0\.038 exceeds 0\.001'):
+            candidate_rows(train,holdout,negatives)
+
     def test_old_handwritten_profile_cannot_validate_or_publish(self):
         template=read(FIXTURES/'profiles/pilot-pinned-font.uncalibrated.json')
         validate('profile',template)
@@ -152,9 +160,20 @@ class CalibrationTests(unittest.TestCase):
         images = [(bytes([255]) * (64 * 64 * 4), (64, 64))] * 2
         with patch('demo_differential.calibration.control_cells', return_value=cells), \
                 patch('demo_differential.calibration.canvas_guard', return_value=({}, set())):
-            _, failures = measure_controls({'alpha': [.5], 'alpha_rgb': black}, {'board': 'train'}, snapshots, images, {})
+            inputs=({'alpha': [.5], 'alpha_rgb': black}, {'board': 'train'}, snapshots, images, {})
+            details={}
+            values, failures=measure_controls(*inputs,details=details)
+            self.assertEqual((values,failures),measure_controls(*inputs))
         self.assertIn('shadow.independent-gaussian-profile', failures)
         self.assertIn('alpha.independent-unmix', failures)
+        first=details['first_hard_failures']['shadow.independent-gaussian-profile']
+        self.assertEqual((first['control'],first['side']),('shadow','native'))
+        self.assertEqual(first['logical_rect'],shadow['rect'])
+        self.assertEqual(len(first['physical_pixel']),2)
+        self.assertEqual(details['first_hard_failures']['alpha.independent-unmix']['controls'],
+                         ['p0.alpha0','p1.alpha0'])
+        for name, row in details['metrics'].items():
+            self.assertEqual((row['value'],row['hard_cap']),(values[name],CAPS[name]))
 
     def test_seven_font_scope_and_fixed_glyph_layout(self):
         from demo_differential.pilots import FONTS

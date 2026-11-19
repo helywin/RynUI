@@ -65,6 +65,8 @@ python -B tools/run_demo_differential.py replay --failure out/demo-differential/
 
 三个 source-bound 定义位于 `tools/demo_differential/pilots.py`，绑定真实 sample/function/header、完整有序 legacy target、固定 official demo/组件 hash，以及 Small/Middle、default 局部 Theme、中文标签、260 宽度、Input 前后缀/32 上限、desktop/service/unavailable 数据和受控 accept/reject。`pilot-coverage.json` 的 `ready` 表示 case 定义和两侧实际输入已验证。每次配对执行仍须验证完整回调和独立校准后的视觉指标。`profiles/pilot-pinned-font.uncalibrated.json` 是未校准的 schema 模板，运行时会拒绝它。
 
+`calibration-report.json` 在 `measurements` 中保留已评估的控制轮次、每项最大实测值和硬上限，以及各硬门槛第一次失败的控制标识与逻辑矩形。字形、图标和阴影的采样失败还记录侧别与物理像素坐标。无法区分训练、留出和故障控制时，错误消息给出触发的轮次、实测量和门槛。报告只保存在 `out/`，判定仍从真实原始回读独立复算。
+
 输入消费证据使用不可变 `resources.actual_initial_inputs` 和每次动作后的 `resources.actual_inputs`，从 mounted host、实际 editor、retained slot/ThemeScope/布局及官方 committed fiber/connected host 读取。Select 保留完整 factory 的 numeric/variants、multiple/tags/virtual/async、局部 Theme、prefix 和真实 popup 子控件；Web 初始关闭的合法 popup 可保持 deferred，首次挂载与声明的截止检查点仍须证明实际实例、seed、归属及真实输入消费。静态 options/说明结构继续逐次核对，异步数据由独立动作 oracle 校验。反馈通过真实 Text 实例及 `feedbacks` map 观察，逐步预期只取独立声明的 equals literal。它们不构成成对视觉通过或通用动态 status 覆盖。
 
 pilot 的 1280×900 表示 logical/CSS viewport；Windows 窗口坐标先按实际 display scale/pixel density 转换，再核对真实 logical/physical metrics。样例内宽 672 来自 `GalleryPagesHost` 的 `gallery_page_layout.hpp` 及样例 padding 声明，不读 native measured bounds 回填 Web。分组标题的内部不可选 marker 与 Web public disabled-group 分开，子选项 value 类型、顺序、label、disabled 始终独立核对；native 无法表达的 public disabled-group=true 明确拒绝。
