@@ -88,6 +88,8 @@ Web 读取 `DOMSnapshot.getSnapshot` 的真实 paintOrder、stacking context、U
 
 有额外高度的原生行框使用主字体的整数 logical ascent/descent，将半行余量的小数部分留在基线下方。固定行高、真实 glyph advance 与 fallback 墨迹边界保留原精度。无额外高度的行框及紧凑控件仍使用主字体精确度量居中。
 
+正式图标控制核对实际 SVG 视口和原生每层 atlas 的栅格原点。已有的 SVG 路径、字体、glyph ID 和最终提交成员检查继续执行。文字和图标的 AA 足迹以独立轮廓到像素的物理距离为界，细笔画没有半覆盖像素时仍在真实几何中校验。配对覆盖积分、轮廓距离及颜色阈值继续独立判定。
+
 正式比较按每个 Web 像素的有效材料色差取得覆盖率量化界，局部背景或上层合成改变时保留各自的界，继续使用固定的一物理像素 AA 带。原生外部镂空阴影保留真实提交的形状、模糊和 knockout；旧的非镂空阴影仍以自己的覆盖语义核验。
 
 有限域明确拒绝 gradient/image、非平移变换、非标准 blend/filter、椭圆 radius、多色 border corner、未支持的 pseudo text/text shadow，以及确实切入 paint support 的 rounded mask/backdrop。仅证明不切入当前 paint support 的实际祖先 rounded mask 可以继续消费。不存在有效控制间隔或来源事实不足时保持非零，不能借此声明 6.3–6.5 完成。所有 C++/GPU/browser 行为、312 controls / 26 negatives / 16 metrics 的最终校准与普通 pilot/meta 结果均以父线程在最终整合源码上的实际执行为准；源码与纯 Python 测试不替代这些证据。

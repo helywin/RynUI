@@ -270,6 +270,24 @@ struct Board final {
         return font_chains.emplace(key, std::move(result)).first->second;
     }
 
+    Json::Array atlas_raster_origin(const GlyphInstance& instance, std::uint32_t page,
+                                    const ryn::text::ShapedGlyph& glyph) {
+        const auto& entries = text.atlas().entries();
+        const auto entry = std::ranges::find_if(entries, [&](const auto& atlas_entry) {
+            return atlas_entry.page == page && atlas_entry.uv.left == instance.uv_rect[0] &&
+                   atlas_entry.uv.top == instance.uv_rect[1] && atlas_entry.uv.right == instance.uv_rect[2] &&
+                   atlas_entry.uv.bottom == instance.uv_rect[3];
+        });
+        require(entry != entries.end() && entry->key.font == glyph.font && entry->key.glyph_id == glyph.glyph_id,
+                "control actual glyph atlas entry unavailable");
+        const auto padding = static_cast<int>(glyph_atlas_padding);
+        const auto phase = static_cast<float>(entry->key.phase) * .25F;
+        return {instance.position_size[0] + instance.translation_opacity[0] +
+                    (static_cast<float>(padding - entry->bearing_x) + phase) / entry->display_scale,
+                instance.position_size[1] + instance.translation_opacity[1] +
+                    static_cast<float>(entry->bearing_y + padding) / entry->display_scale};
+    }
+
     void glyph(const Json& cell, const Json& files, Json::Object& source) {
         const auto area = rect(cell.at("rect"));
         const auto size = static_cast<int>(cell.at("font_size").integer());
@@ -348,23 +366,8 @@ struct Board final {
                 source.emplace("layout_origin", Json::Array{area.x + glyph.offset_x,
                                                             area.y + measurement.first_baseline - glyph.offset_y});
                 const auto& instance = text.glyph_scene().instances().at(primitive.instances.first);
-                const auto& entries = text.atlas().entries();
-                const auto entry = std::ranges::find_if(entries, [&](const auto& atlas_entry) {
-                    return atlas_entry.page == primitive.draw_ranges.front().atlas_page &&
-                           atlas_entry.uv.left == instance.uv_rect[0] && atlas_entry.uv.top == instance.uv_rect[1] &&
-                           atlas_entry.uv.right == instance.uv_rect[2] && atlas_entry.uv.bottom == instance.uv_rect[3];
-                });
-                require(entry != entries.end() && entry->key.font == glyph.font &&
-                            entry->key.glyph_id == glyph.glyph_id,
-                        "control actual glyph atlas entry unavailable");
-                const auto padding = static_cast<int>(glyph_atlas_padding);
-                const auto phase = static_cast<float>(entry->key.phase) * .25F;
-                source.emplace(
-                    "raster_origin",
-                    Json::Array{instance.position_size[0] + instance.translation_opacity[0] +
-                                    (static_cast<float>(padding - entry->bearing_x) + phase) / entry->display_scale,
-                                instance.position_size[1] + instance.translation_opacity[1] +
-                                    static_cast<float>(entry->bearing_y + padding) / entry->display_scale});
+                source.emplace("raster_origin",
+                               atlas_raster_origin(instance, primitive.draw_ranges.front().atlas_page, glyph));
             }
             for (std::uint32_t index = 0; index < primitive.instances.count; ++index) {
                 const auto& instance = text.glyph_scene().instances().at(primitive.instances.first + index);
@@ -401,6 +404,7 @@ struct Board final {
                         instances.emplace_back(Json::Object{
                             {"instance_index", integer(index)},
                             {"atlas_page", integer(range.atlas_page)},
+                            {"raster_origin", atlas_raster_origin(instance, range.atlas_page, shaped.glyphs.front())},
                             {"atlas_uv", Json::Array{instance.uv_rect[0], instance.uv_rect[1], instance.uv_rect[2],
                                                      instance.uv_rect[3]}},
                             {"clip", Json::Array{instance.clip_bounds[0], instance.clip_bounds[1],

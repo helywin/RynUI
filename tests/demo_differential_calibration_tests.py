@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
     png_metadata,verify_profile_evidence,evidence_manifest,outline_point,outline_witness,measure_controls,
-    weak_fill_pixel_matches,control_text_origin)
+    weak_fill_pixel_matches,control_icon_outlines,control_text_origin)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 
@@ -56,6 +56,24 @@ class CalibrationTests(unittest.TestCase):
                                    (dict(layout_origin=[20,60],raster_origin=[20,float('nan')]),True)):
             with self.subTest(fields=fields,native=native_side),self.assertRaises(ProtocolError):
                 control_text_origin(fields,rect,line,12,1.5,native=native_side)
+
+    def test_formal_icon_checks_viewport_and_atlas_origin_independently(self):
+        rect=dict(x=32,y=40,width=12,height=12)
+        cell=dict(rect=rect,font_size=12)
+        prior=dict(units=1024,ascent=896)
+        layer=dict(ink_instances=[dict(raster_origin=[32,51])])
+        native=dict(source=dict(icon_layers=[layer]))
+        web=dict(source=dict(svg=dict(bounds=rect.copy())))
+        outlines=control_icon_outlines(cell,(native,web),(prior,),1)
+        self.assertEqual(outlines[0][0][1],[32,51])
+        self.assertEqual(outlines[1][0][1],[32,50.5])
+        wrong=deepcopy(web)
+        wrong['source']['svg']['bounds']['y']+=1
+        with self.assertRaises(ProtocolError):
+            control_icon_outlines(cell,(native,wrong),(prior,),1)
+        layer['ink_instances'][0]['raster_origin'][1]+=1
+        with self.assertRaises(ProtocolError):
+            control_icon_outlines(cell,(native,web),(prior,),1)
     def test_frozen_candidate_and_holdout_are_independent(self):
         positive={'simulated-train':{name:0 for name in POLICY}}
         holdout={'simulated-holdout':{name:0 for name in POLICY}}

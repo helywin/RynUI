@@ -136,7 +136,8 @@ try {
       if(cell.kind==='icon'){
         const svg=child.matches('svg')?child:child.querySelector('svg');
         if(!svg)throw new Error('actual formal SVG unavailable');
-        source.svg={source_kind:'svg',view_box:svg.getAttribute('viewBox'),paths:[...svg.querySelectorAll('path')].map((part,ordinal)=>{
+        source.svg={source_kind:'svg',view_box:svg.getAttribute('viewBox'),bounds:rect(svg.getBoundingClientRect()),
+          paths:[...svg.querySelectorAll('path')].map((part,ordinal)=>{
           const style=getComputedStyle(part);const ancestry=[];
           for(let node=part;node;node=node.parentElement){
             const s=getComputedStyle(node);ancestry.push({transform_attr:node.getAttribute('transform'),transform_css:s.transform,

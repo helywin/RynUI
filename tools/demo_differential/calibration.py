@@ -864,6 +864,16 @@ def measure_controls(corpus,trial,observations,images,priors):
         if all(origin is not None for origin in text_origins):
             for native,reference in zip(actual[0]['source']['layout_origin'],actual[1]['source']['layout_origin']):
                 collect('text.geometry_logical_px',abs(native-reference))
+        icon_outlines=None
+        if cell['kind']=='icon':
+            from .formal_icon_source import resource
+            entry,_,manifest,_=resource(cell['content'])
+            icon_priors=[priors.get(manifest['outline_container_sha256']+':'+chr(layer['codepoint']))
+                         for layer in entry['layers']]
+            try:
+                icon_outlines=control_icon_outlines(cell,actual,icon_priors,dpr)
+            except ProtocolError:
+                failures.add('icon.independent-placement')
         r=cell['rect']
         guard=20 if cell['kind']=='shadow' else 2
         box=(math.floor(r['x']*dpr)-guard,math.floor(r['y']*dpr)-guard,
@@ -1000,21 +1010,18 @@ def measure_controls(corpus,trial,observations,images,priors):
                     k=planes[side][-1]
                     if ink is True and k<.98 or ink is False and k>1/255:
                         failures.add('font.independent-outline')
-            if cell['kind']=='icon':
-                from .formal_icon_source import resource
-                entry,_,formal_manifest,_=resource(cell['content'])
-                for side in range(2):
-                    inside_any=False;nearest=math.inf
-                    for layer in entry['layers']:
-                        prior=priors[formal_manifest['outline_container_sha256']+':'+chr(layer['codepoint'])]
-                        scale=cell['font_size']/prior['units']
-                        baseline=r['y']+(cell['font_size']-(prior['ascent']-prior['descent'])*scale)/2+prior['ascent']*scale
-                        ink,distance=outline_point(prior['contours'],(lx-r['x'])/scale,(baseline-ly)/scale)
-                        inside_any|=ink;nearest=min(nearest,distance*scale*dpr)
-                    if nearest>1 and (inside_any and planes[side][-1]<.98 or not inside_any and planes[side][-1]>1/255):
-                        failures.add('icon.independent-outline')
+            if icon_outlines is not None:
+                for side,outlines in enumerate(icon_outlines):
+                    witnesses=[outline_witness(prior,(lx-origin[0])/scale,(origin[1]-ly)/scale,1/(scale*dpr))
+                               for prior,origin,scale in outlines]
+                    if None not in witnesses:
+                        k=planes[side][-1]
+                        if any(witnesses) and k<.98 or not any(witnesses) and k>1/255:
+                            failures.add('icon.independent-outline')
         if planes[0]:
-            if not reference_aa_is_bounded(planes[1],(width,height),uncertainty=reference_uncertainty):
+            # The independent SFNT outline checks above bound glyph support
+            # directly. A thin stroke may have no half-coverage pixel nearby.
+            if not is_text and not reference_aa_is_bounded(planes[1],(width,height),uncertainty=reference_uncertainty):
                 failures.add('geometry.reference-aa-exceeds-one-physical-pixel')
             measured=coverage_metrics(planes[1],planes[0],(width,height))
             prefix='text' if cell['kind']=='text' else 'pixels'
@@ -1122,14 +1129,14 @@ def weak_fill_pixel_matches(pixel,foreground,background,distance):
     return all(min(f,b)<=p<=max(f,b) for p,f,b in zip(pixel,foreground,background))
 
 
-def control_text_origin(source,rect,line,size,dpr,*,native):
-    def point(field):
-        value=source.get(field)
-        if not isinstance(value,list) or len(value)!=2 or any(type(v) not in (int,float) or not math.isfinite(v) for v in value):
-            raise ProtocolError('control text has no measured origin')
-        return value
+def observed_origin(value):
+    if not isinstance(value,list) or len(value)!=2 or any(type(v) not in (int,float) or not math.isfinite(v) for v in value):
+        raise ProtocolError('control has no measured raster or layout origin')
+    return value
 
-    layout=point('layout_origin')
+
+def control_text_origin(source,rect,line,size,dpr,*,native):
+    layout=observed_origin(source.get('layout_origin'))
     ascent=line['ascent']*size/line['units']
     descent=-line['descent']*size/line['units']
     leading=(32-ascent-descent)/2
@@ -1144,10 +1151,37 @@ def control_text_origin(source,rect,line,size,dpr,*,native):
         raise ProtocolError('control text origin escapes the declared primary strut')
     if not native:
         return layout
-    raster=point('raster_origin')
+    raster=observed_origin(source.get('raster_origin'))
     if abs(raster[0]-layout[0])*dpr>.125+1e-4 or abs(raster[1]-layout[1])*dpr>.5+1e-4:
         raise ProtocolError('atlas glyph exceeds source placement quantization')
     return raster
+
+
+def control_icon_outlines(cell,actual,priors,dpr):
+    native,web=[row['source'] for row in actual]
+    r=cell['rect']
+    size=cell['font_size']
+    bounds=web.get('svg',{}).get('bounds',{})
+    if any(type(bounds.get(key)) not in (float,int) or not math.isfinite(bounds[key]) or
+           abs(bounds[key]-value)>1/64 for key,value in
+           (('x',r['x']),('y',r['y']),('width',size),('height',size))):
+        raise ProtocolError('actual formal SVG escapes its fixed viewport')
+    layers=native.get('icon_layers',[])
+    if len(layers)!=len(priors) or any(prior is None for prior in priors):
+        raise ProtocolError('actual formal glyph layers lack independent outlines')
+    outlines=[[],[]]
+    for layer,prior in zip(layers,priors):
+        instances=layer.get('ink_instances',[])
+        if len(instances)!=1:
+            raise ProtocolError('formal layer needs one measured atlas glyph')
+        origin=observed_origin(instances[0].get('raster_origin'))
+        scale=size/prior['units']
+        baseline=r['y']+prior['ascent']*scale
+        if abs(origin[0]-r['x'])*dpr>.125+1/1024 or abs(origin[1]-baseline)*dpr>.5+1/1024:
+            raise ProtocolError('formal atlas glyph placement exceeds quantization')
+        outlines[0].append((prior,origin,scale))
+        outlines[1].append((prior,[bounds['x'],bounds['y']+prior['ascent']*scale],scale))
+    return outlines
 
 
 def rounded_distance(x,y,rect,radius):
