@@ -175,6 +175,40 @@ class CalibrationTests(unittest.TestCase):
         for name, row in details['metrics'].items():
             self.assertEqual((row['value'],row['hard_cap']),(values[name],CAPS[name]))
 
+    def test_ink_edge_and_solid_color_are_measured_independently(self):
+        from demo_differential.pilots import FONTS
+        fingerprint=next(face['sha256'] for face in FONTS if face['identity']=='noto-sans' and face['weight']==400)
+        rect=dict(x=10,y=10,width=10,height=10)
+        white=[255,255,255]
+        cell=dict(identity='p0.glyph0',kind='text',rect=rect,content='A',font_size=12,font_weight=400,
+                  foreground=white,background=[0,0,0])
+        source=dict(foreground=white,alpha=1,source_alpha=1,paint_opacity=1,encoded_rgba=[1,1,1,1],opacity=1,
+                    layout_origin=[10,20],actual_font_sha256=fingerprint,primary_font_sha256=fingerprint,
+                    content='A',font_size=12,font_weight=400,advance=8,glyph_id=25,ink_boxes=[rect])
+        observations=[dict(capture={'dpr':1},controls=[dict(identity=cell['identity'],kind='text',rect=rect,source=source)])]*2
+        priors={fingerprint+':line':{},fingerprint+':A':dict(glyph_id=25,units=12,advance=8,bounds=[0,0,8,8],
+                    contours=[[[0,0],[8,0],[8,8],[0,8],[0,0]]])}
+        web=bytearray((0,0,0,255)*32*32)
+        for y in range(12,20):
+            for x in range(10,18):
+                i=4*(y*32+x)
+                web[i:i+3]=bytes(white)
+        with patch('demo_differential.calibration.control_cells',return_value=[cell]), \
+                patch('demo_differential.calibration.canvas_guard',return_value=({},set())), \
+                patch('demo_differential.calibration.control_text_origin',return_value=[10,20]):
+            for x,y,is_core in ((10,14,False),(13,15,True)):
+                native=web.copy()
+                i=4*(y*32+x)
+                native[i:i+3]=bytes([128]*3)
+                images=[(native,(32,32)),(web,(32,32))]
+                details={}
+                values,failures=measure_controls({'alpha':[]},{'board':'train'},observations,images,priors,details=details)
+                self.assertGreater(values['text.coverage_mass_relative_error'],0)
+                self.assertEqual(values['color.text_interior_delta_e00']>1,is_core)
+                self.assertEqual('font.independent-outline' in failures,is_core)
+                if is_core:
+                    self.assertEqual(details['metrics']['color.text_interior_delta_e00']['physical_pixel'],[x,y])
+
     def test_seven_font_scope_and_fixed_glyph_layout(self):
         from demo_differential.pilots import FONTS
         corpus=read(FIXTURES/'pilot-calibration.json')

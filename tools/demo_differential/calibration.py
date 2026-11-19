@@ -1023,8 +1023,7 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                 except ProtocolError:
                     fail('material.unmix')
                     planes[side].append(0)
-            if is_text and planes[1][-1]>=.98:
-                collect('color.text_interior_delta_e00',rgb8_delta_e00(*observed),pixel=[int(x),int(y)])
+            ink_core=0
             if cell['kind']=='text':
                 for side,row in enumerate(actual):
                     prior=priors.get(row['source'].get('actual_font_sha256','')+':'+cell['content'])
@@ -1033,6 +1032,7 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                     scale=cell['font_size']/prior['units']
                     px,py=(lx-origin[0])/scale,(origin[1]-ly)/scale
                     ink=outline_witness(prior,px,py,1/(scale*dpr))
+                    ink_core+=ink is True
                     k=planes[side][-1]
                     if ink is True and k<.98 or ink is False and k>1/255:
                         fail('font.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
@@ -1041,11 +1041,16 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                 for side,outlines in enumerate(icon_outlines):
                     witnesses=[outline_witness(prior,(lx-origin[0])/scale,(origin[1]-ly)/scale,1/(scale*dpr))
                                for prior,origin,scale in outlines]
+                    ink_core+=any(witness is True for witness in witnesses)
                     if None not in witnesses:
                         k=planes[side][-1]
                         if any(witnesses) and k<.98 or not any(witnesses) and k>1/255:
                             fail('icon.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
                                  expected='ink' if any(witnesses) else 'clear',observed_rgb=observed[side])
+            # Both outlines must prove solid ink before a pixel enters the
+            # interior color gate. Edge pixels still participate in coverage.
+            if ink_core==2:
+                collect('color.text_interior_delta_e00',rgb8_delta_e00(*observed),pixel=[int(x),int(y)])
         if planes[0]:
             # The independent SFNT outline checks above bound glyph support
             # directly. A thin stroke may have no half-coverage pixel nearby.
