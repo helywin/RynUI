@@ -331,7 +331,12 @@ def prepare(output, *, mode='BUNDLED', offline=False, downloads=None, node=None,
                 shutil.copyfileobj(stream, self.wfile)
         def log_message(self, *args):
             pass
-    registry = ThreadingHTTPServer(('127.0.0.1', 0), Registry)
+
+    class ArchiveServer(ThreadingHTTPServer):
+        # pnpm can connect for several locked archives before the server accepts them.
+        request_queue_size = len(archives)
+
+    registry = ArchiveServer(('127.0.0.1', 0), Registry)
     thread = threading.Thread(target=registry.serve_forever, daemon=True)
     thread.start()
     try:

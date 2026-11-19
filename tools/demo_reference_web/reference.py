@@ -23,6 +23,7 @@ from demo_reference_web.font_metadata import font_metadata
 from demo_reference_web.font_resources import admit_font, central_fonts, prepare_fonts
 
 ADAPTER_ID = 'antd665.reference-web.v1'
+EXECUTION_TIMEOUT_SECONDS = 120
 
 
 def adapter_sha256():
@@ -347,7 +348,7 @@ def execute(request, prepared_dir, output, *, reference='locked', publish_cache=
                                    stdout=log, stderr=subprocess.STDOUT, env=environment_vars, cwd=ROOT,
                                    start_new_session=os.name != 'nt')
         try:
-            result = process.wait(timeout=120)
+            result = process.wait(timeout=EXECUTION_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
             if os.name == 'nt':
                 subprocess.run(['taskkill', '/T', '/F', '/PID', str(process.pid)], capture_output=True)

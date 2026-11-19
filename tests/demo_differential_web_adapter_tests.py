@@ -9,6 +9,7 @@ import os
 import re
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import unittest
 import uuid
@@ -446,6 +447,8 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
                 web.validate_observations(modified, req)
 
     def worker_control(self, output, transform, driver_transform=None):
+        from demo_differential.adapters import stop_tree
+
         config = json.loads((output / 'worker.json').read_text(encoding='utf-8'))
         negative = OUT / uuid.uuid4().hex
         negative.mkdir()
@@ -462,8 +465,15 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
             transformed = negative / 'execute.mjs'
             transformed.write_text(driver_transform(driver.read_text(encoding='utf-8')), encoding='utf-8')
             driver = transformed
-        result = bootstrap.subprocess.run([config['prepared']['node'], str(driver), str(negative / 'worker.json')],
-                                          capture_output=True, timeout=40)
+        argv = [config['prepared']['node'], str(driver), str(negative / 'worker.json')]
+        with subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              start_new_session=os.name != 'nt') as worker:
+            try:
+                stdout, stderr = worker.communicate(timeout=web.EXECUTION_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired:
+                stop_tree(worker)
+                raise
+            result = subprocess.CompletedProcess(argv, worker.returncode, stdout, stderr)
         return result, negative
 
     def test_actual_component_execution_and_public_prop_negative_controls(self):
