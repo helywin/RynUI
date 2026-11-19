@@ -28,7 +28,7 @@ Select Component Token 通过 `ThemeConfig::select` 配置，覆盖菜单颜色�
 
 鼠标点击选择器打开菜单，点击候选提交选择；ArrowUp/Down、Home/End 跳过禁用项并把活动项滚入视口，Enter 确认，Escape/Tab/外部点击请求关闭。IME 组合期间这些键交给输入法；第一次 Escape 取消组合，后续 Escape 再关闭菜单。列表支持滚轮，边缘空间不足时向上翻转并限制在窗口范围。
 
-`open`/`onOpenChange` 使用受控请求语义，父级不回写时保留外部打开值；失焦、禁用和窗口失活会另外隐藏菜单以完成清理。defaultOpen 用于非受控模式。打开搜索时显示 query，选中 label 作为搜索 placeholder；关闭会丢弃 query 并恢复选中 label。`SelectRef` 复用 InputRef 的 focus/blur/搜索选区。
+`open`/`onOpenChange` 使用受控请求语义。父级拒绝普通关闭请求时，打开的菜单保留当前 query 与进行中的搜索。失焦、禁用和窗口失活会另外隐藏菜单以完成清理。defaultOpen 用于非受控模式。打开搜索时显示 query，选中 label 作为搜索 placeholder。单选菜单实际关闭时结束搜索，若之前有搜索文字则在关闭事件后发出 `onSearch("")`。受控 `searchValue` 仍由父级决定。`SelectRef` 复用 InputRef 的 focus/blur/搜索选区。
 
 prefix/suffix 为 typed slots，可放原生按钮和编辑器；主 Input 在 affix 子控件之前独立捕获，不会因额外 Input 误认 editor。装饰性默认内容保留一个 Tab 入口，应用的交互式 affix 使用原生焦点顺序。普通 query、活动项、值、主题和尺寸变化保留选择器/候选 identity；options 添加/删除/重排按稳定 key 局部协调。销毁或回调内卸载后，旧输入会话、捕获和 ref 均失效。
 

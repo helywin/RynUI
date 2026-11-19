@@ -209,6 +209,59 @@ void search_ime_and_dynamic_options() {
     check(f.services.interactions().size() == 0, "search dispose leaked interactions");
 }
 
+void controlled_close_preserves_search_until_accepted() {
+    Fixture f;
+    SelectRef ref;
+    Signal<bool> open{true};
+    bool accept_close = false;
+    int requests = 0;
+    int cancellations = 0;
+    std::vector<String> events;
+    SelectSource source{[&](AsyncOptionsRequest, auto) {
+                            ++requests;
+                            return [&] {
+                                ++cancellations;
+                            };
+                        },
+                        [](auto) {}};
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .source(source)
+                   .showSearch()
+                   .open(open)
+                   .ref(ref)
+                   .onOpenChange([&](bool value) {
+                       check(!value, "controlled test unexpectedly requested to open");
+                       events.emplace_back(u8"close");
+                       if (accept_close) {
+                           open.set(false);
+                       }
+                   })
+                   .onSearch([&](String query) { events.push_back(std::move(query)); }));
+    }});
+    f.synchronize();
+    const auto id = f.services.select().mounted()[0];
+    check(ref.focus(), "controlled searchable Select did not focus");
+    f.synchronize();
+    const auto session = f.inputs.sessions().active();
+    check(bool(f.inputs.dispatch(TextCommitted{String{u8"query"}, session})), "Select query did not dispatch");
+    f.synchronize();
+    check(f.services.select().snapshot(id).pending && requests == 1, "query did not start async request");
+
+    key(f, Key::escape);
+    const auto rejected = f.services.select().snapshot(id);
+    check(rejected.visible && rejected.pending && rejected.query == String{u8"query"} && cancellations == 0 &&
+              events == std::vector<String>{String{u8"query"}, String{u8"close"}},
+          "rejected close discarded search or cancelled active request");
+
+    accept_close = true;
+    key(f, Key::escape);
+    const auto closed = f.services.select().snapshot(id);
+    check(!closed.visible && !closed.pending && closed.query.empty() && requests == 1 && cancellations == 1 &&
+              events == std::vector<String>{String{u8"query"}, String{u8"close"}, String{u8"close"}, String{}},
+          "accepted close did not clear search after the close callback");
+}
+
 void scrolling_edges_and_idle() {
     std::vector<SelectOption> options;
     for (int i = 0; i < 100; ++i) {
@@ -456,6 +509,7 @@ int main() {
     try {
         pointer_keyboard_and_clear();
         search_ime_and_dynamic_options();
+        controlled_close_preserves_search_until_accepted();
         scrolling_edges_and_idle();
         controlled_states_and_theme();
         callback_retirement_and_validation();

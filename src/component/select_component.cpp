@@ -621,6 +621,30 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     rollback.complete = true;
 }
 
+bool SelectComponentHost::settle_closed_search(runtime::ComponentId id) {
+    auto* s = select_state(*services_, id);
+    if (!s) {
+        return false;
+    }
+    auto async = s->async;
+    s->pending = false;
+    async->cancel();
+    s = select_state(*services_, id);
+    if (!s) {
+        return false;
+    }
+    if (s->open && !s->suppressed) {
+        return true;
+    }
+    const auto query = s->search_authority ? read_prop(*s->search_authority) : String{};
+    return change_select_model(*services_, id,
+                               [&](auto& model) {
+                                   model.search(query);
+                                   return true;
+                               })
+        .has_value();
+}
+
 void SelectComponentHost::request_open(runtime::ComponentId id, bool open) {
     auto* s = select_state(*services_, id);
     if (!s || !services_->components().scope(id).active() ||
@@ -631,31 +655,26 @@ void SelectComponentHost::request_open(runtime::ComponentId id, bool open) {
     SelectRetireOnFailure rollback{*services_, id};
     const bool changed = s->open != open;
     const auto callback = s->on_open;
+    const auto search_cleared =
+        !open && changed && !s->controlled_open && s->mode == SelectMode::Single && !s->model.query().empty()
+            ? s->on_search
+            : decltype(s->on_search){};
     if (!s->controlled_open) {
         s->open = open;
     }
     if (open) {
         s->suppressed = false;
     }
-    if (!open) {
-        auto async = s->async;
-        s->pending = false;
-        async->cancel();
-        s = select_state(*services_, id);
-        if (!s) {
-            return;
-        }
-        const auto query = s->search_authority ? read_prop(*s->search_authority) : String{};
-        if (!change_select_model(*services_, id, [&](auto& model) {
-                model.search(query);
-                return true;
-            })) {
-            return;
-        }
+    if (!open && (!s->open || s->suppressed) && !settle_closed_search(id)) {
+        return;
     }
     refresh(id);
     if (changed && callback && services_->components().contains(id) && services_->components().scope(id).active()) {
         callback(open);
+    }
+    s = select_state(*services_, id);
+    if (search_cleared && s && !s->open && services_->components().scope(id).active()) {
+        search_cleared({});
     }
     rollback.complete = true;
 }
@@ -2068,17 +2087,20 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
     if (props.open_) {
         connect(*props.open_, [this, id](bool value) {
             if (auto* s = select_state(*services_, id)) {
+                const auto search_cleared =
+                    !value && s->open && s->mode == SelectMode::Single && !s->model.query().empty()
+                        ? s->on_search
+                        : decltype(s->on_search){};
                 s->open = value;
                 s->suppressed = false;
-                if (!value) {
-                    if (!change_select_model(*services_, id, [](auto& model) {
-                            model.search({});
-                            return true;
-                        })) {
-                        return;
-                    }
+                if (!value && !settle_closed_search(id)) {
+                    return;
                 }
                 refresh(id);
+                s = select_state(*services_, id);
+                if (search_cleared && s && !s->open && services_->components().scope(id).active()) {
+                    invoke_select_callback(*services_, id, search_cleared, String{});
+                }
             }
         });
     }

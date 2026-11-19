@@ -108,6 +108,7 @@ public:
 private:
     void update_empty_label(runtime::ComponentId id, String value);
     void refresh(runtime::ComponentId id, bool geometry = true);
+    bool settle_closed_search(runtime::ComponentId id);
     void request_open(runtime::ComponentId id, bool open);
     void choose(runtime::ComponentId id, std::optional<std::size_t> index);
     void rebuild_rows(runtime::ComponentId id);
