@@ -815,6 +815,7 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
         location={'control':cell['identity'],'logical_rect':cell['rect']}
         actual=[record['controls'][index] for record in observations]
         text_origins=[None,None]
+        text_outlines=[None,None]
         for side,row in enumerate(actual):
             required(row,('identity','rect','kind','source'),'actual control')
             if row['kind'] != cell['kind']:
@@ -894,6 +895,9 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                         try:
                             text_origins[side]=control_text_origin(source,cell['rect'],priors[primary+':line'],
                                                                   cell['font_size'],dpr,native=side==0)
+                            if prior is not None:
+                                scale=cell['font_size']/prior['units']
+                                text_outlines[side]=(prior,text_origins[side],scale,1/(scale*dpr))
                         except ProtocolError:
                             fail('font.independent-line-placement')
                 if not source.get('ink_boxes'):
@@ -1054,13 +1058,11 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None):
                     planes[side].append(0)
             ink_core=0
             if cell['kind']=='text':
-                for side,row in enumerate(actual):
-                    prior=priors.get(row['source'].get('actual_font_sha256','')+':'+cell['content'])
-                    origin=text_origins[side]
-                    if prior is None or origin is None:continue
-                    scale=cell['font_size']/prior['units']
+                for side,outline in enumerate(text_outlines):
+                    if outline is None:continue
+                    prior,origin,scale,tolerance=outline
                     px,py=(lx-origin[0])/scale,(origin[1]-ly)/scale
-                    ink=outline_witness(prior,px,py,1/(scale*dpr))
+                    ink=outline_witness(prior,px,py,tolerance)
                     ink_core+=ink is True
                     k=planes[side][-1]
                     if ink is True and k<.98 or ink is False and k>1/255:
@@ -1666,21 +1668,40 @@ def outline_witness(prior,x,y,tolerance):
     left,bottom,right,top=prior['bounds']
     if math.hypot(max(left-x,0,x-right),max(bottom-y,0,y-top))>tolerance:
         return False
-    inside,distance=outline_point(prior['contours'],x,y)
-    return inside if distance>tolerance else None
+    result=_outline_measure(prior['contours'],x,y,boundary_tolerance=tolerance)
+    return result[0] if result is not None else None
 
 
 def outline_point(contours,x,y):
     """Nonzero winding and nearest segment distance, independent of FT/renderer."""
+    return _outline_measure(contours,x,y)
+
+
+def _outline_measure(contours,x,y,*,boundary_tolerance=None):
+    # A witness only needs to determine whether a segment touches the known
+    # boundary band. The outward-rounded box conservatively rejects far segments.
+    if boundary_tolerance is not None:
+        low_x=math.nextafter(x-boundary_tolerance,-math.inf)
+        high_x=math.nextafter(x+boundary_tolerance,math.inf)
+        low_y=math.nextafter(y-boundary_tolerance,-math.inf)
+        high_y=math.nextafter(y+boundary_tolerance,math.inf)
     winding=0
     distance=math.inf
     for contour in contours:
-        for a,b in zip(contour,contour[1:]):
-            dx,dy=b[0]-a[0],b[1]-a[1]
+        for (ax,ay),(bx,by) in zip(contour,contour[1:]):
+            if ay<=y<by:
+                winding+=(bx-ax)*(y-ay)-(by-ay)*(x-ax)>0
+            elif by<=y<ay:
+                winding-=(bx-ax)*(y-ay)-(by-ay)*(x-ax)<0
+            if boundary_tolerance is not None and (
+                    ax<low_x and bx<low_x or ax>high_x and bx>high_x or
+                    ay<low_y and by<low_y or ay>high_y and by>high_y):
+                continue
+            dx,dy=bx-ax,by-ay
             norm=dx*dx+dy*dy
-            u=max(0,min(1,((x-a[0])*dx+(y-a[1])*dy)/norm)) if norm else 0
-            distance=min(distance,math.hypot(x-a[0]-u*dx,y-a[1]-u*dy))
-            cross=dx*(y-a[1])-dy*(x-a[0])
-            if a[1]<=y<b[1] and cross>0:winding+=1
-            elif b[1]<=y<a[1] and cross<0:winding-=1
+            u=max(0,min(1,((x-ax)*dx+(y-ay)*dy)/norm)) if norm else 0
+            segment_distance=math.hypot(x-ax-u*dx,y-ay-u*dy)
+            if boundary_tolerance is not None and segment_distance<=boundary_tolerance:
+                return None
+            distance=min(distance,segment_distance)
     return winding!=0,distance

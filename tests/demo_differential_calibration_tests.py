@@ -42,6 +42,16 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(CAPS['pixels.coverage_local_relative_error'],.05)
         self.assertEqual(CAPS['text.projection_relative_error'],.05)
 
+    def test_bounded_outline_witness_matches_the_full_segment_search(self):
+        outer=[[0,0],[9,1],[10,10],[0,9],[0,0]]
+        hole=[[3,3],[3,7],[7,7],[7,3],[3,3]]
+        prior=dict(bounds=[0,0,10,10],contours=[outer,hole])
+        for x in (-1,0,1,2.9,3,3.001,5,8.9,9,9.9,10,11):
+            for y in (-1,0,1,2.9,4,5,7,9.1,10,11):
+                inside,distance=outline_point(prior['contours'],x,y)
+                for tolerance in (0,.001,.125,.5,1,1.5,distance):
+                    self.assertIs(outline_witness(prior,x,y,tolerance),inside if distance>tolerance else None)
+
     def test_actual_control_text_origin_checks_primary_line_and_raster_motion(self):
         rect=dict(x=20,y=40,width=30,height=32)
         line=dict(units=1000,ascent=1069,descent=-293)
