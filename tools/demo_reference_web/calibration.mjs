@@ -61,7 +61,7 @@ try {
     res.writeHead(200,{'Content-Type':a[1],'Cache-Control':'no-store'}).end(a[0]);});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const origin='http://127.0.0.1:'+server.address().port;
-  const launch_args=['--force-color-profile=srgb','--disable-lcd-text','--disable-background-networking',
+  const launch_args=['--force-color-profile=srgb','--disable-lcd-text','--disable-partial-raster','--disable-background-networking',
     '--disable-component-update','--disable-default-apps','--disable-smooth-scrolling','--no-first-run','--lang=zh-CN'];
   browser=await chromium.launch({executablePath:prepared.browser,headless:true,args:launch_args,
     env:{...process.env,TMPDIR:path.join(output,'tmp'),XDG_CACHE_HOME:path.join(output,'cache'),XDG_CONFIG_HOME:path.join(output,'config')},timeout:20000});

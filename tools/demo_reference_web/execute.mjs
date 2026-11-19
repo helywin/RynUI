@@ -85,7 +85,9 @@ try {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = 'http://127.0.0.1:' + server.address().port;
-  const launchArgs = ['--force-color-profile=srgb', '--disable-lcd-text', '--disable-background-networking',
+  // Read each fresh frame from complete raster tiles. Damage-dependent tile
+  // reuse can change the last RGB8 code at repeated soft edges.
+  const launchArgs = ['--force-color-profile=srgb', '--disable-lcd-text', '--disable-partial-raster', '--disable-background-networking',
     '--disable-component-update', '--disable-default-apps', '--disable-smooth-scrolling', '--no-first-run', '--lang=' + fixture.locale];
   browser = await chromium.launch({ executablePath: prepared.browser, headless: true,
     args: launchArgs, downloadsPath: path.join(output, 'downloads'),
