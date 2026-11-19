@@ -62,6 +62,8 @@ cmake --build --preset linux-gcc-release --target rynui_token_gallery rynui_demo
 
 Linux 入口使用 BUNDLED。Skia 源码和 GN 经中央 SHA256 检查，Rust 依赖由 Cargo.lock 固定。离线构建可通过 `RYNUI_SKIA_SOURCE_ARCHIVE` 与 `RYNUI_GN_LINUX_ARCHIVE` 提供两个已锁归档，并提前准备 Cargo 缓存。
 
+固定字体场景可在 Linux 或 Windows native preset 同时启用 `RYNUI_ENABLE_PINNED_SVG_ICON_RASTER=ON`。SVG 使用相同锁定的 Skia A8 扫描线，Windows 离线 GN 归档选项是 `RYNUI_GN_WINDOWS_ARCHIVE`。图标仍由原固定 SFNT 提供 cmap 和布局。图集按 SVG 视口左上角保存两轴物理相位，保留视口裁剪和 Loading 的静态合成采样。
+
 独立校准先从锁定 SFNT 的 cmap 读取 glyph ID，再用 CPU 字体覆盖生成实际 hinting 的见证，分别核验 native 与 Web 回读中的空白和完全实墨。比较阶段继续检查成对的布局、覆盖、轮廓与投影。
 
 native scenario JSON 保持 16 MiB 上限；显式字体资源另限每文件 32 MiB、最多 16 文件，并保留 checkout/out 路径与实际 SHA256 校验。两者分开，才能接受锁定的约 21.6 MB CJK 600 文件；不接受路径逃逸或超限字体，也不改变普通产品字体读取接口。

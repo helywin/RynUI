@@ -32,8 +32,8 @@ struct QuantizedPhysicalOrigin final {
     font::GlyphRasterPhase phase{font::GlyphRasterPhase::zero};
 };
 
-[[nodiscard]] QuantizedPhysicalOrigin quantize_physical_x(float value, bool snap_horizontal) noexcept {
-    if (snap_horizontal) {
+[[nodiscard]] QuantizedPhysicalOrigin quantize_physical_origin(float value, bool round_to_pixel) noexcept {
+    if (round_to_pixel) {
         return {std::round(value), font::GlyphRasterPhase::zero};
     }
     const float position = std::round(value * 4.0F) * 0.25F;
@@ -121,9 +121,15 @@ void validate_placement(const GlyphPlacement& placement) {
                 placement.origin_pixels.x + pen_x + glyph.offset_x + placement.translation_pixels.x;
             const float baseline_y =
                 placement.origin_pixels.y + line.baseline - glyph.offset_y + placement.translation_pixels.y;
-            const auto physical_x = quantize_physical_x(baseline_x * display_scale, metrics.metrics.snaps_horizontal);
-            const float physical_y = std::round(baseline_y * display_scale);
-            const GlyphAtlasResult atlas_result = atlas.ensure(fonts, glyph.font, glyph.glyph_id, physical_x.phase);
+            const bool svg = fonts.uses_svg_glyph(glyph.font, glyph.glyph_id);
+            const auto physical_x =
+                quantize_physical_origin(baseline_x * display_scale, metrics.metrics.snaps_horizontal);
+            // SVG masks are positioned by their viewBox's top edge. Font
+            // layout still uses the unchanged embedded face and baseline.
+            const float origin_y = svg ? baseline_y - metrics.metrics.ascent : baseline_y;
+            const auto physical_y = quantize_physical_origin(origin_y * display_scale, !svg);
+            const GlyphAtlasResult atlas_result =
+                atlas.ensure(fonts, glyph.font, glyph.glyph_id, physical_x.phase, physical_y.phase);
             if (!atlas_result) {
                 pending.error = atlas_result.error;
                 return pending;
@@ -135,9 +141,9 @@ void validate_placement(const GlyphPlacement& placement) {
                     (physical_x.integer_position +
                      static_cast<float>(entry.bearing_x - static_cast<int>(glyph_atlas_padding))) *
                     inverse_display_scale;
-                const float top_pixels =
-                    (physical_y - static_cast<float>(entry.bearing_y + static_cast<int>(glyph_atlas_padding))) *
-                    inverse_display_scale;
+                const float top_pixels = (physical_y.integer_position -
+                                          static_cast<float>(entry.bearing_y + static_cast<int>(glyph_atlas_padding))) *
+                                         inverse_display_scale;
                 pending.instances.push_back({
                     {
                         left_pixels,

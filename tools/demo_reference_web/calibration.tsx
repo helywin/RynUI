@@ -70,6 +70,10 @@ function Cell({cell}:any) {
 flushSync(() => createRoot(document.getElementById('root')!).render(
   <Antd.ConfigProvider direction="ltr" locale={zhCN} theme={{token:{motion:false}}}>
     {input.panels.map((p:any,i:number)=><div key={'p'+i} style={{position:'absolute',left:p.x,top:p.y,width:p.width,height:p.height,background:color(p.rgb)}} />)}
-    {input.cells.map((cell:any)=><Cell key={cell.identity} cell={cell} />)}
+    {input.cells.filter((cell:any)=>cell.kind!=='icon').map((cell:any)=><Cell key={cell.identity} cell={cell} />)}
+    {/* Keep the official Loading layer from changing the rasterization of unrelated controls. */}
+    <div style={{position:'absolute',inset:0,isolation:'isolate',contain:'paint'}}>
+      {input.cells.filter((cell:any)=>cell.kind==='icon').map((cell:any)=><Cell key={cell.identity} cell={cell} />)}
+    </div>
   </Antd.ConfigProvider>));
 w.__controlReady=true;

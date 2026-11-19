@@ -25,8 +25,6 @@ class GlyphWitness:
 
 
 def build(manifest, root, cells):
-    from .calibration import exact_fields
-
     policy, = manifest['environment']['native_capture']['font_raster_policies']
     identity = policy.get('rasterizer')
     if identity not in ('directwrite-3x1', 'fontations-skia-a8'):
@@ -47,11 +45,17 @@ def build(manifest, root, cells):
         phase = math.floor(px * 4 + .5) % 4 if identity == 'directwrite-3x1' else 0
         specs[font_sha, content, size, phase] = dict(font=font_index, glyph_id=glyph_id,
                                                     phase=phase, physical_em=size * dpr)
+    admitted = [{**font, 'path': str(root / relative_path(font['path']))} for font in fonts]
+    return identity, read_masks(manifest, root, identity, specs, policy=policy, fonts=admitted)
+
+
+def read_masks(manifest, root, identity, specs, **inputs):
+    from .calibration import exact_fields
+
     work = root / 'out/demo-differential/control-witnesses' / uuid.uuid4().hex
     work.mkdir(parents=True)
     request = work / 'request.json'
-    write_json(request, dict(rasterizer=identity, policy=policy, glyphs=list(specs.values()),
-                             fonts=[{**font, 'path': str(root / relative_path(font['path']))} for font in fonts]))
+    write_json(request, dict(rasterizer=identity, glyphs=list(specs.values()), **inputs))
     output = work / 'output'
     binary = root / relative_path(manifest['tools']['control_binary'])
     process([binary, '--glyph-witnesses', request, '--output', output], work / 'process', 60, failure_code=3)
@@ -72,7 +76,44 @@ def build(manifest, root, cells):
         if len(ink) != row['width'] * row['height'] or not any(ink):
             raise ProtocolError('glyph witness has no admitted outline coverage')
         result[key] = GlyphWitness(row['left'], row['top'], row['width'], row['height'], ink)
-    return identity, result
+    return result
+
+
+def icon_layers(cell, dpr):
+    from .formal_icon_source import resource
+
+    entry, _, _, cmap = resource(cell['content'])
+    x, phase_x = divmod(math.floor(4 * cell['rect']['x'] * dpr + .5), 4)
+    y, phase_y = divmod(math.floor(4 * cell['rect']['y'] * dpr + .5), 4)
+    em = cell['font_size'] * dpr
+    return [((cmap[layer['codepoint']], em, phase_x, phase_y), x, y, layer['opacity']) for layer in entry['layers']]
+
+
+def build_icons(manifest, root, cells):
+    native_capture = manifest['environment']['native_capture']
+    if native_capture.get('icon_rasterizer') != 'skia-svg-a8':
+        return None
+    dpr = manifest['scope']['actual_dpr']
+    specs = {}
+    for cell in cells:
+        if cell['kind'] != 'icon':
+            continue
+        for key, *_ in icon_layers(cell, dpr):
+            glyph, em, phase_x, phase_y = key
+            specs[key] = dict(glyph_id=glyph, physical_em=em, phase=phase_x, phase_y=phase_y)
+    return read_masks(manifest, root, 'skia-svg-a8', specs)
+
+
+def place_icon(masks, cell, dpr):
+    return [(masks[key], x, y, opacity) for key, x, y, opacity in icon_layers(cell, dpr)]
+
+
+def icon_ink_at(layers, x, y):
+    coverage = 0.
+    for mask, left, top, opacity in layers:
+        alpha = opacity * mask.at(x-left, y-top) / 255
+        coverage = alpha + coverage * (1-alpha)
+    return True if coverage == 1 else False if coverage == 0 else None
 
 
 def place(witnesses, source, size, origin, dpr):

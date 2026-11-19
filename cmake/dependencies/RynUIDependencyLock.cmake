@@ -9,6 +9,8 @@ set(RYNUI_SKIA_RASTER_LICENSE "BSD-3-Clause")
 set(RYNUI_SKIA_RASTER_GN_REVISION "b2afae122eeb6ce09c52d63f67dc53fc517dbdc8")
 set(RYNUI_SKIA_RASTER_GN_URL "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:${RYNUI_SKIA_RASTER_GN_REVISION}")
 set(RYNUI_SKIA_RASTER_GN_SHA256 "6a3bfc53d825bccac5e5b4b7bdcc10ce9396a04a689ac684ec3308ca5c7f3d9c")
+set(RYNUI_SKIA_RASTER_WINDOWS_GN_URL "https://chrome-infra-packages.appspot.com/dl/gn/gn/windows-amd64/+/git_revision:${RYNUI_SKIA_RASTER_GN_REVISION}")
+set(RYNUI_SKIA_RASTER_WINDOWS_GN_SHA256 "7249f55d6f22b55affa68aaf19d2f597c39946299216e12d78eac6cc1469f8a1")
 set(RYNUI_SKIA_RASTER_GN_LICENSE "BSD-3-Clause")
 set(RYNUI_FONTATIONS_SKIRFA_LICENSE "MIT OR Apache-2.0")
 

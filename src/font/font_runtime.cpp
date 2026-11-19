@@ -114,6 +114,7 @@ struct GlyphCacheKey {
     std::uint32_t glyph_id{};
     std::uint32_t pixel_size{};
     GlyphRasterPhase phase{GlyphRasterPhase::zero};
+    GlyphRasterPhase phase_y{GlyphRasterPhase::zero};
     GlyphRasterMode mode{GlyphRasterMode::grayscale};
 
     friend bool operator==(const GlyphCacheKey&, const GlyphCacheKey&) = default;
@@ -126,6 +127,7 @@ struct GlyphCacheKeyHash {
         value = value * 16777619U ^ key.glyph_id;
         value = value * 16777619U ^ key.pixel_size;
         value = value * 16777619U ^ static_cast<std::size_t>(key.phase);
+        value = value * 16777619U ^ static_cast<std::size_t>(key.phase_y);
         value = value * 16777619U ^ static_cast<std::size_t>(key.mode);
         return value;
     }
@@ -195,6 +197,8 @@ struct FontRuntime::Impl {
     std::thread::id owner_thread{std::this_thread::get_id()};
     std::shared_ptr<FontRuntimeCounters> counters;
     std::shared_ptr<PlatformFontRasterizer> platform_rasterizer;
+    bool (*has_svg_glyph)(std::uint32_t) noexcept {};
+    FontError (*svg_glyph)(std::uint32_t, float, float, float, GlyphBitmap&){};
     std::vector<FontSlot> fonts;
     std::unordered_map<GlyphCacheKey, GlyphBitmap, GlyphCacheKeyHash> glyph_cache;
     bool active{true};
@@ -270,6 +274,8 @@ FontRuntimeCreateResult FontRuntime::create(FontRuntimeOptions options) {
     auto implementation = std::make_unique<Impl>();
     implementation->counters = std::move(counters);
     implementation->platform_rasterizer = std::move(options.platform_rasterizer);
+    implementation->has_svg_glyph = options.has_svg_glyph;
+    implementation->svg_glyph = options.svg_glyph;
     const FT_Error result = FT_Init_FreeType(&implementation->library);
     if (result != 0) {
         return {
@@ -458,6 +464,11 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
         }
         record.metrics.raster_scale = raster.display_scale;
         record.metrics.snaps_horizontal = impl_->platform_rasterizer->snaps_horizontal();
+    } else if (raster.policy.rasterizer == FontRasterizer::bundled_svg) {
+        if (!has_svg_rasterizer() || !raster.policy.antialias) {
+            return fail(make_error(FontErrorStage::face_creation, FontErrorKind::runtime_unavailable,
+                                   "Requested bundled SVG rasterizer is unavailable."));
+        }
     } else if (raster.policy.rasterizer != FontRasterizer::freetype) {
         return fail(make_error(FontErrorStage::face_creation, FontErrorKind::runtime_unavailable,
                                "Unknown font rasterizer policy."));
@@ -552,7 +563,9 @@ std::optional<FontSourceView> FontRuntime::source(FontIdentity font) const {
                           bool(record->face->style_flags & FT_STYLE_FLAG_BOLD),
                           bool(record->face->style_flags & FT_STYLE_FLAG_ITALIC),
                           record->raster_policy,
-                          record->platform_face ? impl_->platform_rasterizer->name() : "freetype"};
+                          record->platform_face ? impl_->platform_rasterizer->name()
+                          : record->raster_policy.rasterizer == FontRasterizer::bundled_svg ? "skia-svg-a8"
+                                                                                            : "freetype"};
 }
 
 GlyphLookupResult FontRuntime::glyph_index(FontIdentity font, char32_t codepoint) const {
@@ -639,6 +652,24 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
 
 GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_id, GlyphRasterPhase phase,
                                          GlyphRasterMode mode, FontFailurePoint failure_point) {
+    return rasterize(font, glyph_id, phase, GlyphRasterPhase::zero, mode, failure_point);
+}
+
+bool FontRuntime::has_svg_rasterizer() const noexcept {
+    return impl_->has_svg_glyph && impl_->svg_glyph;
+}
+
+bool FontRuntime::uses_svg_glyph(FontIdentity font, std::uint32_t glyph_id) const noexcept {
+    if (!impl_->is_owner_thread() || !has_svg_rasterizer()) {
+        return false;
+    }
+    const auto* record = impl_->find(font);
+    return record && record->raster_policy.rasterizer == FontRasterizer::bundled_svg && impl_->has_svg_glyph(glyph_id);
+}
+
+GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_id, GlyphRasterPhase phase,
+                                         GlyphRasterPhase phase_y, GlyphRasterMode mode,
+                                         FontFailurePoint failure_point) {
     if (!impl_->is_owner_thread()) {
         return {nullptr, false, impl_->owner_error(FontErrorStage::rasterization)};
     }
@@ -653,7 +684,9 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
     }
 
     const auto phase_index = static_cast<std::uint8_t>(phase);
-    if (phase_index > static_cast<std::uint8_t>(GlyphRasterPhase::three_quarters)) {
+    const auto svg = uses_svg_glyph(font, glyph_id);
+    if (phase > GlyphRasterPhase::three_quarters || phase_y > GlyphRasterPhase::three_quarters ||
+        (!svg && phase_y != GlyphRasterPhase::zero)) {
         return {
             nullptr,
             false,
@@ -662,7 +695,7 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
         };
     }
     const GlyphCacheKey key{
-        font, glyph_id, record->metrics.raster_pixel_size, phase, mode,
+        font, glyph_id, record->metrics.raster_pixel_size, phase, phase_y, mode,
     };
     if (const auto existing = impl_->glyph_cache.find(key); existing != impl_->glyph_cache.end()) {
         ++impl_->counters->cache_hits;
@@ -686,11 +719,14 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
         }
         return {&entry->second, false, {}};
     };
-    if (record->platform_face && mode == GlyphRasterMode::grayscale) {
+    if ((record->platform_face || svg) && mode == GlyphRasterMode::grayscale) {
         GlyphBitmap result;
         const auto& metrics = record->metrics;
-        auto error = record->platform_face->rasterize(glyph_id, metrics.logical_pixel_size * metrics.display_scale,
-                                                      phase, record->raster_policy, result);
+        const float physical_em = metrics.logical_pixel_size * metrics.display_scale;
+        auto error =
+            svg ? impl_->svg_glyph(glyph_id, physical_em, glyph_raster_phase_offset(phase),
+                                   glyph_raster_phase_offset(phase_y), result)
+                : record->platform_face->rasterize(glyph_id, physical_em, phase, record->raster_policy, result);
         if (error) {
             error.font = font;
             return {nullptr, false, std::move(error)};
@@ -704,7 +740,7 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
         }
         result.visible_bounds = {result.bearing_x, -result.bearing_y, result.width, result.height};
         result.display_scale = metrics.display_scale;
-        result.raster_scale = metrics.raster_scale;
+        result.raster_scale = svg ? metrics.display_scale : metrics.raster_scale;
         result.advance_x /= result.raster_scale;
         return publish_bitmap(std::move(result));
     }

@@ -117,7 +117,7 @@ enum class FontLcdFilter : std::uint8_t {
     legacy,
 };
 
-enum class FontRasterizer : std::uint8_t { freetype, platform_grayscale };
+enum class FontRasterizer : std::uint8_t { freetype, platform_grayscale, bundled_svg };
 
 struct FontRasterPolicy {
     bool antialias{true};
@@ -223,6 +223,7 @@ struct GlyphBitmap {
     float display_scale{1.0F};
     float raster_scale{1.0F};
     GlyphCoverageTransfer coverage_transfer{GlyphCoverageTransfer::direct};
+    bool svg_viewport_origin{};
 };
 
 class PlatformFontFace {
@@ -336,6 +337,8 @@ struct FontRuntimeOptions {
     FontFailurePoint failure_point{FontFailurePoint::none};
     std::shared_ptr<FontRuntimeCounters> counters;
     std::shared_ptr<PlatformFontRasterizer> platform_rasterizer;
+    bool (*has_svg_glyph)(std::uint32_t) noexcept {};
+    FontError (*svg_glyph)(std::uint32_t, float, float, float, GlyphBitmap&){};
 };
 
 class FontRuntime;
@@ -388,6 +391,11 @@ public:
     [[nodiscard]] GlyphRasterResult rasterize(FontIdentity font, std::uint32_t glyph_id, GlyphRasterPhase phase,
                                               GlyphRasterMode mode = GlyphRasterMode::grayscale,
                                               FontFailurePoint failure_point = FontFailurePoint::none);
+    [[nodiscard]] GlyphRasterResult rasterize(FontIdentity font, std::uint32_t glyph_id, GlyphRasterPhase phase_x,
+                                              GlyphRasterPhase phase_y, GlyphRasterMode mode,
+                                              FontFailurePoint failure_point = FontFailurePoint::none);
+    [[nodiscard]] bool has_svg_rasterizer() const noexcept;
+    [[nodiscard]] bool uses_svg_glyph(FontIdentity font, std::uint32_t glyph_id) const noexcept;
 
     [[nodiscard]] FontShapeResult shape_utf8_segment(FontIdentity font, std::string_view normalized_utf8,
                                                      std::size_t byte_offset, std::size_t byte_length,

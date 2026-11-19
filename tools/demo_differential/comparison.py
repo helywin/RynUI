@@ -70,9 +70,13 @@ def capture_description(native):
                     policies[digest(policy)]=policy
     if not policies:
         raise RunError(3,'calibration','actual native font raster policy is unavailable')
+    icon_rasterizer = native.get('hello', {}).get('provenance', {}).get('icon_rasterizer', 'freetype')
+    if icon_rasterizer not in ('freetype', 'skia-svg-a8'):
+        raise RunError(3, 'calibration', 'actual native icon raster policy is unavailable')
     return {**required(capture,('framebuffer_format','channel_order','alpha','color_profile'),'native original storage'),
             'source_channel_order':raw['source_channel_order'],'clear_rgba':raw['clear_rgba'],
-            'font_raster_policies':[policies[key] for key in sorted(policies)]}
+            'font_raster_policies':[policies[key] for key in sorted(policies)],
+            'icon_rasterizer': icon_rasterizer}
 
 
 def environment_description(case,native,web,actual_metrics,capture_facts):
@@ -747,7 +751,9 @@ def _glyph_witness_gate(row,point,dpr,priors,lower,observed):
     display=source['display_scale'];scale=font['logical_pixel_size']/prior['units']
     if display!=dpr:raise RunError(3,'calibration','actual glyph atlas scale differs from capture DPR')
     baseline_x=row['bounds']['x']+(source['padding']-source['bearing_x']+source['phase']/4)/display
-    baseline_y=row['bounds']['y']+(source['bearing_y']+source['padding'])/display
+    baseline_y=row['bounds']['y']+(source['bearing_y']+source['padding']+source.get('phase_y',0)/4)/display
+    if source.get('svg_viewport_origin') is True:
+        baseline_y+=prior['ascent']*scale
     x=(point[0]-baseline_x)/scale;y=(baseline_y-point[1])/scale
     inside,distance=outline_point(prior['contours'],x,y)
     if not inside or distance*scale*dpr<=.125:return None
@@ -765,7 +771,10 @@ def _glyph_witness_gate(row,point,dpr,priors,lower,observed):
 def _same_glyph_interface(first,second):
     if first['kind']!='glyph' or second['kind']!='glyph' or first['bounds']!=second['bounds']:return False
     a=first['glyph_source'][1]['atlas_source'];b=second['glyph_source'][1]['atlas_source']
-    return (a['glyph_id'],a['font']['sha256'],a['phase'])==(b['glyph_id'],b['font']['sha256'],b['phase'])
+    def identity(source):
+        return (source['glyph_id'],source['font']['sha256'],source['phase'],source.get('phase_y',0),
+                source.get('svg_viewport_origin',False))
+    return identity(a)==identity(b)
 
 
 def _layered_context(case,declaration,native,web,images,thresholds,origins,*,glyph_priors=None):
@@ -977,10 +986,12 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 if not _contains(_inset(row['bounds'],-max(1/dpr,row.get('blur',0)/2)),point):tail.append(local_index)
         soft=row['kind'] in ('shadow','inset-shadow') and row['blur']>0
         prefix='shadow' if soft else 'text' if row['kind'] in ('glyph','caret') else 'pixels'
-        result=shadow_profile_metrics(*local,local_size,tail_indices=tail) if soft else coverage_metrics(*local,local_size)
+        thin_ink = row.get('formal_svg') is True
+        result=shadow_profile_metrics(*local,local_size,tail_indices=tail) if soft else coverage_metrics(
+            *local,local_size,thin_ink=thin_ink)
         if not soft:
             from .regions import reference_aa_is_bounded
-            if not reference_aa_is_bounded(local[0],local_size,uncertainty=local_uncertainty):
+            if not reference_aa_is_bounded(local[0],local_size,uncertainty=local_uncertainty,thin_ink=thin_ink):
                 fail('typography' if prefix=='text' else 'visual','reference hard-edge transition exceeds the fixed one physical pixel AA bound',source=identity)
         if not result['required_ink_present']:fail('typography' if prefix=='text' else 'visual','required independently exposed paint ink missing',source=identity)
         fields=('coverage_mass_relative_error','projection_relative_error','profile_max_error','tail_max_error') if soft else (

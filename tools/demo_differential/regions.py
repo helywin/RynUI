@@ -275,7 +275,7 @@ def shadow_profile_metrics(reference, native, size, *, tail_indices=(), profile_
             'reference_mass':mass[0],'native_mass':mass[1]}
 
 
-def reference_aa_is_bounded(coverage,size,*,uncertainty=1/255):
+def reference_aa_is_bounded(coverage,size,*,uncertainty=1/255,thin_ink=False):
     """Reference-defined transition only, with a fixed one-physical-pixel bound."""
     width,height=size
     if len(coverage)!=width*height:
@@ -289,6 +289,8 @@ def reference_aa_is_bounded(coverage,size,*,uncertainty=1/255):
     if any(type(bound) not in (int,float) or not math.isfinite(bound) or not 0<=bound<.5 for bound in bounds):
         raise ProtocolError('reference AA quantization bound is invalid')
     boundary=contour({(i%width,i//width) for i,v in enumerate(coverage) if v>=.5})
+    if thin_ink and not boundary:
+        boundary=contour({(i%width,i//width) for i,v in enumerate(coverage) if v>=.25})
     for i,(value,bound) in enumerate(zip(coverage,bounds)):
         if bound<value<1-bound:
             x,y=i%width,i//width

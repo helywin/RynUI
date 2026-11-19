@@ -12,6 +12,9 @@
 #elif defined(RYNUI_HAS_FONTATIONS_GRAYSCALE)
 #include "platform/fontations_grayscale.hpp"
 #endif
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+#include "platform/skia_icon_rasterizer.hpp"
+#endif
 
 #include <SDL3/SDL.h>
 #include <algorithm>
@@ -121,10 +124,62 @@ std::shared_ptr<font::PlatformFontRasterizer> control_rasterizer(std::string_vie
     return {};
 }
 
+Json glyph_witness_mask(const font::GlyphBitmap& bitmap) {
+    require(bitmap.width && bitmap.height && bitmap.width <= 256 && bitmap.height <= 256 &&
+                bitmap.row_stride >= bitmap.width &&
+                bitmap.coverage.size() == static_cast<std::size_t>(bitmap.row_stride) * bitmap.height,
+            "glyph witness has no valid R8 bitmap");
+    constexpr std::string_view hex = "0123456789abcdef";
+    std::string coverage;
+    coverage.reserve(2U * bitmap.width * bitmap.height);
+    for (std::uint32_t y = 0; y < bitmap.height; ++y) {
+        for (std::uint32_t x = 0; x < bitmap.width; ++x) {
+            const auto v = bitmap.coverage[static_cast<std::size_t>(y) * bitmap.row_stride + x];
+            coverage.push_back(hex[v >> 4]);
+            coverage.push_back(hex[v & 15]);
+        }
+    }
+    return Json::Object{{"left", static_cast<std::int64_t>(bitmap.bearing_x)},
+                        {"top", -static_cast<std::int64_t>(bitmap.bearing_y)},
+                        {"width", integer(bitmap.width)},
+                        {"height", integer(bitmap.height)},
+                        {"r8", std::move(coverage)}};
+}
+
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+void write_icon_witnesses(const Json& request, const std::filesystem::path& output) {
+    const auto& glyphs = request.at("glyphs").array();
+    require(!glyphs.empty() && glyphs.size() <= 384, "icon witness inputs exceed the fixed control bounds");
+    Json::Array masks;
+    for (const auto& glyph : glyphs) {
+        const auto id = glyph.at("glyph_id").integer();
+        const auto x = glyph.at("phase").integer();
+        const auto y = glyph.at("phase_y").integer();
+        const auto em = glyph.at("physical_em").number();
+        require(id > 0 && id <= UINT32_MAX && x >= 0 && x <= 3 && y >= 0 && y <= 3 && em > 0 && em <= 128,
+                "invalid icon witness placement");
+        font::GlyphBitmap bitmap;
+        const auto error =
+            rasterize_bundled_svg_glyph(static_cast<std::uint32_t>(id), static_cast<float>(em),
+                                        static_cast<float>(x) * .25F, static_cast<float>(y) * .25F, bitmap);
+        require(!error && bitmap.svg_viewport_origin, "independent SVG raster witness failed");
+        masks.push_back(glyph_witness_mask(bitmap));
+    }
+    write_json(output / "glyph-witnesses.json",
+               Json::Object{{"rasterizer", "skia-svg-a8"}, {"masks", std::move(masks)}});
+}
+#endif
+
 void write_glyph_witnesses(const Json& request, const std::filesystem::path& output) {
     // This source probe uses independently requested glyph IDs and CPU font
     // coverage. It does not create a window, scene, atlas or renderer.
     const auto& identity = request.at("rasterizer").string();
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+    if (identity == "skia-svg-a8") {
+        write_icon_witnesses(request, output);
+        return;
+    }
+#endif
     const auto backend = control_rasterizer(identity);
     require(bool(backend), "trusted glyph witness rasterizer is unavailable");
     const auto& files = request.at("fonts").array();
@@ -155,7 +210,6 @@ void write_glyph_witnesses(const Json& request, const std::filesystem::path& out
     font::FontRasterPolicy raster_policy;
     raster_policy.hinting = policy.at("hinting").boolean();
     raster_policy.hint_style = static_cast<font::FontHintStyle>(hint_style);
-    constexpr std::string_view hex = "0123456789abcdef";
     Json::Array masks;
     for (const auto& glyph : glyphs) {
         const auto index = glyph.at("font").integer();
@@ -169,24 +223,8 @@ void write_glyph_witnesses(const Json& request, const std::filesystem::path& out
         const auto error = faces[static_cast<std::size_t>(index)]->rasterize(
             static_cast<std::uint32_t>(id), static_cast<float>(em), static_cast<font::GlyphRasterPhase>(phase),
             raster_policy, bitmap);
-        require(!error && bitmap.width && bitmap.height && bitmap.width <= 256 && bitmap.height <= 256 &&
-                    bitmap.row_stride >= bitmap.width &&
-                    bitmap.coverage.size() == static_cast<std::size_t>(bitmap.row_stride) * bitmap.height,
-                "glyph witness has no valid R8 bitmap");
-        std::string coverage;
-        coverage.reserve(2U * bitmap.width * bitmap.height);
-        for (std::uint32_t y = 0; y < bitmap.height; ++y) {
-            for (std::uint32_t x = 0; x < bitmap.width; ++x) {
-                const auto v = bitmap.coverage[static_cast<std::size_t>(y) * bitmap.row_stride + x];
-                coverage.push_back(hex[v >> 4]);
-                coverage.push_back(hex[v & 15]);
-            }
-        }
-        masks.emplace_back(Json::Object{{"left", static_cast<std::int64_t>(bitmap.bearing_x)},
-                                        {"top", -static_cast<std::int64_t>(bitmap.bearing_y)},
-                                        {"width", integer(bitmap.width)},
-                                        {"height", integer(bitmap.height)},
-                                        {"r8", std::move(coverage)}});
+        require(!error, "CPU font glyph witness failed");
+        masks.push_back(glyph_witness_mask(bitmap));
     }
     write_json(output / "glyph-witnesses.json", Json::Object{{"rasterizer", identity}, {"masks", std::move(masks)}});
 }
@@ -376,10 +414,11 @@ struct Board final {
                 "control actual glyph atlas entry unavailable");
         const auto padding = static_cast<int>(glyph_atlas_padding);
         const auto phase = static_cast<float>(entry->key.phase) * .25F;
+        const auto phase_y = static_cast<float>(entry->key.phase_y) * .25F;
         return {instance.position_size[0] + instance.translation_opacity[0] +
                     (static_cast<float>(padding - entry->bearing_x) + phase) / entry->display_scale,
                 instance.position_size[1] + instance.translation_opacity[1] +
-                    static_cast<float>(entry->bearing_y + padding) / entry->display_scale};
+                    (static_cast<float>(entry->bearing_y + padding) + phase_y) / entry->display_scale};
     }
 
     void glyph(const Json& cell, const Json& files, Json::Object& source) {
@@ -800,6 +839,16 @@ int main(int argc, char** argv) {
         const auto rasterizer_name = policy.contains("rasterizer") ? policy.at("rasterizer").string() : "freetype";
         font::FontRuntimeOptions font_options;
         font_options.platform_rasterizer = control_rasterizer(rasterizer_name);
+        const auto icon_rasterizer =
+            request.contains("icon_rasterizer") ? request.at("icon_rasterizer").string() : std::string{"freetype"};
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+        if (icon_rasterizer == "skia-svg-a8") {
+            font_options.has_svg_glyph = &ryn::detail::has_bundled_svg_glyph;
+            font_options.svg_glyph = &ryn::detail::rasterize_bundled_svg_glyph;
+        }
+#endif
+        require(icon_rasterizer == "freetype" || font_options.svg_glyph != nullptr,
+                "requested control icon rasterizer is unavailable");
         require(rasterizer_name == "freetype" || bool(font_options.platform_rasterizer),
                 "requested control rasterizer is unavailable");
         const auto rasterizer = font_options.platform_rasterizer ? font::FontRasterizer::platform_grayscale

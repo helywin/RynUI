@@ -483,6 +483,46 @@ void test_platform_rasterizer_owns_a_generation() {
             "retired platform font retained its face, source or cache");
 }
 
+void test_svg_glyph_cache_tracks_both_physical_axes() {
+    using namespace ryn::font;
+    FontRasterConfig options{14, 1.5F};
+    options.policy.rasterizer = FontRasterizer::bundled_svg;
+    auto runtime = FontRuntime::create({
+        .has_svg_glyph = [](std::uint32_t id) noexcept { return id != 0; },
+        .svg_glyph = [](std::uint32_t, float em, float x, float y, GlyphBitmap& result) -> FontError {
+            require(near(em, 21.0F) && near(x, .25F), "SVG rasterizer lost physical size and horizontal phase");
+            result.coverage = {static_cast<std::uint8_t>(128 * y)};
+            result.width = 1;
+            result.height = 1;
+            result.row_stride = 1;
+            result.advance_x = em;
+            result.svg_viewport_origin = true;
+            return {};
+        },
+    });
+    require(bool(runtime), "could not initialize SVG atlas fixture");
+    auto& fonts = *runtime.runtime;
+    const auto svg = fonts.load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, options);
+    const auto regular = fonts.load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, 14);
+    require(svg && regular, "could not admit font atlas fixture");
+    const auto glyph = fonts.glyph_index(svg.font, U'A');
+    require(bool(glyph) && fonts.uses_svg_glyph(svg.font, glyph.glyph.glyph_id), "SVG glyph could not resolve cmap");
+    const auto id = glyph.glyph.glyph_id;
+    const auto first =
+        fonts.rasterize(svg.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::quarter, GlyphRasterMode::grayscale);
+    const auto second =
+        fonts.rasterize(svg.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::half, GlyphRasterMode::grayscale);
+    const auto repeated =
+        fonts.rasterize(svg.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::quarter, GlyphRasterMode::grayscale);
+    require(first && second && repeated && !first.cache_hit && !second.cache_hit && repeated.cache_hit &&
+                first.glyph == repeated.glyph && first.glyph->coverage != second.glyph->coverage &&
+                first.glyph->svg_viewport_origin && near(first.glyph->advance_x, 14.0F),
+            "SVG cache did not preserve the two physical phases and logical advance");
+    require(!fonts.rasterize(regular.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::half,
+                             GlyphRasterMode::grayscale),
+            "ordinary glyph admitted a vertical SVG phase");
+}
+
 } // namespace
 
 int main() {
@@ -494,6 +534,7 @@ int main() {
         test_owner_thread_guard();
         test_read_only_font_source();
         test_platform_rasterizer_owns_a_generation();
+        test_svg_glyph_cache_tracks_both_physical_axes();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

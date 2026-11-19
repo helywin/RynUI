@@ -87,6 +87,7 @@ std::size_t GlyphAtlas::KeyHash::operator()(const GlyphAtlasKey& key) const noex
     mix(key.pixel_size);
     mix(static_cast<std::uint32_t>(key.phase));
     mix(static_cast<std::uint32_t>(key.mode));
+    mix(static_cast<std::uint32_t>(key.phase_y));
     return static_cast<std::size_t>(hash);
 }
 
@@ -97,6 +98,12 @@ GlyphAtlasResult GlyphAtlas::ensure(font::FontRuntime& fonts, font::FontIdentity
 
 GlyphAtlasResult GlyphAtlas::ensure(font::FontRuntime& fonts, font::FontIdentity font_identity, std::uint32_t glyph_id,
                                     font::GlyphRasterPhase phase, font::GlyphRasterMode mode) {
+    return ensure(fonts, font_identity, glyph_id, phase, font::GlyphRasterPhase::zero, mode);
+}
+
+GlyphAtlasResult GlyphAtlas::ensure(font::FontRuntime& fonts, font::FontIdentity font_identity, std::uint32_t glyph_id,
+                                    font::GlyphRasterPhase phase, font::GlyphRasterPhase phase_y,
+                                    font::GlyphRasterMode mode) {
     const auto metrics = fonts.metrics(font_identity);
     if (!metrics) {
         return {nullptr,
@@ -104,13 +111,13 @@ GlyphAtlasResult GlyphAtlas::ensure(font::FontRuntime& fonts, font::FontIdentity
                 {GlyphAtlasErrorKind::font_failure, 0, 0, static_cast<std::uint32_t>(pages_.size()), metrics.error}};
     }
     const GlyphAtlasKey key{
-        font_identity, glyph_id, metrics.metrics.raster_pixel_size, phase, mode,
+        font_identity, glyph_id, metrics.metrics.raster_pixel_size, phase, mode, phase_y,
     };
     if (const GlyphAtlasEntry* existing = find(key)) {
         return {existing, true, {}};
     }
 
-    const auto rasterized = fonts.rasterize(font_identity, glyph_id, phase, mode);
+    const auto rasterized = fonts.rasterize(font_identity, glyph_id, phase, phase_y, mode);
     if (!rasterized) {
         return {nullptr,
                 false,
@@ -198,6 +205,7 @@ GlyphAtlasResult GlyphAtlas::allocate(GlyphAtlasKey key, const font::GlyphBitmap
             glyph.raster_scale,
             true,
             glyph.coverage_transfer,
+            glyph.svg_viewport_origin,
         });
         try {
             key_index_.emplace(key, entries_.size() - 1);
@@ -274,6 +282,7 @@ GlyphAtlasResult GlyphAtlas::allocate(GlyphAtlasKey key, const font::GlyphBitmap
         glyph.raster_scale,
         false,
         glyph.coverage_transfer,
+        glyph.svg_viewport_origin,
     });
     try {
         key_index_.emplace(key, entries_.size() - 1);

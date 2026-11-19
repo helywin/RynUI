@@ -730,15 +730,18 @@ gallery_demo_text_snapshot(const ryn::detail::TextSceneService& service, ryn::de
             if (entry.uv.left == instance.uv_rect[0] && entry.uv.top == instance.uv_rect[1] &&
                 entry.uv.right == instance.uv_rect[2] && entry.uv.bottom == instance.uv_rect[3] &&
                 item.contains("atlas_page") && item.at("atlas_page").integer() == entry.page) {
-                item.emplace("atlas_source", Json::Object{{"glyph_id", count(entry.key.glyph_id)},
-                                                          {"font", font_info(entry.key.font)},
-                                                          {"phase", count(static_cast<std::uint8_t>(entry.key.phase))},
-                                                          {"bearing_x", entry.bearing_x},
-                                                          {"bearing_y", entry.bearing_y},
-                                                          {"padding", count(graphics::glyph_atlas_padding)},
-                                                          {"display_scale", entry.display_scale},
-                                                          {"coverage_width", count(entry.coverage_rect.width)},
-                                                          {"coverage_height", count(entry.coverage_rect.height)}});
+                item.emplace("atlas_source",
+                             Json::Object{{"glyph_id", count(entry.key.glyph_id)},
+                                          {"font", font_info(entry.key.font)},
+                                          {"phase", count(static_cast<std::uint8_t>(entry.key.phase))},
+                                          {"phase_y", count(static_cast<std::uint8_t>(entry.key.phase_y))},
+                                          {"svg_viewport_origin", entry.svg_viewport_origin},
+                                          {"bearing_x", entry.bearing_x},
+                                          {"bearing_y", entry.bearing_y},
+                                          {"padding", count(graphics::glyph_atlas_padding)},
+                                          {"display_scale", entry.display_scale},
+                                          {"coverage_width", count(entry.coverage_rect.width)},
+                                          {"coverage_height", count(entry.coverage_rect.height)}});
                 break;
             }
         }

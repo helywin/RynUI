@@ -142,6 +142,9 @@ font::FontIdentity TextSceneService::icon_font(font::FontIdentity reference, std
     raster.policy.hinting = false;
     raster.policy.embedded_bitmap = false;
     const auto* first = reinterpret_cast<const std::byte*>(ant_design_icon_font_bytes);
+    if (fonts_->has_svg_rasterizer()) {
+        raster.policy.rasterizer = font::FontRasterizer::bundled_svg;
+    }
     const auto result = fonts_->load_font_bytes({first, sizeof(ant_design_icon_font_bytes)}, 0, raster);
     if (!result) {
         throw std::runtime_error("Cannot load embedded Ant Design icons: " + result.error.diagnostic);

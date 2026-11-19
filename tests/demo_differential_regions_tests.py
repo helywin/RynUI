@@ -67,6 +67,9 @@ class RegionTests(unittest.TestCase):
         self.assertGreaterEqual(coverage_metrics(reference, moved, dims, thin_ink=True)['contour_distance_px'], 1)
         for invalid in ([0]*6, [value/2 for value in reference], [0, .3, .55, .33, 0, 0]):
             self.assertIsNone(coverage_metrics(reference, invalid, dims, thin_ink=True)['contour_distance_px'])
+        self.assertFalse(reference_aa_is_bounded(reference, dims))
+        self.assertTrue(reference_aa_is_bounded(reference, dims, thin_ink=True))
+        self.assertFalse(reference_aa_is_bounded([0,.02,0,.33,0,0], dims, thin_ink=True))
 
     def test_local_coverage_and_projection_catch_last_glyph_pixel(self):
         reference=[1.]*100

@@ -93,12 +93,15 @@ def control_request(manifest, *,side,partition,board,fault,identity,nonce,launch
                 f['identity']==('noto-sans' if ord(cell['content'])<128 else 'noto-sans-cjk-sc'))
             prior=manifest['font_priors'][descriptor['sha256']+':'+cell['content']]
             cell['outline_right_logical']=prior['bounds'][2]*cell['font_size']/prior['units']
-    return dict(schema_version=1,calibration_kind=KIND,nonce=nonce,process_launch_id=launch_id,
+    request = dict(schema_version=1,calibration_kind=KIND,nonce=nonce,process_launch_id=launch_id,
         side=side,partition=partition,board=board,fault=fault,restart=restart,repetitions=repetitions,
         actual_dpr=manifest['scope']['actual_dpr'],font_files=[{**f,'path':str(output_path(ROOT/relative_path(f['path'])))} for f in manifest['fonts']],
         binding=manifest['binding'],cells=cells,panels=manifest['corpus']['panels'],
         clear_rgba=manifest['environment']['native_capture']['clear_rgba'],
         raster_policy=manifest['environment']['native_capture']['font_raster_policies'][0])
+    if side == 'native' and 'icon_rasterizer' in manifest['environment']['native_capture']:
+        request['icon_rasterizer'] = manifest['environment']['native_capture']['icon_rasterizer']
+    return request
 
 
 def verify_trial_request(manifest,trial,side,record,paths):
@@ -337,9 +340,10 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
         raise RunError(3,'calibration','locked image decoder is required to reconstruct calibration')
     verify_bootstrap(manifest,paths,root)
     corpus=manifest['corpus']
-    from .glyph_witness import build as build_glyph_witnesses
-    witnesses = build_glyph_witnesses(manifest, root,
-                                     control_cells(corpus, 'train') + control_cells(corpus, 'holdout'))
+    from .glyph_witness import build as build_glyph_witnesses, build_icons
+    source_cells = control_cells(corpus, 'train') + control_cells(corpus, 'holdout')
+    witnesses = build_glyph_witnesses(manifest, root, source_cells)
+    icon_masks = build_icons(manifest, root, source_cells)
     trials=manifest['trials']
     if not trials or len({t['identity'] for t in trials}) != len(trials):
         raise ProtocolError('missing/duplicate calibration trial')
@@ -461,9 +465,12 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
         for control in observations[0]['controls']:
             if control['kind']=='text' and control['source'].get('raster_policy') not in manifest['environment']['native_capture']['font_raster_policies']:
                 raise RunError(3,'calibration','actual native control font raster policy differs')
+            if control['kind']=='icon' and icon_masks is not None:
+                if control['source'].get('raster_policy', {}).get('rasterizer') != 'skia-svg-a8':
+                    raise RunError(3, 'calibration', 'actual native control icon raster policy differs')
         details = None if measurements is None else {}
         values,hard_failures=measure_controls(corpus,trial,observations,images,manifest['font_priors'],
-                                              details=details,witnesses=witnesses)
+                                              details=details,witnesses=witnesses,icon_masks=icon_masks)
         if measurements is not None:
             measurements.append(dict(identity=trial['identity'],partition=partition,fault=trial['fault'],**details))
         if partition=='negative':
@@ -780,7 +787,7 @@ def software_box_source_over(background, colors, alphas, coverage):
     return dest
 
 
-def measure_controls(corpus,trial,observations,images,priors,*,details=None,witnesses=None):
+def measure_controls(corpus,trial,observations,images,priors,*,details=None,witnesses=None,icon_masks=None):
     """Recompute from full raw planes and observed control geometry/material/font.
 
     Every control is checked on its own before entering the positive partition.
@@ -922,13 +929,19 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
             for native,reference in zip(actual[0]['source']['layout_origin'],actual[1]['source']['layout_origin']):
                 collect('text.geometry_logical_px',abs(native-reference))
         icon_outlines=None
+        placed_icons=None
         if cell['kind']=='icon':
             from .formal_icon_source import resource
             entry,_,manifest,_=resource(cell['content'])
             icon_priors=[priors.get(manifest['outline_container_sha256']+':'+chr(layer['codepoint']))
                          for layer in entry['layers']]
             try:
-                icon_outlines=control_icon_outlines(cell,actual,icon_priors,dpr)
+                outlines=control_icon_outlines(cell,actual,icon_priors,dpr)
+                if icon_masks is None:
+                    icon_outlines=outlines
+                else:
+                    from .glyph_witness import place_icon, icon_ink_at
+                    placed_icons=place_icon(icon_masks,cell,dpr)
             except ProtocolError:
                 fail('icon.independent-placement')
         r=cell['rect']
@@ -1085,7 +1098,14 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
                     if ink is True and k<.98 or ink is False and k>1/255:
                         fail('font.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
                              expected='ink' if ink else 'clear',observed_rgb=observed[side])
-            if icon_outlines is not None:
+            if placed_icons is not None:
+                ink=icon_ink_at(placed_icons,int(x),int(y))
+                ink_core+=2*(ink is True)
+                for side,k in enumerate((planes[0][-1],planes[1][-1])):
+                    if ink is True and k<.98 or ink is False and k>1/255:
+                        fail('icon.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
+                             expected='ink' if ink else 'clear',observed_rgb=observed[side])
+            elif icon_outlines is not None:
                 for side,outlines in enumerate(icon_outlines):
                     icon_witnesses=[outline_witness(prior,(lx-origin[0])/scale,(origin[1]-ly)/scale,1/(scale*dpr))
                                     for prior,origin,scale in outlines]
@@ -1257,6 +1277,7 @@ def control_icon_outlines(cell,actual,priors,dpr):
     if len(layers)!=len(priors) or any(prior is None for prior in priors):
         raise ProtocolError('actual formal glyph layers lack independent outlines')
     outlines=[[],[]]
+    svg_viewport = native.get('raster_policy', {}).get('rasterizer') == 'skia-svg-a8'
     for layer,prior in zip(layers,priors):
         instances=layer.get('ink_instances',[])
         if len(instances)!=1:
@@ -1264,8 +1285,12 @@ def control_icon_outlines(cell,actual,priors,dpr):
         origin=observed_origin(instances[0].get('raster_origin'))
         scale=size/prior['units']
         baseline=r['y']+prior['ascent']*scale
-        if abs(origin[0]-r['x'])*dpr>.125+1/1024 or abs(origin[1]-baseline)*dpr>.5+1/1024:
+        expected_y = r['y'] if svg_viewport else baseline
+        vertical_tolerance = .125 if svg_viewport else .5
+        if abs(origin[0]-r['x'])*dpr>.125+1/1024 or abs(origin[1]-expected_y)*dpr>vertical_tolerance+1/1024:
             raise ProtocolError('formal atlas glyph placement exceeds quantization')
+        if svg_viewport:
+            origin = (origin[0], origin[1] + prior['ascent']*scale)
         outlines[0].append((prior,origin,scale))
         outlines[1].append((prior,[bounds['x'],bounds['y']+prior['ascent']*scale],scale))
     return outlines

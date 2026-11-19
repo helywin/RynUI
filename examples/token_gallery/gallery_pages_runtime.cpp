@@ -15,6 +15,9 @@
 #elif defined(RYNUI_HAS_FONTATIONS_GRAYSCALE)
 #include "platform/fontations_grayscale.hpp"
 #endif
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+#include "platform/skia_icon_rasterizer.hpp"
+#endif
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
@@ -481,6 +484,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
             font_sources.emplace(key, info);
             return info;
         };
+        std::get<GalleryDemoJson::Object>(demo_provenance.value)
+            .insert_or_assign("icon_rasterizer", events.fonts.has_svg_rasterizer() ? "skia-svg-a8" : "freetype");
         run_gallery_demo_scenario(
             *scenario, options.observations, std::move(demo_provenance),
             GalleryDemoNativeActions{
@@ -4293,6 +4298,12 @@ int run_gallery_pages(int argc, char** argv) {
 #elif defined(RYNUI_HAS_FONTATIONS_GRAYSCALE)
         if (pinned_fonts) {
             font_options.platform_rasterizer = ryn::detail::make_fontations_grayscale_rasterizer();
+        }
+#endif
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+        if (pinned_fonts) {
+            font_options.has_svg_glyph = &ryn::detail::has_bundled_svg_glyph;
+            font_options.svg_glyph = &ryn::detail::rasterize_bundled_svg_glyph;
         }
 #endif
         const bool platform_grayscale = static_cast<bool>(font_options.platform_rasterizer);
