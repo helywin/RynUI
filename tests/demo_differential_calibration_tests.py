@@ -13,7 +13,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
     png_metadata,verify_profile_evidence,evidence_manifest,outline_point,outline_witness,measure_controls,
     weak_fill_pixel_matches,control_icon_outlines,control_text_origin,software_box_source_over,
-    hard_clip_matches_device_grid)
+    hard_clip_matches_device_grid,physical_box_coverage)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 from demo_differential.glyph_witness import GlyphWitness, place
@@ -42,15 +42,24 @@ class CalibrationTests(unittest.TestCase):
         with self.assertRaises(ProtocolError):
             place(directwrite,{**source,'actual_font_sha256':'other'},12,(x,y),1.5)
 
-    def test_weak_fill_checks_exact_endpoints_and_the_edge_envelope(self):
-        for fg,bg in (([1]*3,[0]*3),([2]*3,[0]*3),([254]*3,[255]*3)):
-            self.assertTrue(weak_fill_pixel_matches(fg,fg,bg,-1.5))
-            self.assertFalse(weak_fill_pixel_matches(bg,fg,bg,-1.5))
-            self.assertTrue(weak_fill_pixel_matches(bg,fg,bg,1.5))
-            self.assertFalse(weak_fill_pixel_matches(fg,fg,bg,1.5))
-            self.assertTrue(weak_fill_pixel_matches(fg,fg,bg,0))
-            self.assertTrue(weak_fill_pixel_matches(bg,fg,bg,0))
-            self.assertFalse(weak_fill_pixel_matches([128]*3,fg,bg,0))
+    def test_weak_fill_requires_the_independent_raster_bytes(self):
+        rect=dict(x=130.5,y=78.5,width=22,height=24)
+        corner=physical_box_coverage(rect,228.5,117.5,1.5)
+        self.assertEqual(corner,.1875)
+        fg,bg=[4]*3,[0]*3
+        self.assertTrue(weak_fill_pixel_matches([1]*3,fg,bg,corner,software=False))
+        self.assertTrue(weak_fill_pixel_matches([0]*3,fg,bg,corner,software=True))
+        self.assertFalse(weak_fill_pixel_matches([0]*3,fg,bg,corner,software=False))
+        self.assertFalse(weak_fill_pixel_matches([1]*3,fg,bg,corner,software=True))
+        for software in (False,True):
+            for foreground,background in (([1]*3,[0]*3),([254]*3,[255]*3)):
+                self.assertTrue(weak_fill_pixel_matches(foreground,foreground,background,1,software=software))
+                self.assertFalse(weak_fill_pixel_matches(background,foreground,background,1,software=software))
+                self.assertTrue(weak_fill_pixel_matches(background,foreground,background,0,software=software))
+                self.assertFalse(weak_fill_pixel_matches(foreground,foreground,background,0,software=software))
+        self.assertTrue(weak_fill_pixel_matches([1]*3,[2]*3,[0]*3,.75,software=False))
+        self.assertTrue(weak_fill_pixel_matches([2]*3,[2]*3,[0]*3,.75,software=False))
+        self.assertFalse(weak_fill_pixel_matches([0]*3,[2]*3,[0]*3,.75,software=False))
 
     def test_independent_outline_winding_hole_and_distance(self):
         outer=[[0,0],[10,0],[10,10],[0,10],[0,0]]

@@ -344,8 +344,8 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
     corpus=manifest['corpus']
     from .glyph_witness import build as build_glyph_witnesses, build_icons
     source_cells = control_cells(corpus, 'train') + control_cells(corpus, 'holdout')
-    witnesses = build_glyph_witnesses(manifest, root, source_cells)
-    icon_masks = build_icons(manifest, root, source_cells)
+    witnesses = build_glyph_witnesses(manifest, ROOT, source_cells)
+    icon_masks = build_icons(manifest, ROOT, source_cells)
     trials=manifest['trials']
     if not trials or len({t['identity'] for t in trials}) != len(trials):
         raise ProtocolError('missing/duplicate calibration trial')
@@ -353,6 +353,7 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
     nonces=set()
     fences={}
     transparent_probes={}
+    raster_measurements={}
     partitions={'train':[],'holdout':[],'negative':[]}
     for trial in trials:
         exact_fields(trial,'identity partition board fault restart native web','calibration trial')
@@ -477,9 +478,17 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
             if control['kind']=='icon' and icon_masks is not None:
                 if control['source'].get('raster_policy', {}).get('rasterizer') != 'skia-svg-a8':
                     raise RunError(3, 'calibration', 'actual native control icon raster policy differs')
-        details = None if measurements is None else {}
-        values,hard_failures=measure_controls(corpus,trial,observations,images,manifest['font_priors'],
-                                              details=details,witnesses=witnesses,icon_masks=icon_masks)
+        # Every fence, acquisition and producer record was verified above.
+        # Pixel-identical repeats with identical submitted sources have the
+        # same deterministic measurement within this evidence evaluation.
+        raster_key=(trial['board'],trial['fault'],tuple(
+            (record['capture']['raw_sha256'],record['snapshot_sha256']) for record in observations))
+        if raster_key not in raster_measurements:
+            details = None if measurements is None else {}
+            values,hard_failures=measure_controls(corpus,trial,observations,images,manifest['font_priors'],
+                                                  details=details,witnesses=witnesses,icon_masks=icon_masks)
+            raster_measurements[raster_key]=(values,hard_failures,details)
+        values,hard_failures,details=raster_measurements[raster_key]
         if measurements is not None:
             measurements.append(dict(identity=trial['identity'],partition=partition,fault=trial['fault'],**details))
         if partition=='negative':
@@ -796,6 +805,22 @@ def software_box_source_over(background, colors, alphas, coverage):
     return dest
 
 
+def physical_box_coverage(rect,x,y,dpr):
+    """Independent area of the declared square fill in one physical pixel."""
+    width=max(0,min(x+.5,(rect['x']+rect['width'])*dpr)-max(x-.5,rect['x']*dpr))
+    height=max(0,min(y+.5,(rect['y']+rect['height'])*dpr)-max(y-.5,rect['y']*dpr))
+    return width*height
+
+
+def weak_fill_pixel_matches(pixel,foreground,background,coverage,*,software):
+    if software:
+        return tuple(pixel)==software_box_source_over(background,(foreground,),(1,),coverage)
+    # The native normalized GPU blend admits either neighboring byte at an
+    # exact half-code tie. Integer interior and guard values remain exact.
+    return all(abs(p-(b+(f-b)*coverage))<=.5+1e-8
+               for p,f,b in zip(pixel,foreground,background,strict=True))
+
+
 def hard_clip_matches_device_grid(declared, actual, dpr):
     keys = {'x', 'y', 'width', 'height'}
     if not isinstance(actual, dict) or set(actual) != keys or any(
@@ -1044,9 +1069,12 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
                 core_boxes.extend(row['source'].get('ink_boxes',[]))
             if not core_boxes:
                 continue
-        # The mirrored high-contrast controls measure coverage. Near an RGB8
-        # endpoint the same colors still have exact observable flat interiors.
-        weak_fill=cell['kind']=='fill' and alpha==1 and 0<math.dist(foreground,background)<=4
+        # If even one code exceeds the complete 2x2 coverage budget, compare
+        # the actual bytes to each independently known opaque box raster path.
+        # The matching high-contrast controls still enforce the coverage caps.
+        contrast=max(abs(f-b) for f,b in zip(foreground,background,strict=True))
+        weak_fill=(locked_software_box and cell['kind']=='fill' and alpha==1 and
+                   0<4*contrast*CAPS['pixels.coverage_local_relative_error']<1)
         flat_rgb=[round(v*255) for v in source_over([v/255 for v in foreground],[v/255 for v in background],alpha)]
         planes=[[],[]]
         for pixel in range(width*height):
@@ -1054,9 +1082,11 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
             lx,ly=x/dpr,y/dpr
             observed=[list(data[pixel*4:pixel*4+3]) for data in crops]
             if weak_fill:
-                distance=rounded_distance(lx,ly,r,0)*dpr
-                if not all(weak_fill_pixel_matches(rgb,foreground,background,distance) for rgb in observed):
-                    fail('color.independent-weak-contrast-fill')
+                area=physical_box_coverage(r,x,y,dpr)
+                for side,rgb in enumerate(observed):
+                    if not weak_fill_pixel_matches(rgb,foreground,background,area,software=side==1):
+                        fail('color.independent-weak-contrast-fill',side=('native','web')[side],
+                             physical_pixel=[int(x),int(y)])
                 continue
             if not is_text:
                 distance=rounded_distance(lx,ly,r,cell.get('radius',0))*dpr
@@ -1085,10 +1115,8 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
                     if not solved['valid']:
                         matches=False
                         if side==1 and locked_software_box:
-                            width_hit=max(0,min(x+.5,(r['x']+r['width'])*dpr)-max(x-.5,r['x']*dpr))
-                            height_hit=max(0,min(y+.5,(r['y']+r['height'])*dpr)-max(y-.5,r['y']*dpr))
                             matches=tuple(rgb)==software_box_source_over(background,overlap_colors,overlap_alphas,
-                                                                         width_hit*height_hit)
+                                                                         physical_box_coverage(r,x,y,dpr))
                         if not matches:
                             fail('overlap.output-material',side=('native','web')[side],physical_pixel=[int(x),int(y)])
                     weights=solved['contributions']
@@ -1256,14 +1284,6 @@ def canvas_guard(corpus,trial,observations,images):
             if result[key] is None:failures.add('guard.frame-contour')
             else:values['pixels.'+key]=max(values.get('pixels.'+key,0),result[key])
     return values,failures
-
-
-def weak_fill_pixel_matches(pixel,foreground,background,distance):
-    if distance < -1:
-        return pixel==foreground
-    if distance > 1:
-        return pixel==background
-    return all(min(f,b)<=p<=max(f,b) for p,f,b in zip(pixel,foreground,background))
 
 
 def observed_origin(value):
@@ -1549,12 +1569,13 @@ def calibrate(options):
                 manifest['artifacts'].append(dict(path=p.relative_to(directory).as_posix(),sha256=sha(p),bytes=p.stat().st_size))
         color['control_evidence_sha256']=digest(manifest['artifacts'])
         manifest['color']=color
-        report['measurements']=[]
-        rows=evaluate_trials(manifest,{a['path']:directory/a['path'] for a in manifest['artifacts']},directory,
-                             image_module=library,measurements=report['measurements'])
         encoded=json.dumps(manifest,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()+b'\n'
         evidence_sha=hashlib.sha256(encoded).hexdigest();evidence_path=directory/(evidence_sha+'.json')
         evidence_path.write_bytes(encoded)
+        report['evidence_manifest']=evidence_path.name
+        report['measurements']=[]
+        rows=evaluate_trials(manifest,{a['path']:directory/a['path'] for a in manifest['artifacts']},directory,
+                             image_module=library,measurements=report['measurements'])
         profile=dict(schema_version=1,identity='pilot-pinned-font',**bound,corpus_hash=digest(corpus),repetitions=repetitions,
             calibration_kind=KIND,scope=scope,calibrated=True,metrics=rows,masks=[],color=color,
             evidence=dict(path=evidence_path.relative_to(ROOT).as_posix(),sha256=evidence_sha,

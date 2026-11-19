@@ -6,10 +6,11 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
-from demo_differential.calibration import control_request,request_bytes,verify_trial_request,validate_control_count
+from demo_differential.calibration import control_request,request_bytes,verify_trial_request,validate_control_count,evaluate_trials
 from demo_differential.device_metrics import stable_device_metrics
 from demo_differential.pilots import FONTS
 from demo_differential.protocol import FIXTURES,ProtocolError,read
@@ -59,6 +60,19 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(len(cells),385)
         bounded=cells[:384]
         self.assertIs(validate_control_count(bounded),bounded)
+
+    def test_witness_paths_are_checkout_relative_during_artifact_replay(self):
+        manifest=self.manifest()
+        manifest['trials']=[]
+        artifact_dir=ROOT/'out/nested-calibration/board'
+        with patch('demo_differential.calibration.verify_bootstrap') as verify, \
+             patch('demo_differential.glyph_witness.build') as glyphs, \
+             patch('demo_differential.glyph_witness.build_icons') as icons:
+            with self.assertRaisesRegex(ProtocolError,'missing/duplicate calibration trial'):
+                evaluate_trials(manifest,{},artifact_dir,image_module=object())
+            verify.assert_called_once_with(manifest,{},artifact_dir)
+            for tool in (glyphs,icons):
+                self.assertEqual(tool.call_args.args[:2],(manifest,ROOT))
 
     def test_request_rebind_and_stale_ordinal_launch_or_snapshot_are_rejected(self):
         manifest=self.manifest();request=self.request(manifest)
