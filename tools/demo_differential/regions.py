@@ -154,13 +154,79 @@ def _projection_relative_error(reference, native, width, height):
     return max(_peak_relative_difference(reference, native, axis) for axis in (rows, columns))
 
 
+def _coverage_segments(coverage, size, full_contrast_rgb8):
+    width, height = size
+    if full_contrast_rgb8:
+        coverage = [.5 if k in (127/255,128/255) else k for k in coverage]
+    empty = [0] * (width+2)
+    rows = [empty, *([0]+list(coverage[offset:offset+width])+[0] for offset in range(0,width*height,width)), empty]
+    segments = {}
+    for y,(top,bottom) in enumerate(zip(rows,rows[1:])):
+        for x in range(width+1):
+            a,b,c,d = top[x],top[x+1],bottom[x+1],bottom[x]
+            if min(a,b,c,d)>=.5 or max(a,b,c,d)<.5:
+                continue
+            cuts = {}
+            for i,(v,next_value) in enumerate(((a,b),(b,c),(d,c),(a,d))):
+                if (v>=.5)==(next_value>=.5):
+                    continue
+                t = (.5-v)/(next_value-v)
+                cuts[i] = ((x+t,y),(x+1,y+t),(x+t,y+1),(x,y+t))[i]
+            if len(cuts)==2:
+                segments[x,y] = [tuple(cuts.values())]
+            elif (a-.5)*(c-.5) >= (b-.5)*(d-.5):
+                segments[x,y] = [(cuts[0],cuts[1]),(cuts[2],cuts[3])]
+            else:
+                segments[x,y] = [(cuts[0],cuts[3]),(cuts[1],cuts[2])]
+    return segments
+
+
+def _point_segment_square(x, y, segment):
+    (ax,ay),(bx,by) = segment
+    dx,dy = bx-ax,by-ay
+    norm = dx*dx+dy*dy
+    t = min(1,max(0,((x-ax)*dx+(y-ay)*dy)/norm)) if norm else 0
+    return (x-ax-t*dx)**2+(y-ay-t*dy)**2
+
+
+def _coverage_contour_distance(first, second, *, bound=8):
+    if not first or not second:
+        return None
+    maximum = 0.
+    for source,target in ((first,second),(second,first)):
+        for (x,y),segments in source.items():
+            near = [segment for xx in range(x-2,x+3) for yy in range(y-2,y+3)
+                    for segment in target.get((xx,yy),())]
+            for segment in segments:
+                if segment in target.get((x,y),()):
+                    continue
+                (ax,ay),(bx,by) = segment
+                length = math.hypot(bx-ax,by-ay)
+                steps = max(1,math.ceil(16*length))
+                local = 0.
+                for step in range(steps+1):
+                    t = step/steps
+                    px,py = ax+(bx-ax)*t,ay+(by-ay)*t
+                    nearest = min((_point_segment_square(px,py,line) for line in near),default=math.inf)
+                    if nearest>4:
+                        farther = (line for xx in range(x-bound-1,x+bound+2) for yy in range(y-bound-1,y+bound+2)
+                                   for line in target.get((xx,yy),()))
+                        nearest = min((_point_segment_square(px,py,line) for line in farther),default=math.inf)
+                    if nearest>bound*bound:
+                        return None
+                    local = max(local,nearest)
+                # Distance to the opposite contour is 1-Lipschitz. Include
+                # the largest possible error between consecutive samples.
+                maximum = max(maximum,math.sqrt(local)+length/(2*steps))
+    return maximum
+
+
 def coverage_metrics(reference, native, size, *, full_contrast_rgb8=False):
     """Material-unmixed coverage, per semantic group; never a whole-context mean.
 
-    Integer .5-isocontour is intentionally retained: nonzero distance starts at
-    one pixel. For exact opaque black/white RGB8, either adjacent middle code
-    may represent a half-coverage sample, depending on background polarity
-    and the encoder's tie rule.
+    Interpolate the physical .5 contour between pixel centers. For opaque
+    black/white RGB8 both adjacent middle codes can represent exact half
+    coverage. The raw coverage planes still contribute to mass/local metrics.
     """
     width, height = size
     if width <= 0 or height <= 0 or len(reference) != width*height or len(native) != len(reference):
@@ -171,13 +237,10 @@ def coverage_metrics(reference, native, size, *, full_contrast_rgb8=False):
     mass = [sum(plane) for plane in (reference, native)]
     local = ([yy*width+xx for yy in range(y, min(y+2,height)) for xx in range(x,min(x+2,width))]
              for y in range(0,height,2) for x in range(0,width,2))
-    midpoint = 127/255 if full_contrast_rgb8 else .5
-    points = [{(i%width, i//width) for i,v in enumerate(plane) if v >= midpoint} for plane in (reference,native)]
+    contours = [_coverage_segments(plane,size,full_contrast_rgb8) for plane in (reference,native)]
     return {'required_ink_present': all(v > 0 for v in mass),
             'coverage_mass_relative_error': abs(mass[0]-mass[1])/mass[0] if mass[0] else None,
-            # Measurement reach covers the fixed 1 logical px negatives at
-            # DPR<=4. Acceptance caps remain .5/1 physical px, unchanged.
-            'contour_distance_px': contour_distance(*[contour(p) for p in points],bound=8),
+            'contour_distance_px': _coverage_contour_distance(*contours),
             'projection_relative_error': _projection_relative_error(reference, native, width, height),
             'coverage_local_relative_error': _peak_relative_difference(reference, native, local),
             'reference_mass': mass[0], 'native_mass': mass[1]}

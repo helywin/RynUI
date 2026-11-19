@@ -36,6 +36,14 @@ class RegionTests(unittest.TestCase):
         with self.assertRaises(ProtocolError):
             reference_aa_is_bounded(square(.994),(9,9),uncertainty=bounds[:-1])
 
+    def test_subpixel_contour_distinguishes_a_code_crossing_from_a_pixel_shift(self):
+        reference=[0,.49,1,1,0]
+        nearby=[0,.51,1,1,0]
+        moved=[0,0,.49,1,1]
+        self.assertLess(coverage_metrics(reference,nearby,(5,1))['contour_distance_px'],.1)
+        self.assertGreaterEqual(coverage_metrics(reference,moved,(5,1))['contour_distance_px'],1)
+        self.assertIsNone(coverage_metrics(reference,[0]*5,(5,1))['contour_distance_px'])
+
     def test_opaque_rgb8_midpoint_codes_keep_the_same_frame_contour(self):
         reference=[0,128/255,128/255,0]
         native=[0,127/255,127/255,0]
@@ -44,7 +52,9 @@ class RegionTests(unittest.TestCase):
         self.assertEqual(result['contour_distance_px'],0)
         self.assertGreater(result['coverage_mass_relative_error'],0)
         shifted=[0,0,127/255,127/255]
-        self.assertEqual(coverage_metrics(reference,shifted,(4,1),full_contrast_rgb8=True)['contour_distance_px'],1)
+        distance=coverage_metrics(reference,shifted,(4,1),full_contrast_rgb8=True)['contour_distance_px']
+        self.assertGreaterEqual(distance,1)
+        self.assertLessEqual(distance,1+1/32)
         missing=[0,126/255,126/255,0]
         self.assertIsNone(coverage_metrics(reference,missing,(4,1),full_contrast_rgb8=True)['contour_distance_px'])
 
@@ -56,7 +66,7 @@ class RegionTests(unittest.TestCase):
         self.assertLess(result['coverage_mass_relative_error'],.05)
         self.assertGreater(result['coverage_local_relative_error'],.05)
         self.assertGreater(result['projection_relative_error'],.05)
-        self.assertEqual(result['contour_distance_px'],1)
+        self.assertGreater(result['contour_distance_px'],.5)
         blank=coverage_metrics([0]*4,[0]*4,(2,2))
         self.assertFalse(blank['required_ink_present'])
         self.assertIsNone(blank['contour_distance_px'])
