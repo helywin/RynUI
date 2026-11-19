@@ -4,6 +4,7 @@
 
 #include <exception>
 #include <iostream>
+#include <limits>
 #include <string_view>
 
 int main(int argc, char** argv) {
@@ -17,6 +18,15 @@ int main(int argc, char** argv) {
                 hash("abc") != "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" ||
                 hash(std::string(1000000, 'a')) != "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0") {
                 throw std::runtime_error("SHA256 standard vectors failed");
+            }
+            using Json = rynui::example::GalleryDemoJson;
+            const Json value =
+                Json::Object{{"new\nkey", Json::Array{nullptr, true, std::numeric_limits<std::int64_t>::min(), 0.1,
+                                                      1e-10, std::string{"\"\\\0", 3} + "中"}}};
+            constexpr std::string_view expected =
+                R"({"new\u000akey":[null,true,-9223372036854775808,0.10000000000000001,1e-10,"\"\\\u0000中"]})";
+            if (value.dump() != expected || Json::parse(expected).dump() != expected || Json{-0.0}.dump() != "-0") {
+                throw std::runtime_error("Gallery JSON encoding changed");
             }
             return 0;
         }

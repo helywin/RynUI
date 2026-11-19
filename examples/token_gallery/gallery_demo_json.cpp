@@ -3,10 +3,9 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
-#include <iomanip>
 #include <limits>
-#include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace rynui::example {
@@ -287,6 +286,74 @@ private:
     }
 };
 
+void dump_string(std::string& out, std::string_view text) {
+    validate_utf8(text);
+    constexpr std::string_view hex = "0123456789abcdef";
+    out.push_back('"');
+    for (const unsigned char c : text) {
+        if (c == '"' || c == '\\') {
+            out.push_back('\\');
+            out.push_back(static_cast<char>(c));
+        } else if (c < 32) {
+            out += "\\u00";
+            out.push_back(hex[c >> 4]);
+            out.push_back(hex[c & 15]);
+        } else {
+            out.push_back(static_cast<char>(c));
+        }
+    }
+    out.push_back('"');
+}
+
+void dump_value(std::string& out, const GalleryDemoJson& json) {
+    using Json = GalleryDemoJson;
+    std::visit(
+        [&](const auto& item) {
+            using T = std::decay_t<decltype(item)>;
+            if constexpr (std::is_same_v<T, std::nullptr_t>) {
+                out += "null";
+            } else if constexpr (std::is_same_v<T, bool>) {
+                out += item ? "true" : "false";
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                dump_string(out, item);
+            } else if constexpr (std::is_same_v<T, Json::Array> || std::is_same_v<T, Json::Object>) {
+                out.push_back(std::is_same_v<T, Json::Array> ? '[' : '{');
+                bool first = true;
+                for (const auto& child : item) {
+                    if (!first) {
+                        out.push_back(',');
+                    }
+                    first = false;
+                    if constexpr (std::is_same_v<T, Json::Array>) {
+                        dump_value(out, child);
+                    } else {
+                        dump_string(out, child.first);
+                        out.push_back(':');
+                        dump_value(out, child.second);
+                    }
+                }
+                out.push_back(std::is_same_v<T, Json::Array> ? ']' : '}');
+            } else {
+                char number[64];
+                std::to_chars_result encoded;
+                if constexpr (std::is_same_v<T, double>) {
+                    if (!std::isfinite(item)) {
+                        invalid();
+                    }
+                    encoded = std::to_chars(number, number + sizeof(number), item, std::chars_format::general,
+                                            std::numeric_limits<double>::max_digits10);
+                } else {
+                    encoded = std::to_chars(number, number + sizeof(number), item);
+                }
+                if (encoded.ec != std::errc{}) {
+                    invalid();
+                }
+                out.append(number, encoded.ptr);
+            }
+        },
+        json.value);
+}
+
 } // namespace
 
 const GalleryDemoJson& GalleryDemoJson::at(std::string_view key) const {
@@ -333,53 +400,9 @@ bool GalleryDemoJson::contains(std::string_view key) const {
 }
 
 std::string GalleryDemoJson::dump() const {
-    std::ostringstream out;
-    std::visit(
-        [&](const auto& item) {
-            using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, std::nullptr_t>) {
-                out << "null";
-            } else if constexpr (std::is_same_v<T, bool>) {
-                out << (item ? "true" : "false");
-            } else if constexpr (std::is_same_v<T, std::string>) {
-                validate_utf8(item);
-                out << '"';
-                for (const unsigned char c : item) {
-                    if (c == '"' || c == '\\') {
-                        out << '\\' << static_cast<char>(c);
-                    } else if (c < 32) {
-                        out << "\\u" << std::hex << std::setw(4) << std::setfill('0') << unsigned(c) << std::dec;
-                    } else {
-                        out << static_cast<char>(c);
-                    }
-                }
-                out << '"';
-            } else if constexpr (std::is_same_v<T, Array> || std::is_same_v<T, Object>) {
-                out << (std::is_same_v<T, Array> ? '[' : '{');
-                bool first = true;
-                for (const auto& child : item) {
-                    if (!first) {
-                        out << ',';
-                    }
-                    first = false;
-                    if constexpr (std::is_same_v<T, Array>) {
-                        out << child.dump();
-                    } else {
-                        out << GalleryDemoJson{child.first}.dump() << ':' << child.second.dump();
-                    }
-                }
-                out << (std::is_same_v<T, Array> ? ']' : '}');
-            } else {
-                if constexpr (std::is_same_v<T, double>) {
-                    if (!std::isfinite(item)) {
-                        invalid();
-                    }
-                }
-                out << std::setprecision(std::numeric_limits<double>::max_digits10) << item;
-            }
-        },
-        value);
-    return out.str();
+    std::string out;
+    dump_value(out, *this);
+    return out;
 }
 
 GalleryDemoJson GalleryDemoJson::parse(std::string_view input) {
