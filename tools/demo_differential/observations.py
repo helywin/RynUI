@@ -75,19 +75,20 @@ def read_observations(path, case, nonce, *, adapter=None, source_hash=None, pres
     for line in text.splitlines():
         if not line:
             raise IncompleteRun('empty observation record')
-        records.append(validate('observation', loads(line)))
+        records.append(loads(line))
     return validate_observations(records, path.parent, case, nonce, adapter=adapter, source_hash=source_hash,
                                  preset=preset, configuration=configuration)
 
 
 def validate_observations(records, directory, case, nonce, *, adapter=None, source_hash=None, preset=None,
                           configuration=None):
+    for record in records:
+        validate('observation', record)
     if not records or records[0]['type'] != 'hello' or records[-1]['type'] != 'complete':
         raise IncompleteRun('missing hello/complete')
     if sum(row['type'] == 'hello' for row in records) != 1 or sum(row['type'] == 'complete' for row in records) != 1:
         raise IncompleteRun('duplicate hello/complete')
     for record in records:
-        validate('observation', record)
         if record['nonce'] != nonce or record['case'] != case['identity']:
             raise IncompleteRun('observation belongs to another run or case')
         if adapter is not None and record['adapter'] != adapter:

@@ -6,7 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from demo_differential.protocol import ProtocolError, validate, loads
+from demo_differential.protocol import ProtocolError, _validate, validate, loads
 
 
 def valid_case():
@@ -85,6 +85,19 @@ class ProtocolTests(unittest.TestCase):
     def test_json_limits(self):
         with self.assertRaises(ProtocolError):
             loads('['*60+'0'+']'*60)
+
+    def test_schema_unions_keep_exact_types_and_unique_matches(self):
+        numbers = {'oneOf': [{'type': 'integer'}, {'type': 'number'}]}
+        _validate(2.5, numbers, numbers)
+        for value in (2, True):
+            with self.subTest(value=value), self.assertRaises(ProtocolError):
+                _validate(value, numbers, numbers)
+
+        union = {'anyOf': [{'type': 'array', 'items': {'type': 'integer'}}, {'type': 'null'}]}
+        _validate(None, union, union)
+        _validate([1, 2], union, union)
+        with self.assertRaises(ProtocolError):
+            _validate([1, False], union, union)
 
 
 if __name__=='__main__':

@@ -42,6 +42,7 @@ class OracleTests(unittest.TestCase):
             with self.subTest(a=a, b=b):
                 self.assertFalse(exact(a, b))
         self.assertTrue(exact({'a': [1, '值', None]}, {'a': [1.0, '值', None]}))
+        self.assertFalse(exact({'a': [1, '值', None]}, {'a': [1.0, '值', None]}, strict_numbers=True))
 
     def test_pointer_escaped_identity_and_invalid_paths(self):
         self.assertEqual(pointer({'a/b': {'~key': [3]}}, '/a~1b/~0key/0'), 3)
@@ -73,6 +74,25 @@ class OracleTests(unittest.TestCase):
                 changed['callbacks'][0][mutate] = 'different'
             with self.subTest(mutate=mutate):
                 self.assertNotEqual(projected_trace(changed), projected)
+
+    def test_selector_phase_projection_requires_both_independent_phase_assertions(self):
+        target = 'control'
+        actions = [{'step': step, 'kind': kind, 'target': target, 'parameters': {'button': 'primary'}}
+                   for step, kind in [('press', 'pointer-down'), ('release', 'pointer-up')]]
+        guards = [{**self.predicate('count', stream='callbacks', target=target, event='open-change',
+                                    equals=int(step == active)), 'side': side, 'step': step}
+                  for side, active in [('native', 'release'), ('web', 'press')]
+                  for step in ('press', 'release')]
+        case = {'actions': actions, 'oracle': guards}
+        native = {'callbacks': [{**self.callback(0, 'open-change'), 'step': 'release', 'target': target}]}
+        web = deepcopy(native)
+        web['callbacks'][0]['step'] = 'press'
+        expected = projected_trace(native, case=case, side='native')
+        self.assertEqual(projected_trace(web, case=case, side='web'), expected)
+        self.assertEqual(web['callbacks'][0]['step'], 'press')
+        self.assertNotEqual(projected_trace(web, case={**case, 'oracle': guards[:-1]}, side='web'), expected)
+        web['callbacks'].append(deepcopy(web['callbacks'][0]))
+        self.assertNotEqual(projected_trace(web, case=case, side='web'), expected)
 
     def test_exact_callback_counts_and_order_never_deduplicate(self):
         self.observed['callbacks'] = [self.callback(0, 'open-change'), self.callback(1, 'change')]

@@ -14,6 +14,14 @@ import re
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / 'tests/fixtures/demo-differential'
 MAX_BYTES = 16 * 1024 * 1024
+SCHEMA_KEYWORDS = frozenset({
+    '$schema', '$id', '$defs', '$ref', 'title', 'description', 'type', 'properties', 'required',
+    'additionalProperties', 'items', 'minItems', 'maxItems', 'uniqueItems', 'enum', 'const',
+    'minimum', 'maximum', 'exclusiveMinimum', 'minLength', 'maxLength', 'pattern', 'format',
+    'oneOf', 'anyOf', 'allOf',
+})
+JSON_TYPES = {'object': (dict,), 'array': (list,), 'string': (str,), 'integer': (int,),
+              'number': (int, float), 'boolean': (bool,), 'null': (type(None),)}
 
 
 class ProtocolError(ValueError):
@@ -82,13 +90,15 @@ def unique(rows, field='identity'):
         raise ProtocolError(f'duplicate ordered identity: {field}')
 
 
+def _matches_type(actual_type, expected):
+    if isinstance(expected, str):
+        return actual_type in JSON_TYPES[expected]
+    return any(actual_type in JSON_TYPES[item] for item in expected)
+
+
 def _validate(value, rule, document, location='$'):
-    supported = {'$schema', '$id', '$defs', '$ref', 'title', 'description', 'type', 'properties', 'required',
-                 'additionalProperties', 'items', 'minItems', 'maxItems', 'uniqueItems', 'enum', 'const',
-                 'minimum', 'maximum', 'exclusiveMinimum', 'minLength', 'maxLength', 'pattern', 'format',
-                 'oneOf', 'anyOf', 'allOf'}
-    if set(rule) - supported:
-        raise ProtocolError(f'unsupported schema vocabulary: {set(rule) - supported}')
+    if not SCHEMA_KEYWORDS.issuperset(rule):
+        raise ProtocolError(f'unsupported schema vocabulary: {set(rule) - SCHEMA_KEYWORDS}')
     if '$ref' in rule:
         ref = rule['$ref']
         if not ref.startswith('#/$defs/'):
@@ -96,25 +106,25 @@ def _validate(value, rule, document, location='$'):
         return _validate(value, document['$defs'][ref[8:]], document, location)
     for branch in rule.get('allOf', []):
         _validate(value, branch, document, location)
+    actual_type = type(value)
     for keyword in ('oneOf', 'anyOf'):
         if keyword in rule:
             accepted = 0
             for branch in rule[keyword]:
+                # A local reference has the interpreter's own dispatch rules.
+                if '$ref' not in branch and 'type' in branch and not _matches_type(actual_type, branch['type']):
+                    continue
                 try:
                     _validate(value, branch, document, location)
                     accepted += 1
+                    if keyword == 'anyOf':
+                        break
                 except ProtocolError:
                     pass
             if accepted < 1 or (keyword == 'oneOf' and accepted != 1):
                 raise ProtocolError(f'{location}: {keyword} did not match uniquely')
-    types = {'object': dict, 'array': list, 'string': str, 'integer': int, 'number': (int, float),
-             'boolean': bool, 'null': type(None)}
-    if 'type' in rule:
-        expected = rule['type']
-        if not isinstance(expected, list):
-            expected = [expected]
-        if not any(type(value) in (types[t] if isinstance(types[t], tuple) else (types[t],)) for t in expected):
-            raise ProtocolError(f'{location}: wrong type')
+    if 'type' in rule and not _matches_type(actual_type, rule['type']):
+        raise ProtocolError(f'{location}: wrong type')
     if 'const' in rule and (type(value) is not type(rule['const']) or value != rule['const']):
         raise ProtocolError(f'{location}: wrong constant')
     if 'enum' in rule and not any(type(value) is type(item) and value == item for item in rule['enum']):
@@ -146,7 +156,7 @@ def _validate(value, rule, document, location='$'):
             raise ProtocolError(f'{location}: invalid spelling')
         if rule.get('format') == 'relative-path':
             relative_path(value)
-    if type(value) in (int, float):
+    if actual_type in (int, float):
         if not rule.get('minimum', -math.inf) <= value <= rule.get('maximum', math.inf):
             raise ProtocolError(f'{location}: number out of range')
         if 'exclusiveMinimum' in rule and value <= rule['exclusiveMinimum']:

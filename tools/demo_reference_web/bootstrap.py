@@ -133,8 +133,18 @@ def extract(archive, destination):
 
 
 def file_map(root):
-    return {p.relative_to(root).as_posix(): sha(p) for p in sorted(Path(root).rglob('*'))
-            if p.is_file() and not p.is_symlink()}
+    files = {}
+    directories = [(root, '')]
+    while directories:
+        directory, prefix = directories.pop()
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                relative = prefix + entry.name
+                if entry.is_dir(follow_symlinks=False):
+                    directories.append((entry.path, relative + '/'))
+                elif entry.is_file(follow_symlinks=False):
+                    files[relative] = sha(entry.path)
+    return dict(sorted(files.items()))
 
 
 def tree_digest(root):
@@ -202,10 +212,9 @@ def verify_packages(install, lock, cache, offline):
                 if member.isfile():
                     name = member.name.split('/', 1)[1]
                     expected[name] = hashlib.sha256(source.extractfile(member).read()).hexdigest()
-        for name, expected_hash in expected.items():
-            path = package_json.parent / name
-            require(path.is_file() and sha(path) == expected_hash, 'installed package bytes drift: ' + str(path))
         actual_files = {k: v for k, v in file_map(package_json.parent).items() if not k.startswith('node_modules/.bin/')}
+        for name, expected_hash in expected.items():
+            require(actual_files.get(name) == expected_hash, 'installed package bytes drift: ' + str(package_json.parent / name))
         require(digest(actual_files) == row['files_sha256'], 'installed package tree drift: ' + str(key))
         verified[row['name'] + '@' + row['version']] = digest(expected)
     for name, expected in read(HERE / 'package.json')['dependencies'].items():
@@ -358,12 +367,13 @@ def verify_prepared(path):
     lock = load_lock()
     require(record['host'] == host_platform(lock), 'prepared host platform differs')
     require(record['lock_sha256'] == sha(HERE / 'dependencies.lock.json'), 'prepared dependency lock drift')
-    for key in ('node', 'pnpm', 'browser'):
-        require(sha(record[key]) == record[key + '_sha256'], key + ' prepared binary drift')
-    require(sha(record['node']) == lock['node']['artifacts'][record['host']]['executable_sha256'], 'locked Node drift')
+    binary_hashes = {key: sha(record[key]) for key in ('node', 'pnpm', 'browser')}
+    for key, recorded in binary_hashes.items():
+        require(recorded == record[key + '_sha256'], key + ' prepared binary drift')
+    require(binary_hashes['node'] == lock['node']['artifacts'][record['host']]['executable_sha256'], 'locked Node drift')
     if record['host'] == 'win-x64':
         verify_windows_node(record['node'], lock['node']['artifacts']['win-x64'])
-    require(sha(record['browser']) == lock['browser']['artifacts'][record['host']]['executable_sha256'], 'locked browser drift')
+    require(binary_hashes['browser'] == lock['browser']['artifacts'][record['host']]['executable_sha256'], 'locked browser drift')
     require(tree_digest(Path(record['browser']).parent) == lock['browser']['artifacts'][record['host']]['files_sha256'], 'locked browser resource drift')
     pnpm_row = next(r for r in lock['npm'] if r['name'] == 'pnpm')
     require(tree_digest(Path(record['pnpm']).parents[1]) == pnpm_row['files_sha256'], 'locked pnpm source drift')

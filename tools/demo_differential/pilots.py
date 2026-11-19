@@ -276,7 +276,8 @@ def select_case():
     steps += [action('virtual-wheel', 'wheel', 'sample', {'delta_x': 0, 'delta_y': 1152}),
         *click(virtual, 'virtual-open'), action('virtual-mounted', 'checkpoint', virtual),
         *click(note, 'popup-note-focus'), action('popup-note-edit', 'text-commit', note, {'text': 'popup draft'}),
-        action('virtual-drafted', 'checkpoint', note), *key(virtual, 'virtual-close', 'Escape'),
+        action('virtual-drafted', 'checkpoint', note), *click(virtual, 'virtual-selector-focus'),
+        *key(virtual, 'virtual-close', 'Escape'),
         action('async-wheel', 'wheel', 'sample', {'delta_x': 0, 'delta_y': 96}),
         *click(asynchronous, 'async-open'), action('async-mounted', 'checkpoint', asynchronous),
         action('async-query', 'text-commit', asynchronous, {'text': 'query'}),
@@ -288,10 +289,9 @@ def select_case():
         oracle += [predicate('count', step, stream='callbacks', target=target, event=event, equals=1),
                    predicate('equals', step, path='/receipt/dispatched', value=True),
                    predicate('equals', step, path='/receipt/hit', value=target)]
-    # Preserve the actual input phases: native Select toggles on pointer-up;
-    # the pinned browser selector toggles on mousedown. Neither adapter moves
-    # callbacks to another raw step to manufacture a matching trace.
-    for name, target in [('virtual-open', virtual), ('async-open', asynchronous)]:
+    # Keep raw phase assertions for every corresponding selector gesture.
+    for name, target in [('open', targets[0]), ('reopen', targets[0]), ('reject-open', targets[3]),
+                         ('accept-open', targets[3]), ('virtual-open', virtual), ('async-open', asynchronous)]:
         for side, phase in [('native', 'up'), ('web', 'down')]:
             for observed_phase in ('down', 'up'):
                 oracle.append({**predicate('count', name + '-' + observed_phase, stream='callbacks', target=target,
@@ -317,10 +317,16 @@ def select_case():
         predicate('equals', 'popup-proof-complete', path=f'/resources/actual_inputs/current/{asynchronous}/open', value=False)]
     oracle += [predicate('equals', 'async-deliver-up', path='/resources/actual_inputs/feedbacks/select-multi',
                          value='已处理合成选项；已取消的请求不会更新选择器'),
+               predicate('equals', 'virtual-selector-focus-up',
+                         path=f'/resources/actual_inputs/current/{virtual}/open', value=True),
+               predicate('equals', 'virtual-selector-focus-up',
+                         path=f'/resources/actual_inputs/current/{virtual}/focused', value=True),
+               predicate('ordered_events', 'virtual-close-down', stream='callbacks', events=['open-change']),
                predicate('equals', 'async-selector-focus-up',
                          path=f'/resources/actual_inputs/current/{asynchronous}/open', value=True),
                predicate('equals', 'async-selector-focus-up',
-                         path=f'/resources/actual_inputs/current/{asynchronous}/focused', value=True)]
+                         path=f'/resources/actual_inputs/current/{asynchronous}/focused', value=True),
+               predicate('ordered_events', 'async-close-down', stream='callbacks', events=['open-change', 'search'])]
     for entry in controls.values():
         if entry['component'] == 'Select' and (entry.get('showSearch') or entry.get('mode')):
             entry['optionFilterProp'] = 'label'

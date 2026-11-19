@@ -26,16 +26,19 @@ def pointer(value, path):
     return value
 
 
-def exact(actual, expected):
+def exact(actual, expected, *, strict_numbers=False):
     # bool is not a numeric zero/one, and no rounding or callback deduplication.
     if type(actual) in (int, float) and type(expected) in (int, float):
-        return math.isfinite(actual) and math.isfinite(expected) and actual == expected
+        return ((not strict_numbers or type(actual) is type(expected)) and
+                math.isfinite(actual) and math.isfinite(expected) and actual == expected)
     if type(actual) is not type(expected):
         return False
     if isinstance(actual, list):
-        return len(actual) == len(expected) and all(exact(a, b) for a, b in zip(actual, expected))
+        return len(actual) == len(expected) and all(exact(a, b, strict_numbers=strict_numbers)
+                                                    for a, b in zip(actual, expected))
     if isinstance(actual, dict):
-        return set(actual) == set(expected) and all(exact(actual[key], expected[key]) for key in actual)
+        return set(actual) == set(expected) and all(exact(actual[key], expected[key], strict_numbers=strict_numbers)
+                                                   for key in actual)
     return actual == expected
 
 
@@ -126,7 +129,27 @@ def evaluate(case, observation, side):
     return failures
 
 
-def projected_trace(observation):
-    # Only adapter-local time/owner/layer are omitted. Stable key, target, step,
-    # duplicate callbacks, and every proposed/committed/accepted payload survive.
-    return [{key: row[key] for key in ('step', 'target', 'key', 'event', 'payload')} for row in observation['callbacks']]
+def projected_trace(observation, *, case=None, side=None):
+    phases = {}
+    if case is not None and side == 'web':
+        counts = {(p['side'], p['step'], p['target']): p['equals'] for p in case['oracle']
+                  if p['op'] == 'count' and p['stream'] == 'callbacks' and p['event'] == 'open-change'
+                  and p['origin'] == 'independent-contract'}
+        actions = case['actions']
+        for down, up in zip(actions, actions[1:]):
+            target = down['target']
+            if (down['kind'], up['kind']) != ('pointer-down', 'pointer-up') or up['target'] != target:
+                continue
+            if down['parameters'] != up['parameters'] or down['parameters'].get('button') != 'primary':
+                continue
+            press, release = down['step'], up['step']
+            native = [counts.get(('native', step, target)) for step in (press, release)]
+            web = [counts.get(('web', step, target)) for step in (press, release)]
+            if native == [0, 1] and web == [1, 0]:
+                phases[(press, target, 'open-change')] = release
+
+    # Preserve order, duplicates and payload. A phase can only be projected
+    # when both adapters have independently asserted both edges of the click.
+    return [{**{key: row[key] for key in ('target', 'key', 'event', 'payload')},
+             'step': phases.get((row['step'], row['target'], row['event']), row['step'])}
+            for row in observation['callbacks']]

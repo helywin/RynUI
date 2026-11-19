@@ -5,8 +5,6 @@ and live state are separate: live state is checked by the case action oracle.
 """
 from __future__ import annotations
 
-from copy import deepcopy
-
 from .observations import IncompleteRun
 from .oracle import exact
 from .protocol import ProtocolError, finite
@@ -502,12 +500,14 @@ def validate_timeline(case, observed, side):
         if raw_initial is None:
             raw_initial = row.get('effective_inputs', {}).get('actual_initial_inputs')
         if raw_initial is not None:
-            validate_snapshot(raw_initial, targets)
-            if raw_initial['phase'] != 'initial' or raw_initial['step'] != 'setup' or raw_initial['query_seq'] != 1:
-                raise ProtocolError(side + ' initial is not the immutable postfactory snapshot')
-            if initial is not None and not exact(raw_initial, initial):
+            if initial is None:
+                validate_snapshot(raw_initial, targets)
+                if raw_initial['phase'] != 'initial' or raw_initial['step'] != 'setup' or raw_initial['query_seq'] != 1:
+                    raise ProtocolError(side + ' initial is not the immutable postfactory snapshot')
+                # Parsed receipt records are read-only throughout validation.
+                initial = raw_initial
+            elif not exact(raw_initial, initial, strict_numbers=True):
                 raise ProtocolError(side + ' actual_initial_inputs changed after setup')
-            initial = deepcopy(raw_initial)
         query = row.get('resources', {}).get('actual_inputs')
         if row['type'] == 'hello' and side == 'native':
             continue  # Native hello precedes the real factory.
@@ -528,7 +528,7 @@ def validate_timeline(case, observed, side):
                     verify_relationship(fixture, initial, target, side)
                 else:
                     verify_absence(fixture, initial, target, side)
-            previous = deepcopy(initial)
+            previous = initial
         if row['type'] == 'hello':
             if not exact(query, initial):
                 raise ProtocolError('Web hello initial query differs')
@@ -583,7 +583,7 @@ def validate_timeline(case, observed, side):
                 last = scope_history.get(scope)
                 if last and (generation < last[0] or (generation == last[0] and not exact(applied, last[1]))):
                     raise IncompleteRun(side + ' stale/inconsistent applied scope generation')
-                scope_history[scope] = (generation, deepcopy(applied))
+                scope_history[scope] = (generation, applied)
         if row['type'] == 'checkpoint':
             for target in checkpoints[row['step']]['targets']:
                 if target.endswith('.popup'):
@@ -601,7 +601,7 @@ def validate_timeline(case, observed, side):
                     deadline_seen[target] = (query['instances'][target]['instance'], query['instances'][parent]['instance'])
         if row['type'] == 'complete' and any(i['status'] != 'mounted' for i in query['instances'].values()):
             raise IncompleteRun(side + ' complete still has pending/missing/retired inputs')
-        previous = deepcopy(query)
+        previous = query
     required_popups = {t for t, (_, slot) in owners.items() if slot == 'popup'}
     if set(seen) != set(targets) or set(deadline_seen) != required_popups or action_queries != set(actions):
         raise IncompleteRun(side + ' unresolved inputs/actions/popup checkpoint obligations')

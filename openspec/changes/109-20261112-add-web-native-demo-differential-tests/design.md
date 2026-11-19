@@ -197,6 +197,8 @@ profile 记录 corpus/算法/工具/source/environment hashes、重复数、正�
 
 trace 行保存 `seq,step,time_us,target,key,event,payload,owner_generation,layer`。DOM random id、指针值、机器时间可归一化成稳定语义名；事件重复、值、目标、接受/拒绝、先后关系不能删。异步无因果的事件用显式 partial order；同一 callback 流保持严格顺序。Web React StrictMode 在 reference profile 中显式关闭并记录，不能事后把多余 callback 去重。
 
+Select 主键点击在 Web 按下时发出 `open-change`，在 native 释放时发出。case 对相邻同目标同参数的两个真实输入步骤，在两侧分别断言发出相位恰好一次、另一相位零次。只有这四项独立断言齐备时，跨侧比较才将这一个回调关联到同一次点击。原始相位仍在回执和报告保留，重复回调、目标、顺序和值照常比较。
+
 | 合同族 | 规范化输出与 oracle |
 | --- | --- |
 | controlled | 区分 proposed value、父应用 accept/reject、committed value 与可见 draft；reject 不推进受控值，callback 次数/负载符合组件自己的合同。例 Input 的编辑 draft 行为不能套用 Select 选择行为。 |

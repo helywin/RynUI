@@ -260,12 +260,13 @@ def run(options, definitions, *, adapters=None, comparator=None, coverage_docume
                 report['completed'].append(case['identity'])
                 stage('compare')
                 failures = evaluate(definition, oracle_view(n, 'native'), 'native') + evaluate(definition, oracle_view(w, 'web'), 'web')
-                if projected_trace(n) != projected_trace(w):
-                    nt, wt = projected_trace(n), projected_trace(w)
+                nt = projected_trace(n, case=definition, side='native')
+                wt = projected_trace(w, case=definition, side='web')
+                if nt != wt:
                     index = next((i for i in range(min(len(nt), len(wt))) if nt[i] != wt[i]), min(len(nt), len(wt)))
                     first = nt[index] if index < len(nt) else wt[index]
                     failures.append({'category': 'logic', 'step': first['step'], 'message': 'projected callback trace differs',
-                                     'native': projected_trace(n), 'web': projected_trace(w)})
+                                     'native': nt, 'web': wt})
                 if comparator is None:
                     from .comparison_dependencies import image_module, prepare
                     library = options.get('comparison_site')
@@ -285,7 +286,8 @@ def run(options, definitions, *, adapters=None, comparator=None, coverage_docume
                                                                   'web': Path(web_path).parent}, profile, images)
                 failures.extend(errors)
                 write_json(case_dir / 'comparison.json', measurements)
-                write_json(case_dir / 'trace.json', {'native': projected_trace(n), 'web': projected_trace(w)})
+                write_json(case_dir / 'trace.json', {'native': projected_trace(n), 'web': projected_trace(w),
+                                                     'compared': {'native': nt, 'web': wt}})
                 write_json(case_dir / 'geometry.json', {side: {step: row['targets'] for step, row in observed_side['checkpoints'].items()}
                                                        for side, observed_side in (('native', n), ('web', w))})
                 order = {a['step']: i for i, a in enumerate(definition['actions'])}
