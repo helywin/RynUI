@@ -1337,7 +1337,8 @@ def calibrate(options):
         site=options.get('comparison_site') or prepare_comparison(directory/'comparison-site',offline=options.get('offline',False))
         site=Path(site).resolve()
         library=image_module(site)
-        prepared_info=bootstrap.verify_prepared(prepared['prepared'])
+        prepared_directory=output_path(prepared['prepared'])
+        prepared_info=bootstrap.verify_prepared(prepared_directory)
         admitted=[reference.admit_font(expected,actual,'pinned') for expected,actual in zip(pilots.FONTS,prepared['fonts'])]
         from demo_reference_web.font_resources import fonttools_library
         font_library=fonttools_library(ROOT/'out/demo-differential/archives','BUNDLED',offline=options.get('offline',False))
@@ -1345,7 +1346,7 @@ def calibrate(options):
         independent_fonts=all_font_priors(font_descriptors,corpus,font_library)
         bundle=directory/'control-bundle';consumer_bundle=directory/'consumer-bundle'
         for build,entry in ((bundle,'calibration.tsx'),(consumer_bundle,'app.tsx')):
-            process([prepared_info['node'],ROOT/'tools/demo_reference_web/build.mjs',Path(prepared['prepared'])/'prepared.json',
+            process([prepared_info['node'],ROOT/'tools/demo_reference_web/build.mjs',prepared_directory/'prepared.json',
                      build,ROOT/'tools/demo_reference_web'/entry],directory/('build-'+entry),90,failure_code=3)
         closure=read(bundle/'closure.json')
         if read(consumer_bundle/'closure.json')!=closure:
@@ -1395,7 +1396,7 @@ def calibrate(options):
         environment=comparison.environment_description(definition,native['hello']['provenance'],web_provenance,actual_metrics,capture_facts)
         bound['environment_hash']=digest(environment)
         paths={ROOT/'tools/run_demo_differential.py',binary,control_binary,Path(prepared_info['node']),Path(prepared_info['browser'])}
-        paths.add(Path(prepared['prepared'])/'prepared.json')
+        paths.add(prepared_directory/'prepared.json')
         paths.add(ROOT/'third_party/ant-design-icons/manifest.json')
         paths.update(ROOT/'third_party/ant-design-icons'/r['file'] for r in icon_manifest['icons'] if r['name'] in corpus['icons'])
         paths.update(Path(font['path']).resolve() for font in prepared['fonts'])
@@ -1416,7 +1417,7 @@ def calibrate(options):
             tools=tools,scope=scope,color=None,corpus=corpus,policy=policy,artifacts=[],trials=[],
             fonts=font_descriptors,fonttools_library=font_library.relative_to(ROOT).as_posix(),font_priors=independent_fonts,
             bootstrap=dict(native_probes=probes,browser='environment-web/browser.json',prepared='prepared-receipt.json',
-                prepared_directory=Path(prepared['prepared']).resolve().relative_to(ROOT).as_posix(),
+                prepared_directory=prepared_directory.relative_to(ROOT).as_posix(),
                 control_bundle={p.name:p.relative_to(directory).as_posix() for p in bundle.iterdir() if p.is_file()},
                 consumer_bundle={p.name:p.relative_to(directory).as_posix() for p in consumer_bundle.iterdir() if p.is_file()}))
         def controls(partition,board,fault,identity,count,restart=False):
