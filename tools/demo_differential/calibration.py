@@ -893,7 +893,7 @@ def measure_controls(corpus,trial,observations,images,priors):
             shifted={**r,'x':r['x']+cell['shadow']['offset'][0],'y':r['y']+cell['shadow']['offset'][1]}
             tails=tuple(i for i in range(width*height) if rounded_distance(
                 (box[0]+i%width+.5)/dpr,(box[1]+i//width+.5)/dpr,shifted,cell['radius'])>cell['shadow']['blur'])
-            measured=shadow_profile_metrics(*planes,(width,height),tail_indices=tails,profile_indices=tuple(range(width*height)))
+            measured=shadow_profile_metrics(planes[1],planes[0],(width,height),tail_indices=tails)
             if not measured['required_ink_present']:failures.add('presence.shadow')
             for key in ('coverage_mass_relative_error','projection_relative_error','profile_max_error','tail_max_error'):
                 collect('shadow.'+key,measured[key])
@@ -907,6 +907,10 @@ def measure_controls(corpus,trial,observations,images,priors):
                 core_boxes.extend(row['source'].get('ink_boxes',[]))
             if not core_boxes:
                 continue
+        # The mirrored high-contrast controls measure coverage. Near an RGB8
+        # endpoint the same colors still have exact observable flat interiors.
+        weak_fill=cell['kind']=='fill' and alpha==1 and 0<math.dist(foreground,background)<=4
+        reference_uncertainty=1/255
         planes=[[],[]]
         overlap_basis=visible_basis([v/255 for v in background],[[v/255 for v in cell['rgb']],[v/255 for v in cell['second_rgb']]]) if cell['kind']=='sourceover' else None
         for pixel in range(width*height):
@@ -914,6 +918,11 @@ def measure_controls(corpus,trial,observations,images,priors):
             lx,ly=x/dpr,y/dpr
             inside=r['x'] <= lx < r['x']+r['width'] and r['y'] <= ly < r['y']+r['height']
             observed=[list(data[pixel*4:pixel*4+3]) for data in crops]
+            if weak_fill:
+                distance=rounded_distance(lx,ly,r,0)*dpr
+                if not all(weak_fill_pixel_matches(rgb,foreground,background,distance) for rgb in observed):
+                    failures.add('color.independent-weak-contrast-fill')
+                continue
             if overlap_basis is not None:
                 solved=[solve_visible_contributions([v/255 for v in rgb],overlap_basis,
                     alphas=[cell['source_alpha']*cell['paint_opacity'],cell['second_alpha']]) for rgb in observed]
@@ -956,13 +965,15 @@ def measure_controls(corpus,trial,observations,images,priors):
                     unmixed=unmix_coverage([v/255 for v in rgb],[v/255 for v in foreground],
                                           [v/255 for v in background],alpha,byte_error=1/255)
                     k=unmixed['coverage']
+                    if side==1:
+                        reference_uncertainty=unmixed['quantization_bound']
                     # Only accept the proven quantization interval, then bound
                     # the mathematical integration value. It is never a color repair.
                     planes[side].append(min(1,max(0,k)))
                 except ProtocolError:
                     failures.add('material.unmix')
                     planes[side].append(0)
-            if is_text and planes[0][-1]>=.98:
+            if is_text and planes[1][-1]>=.98:
                 collect('color.text_interior_delta_e00',rgb8_delta_e00(*observed))
             if cell['kind']=='text':
                 for side,row in enumerate(actual):
@@ -990,9 +1001,9 @@ def measure_controls(corpus,trial,observations,images,priors):
                     if nearest>1 and (inside_any and planes[side][-1]<.98 or not inside_any and planes[side][-1]>1/255):
                         failures.add('icon.independent-outline')
         if planes[0]:
-            if cell['kind']!='shadow' and not reference_aa_is_bounded(planes[0],(width,height)):
+            if not reference_aa_is_bounded(planes[1],(width,height),uncertainty=reference_uncertainty):
                 failures.add('geometry.reference-aa-exceeds-one-physical-pixel')
-            measured=coverage_metrics(*planes,(width,height))
+            measured=coverage_metrics(planes[1],planes[0],(width,height))
             prefix='text' if cell['kind']=='text' else 'pixels'
             if not measured['required_ink_present']:
                 failures.add('presence.glyph' if cell['kind']=='text' else 'presence.icon' if cell['kind']=='icon' else 'presence.shape')
@@ -1071,20 +1082,31 @@ def canvas_guard(corpus,trial,observations,images):
                 near=near[:1] # Fixed source order gives touching frames one primary owner.
                 for side,(raw,_) in enumerate(images):
                     pixel=raw[(y*size[0]+x)*4:(y*size[0]+x)*4+3];background=near[0]['cell']['background']
-                    foreground=[255,255,255] if background[0]==0 else [0,0,0]
-                    try:k=unmix_coverage([v/255 for v in pixel],[v/255 for v in foreground],[v/255 for v in background],1,byte_error=1/255)['coverage']
-                    except ProtocolError:failures.add('guard.frame-material');k=0
+                    if len(pixel)!=3 or pixel[0]!=pixel[1] or pixel[0]!=pixel[2]:
+                        failures.add('guard.frame-material')
+                        k=0
+                    else:
+                        k=(pixel[0] if background[0]==0 else 255-pixel[0])/255
                     for frame in near:
                         box=frame['box'];w=frame['size'][0]
-                        if box[0]<=x<box[2] and box[1]<=y<box[3]:frame['planes'][side][(y-box[1])*w+x-box[0]]=min(1,max(0,k))
+                        if box[0]<=x<box[2] and box[1]<=y<box[3]:frame['planes'][side][(y-box[1])*w+x-box[0]]=k
     if classified!=size[0]*size[1]:raise ProtocolError('control canvas classification is incomplete')
     for frame in frames.values():
-        result=coverage_metrics(*frame['planes'],frame['size'])
+        native,reference=frame['planes']
+        result=coverage_metrics(reference,native,frame['size'],full_contrast_rgb8=True)
         if not result['required_ink_present']:failures.add('guard.required-frame')
         for key in ('coverage_mass_relative_error','contour_distance_px','coverage_local_relative_error'):
             if result[key] is None:failures.add('guard.frame-contour')
             else:values['pixels.'+key]=max(values.get('pixels.'+key,0),result[key])
     return values,failures
+
+
+def weak_fill_pixel_matches(pixel,foreground,background,distance):
+    if distance < -1:
+        return pixel==foreground
+    if distance > 1:
+        return pixel==background
+    return all(min(f,b)<=p<=max(f,b) for p,f,b in zip(pixel,foreground,background))
 
 
 def rounded_distance(x,y,rect,radius):

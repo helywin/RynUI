@@ -29,6 +29,16 @@ class ShadowProfiles(unittest.TestCase):
         self.assertGreater(value['projection_relative_error'],.05)
         self.assertGreater(value['tail_max_error'],2/255)
 
+    def test_a_quantized_tail_uses_the_visible_profile_as_the_projection_scale(self):
+        reference=[0,.2,.2,.2,0]
+        native=[1/255,.2,.2,.2,0]
+        value=shadow_profile_metrics(reference,native,(5,1),tail_indices=(0,4))
+        self.assertAlmostEqual(value['projection_relative_error'],(1/255)/.2)
+        self.assertEqual(value['tail_max_error'],1/255)
+        native[0]=3/255
+        value=shadow_profile_metrics(reference,native,(5,1),tail_indices=(0,4))
+        self.assertGreater(value['tail_max_error'],2/255)
+
     def test_invalid_planes_and_geometry_are_rejected(self):
         for native in ([0,0],[0,float('nan'),0],[0,1.01,0]):
             with self.assertRaises(ProtocolError):shadow_profile_metrics([0,.1,0],native,(3,1))

@@ -80,4 +80,8 @@ Web 读取 `DOMSnapshot.getSnapshot` 的真实 paintOrder、stacking context、U
 
 最多三个 source-only 可见色轴使用固定小矩阵、秩/条件数/量化、非负/和约束及实际 source-over endpoint domain；同色或共线来源只给 joint contrast plane，逐层来源身份不合并，不反推出任意 layer alpha。真正的 opacity group 完成后只应用一次。shadow profile/tail 输入是实际可见 alpha/contribution，包含 source alpha、paint opacity、group 和上层遮挡，不把弱阴影除以其 opacity 后套用 tail 上限。flat DeltaE、局部 mass/projection/contour、独立 SFNT 墨迹 witness、shadow profile/tail、joint 与 guard 全部 AND；raw byte residual 仅作诊断。
 
+文字和阴影投影按轴比较最大行差、列差，分别以参考该轴的积分峰值为分母。固定 2×2 局部窗口同样以其参考积分峰值为分母。低覆盖阴影尾部仍单独逐像素使用绝对 alpha 残差，位移及其丢失和新增覆盖仍纳入投影、局部剖面和尾部检查。
+
+独立校准板以锁定 Web 回读作为参考覆盖。已知材料的覆盖量化区间只用于识别过渡像素，AA 带宽仍限制在一个物理像素。接近背景色的三个不透明平面仍逐像素核对完全覆盖的精确色、留白和边缘色域，相同灰阶的另一种背景继续测覆盖。黑白外框的 RGB8 中点可编码为 127 或 128，两码使用相同的半覆盖轮廓分类，实际覆盖积分仍保留原始码差。
+
 有限域明确拒绝 gradient/image、非平移变换、非标准 blend/filter、椭圆 radius、多色 border corner、未支持的 pseudo text/text shadow，以及确实切入 paint support 的 rounded mask/backdrop。仅证明不切入当前 paint support 的实际祖先 rounded mask 可以继续消费。不存在有效控制间隔或来源事实不足时保持非零，不能借此声明 6.3–6.5 完成。所有 C++/GPU/browser 行为、312 controls / 26 negatives / 16 metrics 的最终校准与普通 pilot/meta 结果均以父线程在最终整合源码上的实际执行为准；源码与纯 Python 测试不替代这些证据。

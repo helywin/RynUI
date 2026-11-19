@@ -23,6 +23,24 @@ class RegionTests(unittest.TestCase):
     def test_reference_aa_band_cannot_expand_with_native_residual(self):
         self.assertTrue(reference_aa_is_bounded([0,.25,1,1,.25,0],(6,1)))
         self.assertFalse(reference_aa_is_bounded([.1,.25,.4,1,1,.4,.25,.1],(8,1)))
+        def square(ink):
+            return [ink if 1<=x<=7 and 1<=y<=7 else 0 for y in range(9) for x in range(9)]
+        self.assertTrue(reference_aa_is_bounded(square(.994),(9,9),uncertainty=.008))
+        self.assertFalse(reference_aa_is_bounded(square(.99),(9,9),uncertainty=.008))
+        with self.assertRaises(ProtocolError):
+            reference_aa_is_bounded([.5],(1,1),uncertainty=.5)
+
+    def test_opaque_rgb8_midpoint_codes_keep_the_same_frame_contour(self):
+        reference=[0,128/255,128/255,0]
+        native=[0,127/255,127/255,0]
+        self.assertIsNone(coverage_metrics(reference,native,(4,1))['contour_distance_px'])
+        result=coverage_metrics(reference,native,(4,1),full_contrast_rgb8=True)
+        self.assertEqual(result['contour_distance_px'],0)
+        self.assertGreater(result['coverage_mass_relative_error'],0)
+        shifted=[0,0,127/255,127/255]
+        self.assertEqual(coverage_metrics(reference,shifted,(4,1),full_contrast_rgb8=True)['contour_distance_px'],1)
+        missing=[0,126/255,126/255,0]
+        self.assertIsNone(coverage_metrics(reference,missing,(4,1),full_contrast_rgb8=True)['contour_distance_px'])
 
     def test_local_coverage_and_projection_catch_last_glyph_pixel(self):
         reference=[1.]*100
@@ -36,6 +54,15 @@ class RegionTests(unittest.TestCase):
         blank=coverage_metrics([0]*4,[0]*4,(2,2))
         self.assertFalse(blank['required_ink_present'])
         self.assertIsNone(blank['contour_distance_px'])
+
+    def test_local_error_uses_reference_ink_even_when_window_is_nearly_empty(self):
+        reference = [1, 1, 0, 0] * 2 + [0] * 8
+        native = reference[:]
+        native[-1] = 1/255
+        result = coverage_metrics(reference, native, (4, 4))
+        self.assertAlmostEqual(result['coverage_local_relative_error'], 1/(4*255))
+        self.assertAlmostEqual(result['projection_relative_error'], 1/(2*255))
+        self.assertEqual(result['contour_distance_px'], 0)
 
     def test_only_declared_sample_origin_can_translate(self):
         a, b = rectangle(12, 24), rectangle(112, 224)

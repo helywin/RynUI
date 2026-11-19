@@ -137,11 +137,30 @@ def raster_metrics(reference, native, size, background, *, ink_minimum=1):
             'contour_distance_px': contour_distance(contour(foreground[0]), contour(foreground[1]))}
 
 
-def coverage_metrics(reference, native, size):
+def _peak_relative_difference(reference, native, windows):
+    peak = 0
+    difference = 0
+    for indices in windows:
+        a = sum(reference[i] for i in indices)
+        b = sum(native[i] for i in indices)
+        peak = max(peak, a)
+        difference = max(difference, abs(a-b))
+    return difference/max(peak, 1/255)
+
+
+def _projection_relative_error(reference, native, width, height):
+    rows = (range(y*width, (y+1)*width) for y in range(height))
+    columns = (range(x, width*height, width) for x in range(width))
+    return max(_peak_relative_difference(reference, native, axis) for axis in (rows, columns))
+
+
+def coverage_metrics(reference, native, size, *, full_contrast_rgb8=False):
     """Material-unmixed coverage, per semantic group; never a whole-context mean.
 
     Integer .5-isocontour is intentionally retained: nonzero distance starts at
-    one pixel, so a .5 shape cap accepts identical binary contours only.
+    one pixel. For exact opaque black/white RGB8, either adjacent middle code
+    may represent a half-coverage sample, depending on background polarity
+    and the encoder's tie rule.
     """
     width, height = size
     if width <= 0 or height <= 0 or len(reference) != width*height or len(native) != len(reference):
@@ -150,21 +169,17 @@ def coverage_metrics(reference, native, size):
            for plane in (reference, native) for v in plane):
         raise ProtocolError('coverage must be validated before integration; no implicit clamp')
     mass = [sum(plane) for plane in (reference, native)]
-    def error(indices):
-        a, b = [sum(plane[i] for i in indices) for plane in (reference, native)]
-        return abs(a-b)/max(a, 1/255)
-    rows = [error(list(range(y*width, (y+1)*width))) for y in range(height)]
-    columns = [error(list(range(x, width*height, width))) for x in range(width)]
-    local = [error([yy*width+xx for yy in range(y, min(y+2,height)) for xx in range(x,min(x+2,width))])
-             for y in range(0,height,2) for x in range(0,width,2)]
-    points = [{(i%width, i//width) for i,v in enumerate(plane) if v >= .5} for plane in (reference,native)]
+    local = ([yy*width+xx for yy in range(y, min(y+2,height)) for xx in range(x,min(x+2,width))]
+             for y in range(0,height,2) for x in range(0,width,2))
+    midpoint = 127/255 if full_contrast_rgb8 else .5
+    points = [{(i%width, i//width) for i,v in enumerate(plane) if v >= midpoint} for plane in (reference,native)]
     return {'required_ink_present': all(v > 0 for v in mass),
             'coverage_mass_relative_error': abs(mass[0]-mass[1])/mass[0] if mass[0] else None,
             # Measurement reach covers the fixed 1 logical px negatives at
             # DPR<=4. Acceptance caps remain .5/1 physical px, unchanged.
             'contour_distance_px': contour_distance(*[contour(p) for p in points],bound=8),
-            'projection_relative_error': max(rows+columns),
-            'coverage_local_relative_error': max(local),
+            'projection_relative_error': _projection_relative_error(reference, native, width, height),
+            'coverage_local_relative_error': _peak_relative_difference(reference, native, local),
             'reference_mass': mass[0], 'native_mass': mass[1]}
 
 
@@ -182,29 +197,26 @@ def shadow_profile_metrics(reference, native, size, *, tail_indices=(), profile_
         raise ProtocolError('shadow contribution outside validated domain')
     if any(type(i) is not int or not 0<=i<len(reference) for i in (*tail_indices,*profile_indices)):
         raise ProtocolError('shadow profile/tail escapes fixed support')
-    def projection(indices):
-        a,b=[sum(p[i] for i in indices) for p in (reference,native)]
-        return abs(a-b)/max(a,1/255)
-    projections=[projection(range(y*width,(y+1)*width)) for y in range(height)]
-    projections.extend(projection(range(x,width*height,width)) for x in range(width))
     mass=sum(reference),sum(native)
     samples=tuple(profile_indices) or tuple(range(len(reference)))
     return {'required_ink_present':all(v>0 for v in mass),
             'coverage_mass_relative_error':abs(mass[0]-mass[1])/mass[0] if mass[0] else None,
-            'projection_relative_error':max(projections),
+            'projection_relative_error':_projection_relative_error(reference,native,width,height),
             'profile_max_error':max((abs(reference[i]-native[i]) for i in samples),default=0),
             'tail_max_error':max((abs(reference[i]-native[i]) for i in tail_indices),default=0),
             'reference_mass':mass[0],'native_mass':mass[1]}
 
 
-def reference_aa_is_bounded(coverage,size):
+def reference_aa_is_bounded(coverage,size,*,uncertainty=1/255):
     """Reference-defined transition only, with a fixed one-physical-pixel bound."""
     width,height=size
     if len(coverage)!=width*height:
         raise ProtocolError('reference AA coverage extent differs')
+    if not math.isfinite(uncertainty) or not 0<=uncertainty<.5:
+        raise ProtocolError('reference AA quantization bound is invalid')
     boundary=contour({(i%width,i//width) for i,v in enumerate(coverage) if v>=.5})
     for i,value in enumerate(coverage):
-        if 1/255<value<1-1/255:
+        if uncertainty<value<1-uncertainty:
             x,y=i%width,i//width
             if not any((x+dx,y+dy) in boundary for dx,dy in ((0,0),(-1,0),(1,0),(0,-1),(0,1))):
                 return False

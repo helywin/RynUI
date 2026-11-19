@@ -11,12 +11,22 @@ import zlib
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
-    png_metadata,verify_profile_evidence,evidence_manifest,outline_point,measure_controls)
+    png_metadata,verify_profile_evidence,evidence_manifest,outline_point,measure_controls,weak_fill_pixel_matches)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 
 
 class CalibrationTests(unittest.TestCase):
+    def test_weak_fill_checks_exact_endpoints_and_the_edge_envelope(self):
+        for fg,bg in (([1]*3,[0]*3),([2]*3,[0]*3),([254]*3,[255]*3)):
+            self.assertTrue(weak_fill_pixel_matches(fg,fg,bg,-1.5))
+            self.assertFalse(weak_fill_pixel_matches(bg,fg,bg,-1.5))
+            self.assertTrue(weak_fill_pixel_matches(bg,fg,bg,1.5))
+            self.assertFalse(weak_fill_pixel_matches(fg,fg,bg,1.5))
+            self.assertTrue(weak_fill_pixel_matches(fg,fg,bg,0))
+            self.assertTrue(weak_fill_pixel_matches(bg,fg,bg,0))
+            self.assertFalse(weak_fill_pixel_matches([128]*3,fg,bg,0))
+
     def test_independent_outline_winding_hole_and_distance(self):
         outer=[[0,0],[10,0],[10,10],[0,10],[0,0]]
         hole=[[3,3],[3,7],[7,7],[7,3],[3,3]]
