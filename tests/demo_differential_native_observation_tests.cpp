@@ -102,6 +102,55 @@ void observe_non_button_effect_identity() {
     require(found, "ordinary Tag produced no submitted effect outside the Button/Input/Select role tables");
 }
 
+void observe_active_input_after_effect_compaction() {
+    ryn_test::input_component::Fixture fixture;
+    auto& store = fixture.buttons.rounded_effects();
+    const auto earlier = store.add(
+        graphics::make_shadow_effect({{10, 10, 10, 10}, 2}, {ShadowKind::outer, {}, 0, 0, Color::rgba8(0, 0, 0)}));
+    fixture.buttons.mount([] {
+        Input(InputProps{}.defaultValue(u8"Retained inactive editor"));
+        Input(InputProps{}.defaultValue(u8"Visible editor"));
+    });
+    fixture.synchronize();
+    require(fixture.inputs.mounted_inputs().size() == 2, "fixture did not mount both inputs");
+    const auto hidden = fixture.inputs.mounted_inputs().front().component;
+    const auto visible = fixture.inputs.mounted_inputs().back().component;
+    const auto before = fixture.inputs.paint_snapshot(hidden);
+    require(fixture.buttons.components().set_branch_active(hidden, false) && store.remove(earlier),
+            "fixture did not retire the earlier packed effect and hide the input");
+    fixture.synchronize();
+    const auto after = fixture.inputs.paint_snapshot(hidden);
+    require(!after.branch_active && after.publication_revision == before.publication_revision,
+            "inactive input did not retain its last publication");
+    bool stale_index_reused = false;
+    for (const auto& layer : after.layers) {
+        if (layer.packed_index && store.packed_index(layer.primitive) != layer.packed_index &&
+            *layer.packed_index < store.packed_instances().size()) {
+            stale_index_reused = true;
+        }
+    }
+    require(stale_index_reused, "fixture did not reproduce a reused packed index");
+    const auto& scene = fixture.buttons.scene_composer().ordered_scene();
+    const auto observed =
+        gallery_demo_paint_stack(fixture.buttons, fixture.buttons.components().root_components(), scene);
+    bool visible_border = false;
+    for (const auto& layer : observed.at("layers").array()) {
+        const auto& owner = layer.at("owner");
+        require(owner.at("index").integer() != hidden.index || owner.at("generation").integer() != hidden.generation,
+                "inactive input was included in the observed draw commands");
+        if (owner.at("index").integer() == visible.index && owner.at("generation").integer() == visible.generation &&
+            layer.at("role").string() == "border" && layer.at("in_submitted_scene").boolean()) {
+            const auto& primitive = layer.at("primitive");
+            const graphics::RoundedEffectId id{static_cast<std::uint32_t>(primitive.at("index").integer()),
+                                               static_cast<std::uint32_t>(primitive.at("generation").integer())};
+            require(store.packed_index(id) == static_cast<std::uint32_t>(layer.at("packed_index").integer()),
+                    "active input border was attributed to the inactive editor");
+            visible_border = true;
+        }
+    }
+    require(visible_border, "active input border lost its role after compaction");
+}
+
 void capture_controls() {
     const Json fixture = Json::Object{{"viewport", Json::Object{{"dpr", "native"}}}};
     const auto validate = [&](const auto& value, std::uint64_t previous = 0) {
@@ -381,6 +430,7 @@ int main() {
     try {
         capture_controls();
         observe_non_button_effect_identity();
+        observe_active_input_after_effect_compaction();
 #if defined(RYNUI_DEMO_RECORDING_OBSERVATION)
         recording_controls();
 #endif

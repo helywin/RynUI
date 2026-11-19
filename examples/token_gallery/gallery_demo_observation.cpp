@@ -230,6 +230,10 @@ GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
                 continue;
             }
             const auto paint = inputs->paint_snapshot(input.component);
+            // An inactive branch keeps its last publication while the shared effect store can compact again.
+            if (!paint.branch_active) {
+                continue;
+            }
             add_surface(paint.selection_surface);
             add_surface(paint.overlay_surface);
             if (const auto selection = app.services().surfaces().paint_snapshot(paint.selection_surface)) {
@@ -245,7 +249,7 @@ GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
                 }
             }
             for (const auto& layer : paint.layers) {
-                if (!layer.packed_index) {
+                if (!layer.in_fragment || !layer.packed_index) {
                     continue;
                 }
                 const auto role = layer.role == ryn::detail::InputPaintLayerRole::outer_shadow   ? "shadow"
