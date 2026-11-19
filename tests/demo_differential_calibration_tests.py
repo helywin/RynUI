@@ -45,15 +45,15 @@ class CalibrationTests(unittest.TestCase):
     def test_actual_control_text_origin_checks_primary_line_and_raster_motion(self):
         rect=dict(x=20,y=40,width=30,height=32)
         line=dict(units=1000,ascent=1069,descent=-293)
-        native=dict(layout_origin=[20,60.656],raster_origin=[20,91/1.5])
+        native=dict(layout_origin=[20,60],raster_origin=[20,60])
         reference=dict(layout_origin=[20,60])
         self.assertEqual(control_text_origin(native,rect,line,12,1.5,native=True),native['raster_origin'])
         self.assertEqual(control_text_origin(reference,rect,line,12,1.5,native=False),reference['layout_origin'])
         for fields,native_side in ((dict(layout_origin=[21,60]),False),
                                    (dict(layout_origin=[20,58]),False),
-                                   (dict(layout_origin=[20,59.656],raster_origin=[20,60]),True),
-                                   (dict(layout_origin=[20,60.656],raster_origin=[20,62]),True),
-                                   (dict(layout_origin=[20,60.656],raster_origin=[20,float('nan')]),True)):
+                                   (dict(layout_origin=[20,59],raster_origin=[20,60]),True),
+                                   (dict(layout_origin=[20,60],raster_origin=[20,62]),True),
+                                   (dict(layout_origin=[20,60],raster_origin=[20,float('nan')]),True)):
             with self.subTest(fields=fields,native=native_side),self.assertRaises(ProtocolError):
                 control_text_origin(fields,rect,line,12,1.5,native=native_side)
     def test_frozen_candidate_and_holdout_are_independent(self):

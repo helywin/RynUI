@@ -496,6 +496,17 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
     }
     bool has_visible_bounds = false;
     float line_top = 0.0F;
+    const auto primary_ascent = text.default_metrics.ascent;
+    const auto primary_descent = -text.default_metrics.descent;
+    auto baseline_offset = (config.line_height + primary_ascent - primary_descent) * 0.5F;
+    if (config.line_height > primary_ascent + primary_descent) {
+        // Normal line boxes use integer logical font extents and assign the
+        // fractional leading remainder below the baseline. Tight lines with
+        // no extra height remain centered on the original font extents.
+        const auto ascent = std::round(primary_ascent);
+        const auto descent = std::round(primary_descent);
+        baseline_offset = ascent + std::floor((config.line_height - ascent - descent) * 0.5F);
+    }
 
     const auto emit_line = [&](const ShapedParagraph& paragraph, const std::vector<ClusterUnit>& units,
                                std::size_t unit_begin, std::size_t unit_end, bool overflow, TextMeasurement& result,
@@ -507,11 +518,8 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
         auto& line = result.lines.back();
         const auto glyph_begin = line.glyph_begin;
         const auto glyph_end = glyph_begin + line.glyph_count;
-        // The primary font positions the fixed line box, even with negative
-        // leading. Fallback still contributes its actual ink below; it must
-        // not move neighboring text or the caret when the input changes.
-        const float baseline =
-            top + (config.line_height + text.default_metrics.ascent + text.default_metrics.descent) * 0.5F;
+        // Fallback affects only ink bounds. Text and carets share the line origin.
+        const auto baseline = top + baseline_offset;
 
         float pen_x = 0.0F;
         for (std::size_t glyph = glyph_begin; glyph < glyph_end; ++glyph) {

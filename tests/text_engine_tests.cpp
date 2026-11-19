@@ -188,6 +188,27 @@ void test_compact_line_boxes_center_font_metrics() {
     }
 }
 
+void test_normal_lines_keep_fractional_leading_below_the_primary_baseline() {
+    Fixture fixture;
+    const auto shaped = fixture.shape(String{u8"A\n中\nA中"});
+    require(static_cast<bool>(shaped), "primary and fallback text did not shape");
+    const auto ascent = std::round(shaped.text.default_metrics.ascent);
+    const auto descent = std::round(-shaped.text.default_metrics.descent);
+    const float line_height = ascent + descent + 9.75F;
+    const auto measured = fixture.engine.measure(shaped.text, {line_height, std::numeric_limits<float>::infinity()});
+    require(measured && measured.measurement.lines.size() == 3, "normal text line measurement failed");
+    for (std::size_t index = 0; index < 3; ++index) {
+        require(measured.measurement.lines[index].baseline == static_cast<float>(index) * line_height + ascent + 4,
+                "fractional leading or fallback moved a normal line baseline");
+    }
+    require(measured.measurement.height == 3 * line_height, "normal line quantization changed requested line spacing");
+    const auto& primary = shaped.text.default_metrics;
+    const auto tight =
+        fixture.engine.measure(shaped.text, {primary.ascent - primary.descent, std::numeric_limits<float>::infinity()});
+    require(tight && std::abs(tight.measurement.first_baseline - primary.ascent) < .001F,
+            "a line with no extra leading lost its exact font baseline");
+}
+
 void test_cjk_sentence_stop_prefers_the_previous_character() {
     Fixture fixture;
     const auto prefix = fixture.shape(String{u8"甲乙"});
@@ -281,6 +302,7 @@ int main() {
         test_fallback_runs_clusters_and_ligatures();
         test_measurement_uses_shaped_metrics();
         test_compact_line_boxes_center_font_metrics();
+        test_normal_lines_keep_fractional_leading_below_the_primary_baseline();
         test_wrapping_respects_cluster_boundaries();
         test_cjk_sentence_stop_prefers_the_previous_character();
     } catch (const std::exception& error) {

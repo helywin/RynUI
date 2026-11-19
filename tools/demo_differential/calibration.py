@@ -1130,7 +1130,14 @@ def control_text_origin(source,rect,line,size,dpr,*,native):
         return value
 
     layout=point('layout_origin')
-    baseline=rect['y']+16+(line['ascent']+line['descent'])*size/(2*line['units'])
+    ascent=line['ascent']*size/line['units']
+    descent=-line['descent']*size/line['units']
+    leading=(32-ascent-descent)/2
+    baseline=rect['y']+ascent+leading
+    if native and leading>0:
+        integer_ascent=math.floor(ascent+.5)
+        integer_descent=math.floor(descent+.5)
+        baseline=rect['y']+integer_ascent+math.floor((32-integer_ascent-integer_descent)/2)
     # CSS can round the primary strut before placing the line. Record the real
     # DOM baseline and report any difference in the separate geometry metric.
     if abs(layout[0]-rect['x'])>1/64 or abs(layout[1]-baseline)>(1/64 if native else 1):
