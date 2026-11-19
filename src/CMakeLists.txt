@@ -447,6 +447,7 @@ add_library(rynui_renderer_sdl STATIC
     renderer/sdl/frame_renderer.cpp
     renderer/sdl/quad_renderer.cpp
     renderer/sdl/scene_renderer.cpp
+    renderer/sdl/scene_shape_coverage.cpp
 )
 rynui_configure_cpp_target(rynui_renderer_sdl)
 if(BUILD_TESTING)
@@ -465,6 +466,11 @@ target_link_libraries(rynui_renderer_sdl PRIVATE
     rynui_text_scene
     SDL3::SDL3
 )
+if(RYNUI_ENABLE_PINNED_SVG_ICON_RASTER)
+    target_sources(rynui_renderer_sdl PRIVATE renderer/sdl/locked_shape_coverage.cpp)
+    target_compile_definitions(rynui_renderer_sdl PRIVATE RYNUI_HAS_PINNED_SHAPE_COVERAGE=1)
+    target_link_libraries(rynui_renderer_sdl PRIVATE rynui_skia_raster_lib)
+endif()
 if(WIN32)
     target_sources(rynui_renderer_sdl PRIVATE renderer/sdl/shader_resources_win32.cpp)
     target_link_libraries(rynui_renderer_sdl PRIVATE kernel32)
@@ -559,6 +565,9 @@ set(sdl_renderer_dependencies
 )
 if(WIN32)
     list(APPEND sdl_renderer_dependencies kernel32)
+endif()
+if(RYNUI_ENABLE_PINNED_SVG_ICON_RASTER)
+    list(APPEND sdl_renderer_dependencies rynui_skia_raster_lib)
 endif()
 rynui_assert_direct_dependencies(${sdl_renderer_dependencies})
 endif()

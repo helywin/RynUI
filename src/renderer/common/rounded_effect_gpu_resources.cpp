@@ -236,10 +236,14 @@ void RoundedEffectGpuResources::synchronize_validated(graphics::RoundedEffectSto
             }
         }
         for (const auto range : dirty_ranges_) {
-            const auto bytes = std::as_bytes(std::span(instances_).subspan(range.first, range.count));
+            const auto instances = std::span(instances_).subspan(range.first, range.count);
+            const auto bytes = std::as_bytes(instances);
             const auto offset = static_cast<std::size_t>(range.first) * sizeof(RoundedEffectGpuInstance);
             if (!api_->upload_effect_buffer(upload_buffer, offset, bytes)) {
                 throw gpu_failure(*api_, "Failed to upload rounded-effect GPU buffer");
+            }
+            if (!active_paint && !api_->upload_effect_coverage(upload_buffer, range.first, instances, metrics)) {
+                throw gpu_failure(*api_, "Failed to upload rounded-effect coverage");
             }
             ++counters_.buffer_uploads;
             counters_.uploaded_bytes += bytes.size();

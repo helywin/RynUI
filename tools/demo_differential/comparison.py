@@ -73,10 +73,13 @@ def capture_description(native):
     icon_rasterizer = native.get('hello', {}).get('provenance', {}).get('icon_rasterizer', 'freetype')
     if icon_rasterizer not in ('freetype', 'skia-svg-a8'):
         raise RunError(3, 'calibration', 'actual native icon raster policy is unavailable')
+    shape_rasterizer = native.get('hello', {}).get('provenance', {}).get('shape_rasterizer', 'shader')
+    if shape_rasterizer not in ('shader', 'skia-rounded-coverage'):
+        raise RunError(3, 'calibration', 'actual native shape raster policy is unavailable')
     return {**required(capture,('framebuffer_format','channel_order','alpha','color_profile'),'native original storage'),
             'source_channel_order':raw['source_channel_order'],'clear_rgba':raw['clear_rgba'],
             'font_raster_policies':[policies[key] for key in sorted(policies)],
-            'icon_rasterizer': icon_rasterizer}
+            'icon_rasterizer': icon_rasterizer, 'shape_rasterizer': shape_rasterizer}
 
 
 def environment_description(case,native,web,actual_metrics,capture_facts):

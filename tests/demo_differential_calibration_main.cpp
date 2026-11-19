@@ -812,7 +812,11 @@ int main(int argc, char** argv) {
         require(std::abs(window.logical_width() - 1280) <= .01F && std::abs(window.logical_height() - 900) <= .01F &&
                     window.display_scale == request.at("actual_dpr").number(),
                 "actual control viewport/DPR differs from the frozen input");
-        SdlSceneRenderer renderer(*platform.state);
+        const auto shape_rasterizer =
+            request.contains("shape_rasterizer") ? request.at("shape_rasterizer").string() : std::string{"shader"};
+        require(shape_rasterizer == "shader" || shape_rasterizer == "skia-rounded-coverage",
+                "requested control shape rasterizer is unavailable");
+        SdlSceneRenderer renderer(*platform.state, default_sdl_gpu_debug, shape_rasterizer == "skia-rounded-coverage");
         const auto device = renderer.device_description();
         const std::string driver = renderer.gpu_driver();
 #if defined(_WIN32)
@@ -887,8 +891,10 @@ int main(int argc, char** argv) {
         };
         for (std::int64_t index = 0; index < repetitions; ++index) {
             const auto before = snapshot_sha256();
+            const auto mask_draws_before = renderer.counters().locked_coverage_draws;
             SceneRgbaReadback raw;
             require(renderer.read_frame_rgba(raw), "control current raw readback failed");
+            const auto mask_draws = renderer.counters().locked_coverage_draws - mask_draws_before;
             const auto raw_name = "capture-" + std::to_string(index) + ".rgba";
             write(output / raw_name, raw.pixels);
             const auto name = "capture-" + std::to_string(index) + ".bmp";
@@ -957,6 +963,8 @@ int main(int argc, char** argv) {
                     {"provenance",
                      Json::Object{{"binding", request.at("binding")},
                                   {"source", gallery_demo_native_build_manifest()},
+                                  {"shape_rasterizer", renderer.locked_coverage() ? "skia-rounded-coverage" : "shader"},
+                                  {"locked_coverage_draws", integer(mask_draws)},
                                   {"backend", driver},
                                   {"preset", RYNUI_CONTROL_PRESET},
                                   {"toolchain", RYNUI_CONTROL_TOOLCHAIN},

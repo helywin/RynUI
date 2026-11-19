@@ -101,6 +101,8 @@ def control_request(manifest, *,side,partition,board,fault,identity,nonce,launch
         raster_policy=manifest['environment']['native_capture']['font_raster_policies'][0])
     if side == 'native' and 'icon_rasterizer' in manifest['environment']['native_capture']:
         request['icon_rasterizer'] = manifest['environment']['native_capture']['icon_rasterizer']
+    if side == 'native' and 'shape_rasterizer' in manifest['environment']['native_capture']:
+        request['shape_rasterizer'] = manifest['environment']['native_capture']['shape_rasterizer']
     return request
 
 
@@ -445,6 +447,13 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
                     raise RunError(3,'calibration','control binary embeds another source closure')
                 if record['provenance'].get('backend') != manifest['environment']['native']['backend']:
                     raise RunError(3,'calibration','control actual backend differs')
+                rasterizer = actual_capture.get('shape_rasterizer', 'shader')
+                if record['provenance'].get('shape_rasterizer', 'shader') != rasterizer:
+                    raise RunError(3, 'calibration', 'control actual shape raster policy differs')
+                if rasterizer == 'skia-rounded-coverage':
+                    mask_draws = record['provenance'].get('locked_coverage_draws')
+                    if type(mask_draws) is not int or mask_draws < 1:
+                        raise RunError(3, 'calibration', 'control has no submitted locked rounded coverage')
                 if record['provenance'].get('gpu') != manifest['environment']['native']['gpu']:
                     raise RunError(3,'calibration','control actual GPU/driver differs')
                 for field in ('preset','toolchain','configuration','platform','shader'):
@@ -787,6 +796,22 @@ def software_box_source_over(background, colors, alphas, coverage):
     return dest
 
 
+def hard_clip_matches_device_grid(declared, actual, dpr):
+    keys = {'x', 'y', 'width', 'height'}
+    if not isinstance(actual, dict) or set(actual) != keys or any(
+            type(value) not in (int, float) or not math.isfinite(value) for value in actual.values()):
+        return False
+    if actual['width'] < 0 or actual['height'] < 0:
+        return False
+    def edges(box):
+        x, y = box['x'], box['y']
+        return x, y, x + box['width'], y + box['height']
+    # Integer i is admitted iff left <= i + .5 < right. CSSOM serializes
+    # control polygon coordinates as decimals, so allow its subpixel precision.
+    return all(abs(observed*dpr - math.ceil(logical*dpr-.5)) <= 1/64
+               for logical, observed in zip(edges(declared), edges(actual), strict=True))
+
+
 def measure_controls(corpus,trial,observations,images,priors,*,details=None,witnesses=None,icon_masks=None):
     """Recompute from full raw planes and observed control geometry/material/font.
 
@@ -869,8 +894,15 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
                         fill.get('paint_opacity')!=1):fail('source.shadow-occlusion')
             if cell['kind']=='border' and source.get('border_width',source.get('outline_width'))!=cell['border']:
                 fail('source.material')
-            if cell['kind']=='clip' and source.get('clip_rect')!={**cell['rect'],'width':cell['clip_width']}:
-                fail('source.clip')
+            if cell['kind']=='clip':
+                declared = {**cell['rect'],'width':cell['clip_width']}
+                actual_clip = source.get('clip_rect')
+                if side == 0:
+                    clip_matches = actual_clip == declared
+                else:
+                    clip_matches = hard_clip_matches_device_grid(declared, actual_clip, dpr)
+                if not clip_matches:
+                    fail('source.clip')
             collect('geometry.logical_px',max(abs(row['rect'][k]-cell['rect'][k]) for k in cell['rect']))
             if cell['kind'] in ('text','icon'):
                 source=row['source']

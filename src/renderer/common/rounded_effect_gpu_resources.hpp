@@ -22,6 +22,12 @@ public:
     virtual RoundedEffectGpuBufferHandle create_effect_buffer(std::size_t size) = 0;
     virtual bool upload_effect_buffer(RoundedEffectGpuBufferHandle buffer, std::size_t offset,
                                       std::span<const std::byte> bytes) = 0;
+
+    virtual bool upload_effect_coverage(RoundedEffectGpuBufferHandle, std::uint32_t,
+                                        std::span<const RoundedEffectGpuInstance>, SceneDeviceMetrics) {
+        return true;
+    }
+
     virtual void release_effect_buffer(RoundedEffectGpuBufferHandle buffer) noexcept = 0;
     [[nodiscard]] virtual const char* effect_gpu_error() const noexcept = 0;
 

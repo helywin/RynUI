@@ -42,6 +42,8 @@ Kind 6 表示带镂空的模糊外阴影。偏移和 spread 作用于阴影轮�
 
 Kind 6 可选择物理像素上的三段 box 卷积。`material_params.z` 为 1 时，两轴分别在离散像素上积分，镂空使用圆角主体在单像素内的面积，输出 alpha 量化至 8 bit。窗口超过 64 个物理像素时使用连续高斯近似。选择此模式要求 backend 显式声明 `device_box_shadows`，原能力 preflight 同时生效。
 
+固定差分环境可启用 SDL 的 Skia 圆角覆盖。后端对合格的圆角 Quad、实色圆角 Effect、圆角描边及离散外阴影生成物理像素 R8 覆盖，沿用同一有序命令、材质、资源上传事务和半开硬裁剪。覆盖纹理最大 512×512，超过范围、子合成和 paint 路径继续使用对应 shader。在实际原生捕获中记录启用的光栅方式和已提交的覆盖绘制次数。
+
 Kind 6 使用投影形状上的二维 Gaussian 积分，σ 为模糊半径的一半。矩形和圆角之间的中央条带使用可分离积分，左右圆角条带使用有界的八点数值积分。主体镂空覆盖为零时省去模糊采样。
 
 新 path 的 CPU geometry 为 typed variant，验证类型、有限数值、角度范围、描边及箭头 base 必须落在直边内；CPU 类型无 packed layout 承诺。packed `shadow_params.yzw` 在 kind 3 为不随 DPI 缩放的 start/sweep radians（末项为零），kind 4 为物理 fitted dash/gap/phase，kind 5 为沿边 center/half-width/length；`material_params.z` 为 kind 4 的四角 bitmask 或 kind 5 的方向。draw bounds 包含整个 path 和 AA guard，ancestor/viewport clip 仍为硬边界。新 path 使用共同资源上传、reference 和 HLSL，不增加组件私有上传或 backend 分支。

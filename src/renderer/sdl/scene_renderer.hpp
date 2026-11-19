@@ -4,6 +4,7 @@
 #include "graphics/quad_primitive.hpp"
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/gpu_binding.hpp"
+#include "renderer/sdl/locked_shape_coverage.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/sdl/buffer_upload_batch_layout.hpp"
 #include "renderer/sdl/texture_upload_batch_layout.hpp"
@@ -43,6 +44,7 @@ struct SceneRendererCounters {
     std::uint64_t no_texture_frames{};
     std::uint64_t effect_paint_pipeline_creations{};
     std::uint64_t effect_cap_pipeline_creations{};
+    std::uint64_t locked_coverage_draws{};
 };
 
 struct SceneReadbackEvidence final {
@@ -84,7 +86,8 @@ struct SceneDeviceDescription final {
 
 class SdlSceneRenderer final : public SceneBackend {
 public:
-    explicit SdlSceneRenderer(PlatformState& platform, bool debug_mode = default_sdl_gpu_debug);
+    explicit SdlSceneRenderer(PlatformState& platform, bool debug_mode = default_sdl_gpu_debug,
+                              bool locked_coverage = false);
     SdlSceneRenderer(const SdlSceneRenderer&) = delete;
     SdlSceneRenderer& operator=(const SdlSceneRenderer&) = delete;
     ~SdlSceneRenderer() override;
@@ -142,6 +145,15 @@ public:
     RoundedEffectGpuBufferHandle create_effect_buffer(std::size_t size) override;
     bool upload_effect_buffer(RoundedEffectGpuBufferHandle buffer, std::size_t offset,
                               std::span<const std::byte> bytes) override;
+    bool upload_quad_coverage(QuadGpuBufferHandle, std::uint32_t, std::span<const graphics::QuadInstance>,
+                              SceneDeviceMetrics) override;
+    bool upload_effect_coverage(RoundedEffectGpuBufferHandle, std::uint32_t, std::span<const RoundedEffectGpuInstance>,
+                                SceneDeviceMetrics) override;
+
+    [[nodiscard]] bool locked_coverage() const noexcept {
+        return locked_coverage_;
+    }
+
     void release_effect_buffer(RoundedEffectGpuBufferHandle buffer) noexcept override;
     [[nodiscard]] const char* effect_gpu_error() const noexcept override;
     RoundedEffectGpuBufferHandle create_effect_paint_buffer(EffectPaintBufferKind kind, std::size_t size) override;
@@ -220,6 +232,13 @@ private:
     static ResourceKind effect_paint_resource_kind(EffectPaintBufferKind kind);
     bool ensure_effect_paint_pipeline(bool cap_geometry = false);
 
+    struct CoverageDraw final {
+        GlyphGpuTextureHandle texture{};
+        GlyphGpuBufferHandle vertices{};
+        std::uint32_t width{};
+        std::uint32_t height{};
+    };
+
     struct Resource final {
         void* native{};
         GpuDeviceHandle device{};
@@ -227,6 +246,7 @@ private:
         std::size_t size{};
         std::uint32_t width{};
         std::uint32_t height{};
+        std::unique_ptr<std::unordered_map<std::uint32_t, CoverageDraw>> coverage;
         void release() noexcept;
         ~Resource();
     };
@@ -236,6 +256,14 @@ private:
     [[nodiscard]] Resource* resource(void* handle, ResourceKind kind) const noexcept;
     void release_resource(void* handle, ResourceKind kind) noexcept;
     [[nodiscard]] void* native_resource(void* handle, ResourceKind kind) const;
+    bool update_coverage(Resource&, std::uint32_t, std::optional<LockedShapeGeometry>, SceneDeviceMetrics,
+                         std::array<float, 4> color, float opacity, const std::array<float, 4>& clip);
+    void release_coverage(CoverageDraw&) noexcept;
+    void draw_coverage(const CoverageDraw&);
+    void draw_coverage_ranges(const Resource&, std::uint32_t first, std::uint32_t count,
+                              void (SdlSceneRenderer::*draw_range)(std::uint32_t, std::uint32_t));
+    void draw_quad_range(std::uint32_t first, std::uint32_t count);
+    void draw_effect_range(std::uint32_t first, std::uint32_t count);
 
     bool ensure_composition_pipelines();
     bool ensure_backdrop_pipelines();
@@ -249,6 +277,7 @@ private:
     std::uint64_t completed_composition_fence_{};
     std::uint64_t next_readback_id_{};
     bool composition_active_{};
+    bool locked_coverage_{};
     PlatformState* platform_;
     SdlGpuBinding binding_;
     SceneBackendCapabilities capabilities_;

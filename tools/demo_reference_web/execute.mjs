@@ -68,7 +68,9 @@ function record(type, step = '', values = {}) {
   return result;
 }
 
-const html = `<!doctype html><html><head><meta charset="utf-8"><style>${fontStyle(fonts)}</style></head><body><div id="root"></div><script src="/request.js"></script><script src="/app.js"></script></body></html>`;
+// Keep the independently specified sample wrapper inside the capture, with
+// room for its real outline, shadow and surrounding guard.
+const html = `<!doctype html><html><head><meta charset="utf-8"><style>${fontStyle(fonts)}#root{padding:16px}</style></head><body><div id="root"></div><script src="/request.js"></script><script src="/app.js"></script></body></html>`;
 const assets = new Map([
   ['/', [Buffer.from(html), 'text/html; charset=utf-8']],
   ['/app.js', [fs.readFileSync(path.join(build, 'app.js')), 'application/javascript']],
@@ -86,8 +88,9 @@ try {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = 'http://127.0.0.1:' + server.address().port;
   // Read each fresh frame from complete raster tiles. Damage-dependent tile
-  // reuse can change the last RGB8 code at repeated soft edges.
+  // reuse and crossing a tile edge can change coverage of the same curve.
   const launchArgs = ['--force-color-profile=srgb', '--disable-lcd-text', '--disable-partial-raster', '--disable-background-networking',
+    '--default-tile-width=2048', '--default-tile-height=2048',
     '--disable-component-update', '--disable-default-apps', '--disable-smooth-scrolling', '--no-first-run', '--lang=' + fixture.locale];
   browser = await chromium.launch({ executablePath: prepared.browser, headless: true,
     args: launchArgs, downloadsPath: path.join(output, 'downloads'),
@@ -363,7 +366,6 @@ try {
                 fill_opacity:getComputedStyle(part).fillOpacity,transform:part.getAttribute('transform')};}) };
         });
         const tokens = {};
-        let contentUnion = rect(bounds);
         if (identity === window.__request.definition.native.sample_id) {
           const padding = { left: parseFloat(computed.paddingLeft), top: parseFloat(computed.paddingTop),
             right: parseFloat(computed.paddingRight), bottom: parseFloat(computed.paddingBottom) };
@@ -375,9 +377,6 @@ try {
           const roots = [...element.children].filter(child => !['STYLE','SCRIPT','LINK'].includes(child.tagName))
             .map(child => child.getBoundingClientRect()).filter(box => box.width > 0 && box.height > 0);
           if (!roots.length) throw new Error('sample has no actual content roots');
-          const x=Math.min(...roots.map(box => box.x)), y=Math.min(...roots.map(box => box.y));
-          contentUnion = { x,y, width: Math.max(...roots.map(box => box.right))-x,
-            height: Math.max(...roots.map(box => box.bottom))-y };
         }
         for (const name of ['color', 'backgroundColor', 'borderColor', 'borderWidth', 'borderRadius', 'padding', 'gap',
           'paddingInlineStart', 'paddingInlineEnd', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'opacity', 'boxShadow', 'direction', 'overflow'])
@@ -395,7 +394,7 @@ try {
               height: Math.max(0, Math.min(clip.y + clip.height, bounds.bottom) - y) };
           }
         }
-        result.push({ identity, key: '', bounds: contentUnion, clip,
+        result.push({ identity, key: '', bounds: rect(bounds), clip,
           scroll: { x: element.scrollLeft, y: element.scrollTop, width: element.scrollWidth, height: element.scrollHeight },
           state, text, icons, tokens, owner_generation: r.generation(), scene_revision: r.revision() });
       }

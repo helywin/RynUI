@@ -13144,33 +13144,41 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
                 const auto& descriptor = factory.descriptor;
                 has_sample = true;
                 ++(*runs)[std::string{descriptor.identity}];
-                ReferenceSurface(ReferenceSurfaceProps{}
-                                     .identity(descriptor.identity)
-                                     .role(ReferenceSurfaceRole::example)
-                                     .content_padding(card_padding)
-                                     .layout(ryn::LayoutStyle{}.width(card_width)),
-                                 [state, factory, footer] {
-                                     ryn::Flex(
-                                         ryn::FlexProps{}.vertical(true).align(ryn::FlexAlign::Start).gap(ryn::dp(12)),
-                                         [state, factory, footer] {
-                                             ryn::Text(ryn::TextProps{}.content(
-                                                 gallery_field(factory.descriptor.identity, "title")));
-                                             if (state->page_family == GalleryInputFamily::password ||
-                                                 state->page_family == GalleryInputFamily::otp) {
-                                                 gallery_label("gallery.copy.sample.668");
-                                             }
-                                             if (state->demo && state->demo->factory_boundary) {
-                                                 state->demo->factory_boundary(factory.descriptor.identity, true);
-                                             }
-                                             factory.mount(state);
-                                             if (state->demo && state->demo->factory_boundary) {
-                                                 state->demo->factory_boundary(factory.descriptor.identity, false);
-                                             }
-                                             if (footer) {
-                                                 footer(factory.descriptor, state->document_width);
-                                             }
-                                         });
-                                 });
+                ReferenceSurface(
+                    ReferenceSurfaceProps{}
+                        .identity(descriptor.identity)
+                        .role(ReferenceSurfaceRole::example)
+                        .content_padding(card_padding)
+                        .layout(ryn::LayoutStyle{}.width(card_width)),
+                    [state, factory, footer] {
+                        ryn::Flex(
+                            ryn::FlexProps{}.vertical(true).align(ryn::FlexAlign::Start).gap(ryn::dp(12)),
+                            [state, factory, footer] {
+                                ryn::Text(
+                                    ryn::TextProps{}.content(gallery_field(factory.descriptor.identity, "title")));
+                                if (state->page_family == GalleryInputFamily::password ||
+                                    state->page_family == GalleryInputFamily::otp) {
+                                    gallery_label("gallery.copy.sample.668");
+                                }
+                                if (state->demo && state->demo->factory_boundary) {
+                                    ryn::Flex(ryn::FlexProps{}
+                                                  .vertical(true)
+                                                  .align(ryn::FlexAlign::Start)
+                                                  .gap(ryn::dp(12))
+                                                  .layout(ryn::LayoutStyle{}.width(state->document_width)),
+                                              [state, factory] {
+                                                  state->demo->factory_boundary(factory.descriptor.identity, true);
+                                                  factory.mount(state);
+                                                  state->demo->factory_boundary(factory.descriptor.identity, false);
+                                              });
+                                } else {
+                                    factory.mount(state);
+                                }
+                                if (footer) {
+                                    footer(factory.descriptor, state->document_width);
+                                }
+                            });
+                    });
             }
             if (!has_sample && route.kind == GalleryPageKind::component) {
                 const auto* entry = find_ant_design_reference_entry(route.component_identity);

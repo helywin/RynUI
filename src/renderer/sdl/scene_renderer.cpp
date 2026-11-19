@@ -103,7 +103,7 @@ struct ShaderSelection {
 
 } // namespace
 
-SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
+SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode, bool locked_coverage)
     : platform_(&platform), binding_(platform, debug_mode) {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
@@ -122,6 +122,12 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode)
     capabilities_.effect_paint_abi_version = effect_paint_abi_version;
     capabilities_.r8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8_UNORM,
                                                              SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+#if defined(RYNUI_HAS_PINNED_SHAPE_COVERAGE)
+    locked_coverage_ = locked_coverage && capabilities_.r8_sampling;
+#endif
+    if (locked_coverage && !locked_coverage_) {
+        throw std::invalid_argument("Pinned rounded coverage requires the locked rasterizer and R8 sampling");
+    }
     capabilities_.rgba8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
                                                                 SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
     capabilities_.scene_composition_version = graphics::scene_composition_version;
@@ -783,6 +789,13 @@ void SdlSceneRenderer::release_resource(void* handle, ResourceKind kind) noexcep
         return;
     }
     if (auto* owned = resource(handle, kind)) {
+        if (owned->coverage) {
+            for (auto& [index, draw] : *owned->coverage) {
+                (void)index;
+                release_coverage(draw);
+            }
+            owned->coverage.reset();
+        }
         owned->release();
     }
 }
@@ -799,6 +812,15 @@ void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
     if (active_render_pass_ == nullptr || quad_buffer_ == nullptr) {
         throw std::logic_error("Quad draw resources are not attached");
     }
+    const auto* owned = resource(quad_buffer_, ResourceKind::quad);
+    if (!composition_active_ && owned && owned->coverage) {
+        draw_coverage_ranges(*owned, first, count, &SdlSceneRenderer::draw_quad_range);
+        return;
+    }
+    draw_quad_range(first, count);
+}
+
+void SdlSceneRenderer::draw_quad_range(std::uint32_t first, std::uint32_t count) {
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
     SDL_BindGPUGraphicsPipeline(
         pass, static_cast<SDL_GPUGraphicsPipeline*>(composition_active_ ? composition_pipelines_[0] : quad_pipeline_));
@@ -839,6 +861,15 @@ void SdlSceneRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t co
         effect_resources_ == nullptr) {
         throw std::logic_error("Rounded effect draw resources are not attached");
     }
+    const auto* owned = resource(effect_resources_->buffer(), ResourceKind::effect);
+    if (!composition_active_ && owned && owned->coverage && !effect_resources_->draw_binding(first, count).link) {
+        draw_coverage_ranges(*owned, first, count, &SdlSceneRenderer::draw_effect_range);
+        return;
+    }
+    draw_effect_range(first, count);
+}
+
+void SdlSceneRenderer::draw_effect_range(std::uint32_t first, std::uint32_t count) {
     const auto binding = effect_resources_->draw_binding(first, count);
     const auto checked = [&](void* handle, ResourceKind kind, std::size_t offset, std::size_t elements,
                              std::size_t stride) {

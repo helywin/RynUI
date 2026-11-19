@@ -12,13 +12,22 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
     png_metadata,verify_profile_evidence,evidence_manifest,outline_point,outline_witness,measure_controls,
-    weak_fill_pixel_matches,control_icon_outlines,control_text_origin,software_box_source_over)
+    weak_fill_pixel_matches,control_icon_outlines,control_text_origin,software_box_source_over,
+    hard_clip_matches_device_grid)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 from demo_differential.glyph_witness import GlyphWitness, place
 
 
 class CalibrationTests(unittest.TestCase):
+    def test_clip_boundary_preserves_half_open_device_samples(self):
+        requested = dict(x=340.5, y=172.5, width=24, height=24)
+        for dpr, left, top in ((1, 340, 172), (1.25, 426, 216), (1.5, 511, 259), (2, 681, 345)):
+            aligned = dict(x=left/dpr, y=top/dpr, width=24, height=24)
+            self.assertTrue(hard_clip_matches_device_grid(requested, aligned, dpr))
+            self.assertFalse(hard_clip_matches_device_grid(requested, {**aligned, 'width': 24+1/dpr}, dpr))
+        self.assertFalse(hard_clip_matches_device_grid(requested, requested, 1))
+
     def test_hinted_witness_uses_physical_origin_and_its_own_phase(self):
         source = dict(actual_font_sha256='face', content='A')
         ink = GlyphWitness(-1, -2, 2, 2, bytes((0, 128, 255, 0)))

@@ -297,31 +297,28 @@ public:
         return owns(actions.app, target(name), component);
     }
 
-    runtime::Rect target_bounds(std::string_view name) {
-        if (name != "sample" && name != scenario.route.sample_identity) {
-            return bounds(actions.app, target(name));
-        }
-        std::optional<runtime::Rect> area;
+    runtime::ComponentId sample_layout_host() {
+        std::optional<runtime::ComponentId> host;
         for (const auto root : factory_roots) {
             if (!actions.app.components().contains(root)) {
                 continue;
             }
-            const auto value = bounds(actions.app, root);
-            if (!area) {
-                area = value;
-                continue;
+            const auto parent = actions.app.components().parent(root);
+            if (!parent || (host && parent != host)) {
+                throw std::runtime_error("sample content has no common retained host");
             }
-            const auto right = std::max(area->x + area->width, value.x + value.width);
-            const auto bottom = std::max(area->y + area->height, value.y + value.height);
-            area->x = std::min(area->x, value.x);
-            area->y = std::min(area->y, value.y);
-            area->width = right - area->x;
-            area->height = bottom - area->y;
+            host = parent;
         }
-        if (!area) {
+        if (!host) {
             throw std::runtime_error("sample factory has no live retained roots");
         }
-        return *area;
+        return *host;
+    }
+
+    runtime::Rect target_bounds(std::string_view name) {
+        const auto id =
+            name == "sample" || name == scenario.route.sample_identity ? sample_layout_host() : target(name);
+        return bounds(actions.app, id);
     }
 
     [[nodiscard]] Json text_record(ryn::detail::TextSceneId scene, runtime::ComponentId component, bool icon = false) {
@@ -519,25 +516,12 @@ public:
             texts.push_back(std::move(text_item));
         }
         if (sample) {
-            std::vector<runtime::ComponentId> anchor_roots;
-            for (const auto root : factory_roots) {
-                if (actions.app.components().contains(root)) {
-                    anchor_roots.push_back(root);
-                }
-            }
-            if (anchor_roots.empty()) {
-                throw std::runtime_error("sample content anchor has no retained factory roots");
-            }
-            const auto host = actions.app.components().parent(anchor_roots.front());
-            if (!host || std::ranges::any_of(
-                             anchor_roots, [&](auto root) { return actions.app.components().parent(root) != host; })) {
-                throw std::runtime_error("sample content anchor has no common retained host");
-            }
-            const auto* flex = std::as_const(actions.app.components()).state<ryn::detail::FlexComponentState>(*host);
+            const auto host = sample_layout_host();
+            const auto* flex = std::as_const(actions.app.components()).state<ryn::detail::FlexComponentState>(host);
             if (!flex) {
                 throw std::runtime_error("sample retained host layout is unavailable");
             }
-            const auto container = bounds(actions.app, *host);
+            const auto container = bounds(actions.app, host);
             const auto padding = flex->model.padding;
             tokens["sample_anchor"] =
                 Json::Object{{"source", "retained-host-layout"},

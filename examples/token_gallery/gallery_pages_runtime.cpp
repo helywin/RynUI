@@ -486,6 +486,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
         };
         std::get<GalleryDemoJson::Object>(demo_provenance.value)
             .insert_or_assign("icon_rasterizer", events.fonts.has_svg_rasterizer() ? "skia-svg-a8" : "freetype");
+        std::get<GalleryDemoJson::Object>(demo_provenance.value)
+            .insert_or_assign("shape_rasterizer", renderer.locked_coverage() ? "skia-rounded-coverage" : "shader");
         run_gallery_demo_scenario(
             *scenario, options.observations, std::move(demo_provenance),
             GalleryDemoNativeActions{
@@ -4362,7 +4364,8 @@ int run_gallery_pages(int argc, char** argv) {
         pages.mount(events.viewport);
         result.font_source = font_chain.telemetry_source();
         result.system_fonts = font_chain.uses_system_fonts;
-        ryn::detail::SdlSceneRenderer renderer(*platform.state);
+        ryn::detail::SdlSceneRenderer renderer(*platform.state, ryn::detail::default_sdl_gpu_debug,
+                                               pinned_fonts && fonts->has_svg_rasterizer());
         ryn::detail::SceneResources resources(renderer);
         resources.glyphs().set_sparse_upload_coalescing_limit(512 * 1024);
         GalleryPageSubmitter submitter(events, pages, app, inputs, scene, resources, renderer);

@@ -62,6 +62,7 @@ try {
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const origin='http://127.0.0.1:'+server.address().port;
   const launch_args=['--force-color-profile=srgb','--disable-lcd-text','--disable-partial-raster','--disable-background-networking',
+    '--default-tile-width=2048','--default-tile-height=2048',
     '--disable-component-update','--disable-default-apps','--disable-smooth-scrolling','--no-first-run','--lang=zh-CN'];
   browser=await chromium.launch({executablePath:prepared.browser,headless:true,args:launch_args,
     env:{...process.env,TMPDIR:path.join(output,'tmp'),XDG_CACHE_HOME:path.join(output,'cache'),XDG_CONFIG_HOME:path.join(output,'config')},timeout:20000});
@@ -98,6 +99,7 @@ try {
     const opacity=Number(computed.opacity);
     const source={foreground:color.rgb,alpha:color.alpha*opacity,source_alpha:color.alpha,paint_opacity:opacity};
     const x=Math.floor(cell.rect.x),y=Math.floor(cell.rect.y);
+    const clipOwner=cell.kind==='clip' ? owner.parentElement : null;
     const matrix=new DOMMatrixReadOnly(computed.transform==='none'?undefined:computed.transform);
     if(!matrix.is2D||matrix.a!==1||matrix.b!==0||matrix.c!==0||matrix.d!==1||
         parseFloat(computed.left)!==x||parseFloat(computed.top)!==y||
@@ -116,8 +118,18 @@ try {
     if(cell.radius!==undefined)source.radius=parseFloat(computed.borderRadius);
     if(cell.kind==='sourceover'){const second=parseColor(getComputedStyle(owner.firstElementChild).backgroundColor);
       source.second_foreground=second.rgb;source.second_alpha=second.alpha;}
-    if(cell.kind==='clip'){const m=computed.clipPath.match(/^inset\(0px ([\d.]+)px 0px 0px\)$/);
-      if(!m)throw new Error('actual control clip unavailable');source.clip_rect={x:r.x,y:r.y,width:r.width-Number(m[1]),height:r.height};}
+    if(clipOwner){
+      const clipStyle=getComputedStyle(clipOwner), clipBounds=clipOwner.getBoundingClientRect();
+      const polygon=clipStyle.clipPath.match(/^polygon\((.*)\)$/)?.[1].split(',').map(pair=>
+        pair.trim().split(/\s+/).map(value=>value.endsWith('px') ? Number(value.slice(0,-2)) : NaN));
+      if(clipOwner.getAttribute('data-control-clip')!==cell.identity || clipStyle.transform!=='none' ||
+          clipBounds.x!==0 || clipBounds.y!==0 || polygon?.length!==4 ||
+          polygon.some(point=>point.length!==2||point.some(value=>!Number.isFinite(value))))
+        throw new Error('actual hard clip owner unavailable');
+      const [[l,t],[r,upper],[right,b],[left,bottom]]=polygon;
+      if(l!==left||t!==upper||r!==right||b!==bottom||r<l||b<t)throw new Error('actual clip is not rectangular');
+      source.clip_rect={x:l,y:t,width:r-l,height:b-t};
+    }
     if(cell.kind==='text'||cell.kind==='icon'){
       const child=owner.firstElementChild;const style=getComputedStyle(child);
       const range=document.createRange();range.selectNodeContents(child);

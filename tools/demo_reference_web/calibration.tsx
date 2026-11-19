@@ -38,7 +38,6 @@ function Cell({cell}:any) {
   if (['fill','alpha','sourceover','round','clip'].includes(kind)) {
     Object.assign(style,{background:color(rgb,alpha),borderRadius:cell.radius ?? 0});
     if(kind==='alpha')style.opacity=cell.paint_opacity ?? 1; // A single painted leaf, never a fabricated native group.
-    if(kind==='clip')style.clipPath=`inset(0px ${r.width-cell.clip_width}px 0px 0px)`;
     if (kind==='sourceover') child=<div style={{position:'absolute',inset:0,background:color(cell.second_rgb,cell.second_alpha)}} />;
   } else if (kind==='border') {
     Object.assign(style,{border:`1px solid ${color(rgb)}`,borderRadius:cell.radius});
@@ -63,6 +62,17 @@ function Cell({cell}:any) {
     }
     if (cell.clip_glyph_right_px) Object.assign(style,{overflow:'hidden'});
   } else throw new Error('unknown independent material');
+  if (kind==='clip') {
+    // Apply the hard clip in viewport coordinates after the child is placed.
+    // CSS clip-path can antialias its boundary, so place that boundary exactly
+    // between the physical sample centers admitted by the logical half-open box.
+    const grid=(value:number)=>Math.ceil(value*devicePixelRatio-.5)/devicePixelRatio;
+    const l=grid(r.x),t=grid(r.y),right=grid(r.x+cell.clip_width),bottom=grid(r.y+r.height);
+    return <div data-control-clip={cell.identity} style={{position:'absolute',inset:0,
+      clipPath:`polygon(${l}px ${t}px, ${right}px ${t}px, ${right}px ${bottom}px, ${l}px ${bottom}px)`}}>
+      <div data-control={cell.identity} style={style} />
+    </div>;
+  }
   return <>{kind==='text' && <div data-control-frame={cell.identity} style={{position:'absolute',...paintPosition(r.x-4,r.y-4),
     width:r.width+8,height:r.height+8,boxSizing:'border-box',border:'1px solid '+color(cell.background[0]===0?[255,255,255]:[0,0,0])}} />}
     <div data-control={cell.identity} style={style}>{child}</div></>;

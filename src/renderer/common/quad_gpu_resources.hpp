@@ -13,6 +13,12 @@ public:
     virtual QuadGpuBufferHandle create_vertex_buffer(std::size_t size) = 0;
     virtual void release_buffer(QuadGpuBufferHandle buffer) noexcept = 0;
     virtual bool upload(QuadGpuBufferHandle buffer, std::size_t offset, std::span<const std::byte> bytes) = 0;
+
+    virtual bool upload_quad_coverage(QuadGpuBufferHandle, std::uint32_t, std::span<const graphics::QuadInstance>,
+                                      SceneDeviceMetrics) {
+        return true;
+    }
+
     [[nodiscard]] virtual const char* last_error() const noexcept = 0;
 };
 

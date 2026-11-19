@@ -89,6 +89,10 @@ void QuadGpuBuffer::synchronize(graphics::QuadInstanceStore& store, SceneDeviceM
             if (!api_->upload(target, std::size_t(range.first) * sizeof(QuadGpuInstance), bytes)) {
                 throw upload_error(*api_, "Failed to upload Quad GPU range");
             }
+            if (!api_->upload_quad_coverage(target, range.first, store.instances().subspan(range.first, range.count),
+                                            metrics)) {
+                throw upload_error(*api_, "Failed to upload Quad coverage");
+            }
             if (!first) {
                 ++counters_.range_uploads;
             }
