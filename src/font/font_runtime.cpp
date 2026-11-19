@@ -410,11 +410,6 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
     }
 
     const float raster_scale = static_cast<float>(*raster_pixel_size) / static_cast<float>(raster.logical_pixel_size);
-    const FT_Size_Metrics& metrics = record.face->size->metrics;
-    record.metrics.ascent = fixed_26_6_to_pixels(metrics.ascender) / raster_scale;
-    record.metrics.descent = fixed_26_6_to_pixels(metrics.descender) / raster_scale;
-    record.metrics.line_gap =
-        std::max(0.0F, fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender) / raster_scale);
     // Decoration geometry comes from the face rather than being derived from
     // ascent/descent, so the underline and strikethrough land where the font
     // designer placed them. Values are stored RELATIVE TO THE EM and are
@@ -461,12 +456,31 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
                                "FreeType could not configure the independent shaping face."));
     }
 
+    // Line boxes and advances are logical geometry. The raster face can grid-fit
+    // independently at every display density without moving text or carets.
+    const bool scalable = FT_IS_SCALABLE(record.shaping_face) && units_per_em > 0.0F;
+    if (scalable) {
+        const float scale = static_cast<float>(raster.logical_pixel_size) / units_per_em;
+        record.metrics.ascent = static_cast<float>(record.shaping_face->ascender) * scale;
+        record.metrics.descent = static_cast<float>(record.shaping_face->descender) * scale;
+        const auto height = record.shaping_face->height;
+        const auto line_gap = height - record.shaping_face->ascender + record.shaping_face->descender;
+        record.metrics.line_gap = std::max(0.0F, static_cast<float>(line_gap) * scale);
+    } else {
+        const FT_Size_Metrics& metrics = record.shaping_face->size->metrics;
+        record.metrics.ascent = fixed_26_6_to_pixels(metrics.ascender);
+        record.metrics.descent = fixed_26_6_to_pixels(metrics.descender);
+        record.metrics.line_gap =
+            std::max(0.0F, fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender));
+    }
+
     record.harfbuzz_font = hb_ft_font_create_referenced(record.shaping_face);
     if (record.harfbuzz_font == nullptr) {
         return fail(make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
                                "HarfBuzz could not create an immutable font adapter."));
     }
-    hb_ft_font_set_load_flags(record.harfbuzz_font, FT_LOAD_DEFAULT);
+    hb_ft_font_set_load_flags(record.harfbuzz_font,
+                              scalable ? FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP : FT_LOAD_DEFAULT);
     const int harfbuzz_scale = static_cast<int>(raster.logical_pixel_size * 64U);
     hb_font_set_scale(record.harfbuzz_font, harfbuzz_scale, harfbuzz_scale);
 

@@ -507,25 +507,19 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
         auto& line = result.lines.back();
         const auto glyph_begin = line.glyph_begin;
         const auto glyph_end = glyph_begin + line.glyph_count;
-        float ascent = text.default_metrics.ascent;
-        float descent = -text.default_metrics.descent;
-        for (auto glyph = glyph_begin; glyph < glyph_end; ++glyph) {
-            const auto metrics = fonts_->metrics(text.glyphs[result.visual_glyphs[glyph]].font);
-            if (!metrics) {
-                return font_error(metrics.error);
-            }
-            ascent = std::max(ascent, metrics.metrics.ascent);
-            descent = std::max(descent, -metrics.metrics.descent);
-        }
-        const float content_height = ascent + descent;
-        // Line height is the layout box, not a minimum font-metric height.
-        // Fonts with tall ascenders/descenders need symmetric negative leading
-        // too; clamping it shifts every compact control's text downward.
-        const float baseline = top + (config.line_height - content_height) * 0.5F + ascent;
+        // The primary font positions the fixed line box, even with negative
+        // leading. Fallback still contributes its actual ink below; it must
+        // not move neighboring text or the caret when the input changes.
+        const float baseline =
+            top + (config.line_height + text.default_metrics.ascent + text.default_metrics.descent) * 0.5F;
 
         float pen_x = 0.0F;
         for (std::size_t glyph = glyph_begin; glyph < glyph_end; ++glyph) {
             const ShapedGlyph& shaped = text.glyphs[result.visual_glyphs[glyph]];
+            const auto metrics = fonts_->metrics(shaped.font);
+            if (!metrics) {
+                return font_error(metrics.error);
+            }
             if (shaped.extent_width != 0.0F && shaped.extent_height != 0.0F) {
                 const float x1 = pen_x + shaped.offset_x + shaped.extent_x_bearing;
                 const float x2 = x1 + shaped.extent_width;

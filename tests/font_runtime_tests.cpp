@@ -160,6 +160,10 @@ void test_load_errors_and_metrics() {
                 std::abs(high_density_metrics.metrics.display_scale - 1.5F) < 0.00001F &&
                 std::abs(high_density_metrics.metrics.raster_scale - 1.5F) < 0.00001F,
             "high-density font did not separate logical and raster sizes");
+    require(first_metrics.metrics.ascent == high_density_metrics.metrics.ascent &&
+                first_metrics.metrics.descent == high_density_metrics.metrics.descent &&
+                first_metrics.metrics.line_gap == high_density_metrics.metrics.line_gap,
+            "display density changed the logical line metrics");
 
     // Decoration geometry must come from the face and be expressed relative to
     // the em. Three independent properties are asserted, because a loose
@@ -213,10 +217,14 @@ void test_load_errors_and_metrics() {
             "high-density shaping failed");
     float logical_advance = 0.0F;
     float high_density_advance = 0.0F;
+    bool has_fractional_advance = false;
     for (std::size_t index = 0; index < logical_shape.glyphs.size(); ++index) {
-        logical_advance += logical_shape.glyphs[index].advance_x;
+        const auto advance = logical_shape.glyphs[index].advance_x;
+        logical_advance += advance;
         high_density_advance += high_density_shape.glyphs[index].advance_x;
+        has_fractional_advance |= advance != std::round(advance);
     }
+    require(has_fractional_advance, "scalable font layout grid-fitted the logical advances");
     require(std::abs(logical_advance - high_density_advance) < 1.0F,
             "high-density shaping leaked raster pixels into logical layout");
 
