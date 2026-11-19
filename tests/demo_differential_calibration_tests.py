@@ -11,7 +11,8 @@ import zlib
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
-    png_metadata,verify_profile_evidence,evidence_manifest,outline_point,measure_controls,weak_fill_pixel_matches)
+    png_metadata,verify_profile_evidence,evidence_manifest,outline_point,outline_witness,measure_controls,
+    weak_fill_pixel_matches,control_text_origin)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 
@@ -33,8 +34,28 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(outline_point([outer,hole],1,5),(True,1))
         self.assertEqual(outline_point([outer,hole],5,5),(False,2))
         self.assertEqual(outline_point([outer,hole],12,5),(False,2))
+        glyph=dict(bounds=[0,0,10,10],contours=[outer,hole])
+        self.assertIs(outline_witness(glyph,1,5,.5),True)
+        self.assertIs(outline_witness(glyph,5,5,.5),False)
+        self.assertIs(outline_witness(glyph,10.5,5,.5),None)
+        self.assertIs(outline_witness(glyph,11,5,.5),False)
         self.assertEqual(CAPS['pixels.coverage_local_relative_error'],.05)
         self.assertEqual(CAPS['text.projection_relative_error'],.05)
+
+    def test_actual_control_text_origin_checks_primary_line_and_raster_motion(self):
+        rect=dict(x=20,y=40,width=30,height=32)
+        line=dict(units=1000,ascent=1069,descent=-293)
+        native=dict(layout_origin=[20,60.656],raster_origin=[20,91/1.5])
+        reference=dict(layout_origin=[20,60])
+        self.assertEqual(control_text_origin(native,rect,line,12,1.5,native=True),native['raster_origin'])
+        self.assertEqual(control_text_origin(reference,rect,line,12,1.5,native=False),reference['layout_origin'])
+        for fields,native_side in ((dict(layout_origin=[21,60]),False),
+                                   (dict(layout_origin=[20,58]),False),
+                                   (dict(layout_origin=[20,59.656],raster_origin=[20,60]),True),
+                                   (dict(layout_origin=[20,60.656],raster_origin=[20,62]),True),
+                                   (dict(layout_origin=[20,60.656],raster_origin=[20,float('nan')]),True)):
+            with self.subTest(fields=fields,native=native_side),self.assertRaises(ProtocolError):
+                control_text_origin(fields,rect,line,12,1.5,native=native_side)
     def test_frozen_candidate_and_holdout_are_independent(self):
         positive={'simulated-train':{name:0 for name in POLICY}}
         holdout={'simulated-holdout':{name:0 for name in POLICY}}

@@ -775,6 +775,7 @@ def measure_controls(corpus,trial,observations,images,priors):
             raise RunError(4,'protocol','control stream is missing/reordered actual controls')
     for index,cell in enumerate(cells):
         actual=[record['controls'][index] for record in observations]
+        text_origins=[None,None]
         for side,row in enumerate(actual):
             required(row,('identity','rect','kind','source'),'actual control')
             if row['kind'] != cell['kind']:
@@ -831,6 +832,8 @@ def measure_controls(corpus,trial,observations,images,priors):
                     except ProtocolError:failures.add('source.formal-icon')
                 if cell['kind']=='text':
                     from .pilots import FONTS
+                    primary=next(f['sha256'] for f in FONTS if f['identity']=='noto-sans' and
+                                 f['weight']==cell['font_weight'])
                     allowed=[f['sha256'] for f in FONTS if f['weight']==cell['font_weight'] and
                              f['identity']==('noto-sans' if ord(cell['content'])<128 else 'noto-sans-cjk-sc')]
                     if source.get('actual_font_sha256') not in allowed:
@@ -843,6 +846,14 @@ def measure_controls(corpus,trial,observations,images,priors):
                         collect('text.geometry_logical_px',abs(source.get('advance',-1)-advance))
                         if side==0 and source.get('glyph_id')!=prior['glyph_id']:
                             failures.add('font.cmap')
+                    if source.get('primary_font_sha256')!=primary or primary+':line' not in priors:
+                        failures.add('font.primary-line-face')
+                    else:
+                        try:
+                            text_origins[side]=control_text_origin(source,cell['rect'],priors[primary+':line'],
+                                                                  cell['font_size'],dpr,native=side==0)
+                        except ProtocolError:
+                            failures.add('font.independent-line-placement')
                 if not source.get('ink_boxes'):
                     failures.add('presence.glyph' if cell['kind']=='text' else 'presence.icon')
                 if cell['kind']=='text':
@@ -850,6 +861,9 @@ def measure_controls(corpus,trial,observations,images,priors):
                         failures.add('font.identity')
                     elif side:
                         collect('text.geometry_logical_px',abs(source['advance']-actual[0]['source']['advance']))
+        if all(origin is not None for origin in text_origins):
+            for native,reference in zip(actual[0]['source']['layout_origin'],actual[1]['source']['layout_origin']):
+                collect('text.geometry_logical_px',abs(native-reference))
         r=cell['rect']
         guard=20 if cell['kind']=='shadow' else 2
         box=(math.floor(r['x']*dpr)-guard,math.floor(r['y']*dpr)-guard,
@@ -978,15 +992,14 @@ def measure_controls(corpus,trial,observations,images,priors):
             if cell['kind']=='text':
                 for side,row in enumerate(actual):
                     prior=priors.get(row['source'].get('actual_font_sha256','')+':'+cell['content'])
-                    if prior is None:continue
+                    origin=text_origins[side]
+                    if prior is None or origin is None:continue
                     scale=cell['font_size']/prior['units']
-                    baseline=r['y']+(32-(prior['ascent']-prior['descent'])*scale)/2+prior['ascent']*scale
-                    px,py=(lx-r['x'])/scale,(baseline-ly)/scale
-                    inside_outline,distance=outline_point(prior['contours'],px,py)
-                    if distance*scale*dpr>1:
-                        k=planes[side][-1]
-                        if inside_outline and k<.98 or not inside_outline and k>1/255:
-                            failures.add('font.independent-outline')
+                    px,py=(lx-origin[0])/scale,(origin[1]-ly)/scale
+                    ink=outline_witness(prior,px,py,1/(scale*dpr))
+                    k=planes[side][-1]
+                    if ink is True and k<.98 or ink is False and k>1/255:
+                        failures.add('font.independent-outline')
             if cell['kind']=='icon':
                 from .formal_icon_source import resource
                 entry,_,formal_manifest,_=resource(cell['content'])
@@ -1107,6 +1120,27 @@ def weak_fill_pixel_matches(pixel,foreground,background,distance):
     if distance > 1:
         return pixel==background
     return all(min(f,b)<=p<=max(f,b) for p,f,b in zip(pixel,foreground,background))
+
+
+def control_text_origin(source,rect,line,size,dpr,*,native):
+    def point(field):
+        value=source.get(field)
+        if not isinstance(value,list) or len(value)!=2 or any(type(v) not in (int,float) or not math.isfinite(v) for v in value):
+            raise ProtocolError('control text has no measured origin')
+        return value
+
+    layout=point('layout_origin')
+    baseline=rect['y']+16+(line['ascent']+line['descent'])*size/(2*line['units'])
+    # CSS can round the primary strut before placing the line. Record the real
+    # DOM baseline and report any difference in the separate geometry metric.
+    if abs(layout[0]-rect['x'])>1/64 or abs(layout[1]-baseline)>(1/64 if native else 1):
+        raise ProtocolError('control text origin escapes the declared primary strut')
+    if not native:
+        return layout
+    raster=point('raster_origin')
+    if abs(raster[0]-layout[0])*dpr>.125+1e-4 or abs(raster[1]-layout[1])*dpr>.5+1e-4:
+        raise ProtocolError('atlas glyph exceeds source placement quantization')
+    return raster
 
 
 def rounded_distance(x,y,rect,radius):
@@ -1474,6 +1508,9 @@ def _sfnt_priors(fonts,corpus,library,in_memory=None):
                 if 'fvar' in font or font['OS/2'].usWeightClass!=descriptor['weight']:
                     raise RunError(3,'calibration','font prior is not the pinned static actual weight')
                 units=font['head'].unitsPerEm
+                if descriptor['identity']=='noto-sans':
+                    result[descriptor['sha256']+':line']=dict(units=units,ascent=font['hhea'].ascent,
+                                                            descent=font['hhea'].descent)
                 glyphset=font.getGlyphSet()
                 class OutlinePen(BasePen):
                     def __init__(self):
@@ -1515,6 +1552,14 @@ def _sfnt_priors(fonts,corpus,library,in_memory=None):
     finally:
         sys.dont_write_bytecode=previous_bytecode
         sys.path.pop(0)
+
+
+def outline_witness(prior,x,y,tolerance):
+    left,bottom,right,top=prior['bounds']
+    if math.hypot(max(left-x,0,x-right),max(bottom-y,0,y-top))>tolerance:
+        return False
+    inside,distance=outline_point(prior['contours'],x,y)
+    return inside if distance>tolerance else None
 
 
 def outline_point(contours,x,y):

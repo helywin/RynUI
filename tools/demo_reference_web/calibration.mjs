@@ -86,7 +86,7 @@ try {
   const browserFacts={version:browser.version(),executable_sha256:prepared.browser_sha256,revision:'1194',headless:true,
     launch_args,renderer:info.gpu.auxAttributes.glRenderer ?? 'Chromium headless backend not reported',actual_gpu,
     os:os.platform(),release:os.release(),arch:os.arch(),strict_mode:false,color_profile:'sRGB-SDR'};
-  const observe=async()=>await page.evaluate(cells=>cells.map(cell=>{
+  const observe=async()=>await page.evaluate(({cells,fonts})=>cells.map(cell=>{
     const owner=document.querySelector('[data-control="'+cell.identity+'"]');
     if(!owner)throw new Error('actual control absent');
     const r=owner.getBoundingClientRect();const rect=b=>({x:b.x,y:b.y,width:b.width,height:b.height});
@@ -115,6 +115,24 @@ try {
       const range=document.createRange();range.selectNodeContents(child);
       Object.assign(source,{content:cell.kind==='text'?child.textContent:child.getAttribute('data-icon') ?? '',font_size:parseFloat(style.fontSize),font_weight:parseInt(style.fontWeight),
         advance:range.getBoundingClientRect().width,ink_boxes:[...range.getClientRects()].map(rect)});
+      if(cell.kind==='text'){
+        const fontIndex=fonts.findIndex(font=>font.identity==='noto-sans');
+        const primary=fonts.find(font=>font.identity==='noto-sans'&&font.weight===source.font_weight);
+        const primaryAlias=style.fontFamily.split(',')[0].trim().replaceAll(/["']/g,'');
+        if(fontIndex<0||!primary||primaryAlias!==`ReferenceFont${fontIndex}`)
+          throw new Error('control primary line font unavailable');
+        const before=range.getBoundingClientRect();
+        const marker=document.createElement('span');
+        marker.style.cssText='display:inline-block;width:0;height:0;vertical-align:baseline;overflow:hidden;';
+        child.appendChild(marker);
+        const baseline=marker.getBoundingClientRect().top;
+        marker.remove();
+        const after=range.getBoundingClientRect();
+        if(before.x!==after.x||before.y!==after.y||before.width!==after.width||before.height!==after.height)
+          throw new Error('baseline observation changed the text range');
+        source.primary_font_sha256=primary.sha256;
+        source.layout_origin=[before.x,baseline];
+      }
       if(cell.kind==='icon'){
         const svg=child.matches('svg')?child:child.querySelector('svg');
         if(!svg)throw new Error('actual formal SVG unavailable');
@@ -131,7 +149,7 @@ try {
       if(cell.clip_glyph_right_px){owner.style.clipPath=`inset(0px ${r.width-cell.outline_right_logical+cell.clip_glyph_right_px}px 0px 0px)`;}
     }
     return {identity:cell.identity,kind:cell.kind,rect:rect(r),source};
-  }),request.cells);
+  }),{cells:request.cells,fonts:request.font_files.map(({identity,weight,sha256})=>({identity,weight,sha256}))});
   // DOM.getDocument resets frontend node identities. Keep one document root and
   // resolve the controls again on each read so a replaced node still fails.
   const documentNode=await cdp.send('DOM.getDocument',{depth:-1,pierce:true});

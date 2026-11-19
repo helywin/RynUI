@@ -337,6 +337,35 @@ struct Board final {
                                                  {"embedded_bitmap", policy.embedded_bitmap}});
             const auto& primitive = text.primitive(id);
             require(primitive.coverage.size() == primitive.instances.count, "control glyph coverage unavailable");
+            if (!is_icon) {
+                require(shaped.glyphs.size() == 1 && primitive.instances.count == 1 &&
+                            primitive.draw_ranges.size() == 1,
+                        "single-scalar control needs one observed glyph");
+                const auto primary = fonts.source(selected.front());
+                require(primary.has_value(), "control primary line font unavailable");
+                source.emplace("primary_font_sha256", font_digest(selected.front(), primary->bytes));
+                const auto& glyph = shaped.glyphs.front();
+                source.emplace("layout_origin", Json::Array{area.x + glyph.offset_x,
+                                                            area.y + measurement.first_baseline - glyph.offset_y});
+                const auto& instance = text.glyph_scene().instances().at(primitive.instances.first);
+                const auto& entries = text.atlas().entries();
+                const auto entry = std::ranges::find_if(entries, [&](const auto& atlas_entry) {
+                    return atlas_entry.page == primitive.draw_ranges.front().atlas_page &&
+                           atlas_entry.uv.left == instance.uv_rect[0] && atlas_entry.uv.top == instance.uv_rect[1] &&
+                           atlas_entry.uv.right == instance.uv_rect[2] && atlas_entry.uv.bottom == instance.uv_rect[3];
+                });
+                require(entry != entries.end() && entry->key.font == glyph.font &&
+                            entry->key.glyph_id == glyph.glyph_id,
+                        "control actual glyph atlas entry unavailable");
+                const auto padding = static_cast<int>(glyph_atlas_padding);
+                const auto phase = static_cast<float>(entry->key.phase) * .25F;
+                source.emplace(
+                    "raster_origin",
+                    Json::Array{instance.position_size[0] + instance.translation_opacity[0] +
+                                    (static_cast<float>(padding - entry->bearing_x) + phase) / entry->display_scale,
+                                instance.position_size[1] + instance.translation_opacity[1] +
+                                    static_cast<float>(entry->bearing_y + padding) / entry->display_scale});
+            }
             for (std::uint32_t index = 0; index < primitive.instances.count; ++index) {
                 const auto& instance = text.glyph_scene().instances().at(primitive.instances.first + index);
                 actual_color(source, instance.color, instance.translation_opacity[2]);
