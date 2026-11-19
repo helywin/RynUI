@@ -10,6 +10,9 @@
 #include "gallery_context_acceptance.hpp"
 #include "gallery_demo_scenario.hpp"
 #include "gallery_demo_hash.hpp"
+#if defined(_WIN32)
+#include "platform/directwrite_grayscale.hpp"
+#endif
 #include "component/select_component.hpp"
 #include "component/tree_component.hpp"
 #include "component/tree_select_component.hpp"
@@ -449,7 +452,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                      {"hint_style", static_cast<std::int64_t>(source->raster_policy.hint_style)},
                      {"subpixel_order", static_cast<std::int64_t>(source->raster_policy.subpixel_order)},
                      {"lcd_filter", static_cast<std::int64_t>(source->raster_policy.lcd_filter)},
-                     {"embedded_bitmap", source->raster_policy.embedded_bitmap}}},
+                     {"embedded_bitmap", source->raster_policy.embedded_bitmap},
+                     {"rasterizer", source->rasterizer_name}}},
                 {"source", "unknown"},
                 {"path", nullptr}};
             auto& details = std::get<GalleryDemoJson::Object>(info.value);
@@ -4278,7 +4282,14 @@ int run_gallery_pages(int argc, char** argv) {
                 throw std::runtime_error("scenario actual logical viewport differs from declared fixture");
             }
         }
-        auto font_runtime = font::FontRuntime::create();
+        const bool pinned_fonts = demo_scenario && demo_context->fixture.at("font_policy").string() == "pinned";
+        font::FontRuntimeOptions font_options;
+#if defined(_WIN32)
+        if (pinned_fonts) {
+            font_options.platform_rasterizer = ryn::detail::make_directwrite_grayscale_rasterizer();
+        }
+#endif
+        auto font_runtime = font::FontRuntime::create(std::move(font_options));
         if (!font_runtime) {
             throw std::runtime_error(font_runtime.error.diagnostic);
         }
@@ -4286,8 +4297,11 @@ int run_gallery_pages(int argc, char** argv) {
         const auto scale = platform.state->window_metrics().display_scale;
         ryn::detail::DefaultFontChainRequest request;
         request.raster = {14, scale};
-        if (demo_scenario && demo_context->fixture.at("font_policy").string() == "pinned") {
+        if (pinned_fonts) {
             request.allow_system_fallback = false;
+#if defined(_WIN32)
+            request.raster.policy.rasterizer = font::FontRasterizer::platform_grayscale;
+#endif
             for (const auto& font : demo_scenario->font_files.array()) {
                 request.preferred_fonts.push_back(
                     {font.at("path").string(), static_cast<long>(font.at("face_index").integer()),

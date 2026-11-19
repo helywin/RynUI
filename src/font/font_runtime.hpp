@@ -116,6 +116,8 @@ enum class FontLcdFilter : std::uint8_t {
     legacy,
 };
 
+enum class FontRasterizer : std::uint8_t { freetype, platform_grayscale };
+
 struct FontRasterPolicy {
     bool antialias{true};
     bool hinting{true};
@@ -123,6 +125,7 @@ struct FontRasterPolicy {
     FontSubpixelOrder subpixel_order{FontSubpixelOrder::unknown};
     FontLcdFilter lcd_filter{FontLcdFilter::unknown};
     bool embedded_bitmap{true};
+    FontRasterizer rasterizer{FontRasterizer::freetype};
 
     friend bool operator==(FontRasterPolicy, FontRasterPolicy) = default;
 };
@@ -145,6 +148,7 @@ struct FontSourceView final {
     bool bold{};
     bool italic{};
     FontRasterPolicy raster_policy{};
+    std::string_view rasterizer_name{"freetype"};
 };
 
 struct FontLoadResult {
@@ -204,6 +208,8 @@ struct GlyphBounds {
     std::uint32_t height{};
 };
 
+enum class GlyphCoverageTransfer : std::uint8_t { direct, text_contrast_srgb };
+
 struct GlyphBitmap {
     std::vector<std::uint8_t> coverage;
     std::uint32_t width{};
@@ -215,6 +221,24 @@ struct GlyphBitmap {
     GlyphBounds visible_bounds{};
     float display_scale{1.0F};
     float raster_scale{1.0F};
+    GlyphCoverageTransfer coverage_transfer{GlyphCoverageTransfer::direct};
+};
+
+class PlatformFontFace {
+public:
+    virtual ~PlatformFontFace() = default;
+    [[nodiscard]] virtual FontError rasterize(std::uint32_t glyph, float physical_em, GlyphRasterPhase phase,
+                                              const FontRasterPolicy& policy, GlyphBitmap& result) = 0;
+};
+
+// Installed by a platform host. FontRuntime keeps layout and the R8 cache on
+// its owner thread. The platform face retains the exact admitted SFNT bytes.
+class PlatformFontRasterizer {
+public:
+    virtual ~PlatformFontRasterizer() = default;
+    [[nodiscard]] virtual std::string_view name() const noexcept = 0;
+    [[nodiscard]] virtual std::unique_ptr<PlatformFontFace>
+    create_face(std::shared_ptr<const std::vector<std::byte>> bytes, long face_index, FontError& error) = 0;
 };
 
 struct GlyphRasterResult {
@@ -305,6 +329,7 @@ struct FontRuntimeCounters {
 struct FontRuntimeOptions {
     FontFailurePoint failure_point{FontFailurePoint::none};
     std::shared_ptr<FontRuntimeCounters> counters;
+    std::shared_ptr<PlatformFontRasterizer> platform_rasterizer;
 };
 
 class FontRuntime;

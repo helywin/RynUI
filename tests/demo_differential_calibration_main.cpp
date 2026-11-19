@@ -7,6 +7,10 @@
 #include "renderer/sdl/scene_renderer.hpp"
 #include "text/text_scene_service.hpp"
 
+#if defined(_WIN32)
+#include "platform/directwrite_grayscale.hpp"
+#endif
+
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <array>
@@ -321,10 +325,12 @@ struct Board final {
             auto fallback = is_icon ? std::vector{icon_font} : selected;
             const auto id = text.create(node, String::from_utf8(content).value(), std::move(fallback), size,
                                         {is_icon ? static_cast<float>(size) : 32.0F, area.width});
-            auto clip = area;
+            // The Web control permits glyph ink to extend outside its layout box.
+            const runtime::Rect viewport{0, 0, metrics.pixel_width / metrics.display_scale,
+                                         metrics.pixel_height / metrics.display_scale};
             const auto color = rgba(cell.at("foreground"));
             static_cast<void>(text.set_color(id, color));
-            GlyphPlacement placement{{area.x, area.y}, {area.width, area.height}, clip, {}, color};
+            GlyphPlacement placement{{area.x, area.y}, {area.width, area.height}, viewport, {}, color};
             require(text.synchronize(id, placement), "control formal Text/Icon synchronization failed");
             const auto& shaped = text.text_state(id).shaped();
             require(!shaped.glyphs.empty() && shaped.replacement_count == 0, "control font shaping is unavailable");
@@ -350,7 +356,8 @@ struct Board final {
                                                  {"hint_style", static_cast<std::int64_t>(policy.hint_style)},
                                                  {"subpixel_order", static_cast<std::int64_t>(policy.subpixel_order)},
                                                  {"lcd_filter", static_cast<std::int64_t>(policy.lcd_filter)},
-                                                 {"embedded_bitmap", policy.embedded_bitmap}});
+                                                 {"embedded_bitmap", policy.embedded_bitmap},
+                                                 {"rasterizer", actual_source->rasterizer_name}});
             const auto& primitive = text.primitive(id);
             require(primitive.coverage.size() == primitive.instances.count, "control glyph coverage unavailable");
             if (!is_icon) {
@@ -364,6 +371,7 @@ struct Board final {
                 source.emplace("layout_origin", Json::Array{area.x + glyph.offset_x,
                                                             area.y + measurement.first_baseline - glyph.offset_y});
                 const auto& instance = text.glyph_scene().instances().at(primitive.instances.first);
+                source.emplace("coverage_transfer", static_cast<std::int64_t>(instance.coverage_transfer));
                 source.emplace("raster_origin",
                                atlas_raster_origin(instance, primitive.draw_ranges.front().atlas_page, glyph));
             }
@@ -380,6 +388,7 @@ struct Board final {
                 for (const auto& box : boxes) {
                     right = std::max(right, box.at("x").number() + box.at("width").number());
                 }
+                auto clip = area;
                 clip.width = static_cast<float>(right - area.x - cell.at("clip_glyph_right_px").number());
                 placement.clip_pixels = clip;
                 require(text.synchronize(id, placement), "control clip input failed");
@@ -680,23 +689,40 @@ int main(int argc, char** argv) {
         require((flags & SDL_WINDOW_HIDDEN) && !(flags & SDL_WINDOW_INPUT_FOCUS), "control window took desktop focus");
         const SceneDeviceMetrics metrics{static_cast<std::uint32_t>(window.pixel_width),
                                          static_cast<std::uint32_t>(window.pixel_height), window.display_scale};
-        auto runtime = font::FontRuntime::create();
-        require(bool(runtime.runtime), "control font runtime failed");
-        text::TextEngine engine(*runtime.runtime);
-        Board board(renderer, *runtime.runtime, engine, metrics);
         const auto& policy = request.at("raster_policy");
-        gallery_demo_fields(policy,
-                            {"antialias", "hinting", "hint_style", "subpixel_order", "lcd_filter", "embedded_bitmap"});
+        if (policy.contains("rasterizer")) {
+            gallery_demo_fields(policy, {"antialias", "hinting", "hint_style", "subpixel_order", "lcd_filter",
+                                         "embedded_bitmap", "rasterizer"});
+        } else {
+            gallery_demo_fields(
+                policy, {"antialias", "hinting", "hint_style", "subpixel_order", "lcd_filter", "embedded_bitmap"});
+        }
         require(policy.at("hint_style").integer() >= 0 && policy.at("hint_style").integer() <= 4 &&
                     policy.at("subpixel_order").integer() >= 0 && policy.at("subpixel_order").integer() <= 5 &&
                     policy.at("lcd_filter").integer() >= 0 && policy.at("lcd_filter").integer() <= 4,
                 "unknown actual font raster policy");
+        const auto rasterizer_name = policy.contains("rasterizer") ? policy.at("rasterizer").string() : "freetype";
+        auto rasterizer = font::FontRasterizer::freetype;
+        font::FontRuntimeOptions font_options;
+#if defined(_WIN32)
+        if (rasterizer_name == "directwrite-3x1") {
+            font_options.platform_rasterizer = make_directwrite_grayscale_rasterizer();
+            rasterizer = font::FontRasterizer::platform_grayscale;
+        }
+#endif
+        require(rasterizer_name == "freetype" || rasterizer == font::FontRasterizer::platform_grayscale,
+                "requested control rasterizer is unavailable");
+        auto runtime = font::FontRuntime::create(std::move(font_options));
+        require(bool(runtime.runtime), "control font runtime failed");
+        text::TextEngine engine(*runtime.runtime);
+        Board board(renderer, *runtime.runtime, engine, metrics);
         board.raster_policy = {policy.at("antialias").boolean(),
                                policy.at("hinting").boolean(),
                                static_cast<font::FontHintStyle>(policy.at("hint_style").integer()),
                                static_cast<font::FontSubpixelOrder>(policy.at("subpixel_order").integer()),
                                static_cast<font::FontLcdFilter>(policy.at("lcd_filter").integer()),
-                               policy.at("embedded_bitmap").boolean()};
+                               policy.at("embedded_bitmap").boolean(),
+                               rasterizer};
         const auto& clear = request.at("clear_rgba").array();
         require(clear.size() == 4 && clear[3].number() == 1, "control requires actual opaque native clear");
         renderer.set_clear_color(Color{static_cast<float>(clear[0].number()), static_cast<float>(clear[1].number()),

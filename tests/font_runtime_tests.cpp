@@ -413,6 +413,70 @@ void test_read_only_font_source() {
             "source query accepted a retired font generation");
 }
 
+void test_platform_rasterizer_owns_a_generation() {
+    using namespace ryn::font;
+
+    struct Face final : PlatformFontFace {
+        explicit Face(std::shared_ptr<const std::vector<std::byte>> data) : bytes(std::move(data)) {}
+
+        FontError rasterize(std::uint32_t, float em, GlyphRasterPhase phase, const FontRasterPolicy&,
+                            GlyphBitmap& result) override {
+            require(near(em, 17.5F) && phase == GlyphRasterPhase::quarter,
+                    "platform rasterizer lost the physical em or phase");
+            result.coverage = {64, 255};
+            result.width = 2;
+            result.height = 1;
+            result.row_stride = 2;
+            result.bearing_y = 1;
+            result.advance_x = 7.5F;
+            result.coverage_transfer = GlyphCoverageTransfer::text_contrast_srgb;
+            return {};
+        }
+
+        std::shared_ptr<const std::vector<std::byte>> bytes;
+    };
+
+    struct Backend final : PlatformFontRasterizer {
+        std::string_view name() const noexcept override {
+            return "unit-platform";
+        }
+
+        std::unique_ptr<PlatformFontFace> create_face(std::shared_ptr<const std::vector<std::byte>> bytes, long index,
+                                                      FontError&) override {
+            require(index == 0 && !bytes->empty(), "platform rasterizer did not receive admitted bytes");
+            source = bytes;
+            return std::make_unique<Face>(std::move(bytes));
+        }
+
+        std::weak_ptr<const std::vector<std::byte>> source;
+    };
+
+    const auto bytes = read_bytes(RYNUI_VALIDATION_LATIN_FONT);
+    FontRasterConfig config{14, 1.25F};
+    config.policy.rasterizer = FontRasterizer::platform_grayscale;
+    auto fallback = create_runtime();
+    require_failed_stage(fallback->load_font_bytes(bytes, 0, config), FontErrorStage::face_creation,
+                         "an explicit platform rasterizer silently fell back");
+    auto backend = std::make_shared<Backend>();
+    auto runtime = FontRuntime::create({.platform_rasterizer = backend});
+    require(bool(runtime), "platform raster fixture could not initialize");
+    const auto font = runtime.runtime->load_font_bytes(bytes, 0, config);
+    require(bool(font), "platform raster fixture could not load the font");
+    const auto source = runtime.runtime->source(font.font);
+    require(source && source->rasterizer_name == "unit-platform" && std::ranges::equal(source->bytes, bytes),
+            "platform font source differs from the admitted resource");
+    const auto glyph = runtime.runtime->glyph_index(font.font, U'A');
+    require(bool(glyph) && glyph.glyph.glyph_id != 0, "platform font lost the FreeType cmap");
+    const auto a = runtime.runtime->rasterize(font.font, glyph.glyph.glyph_id, GlyphRasterPhase::quarter);
+    const auto b = runtime.runtime->rasterize(font.font, glyph.glyph.glyph_id, GlyphRasterPhase::quarter);
+    require(a && b && !a.cache_hit && b.cache_hit && a.glyph == b.glyph && near(a.glyph->advance_x, 6) &&
+                a.glyph->coverage_transfer == GlyphCoverageTransfer::text_contrast_srgb,
+            "platform glyph did not use the normal R8 cache and logical scaling");
+    require(bool(runtime.runtime->remove_font(font.font)) && backend->source.expired() &&
+                runtime.runtime->glyph_cache_size() == 0,
+            "retired platform font retained its face, source or cache");
+}
+
 } // namespace
 
 int main() {
@@ -423,6 +487,7 @@ int main() {
         test_rasterization_pitch_and_cache();
         test_owner_thread_guard();
         test_read_only_font_source();
+        test_platform_rasterizer_owns_a_generation();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

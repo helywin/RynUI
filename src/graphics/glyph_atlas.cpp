@@ -197,6 +197,7 @@ GlyphAtlasResult GlyphAtlas::allocate(GlyphAtlasKey key, const font::GlyphBitmap
             glyph.display_scale,
             glyph.raster_scale,
             true,
+            glyph.coverage_transfer,
         });
         try {
             key_index_.emplace(key, entries_.size() - 1);
@@ -272,6 +273,7 @@ GlyphAtlasResult GlyphAtlas::allocate(GlyphAtlasKey key, const font::GlyphBitmap
         glyph.display_scale,
         glyph.raster_scale,
         false,
+        glyph.coverage_transfer,
     });
     try {
         key_index_.emplace(key, entries_.size() - 1);

@@ -266,6 +266,27 @@ void required_capabilities_and_scene_limits() {
     check(!backend.begin_upload_batch(), "Quad growth preflight underestimated doubled capacity");
 }
 
+void glyph_coverage_transfer_requires_capability() {
+    graphics::GlyphAtlas atlas;
+    graphics::GlyphInstanceStore glyphs;
+    graphics::GlyphInstance glyph;
+    glyph.coverage_transfer = font::GlyphCoverageTransfer::text_contrast_srgb;
+    static_cast<void>(glyphs.append(std::span{&glyph, 1}));
+    const SceneDeviceMetrics metrics{64, 64, 1};
+    const auto packed = pack_glyph_instance(glyph, metrics);
+    check(packed.translation_opacity[3] == 1, "glyph coverage transfer lost its packed value");
+
+    RecordingRenderer backend(baseline_scene_capabilities());
+    SceneResources resources(backend);
+    backend.fail_next(RecordingFailure::begin);
+    rejects([&] { resources.synchronize({nullptr, atlas, glyphs, nullptr, metrics}); });
+    check(!backend.begin_upload_batch(), "unsupported glyph transfer reached upload begin");
+
+    backend.reset_device(recording_scene_capabilities());
+    check(resources.synchronize({nullptr, atlas, glyphs, nullptr, metrics}),
+          "compatible backend could not retry the retained glyph coverage transfer");
+}
+
 void glyph_growth_obeys_resource_limits() {
     constexpr auto stride = sizeof(GlyphGpuInstance);
     for (const auto budget : {3 * stride, 4 * stride - 1}) {
@@ -918,6 +939,7 @@ int main(int argc, char** argv) {
         owned_bytes_and_ranges();
         texture_source_lifetime_cancel_and_invalid_ranges();
         required_capabilities_and_scene_limits();
+        glyph_coverage_transfer_requires_capability();
         glyph_growth_obeys_resource_limits();
         glyph_continuous_growth(1);
         glyph_continuous_growth(1, 1000);

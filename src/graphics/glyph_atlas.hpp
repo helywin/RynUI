@@ -71,6 +71,7 @@ struct GlyphAtlasEntry {
     float display_scale{1.0F};
     float raster_scale{1.0F};
     bool empty{};
+    font::GlyphCoverageTransfer coverage_transfer{font::GlyphCoverageTransfer::direct};
 
     friend bool operator==(const GlyphAtlasEntry&, const GlyphAtlasEntry&) = default;
 };

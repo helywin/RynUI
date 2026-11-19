@@ -11,6 +11,7 @@ struct VertexOutput {
     float4 clipBounds : TEXCOORD2;
     float4 color : TEXCOORD3;
     float opacity : TEXCOORD4;
+    nointerpolation uint coverageTransfer : TEXCOORD5;
 };
 
 #if defined(RYNUI_VERTEX_SHADER)
@@ -31,17 +32,45 @@ VertexOutput VSMain(uint vertexId : SV_VertexID, float4 positionSize : TEXCOORD0
     output.clipBounds = clipBounds;
     output.color = color;
     output.opacity = translationOpacity.z;
+    output.coverageTransfer = uint(translationOpacity.w);
     output.position = ScenePassPosition(output.position);
     return output;
 }
 #endif
 
 #if defined(RYNUI_FRAGMENT_SHADER)
+float DecodeGlyphSrgb(float encoded) {
+    return encoded <= 0.04045 ? encoded / 12.92 : pow((encoded + 0.055) / 1.055, 2.4);
+}
+
+float EncodeGlyphSrgb(float linearValue) {
+    return linearValue <= 0.0031308 ? linearValue * 12.92 : 1.055 * pow(linearValue, 1.0 / 2.4) - 0.055;
+}
+
+float TextContrastCoverage(float coverage, float3 encodedColor) {
+    if (coverage <= 0.0 || coverage >= 1.0) {
+        return coverage;
+    }
+    float foreground = saturate(dot(encodedColor, float3(0.2126, 0.7152, 0.0722)));
+    float backdrop = 1.0 - foreground;
+    float backdropLinear = DecodeGlyphSrgb(backdrop);
+    float adjusted = coverage + (1.0 - coverage) * coverage * backdropLinear;
+    float range = foreground - backdrop;
+    if (abs(range) > 1.0 / 256.0) {
+        float linearValue = lerp(backdropLinear, DecodeGlyphSrgb(foreground), adjusted);
+        adjusted = (EncodeGlyphSrgb(linearValue) - backdrop) / range;
+    }
+    return floor(255.0 * saturate(adjusted) + 0.5) / 255.0;
+}
+
 float4 PSMain(VertexOutput input) : SV_Target0 {
     float clipDistance = min(min(input.clipPosition.x - input.clipBounds.x, input.clipBounds.z - input.clipPosition.x),
                              min(input.clipBounds.y - input.clipPosition.y, input.clipPosition.y - input.clipBounds.w));
     clip(clipDistance);
     float coverage = AtlasTexture.Sample(AtlasSampler, input.uv).r;
+    if (input.coverageTransfer == 1) {
+        coverage = TextContrastCoverage(coverage, input.color.rgb);
+    }
     return float4(input.color.rgb, input.color.a * input.opacity * coverage);
 }
 #endif

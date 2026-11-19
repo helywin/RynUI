@@ -146,6 +146,8 @@ void validate_placement(const GlyphPlacement& placement) {
                     clip,
                     placement.color,
                     {0.0F, 0.0F, placement.opacity, 0.0F},
+                    {},
+                    entry.coverage_transfer,
                 });
                 while (cluster_index < static_cast<std::size_t>(line.cluster_begin) + line.cluster_count &&
                        measurement.visual_clusters[cluster_index].glyph_begin +

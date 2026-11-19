@@ -389,6 +389,7 @@ GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
                             {"translation", Json::Array{glyph.translation_opacity[0], glyph.translation_opacity[1]}},
                             {"color", array(glyph.color)},
                             {"opacity", glyph.translation_opacity[2]},
+                            {"coverage_transfer", static_cast<std::int64_t>(glyph.coverage_transfer)},
                             {"uv_rect", array(glyph.uv_rect)},
                             {"angle", glyph.transform.angle_degrees},
                             {"pivot", Json::Array{glyph.transform.pivot.x, glyph.transform.pivot.y}}});

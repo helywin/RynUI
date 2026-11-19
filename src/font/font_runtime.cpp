@@ -145,7 +145,7 @@ struct FontRuntime::Impl {
             : bytes(std::move(other.bytes)), face(std::exchange(other.face, nullptr)),
               shaping_face(std::exchange(other.shaping_face, nullptr)),
               harfbuzz_font(std::exchange(other.harfbuzz_font, nullptr)), metrics(other.metrics),
-              raster_policy(other.raster_policy), owns_bytes(std::exchange(other.owns_bytes, false)),
+              raster_policy(other.raster_policy), platform_face(std::move(other.platform_face)),
               counters(std::move(other.counters)) {}
 
         FontRecord& operator=(FontRecord&&) = delete;
@@ -155,6 +155,7 @@ struct FontRuntime::Impl {
         }
 
         void release() noexcept {
+            platform_face.reset();
             if (harfbuzz_font != nullptr) {
                 hb_font_destroy(harfbuzz_font);
                 harfbuzz_font = nullptr;
@@ -169,20 +170,19 @@ struct FontRuntime::Impl {
                 face = nullptr;
                 ++counters->faces_released;
             }
-            if (owns_bytes) {
-                bytes.clear();
-                owns_bytes = false;
+            if (bytes) {
+                bytes.reset();
                 ++counters->byte_resources_released;
             }
         }
 
-        std::vector<std::byte> bytes;
+        std::shared_ptr<const std::vector<std::byte>> bytes;
         FT_Face face{};
         FT_Face shaping_face{};
         hb_font_t* harfbuzz_font{};
         FontMetrics metrics{};
         FontRasterPolicy raster_policy{};
-        bool owns_bytes{};
+        std::unique_ptr<PlatformFontFace> platform_face;
         std::shared_ptr<FontRuntimeCounters> counters;
     };
 
@@ -194,6 +194,7 @@ struct FontRuntime::Impl {
     FT_Library library{};
     std::thread::id owner_thread{std::this_thread::get_id()};
     std::shared_ptr<FontRuntimeCounters> counters;
+    std::shared_ptr<PlatformFontRasterizer> platform_rasterizer;
     std::vector<FontSlot> fonts;
     std::unordered_map<GlyphCacheKey, GlyphBitmap, GlyphCacheKeyHash> glyph_cache;
     bool active{true};
@@ -268,6 +269,7 @@ FontRuntimeCreateResult FontRuntime::create(FontRuntimeOptions options) {
 
     auto implementation = std::make_unique<Impl>();
     implementation->counters = std::move(counters);
+    implementation->platform_rasterizer = std::move(options.platform_rasterizer);
     const FT_Error result = FT_Init_FreeType(&implementation->library);
     if (result != 0) {
         return {
@@ -361,8 +363,7 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
     }
 
     Impl::FontRecord record{impl_->counters};
-    record.bytes.assign(bytes.begin(), bytes.end());
-    record.owns_bytes = true;
+    record.bytes = std::make_shared<const std::vector<std::byte>>(bytes.begin(), bytes.end());
     ++impl_->counters->byte_resources_acquired;
 
     const auto fail = [&](FontError error) {
@@ -374,14 +375,14 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
         return fail(make_error(FontErrorStage::face_creation, FontErrorKind::invalid_font_data,
                                "Injected failure after font bytes were acquired."));
     }
-    if (record.bytes.empty() || record.bytes.size() > static_cast<std::size_t>(std::numeric_limits<FT_Long>::max())) {
+    if (record.bytes->empty() || record.bytes->size() > static_cast<std::size_t>(std::numeric_limits<FT_Long>::max())) {
         return fail(make_error(FontErrorStage::face_creation, FontErrorKind::invalid_font_data,
                                "Font bytes are empty or exceed the FreeType input limit."));
     }
 
     const FT_Error face_result =
-        FT_New_Memory_Face(impl_->library, reinterpret_cast<const FT_Byte*>(record.bytes.data()),
-                           static_cast<FT_Long>(record.bytes.size()), face_index, &record.face);
+        FT_New_Memory_Face(impl_->library, reinterpret_cast<const FT_Byte*>(record.bytes->data()),
+                           static_cast<FT_Long>(record.bytes->size()), face_index, &record.face);
     if (face_result != 0) {
         return fail(make_error(FontErrorStage::face_creation,
                                face_index == 0 ? FontErrorKind::invalid_font_data : FontErrorKind::invalid_face_index,
@@ -441,10 +442,29 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
     record.metrics.display_scale = raster.display_scale;
     record.metrics.raster_scale = raster_scale;
     record.raster_policy = raster.policy;
+    if (raster.policy.rasterizer == FontRasterizer::platform_grayscale) {
+        if (!impl_->platform_rasterizer || !raster.policy.antialias) {
+            return fail(make_error(FontErrorStage::face_creation, FontErrorKind::runtime_unavailable,
+                                   "Requested platform grayscale font rasterizer is unavailable."));
+        }
+        FontError error;
+        record.platform_face = impl_->platform_rasterizer->create_face(record.bytes, face_index, error);
+        if (error) {
+            return fail(std::move(error));
+        }
+        if (!record.platform_face) {
+            return fail(make_error(FontErrorStage::face_creation, FontErrorKind::invalid_font_data,
+                                   "Platform font rasterizer did not produce a face."));
+        }
+        record.metrics.raster_scale = raster.display_scale;
+    } else if (raster.policy.rasterizer != FontRasterizer::freetype) {
+        return fail(make_error(FontErrorStage::face_creation, FontErrorKind::runtime_unavailable,
+                               "Unknown font rasterizer policy."));
+    }
 
     const FT_Error shaping_face_result =
-        FT_New_Memory_Face(impl_->library, reinterpret_cast<const FT_Byte*>(record.bytes.data()),
-                           static_cast<FT_Long>(record.bytes.size()), face_index, &record.shaping_face);
+        FT_New_Memory_Face(impl_->library, reinterpret_cast<const FT_Byte*>(record.bytes->data()),
+                           static_cast<FT_Long>(record.bytes->size()), face_index, &record.shaping_face);
     if (shaping_face_result != 0) {
         return fail(make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
                                "FreeType could not create an independent shaping face."));
@@ -524,13 +544,14 @@ std::optional<FontSourceView> FontRuntime::source(FontIdentity font) const {
     if (!record || !record->face) {
         return std::nullopt;
     }
-    return FontSourceView{record->bytes,
+    return FontSourceView{*record->bytes,
                           record->face->face_index,
                           record->face->family_name ? record->face->family_name : "",
                           record->face->style_name ? record->face->style_name : "",
                           bool(record->face->style_flags & FT_STYLE_FLAG_BOLD),
                           bool(record->face->style_flags & FT_STYLE_FLAG_ITALIC),
-                          record->raster_policy};
+                          record->raster_policy,
+                          record->platform_face ? impl_->platform_rasterizer->name() : "freetype"};
 }
 
 GlyphLookupResult FontRuntime::glyph_index(FontIdentity font, char32_t codepoint) const {
@@ -654,6 +675,38 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
                        "Injected glyph rasterization failure.", font),
         };
     }
+    const auto publish_bitmap = [&](GlyphBitmap result) -> GlyphRasterResult {
+        ++impl_->counters->rasterizations;
+        const auto [entry, inserted] = impl_->glyph_cache.emplace(key, std::move(result));
+        if (!inserted) {
+            return {nullptr, false,
+                    make_error(FontErrorStage::rasterization, FontErrorKind::rasterization_failed,
+                               "Glyph cache insertion failed.", font)};
+        }
+        return {&entry->second, false, {}};
+    };
+    if (record->platform_face && mode == GlyphRasterMode::grayscale) {
+        GlyphBitmap result;
+        const auto& metrics = record->metrics;
+        auto error = record->platform_face->rasterize(glyph_id, metrics.logical_pixel_size * metrics.display_scale,
+                                                      phase, record->raster_policy, result);
+        if (error) {
+            error.font = font;
+            return {nullptr, false, std::move(error)};
+        }
+        if (result.row_stride != result.width ||
+            result.coverage.size() != static_cast<std::uint64_t>(result.width) * result.height ||
+            result.bearing_y == std::numeric_limits<int>::min() || !std::isfinite(result.advance_x)) {
+            return {nullptr, false,
+                    make_error(FontErrorStage::rasterization, FontErrorKind::unsupported_bitmap,
+                               "Platform font rasterizer returned an invalid R8 glyph.", font)};
+        }
+        result.visible_bounds = {result.bearing_x, -result.bearing_y, result.width, result.height};
+        result.display_scale = metrics.display_scale;
+        result.raster_scale = metrics.raster_scale;
+        result.advance_x /= result.raster_scale;
+        return publish_bitmap(std::move(result));
+    }
     FT_Vector raster_translation{
         static_cast<FT_Pos>(phase_index) * 16,
         0,
@@ -721,17 +774,7 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
         result.coverage = normalized.coverage;
     }
 
-    ++impl_->counters->rasterizations;
-    const auto [entry, inserted] = impl_->glyph_cache.emplace(key, std::move(result));
-    if (!inserted) {
-        return {
-            nullptr,
-            false,
-            make_error(FontErrorStage::rasterization, FontErrorKind::rasterization_failed,
-                       "Glyph cache insertion failed.", font),
-        };
-    }
-    return {&entry->second, false, {}};
+    return publish_bitmap(std::move(result));
 }
 
 FontShapeResult FontRuntime::shape_utf8_segment(FontIdentity font, std::string_view normalized_utf8,

@@ -84,6 +84,9 @@ if(RYNUI_HAS_SDL_HOST)
 add_library(rynui_default_fonts STATIC
     platform/default_font_chain.cpp
 )
+if(WIN32)
+    target_sources(rynui_default_fonts PRIVATE platform/directwrite_grayscale.cpp)
+endif()
 rynui_configure_cpp_target(rynui_default_fonts)
 target_include_directories(rynui_default_fonts PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"

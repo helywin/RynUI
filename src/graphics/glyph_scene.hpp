@@ -30,6 +30,7 @@ struct GlyphInstance {
     std::array<float, 4> color{1.0F, 1.0F, 1.0F, 1.0F};
     std::array<float, 4> translation_opacity{0.0F, 0.0F, 1.0F, 0.0F};
     GlyphTransform transform;
+    font::GlyphCoverageTransfer coverage_transfer{font::GlyphCoverageTransfer::direct};
 
     friend bool operator==(const GlyphInstance&, const GlyphInstance&) = default;
 };
