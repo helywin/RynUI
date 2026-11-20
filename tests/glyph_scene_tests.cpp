@@ -140,10 +140,14 @@ void test_physical_phase_midpoints() {
     };
 
     constexpr std::array samples{
-        Sample{12.0625F, 12.0F, GlyphRasterPhase::zero},    Sample{12.125F, 12.0F, GlyphRasterPhase::zero},
-        Sample{12.1875F, 12.0F, GlyphRasterPhase::quarter}, Sample{12.375F, 12.0F, GlyphRasterPhase::half},
-        Sample{12.625F, 12.0F, GlyphRasterPhase::half},     Sample{12.875F, 13.0F, GlyphRasterPhase::zero},
-        Sample{-0.125F, 0.0F, GlyphRasterPhase::zero},      Sample{-0.375F, -1.0F, GlyphRasterPhase::half},
+        Sample{12.0625F, 12.0F, GlyphRasterPhase::zero},
+        Sample{12.125F, 12.0F, GlyphRasterPhase::quarter},
+        Sample{12.1875F, 12.0F, GlyphRasterPhase::quarter},
+        Sample{12.375F, 12.0F, GlyphRasterPhase::half},
+        Sample{12.625F, 12.0F, GlyphRasterPhase::three_quarters},
+        Sample{12.875F, 13.0F, GlyphRasterPhase::zero},
+        Sample{-0.125F, 0.0F, GlyphRasterPhase::zero},
+        Sample{-0.375F, -1.0F, GlyphRasterPhase::three_quarters},
     };
     Fixture fixture;
     const String content = u8"A";
@@ -166,7 +170,7 @@ void test_physical_phase_midpoints() {
         const float left = sample.integer_position + static_cast<float>(entry.bearing_x) -
                            static_cast<float>(ryn::graphics::glyph_atlas_padding);
         require(entry.key.phase == sample.phase && near(glyph.position_size[0], left),
-                "glyph atlas phase or position disagrees with the nearest even device midpoint");
+                "glyph atlas phase disagrees with the device half-sample boundary");
     }
 }
 

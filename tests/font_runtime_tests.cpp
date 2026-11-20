@@ -419,6 +419,10 @@ void test_platform_rasterizer_owns_a_generation() {
     struct Face final : PlatformFontFace {
         explicit Face(std::shared_ptr<const std::vector<std::byte>> data) : bytes(std::move(data)) {}
 
+        std::optional<float> design_horizontal_advance(std::uint32_t, float logical_em) const noexcept override {
+            return logical_em * 0.4F;
+        }
+
         FontError rasterize(std::uint32_t, float em, GlyphRasterPhase phase, const FontRasterPolicy&,
                             GlyphBitmap& result) override {
             require(near(em, 17.5F) && phase == GlyphRasterPhase::quarter,
@@ -437,7 +441,8 @@ void test_platform_rasterizer_owns_a_generation() {
     };
 
     struct Backend final : PlatformFontRasterizer {
-        explicit Backend(bool use_integer_positions = false) : snap(use_integer_positions) {}
+        explicit Backend(bool use_integer_positions = false, bool use_design_advances = false)
+            : snap(use_integer_positions), design(use_design_advances) {}
 
         std::string_view name() const noexcept override {
             return "unit-platform";
@@ -451,6 +456,10 @@ void test_platform_rasterizer_owns_a_generation() {
             return snap;
         }
 
+        bool uses_design_shaping_advances() const noexcept override {
+            return design;
+        }
+
         std::unique_ptr<PlatformFontFace> create_face(std::shared_ptr<const std::vector<std::byte>> bytes, long index,
                                                       FontError&) override {
             require(index == 0 && !bytes->empty(), "platform rasterizer did not receive admitted bytes");
@@ -460,6 +469,7 @@ void test_platform_rasterizer_owns_a_generation() {
 
         std::weak_ptr<const std::vector<std::byte>> source;
         bool snap;
+        bool design;
     };
 
     const auto bytes = read_bytes(RYNUI_VALIDATION_LATIN_FONT);
@@ -495,6 +505,22 @@ void test_platform_rasterizer_owns_a_generation() {
     require(bool(runtime.runtime->remove_font(font.font)) && backend->source.expired() &&
                 runtime.runtime->glyph_cache_size() == 0,
             "retired platform font retained its face, source or cache");
+
+    const auto device_provider = std::make_shared<Backend>(false, true);
+    auto device_design = FontRuntime::create({.platform_rasterizer = device_provider});
+    require(bool(device_design), "design-advance platform font could not initialize");
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        config.display_scale = scale;
+        const auto design_font = device_design.runtime->load_font_bytes(bytes, 0, config);
+        require(bool(design_font), "design-advance platform face could not load");
+        const auto design_shape = device_design.runtime->shape_utf8_segment(design_font.font, "A", 0, 1);
+        require(design_shape && design_shape.glyphs.size() == 1 &&
+                    design_shape.glyphs[0].advance_x == 367001.0F / 65536.0F &&
+                    design_shape.glyphs[0].extent_width > 0.0F,
+                "platform design advance must truncate in 16.16 and retain parent font extents at every DPI");
+        require(bool(device_design.runtime->remove_font(design_font.font)) && device_provider->source.expired(),
+                "platform design font must release its callbacks with the retained face");
+    }
 
     auto integer_positions = FontRuntime::create({.platform_rasterizer = std::make_shared<Backend>(true)});
     require(bool(integer_positions), "integer-position platform font could not initialize");

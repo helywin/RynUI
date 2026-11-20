@@ -83,24 +83,32 @@ font::FontError raster_error(const char* diagnostic) {
 class DirectWriteFontFace final : public font::PlatformFontFace {
 public:
     DirectWriteFontFace(std::shared_ptr<DirectWriteState> state, ComPtr<IDWriteFontFace> face)
-        : state_(std::move(state)), face_(std::move(face)) {}
+        : state_(std::move(state)), face_(std::move(face)) {
+        DWRITE_FONT_METRICS metrics{};
+        face_->GetMetrics(&metrics);
+        units_per_em_ = metrics.designUnitsPerEm;
+    }
 
-    font::FontError rasterize(std::uint32_t glyph, float physical_em, font::GlyphRasterPhase phase,
-                              const font::FontRasterPolicy& policy, font::GlyphBitmap& result) override {
-        if (glyph >= face_->GetGlyphCount()) {
-            return raster_error("DirectWrite glyph index is outside the admitted font face.");
+    std::optional<float> design_horizontal_advance(std::uint32_t glyph, float logical_em) const noexcept override {
+        if (glyph >= face_->GetGlyphCount() || units_per_em_ == 0) {
+            return std::nullopt;
         }
         const auto index = static_cast<UINT16>(glyph);
         DWRITE_GLYPH_METRICS metrics{};
         if (FAILED(face_->GetDesignGlyphMetrics(&index, 1, &metrics, FALSE))) {
+            return std::nullopt;
+        }
+        return static_cast<float>(metrics.advanceWidth) * logical_em / units_per_em_;
+    }
+
+    font::FontError rasterize(std::uint32_t glyph, float physical_em, font::GlyphRasterPhase phase,
+                              const font::FontRasterPolicy& policy, font::GlyphBitmap& result) override {
+        const auto advance_width = design_horizontal_advance(glyph, physical_em);
+        if (!advance_width) {
             return raster_error("DirectWrite could not read design glyph metrics.");
         }
-        DWRITE_FONT_METRICS face_metrics{};
-        face_->GetMetrics(&face_metrics);
-        if (face_metrics.designUnitsPerEm == 0) {
-            return raster_error("DirectWrite font face has no design em.");
-        }
-        result.advance_x = static_cast<float>(metrics.advanceWidth) * physical_em / face_metrics.designUnitsPerEm;
+        result.advance_x = *advance_width;
+        const auto index = static_cast<UINT16>(glyph);
 
         const float advance = 0;
         const DWRITE_GLYPH_OFFSET offset{};
@@ -158,12 +166,17 @@ public:
 private:
     std::shared_ptr<DirectWriteState> state_;
     ComPtr<IDWriteFontFace> face_;
+    UINT16 units_per_em_{};
 };
 
 class DirectWriteRasterizer final : public font::PlatformFontRasterizer {
 public:
     [[nodiscard]] std::string_view name() const noexcept override {
         return "directwrite-3x1";
+    }
+
+    [[nodiscard]] bool uses_design_shaping_advances() const noexcept override {
+        return true;
     }
 
     std::unique_ptr<font::PlatformFontFace> create_face(std::shared_ptr<const std::vector<std::byte>> bytes,

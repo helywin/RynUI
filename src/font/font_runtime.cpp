@@ -33,6 +33,22 @@ namespace {
     return static_cast<float>(value) / 64.0F;
 }
 
+constexpr int fine_shaping_scale = 65536;
+
+hb_position_t platform_design_advance(hb_font_t* font, void* face, hb_codepoint_t glyph, void*) noexcept {
+    int scale{};
+    hb_font_get_scale(font, &scale, nullptr);
+    const auto& platform = *static_cast<const PlatformFontFace*>(face);
+    const auto advance = platform.design_horizontal_advance(glyph, static_cast<float>(scale) / fine_shaping_scale);
+    if (!advance || !std::isfinite(*advance)) {
+        return hb_font_get_glyph_h_advance(hb_font_get_parent(font), glyph);
+    }
+    const auto fixed = static_cast<double>(*advance) * fine_shaping_scale;
+    // Preserve the platform design advance's truncation when converting to 16.16.
+    return static_cast<hb_position_t>(std::clamp(fixed, static_cast<double>(std::numeric_limits<hb_position_t>::min()),
+                                                 static_cast<double>(std::numeric_limits<hb_position_t>::max())));
+}
+
 [[nodiscard]] std::optional<std::uint32_t> resolve_raster_pixel_size(FontRasterConfig raster) noexcept {
     if (raster.logical_pixel_size == 0 || !std::isfinite(raster.display_scale) || raster.display_scale <= 0.0F ||
         raster.logical_pixel_size > static_cast<std::uint32_t>(std::numeric_limits<int>::max() / 64)) {
@@ -158,11 +174,11 @@ struct FontRuntime::Impl {
         }
 
         void release() noexcept {
-            platform_face.reset();
             if (harfbuzz_font != nullptr) {
                 hb_font_destroy(harfbuzz_font);
                 harfbuzz_font = nullptr;
             }
+            platform_face.reset();
             if (shaping_face != nullptr) {
                 FT_Done_Face(shaping_face);
                 shaping_face = nullptr;
@@ -508,7 +524,6 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
             std::max(0.0F, fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender));
     }
 
-    constexpr int fine_shaping_scale = 65536;
     if (scalable && record.platform_face &&
         raster.logical_pixel_size <= static_cast<std::uint32_t>(std::numeric_limits<int>::max() / fine_shaping_scale)) {
         // Preserve design advances before quantizing the glyph's device phase.
@@ -533,6 +548,26 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
     }
     const int harfbuzz_scale = static_cast<int>(raster.logical_pixel_size) * record.shaping_units_per_pixel;
     hb_font_set_scale(record.harfbuzz_font, harfbuzz_scale, harfbuzz_scale);
+    if (record.shaping_units_per_pixel == fine_shaping_scale && record.platform_face &&
+        impl_->platform_rasterizer->uses_design_shaping_advances()) {
+        auto* platform_font = hb_font_create_sub_font(record.harfbuzz_font);
+        if (platform_font == hb_font_get_empty()) {
+            return fail(make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
+                                   "HarfBuzz could not create a platform advances adapter."));
+        }
+        auto* functions = hb_font_funcs_create();
+        if (functions == hb_font_funcs_get_empty()) {
+            hb_font_destroy(platform_font);
+            return fail(make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
+                                   "HarfBuzz could not create platform advances callbacks."));
+        }
+        hb_font_funcs_set_glyph_h_advance_func(functions, platform_design_advance, nullptr, nullptr);
+        hb_font_funcs_make_immutable(functions);
+        hb_font_set_funcs(platform_font, functions, record.platform_face.get(), nullptr);
+        hb_font_funcs_destroy(functions);
+        hb_font_destroy(record.harfbuzz_font);
+        record.harfbuzz_font = platform_font;
+    }
 
     std::size_t slot_index = 0;
     for (; slot_index < impl_->fonts.size(); ++slot_index) {

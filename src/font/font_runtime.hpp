@@ -229,8 +229,13 @@ struct GlyphBitmap {
 class PlatformFontFace {
 public:
     virtual ~PlatformFontFace() = default;
+
     [[nodiscard]] virtual FontError rasterize(std::uint32_t glyph, float physical_em, GlyphRasterPhase phase,
                                               const FontRasterPolicy& policy, GlyphBitmap& result) = 0;
+
+    [[nodiscard]] virtual std::optional<float> design_horizontal_advance(std::uint32_t, float) const noexcept {
+        return std::nullopt;
+    }
 };
 
 // Installed by a platform host. FontRuntime keeps layout and the R8 cache on
@@ -249,6 +254,10 @@ public:
 
     // Only an integer-position text policy rounds logical advances and offsets.
     [[nodiscard]] virtual bool snaps_shaping_positions() const noexcept {
+        return false;
+    }
+
+    [[nodiscard]] virtual bool uses_design_shaping_advances() const noexcept {
         return false;
     }
 };
