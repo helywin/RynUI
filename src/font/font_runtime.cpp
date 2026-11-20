@@ -14,6 +14,7 @@
 // FreeType does not expose strikeout geometry on `FT_FaceRec`.
 #include FT_TRUETYPE_TABLES_H
 #include <hb-ft.h>
+#include <hb-ot.h>
 #include <hb.h>
 
 namespace ryn::font {
@@ -147,8 +148,8 @@ struct FontRuntime::Impl {
             : bytes(std::move(other.bytes)), face(std::exchange(other.face, nullptr)),
               shaping_face(std::exchange(other.shaping_face, nullptr)),
               harfbuzz_font(std::exchange(other.harfbuzz_font, nullptr)), metrics(other.metrics),
-              raster_policy(other.raster_policy), platform_face(std::move(other.platform_face)),
-              counters(std::move(other.counters)) {}
+              raster_policy(other.raster_policy), shaping_units_per_pixel(other.shaping_units_per_pixel),
+              platform_face(std::move(other.platform_face)), counters(std::move(other.counters)) {}
 
         FontRecord& operator=(FontRecord&&) = delete;
 
@@ -184,6 +185,7 @@ struct FontRuntime::Impl {
         hb_font_t* harfbuzz_font{};
         FontMetrics metrics{};
         FontRasterPolicy raster_policy{};
+        int shaping_units_per_pixel{64};
         std::unique_ptr<PlatformFontFace> platform_face;
         std::shared_ptr<FontRuntimeCounters> counters;
     };
@@ -506,14 +508,30 @@ FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, lo
             std::max(0.0F, fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender));
     }
 
-    record.harfbuzz_font = hb_ft_font_create_referenced(record.shaping_face);
-    if (record.harfbuzz_font == nullptr) {
+    constexpr int fine_shaping_scale = 65536;
+    if (scalable && record.platform_face &&
+        raster.logical_pixel_size <= static_cast<std::uint32_t>(std::numeric_limits<int>::max() / fine_shaping_scale)) {
+        // Preserve design advances before quantizing the glyph's device phase.
+        // Rounding each 26.6 advance first can move an otherwise identical run
+        // across a quarter-pixel boundary at a fractional device scale.
+        auto* shaping_face = hb_ft_face_create_referenced(record.shaping_face);
+        record.harfbuzz_font = hb_font_create(shaping_face);
+        hb_face_destroy(shaping_face);
+        record.shaping_units_per_pixel = fine_shaping_scale;
+    } else {
+        record.harfbuzz_font = hb_ft_font_create_referenced(record.shaping_face);
+    }
+    if (record.harfbuzz_font == nullptr || record.harfbuzz_font == hb_font_get_empty()) {
         return fail(make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
                                "HarfBuzz could not create an immutable font adapter."));
     }
-    hb_ft_font_set_load_flags(record.harfbuzz_font,
-                              scalable ? FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP : FT_LOAD_DEFAULT);
-    const int harfbuzz_scale = static_cast<int>(raster.logical_pixel_size * 64U);
+    if (record.shaping_units_per_pixel == fine_shaping_scale) {
+        hb_ot_font_set_funcs(record.harfbuzz_font);
+    } else {
+        hb_ft_font_set_load_flags(record.harfbuzz_font,
+                                  scalable ? FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP : FT_LOAD_DEFAULT);
+    }
+    const int harfbuzz_scale = static_cast<int>(raster.logical_pixel_size) * record.shaping_units_per_pixel;
     hb_font_set_scale(record.harfbuzz_font, harfbuzz_scale, harfbuzz_scale);
 
     std::size_t slot_index = 0;
@@ -886,20 +904,23 @@ FontShapeResult FontRuntime::shape_utf8_segment(FontIdentity font, std::string_v
     FontShapeResult result;
     result.right_to_left = HB_DIRECTION_IS_BACKWARD(hb_buffer_get_direction(buffer.get()));
     result.glyphs.reserve(glyph_count);
+    const auto pixels = [units = static_cast<float>(record->shaping_units_per_pixel)](hb_position_t value) {
+        return static_cast<float>(value) / units;
+    };
     for (unsigned int index = 0; index < glyph_count; ++index) {
         hb_glyph_extents_t extents{};
         static_cast<void>(hb_font_get_glyph_extents(record->harfbuzz_font, glyph_info[index].codepoint, &extents));
         result.glyphs.push_back({
             glyph_info[index].codepoint,
             glyph_info[index].cluster,
-            fixed_26_6_to_pixels(glyph_positions[index].x_advance),
-            fixed_26_6_to_pixels(glyph_positions[index].y_advance),
-            fixed_26_6_to_pixels(glyph_positions[index].x_offset),
-            fixed_26_6_to_pixels(glyph_positions[index].y_offset),
-            fixed_26_6_to_pixels(extents.x_bearing),
-            fixed_26_6_to_pixels(extents.y_bearing),
-            fixed_26_6_to_pixels(extents.width),
-            fixed_26_6_to_pixels(extents.height),
+            pixels(glyph_positions[index].x_advance),
+            pixels(glyph_positions[index].y_advance),
+            pixels(glyph_positions[index].x_offset),
+            pixels(glyph_positions[index].y_offset),
+            pixels(extents.x_bearing),
+            pixels(extents.y_bearing),
+            pixels(extents.width),
+            pixels(extents.height),
         });
     }
     return result;

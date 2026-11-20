@@ -473,6 +473,13 @@ void test_platform_rasterizer_owns_a_generation() {
             "platform font source differs from the admitted resource");
     const auto glyph = runtime.runtime->glyph_index(font.font, U'A');
     require(bool(glyph) && glyph.glyph.glyph_id != 0, "platform font lost the FreeType cmap");
+    const auto shaped = runtime.runtime->shape_utf8_segment(font.font, "In", 0, 2);
+    // The locked Noto Sans face gives 'I' 339 design units at 1000 upem.
+    // A prior 26.6 step rounded 4.746 to 4.75, crossing the quarter-pixel
+    // phase boundary at 150% even though the design origin is below it.
+    require(shaped && shaped.glyphs.size() == 2 && near(shaped.glyphs[0].advance_x, 4.746F) &&
+                std::lround(shaped.glyphs[0].advance_x * 1.5F * 4) == 28,
+            "platform shaping rounded the logical advance before device phase selection");
     const auto a = runtime.runtime->rasterize(font.font, glyph.glyph.glyph_id, GlyphRasterPhase::quarter);
     const auto b = runtime.runtime->rasterize(font.font, glyph.glyph.glyph_id, GlyphRasterPhase::quarter);
     require(a && b && !a.cache_hit && b.cache_hit && a.glyph == b.glyph && near(a.glyph->advance_x, 6) &&
