@@ -323,14 +323,19 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         const runtime::Point offset{number("offset_x"), number("offset_y")};
         const bool bordered = width > 0;
         const float max_offset = std::max(std::abs(offset.x), std::abs(offset.y));
+        const bool opaque_stroke = alpha == 0 && width == 1 && spread == 0 && max_offset == 0 && caster_inset == 0 &&
+                                   std::floor(bounds.x) == bounds.x && std::floor(bounds.y) == bounds.y &&
+                                   std::floor(bounds.width) == bounds.width &&
+                                   std::floor(bounds.height) == bounds.height && std::floor(radius) == radius;
+        const bool translucent_caster = caster_inset > 0 && caster_inset <= radius && alpha > 0 && alpha < 1 &&
+                                        (bordered ? max_offset == 0 && spread > 0 && spread <= 32
+                                                  : max_offset > 0 && max_offset <= 32 && spread == 0);
         const float guard = 2 + spread + max_offset;
         const auto extent_x = std::ceil(bounds.x + bounds.width + guard);
         const auto extent_y = std::ceil(bounds.y + bounds.height + guard);
         require(extent_x <= 512 && extent_y <= 512 && bounds.x >= guard && bounds.y >= guard && width >= 0 &&
                     width <= 16 && radius > width && radius <= 0.5F * std::min(bounds.width, bounds.height) &&
-                    caster_inset > 0 && caster_inset <= radius && alpha > 0 && alpha < 1 &&
-                    (bordered ? max_offset == 0 && spread > 0 && spread <= 32
-                              : max_offset > 0 && max_offset <= 32 && spread == 0),
+                    (opaque_stroke || translucent_caster),
                 "rounded blend source outside the fixed physical domain");
         LockedShapeGeometry outer{bounds, radius};
         LockedShapeGeometry fill = inset(outer, width * 0.5F);

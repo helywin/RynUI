@@ -100,6 +100,22 @@ def hard_shadow_stack(side):
 
 
 class RoundedBlendWitnessTests(unittest.TestCase):
+    def test_integer_opaque_stroke_requires_exact_box_and_both_encoded_colors(self):
+        web, native = (hard_shadow_stack(side)[1:] for side in ('web', 'native'))
+        for rows in (web, native):
+            rows[1]['color'] = (217/255,)*3
+        spec, dx, dy = next(_stacks(web, 'web', 1))[0]
+        self.assertEqual(next(_stacks(native, 'native', 1))[0], (spec, dx, dy))
+        colors = ((241,)*3, (242,)*3)
+        cache = {spec: _samples([[3-dx, 132-dy, *colors[0], *colors[1]]])}
+        pixels = bind_blends((web, native), 1, Path.cwd(), Path('out/bin/mock'), cache)
+        sides = tuple({'active': rows} for rows in (web, native))
+        self.assertEqual(verified_blend(pixels, 3, 132, 1, sides, colors), colors[0])
+        self.assertIsNone(verified_blend(pixels, 3, 132, 1, sides, (colors[0], (243,)*3)))
+        self.assertFalse(list(_stacks(web, 'web', 1.5)))
+        native[0]['bounds'] = dict(native[0]['bounds'], x=.75)
+        self.assertFalse(bind_blends((web, native), 1, Path.cwd(), Path('out/bin/mock'), cache))
+
     def test_translated_hard_shadow_requires_same_offset_and_opaque_colored_fill(self):
         def translated(side):
             shadow, fill, _ = hard_shadow_stack(side)

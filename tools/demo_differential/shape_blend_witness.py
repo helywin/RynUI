@@ -94,6 +94,34 @@ def _stacks(rows, side, dpr):
         alpha = struct.unpack('<f', struct.pack('<f', shadow['alpha']))[0]
         spec = (x - dx, y - dy, w, h, radius, 0, inset, 0, alpha, shadow_color, (0, 0, 0), fill_color, ox, oy)
         yield (spec, dx, dy), layers
+    for fill, border in zip(rows, rows[1:]):
+        layers = (fill, border)
+        if (fill['kind'] != 'fill' or border['kind'] != ('border' if side == 'web' else 'outline')
+                or fill['color'] != (1., 1., 1.)
+                or any(row['opacity'] != 1 or row['alpha'] != 1 or
+                       any(opacity != 1 for _, opacity in row['groups']) for row in layers)):
+            continue
+        if side == 'web':
+            if (border['source'] is not fill['source'] or len(set(border['widths'])) != 1
+                    or border['bounds'] != fill['bounds'] or _radius(border) != _radius(fill)):
+                continue
+            bounds, radius, width = border['bounds'], _radius(border), border['widths'][0]
+        else:
+            width = border['width']
+            radius = _radius(border) + width
+            bounds = _inset(border['bounds'], -width)
+            if (border['offset_width'] != 0 or fill['bounds'] != _inset(bounds, width * .5)
+                    or _radius(fill) != radius - width * .5):
+                continue
+        color = _rgb8(border['color'])
+        x, y, w, h, radius, width = (value * dpr for value in (
+            bounds['x'], bounds['y'], bounds['width'], bounds['height'], radius, width))
+        if (color is None or width != 1 or not width < radius <= .5 * min(w, h) or max(w, h) + 9 > 512
+                or any(value != round(value) for value in (x, y, w, h, radius))):
+            continue
+        dx, dy = round(x) - 4, round(y) - 4
+        spec = (4, 4, w, h, radius, width, 0, 0, 0, (0, 0, 0), color, (255, 255, 255), 0, 0)
+        yield (spec, dx, dy), layers
 
 
 def _samples(samples):
@@ -148,18 +176,12 @@ def bind_blends(inventories, dpr, root, binary, cache):
 def verified_blend(pixels, x, y, dpr, sides, observed):
     if observed[0] == observed[1]:
         return None
-    candidates = pixels.get((x, y), ())
-    if len(candidates) != 1:
-        return None
-    layers, expected = candidates[0]
-    if expected != observed:
-        return None
     px, py = (x + .5) / dpr, (y + .5) / dpr
-    for allowed, side in zip(layers, sides, strict=True):
-        if not side['active'] or any(not any(row is item for item in allowed) for row in side['active']):
-            return None
-        for row in allowed:
-            if any(not (clip['x'] <= px < clip['x'] + clip['width'] and
-                        clip['y'] <= py < clip['y'] + clip['height']) for clip in row.get('clips', ())):
-                return None
-    return expected[0]
+    def admissible(allowed, active):
+        return (active and all(any(row is item for item in allowed) for row in active) and
+                all(clip['x'] <= px < clip['x'] + clip['width'] and clip['y'] <= py < clip['y'] + clip['height']
+                    for row in allowed for clip in row.get('clips', ())))
+
+    matches = [expected for layers, expected in pixels.get((x, y), ()) if expected == observed and
+               all(admissible(rows, side['active']) for rows, side in zip(layers, sides, strict=True))]
+    return matches[0][0] if len(matches) == 1 else None

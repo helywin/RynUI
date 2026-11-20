@@ -32,21 +32,30 @@ void draw_web(SkBitmap& bitmap, const ShapeBlendSource& source) {
     canvas.clear(SK_ColorWHITE);
     SkPaint paint;
     paint.setAntiAlias(true);
-    canvas.save();
-    canvas.clipRRect(rounded(source.caster, source.caster.shadow_caster_inset), SkClipOp::kDifference, true);
-    paint.setColor(SK_ColorBLACK);
-    const auto& c = source.shadow_color;
-    paint.setColorFilter(
-        SkColorFilters::Blend({c[0] / 255.0F, c[1] / 255.0F, c[2] / 255.0F, source.caster.shadow_alpha},
-                              SkColorSpace::MakeSRGB(), SkBlendMode::kSrcIn));
-    canvas.drawRRect(rounded(source.caster, -source.caster.shadow_spread, source.caster.shadow_offset), paint);
-    canvas.restore();
-    paint.setColorFilter(nullptr);
+    if (source.caster.shadow_alpha > 0) {
+        canvas.save();
+        canvas.clipRRect(rounded(source.caster, source.caster.shadow_caster_inset), SkClipOp::kDifference, true);
+        paint.setColor(SK_ColorBLACK);
+        const auto& c = source.shadow_color;
+        paint.setColorFilter(
+            SkColorFilters::Blend({c[0] / 255.0F, c[1] / 255.0F, c[2] / 255.0F, source.caster.shadow_alpha},
+                                  SkColorSpace::MakeSRGB(), SkBlendMode::kSrcIn));
+        canvas.drawRRect(rounded(source.caster, -source.caster.shadow_spread, source.caster.shadow_offset), paint);
+        canvas.restore();
+        paint.setColorFilter(nullptr);
+    }
     paint.setColor(rgb(source.fill_color));
     canvas.drawRRect(rounded(source.fill), paint);
     if (source.border) {
         paint.setColor(rgb(source.border_color));
-        canvas.drawDRRect(rounded(source.caster), rounded(*source.border), paint);
+        if (source.caster.shadow_alpha > 0) {
+            canvas.drawDRRect(rounded(source.caster), rounded(*source.border), paint);
+        } else {
+            const auto width = source.border->outline_width;
+            paint.setStyle(SkPaint::kStroke_Style);
+            paint.setStrokeWidth(width);
+            canvas.drawRRect(rounded(source.caster, width * 0.5F), paint);
+        }
     }
 }
 
@@ -69,11 +78,12 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
         caster.bounds.x += caster.shadow_offset.x;
         caster.bounds.y += caster.shadow_offset.y;
     }
-    const auto shadow = rasterize_locked_shape(caster, source.width, source.height);
+    const auto shadow =
+        caster.shadow_alpha > 0 ? rasterize_locked_shape(caster, source.width, source.height) : std::nullopt;
     const auto fill = rasterize_locked_shape(source.fill, source.width, source.height);
     const auto border =
         source.border ? rasterize_locked_shape(*source.border, source.width, source.height) : std::nullopt;
-    if (!shadow || !fill || (source.border && !border)) {
+    if ((caster.shadow_alpha > 0 && !shadow) || !fill || (source.border && !border)) {
         throw std::runtime_error("rounded blend source produced no bounded raster");
     }
     SkBitmap bitmap;
@@ -92,7 +102,7 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
                                      static_cast<std::uint8_t>(SkColorGetG(pixel)),
                                      static_cast<std::uint8_t>(SkColorGetB(pixel))},
                                     {}};
-            const auto shadow_alpha = coverage(*shadow, x, y);
+            const auto shadow_alpha = shadow ? coverage(*shadow, x, y) : 0;
             const auto fill_alpha = coverage(*fill, x, y);
             const auto border_alpha = border ? coverage(*border, x, y) : 0;
             bool adjacent_codes = true;
@@ -102,7 +112,7 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
                 sample.native[i] = static_cast<std::uint8_t>(over_rgb8(source.border_color[i], filled, border_alpha));
                 adjacent_codes &= std::abs(int(sample.web[i]) - int(sample.native[i])) <= 1;
             }
-            if (sample.web != sample.native && (source.border || adjacent_codes)) {
+            if (sample.web != sample.native && ((source.border && caster.shadow_alpha > 0) || adjacent_codes)) {
                 different.push_back(sample);
             }
         }
