@@ -1749,6 +1749,25 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
     return failures,measurements
 
 
+def _clip_intersection(a,b):
+    x=max(a['x'],b['x']);y=max(a['y'],b['y'])
+    width=min(a['x']+a['width'],b['x']+b['width'])-x
+    height=min(a['y']+a['height'],b['y']+b['height'])-y
+    if width<=0 or height<=0:return dict(x=0,y=0,width=0,height=0)
+    return dict(x=x,y=y,width=width,height=height)
+
+
+def _tiled_target_clips(web,native,origins,camera):
+    # Primary checkpoint metadata can come from independent scroll cameras.
+    # Compare the target's actual ancestor clip within their common aperture.
+    # The verified tile partition covers all remaining occupied rows and guards.
+    targets=(web,native)
+    scope=_clip_intersection(camera,union(*(relative(row['bounds'],origin)
+                                           for row,origin in zip(targets,origins,strict=True))))
+    return tuple(_clip_intersection(scope,relative(row['clip'],origin))
+                 for row,origin in zip(targets,origins,strict=True))
+
+
 def compare_checkpoint(case, declaration, native, web, images, thresholds, color,*,glyph_priors=None,context_tiles=()):
     failures = []
     step = declaration['step']
@@ -1761,6 +1780,8 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
         raise ProtocolError('pilot requires one complete real sample-context ROI')
     name = context[0]['target']
     origins = (sample_anchor(wt[name]), sample_anchor(nt[name]))
+    camera = (_clip_intersection(relative(wt[name]['clip'],origins[0]),relative(nt[name]['clip'],origins[1]))
+              if context_tiles else None)
     dpr = case['fixture']['viewport']['dpr']
     for side, target in (('web',wt[name]),('native',nt[name])):
         anchor = target['tokens']['sample_anchor']
@@ -1782,7 +1803,9 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
             x, y = max(clip['x'], 0), max(clip['y'], 0)
             return {'x': x, 'y': y, 'width': max(0, min(clip['x'] + clip['width'], origin['width']) - x),
                     'height': max(0, min(clip['y'] + clip['height'], origin['height']) - y)}
-        if any(abs(clipped(a['clip'], origins[0])[k] - clipped(b['clip'], origins[1])[k]) >
+        a_clip,b_clip=(_tiled_target_clips(a,b,origins,camera) if camera is not None else
+                       (clipped(a['clip'],origins[0]),clipped(b['clip'],origins[1])))
+        if any(abs(a_clip[k] - b_clip[k]) >
                thresholds['geometry.logical_px'] for k in ('x', 'y', 'width', 'height')):
             fail('layout', target, 'effective context clip differs')
         component = case['fixture'].get('props', {}).get('controls', {}).get(target, {}).get('component')

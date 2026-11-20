@@ -14,7 +14,8 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _joint_paint_output_basis,_paint_coordinates,_palette_basis,_bounded_paint_basis,
                                           _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints,_status_input_caret,
                                           _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error,
-                                          _matches_soft_shadow_rgb,_empty_select_compositor_caret,_hard_paint_gates)
+                                          _matches_soft_shadow_rgb,_empty_select_compositor_caret,_hard_paint_gates,
+                                          _clip_intersection,_tiled_target_clips)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
@@ -79,6 +80,18 @@ class LayeredTests(unittest.TestCase):
         self.assertTrue(_hard_paint_gates([native],[white,dict(border,alpha=.5)],'actual'))
         self.assertTrue(_hard_paint_gates([dict(native,bounds=box(10.5,10.5,38,29))],[white,border],'actual'))
         self.assertTrue(_hard_paint_gates([dict(native,radii=4.5)],[white,border],'actual'))
+
+    def test_tiled_checkpoint_compares_clip_inside_both_actual_cameras(self):
+        origins=(box(10,30,300,1000),box(40,-10,300,1000))
+        visible=(box(0,0,300,550),box(0,160,300,600))
+        camera=_clip_intersection(*visible)
+        w=dict(bounds=box(18,230,140,32),clip=box(10,30,300,550))
+        n=dict(bounds=box(48,190,140,32),clip=box(40,150,300,600))
+        self.assertEqual(_tiled_target_clips(w,n,origins,camera),(box(8,200,140,32),)*2)
+        n['clip']=box(40,205,300,600)
+        a,b=_tiled_target_clips(w,n,origins,camera)
+        self.assertEqual(a,box(8,200,140,32))
+        self.assertEqual(b,box(8,215,140,17))
 
     def test_empty_select_caret_binds_compositor_paint_to_the_focused_editor(self):
         viewport=box(0,0,80,60)
