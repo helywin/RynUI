@@ -338,6 +338,19 @@ public:
 
     [[nodiscard]] Json snapshot(std::string_view name) {
         const auto id = target(name);
+        const auto& components = actions.app.components();
+        const auto window_root = [&](runtime::ComponentId component) {
+            auto current = std::optional{component};
+            while (current && !components.is_window_layer_root(*current)) {
+                current = components.parent(*current);
+            }
+            return current;
+        };
+        const auto target_window = window_root(id);
+        const auto in_target_plane = [&](runtime::ComponentId component) {
+            return contains(name, component) && components.branch_active(component) &&
+                   window_root(component) == target_window;
+        };
         const auto page = actions.pages.snapshot();
         const runtime::Rect viewport{0, 0, static_cast<float>(actions.metrics().at("logical_width").number()),
                                      static_cast<float>(actions.metrics().at("logical_height").number())};
@@ -403,7 +416,7 @@ public:
             tokens["color"] = color(button_state.presentation_foreground);
         }
         for (const auto& input : actions.inputs.mounted_inputs()) {
-            if (!contains(name, input.component) || !actions.app.components().branch_active(input.component)) {
+            if (!in_target_plane(input.component)) {
                 continue;
             }
             const auto display = actions.inputs.display_snapshot(input.component);
@@ -479,7 +492,7 @@ public:
             }
         }
         for (const auto& text : actions.app.text().mounted_texts()) {
-            if (!contains(name, text.component) || !actions.app.components().branch_active(text.component)) {
+            if (!in_target_plane(text.component)) {
                 continue;
             }
             bool is_icon{};
