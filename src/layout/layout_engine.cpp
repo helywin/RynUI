@@ -315,6 +315,10 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
                                                           "Input preferred width must be finite and non-negative"));
                     static_cast<void>(non_negative_finite(model.padding_block,
                                                           "Input block padding must be finite and non-negative"));
+                    if (model.padding_inline_start) {
+                        static_cast<void>(non_negative_finite(*model.padding_inline_start,
+                                                              "Input leading padding must be finite and non-negative"));
+                    }
                 }
                 if constexpr (std::is_same_v<Model, HorizontalContentLayout>) {
                     static_cast<void>(non_negative_finite(
@@ -852,8 +856,8 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 if (node.children.size() != 3) {
                     throw std::logic_error("Input layout requires three slots");
                 }
-                const float frame = current.padding_inline + 2 * current.border_width +
-                                    (current.flush_suffix ? 0 : current.padding_inline);
+                const float frame = current.padding_inline_start.value_or(current.padding_inline) +
+                                    2 * current.border_width + (current.flush_suffix ? 0 : current.padding_inline);
                 const float outer_width = current.preferred_width > 0
                                               ? std::clamp(current.preferred_width, content_constraint.min_width,
                                                            content_constraint.max_width)
@@ -1107,11 +1111,14 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                 if (node.children.size() != 3) {
                     throw std::logic_error("Input layout requires three slots");
                 }
-                const auto inset = std::min(node.bounds.width * 0.5F, current.padding_inline + current.border_width);
+                const auto inset =
+                    std::min(node.bounds.width * 0.5F,
+                             current.padding_inline_start.value_or(current.padding_inline) + current.border_width);
                 const auto top = std::min(node.bounds.height * 0.5F, current.border_width + current.padding_block);
                 float cursor = inset;
                 const auto end_inset =
-                    current.flush_suffix ? std::min(node.bounds.width / 2, current.border_width) : inset;
+                    std::min(node.bounds.width / 2,
+                             current.border_width + (current.flush_suffix ? 0.0F : current.padding_inline));
                 const auto end = node.bounds.width - end_inset;
                 const auto suffix_width =
                     std::min(nodes_->require(node.children[2]).layout_size.width, std::max(0.0F, end - cursor));

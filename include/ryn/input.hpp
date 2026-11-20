@@ -301,6 +301,7 @@ private:
     bool fit_affixes_{};
     bool mirror_affixes_{};
     bool reserve_borderless_frame_{};
+    Prop<bool> multiple_selection_layout_{false};
     Prop<std::optional<float>> embedded_value_opacity_{std::optional<float>{}};
 };
 

@@ -87,6 +87,33 @@ void direction_and_rich_affix_size() {
     check(clicks == 2, "Retained Select prefix did not receive input after changing direction");
 }
 
+void multiple_selection_uses_the_leading_inset() {
+    Fixture f;
+    Signal<TextDirection> direction{TextDirection::LeftToRight};
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .mode(SelectMode::Multiple)
+                   .options({{1, u8"First"}})
+                   .defaultValues({1})
+                   .direction(direction)
+                   .layout(LayoutStyle{}.width(dp(180))));
+    }});
+    f.synchronize();
+    const auto id = f.services.select().mounted().front();
+    const auto snapshot = f.services.select().snapshot(id);
+    const auto tag = snapshot.tags.front();
+    const auto control = bounds(f, snapshot.selector);
+    check(bounds(f, tag).x - control.x == 4, "Multiple Select did not use its leading value inset");
+
+    direction.set(TextDirection::RightToLeft);
+    f.synchronize();
+    const auto current = f.services.select().snapshot(id);
+    const auto mirrored = bounds(f, tag);
+    check(current.selector == snapshot.selector && current.tags.front() == tag &&
+              control.x + control.width - mirrored.x - mirrored.width == 4,
+          "Multiple Select did not mirror its retained value inset");
+}
+
 void open_popup_remains_attached_during_document_scroll() {
     Fixture f;
     Signal<bool> open{false};
@@ -780,6 +807,7 @@ int main() {
     try {
         pointer_keyboard_and_clear();
         direction_and_rich_affix_size();
+        multiple_selection_uses_the_leading_inset();
         open_popup_remains_attached_during_document_scroll();
         popup_first_shadow_is_painted_in_front();
         selected_values_use_the_live_selector_font();

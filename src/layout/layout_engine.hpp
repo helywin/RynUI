@@ -141,6 +141,7 @@ struct InputContentLayout final {
     bool flush_suffix{};
     bool right_to_left{};
     bool fit_affixes{};
+    std::optional<float> padding_inline_start;
     friend constexpr bool operator==(InputContentLayout, InputContentLayout) = default;
 };
 
