@@ -70,6 +70,22 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_gapped_focus_ring_compares_fixed_output_under_near_parallel_colors(self):
+        common=dict(bounds=box(),alpha=1.,opacity=1.,groups=[])
+        fill=dict(common,kind='fill',color=(22/255,119/255,1.))
+        outline=dict(common,kind='outline',color=(145/255,202/255,1.),offset_width=1.)
+        basis=_bounded_paint_basis([fill,outline],[0.,0.],[0,1])
+        self.assertEqual(basis['mode'],'joint-paint-output')
+        self.assertEqual(basis['rounding'],1/255)
+        self.assertTrue(_paint_coordinates((248,252,255),basis)[0])
+        self.assertFalse(_paint_coordinates((248,246,255),basis)[0])
+        self.assertFalse(_paint_coordinates((248,252,230),basis)[0])
+        inverse=_bounded_paint_basis([outline,fill],[0.,0.],[0,1])
+        self.assertTrue(_paint_coordinates((248,252,255),inverse)[0])
+        self.assertFalse(_paint_coordinates((248,252,230),inverse)[0])
+        with self.assertRaises(RunError):
+            _bounded_paint_basis([fill,dict(outline,offset_width=0)],[0.,0.],[0,1])
+
     def test_repeated_source_over_retains_coverage_order_and_group_opacity(self):
         red=dict(color=(1.,0.,0.),alpha=1.,opacity=1.,groups=[('group',.5)])
         blue=dict(red,color=(0.,0.,1.))

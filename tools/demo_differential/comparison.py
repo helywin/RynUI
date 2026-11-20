@@ -1000,11 +1000,15 @@ def _joint_paint_output_basis(layers,coverages,variable):
     from .color_metrics import contribution_domain
     kinds=tuple(row['kind'] for row in layers)
     hard_outline=(kinds==('shadow','outline') and variable==[0,1] and layers[0].get('blur')==0)
+    gapped_fill=(kinds in (('fill','outline'),('outline','fill')) and variable==[0,1] and
+                 layers[kinds.index('outline')].get('offset_width',0)>0 and layers[0]['bounds']==layers[1]['bounds'] and
+                 all(row['alpha']*row['opacity']==1 for row in layers))
     floating_shadow=(kinds[:3]==('shadow','fill','outline') and 4<=len(layers)<=6 and len(variable)>=2 and
                      layers[0].get('blur')==0 and layers[1]['color']==(1.,1.,1.) and
                      all(row['kind']=='shadow' and row.get('blur',0)>0 for row in layers[3:]))
     group_opacity=_hard_shadow_fill_group_opacity(layers,variable)
-    if group_opacity is None and (not (hard_outline or floating_shadow) or any(layer['groups'] for layer in layers)):
+    if group_opacity is None and (not (hard_outline or gapped_fill or floating_shadow) or
+                                  any(layer['groups'] for layer in layers)):
         return None
     endpoints=tuple(_paint_endpoints(layers,coverages,variable))
     # Set the origin at the lightest attainable value on each channel.
