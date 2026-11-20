@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from pathlib import Path
 
 from .observations import IncompleteRun, image_extent, read_observations
 from .oracle import exact
-from .protocol import ProtocolError, loads, relative_path, validate
+from .protocol import MAX_BYTES, ProtocolError, loads, relative_path, validate
 from .adapters import RunError
 from .device_metrics import stable_device_metrics
 from .pilots import displayed_slot_text
@@ -22,6 +23,73 @@ def artifact(directory, name):
     if not path.is_relative_to(Path(directory).resolve()) or not path.is_file():
         raise IncompleteRun('artifact missing or escaping case output: ' + name)
     return path
+
+
+def context_tiles(row,case,directory,side,paths,sequence):
+    references=row['resources'].get('context_tiles',[])
+    sample=next(t for t in row['targets'] if t['identity']==case['native']['sample_id'])
+    long_context=sample['bounds']['height']>case['fixture']['viewport']['height']*.75
+    if not isinstance(references,list) or len(references)>8 or bool(references)!=long_context:
+        raise IncompleteRun(side+' required context tile set is absent or exceeds the finite aperture budget')
+    if not references:
+        return []
+    previous_offset=None
+    primary_offset=sample['scroll'].get('document_offset')
+    if type(primary_offset) not in (int,float) or not math.isfinite(primary_offset) or primary_offset<0:
+        raise IncompleteRun(side+' primary sample has no actual document camera position')
+    world_top=sample['bounds']['y']+primary_offset
+    primary=row['captures'][0]
+    view=[]
+    for ordinal,reference in enumerate(references):
+        if not isinstance(reference,dict) or set(reference)!={'path','sha256','bytes','capture'}:
+            raise ProtocolError(side+' context tile evidence reference is incomplete')
+        name=reference['path']
+        if not isinstance(name,str) or name in paths or not name.endswith('.json'):
+            raise IncompleteRun(side+' context tile evidence path is reused or invalid')
+        evidence=artifact(directory,name)
+        size=reference['bytes']
+        if type(size) is not int or not 0<size<=MAX_BYTES or evidence.stat().st_size!=size:
+            raise IncompleteRun(side+' context tile evidence extent differs')
+        data=evidence.read_bytes()
+        if hashlib.sha256(data).hexdigest()!=reference['sha256']:
+            raise IncompleteRun(side+' context tile evidence bytes differ')
+        tile=loads(data.decode('utf-8'))
+        paths.add(name)
+        kind='readback' if side=='native' else 'paint_receipt'
+        if not isinstance(tile,dict) or set(tile)!= {'ordinal','offset','target','capture','paint_stack',kind}:
+            raise ProtocolError(side+' context tile lacks its source/readback evidence')
+        target,capture=tile['target'],tile['capture']
+        if not exact(reference['capture'],capture):
+            raise IncompleteRun(side+' context tile capture changed between the record and its evidence')
+        validate('observation',dict(row,targets=[target],captures=[capture]))
+        offset=tile['offset']
+        if (tile['ordinal']!=ordinal or type(offset) not in (int,float) or not math.isfinite(offset) or offset<0 or
+                previous_offset is not None and offset<=previous_offset):
+            raise IncompleteRun(side+' context tiles are duplicated or out of camera order')
+        if (target['identity']!=sample['identity'] or target['owner_generation']!=sample['owner_generation'] or
+                any(target['bounds'][key]!=sample['bounds'][key] for key in ('x','width','height'))):
+            raise IncompleteRun(side+' context capture remounted/resized the sample')
+        if target['scroll'].get('document_offset')!=offset or abs(target['bounds']['y']+offset-world_top)>1/64:
+            raise IncompleteRun(side+' context tile does not match its actual camera position')
+        previous_offset=offset
+        expected_nonce=(primary['nonce']+'-tile-'+str(ordinal) if side=='native' else
+                        row['nonce']+'-tile-'+str(sequence)+'-'+str(ordinal))
+        if (capture['nonce']!=expected_nonce or capture['checkpoint']!=row['step'] or not capture['fence_completed'] or
+                capture['path'] in paths or target['scene_revision']!=capture['scene_revision'] or
+                any(capture[k]!=primary[k] for k in ('width','height','dpr','channel_order','alpha','color_profile'))):
+            raise IncompleteRun(side+' context tile has stale capture identity/metrics')
+        if side=='web':
+            receipt=tile[kind]
+            if (receipt.get('nonce')!=expected_nonce or receipt.get('step')!=row['step'] or
+                    receipt.get('sequence')!=ordinal+1 or receipt.get('fresh_readback') is not True or
+                    receipt.get('sha256')!=capture['sha256']):
+                raise IncompleteRun('Web tile lacks its own completed current paint receipt')
+        image=artifact(directory,capture['path'])
+        if sha(image)!=capture['sha256'] or image_extent(image)!=(capture['width'],capture['height']):
+            raise IncompleteRun(side+' context tile pixels or extent differ from its readback')
+        paths.add(capture['path'])
+        view.append(tile)
+    return view
 
 
 def native(path, case, nonce, manifest, binary_hash, preset, configuration, *, expected_fault='none'):
@@ -42,7 +110,19 @@ def native(path, case, nonce, manifest, binary_hash, preset, configuration, *, e
     if preset.startswith('windows') and provenance.get('toolchain') != 'MSVC':
         raise ProtocolError('Windows native evidence requires MSVC')
     from .native_resources import validate as validate_resources
-    validate_resources(result, manifest, binary_hash)
+    paths={capture['path'] for row in result['checkpoints'].values() for capture in row['captures']}
+    with_tiles=[]
+    validated_tiles={}
+    for row in result['records']:
+        with_tiles.append(row)
+        if row['type']=='checkpoint':
+            tiles=context_tiles(row,case,Path(path).parent,'native',paths,0)
+            validated_tiles[row['step']]=tiles
+            for tile in tiles:
+                with_tiles.append(dict(row,targets=[tile['target']],captures=[tile['capture']],
+                    resources=dict(row['resources'],readback=tile['readback'])))
+    validate_resources(dict(result,records=with_tiles),manifest,binary_hash)
+    result['context_tiles']=validated_tiles
     return result
 
 
@@ -82,6 +162,7 @@ def web(path, case, nonce):
         raise IncompleteRun('Web hello/actions/checkpoints/complete identities or ordering differ')
     previous = []
     capture_paths = set()
+    validated_tiles = {}
     sequence = 0
     for row in records:
         if row['nonce'] != nonce or row['case'] != case['identity'] or row['adapter'] != case['official']['adapter_id']:
@@ -116,6 +197,7 @@ def web(path, case, nonce):
         image = artifact(path.parent, capture['path'])
         if sha(image) != capture['sha256'] or image_extent(image) != (capture['width'], capture['height']):
             raise IncompleteRun('Web image content/extent differs')
+        validated_tiles[row['step']]=context_tiles(row,case,path.parent,'web',capture_paths,sequence)
     last = records[-1]
     if (last['completed_steps'] != [a['step'] for a in case['actions']] or
             last['completed_checkpoints'] != [c['step'] for c in case['checkpoints']]):
@@ -124,7 +206,7 @@ def web(path, case, nonce):
         raise RunError(2, 'reference-drift', 'Web actual source/imported component/adapter/fixture identity differs')
     return {'records': records, 'hello': records[0], 'receipts': {r['step']: r for r in records if r['type'] == 'receipt'},
             'checkpoints': {r['step']: r for r in records if r['type'] == 'checkpoint'},
-            'complete': last, 'callbacks': previous}
+            'complete': last, 'callbacks': previous, 'context_tiles': validated_tiles}
 
 
 def metrics(observed, side):

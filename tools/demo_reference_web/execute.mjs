@@ -39,6 +39,13 @@ function observedTextGroups(node = this) {
   const encoder = new TextEncoder();
   const groups = [];
   const lines = [];
+  const style = getComputedStyle(node.parentElement);
+  const context = (window.__referenceInkMeasure ??= new OffscreenCanvas(1, 1).getContext('2d'));
+  context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  context.direction = style.direction;
+  context.textAlign = 'left';
+  let opacity=1;
+  for(let element=node.parentElement;element;element=element.parentElement)opacity*=Number(getComputedStyle(element).opacity);
   for (const part of new Intl.Segmenter('zh-CN', { granularity: 'grapheme' }).segment(content)) {
     const range = document.createRange();
     range.setStart(node, part.index); range.setEnd(node, part.index + part.segment.length);
@@ -46,13 +53,17 @@ function observedTextGroups(node = this) {
     if (!boxes.length && part.segment.trim()) throw new Error('printable grapheme lacks an actual Range rectangle');
     const top = boxes[0]?.y;
     if (top !== undefined && !lines.includes(top)) lines.push(top);
-    const style = getComputedStyle(node.parentElement);
-    let opacity=1;
-    for(let element=node.parentElement;element;element=element.parentElement)opacity*=Number(getComputedStyle(element).opacity);
+    // Range boxes still provide the geometry/advance. The same styled font's
+    // ink overhang enlarges raster support for a single scalar only.
+    const ink = boxes.length === 1 && [...part.segment].length === 1 && part.segment.trim()
+      ? context.measureText(part.segment) : null;
+    const inlineInk = ink ? { x: boxes[0].x - ink.actualBoundingBoxLeft,
+      right: boxes[0].x + ink.actualBoundingBoxRight } : null;
     groups.push({ byte_begin: encoder.encode(content.slice(0,part.index)).length,
       byte_end: encoder.encode(content.slice(0,part.index+part.segment.length)).length,
       boxes, advance: boxes.reduce((sum,box) => sum+box.width,0), line: top === undefined ? 0 : lines.indexOf(top),
-      color: style.color, opacity, font_size: style.fontSize, font_weight: style.fontWeight });
+      color: style.color, opacity, font_size: style.fontSize, font_weight: style.fontWeight,
+      inline_ink: inlineInk });
   }
   return groups;
 }
@@ -70,7 +81,7 @@ function record(type, step = '', values = {}) {
 
 // Keep the independently specified sample wrapper inside the capture, with
 // room for its real outline, shadow and surrounding guard.
-const html = `<!doctype html><html><head><meta charset="utf-8"><style>${fontStyle(fonts)}#root{padding:16px}</style></head><body><div id="root"></div><script src="/request.js"></script><script src="/app.js"></script></body></html>`;
+const html = `<!doctype html><html><head><meta charset="utf-8"><style>${fontStyle(fonts)}#root{padding:16px 80px 48px}</style></head><body><div id="root"></div><script src="/request.js"></script><script src="/app.js"></script></body></html>`;
 const assets = new Map([
   ['/', [Buffer.from(html), 'text/html; charset=utf-8']],
   ['/app.js', [fs.readFileSync(path.join(build, 'app.js')), 'application/javascript']],
@@ -402,7 +413,8 @@ try {
           }
         }
         result.push({ identity, key: '', bounds: rect(bounds), clip,
-          scroll: { x: element.scrollLeft, y: element.scrollTop, width: element.scrollWidth, height: element.scrollHeight },
+          scroll: { x: element.scrollLeft, y: element.scrollTop, width: element.scrollWidth, height: element.scrollHeight,
+            document_offset: window.scrollY },
           state, text, icons, tokens, owner_generation: r.generation(), scene_revision: r.revision() });
       }
       return { targets: result, callbacks: [...r.callbacks], revision: r.revision(),
@@ -586,28 +598,63 @@ try {
         const controls=Object.keys(window.__reference.controls());
         return [window.__request.definition.native.sample_id,...controls,...controls.map(id=>id+'.popup')];
       });
-      const observePaint = () => observePaintStack(cdp,paintIdentities,{nonce,step:action.step,
-        revision:observed.revision,viewport:realRAF});
-      const paintStack=await observePaint();
-      const pngPath = 'capture-' + sequence++ + '.png';
-      const screenshot = await page.screenshot({ path: path.join(output, pngPath), animations: 'allow', caret: 'initial',
-        scale: 'device', timeout: 5000 });
-      expect(paintStack.snapshot_digest === (await observePaint()).snapshot_digest,
-        'actual DOM paint stack changed across screenshot');
-      expect(screenshot.readUInt32BE(16) === Math.round(fixture.viewport.width * fixture.viewport.dpr), 'capture width/DPR mismatch');
-      expect(screenshot[24] === 8 && [2, 6].includes(screenshot[25]), 'unsupported PNG channel encoding');
-      expect(screenshot.readUInt32BE(20) === Math.round(fixture.viewport.height * fixture.viewport.dpr), 'capture height/DPR mismatch');
-      const capture = { path: pngPath, sha256: hash(screenshot), nonce, checkpoint: action.step,
-        scene_revision: observed.revision, width: screenshot.readUInt32BE(16), height: screenshot.readUInt32BE(20),
-        dpr: fixture.viewport.dpr, fence_completed: true, framebuffer_format: screenshot[25] === 2 ? 'PNG RGB8' : 'PNG RGBA8',
-        channel_order: 'RGBA', alpha: screenshot[25] === 2 ? 'opaque' : 'straight', color_profile: 'sRGB-SDR' };
+      async function captureCurrent(revision, pngPath, captureNonce, captureSequence) {
+        const observePaint = () => observePaintStack(cdp,paintIdentities,{nonce,step:action.step,
+          revision,viewport:realRAF});
+        const paintStack=await observePaint();
+        const screenshot = await page.screenshot({ path: path.join(output, pngPath), animations: 'allow', caret: 'initial',
+          scale: 'device', timeout: 5000 });
+        expect(paintStack.snapshot_digest === (await observePaint()).snapshot_digest,
+          'actual DOM paint stack changed across screenshot');
+        expect(screenshot.readUInt32BE(16) === Math.round(fixture.viewport.width * fixture.viewport.dpr), 'capture width/DPR mismatch');
+        expect(screenshot[24] === 8 && [2, 6].includes(screenshot[25]), 'unsupported PNG channel encoding');
+        expect(screenshot.readUInt32BE(20) === Math.round(fixture.viewport.height * fixture.viewport.dpr), 'capture height/DPR mismatch');
+        const capture = { path: pngPath, sha256: hash(screenshot), nonce: captureNonce, checkpoint: action.step,
+          scene_revision: revision, width: screenshot.readUInt32BE(16), height: screenshot.readUInt32BE(20),
+          dpr: fixture.viewport.dpr, fence_completed: true, framebuffer_format: screenshot[25] === 2 ? 'PNG RGB8' : 'PNG RGBA8',
+          channel_order: 'RGBA', alpha: screenshot[25] === 2 ? 'opaque' : 'straight', color_profile: 'sRGB-SDR' };
+        return { capture, paint_stack:{...paintStack,
+          capture_binding:{run_nonce:nonce,capture_nonce:captureNonce,checkpoint:action.step,
+            scene_revision:revision,sequence:captureSequence,capture_sha256:capture.sha256}},
+          paint_receipt: { nonce: captureNonce, step: action.step, sequence: captureSequence, sha256: capture.sha256,
+            fresh_readback: true, completion: 'Chromium screenshot Promise resolved; not a native GPU fence' } };
+      }
+      const prefix = 'capture-' + sequence++;
+      const primary = await captureCurrent(observed.revision, prefix + '.png', nonce, sequence);
+      const sample = observed.targets.find(t => t.identity === definition.native.sample_id);
+      const tiles = [];
+      if (sample.bounds.height > fixture.viewport.height * .75) {
+        const camera = await page.evaluate(() => ({ offset: window.scrollY, focus: window.__reference.instance(document.activeElement) }));
+        const beginning = camera.offset + sample.bounds.y - 20;
+        const stride = 2 * Math.floor(fixture.viewport.height * .625 / 2);
+        for (let ordinal = 0; ordinal < 8; ++ordinal) {
+          await page.evaluate(top => window.scrollTo({top,behavior:'instant'}), beginning + ordinal*stride);
+          await paint();
+          const view = await snapshot([definition.native.sample_id]);
+          const target = view.targets[0];
+          expect(view.callbacks.length === observed.callbacks.length, 'context capture dispatched a browser callback');
+          const offset = await page.evaluate(() => window.scrollY);
+          const tileNonce = nonce + '-tile-' + sequence + '-' + ordinal;
+          const name = prefix + '-tile-' + ordinal;
+          const tile = { ordinal, offset, target,
+            ...await captureCurrent(view.revision, name + '.png', tileNonce, ordinal+1) };
+          const evidencePath = name + '.json';
+          const evidence = Buffer.from(JSON.stringify(tile), 'utf8');
+          fs.writeFileSync(path.join(output, evidencePath), evidence, { flag: 'wx' });
+          tiles.push({ path: evidencePath, sha256: hash(evidence), bytes: evidence.length, capture: tile.capture });
+          if (target.bounds.y + target.bounds.height + 6 <= fixture.viewport.height) break;
+        }
+        await page.evaluate(top => window.scrollTo({top,behavior:'instant'}), camera.offset);
+        await paint();
+        expect(await page.evaluate(cam => window.scrollY === cam.offset &&
+          window.__reference.instance(document.activeElement) === cam.focus, camera),
+          'context capture did not restore the browser camera and focus');
+      }
       completedCheckpoints.push(action.step);
       record('checkpoint', action.step, { effective_inputs: effective, targets: observed.targets, callbacks: observed.callbacks,
-        state: { focused: observed.focus, controls: observed.controls }, captures: [capture],
-        resources: { actual_inputs: settledInputs, paint_stack:{...paintStack,
-          capture_binding:{run_nonce:nonce,capture_nonce:capture.nonce,checkpoint:action.step,
-            scene_revision:observed.revision,sequence,capture_sha256:capture.sha256}},
-          paint_receipt: { nonce, step: action.step, sequence, sha256: capture.sha256, fresh_readback: true, completion: 'Chromium screenshot Promise resolved; not a native GPU fence' },
+        state: { focused: observed.focus, controls: observed.controls }, captures: [primary.capture],
+        resources: { actual_inputs: settledInputs, paint_stack: primary.paint_stack, paint_receipt: primary.paint_receipt,
+          ...(tiles.length ? {context_tiles:tiles} : {}),
           animations: await page.evaluate(() => document.getAnimations().map(a => ({ currentTime: a.currentTime,
             playState: a.playState, timing: a.effect?.getTiming(), id: a.id }))) } });
       hit = action.target; sent = true; consumed = true;

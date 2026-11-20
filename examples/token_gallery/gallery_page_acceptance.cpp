@@ -138,7 +138,7 @@ GalleryPageOptions gallery_page_options(std::span<const std::string_view> argume
             result.width = integer(argument.substr(13), 360, 3840);
             acceptance_argument = true;
         } else if (argument.starts_with("--page-timeout=")) {
-            result.timeout_seconds = integer(argument.substr(15), 1, 120);
+            result.timeout_seconds = integer(argument.substr(15), 1, 180);
             acceptance_argument = true;
         } else if (argument.starts_with("--sample=")) {
             if (result.pages.empty()) {
@@ -163,6 +163,9 @@ GalleryPageOptions gallery_page_options(std::span<const std::string_view> argume
     }
     if (result.scenario.empty() != result.observations.empty()) {
         throw std::invalid_argument("--page-scenario and --page-observations are required together");
+    }
+    if (result.scenario.empty() && result.timeout_seconds > 120) {
+        throw std::invalid_argument("Page acceptance is limited to 120 seconds without a differential scenario");
     }
     if (!result.scenario.empty()) {
         if (!result.visual || result.i18n || result.pages.size() != 1) {

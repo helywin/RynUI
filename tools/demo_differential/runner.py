@@ -170,8 +170,8 @@ def run(options, definitions, *, adapters=None, comparator=None, coverage_docume
         report['provenance']['mechanism_controls'] = coverage_document is not None or comparator is not None
         configure, configuration = resolve_preset(options['preset'])
         binary = Path(options['binary']).resolve()
-        if not binary.is_file() or not 1 <= options['timeout'] <= 120:
-            raise ProtocolError('a built binary and timeout in 1..120 seconds are required')
+        if not binary.is_file() or not 1 <= options['timeout'] <= 180:
+            raise ProtocolError('a built binary and timeout in 1..180 seconds are required')
         binary_hash = runner_evidence.sha(binary)
         manifest = source_manifest(ROOT)
         actual = adapters.inventory(binary, directory / 'inventory.json')

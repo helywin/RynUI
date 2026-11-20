@@ -10,12 +10,14 @@ import json
 import math
 import re
 import platform
+from functools import reduce
 from pathlib import Path
 
 from .adapters import RunError
 from .oracle import exact
 from .protocol import ProtocolError, validate
-from .regions import crop_rgba, geometry, physical_box, raster_metrics, rect, relative, union, sample_anchor, text_groups
+from .regions import (crop_rgba, geometry, physical_box, raster_metrics, rect, relative, union, sample_anchor, text_groups,
+                      capture_aperture, vertical_capture_slices)
 from .runner_evidence import artifact, metrics
 from .calibration import CAPS
 from .pilots import displayed_slot_text
@@ -32,7 +34,8 @@ def digest(value):
 def algorithm_hash():
     from .protocol import FIXTURES
     files={name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-           for name in ('comparison.py', 'regions.py', 'color_metrics.py','calibration.py','schema_definitions.py','pilots.py')}
+           for name in ('comparison.py', 'regions.py', 'color_metrics.py','calibration.py','schema_definitions.py',
+                        'pilots.py','glyph_witness.py','formal_icon_source.py')}
     files['profile.schema.json']=hashlib.sha256((FIXTURES/'profile.schema.json').read_bytes()).hexdigest()
     return digest(files)
 
@@ -132,6 +135,10 @@ def decoded(image_module, path, capture):
 def _crop_pair(images, reference, native, origins, dpr, guard):
     common = union(relative(reference, origins[0]), relative(native, origins[1]))
     box = physical_box(common, dpr, guard)
+    return _crop_pair_box(images,box,origins,dpr)
+
+
+def _crop_pair_box(images,box,origins,dpr):
     crops = []
     for (data, size), origin in zip(images, origins):
         # Fractional origin phases must match; no subpixel shift/resampling.
@@ -367,11 +374,51 @@ def _shape_distance(point,bounds,radii):
     return rounded_distance(*point,bounds,radius)
 
 
+def _square_border_side(bounds,widths,edge):
+    """One CSS square side owns the miters adjoining transparent sides."""
+    def corners(rect):
+        x,y=rect['x'],rect['y']
+        right,bottom=x+rect['width'],y+rect['height']
+        return (x,y),(right,y),(right,bottom),(x,bottom)
+    inner=_inset(bounds,widths)
+    if min(inner['width'],inner['height'])<=0:
+        raise RunError(3,'calibration','square border has no finite inner miter box')
+    outside,inside=corners(bounds),corners(inner)
+    other=(edge+1)%4
+    polygon=(outside[edge],outside[other],inside[other],inside[edge])
+    xs,ys=zip(*polygon)
+    box=dict(x=min(xs),y=min(ys),width=max(xs)-min(xs),height=max(ys)-min(ys))
+    return polygon,box
+
+
+def _square_side_coverage(polygon,point,dpr):
+    # Work in one unit pixel. Clipping before computing area keeps the result
+    # independent of the location of the physical viewport and of paint color.
+    clipped=[((x-point[0])*dpr,(y-point[1])*dpr) for x,y in polygon]
+    for axis,bound,sign in ((0,-.5,1),(0,.5,-1),(1,-.5,1),(1,.5,-1)):
+        if not clipped:
+            return 0.
+        original,clipped=clipped,[]
+        previous=original[-1]
+        for current in original:
+            a,b=(previous[axis]-bound)*sign,(current[axis]-bound)*sign
+            if (a>=0)!=(b>=0):
+                ratio=a/(a-b)
+                clipped.append(tuple(p+(c-p)*ratio for p,c in zip(previous,current)))
+            if b>=0:
+                clipped.append(current)
+            previous=current
+    return min(1.,.5*abs(sum(x*v-y*u for (x,y),(u,v) in zip(clipped,clipped[1:]+clipped[:1]))))
+
+
 def _layer_coverage(layer,point,dpr):
     """Independent source geometry; transitions are exactly <=1 physical pixel."""
     from .calibration import gaussian_rounded_shadow
     if any(not _contains(clip,point) for clip in layer.get('clips',[])):return 0,False
     b=layer['bounds'];kind=layer['kind'];r=layer.get('radii',0)
+    if kind=='border-side':
+        coverage=_square_side_coverage(layer['polygon'],point,dpr)
+        return coverage,0<coverage<1
     distance=_shape_distance(point,b,r)
     # A hard shape can partially cover a unit pixel only if an edge reaches
     # its square aperture. The half diagonal bounds every edge direction.
@@ -379,6 +426,9 @@ def _layer_coverage(layer,point,dpr):
     if kind in ('glyph','caret'):
         return (1 if _contains(b,point) else 0),_contains(b,point)
     if kind in ('shadow','inset-shadow'):
+        if (kind=='shadow' and layer.get('knockout') and layer['blur']==0 and layer['spread']==0 and
+                not any(layer['offset'])):
+            return 0,False
         if kind=='inset-shadow' and distance>0:return 0,abs(distance)*dpr<=1
         if kind=='shadow' and layer.get('knockout') and distance*dpr < -1:return 0,False
         straight=(b['x']+r<=point[0]<=b['x']+b['width']-r or b['y']+r<=point[1]<=b['y']+b['height']-r)
@@ -391,6 +441,10 @@ def _layer_coverage(layer,point,dpr):
             value=gaussian_rounded_shadow(*point,shape,shadow,radius)
         else:
             shift=dict(shape,x=shape['x']+layer['offset'][0],y=shape['y']+layer['offset'][1])
+            if kind=='shadow' and any(p+.5<=lo or p-.5>=hi for p,lo,hi in (
+                    (point[0]*dpr,shift['x']*dpr,(shift['x']+shift['width'])*dpr),
+                    (point[1]*dpr,shift['y']*dpr,(shift['y']+shift['height'])*dpr))):
+                return 0,False
             edge=_shape_distance(point,shift,radius);value=float(edge<=0)
             if kind=='shadow' and (edge*dpr>pixel_reach or
                     layer.get('knockout') and distance*dpr < -pixel_reach):
@@ -472,6 +526,9 @@ def _native_paint_inventory(checkpoint,origin,dpr=1):
         vector(rgba,4,unit=True);vector([opacity],1,unit=True)
         if not a.get('visible',True) or opacity==0 or rgba[3]==0:continue
         bounds=dict(a['bounds']);translation=a.get('translation',[0,0]);bounds['x']+=translation[0];bounds['y']+=translation[1]
+        # The quad shader emits zero coverage for a degenerate extent. Keep
+        # its verified command membership without treating it as visible ink.
+        if kind==0 and (bounds['width']==0 or bounds['height']==0):continue
         bounds=relative(bounds,origin)
         clips=[]
         clip=a.get('clip')
@@ -534,8 +591,10 @@ def _web_paint_inventory(checkpoint,origin,dpr):
         identity=node['source_material_id'];s=node['style'];a=node['actual']
         if identity in seen:raise ProtocolError('duplicate Web backend paint node')
         seen.add(identity)
+        if (s.get('display')=='none' or s.get('visibility') in ('hidden','collapse') or s.get('opacity')=='0' or
+                any(group.get('opacity')=='0' for group in node['composition_group_path'])):
+            continue
         if not isinstance(node.get('paint_order'),int):raise RunError(3,'calibration','actual Chromium paint group missing')
-        if s.get('display')=='none' or s.get('visibility') in ('hidden','collapse'):continue
         for field in ('background-image','filter','backdrop-filter','clip-path','mask-image','text-shadow'):
             if s.get(field,'none')!='none':raise RunError(3,'calibration','unsupported actual CSS '+field)
         if node.get('pseudo') and s.get('content','none') not in ('none','normal','""',"''"):
@@ -555,10 +614,16 @@ def _web_paint_inventory(checkpoint,origin,dpr):
         if bounds['width']<=0 or bounds['height']<=0:continue
         bounds=relative(bounds,origin)
         clips=[]
+        clipped_out=False
         for clip in a.get('clips',[]):
             if clip['clip_path']!='none' or clip['transform']!='none' and not re.fullmatch(r'matrix\(1, 0, 0, 1, [-\d.]+, [-\d.]+\)',clip['transform']):
                 raise RunError(3,'calibration','CSS ancestor clip transform/path unsupported')
+            if clip['bounds']['width']==0 or clip['bounds']['height']==0:
+                clipped_out=True
+                break
             clips.append(relative(clip['bounds'],origin))
+        if clipped_out:
+            continue
         base=dict(identity=identity,side='web',bounds=bounds,groups=groups,clips=clips,alpha=1.,opacity=1.,
                   order=(node['paint_order'],node['layout_ordinal']),source=node,radii=(0,0,0,0))
         def add(kind,color,suffix,**fields):
@@ -576,6 +641,15 @@ def _web_paint_inventory(checkpoint,origin,dpr):
                 for i,box in enumerate(group['boxes']):
                     local=relative(box,origin)
                     if selected:add('fill',_css_rgba(selection['background']),f'/selection/{group["byte_begin"]}/{i}',bounds=local)
+                    ink=group.get('inline_ink')
+                    if ink is not None:
+                        if (i!=0 or len(group['boxes'])!=1 or len(content)!=1 or set(ink)!={'x','right'} or
+                                not all(type(v) in (float,int) and math.isfinite(v) for v in ink.values()) or
+                                ink['right']<ink['x']):
+                            raise ProtocolError('invalid actual Chromium glyph ink metrics')
+                        left=min(local['x'],ink['x']-origin['x'])
+                        right=max(local['x']+local['width'],ink['right']-origin['x'])
+                        local=dict(local,x=left,width=right-left)
                     add('glyph',_css_rgba(selection['color']) if selected else color,f'/text/{group["byte_begin"]}/{i}',bounds=local,text_group=group,content=content)
             caret=text.get('caret')
             if caret and caret['edge']['height']>0 and caret['animation']=='manual':
@@ -621,11 +695,15 @@ def _web_paint_inventory(checkpoint,origin,dpr):
                     add('inset-shadow',shadow['color'],'/inset/'+str(shadow['ordinal']),bounds=padding_box,
                         offset=shadow['offset'],blur=shadow['blur'],spread=shadow['spread'],radii=max(0,radii[0]-max(widths)))
         if any(widths):
-            if len(set(colors))!=1:
-                # Four independent side sources, with exact triangular corner
-                # ownership, remain future domain; never average their colors.
-                raise RunError(3,'calibration','four-color border corner domain unsupported')
-            add('border',colors[0],'/border',widths=widths)
+            visible=[edge for edge,(width,color) in enumerate(zip(widths,colors)) if width and color[3]]
+            if visible and len({colors[edge] for edge,width in enumerate(widths) if width})==1:
+                add('border',colors[visible[0]],'/border',widths=widths)
+            elif len(visible)==1 and not any(radii):
+                edge=visible[0]
+                polygon,box=_square_border_side(bounds,widths,edge)
+                add('border-side',colors[edge],f'/border/{edge}',bounds=box,polygon=polygon)
+            elif visible:
+                raise RunError(3,'calibration','multi-color or rounded split border outside finite pilot')
         outline_width=_css_number(s.get('outline-width','0px'))
         if outline_width and s.get('outline-style')!='none':
             if s['outline-style']!='solid':raise RunError(3,'calibration','non-solid outline unsupported')
@@ -686,6 +764,64 @@ def _visible_weight(layers,coverages,position):
     if max(weights)-min(weights)>1e-10 or not -1e-10<=weights[0]<=1+1e-10:
         raise ProtocolError('fixed source-over visible weight is inconsistent')
     return min(1.,max(0.,weights[0]))
+
+
+def _paint_endpoints(layers,coverages,variable):
+    for mask in range(1<<len(variable)):
+        candidate=coverages.copy()
+        for bit,position in enumerate(variable):
+            candidate[position]=float(bool(mask&(1<<bit)))
+        yield _composite_point(layers,candidate)
+
+
+def _bounded_paint_basis(layers,coverages,variable):
+    from .color_metrics import visible_basis
+    if len(variable)==1:
+        lower,upper=_paint_endpoints(layers,coverages,variable)
+        # Known neighboring paint is the backdrop, not a second unknown.
+        try:return visible_basis(lower,[] if lower==upper else [upper])
+        except ProtocolError:pass
+    try:return _palette_basis(layers,(1.,1.,1.))
+    except RunError:
+        joint=_hard_shadow_outline_basis(layers,coverages,variable)
+        if joint is None:raise
+        return joint
+
+
+def _hard_shadow_outline_basis(layers,coverages,variable):
+    """Observe the joint output of a hard shadow and focus outline at RGB8.
+
+    Their nearly parallel colors can leave individual weights unobservable.
+    The fixed source-over endpoints still bound every visible pixel and
+    determine an output scale without fitting it to either capture.
+    """
+    from .color_metrics import contribution_domain
+    if len(variable)!=2:
+        return None
+    shadow,outline=(layers[position] for position in variable)
+    if shadow['kind']!='shadow' or shadow.get('blur')!=0 or outline['kind']!='outline':
+        return None
+    if any(layer['groups'] for layer in layers):
+        return None
+    endpoints=tuple(_paint_endpoints(layers,coverages,variable))
+    base=endpoints[0]
+    span=max(abs(a-b) for endpoint in endpoints for a,b in zip(base,endpoint,strict=True))
+    if span<=4/255:
+        return None
+    return dict(mode='joint-hard-output',base=base,span=span,domain=contribution_domain(endpoints))
+
+
+def _paint_coordinates(observed,basis):
+    from .color_metrics import in_contribution_domain,solve_visible_contributions
+    rgb=tuple(v/255 for v in observed)
+    if basis['mode']=='joint-hard-output':
+        # At most two rounded RGB8 blends contribute a half-code per channel.
+        valid=in_contribution_domain(rgb,basis['domain'],(1/255,)*3)
+        values=tuple((b-v)/basis['span'] for b,v in zip(basis['base'],rgb,strict=True))
+        return valid,values
+    solution=solve_visible_contributions(rgb,basis)
+    values=solution['contributions']
+    return solution['valid'],tuple(values) if values is not None else (solution['joint_contrast'],)
 
 
 def _formal_paint_gates(native,web,stack):
@@ -757,17 +893,23 @@ def _hard_paint_gates(native_layers,web_layers,step):
     return errors
 
 
-def _glyph_priors_for_run(native,manifest):
+def _glyph_priors_for_run(native,manifest,*,independent_masks=False):
     from .calibration import scenario_font_priors,font_priors_from_bytes
     from .formal_icon_source import official_font_bytes
+    from .glyph_witness import scenario_masks
     from .protocol import ROOT,relative_path
-    ordinary=set();icons=set()
-    for checkpoint in native['checkpoints'].values():
-        for text in checkpoint['resources'].get('paint_stack',{}).get('glyph_inventory',[]):
-            destination=icons if text.get('kind')=='icon-font' else ordinary
-            destination.update(char for char in text['content'] if not char.isspace())
+    ordinary=set();icons=set();texts=[]
+    for step,checkpoint in native['checkpoints'].items():
+        views=(checkpoint['resources'],*native.get('context_tiles',{}).get(step,[]))
+        for view in views:
+            for text in view.get('paint_stack',{}).get('glyph_inventory',[]):
+                texts.append(text)
+                destination=icons if text.get('kind')=='icon-font' else ordinary
+                destination.update(char for char in text['content'] if not char.isspace())
     library=ROOT/relative_path(manifest['fonttools_library'])
     result=scenario_font_priors(manifest['fonts'],sorted(ordinary),library)
+    if independent_masks:
+        result['scenario_masks']=scenario_masks(manifest,ROOT,texts,result)
     if icons:result.update(font_priors_from_bytes(official_font_bytes(),[ord(c) for c in sorted(icons)],library))
     return result
 
@@ -776,6 +918,7 @@ def _glyph_witness_gate(row,point,dpr,priors,lower,observed):
     """Independent SFNT interior witnesses; atlas padding and border are no ink."""
     from .calibration import outline_point
     from .color_metrics import unmix_coverage
+    from .glyph_witness import encoded_coverage,mask_identity,scenario_ink_byte
     text,ink=row['glyph_source'];source=ink['atlas_source'];font=source['font']
     encoded=text['content'].encode();content=encoded[ink['byte_begin']:ink['byte_end']].decode()
     if content.isspace():return None
@@ -785,20 +928,27 @@ def _glyph_witness_gate(row,point,dpr,priors,lower,observed):
     if source['glyph_id']!=prior['glyph_id']:raise ProtocolError('actual atlas glyph differs from independent SFNT cmap')
     display=source['display_scale'];scale=font['logical_pixel_size']/prior['units']
     if display!=dpr:raise RunError(3,'calibration','actual glyph atlas scale differs from capture DPR')
-    baseline_x=row['bounds']['x']+(source['padding']-source['bearing_x']+source['phase']/4)/display
-    baseline_y=row['bounds']['y']+(source['bearing_y']+source['padding']+source.get('phase_y',0)/4)/display
-    if source.get('svg_viewport_origin') is True:
-        baseline_y+=prior['ascent']*scale
-    x=(point[0]-baseline_x)/scale;y=(baseline_y-point[1])/scale
-    inside,distance=outline_point(prior['contours'],x,y)
-    if not inside or distance*scale*dpr<=.125:return None
+    masks=priors.get('scenario_masks')
+    if masks is not None and text.get('kind')!='icon-font':
+        rasterizer,witnesses=masks
+        mask=witnesses.get(mask_identity(content,source))
+        if mask is None:raise ProtocolError('submitted glyph has no independent device mask')
+        byte=scenario_ink_byte(mask,source,row['bounds'],point,dpr)
+        if byte==0:return None
+        minimum=encoded_coverage(byte,row['color'],rasterizer)
+    else:
+        baseline_x=row['bounds']['x']+(source['padding']-source['bearing_x']+source['phase']/4)/display
+        baseline_y=row['bounds']['y']+(source['bearing_y']+source['padding']+source.get('phase_y',0)/4)/display
+        if source.get('svg_viewport_origin') is True:
+            baseline_y+=prior['ascent']*scale
+        x=(point[0]-baseline_x)/scale;y=(baseline_y-point[1])/scale
+        inside,distance=outline_point(prior['contours'],x,y)
+        if not inside or distance*scale*dpr<=.125:return None
+        # The interior disk is independently contained in the outline and pixel.
+        minimum=math.pi*min(.5,max(0,distance*scale*dpr-1/1024))**2
     # A witness is used only where the caller proved this glyph is exposed.
     try:unmixed=unmix_coverage(tuple(v/255 for v in observed),row['color'],lower,row['alpha']*row['opacity'],byte_error=1/255)
     except ProtocolError:return False
-    # A disk centered at the pixel center and contained in both the SFNT outline
-    # and the unit pixel gives a conservative nonzero area witness. The fixed
-    # outline subdivision error is below 1/1024 physical px at pilot sizes.
-    minimum=math.pi*min(.5,max(0,distance*scale*dpr-1/1024))**2
     if minimum<=2*unmixed['quantization_bound']:return None
     return unmixed['coverage']+unmixed['quantization_bound']>=minimum
 
@@ -812,7 +962,7 @@ def _same_glyph_interface(first,second):
     return identity(a)==identity(b)
 
 
-def _layered_context(case,declaration,native,web,images,thresholds,origins,*,glyph_priors=None):
+def _layered_context(case,declaration,native,web,images,thresholds,origins,*,glyph_priors=None,physical_region=None):
     from .color_metrics import rgb8_delta_e00,solve_visible_contributions,unmix_coverage,contribution_domain,in_contribution_domain,visible_segment
     from .regions import coverage_metrics,shadow_profile_metrics
     dpr=case['fixture']['viewport']['dpr'];sample=case['native']['sample_id']
@@ -827,7 +977,11 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
     for rows in inventories:
         for row in rows:scope=union(scope,_support(row))
     absolute=[dict(scope,x=scope['x']+origin['x'],y=scope['y']+origin['y']) for origin in origins]
-    try:crops,size,box=_crop_pair(images,*absolute,origins,dpr,int(context['guard_px']))
+    try:
+        if physical_region is not None:
+            crops,size,box=_crop_pair_box(images,physical_region,origins,dpr)
+        else:
+            crops,size,box=_crop_pair(images,*absolute,origins,dpr,int(context['guard_px']))
     except ProtocolError as error:
         raise RunError(4,'capture-coverage','full paint support/shadow/outline/popup plus guard is not captured; required relative support '+str(scope)) from error
     failures=list(hard_failures);measurements=[];counts={k:0 for k in ('flat','edge','glyph','shadow','joint','guard')}
@@ -867,18 +1021,18 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             # The basis is chosen solely from retained/DOM source colors, never
             # fitted to either observed pixel. Full layer alpha is not recovered.
             key=tuple((r['identity'],r['color']) for r in active)
-            if key not in basis_cache:basis_cache[key]=_palette_basis(active,(1.,1.,1.))
-            basis=basis_cache[key]
+            basis_key=(key,tuple(variable),tuple(0 if i in variable else c for i,c in enumerate(coverages)))
+            if basis_key not in basis_cache:
+                basis_cache[basis_key]=_bounded_paint_basis(active,coverages,variable)
+            basis=basis_cache[basis_key]
             if basis['mode']=='flat':
                 error=rgb8_delta_e00(observed,tuple(round(v*255) for v in predicted))
                 if error>thresholds['color.flat_delta_e00']:fail('visual','source-identical flat paint differs',side=side,pixel=point,actual=error)
                 sides.append(dict(active=active,coverages=coverages,variable=[],kind='flat',values=()))
                 continue
-            solution=solve_visible_contributions(tuple(v/255 for v in observed),basis)
-            if not solution['valid']:fail('typography' if any(r['kind']=='glyph' for r in active) else 'visual',
+            valid,values=_paint_coordinates(observed,basis)
+            if not valid:fail('typography' if any(r['kind']=='glyph' for r in active) else 'visual',
                                           'known source pixel violates visible color domain',side=side,pixel=point)
-            values=solution.get('contributions')
-            if values is None:values=(solution['joint_contrast'],)
             # Joint same-color opacity/order bounds use actual finite stack
             # extrema. Enumerating endpoint coverages creates no pixel-fitted
             # alpha, palette, registration, or tolerance.
@@ -887,26 +1041,19 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             if basis['mode']=='visible-contribution':
                 domain_key=(key,tuple(variable),tuple(0 if i in variable else c for i,c in enumerate(coverages)))
                 if domain_key not in domain_cache:
-                    vertices=[]
-                    for mask in range(1<<len(variable)):
-                        candidate=coverages.copy()
-                        for bit,position in enumerate(variable):candidate[position]=float(bool(mask&(1<<bit)))
-                        vertices.append(coordinates(solve_visible_contributions(_composite_point(active,candidate),basis)))
+                    vertices=[coordinates(solve_visible_contributions(endpoint,basis))
+                              for endpoint in _paint_endpoints(active,coverages,variable)]
                     domain_cache[domain_key]=contribution_domain(vertices)
                 if not in_contribution_domain(values,domain_cache[domain_key],basis['quantization_bounds']):
                     fail('visual','visible contributions violate actual source-over order/opacity domain',side=side,pixel=point)
             if basis['mode']=='joint-collinear':
                 domain_key=('collinear',key,tuple(variable),tuple(0 if i in variable else c for i,c in enumerate(coverages)))
                 if domain_key not in domain_cache:
-                    endpoints=[]
-                    for mask in range(1<<len(variable)):
-                        candidate=coverages.copy()
-                        for bit,position in enumerate(variable):candidate[position]=float(bool(mask&(1<<bit)))
-                        endpoint=_composite_point(active,candidate)
-                        endpoints.append(solve_visible_contributions(endpoint,basis)['joint_contrast'])
+                    endpoints=[solve_visible_contributions(endpoint,basis)['joint_contrast']
+                               for endpoint in _paint_endpoints(active,coverages,variable)]
                     domain_cache[domain_key]=(min(endpoints),max(endpoints))
                 low,high=domain_cache[domain_key]
-                eps=solution['quantization_bound']
+                eps=solve_visible_contributions(tuple(v/255 for v in observed),basis)['quantization_bound']
                 if not low-eps<=values[0]<=high+eps:fail('visual','joint color violates actual source opacity/order extrema',side=side,pixel=point)
             kinds={active[i]['kind'] for i in variable}
             kind='joint' if len(variable)>1 else ('glyph' if kinds & {'glyph','caret'} else 'shadow' if kinds & {'shadow','inset-shadow'} else 'edge')
@@ -954,6 +1101,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
         # Every actual context pixel is compared, including overlaps and tails.
         # No full-context byte equality veto is used for calibrated AA.
         a,b=[tuple(data[index*4:index*4+3]) for data in crops]
+        compared_coverage=False
         if not sides[0]['variable'] and not sides[1]['variable']:
             error=rgb8_delta_e00(a,b)
             if error>thresholds['color.flat_delta_e00']:fail('visual','paired flat/context/guard color differs',pixel=point,actual=error)
@@ -977,26 +1125,28 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 except ProtocolError:value=None
                 values.append(None if value is None else min(1.,max(0.,value)))
             if all(v is not None for v in values):
+                compared_coverage=True
                 if row['identity'] not in paired_planes:paired_planes[row['identity']]=(row,{},{},{})
                 _,first,second,uncertainty=paired_planes[row['identity']]
                 first[index],second[index]=values
                 if reference_uncertainty is not None:uncertainty[index]=reference_uncertainty
-                if row['kind'] in ('glyph','caret') and values[0]>=.98:
+                if row['kind'] in ('glyph','caret') and min(values)>=.98:
                     error=rgb8_delta_e00(a,b)
                     if error>thresholds['color.text_interior_delta_e00']:fail('typography','high contrast glyph/caret interior color differs',pixel=point,actual=error)
         if sides[0]['variable'] or sides[1]['variable']:
             if not sides[0]['variable'] or not sides[1]['variable']:
                 # A source geometry disagreement is already independently known.
                 # Keep comparing actual RGB rather than turning it into code 3.
-                value=rgb8_delta_e00(a,b)
-                if value>thresholds['color.flat_delta_e00']:fail('visual','actual paint support/transition differs',pixel=point,actual=value)
+                if not compared_coverage:
+                    value=rgb8_delta_e00(a,b)
+                    if value>thresholds['color.flat_delta_e00']:fail('visual','actual paint support/transition differs',pixel=point,actual=value)
             else:
                 # One reference basis for both pixels; material differences are
                 # output differences, never a choice of a favorable native basis.
-                basis=sides[0]['basis'];solutions=[solve_visible_contributions(tuple(v/255 for v in rgb),basis) for rgb in (a,b)]
-                if not all(s['valid'] for s in solutions):fail('visual','known paired pixel is outside fixed reference visible basis',pixel=point)
+                basis=sides[0]['basis'];solutions=[_paint_coordinates(rgb,basis) for rgb in (a,b)]
+                if not all(valid for valid,_ in solutions):fail('visual','known paired pixel is outside fixed reference visible basis',pixel=point)
                 else:
-                    coordinates=[s['contributions'] if s['contributions'] is not None else (s['joint_contrast'],) for s in solutions]
+                    coordinates=[values for _,values in solutions]
                     error=max((abs(x-y) for x,y in zip(*coordinates)),default=0);max_joint=max(max_joint,error)
                     cap=thresholds.get('overlap.contribution_max_error',thresholds['pixels.coverage_local_relative_error'])
                     if classification=='joint':
@@ -1066,7 +1216,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
     return failures,measurements
 
 
-def compare_checkpoint(case, declaration, native, web, images, thresholds, color,*,glyph_priors=None):
+def compare_checkpoint(case, declaration, native, web, images, thresholds, color,*,glyph_priors=None,context_tiles=()):
     failures = []
     step = declaration['step']
     def fail(category, target, message, **values):
@@ -1226,9 +1376,81 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
                 raster(target + '.icon', aw['bounds'], bn['bounds'], 2, 'visual',
                        local_background=_local_background(a, background))
     if layered:
-        errors,layer_measurements=_layered_context(case,declaration,native,web,images,thresholds,origins,glyph_priors=glyph_priors)
-        failures.extend(errors);measurements.extend(layer_measurements)
+        if context_tiles:
+            for tile_index,(n,w,frames,tile_origins,region) in enumerate(context_tiles):
+                errors,observed=_layered_context(case,declaration,n,w,frames,thresholds,tile_origins,
+                                                glyph_priors=glyph_priors,physical_region=region)
+                failures.extend(dict(error,tile=tile_index) for error in errors)
+                measurements.extend(dict(value,tile=tile_index) for value in observed)
+        else:
+            errors,layer_measurements=_layered_context(case,declaration,native,web,images,thresholds,origins,
+                                                       glyph_priors=glyph_priors)
+            failures.extend(errors);measurements.extend(layer_measurements)
     return failures, measurements
+
+
+def _read_pair(native,web,directories,image_module,color):
+    from .calibration import png_metadata
+    captures=(web['captures'][0],native['captures'][0])
+    for side,capture in zip(('web','native'),captures):
+        descriptor=color[side]
+        if capture['channel_order']!='RGBA' or capture['color_profile']!=descriptor['encoding']:
+            raise RunError(3,'calibration','capture original channel/encoding differs from independent controls')
+        if side=='native' and (capture['alpha']!='premultiplied' or capture['framebuffer_format']!=descriptor['framebuffer_format']):
+            raise RunError(3,'calibration','native original storage differs from independent controls')
+        if side=='web' and capture['alpha'] not in ('straight','opaque'):
+            raise RunError(3,'calibration','Web original PNG alpha differs')
+    images=[decoded(image_module,artifact(directories[side],capture['path']),capture)
+            for side,capture in zip(('web','native'),captures)]
+    if any(any(a!=255 for a in pixels[3::4]) for pixels,_ in images):
+        raise RunError(3,'calibration','pilot decoded capture is not all opaque')
+    raw=native['resources'].get('readback',{})
+    width,height=images[1][1]
+    if (raw.get('raw_alpha_available') is not True or raw.get('raw_alpha_min')!=255 or raw.get('raw_alpha_max')!=255 or
+            raw.get('raw_opaque_pixels')!=width*height or raw.get('raw_total_pixels')!=width*height or
+            raw.get('clear_rgba')!=color['native']['clear_rgba'] or
+            raw.get('source_channel_order')!=color['native']['source_channel_order']):
+        raise RunError(3,'calibration','native opaque working domain lacks actual raw alpha/clear/channel proof')
+    fingerprint=14695981039346656037
+    for byte in images[1][0]:
+        fingerprint=((fingerprint^byte)*1099511628211)&((1<<64)-1)
+    if raw.get('raw_rgba_fnv1a64')!=str(fingerprint):
+        raise RunError(3,'calibration','native opaque BMP differs from original owned raw RGBA')
+    png=png_metadata(artifact(directories['web'],captures[0]['path']))
+    if png['format'] not in color['web']['file_formats'] or png['color_chunks']!=color['web']['png_color_chunks']:
+        raise RunError(3,'calibration','Web PNG format differs from the independent controls')
+    return images
+
+
+def _context_tile_pairs(native,web,sides,context,directories,image_module,color,dpr,required):
+    if not any(sides):
+        return []
+    if len(sides[0])!=len(sides[1]) or not 1<=len(sides[0])<=8:
+        raise RunError(4,'capture-coverage','actual context tile identities are incomplete')
+    frames=[]
+    apertures=[]
+    for wt,nt in zip(*sides,strict=True):
+        def observed(parent,tile):
+            return dict(parent,targets=[tile['target']],captures=[tile['capture']],resources=tile)
+        w=observed(web,wt)
+        n=observed(native,nt)
+        images=_read_pair(n,w,directories,image_module,color)
+        origins=tuple(sample_anchor(tile['target']) for tile in (wt,nt))
+        apertures.append(tuple(capture_aperture(origin,tile['target']['clip'],image[1],dpr)
+                               for origin,tile,image in zip(origins,(wt,nt),images,strict=True)))
+        frames.append((n,w,images,origins))
+    try:
+        slices=vertical_capture_slices(required,apertures,int(context['guard_px']))
+    except ProtocolError as error:
+        raise RunError(4,'capture-coverage',str(error)) from error
+    return [(*frames[index],region) for index,region in slices]
+
+
+def _is_window_paint(row):
+    source=row['source']
+    if row['side']=='native':
+        return source.get('window_layer') is True
+    return any(name.endswith('.popup') for name in source.get('owner_targets',[]))
 
 
 def compare(case, native, web, directories, profile, image_module):
@@ -1236,7 +1458,7 @@ def compare(case, native, web, directories, profile, image_module):
     thresholds = profile_thresholds(profile, expected, case['profile'],image_module=image_module,
                                     native_binary_sha256=native['hello']['provenance']['binary_sha256'])
     from .calibration import evidence_manifest
-    glyph_priors=_glyph_priors_for_run(native,evidence_manifest(profile)[0])
+    glyph_priors=_glyph_priors_for_run(native,evidence_manifest(profile)[0],independent_masks=True)
     scope=profile['scope']
     fixture=case['fixture']
     if (case['identity'] not in scope['cases'] or fixture['locale']!=scope['locale'] or fixture['direction']!=scope['direction'] or
@@ -1252,54 +1474,64 @@ def compare(case, native, web, directories, profile, image_module):
                     font=run['font']
                     if (font['logical_pixel_size'],weights.get((font['sha256'],font['face_index']))) not in allowed:
                         raise RunError(3,'calibration','observed font size/weight has no independent pilot control')
+    color=profile['color']
+    if digest(web['hello']['provenance']['browser']['launch_args'])!=color['web']['launch_args_hash']:
+        raise RunError(3,'calibration','Web actual sRGB launch parameters differ')
     failures, measurements = [], {}
     for checkpoint_index, declaration in enumerate(case['checkpoints']):
         step = declaration['step']
         n, w = native['checkpoints'][step], web['checkpoints'][step]
-        captures = (w['captures'][0], n['captures'][0])
-        # Raw side descriptions stay distinct. Opaque identity is evidence-bound;
-        # no relabelling of native encoded/premultiplied into Web sRGB/straight.
-        from .calibration import png_metadata
-        color=profile['color']
-        for side,capture in zip(('web','native'),captures):
-            descriptor=color[side]
-            if capture['channel_order']!='RGBA' or capture['color_profile']!=descriptor['encoding']:
-                raise RunError(3,'calibration','capture original channel/encoding differs from independent controls')
-            if side=='native' and (capture['alpha']!='premultiplied' or capture['framebuffer_format']!=descriptor['framebuffer_format']):
-                raise RunError(3,'calibration','native original storage differs from independent controls')
-            if side=='web' and capture['alpha'] not in ('straight','opaque'):
-                raise RunError(3,'calibration','Web original PNG alpha differs')
-        images = [decoded(image_module, artifact(directory, capture['path']), capture)
-                  for directory, capture in zip((directories['web'], directories['native']), captures)]
-        if any(any(a!=255 for a in data[3::4]) for data,_ in images):
-            raise RunError(3,'calibration','pilot decoded capture is not all opaque')
-        raw=n['resources'].get('readback',{})
-        width,height=images[1][1]
-        if (raw.get('raw_alpha_available') is not True or raw.get('raw_alpha_min')!=255 or raw.get('raw_alpha_max')!=255 or
-                raw.get('raw_opaque_pixels')!=width*height or raw.get('raw_total_pixels')!=width*height or
-                raw.get('clear_rgba')!=color['native']['clear_rgba'] or
-                raw.get('source_channel_order')!=color['native']['source_channel_order']):
-            raise RunError(3,'calibration','native opaque working domain lacks actual raw alpha/clear/channel proof')
-        fingerprint=14695981039346656037
-        for byte in images[1][0]:fingerprint=((fingerprint^byte)*1099511628211)&((1<<64)-1)
-        if raw.get('raw_rgba_fnv1a64')!=str(fingerprint):
-            raise RunError(3,'calibration','native opaque BMP differs from original owned raw RGBA')
-        png=png_metadata(artifact(directories['web'],captures[0]['path']))
-        if (png['format'] not in color['web']['file_formats'] or png['color_chunks']!=color['web']['png_color_chunks'] or
-                digest(web['hello']['provenance']['browser']['launch_args'])!=color['web']['launch_args_hash']):
-            raise RunError(3,'calibration','Web PNG format/actual sRGB launch parameters differ')
+        images=_read_pair(n,w,directories,image_module,color)
         context = next(r for r in declaration['rois'] if r['kind'] == 'sample-context')
-        a = next(t for t in w['targets'] if t['identity'] == context['target'])['bounds']
-        b = next(t for t in n['targets'] if t['identity'] == context['target'])['bounds']
         at=next(t for t in w['targets'] if t['identity']==context['target'])
         bt=next(t for t in n['targets'] if t['identity']==context['target'])
-        crops, size, box = _crop_pair(images, a, b, (sample_anchor(at),sample_anchor(bt)),
-                                     case['fixture']['viewport']['dpr'], int(context['guard_px']))
-        diff = bytes(abs(x - y) if index % 4 != 3 else 255 for index, (x, y) in enumerate(zip(*crops)))
+        origins=(sample_anchor(at),sample_anchor(bt))
+        dpr=fixture['viewport']['dpr']
+        guard=int(context['guard_px'])
+        required=union(relative(at['bounds'],origins[0]),relative(bt['bounds'],origins[1]))
+        if required['height']>fixture['viewport']['height']*.75:
+            # Document tiles have a document clip. A window-layer popup can
+            # paint beyond that clip and moves with its trigger during a sweep.
+            # Its complete paint and guard therefore come from the primary pair.
+            web_rows,_=_web_paint_inventory(w,origins[0],dpr)
+            native_rows,_=_native_paint_inventory(n,origins[1],dpr)
+            overlay=[]
+            for row in (*web_rows,*native_rows):
+                if _is_window_paint(row):
+                    overlay.append(_support(row))
+                else:
+                    required=union(required,_support(row))
+            sides=(web['context_tiles'].get(step,[]),native['context_tiles'].get(step,[]))
+            regions=_context_tile_pairs(n,w,sides,context,directories,image_module,color,dpr,physical_box(required,dpr,guard))
+            if not regions:
+                raise RunError(4,'capture-coverage','long context has no actual viewport tiles')
+            by_target=({t['identity']:t for t in w['targets']},{t['identity']:t for t in n['targets']})
+            for roi in declaration['rois']:
+                if roi['kind']!='popup':
+                    continue
+                identity=roi['target']
+                overlay.extend(relative(targets[identity]['bounds'],origin)
+                               for targets,origin in zip(by_target,origins,strict=True))
+                guard=max(guard,int(roi['guard_px']))
+            if overlay:
+                regions.append((n,w,images,origins,physical_box(reduce(union,overlay),dpr,guard)))
+        else:
+            regions=[]
         destination = Path(directories['native']).parent / 'comparison' / str(checkpoint_index)
         destination.mkdir(parents=True)
-        image_module.frombytes('RGBA', size, diff).save(destination / 'diff.png')
-        errors, measured = compare_checkpoint(case, declaration, n, w, images, thresholds, profile['color'],glyph_priors=glyph_priors)
+        try:
+            if regions:
+                crops_to_write=[(f'tile-{index}-diff.png',_crop_pair_box(frames,box,tile_origins,dpr))
+                                for index,(_,_,frames,tile_origins,box) in enumerate(regions)]
+            else:
+                crops_to_write=[('diff.png',_crop_pair(images,at['bounds'],bt['bounds'],origins,dpr,guard))]
+        except ProtocolError as error:
+            raise RunError(4,'capture-coverage','full context or window-layer popup plus guard was not captured') from error
+        for filename,(crops,size,_) in crops_to_write:
+            diff=bytes(abs(x-y) if index%4!=3 else 255 for index,(x,y) in enumerate(zip(*crops)))
+            image_module.frombytes('RGBA',size,diff).save(destination/filename)
+        errors, measured = compare_checkpoint(case, declaration, n, w, images, thresholds, color,
+                                              glyph_priors=glyph_priors,context_tiles=regions)
         failures.extend(errors)
         measurements[step] = measured
     return failures, {'bindings': expected, 'thresholds': thresholds, 'checkpoints': measurements}

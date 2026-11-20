@@ -420,6 +420,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
     if (scenario) {
         std::uint64_t demo_readbacks{};
         const auto demo_binary_path = std::filesystem::path{demo_provenance.at("binary_path").string()};
+        const auto demo_binary_sha = demo_provenance.at("binary_sha256").string();
+        const auto demo_source_hash = demo_provenance.at("source").at("source_hash").string();
         const auto device = renderer.device_description();
         std::get<GalleryDemoJson::Object>(demo_provenance.value)
             .emplace("gpu", GalleryDemoJson::Object{{"name", device.name},
@@ -536,8 +538,8 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                         "premultiplied",
                         "native-encoded-SDR",
                         receipt.fence_completed,
-                        gallery_demo_native_build_manifest().at("source_hash").string(),
-                        gallery_demo_file_sha256(demo_binary_path),
+                        demo_source_hash,
+                        demo_binary_sha,
                         receipt.raw_alpha_available,
                         receipt.raw_alpha_min,
                         receipt.raw_alpha_max,
@@ -556,6 +558,9 @@ void run_page_acceptance(const GalleryPageOptions& options, GalleryPageAcceptanc
                     return result.glyph.glyph_id;
                 },
                 [&]() -> const graphics::OrderedScene& { return submitter.visible; }});
+        if (gallery_demo_file_sha256(demo_binary_path) != demo_binary_sha) {
+            throw std::runtime_error("scenario executable changed during the run");
+        }
         result.cases = 1;
         result.passed = true; // Protocol execution only; the Python oracle owns the differential verdict.
         write_gallery_page_acceptance(options.output, result);

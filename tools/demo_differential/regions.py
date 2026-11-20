@@ -59,6 +59,42 @@ def crop_rgba(data, size, box):
     return b''.join(data[(y * width + left) * 4:(y * width + right) * 4] for y in range(top, bottom))
 
 
+def capture_aperture(origin,clip,pixel_size,dpr):
+    """Actual admitted pixel centers in a retained sample's coordinate space."""
+    x,y=origin['x']*dpr,origin['y']*dpr
+    if abs(x-round(x))>1e-6 or abs(y-round(y))>1e-6:
+        raise ProtocolError('capture tile has an uncalibrated physical origin phase')
+    clip=rect(clip)
+    def edge(value,limit):
+        return max(0,min(limit,math.ceil(value*dpr-.5)))
+    return (edge(clip['x'],pixel_size[0])-round(x),edge(clip['y'],pixel_size[1])-round(y),
+            edge(clip['x']+clip['width'],pixel_size[0])-round(x),
+            edge(clip['y']+clip['height'],pixel_size[1])-round(y))
+
+
+def vertical_capture_slices(required,paired_apertures,guard):
+    """Assign every required row once, with independently observed overlap."""
+    left,top,right,bottom=required
+    if not paired_apertures or len(paired_apertures)>8 or right<=left or bottom<=top:
+        raise ProtocolError('invalid bounded vertical capture plan')
+    consumed=top
+    slices=[]
+    for i,(web,native) in enumerate(paired_apertures):
+        available_top=max(web[1],native[1])
+        available_bottom=min(web[3],native[3])
+        if (max(web[0],native[0])>left or min(web[2],native[2])<right or
+                available_top>consumed-(guard if slices else 0)):
+            raise ProtocolError('vertical capture rows are missing horizontal support or overlap')
+        end=bottom if available_bottom>=bottom else available_bottom-guard
+        if end<=consumed:
+            raise ProtocolError('vertical capture tile makes no forward progress')
+        slices.append((i,(left,consumed,right,end)))
+        consumed=end
+    if consumed!=bottom:
+        raise ProtocolError('vertical capture is missing its bottom support and guard')
+    return slices
+
+
 def component_sizes(points):
     remaining = set(points)
     sizes = []

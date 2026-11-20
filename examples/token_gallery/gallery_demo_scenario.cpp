@@ -563,7 +563,7 @@ public:
     }
 
     void emit(std::string_view type, std::string_view step, Json receipt, Json::Array targets = {},
-              Json::Array captures = {}) {
+              Json::Array captures = {}, Json::Array tiles = {}) {
         Json::Object states;
         for (const auto& item : targets) {
             states.emplace(item.at("identity").string(), item.at("state"));
@@ -587,6 +587,9 @@ public:
                                {"lifecycle", lifecycle()},
                                {"readback", captures.empty() ? Json{} : readback_evidence}};
         resources.emplace("paint_stack", captures.empty() ? Json{} : captured_paint);
+        if (!tiles.empty()) {
+            resources.emplace("context_tiles", std::move(tiles));
+        }
         Json::Object effective = actions.context->fixture.object();
         std::get<Json::Object>(effective.at("viewport").value).insert_or_assign("dpr", actions.metrics().at("dpr"));
         Json::Object consumed;
@@ -1397,93 +1400,170 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
             for (const auto& identity : declaration.at("targets").array()) {
                 targets.push_back(observer.snapshot(identity.string()));
             }
-            const auto filename = "checkpoint-" + std::to_string(index) + ".bmp";
-            const auto path = observations.parent_path() / filename;
-            if (std::filesystem::exists(path)) {
-                throw std::runtime_error("scenario checkpoint path already exists");
-            }
-            const auto revision = observer.actions.scene_revision();
-            const auto metrics = observer.actions.metrics();
-            const auto observe_paint = [&]() -> Json {
-                if (!observer.actions.submitted_scene) {
-                    return Json::Object{{"status", "unsupported"},
-                                        {"reason", "actual submitter scene query unavailable"}};
+            const auto capture_current = [&](const std::string& filename, const std::string& nonce) -> Json {
+                const auto path = observations.parent_path() / filename;
+                if (std::filesystem::exists(path)) {
+                    throw std::runtime_error("scenario checkpoint path already exists");
                 }
-                auto stack = gallery_demo_paint_stack(observer.actions.app, observer.factory_roots,
-                                                      observer.actions.submitted_scene());
-                auto& stack_fields = std::get<Json::Object>(stack.value);
-                for (auto& layer : std::get<Json::Array>(stack_fields.at("layers").value)) {
-                    const auto& owner = layer.at("owner");
-                    const runtime::ComponentId component{static_cast<std::uint32_t>(owner.at("index").integer()),
-                                                         static_cast<std::uint32_t>(owner.at("generation").integer())};
-                    Json::Array owners;
-                    for (const auto& name : observer.input_targets()) {
-                        const auto semantic_owner = observer.actions.pages.target(name);
-                        if (semantic_owner.valid() && observer.actions.app.components().contains(semantic_owner) &&
-                            owns(observer.actions.app, semantic_owner, component)) {
-                            owners.emplace_back(name);
-                        }
+                const auto revision = observer.actions.scene_revision();
+                const auto metrics = observer.actions.metrics();
+                const auto observe_paint = [&]() -> Json {
+                    if (!observer.actions.submitted_scene) {
+                        return Json::Object{{"status", "unsupported"},
+                                            {"reason", "actual submitter scene query unavailable"}};
                     }
-                    std::get<Json::Object>(layer.value).emplace("owner_targets", std::move(owners));
+                    auto stack = gallery_demo_paint_stack(observer.actions.app, observer.factory_roots,
+                                                          observer.actions.submitted_scene());
+                    auto& stack_fields = std::get<Json::Object>(stack.value);
+                    for (auto& layer : std::get<Json::Array>(stack_fields.at("layers").value)) {
+                        const auto& owner = layer.at("owner");
+                        const runtime::ComponentId component{
+                            static_cast<std::uint32_t>(owner.at("index").integer()),
+                            static_cast<std::uint32_t>(owner.at("generation").integer())};
+                        Json::Array owners;
+                        for (const auto& name : observer.input_targets()) {
+                            const auto semantic_owner = observer.actions.pages.target(name);
+                            if (semantic_owner.valid() && observer.actions.app.components().contains(semantic_owner) &&
+                                owns(observer.actions.app, semantic_owner, component)) {
+                                owners.emplace_back(name);
+                            }
+                        }
+                        std::get<Json::Object>(layer.value).emplace("owner_targets", std::move(owners));
+                    }
+                    stack_fields.emplace("glyph_inventory",
+                                         observer.snapshot(scenario.route.sample_identity).at("text"));
+                    stack_fields.erase("snapshot_digest");
+                    const auto bytes = stack.dump();
+                    stack_fields.emplace("snapshot_digest",
+                                         gallery_demo_sha256(std::span{
+                                             reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size()}));
+                    return stack;
+                };
+                auto paint_before = observe_paint();
+                const auto evidence = observer.actions.capture(path);
+                gallery_demo_validate_capture(evidence, observer.last_readback, revision, metrics,
+                                              scenario.definition.at("fixture"), observer.provenance);
+                if (!std::filesystem::is_regular_file(path) || observer.actions.scene_revision() != revision) {
+                    throw std::runtime_error("scenario current GPU checkpoint readback failed");
                 }
-                stack_fields.emplace("glyph_inventory", observer.snapshot(scenario.route.sample_identity).at("text"));
-                stack_fields.erase("snapshot_digest");
-                const auto bytes = stack.dump();
-                stack_fields.emplace(
-                    "snapshot_digest",
-                    gallery_demo_sha256(std::span{reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size()}));
-                return stack;
+                if (paint_before.dump() != observe_paint().dump()) {
+                    throw std::runtime_error("actual paint publication changed across checkpoint capture");
+                }
+                observer.last_readback = evidence.readback_id;
+                observer.readback_evidence = Json::Object{{"run_nonce", scenario.nonce},
+                                                          {"nonce", nonce},
+                                                          {"checkpoint", action.step},
+                                                          {"readback_id", count(evidence.readback_id)},
+                                                          {"fence_id", count(evidence.fence_id)},
+                                                          {"scene_revision", count(evidence.scene_revision)},
+                                                          {"renderer_owner", count(evidence.renderer_owner)},
+                                                          {"device_epoch", count(evidence.device_epoch)},
+                                                          {"metrics", evidence.metrics},
+                                                          {"source_channel_order", evidence.source_channel_order},
+                                                          {"source_hash", evidence.source_hash},
+                                                          {"binary_sha256", evidence.binary_sha256}};
+                auto& raw = std::get<Json::Object>(observer.readback_evidence.value);
+                raw.emplace("raw_alpha_available", evidence.raw_alpha_available);
+                raw.emplace("raw_alpha_min", count(evidence.raw_alpha_min));
+                raw.emplace("raw_alpha_max", count(evidence.raw_alpha_max));
+                raw.emplace("raw_opaque_pixels", count(evidence.raw_opaque_pixels));
+                raw.emplace("raw_total_pixels", count(evidence.raw_total_pixels));
+                raw.emplace("raw_rgba_fnv1a64", evidence.raw_rgba_fnv1a64);
+                raw.emplace("clear_rgba", evidence.clear_rgba);
+                observer.captured_paint = std::move(paint_before);
+                auto& paint = std::get<Json::Object>(observer.captured_paint.value);
+                paint.emplace("capture_binding", observer.readback_evidence);
+                return Json::Object{{"path", filename},
+                                    {"sha256", gallery_demo_file_sha256(path)},
+                                    {"nonce", nonce},
+                                    {"checkpoint", action.step},
+                                    {"scene_revision", count(observer.actions.scene_revision())},
+                                    {"width", metrics.at("pixel_width")},
+                                    {"height", metrics.at("pixel_height")},
+                                    {"dpr", metrics.at("dpr")},
+                                    {"fence_completed", evidence.fence_completed},
+                                    {"framebuffer_format", evidence.framebuffer_format},
+                                    {"channel_order", evidence.channel_order},
+                                    {"alpha", evidence.alpha},
+                                    {"color_profile", evidence.color_profile}};
             };
-            auto paint_before = observe_paint();
-            const auto evidence = observer.actions.capture(path);
-            gallery_demo_validate_capture(evidence, observer.last_readback, revision, metrics,
-                                          scenario.definition.at("fixture"), observer.provenance);
-            if (!std::filesystem::is_regular_file(path) || observer.actions.scene_revision() != revision) {
-                throw std::runtime_error("scenario current GPU checkpoint readback failed");
-            }
-            if (paint_before.dump() != observe_paint().dump()) {
-                throw std::runtime_error("actual paint publication changed across checkpoint capture");
-            }
-            observer.last_readback = evidence.readback_id;
+            const auto prefix = "checkpoint-" + std::to_string(index);
             const auto nonce = scenario.nonce + "-capture-" + std::to_string(index);
-            observer.readback_evidence = Json::Object{{"run_nonce", scenario.nonce},
-                                                      {"nonce", nonce},
-                                                      {"checkpoint", action.step},
-                                                      {"readback_id", count(evidence.readback_id)},
-                                                      {"fence_id", count(evidence.fence_id)},
-                                                      {"scene_revision", count(evidence.scene_revision)},
-                                                      {"renderer_owner", count(evidence.renderer_owner)},
-                                                      {"device_epoch", count(evidence.device_epoch)},
-                                                      {"metrics", evidence.metrics},
-                                                      {"source_channel_order", evidence.source_channel_order},
-                                                      {"source_hash", evidence.source_hash},
-                                                      {"binary_sha256", evidence.binary_sha256}};
-            auto& raw = std::get<Json::Object>(observer.readback_evidence.value);
-            raw.emplace("raw_alpha_available", evidence.raw_alpha_available);
-            raw.emplace("raw_alpha_min", count(evidence.raw_alpha_min));
-            raw.emplace("raw_alpha_max", count(evidence.raw_alpha_max));
-            raw.emplace("raw_opaque_pixels", count(evidence.raw_opaque_pixels));
-            raw.emplace("raw_total_pixels", count(evidence.raw_total_pixels));
-            raw.emplace("raw_rgba_fnv1a64", evidence.raw_rgba_fnv1a64);
-            raw.emplace("clear_rgba", evidence.clear_rgba);
-            observer.captured_paint = std::move(paint_before);
-            auto& paint = std::get<Json::Object>(observer.captured_paint.value);
-            paint.emplace("capture_binding", observer.readback_evidence);
+            const auto capture = capture_current(prefix + ".bmp", nonce);
+            Json::Array tiles;
+            const auto sample = observer.target_bounds(scenario.route.sample_identity);
+            const auto page = observer.actions.pages.snapshot();
+            const auto lane = page.layout.document;
+            const auto logical_height = static_cast<float>(observer.actions.metrics().at("logical_height").number());
+            if (sample.height > logical_height * .75F) {
+                const auto primary_readback = observer.readback_evidence;
+                const auto primary_paint = observer.captured_paint;
+                const auto callback_count = observer.actions.context->callbacks.size();
+                const auto focus = observer.actions.app.focus().state().focused;
+                const auto stride = 2 * std::floor(logical_height * .625F / 2);
+                const auto initial_offset = page.document.offset;
+                const auto at_sample_top = initial_offset + sample.y - lane.y - 20;
+                const auto move_document = [&](float offset) {
+                    const auto current = observer.actions.pages.snapshot().document.offset;
+                    if (current != offset) {
+                        observer.actions.pages.inject_scroll_at(lane.x + lane.width - 12, lane.y + lane.height / 2,
+                                                                (current - offset) / 48);
+                        observer.actions.render();
+                    }
+                };
+                for (std::size_t ordinal = 0; ordinal < 8; ++ordinal) {
+                    const auto offset = std::clamp(at_sample_top + static_cast<float>(ordinal) * stride, 0.0F,
+                                                   page.document.maximum_offset);
+                    move_document(offset);
+                    const auto view = observer.actions.pages.snapshot();
+                    if (view.generation != page.generation ||
+                        observer.actions.context->callbacks.size() != callback_count) {
+                        throw std::runtime_error("context capture changed the sample or dispatched a callback");
+                    }
+                    const auto id = std::to_string(ordinal);
+                    auto tile_target = observer.snapshot(scenario.route.sample_identity);
+                    auto tile_capture = capture_current(prefix + "-tile-" + id + ".bmp", nonce + "-tile-" + id);
+                    const auto tile_bytes = Json{Json::Object{{"ordinal", count(ordinal)},
+                                                              {"offset", view.document.offset},
+                                                              {"target", std::move(tile_target)},
+                                                              {"capture", tile_capture},
+                                                              {"readback", observer.readback_evidence},
+                                                              {"paint_stack", observer.captured_paint}}}
+                                                .dump();
+                    const auto tile_file = prefix + "-tile-" + id + ".json";
+                    const auto tile_path = observations.parent_path() / tile_file;
+                    if (std::filesystem::exists(tile_path)) {
+                        throw std::runtime_error("scenario context evidence path already exists");
+                    }
+                    std::ofstream stream(tile_path, std::ios::binary);
+                    stream.write(tile_bytes.data(), static_cast<std::streamsize>(tile_bytes.size()));
+                    stream.close();
+                    if (!stream) {
+                        throw std::runtime_error("scenario context evidence write failed");
+                    }
+                    tiles.emplace_back(Json::Object{
+                        {"path", tile_file},
+                        {"sha256", gallery_demo_sha256(std::span{
+                                       reinterpret_cast<const unsigned char*>(tile_bytes.data()), tile_bytes.size()})},
+                        {"bytes", count(tile_bytes.size())},
+                        {"capture", std::move(tile_capture)}});
+                    const auto moved = observer.target_bounds(scenario.route.sample_identity);
+                    if (moved.y + moved.height + 6 <= lane.y + lane.height) {
+                        break;
+                    }
+                }
+                move_document(initial_offset);
+                if (observer.actions.pages.snapshot().document.offset != initial_offset ||
+                    observer.actions.app.focus().state().focused != focus ||
+                    observer.actions.context->callbacks.size() != callback_count) {
+                    throw std::runtime_error("context capture did not restore the actual sample camera and input");
+                }
+                observer.readback_evidence = primary_readback;
+                observer.captured_paint = primary_paint;
+            }
             observer.completed_checkpoints.emplace_back(action.step);
-            const auto capture = Json::Object{{"path", filename},
-                                              {"sha256", gallery_demo_file_sha256(path)},
-                                              {"nonce", nonce},
-                                              {"checkpoint", action.step},
-                                              {"scene_revision", count(observer.actions.scene_revision())},
-                                              {"width", metrics.at("pixel_width")},
-                                              {"height", metrics.at("pixel_height")},
-                                              {"dpr", metrics.at("dpr")},
-                                              {"fence_completed", evidence.fence_completed},
-                                              {"framebuffer_format", evidence.framebuffer_format},
-                                              {"channel_order", evidence.channel_order},
-                                              {"alpha", evidence.alpha},
-                                              {"color_profile", evidence.color_profile}};
-            observer.emit("checkpoint", action.step, receipt, std::move(targets), Json::Array{capture});
+            observer.emit("checkpoint", action.step, receipt, std::move(targets), Json::Array{capture},
+                          std::move(tiles));
         }
     }
     observer.emit("complete", "", empty_receipt);

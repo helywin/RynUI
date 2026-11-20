@@ -4,6 +4,7 @@ from __future__ import annotations
 import math
 import uuid
 from dataclasses import dataclass
+from functools import lru_cache
 
 from .adapters import process
 from .protocol import ProtocolError, read, relative_path
@@ -47,6 +48,83 @@ def build(manifest, root, cells):
                                                     phase=phase, physical_em=size * dpr)
     admitted = [{**font, 'path': str(root / relative_path(font['path']))} for font in fonts]
     return identity, read_masks(manifest, root, identity, specs, policy=policy, fonts=admitted)
+
+
+def scenario_masks(manifest, root, texts, priors):
+    """Rasterize independently identified SFNT glyphs at submitted phases."""
+    policy, = manifest['environment']['native_capture']['font_raster_policies']
+    rasterizer = policy['rasterizer']
+    if rasterizer not in ('directwrite-3x1', 'fontations-skia-a8'):
+        return None
+    fonts = [{**font, 'path': str(root / relative_path(font['path']))} for font in manifest['fonts']]
+    font_indices = {(font['sha256'], font['face_index']): i for i, font in enumerate(fonts)}
+    specs = {}
+    for text in texts:
+        if text.get('kind') == 'icon-font':
+            continue
+        content = text['content'].encode()
+        for ink in text.get('ink_instances', []):
+            left, top, right, bottom = ink['clip']
+            if left >= right or top >= bottom or ink['paint_opacity'] == 0 or ink['color'][3] == 0:
+                continue
+            scalar = content[ink['byte_begin']:ink['byte_end']].decode()
+            if scalar.isspace():
+                continue
+            source = ink['atlas_source']
+            font = source['font']
+            key = mask_identity(scalar, source)
+            prior = priors.get(font['sha256'] + ':' + scalar)
+            index = font_indices.get((font['sha256'], font['face_index']))
+            if prior is None:
+                raise ProtocolError('no independent cmap witness for scenario cluster ' + repr(scalar))
+            if source['glyph_id'] != prior['glyph_id'] or index is None:
+                raise ProtocolError('scenario glyph differs from the independent face/cmap for ' + repr(scalar))
+            if font['raster_policy'] != policy or source.get('phase_y', 0) != 0:
+                raise ProtocolError('scenario glyph raster policy differs for ' + repr(scalar))
+            specs[key] = dict(font=index, glyph_id=prior['glyph_id'], phase=source['phase'],
+                              physical_em=font['logical_pixel_size'] * source['display_scale'])
+    if not specs:
+        return rasterizer, {}
+    return rasterizer, read_masks(manifest, root, rasterizer, specs, policy=policy, fonts=fonts)
+
+
+def mask_identity(scalar, source):
+    font = source['font']
+    return (font['sha256'], font['face_index'], scalar, font['logical_pixel_size'],
+            source['display_scale'], source['phase'])
+
+
+def scenario_ink_byte(mask, source, bounds, point, dpr):
+    if (mask.left != source['bearing_x'] or mask.top != -source['bearing_y'] or
+            mask.width != source['coverage_width'] or mask.height != source['coverage_height']):
+        raise ProtocolError('submitted glyph extent differs from the independently rasterized face')
+    x, y = (bounds[name] * dpr for name in ('x', 'y'))
+    if abs(x - round(x)) > 1/64 or abs(y - round(y)) > 1/64:
+        raise ProtocolError('submitted unrotated glyph is not positioned on the capture device grid')
+    return mask.at(math.floor(point[0] * dpr) - round(x) + mask.left - source['padding'],
+                   math.floor(point[1] * dpr) - round(y) + mask.top - source['padding'])
+
+
+@lru_cache(maxsize=4096)
+def encoded_coverage(byte, color, rasterizer):
+    from .color_metrics import srgb_to_linear
+
+    coverage = byte / 255
+    if byte in (0, 255):
+        return coverage
+    luma = sum(value * coeff for value, coeff in zip(color, (.2126, .7152, .0722), strict=True))
+    inverse = 1 - luma
+    srgb = rasterizer == 'directwrite-3x1'
+    back, front = srgb_to_linear((inverse, luma, 0))[:2] if srgb else (inverse**1.2, luma**1.2)
+    weight = coverage + (1 - coverage) * coverage * back * (1 if srgb else .2)
+    if abs(luma - inverse) > 1/256:
+        linear = back * (1 - weight) + front * weight
+        if srgb:
+            encoded = 12.92 * linear if linear <= .0031308 else 1.055 * linear**(1/2.4) - .055
+        else:
+            encoded = linear**(1/1.2)
+        weight = (encoded - inverse) / (luma - inverse)
+    return math.floor(255 * min(1, max(0, weight)) + .5) / 255
 
 
 def read_masks(manifest, root, identity, specs, **inputs):

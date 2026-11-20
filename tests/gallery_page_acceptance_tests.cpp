@@ -39,8 +39,8 @@ int main(int argc, char** argv) {
         }
         for (const auto argument :
              {"--unknown", "--page=missing", "--page=button/otp", "--page=button/input", "--page-width=0",
-              "--page-timeout=999", "--page-output=README.json", "--page-output=out/../escape.json",
-              "--page-output=out/folder", "--sample=missing"}) {
+              "--page-timeout=121", "--page-timeout=999", "--page-output=README.json",
+              "--page-output=out/../escape.json", "--page-output=out/folder", "--sample=missing"}) {
             bool rejected{};
             try {
                 static_cast<void>(
@@ -100,8 +100,13 @@ int main(int argc, char** argv) {
         if (scenario_options.scenario != request || scenario_options.observations != observations) {
             throw std::runtime_error("scenario CLI lost its bounded paths");
         }
+        auto extended = scenario_arguments;
+        extended.emplace_back("--page-timeout=180");
+        if (parse_arguments(extended).timeout_seconds != 180) {
+            throw std::runtime_error("differential viewport tiles lost their explicit capture budget");
+        }
         for (const auto fault : {"no-acceptance", "no-visual", "no-observations", "duplicate-scenario", "i18n",
-                                 "two-pages", "escaping-observations"}) {
+                                 "two-pages", "escaping-observations", "timeout"}) {
             auto arguments = scenario_arguments;
             const std::string_view name{fault};
             if (name == "no-acceptance") {
@@ -116,6 +121,8 @@ int main(int argc, char** argv) {
                 arguments.emplace_back("--page-i18n");
             } else if (name == "two-pages") {
                 arguments.emplace_back("--page=input");
+            } else if (name == "timeout") {
+                arguments.emplace_back("--page-timeout=181");
             } else {
                 arguments.back() = "--page-observations=README.jsonl";
             }

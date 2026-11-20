@@ -18,8 +18,10 @@ from demo_differential.protocol import FIXTURES, ProtocolError, read, validate
 from demo_differential.reporting import write_json
 from demo_differential.source_closure import source_manifest
 from demo_differential.inventory import source_inventory, obligations
+from demo_differential.observations import IncompleteRun
 from demo_differential.comparison import digest
 from demo_differential.adapters import web_definition
+from demo_differential.runner_evidence import context_tiles
 
 CONTROL_INVENTORY = None
 CONTROL_MANIFEST = None
@@ -246,6 +248,35 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(adapter.calls, ['prepare', 'native-probe', 'preflight', 'native', 'web'])
         for name in ('report.json', 'junit.xml', 'index.html'):
             self.assertTrue((self.options['output'] / name).is_file())
+
+    def test_tile_reference_requires_its_original_sidecar_bytes(self):
+        case = control_case()
+        adapter = AdapterControl()
+        directory = self.directory / 'tiles'
+        stream = adapter.web(case, 'tile-run', directory, {}, self.options)
+        checkpoint = next(row for row in (json.loads(line) for line in stream.read_text().splitlines())
+                          if row['type'] == 'checkpoint')
+        sample = next(target for target in checkpoint['targets'] if target['identity'] == case['native']['sample_id'])
+        sample['bounds']['height'] = 24
+        sample['scroll']['document_offset'] = 0
+        with self.assertRaisesRegex(IncompleteRun, 'tile set is absent'):
+            context_tiles(checkpoint, case, directory, 'web', set(), 1)
+        image = directory / 'tile.bmp'
+        image.write_bytes(bmp())
+        capture = dict(checkpoint['captures'][0], path=image.name, nonce='tile-run-tile-1-0',
+                       sha256=hashlib.sha256(image.read_bytes()).hexdigest())
+        evidence = directory / 'tile.json'
+        tile = dict(ordinal=0, offset=0, target=sample, capture=capture, paint_stack={},
+                    paint_receipt=dict(nonce=capture['nonce'], step='capture', sequence=1,
+                                       fresh_readback=True, sha256=capture['sha256']))
+        write_json(evidence, tile)
+        original = evidence.read_bytes()
+        checkpoint['resources']['context_tiles'] = [dict(path=evidence.name, bytes=len(original),
+            sha256=hashlib.sha256(original).hexdigest(), capture=capture)]
+        self.assertEqual(context_tiles(checkpoint, case, directory, 'web', set(), 1), [tile])
+        evidence.write_bytes(original.replace(b'"offset": 0', b'"offset": 1'))
+        with self.assertRaisesRegex(IncompleteRun, 'evidence bytes differ'):
+            context_tiles(checkpoint, case, directory, 'web', set(), 1)
 
     def test_empty_selection_and_missing_profile_fail_with_report(self):
         self.options['component'] = 'unknown'

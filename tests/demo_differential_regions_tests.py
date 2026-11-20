@@ -6,7 +6,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from demo_differential.regions import (geometry, union, physical_box, crop_rgba, raster_metrics, contour_distance,
-                                       coverage_metrics,reference_aa_is_bounded)
+                                       coverage_metrics,reference_aa_is_bounded,capture_aperture,vertical_capture_slices)
 from demo_differential.protocol import ProtocolError
 
 
@@ -20,6 +20,26 @@ def pixels(width, height, points):
 
 
 class RegionTests(unittest.TestCase):
+    def test_vertical_tiles_use_actual_clips_and_guard_overlap(self):
+        size=(1920,1350)
+        required=(-2,-2,1010,2690)
+        frames=[]
+        for web_y,native_y in ((16,96),(-600,-516),(-908,-1022)):
+            apertures=(capture_aperture(rectangle(16,web_y),rectangle(0,0,1280,900),size,1.5),
+                       capture_aperture(rectangle(344,native_y),rectangle(288,76,784,808),size,1.5))
+            frames.append(apertures)
+        slices=vertical_capture_slices(required,frames,2)
+        self.assertEqual(slices[0][1][1],required[1])
+        self.assertEqual(slices[-1][1][3],required[3])
+        for left,right in zip(slices,slices[1:]):
+            self.assertEqual(left[1][3],right[1][1])
+        for bad in (frames[:1]+frames[2:],frames[:-1],frames[::-1],
+                    [(frames[0][0],(-1,*frames[0][1][1:])),*frames[1:]]):
+            with self.assertRaises(ProtocolError):
+                vertical_capture_slices(required,bad,2)
+        with self.assertRaises(ProtocolError):
+            capture_aperture(rectangle(16.25,0),rectangle(0,0,1280,900),size,1.5)
+
     def test_reference_aa_band_cannot_expand_with_native_residual(self):
         self.assertTrue(reference_aa_is_bounded([0,.25,1,1,.25,0],(6,1)))
         self.assertFalse(reference_aa_is_bounded([.1,.25,.4,1,1,.4,.25,.1],(8,1)))

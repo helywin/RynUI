@@ -267,7 +267,8 @@ def validate_observations(directory, request):
     for receipt in receipts:
         require(receipt['receipt']['dispatched'], 'action not executed: ' + receipt['step'])
     capture_names = set()
-    for record, declaration in zip(checkpoints, definition['checkpoints']):
+    from demo_differential.runner_evidence import context_tiles
+    for sequence, (record, declaration) in enumerate(zip(checkpoints, definition['checkpoints'],strict=True),1):
         require([t['identity'] for t in record['targets']] == declaration['targets'], 'missing checkpoint target')
         require(len(record['captures']) == 1, 'missing/duplicate fresh frame')
         capture = record['captures'][0]
@@ -279,6 +280,7 @@ def validate_observations(directory, request):
         paint = record['resources'].get('paint_receipt', {})
         require(paint.get('fresh_readback') and paint.get('nonce') == request['nonce'] and paint.get('step') == record['step'],
                 'missing new paint receipt')
+        context_tiles(record,definition,directory,'web',capture_names,sequence)
     require(records[-1]['completed_steps'] == expected_steps and
             records[-1]['completed_checkpoints'] == [c['step'] for c in definition['checkpoints']], 'incomplete completion sets')
     if definition['fixture']['container']['layout'].startswith('composition-v'):
@@ -287,7 +289,8 @@ def validate_observations(directory, request):
     return records
 
 
-def execute(request, prepared_dir, output, *, reference='locked', publish_cache=True):
+def execute(request, prepared_dir, output, *, reference='locked', publish_cache=True, timeout=EXECUTION_TIMEOUT_SECONDS):
+    require(type(timeout) is int and 1 <= timeout <= 180, 'browser timeout must be in 1..180 seconds')
     prepared_dir = output_path(prepared_dir)
     prepared = verify_prepared(prepared_dir)
     definition = validate_request(request, prepared)
@@ -348,7 +351,7 @@ def execute(request, prepared_dir, output, *, reference='locked', publish_cache=
                                    stdout=log, stderr=subprocess.STDOUT, env=environment_vars, cwd=ROOT,
                                    start_new_session=os.name != 'nt')
         try:
-            result = process.wait(timeout=EXECUTION_TIMEOUT_SECONDS)
+            result = process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             if os.name == 'nt':
                 subprocess.run(['taskkill', '/T', '/F', '/PID', str(process.pid)], capture_output=True)
@@ -359,7 +362,8 @@ def execute(request, prepared_dir, output, *, reference='locked', publish_cache=
             raise PreparationError('Web browser execution timeout')
     require(result == 0, 'Web browser execution failed; see ' + str(output / 'execute.log'))
     observations = validate_observations(output, request)
-    captures = {c['path']: c['sha256'] for r in observations for c in r['captures']}
+    captures = {c['path']: c['sha256'] for r in observations
+                for c in (*r['captures'],*(t['capture'] for t in r['resources'].get('context_tiles',[])))}
     browser_environment = observations[0]['provenance']['browser']
     if cache_hit:
         old = verify_cache(cache, key)
@@ -405,6 +409,7 @@ def main():
     run.add_argument('--prepared', required=True)
     run.add_argument('--output', required=True)
     run.add_argument('--reference', choices=['locked', 'rebuild'], default='locked')
+    run.add_argument('--timeout', type=int, default=EXECUTION_TIMEOUT_SECONDS)
     run.add_argument('--no-cache-publish', action='store_true', help='Execute and validate normally without publishing a cache miss')
     args = parser.parse_args()
     try:
@@ -415,7 +420,7 @@ def main():
                                    mode=args.fonttools_mode, fonttools_lib=args.fonttools_lib, offline=args.offline)
         else:
             result = execute(read(args.request), args.prepared, args.output, reference=args.reference,
-                             publish_cache=not args.no_cache_publish)
+                             publish_cache=not args.no_cache_publish, timeout=args.timeout)
         print(json.dumps(result))
     except (PreparationError, ProtocolError, OSError, ValueError, subprocess.SubprocessError) as error:
         print('Web reference failed: ' + str(error), file=sys.stderr)

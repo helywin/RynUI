@@ -135,8 +135,14 @@ export async function observePaintStack(cdp, identities, {nonce,step,revision,vi
   for(const layer of layers)layer.composition_group_path=layer.ancestry.slice().reverse()
     .filter(id=>groupByNode.has(id)).map(id=>({backend_node_id:id,paint_order:groupByNode.get(id).paint_order,
       opacity:groupByNode.get(id).style.opacity}));
-  const stack={status:layers.every(l=>Number.isInteger(l.paint_order))?'published':'unsupported',
-    reason:layers.every(l=>Number.isInteger(l.paint_order))?'':'Chromium did not expose actual paint order',
+  // Chromium can omit paint order for a retained placeholder hidden by its
+  // computed visibility or a zero-opacity group. Keep its DOM evidence and
+  // require order for each node that can contribute to the screenshot.
+  const complete=layers.every(l=>Number.isInteger(l.paint_order) || l.style.display==='none' ||
+    ['hidden','collapse'].includes(l.style.visibility) || l.style.opacity==='0' ||
+    l.composition_group_path.some(group=>group.opacity==='0'));
+  const stack={status:complete?'published':'unsupported',
+    reason:complete?'':'Chromium did not expose actual paint order',
     source:'Chromium DOMSnapshot.getSnapshot actual paintOrder and UA shadow layout',
     scene_revision:revision,viewport:{...viewport,...liveViewport},roots,layers};
   stack.snapshot_digest=crypto.createHash('sha256').update(JSON.stringify(stack)).digest('hex');

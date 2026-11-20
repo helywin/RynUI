@@ -209,7 +209,7 @@ class RealAdapters:
         allow_publish = reference_cache_publish_allowed(options.get('fault', 'none')) and options.get('reference_publish', True)
         argv = [sys.executable, '-B', str(ROOT / 'tools/demo_reference_web/reference.py'), 'run',
                 '--request', str(request), '--prepared', prepared['prepared'], '--output', str(directory),
-                '--reference', options['reference']]
+                '--reference', options['reference'], '--timeout', str(options['timeout'])]
         if not allow_publish:
             argv.append('--no-cache-publish')
         process(argv, directory.parent / 'web-process', options['timeout'] + 120)

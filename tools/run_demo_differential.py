@@ -54,7 +54,8 @@ def main():
         command.add_argument('--comparison-site', type=Path)
         command.add_argument('--offline', action='store_true')
         command.add_argument('--dpr', default='native')
-        command.add_argument('--timeout', type=int, default=30)
+        command.add_argument('--timeout', type=int, default=30,
+                             help='Per-case budget, up to 180 seconds for native viewport tiles')
     running.add_argument('--fault', choices=['none', *(fault.identity for fault in FAULTS)], default='none',
                          help='Acceptance-only native pilot fault; this ordinary run cannot pass or publish cache')
     replay = commands.add_parser('replay', help='Rerun failed/not-run cases with unchanged definitions/profile/reference')
