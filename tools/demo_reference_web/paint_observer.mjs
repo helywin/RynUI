@@ -145,7 +145,9 @@ export async function observePaintStack(cdp, identities, {nonce,step,revision,vi
       bounds:{...layout.boundingBox,x:layout.boundingBox.x-liveViewport.scroll_x,y:layout.boundingBox.y-liveViewport.scroll_y},
       raw_document_bounds:layout.boundingBox,layout_text:layout.layoutText??null,inline_text_nodes:layout.inlineTextNodes??[],style,actual});
   }
-  const groupByNode=new Map(layers.filter(l=>l.stacking_context).map(l=>[l.backend_node_id,l]));
+  // DOMSnapshot can copy an element's opacity and stacking flag to a Text row.
+  // Only element boxes establish an opacity group, including generated elements.
+  const groupByNode=new Map(layers.filter(l=>l.node_type===1&&l.stacking_context).map(l=>[l.backend_node_id,l]));
   for(const layer of layers)layer.composition_group_path=layer.ancestry.slice().reverse()
     .filter(id=>groupByNode.has(id)).map(id=>({backend_node_id:id,paint_order:groupByNode.get(id).paint_order,
       opacity:groupByNode.get(id).style.opacity}));

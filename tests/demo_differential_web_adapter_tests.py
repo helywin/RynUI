@@ -371,6 +371,15 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
         self.assertFalse(evaluate(definition, observed, 'web'))
         self.assertEqual(rows[0]['provenance']['clock_canary']['caret_control'],
                          {'mode': 'manual', 'screenshot': 'initial', 'hidden': False})
+        opened = observed['checkpoints']['opened']['resources']['paint_stack']['layers']
+        dimmed_text = [row for row in opened if row['node_type'] == 3 and
+                       'gallery.select.controlled-search' in row['owner_targets'] and
+                       any(group['opacity'] == '0.25' for group in row['composition_group_path'])]
+        self.assertTrue(dimmed_text, 'opened Select did not observe its dimmed selected label')
+        text_ids = {row['backend_node_id'] for row in opened if row['node_type'] == 3}
+        for row in dimmed_text:
+            owners = [group['backend_node_id'] for group in row['composition_group_path']]
+            self.assertTrue(text_ids.isdisjoint(owners), 'Text layout row established a second opacity group')
         initial = deepcopy(rows[0]['effective_inputs']['actual_initial_inputs'])
         self.assertEqual(initial['instances']['gallery.select.popup-note']['status'], 'deferred')
         self.assertEqual(initial['instances']['gallery.select.deliver']['status'], 'deferred')
