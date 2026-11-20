@@ -390,19 +390,18 @@ public:
         Json::Object tokens;
         Json::Array texts;
         Json::Array icons;
+        const auto& selectors = actions.app.services().select();
+        const auto select_target = sample ? std::nullopt : selectors.paint_owners(id);
         std::map<std::uint32_t, bool> selector_labels;
-        for (const auto selector : actions.app.services().select().mounted()) {
+        for (const auto selector : selectors.mounted()) {
             if (in_target_plane(selector)) {
-                const auto select = actions.app.services().select().snapshot(selector);
+                const auto select = selectors.snapshot(selector);
                 selector_labels.emplace(select.selector.index,
                                         select.value && (!select.visible || select.query.empty()));
             }
         }
         for (const auto& button : actions.app.mounted_buttons()) {
-            if (!contains(name, button.component)) {
-                continue;
-            }
-            if (sample) {
+            if (sample || button.component != id) {
                 continue;
             }
             const auto button_state = actions.app.snapshot(button.component);
@@ -414,9 +413,7 @@ public:
             const bool small = button_state.size == ControlSize::Small;
             const bool large = button_state.size == ControlSize::Large;
             tokens["source"] = "effective-component-theme";
-            tokens["padding_inline"] = small   ? theme.padding_inline_small
-                                       : large ? theme.padding_inline_large
-                                               : theme.padding_inline;
+            tokens["padding_inline"] = button_state.layout_padding_inline;
             tokens["border_width"] = theme.border_width;
             tokens["border_radius"] = small   ? theme.border_radius_small
                                       : large ? theme.border_radius_large
@@ -434,10 +431,12 @@ public:
             }
             const auto display = actions.inputs.display_snapshot(input.component);
             const auto layout = actions.inputs.layout_snapshot(input.component);
-            if (!sample && std::holds_alternative<std::nullptr_t>(state["value"].value)) {
+            const bool is_target_editor =
+                !sample && (input.component == id || (select_target && input.component == select_target->selector));
+            if (is_target_editor && std::holds_alternative<std::nullptr_t>(state["value"].value)) {
                 state["value"] = std::string{actions.inputs.editors().require(input.editor).value()};
             }
-            if (!sample) {
+            if (is_target_editor) {
                 state["disabled"] = actions.inputs.editors().require(input.editor).disabled();
                 state["read_only"] = actions.inputs.editors().require(input.editor).read_only();
                 state["display_value"] = std::string{display.text};
@@ -484,34 +483,46 @@ public:
                 texts.push_back(std::move(item));
             }
         }
-        for (const auto selector : actions.app.services().select().mounted()) {
-            if (!sample && contains(name, selector)) {
-                const auto select = actions.app.services().select().snapshot(selector);
-                const auto inputs = actions.app.services().select().input_snapshot(selector);
-                state["disabled"] = inputs.disabled;
-                state["loading"] = inputs.loading;
-                state["value"] = selected(select.value);
-                state["open"] = select.visible;
-                state["query"] = std::string{select.query.bytes()};
-                tokens["paint"] = gallery_demo_input_paint_snapshot(actions.inputs.paint_snapshot(select.selector));
-                tokens["popup_bounds"] = rect(select.popup);
-                tokens["popup_scroll"] = select.scroll;
-                state["active_option_index"] = select.active ? count(*select.active) : Json{};
-                Json::Array keys;
-                for (const auto& option : inputs.options) {
-                    keys.push_back(selected(SelectSelection{option.value}));
+        if (select_target) {
+            const auto select = selectors.snapshot(id);
+            const auto inputs = selectors.input_snapshot(id);
+            state["disabled"] = inputs.disabled;
+            state["loading"] = inputs.loading;
+            state["value"] = selected(select.value);
+            state["open"] = select.visible;
+            state["query"] = std::string{select.query.bytes()};
+            tokens["paint"] = gallery_demo_input_paint_snapshot(actions.inputs.paint_snapshot(select.selector));
+            tokens["popup_bounds"] = rect(select.popup);
+            tokens["popup_scroll"] = select.scroll;
+            state["active_option_index"] = select.active ? count(*select.active) : Json{};
+            Json::Array keys;
+            for (const auto& option : inputs.options) {
+                keys.push_back(selected(SelectSelection{option.value}));
+            }
+            state["option_keys"] = std::move(keys);
+            const auto& token = components.theme_scope(id)->snapshot().select();
+            tokens["select"] = Json::Object{{"option_height", token.metrics.option_height},
+                                            {"option_padding_inline", token.metrics.option_padding_inline},
+                                            {"option_padding_block", token.metrics.option_padding_block},
+                                            {"popup_padding", token.metrics.popup_padding},
+                                            {"border_radius", token.metrics.border_radius},
+                                            {"font_size", token.typography.font_size},
+                                            {"font_weight", count(token.typography.font_weight)},
+                                            {"popup_background", color(token.colors.popup_background)},
+                                            {"option_color", color(token.colors.option_color)}};
+        } else if (!sample && name.ends_with(".popup")) {
+            const auto selector = actions.pages.target(name.substr(0, name.size() - 6));
+            if (const auto paint = selectors.paint_owners(selector); paint && paint->popup.owner == id) {
+                const auto surface = actions.app.services().surfaces().paint_snapshot(paint->popup.surface);
+                if (!surface || !surface->binding || surface->paint_pending || surface->quads.size() != 1 ||
+                    !surface->content_effects.empty()) {
+                    throw std::runtime_error("Select popup surface does not have its published single fill");
                 }
-                state["option_keys"] = std::move(keys);
-                const auto& token = actions.app.components().theme_scope(selector)->snapshot().select();
-                tokens["select"] = Json::Object{{"option_height", token.metrics.option_height},
-                                                {"option_padding_inline", token.metrics.option_padding_inline},
-                                                {"option_padding_block", token.metrics.option_padding_block},
-                                                {"popup_padding", token.metrics.popup_padding},
-                                                {"border_radius", token.metrics.border_radius},
-                                                {"font_size", token.typography.font_size},
-                                                {"font_weight", count(token.typography.font_weight)},
-                                                {"popup_background", color(token.colors.popup_background)},
-                                                {"option_color", color(token.colors.option_color)}};
+                const auto& token = components.theme_scope(selector)->snapshot().select();
+                tokens["source"] = "published-select-popup";
+                tokens["border_width"] = 0; // The actual surface contains only the fill.
+                tokens["border_radius"] = surface->quads.front().corner_radius;
+                tokens["font_size"] = token.typography.font_size;
             }
         }
         for (const auto& text : actions.app.text().mounted_texts()) {

@@ -852,6 +852,7 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(runtime::ComponentId compo
         state->wave_fade,
         state->compact.has_value(),
         state->compact ? state->compact->corners : std::array{true, true, true, true},
+        content_layout(components().theme_scope(component)->snapshot().button(), *state).padding_inline,
     };
 }
 

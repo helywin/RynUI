@@ -61,6 +61,7 @@ struct ButtonComponentSnapshot final {
     float wave_fade{1};
     bool compact{};
     std::array<bool, 4> compact_corners{true, true, true, true};
+    float layout_padding_inline{};
 };
 
 enum class ButtonAnimationChannel : std::uint8_t {
