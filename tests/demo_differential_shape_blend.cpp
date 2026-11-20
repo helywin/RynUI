@@ -48,13 +48,14 @@ void draw_web(SkBitmap& bitmap, const ShapeBlendSource& source) {
     canvas.drawRRect(rounded(source.fill), paint);
     if (source.border) {
         paint.setColor(rgb(source.border_color));
-        if (source.caster.shadow_alpha > 0 && !source.split_border) {
+        const auto gap = source.border->outline_offset;
+        if (gap == 0 && source.caster.shadow_alpha > 0 && !source.split_border) {
             canvas.drawDRRect(rounded(source.caster), rounded(*source.border), paint);
         } else {
             const auto width = source.border->outline_width;
             paint.setStyle(SkPaint::kStroke_Style);
             paint.setStrokeWidth(width);
-            canvas.drawRRect(rounded(source.caster, width * 0.5F), paint);
+            canvas.drawRRect(rounded(source.caster, gap > 0 ? -(gap + width * 0.5F) : width * 0.5F), paint);
         }
     }
 }
@@ -96,6 +97,7 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
         throw std::runtime_error("rounded blend source could not allocate its bounded raster");
     }
     draw_web(bitmap, source);
+    const bool focus = source.border && source.border->outline_offset > 0;
     std::vector<ShapeBlendSample> different;
     for (std::uint32_t y = 0; y < source.height; ++y) {
         for (std::uint32_t x = 0; x < source.width; ++x) {
@@ -113,8 +115,13 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
             for (std::size_t i = 0; i < sample.native.size(); ++i) {
                 const auto shadowed = over_rgb8(source.shadow_color[i], 255, shadow_alpha);
                 const auto filled = over_rgb8(source.fill_color[i], shadowed, fill_alpha);
-                const auto output = source.split_border ? over_rgb8_split(source.border_color[i], filled, border_alpha)
-                                                        : over_rgb8(source.border_color[i], filled, border_alpha);
+                const auto border_over_fill = source.split_border
+                                                  ? over_rgb8_split(source.border_color[i], filled, border_alpha)
+                                                  : over_rgb8(source.border_color[i], filled, border_alpha);
+                const auto output =
+                    focus ? over_rgb8(source.fill_color[i], over_rgb8(source.border_color[i], shadowed, border_alpha),
+                                      fill_alpha)
+                          : border_over_fill;
                 sample.native[i] = static_cast<std::uint8_t>(output);
                 adjacent_codes &= std::abs(int(sample.web[i]) - int(sample.native[i])) <= 1;
             }

@@ -100,6 +100,25 @@ def hard_shadow_stack(side):
 
 
 class RoundedBlendWitnessTests(unittest.TestCase):
+    def test_focus_blend_requires_the_observed_order_on_each_side(self):
+        def focused(side):
+            shadow, fill, line = hard_shadow_stack(side)
+            shadow.update(offset=[0, 2], spread=0, color=(5/255, 145/255, 1.), knockout=side == 'web')
+            fill.update(bounds=shadow['bounds'], radii=shadow['radii'], color=(22/255, 119/255, 1.))
+            line.update(kind='outline', bounds=shadow['bounds'], radii=shadow['radii'], width=3, offset_width=1,
+                        color=(145/255, 202/255, 1.))
+            return (shadow, fill, line) if side == 'web' else (shadow, line, fill)
+
+        web, native = (focused(side) for side in ('web', 'native'))
+        spec, dx, dy = list(_stacks(web, 'web', 1.5))[-1][0]
+        self.assertEqual(list(_stacks(native, 'native', 1.5))[-1][0], (spec, dx, dy))
+        observed = ((235, 245, 255), (236, 246, 255))
+        pair_spec = next(_stacks(web, 'web', 1.5))[0][0]
+        cache = {spec: _samples([[0-dx, 198-dy, *observed[0], *observed[1]]]), pair_spec: {}}
+        pixels = bind_blends((web, native), 1.5, Path.cwd(), Path('out/bin/mock'), cache)
+        self.assertEqual(verified_blend(pixels, 0, 198, 1.5, ({'active':web},{'active':native}), observed), observed[0])
+        self.assertIsNone(verified_blend(pixels, 0, 198, 1.5, ({'active':web},{'active':native[::-1]}), observed))
+
     def test_llvmpipe_integer_shadow_stroke_has_separate_encoding(self):
         web, native = (hard_shadow_stack(side) for side in ('web', 'native'))
         expected, _ = next(_stacks(web, 'web', 1, True))
