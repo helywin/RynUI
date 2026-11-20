@@ -139,15 +139,23 @@ class LayeredTests(unittest.TestCase):
 
     def test_packed_solid_fill_uses_same_byte_grid_as_exact_css_color(self):
         white=dict(kind='fill',color=(1.,)*3,alpha=1,opacity=1,groups=[])
-        def basis(code):
+        def gray_fill(code):
             native=struct.unpack('<f',struct.pack('<f',code/255))[0]
-            gray=dict(white,color=(native,)*3)
-            return _bounded_paint_basis([white,gray],[1,0],[1])
+            return dict(white,color=(native,)*3)
+        def basis(code):
+            return _bounded_paint_basis([white,gray_fill(code)],[1,0],[1])
+        def layered(code):
+            return _bounded_paint_basis([white,gray_fill(code),white],[1,0,1],[1,2])
         self.assertEqual(basis(245)['quantization_bounds'],(.05,))
+        self.assertEqual(layered(245)['quantization_bounds'],(.05,))
         self.assertTrue(_paint_coordinates((250,250,250),basis(245))[0])
+        self.assertTrue(_paint_coordinates((250,250,250),layered(245))[0])
         self.assertFalse(_paint_coordinates((250,246,251),basis(245))[0])
+        self.assertFalse(_paint_coordinates((250,246,251),layered(245))[0])
         with self.assertRaises(RunError):
             basis(246)
+        with self.assertRaises(RunError):
+            layered(246)
 
     def test_dom_range_advance_charges_only_bounded_endpoint_quantization(self):
         web=dict(content='n',advance=5.,boxes=[box(10+1/64,0,5,22)])

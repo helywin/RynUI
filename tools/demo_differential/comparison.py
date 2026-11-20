@@ -965,25 +965,31 @@ def _paint_byte_error(layers,coverages,variable):
     return .5/255
 
 
+def _exact_rgb8_color(color):
+    candidate=tuple(round(channel*255)/255 for channel in color)
+    return candidate if struct.pack('<3f',*candidate)==struct.pack('<3f',*color) else color
+
+
 def _bounded_paint_basis(layers,coverages,variable):
     from .color_metrics import visible_basis
     # The CSS border path quantizes its PM color and then the final RGB8 blend.
     # Scope the two half-code terms to the observed single opaque CSS box.
     byte_error=_paint_byte_error(layers,coverages,variable)
+    opaque_fills=all(row['kind']=='fill' and row['alpha']==1 and row['opacity']==1 and
+                     not row['groups'] for row in layers)
     if len(variable)==1:
         lower,upper=_paint_endpoints(layers,coverages,variable)
-        if all(row['kind']=='fill' and row['alpha']==1 and row['opacity']==1 and not row['groups'] for row in layers):
+        if opaque_fills:
             # An opaque fill on an RGB8 endpoint has the same source value
             # in CSS and in the packed float material. Its transition still
             # uses the unmodified observed pixels.
-            codes=[tuple(round(channel*255)/255 for channel in rgb) for rgb in (lower,upper)]
-            if all(struct.pack('<3f',*exact)==struct.pack('<3f',*actual)
-                   for exact,actual in zip(codes,(lower,upper),strict=True)):
-                lower,upper=codes
+            lower=_exact_rgb8_color(lower)
+            upper=_exact_rgb8_color(upper)
         # Known neighboring paint is the backdrop, not a second unknown.
         try:return visible_basis(lower,[] if lower==upper else [upper],byte_error=byte_error)
         except ProtocolError:pass
-    try:return _palette_basis(layers,(1.,1.,1.),byte_error=byte_error)
+    palette=[dict(row,color=_exact_rgb8_color(row['color'])) for row in layers] if opaque_fills else layers
+    try:return _palette_basis(palette,(1.,1.,1.),byte_error=byte_error)
     except RunError:
         joint=_joint_paint_output_basis(layers,coverages,variable)
         if joint is None:raise
