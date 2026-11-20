@@ -69,6 +69,13 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_color_coverage_uses_the_observed_canonical_a8_luminance(self):
+        color=tuple(channel/255 for channel in (250,173,20))
+        self.assertEqual(encoded_coverage(128,color,'directwrite-3x1'),164/255)
+        self.assertEqual(encoded_coverage(128,color,'fontations-skia-a8'),136/255)
+        self.assertEqual(encoded_coverage(128,(0.,0.,0.),'directwrite-3x1'),119/255)
+        self.assertEqual(encoded_coverage(128,(1.,1.,1.),'fontations-skia-a8'),144/255)
+
     def test_dom_range_advance_charges_only_bounded_endpoint_quantization(self):
         web=dict(content='n',advance=5.,boxes=[box(10+1/64,0,5,22)])
         self.assertEqual(_text_advance_error(web,{'advance':5.02},layered=True),0.)

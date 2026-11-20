@@ -47,11 +47,24 @@ float EncodeGlyphSrgb(float linearValue) {
     return linearValue <= 0.0031308 ? linearValue * 12.92 : 1.055 * pow(linearValue, 1.0 / 2.4) - 0.055;
 }
 
+uint3 CanonicalMaskColor(uint3 rgb) {
+    uint3 highBits = rgb & 224u;
+    return highBits | (highBits >> 3u) | (highBits >> 6u);
+}
+
+float TextMaskLuminance(float3 encodedColor) {
+    // Skia canonicalizes the paint color before reducing it to a gray A8
+    // gamma-table row. The actual painted RGB remains the original color.
+    uint3 rgb = CanonicalMaskColor(uint3(floor(saturate(encodedColor) * 255.0 + 0.5)));
+    uint luminance = (rgb.r * 54u + rgb.g * 183u + rgb.b * 19u) >> 8u;
+    return float(CanonicalMaskColor(luminance.xxx).r) / 255.0;
+}
+
 float TextContrastCoverage(float coverage, float3 encodedColor, bool srgb) {
     if (coverage <= 0.0 || coverage >= 1.0) {
         return coverage;
     }
-    float foreground = saturate(dot(encodedColor, float3(0.2126, 0.7152, 0.0722)));
+    float foreground = TextMaskLuminance(encodedColor);
     float backdrop = 1.0 - foreground;
     float backdropLinear = srgb ? DecodeGlyphSrgb(backdrop) : pow(backdrop, 1.2);
     float contrast = srgb ? 1.0 : 0.2;

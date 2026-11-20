@@ -132,7 +132,11 @@ def encoded_coverage(byte, color, rasterizer):
     coverage = byte / 255
     if byte in (0, 255):
         return coverage
-    luma = sum(value * coeff for value, coeff in zip(color, (.2126, .7152, .0722), strict=True))
+    def canonical(value):
+        high = value & 224
+        return high | (high >> 3) | (high >> 6)
+    r,g,b = (canonical(math.floor(channel * 255 + .5)) for channel in color)
+    luma = canonical((r*54 + g*183 + b*19) >> 8) / 255
     inverse = 1 - luma
     srgb = rasterizer == 'directwrite-3x1'
     back, front = srgb_to_linear((inverse, luma, 0))[:2] if srgb else (inverse**1.2, luma**1.2)
