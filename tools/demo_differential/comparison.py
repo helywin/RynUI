@@ -1182,7 +1182,7 @@ def _glyph_witness_gate(row,point,dpr,priors,lower,observed,*,upper=None):
     """Independent SFNT interior witnesses; atlas padding and border are no ink."""
     from .calibration import outline_point
     from .color_metrics import unmix_coverage
-    from .glyph_witness import encoded_coverage,mask_identity,scenario_ink_byte
+    from .glyph_witness import glyph_ink_coverage,mask_identity,scenario_ink_byte
     text,ink=row['glyph_source'];source=ink['atlas_source'];font=source['font']
     encoded=text['content'].encode();content=encoded[ink['byte_begin']:ink['byte_end']].decode()
     if content.isspace():return None
@@ -1199,7 +1199,7 @@ def _glyph_witness_gate(row,point,dpr,priors,lower,observed,*,upper=None):
         if mask is None:raise ProtocolError('submitted glyph has no independent device mask')
         byte=scenario_ink_byte(mask,source,row['bounds'],point,dpr)
         if byte==0:return None
-        minimum=encoded_coverage(byte,row['color'],rasterizer)
+        minimum=glyph_ink_coverage(byte,row['color'],rasterizer,row['alpha']*row['opacity'])
     else:
         baseline_x=row['bounds']['x']+(source['padding']-source['bearing_x']+source['phase']/4)/display
         baseline_y=row['bounds']['y']+(source['bearing_y']+source['padding']+source.get('phase_y',0)/4)/display

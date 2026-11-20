@@ -90,6 +90,14 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
     if (input.coverageTransfer != 0) {
         coverage = TextContrastCoverage(coverage, input.color.rgb, input.coverageTransfer == 1);
     }
+    if (input.coverageTransfer == 1 && all(input.color.rgb == 0.0)) {
+        // Skia's black A8 blitter first combines its integer source alpha and mask.
+        // The sRGB coverage transfer is specific to the pinned DirectWrite policy.
+        const uint sourceAlpha = uint(floor(saturate(input.color.a * input.opacity) * 255.0 + 0.5));
+        const uint mask = uint(floor(saturate(coverage) * 255.0 + 0.5));
+        const uint ink = sourceAlpha * (mask + 1u) / 256u;
+        return float4(0.0, 0.0, 0.0, float(ink) / 255.0);
+    }
     return float4(input.color.rgb, input.color.a * input.opacity * coverage);
 }
 #endif

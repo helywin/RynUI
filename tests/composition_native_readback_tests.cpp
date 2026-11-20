@@ -261,6 +261,31 @@ void locked_coverage_in_composition(const std::string& driver) {
         pixel(frame, 16, 38, {250, 250, 250, 255}, 0);
         pixel(frame, 16, 39, {255, 255, 255, 255}, 0);
     }
+    {
+        RawScene text(renderer, *platform.state);
+        const font::GlyphBitmap bitmap{.coverage = {198, 246, 255},
+                                       .width = 3,
+                                       .height = 1,
+                                       .row_stride = 3,
+                                       .coverage_transfer = font::GlyphCoverageTransfer::text_contrast_srgb};
+        const auto atlas = text.atlas.insert({{0, 1}, 1, 21}, bitmap);
+        require(bool(atlas), "locked black A8 bitmap");
+        const auto& entry = *atlas.entry;
+        const GlyphInstance glyph{
+            .position_size = {20, 20, float(entry.padded_rect.width), float(entry.padded_rect.height)},
+            .uv_rect = {entry.uv.left, entry.uv.top, entry.uv.right, entry.uv.bottom},
+            .clip_bounds = {0, 0, 128, 96},
+            .color = {0, 0, 0, .88F},
+            .coverage_transfer = entry.coverage_transfer,
+        };
+        const auto instance = text.glyphs.append(std::span{&glyph, 1});
+        text.order.append_glyph(GlyphDrawRange{entry.page, instance});
+        const auto frame = text.read();
+        pixel(frame, 20, 21, {255, 255, 255, 255}, 0);
+        pixel(frame, 21, 21, {87, 87, 87, 255}, 0);
+        pixel(frame, 22, 21, {35, 35, 35, 255}, 0);
+        pixel(frame, 23, 21, {31, 31, 31, 255}, 0);
+    }
     // For self coverage the rounded group still owns the outer mask once.
     masks(renderer, *platform.state);
 }

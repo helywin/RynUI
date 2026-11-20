@@ -157,6 +157,18 @@ def encoded_coverage(byte, color, rasterizer):
     return math.floor(255 * min(1, max(0, weight)) + .5) / 255
 
 
+def glyph_ink_coverage(byte, color, rasterizer, alpha):
+    """Measure source coverage in the compositor's declared material-alpha units."""
+    coverage=encoded_coverage(byte,color,rasterizer)
+    if rasterizer=='directwrite-3x1' and color==(0.,0.,0.) and 0<alpha<1:
+        # The pinned black A8 path writes an integer source alpha before the
+        # framebuffer blend. Keep the same units as the unmixing denominator.
+        material_byte=math.floor(alpha*255+.5)
+        mask_byte=round(coverage*255)
+        return (material_byte*(mask_byte+1)//256)/(255*alpha)
+    return coverage
+
+
 def read_masks(manifest, root, identity, specs, **inputs):
     # Each process has the same bounded input as the finite control producer.
     ordered=list(specs.items())

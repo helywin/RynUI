@@ -454,6 +454,12 @@ class LayeredTests(unittest.TestCase):
         priors['scenario_masks'][1][key]=GlyphWitness(-2,-3,2,2,bytes((60,0,192,0)))
         self.assertTrue(_glyph_witness_gate(disabled,(5,7),1.5,priors,(245/255,)*3,(233,)*3))
         self.assertFalse(_glyph_witness_gate(disabled,(5,7),1.5,priors,(245/255,)*3,(245,)*3))
+        translucent=dict(layer,alpha=.88)
+        priors['scenario_masks'][1][key]=GlyphWitness(-2,-3,2,2,bytes((198,246,192,0)))
+        self.assertTrue(_glyph_witness_gate(translucent,(5,7),1.5,priors,(1,1,1),(87,87,87)))
+        self.assertTrue(_glyph_witness_gate(translucent,(8.5/1.5,7),1.5,priors,(1,1,1),(35,35,35)))
+        self.assertFalse(_glyph_witness_gate(translucent,(5,7),1.5,priors,(1,1,1),(255,255,255)))
+        priors['scenario_masks'][1][key]=mask
         self.assertIsNone(gate((8.5/1.5,10.5/1.5),(255,255,255)))
         level=round(255*(1-encoded_coverage(192,(0,0,0),rasterizer)))
         self.assertTrue(gate((7.5/1.5,11.5/1.5),(level,)*3))
