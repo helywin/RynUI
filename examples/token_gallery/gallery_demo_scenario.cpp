@@ -723,6 +723,7 @@ gallery_demo_text_snapshot(const ryn::detail::TextSceneService& service, ryn::de
                                           {"phase", count(static_cast<std::uint8_t>(entry.key.phase))},
                                           {"phase_y", count(static_cast<std::uint8_t>(entry.key.phase_y))},
                                           {"svg_viewport_origin", entry.svg_viewport_origin},
+                                          {"svg_layout_snap", entry.key.mode == font::GlyphRasterMode::svg_layout},
                                           {"bearing_x", entry.bearing_x},
                                           {"bearing_y", entry.bearing_y},
                                           {"padding", count(graphics::glyph_atlas_padding)},

@@ -130,6 +130,63 @@ void test_physical_phase_scale_and_size_matrix() {
     }
 }
 
+void test_stationary_svg_snaps_layout_before_density() {
+    using namespace ryn::font;
+    constexpr float scale = 1.5F;
+    auto runtime = FontRuntime::create({
+        .has_svg_glyph = [](std::uint32_t id) noexcept { return id != 0; },
+        .svg_glyph = [](std::uint32_t, float em, float, float, GlyphRasterMode, GlyphBitmap& bitmap) -> FontError {
+            bitmap.coverage = {255};
+            bitmap.width = 1;
+            bitmap.height = 1;
+            bitmap.row_stride = 1;
+            bitmap.advance_x = em;
+            bitmap.svg_viewport_origin = true;
+            return {};
+        },
+    });
+    require(bool(runtime), "stationary SVG runtime");
+    auto& fonts = *runtime.runtime;
+    FontRasterConfig options{14, scale};
+    options.policy.rasterizer = FontRasterizer::bundled_svg;
+    const auto face = fonts.load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, options);
+    require(bool(face), "stationary SVG face");
+    const auto metrics = fonts.metrics(face.font);
+    require(bool(metrics), "stationary SVG metrics");
+    ryn::text::TextEngine engine{fonts};
+    const String content = u8"A";
+    const std::array chain{face.font};
+    const auto shaped = engine.shape(content.view(), chain);
+    require(bool(shaped), "stationary SVG shape");
+    const auto measured = engine.measure(shaped.text, {320, 240});
+    require(bool(measured), "stationary SVG measure");
+    const auto& source = shaped.text.glyphs.front();
+    ryn::graphics::GlyphPlacement placement{
+        {9.171875F - source.offset_x,
+         12.171875F - measured.measurement.first_baseline + source.offset_y + metrics.metrics.ascent},
+        {320, 240},
+        {0, 0, 320, 240},
+        {2, 3},
+    };
+    ryn::graphics::GlyphAtlas atlas;
+    ryn::graphics::GlyphScene scene;
+    const auto retained = scene.append_text(fonts, atlas, shaped.text, measured.measurement, placement);
+    require(retained && retained.primitive.instances.count == 1, "retained SVG coverage");
+    const auto animated_key = atlas.entries().front().key;
+    require(animated_key.mode == GlyphRasterMode::grayscale && animated_key.phase == GlyphRasterPhase::three_quarters &&
+                animated_key.phase_y == GlyphRasterPhase::three_quarters,
+            "retained SVG lost its fractional placement");
+    placement.snap_static_svg = true;
+    const auto stationary =
+        scene.replace_text(retained.primitive.instances, fonts, atlas, shaped.text, measured.measurement, placement);
+    require(stationary && stationary.primitive.instances.count == 1 && atlas.entries().size() == 2,
+            "stationary SVG must create a separate atlas entry");
+    const auto& layout_key = atlas.entries().back().key;
+    require(layout_key.mode == GlyphRasterMode::svg_layout && layout_key.phase == GlyphRasterPhase::half &&
+                layout_key.phase_y == GlyphRasterPhase::half,
+            "stationary SVG did not snap to the logical origin");
+}
+
 void test_physical_phase_midpoints() {
     using ryn::font::GlyphRasterPhase;
 
@@ -402,6 +459,7 @@ int main() {
     try {
         test_instance_layout_and_text_positioning();
         test_physical_phase_scale_and_size_matrix();
+        test_stationary_svg_snaps_layout_before_density();
         test_physical_phase_midpoints();
         test_dirty_ranges_remain_layered_and_sparse();
         test_out_of_order_glyph_ranges_and_shifted_suffix();

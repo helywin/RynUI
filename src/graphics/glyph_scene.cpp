@@ -123,14 +123,20 @@ void validate_placement(const GlyphPlacement& placement) {
             const float baseline_y =
                 placement.origin_pixels.y + line.baseline - glyph.offset_y + placement.translation_pixels.y;
             const bool svg = fonts.uses_svg_glyph(glyph.font, glyph.glyph_id);
-            const auto physical_x =
-                quantize_physical_origin(baseline_x * display_scale, metrics.metrics.snaps_horizontal);
             // SVG masks are positioned by their viewBox's top edge. Font
             // layout still uses the unchanged embedded face and baseline.
             const float origin_y = svg ? baseline_y - metrics.metrics.ascent : baseline_y;
-            const auto physical_y = quantize_physical_origin(origin_y * display_scale, !svg);
+            const bool static_svg = svg && placement.snap_static_svg;
+            // Snap in layout coordinates before applying density; a stationary
+            // viewBox can still have a fractional position in physical pixels.
+            const float x =
+                static_svg ? static_cast<float>(std::floor(static_cast<double>(baseline_x) + .5)) : baseline_x;
+            const float y = static_svg ? static_cast<float>(std::floor(static_cast<double>(origin_y) + .5)) : origin_y;
+            const auto physical_x = quantize_physical_origin(x * display_scale, metrics.metrics.snaps_horizontal);
+            const auto physical_y = quantize_physical_origin(y * display_scale, !svg);
+            const auto mode = static_svg ? font::GlyphRasterMode::svg_layout : font::GlyphRasterMode::grayscale;
             const GlyphAtlasResult atlas_result =
-                atlas.ensure(fonts, glyph.font, glyph.glyph_id, physical_x.phase, physical_y.phase);
+                atlas.ensure(fonts, glyph.font, glyph.glyph_id, physical_x.phase, physical_y.phase, mode);
             if (!atlas_result) {
                 pending.error = atlas_result.error;
                 return pending;

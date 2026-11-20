@@ -159,9 +159,9 @@ void write_icon_witnesses(const Json& request, const std::filesystem::path& outp
         require(id > 0 && id <= UINT32_MAX && x >= 0 && x <= 3 && y >= 0 && y <= 3 && em > 0 && em <= 128,
                 "invalid icon witness placement");
         font::GlyphBitmap bitmap;
-        const auto error =
-            rasterize_bundled_svg_glyph(static_cast<std::uint32_t>(id), static_cast<float>(em),
-                                        static_cast<float>(x) * .25F, static_cast<float>(y) * .25F, bitmap);
+        const auto error = rasterize_bundled_svg_glyph(static_cast<std::uint32_t>(id), static_cast<float>(em),
+                                                       static_cast<float>(x) * .25F, static_cast<float>(y) * .25F,
+                                                       font::GlyphRasterMode::grayscale, bitmap);
         require(!error && bitmap.svg_viewport_origin, "independent SVG raster witness failed");
         masks.push_back(glyph_witness_mask(bitmap));
     }

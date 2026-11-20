@@ -216,7 +216,7 @@ struct FontRuntime::Impl {
     std::shared_ptr<FontRuntimeCounters> counters;
     std::shared_ptr<PlatformFontRasterizer> platform_rasterizer;
     bool (*has_svg_glyph)(std::uint32_t) noexcept {};
-    FontError (*svg_glyph)(std::uint32_t, float, float, float, GlyphBitmap&){};
+    FontError (*svg_glyph)(std::uint32_t, float, float, float, GlyphRasterMode, GlyphBitmap&){};
     std::vector<FontSlot> fonts;
     std::unordered_map<GlyphCacheKey, GlyphBitmap, GlyphCacheKeyHash> glyph_cache;
     bool active{true};
@@ -739,12 +739,13 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
     const auto phase_index = static_cast<std::uint8_t>(phase);
     const auto svg = uses_svg_glyph(font, glyph_id);
     if (phase > GlyphRasterPhase::three_quarters || phase_y > GlyphRasterPhase::three_quarters ||
-        (!svg && phase_y != GlyphRasterPhase::zero)) {
+        (!svg && phase_y != GlyphRasterPhase::zero) ||
+        (mode != GlyphRasterMode::grayscale && (mode != GlyphRasterMode::svg_layout || !svg))) {
         return {
             nullptr,
             false,
             make_error(FontErrorStage::rasterization, FontErrorKind::rasterization_failed,
-                       "Glyph raster phase is invalid.", font),
+                       "Glyph raster phase or mode is invalid.", font),
         };
     }
     const GlyphCacheKey key{
@@ -772,13 +773,13 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
         }
         return {&entry->second, false, {}};
     };
-    if ((record->platform_face || svg) && mode == GlyphRasterMode::grayscale) {
+    if (svg || (record->platform_face && mode == GlyphRasterMode::grayscale)) {
         GlyphBitmap result;
         const auto& metrics = record->metrics;
         const float physical_em = metrics.logical_pixel_size * metrics.display_scale;
         auto error =
             svg ? impl_->svg_glyph(glyph_id, physical_em, glyph_raster_phase_offset(phase),
-                                   glyph_raster_phase_offset(phase_y), result)
+                                   glyph_raster_phase_offset(phase_y), mode, result)
                 : record->platform_face->rasterize(glyph_id, physical_em, phase, record->raster_policy, result);
         if (error) {
             error.font = font;

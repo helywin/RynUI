@@ -748,7 +748,7 @@ bool TextComponentHost::synchronize_icon_layers(runtime::ComponentId component,
         }
         auto current = placement;
         current.translation_pixels = text_scene_->set_phase_preserving_scroll_translation(
-            layer.scene, nodes_->require(components_.root(component)).translation);
+            layer.scene, nodes_->require(components_.root(component)).translation, {}, current.snap_static_svg);
         static_cast<void>(
             text_scene_->set_content_opacity(layer.scene, nodes_->content_opacity(components_.root(component)) *
                                                               nodes_->paint_opacity(components_.root(component))));
@@ -905,8 +905,11 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                 synchronize_decorations(mounted.component, viewport, {});
                 continue;
             }
-            const auto phase_residual =
-                text_scene_->set_phase_preserving_scroll_translation(mounted.scene, retained.translation);
+            const bool snap_static_svg = state && state->icon && state->icon->source.bundled_name() &&
+                                         state->icon->spin && !state->icon->animation.valid() &&
+                                         state->icon->rotate == 0.0F;
+            const auto phase_residual = text_scene_->set_phase_preserving_scroll_translation(
+                mounted.scene, retained.translation, {}, snap_static_svg);
             const auto sync_started =
                 sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
             static_cast<void>(text_scene_->set_content_opacity(mounted.scene, nodes_->content_opacity(node) *
@@ -918,6 +921,7 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                 phase_residual,
                 {},
                 1.0F,
+                snap_static_svg,
             };
             if (!synchronize_icon_layers(mounted.component, placement)) {
                 return false;

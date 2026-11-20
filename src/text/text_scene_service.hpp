@@ -122,8 +122,10 @@ public:
     bool set_transform(TextSceneId id, graphics::GlyphTransform transform);
     // Splits a requested translation into an aligned scroll patch and the
     // residual that must retain normal raster-phase placement semantics.
+    // Stationary SVG layout snaps the full logical origin before scaling.
     [[nodiscard]] runtime::Point set_phase_preserving_scroll_translation(TextSceneId id, runtime::Point pixels,
-                                                                         runtime::Point aligned_offset = {});
+                                                                         runtime::Point aligned_offset = {},
+                                                                         bool snap_static_svg = false);
 
     [[nodiscard]] bool synchronize(TextSceneId id);
     [[nodiscard]] bool synchronize_measurement(TextSceneId id);

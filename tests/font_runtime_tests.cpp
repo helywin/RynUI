@@ -548,9 +548,11 @@ void test_svg_glyph_cache_tracks_both_physical_axes() {
     options.policy.rasterizer = FontRasterizer::bundled_svg;
     auto runtime = FontRuntime::create({
         .has_svg_glyph = [](std::uint32_t id) noexcept { return id != 0; },
-        .svg_glyph = [](std::uint32_t, float em, float x, float y, GlyphBitmap& result) -> FontError {
+        .svg_glyph = [](std::uint32_t, float em, float x, float y, GlyphRasterMode mode,
+                        GlyphBitmap& result) -> FontError {
             require(near(em, 21.0F) && near(x, .25F), "SVG rasterizer lost physical size and horizontal phase");
-            result.coverage = {static_cast<std::uint8_t>(128 * y)};
+            const int mode_offset = mode == GlyphRasterMode::svg_layout ? 128 : 0;
+            result.coverage = {static_cast<std::uint8_t>(128 * y + mode_offset)};
             result.width = 1;
             result.height = 1;
             result.row_stride = 1;
@@ -573,13 +575,20 @@ void test_svg_glyph_cache_tracks_both_physical_axes() {
         fonts.rasterize(svg.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::half, GlyphRasterMode::grayscale);
     const auto repeated =
         fonts.rasterize(svg.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::quarter, GlyphRasterMode::grayscale);
+    const auto stationary = fonts.rasterize(svg.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::quarter,
+                                            GlyphRasterMode::svg_layout);
     require(first && second && repeated && !first.cache_hit && !second.cache_hit && repeated.cache_hit &&
                 first.glyph == repeated.glyph && first.glyph->coverage != second.glyph->coverage &&
                 first.glyph->svg_viewport_origin && near(first.glyph->advance_x, 14.0F),
             "SVG cache did not preserve the two physical phases and logical advance");
+    require(stationary && !stationary.cache_hit && stationary.glyph->coverage != repeated.glyph->coverage,
+            "stationary SVG layout reused a filtered animation bitmap");
     require(!fonts.rasterize(regular.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::half,
                              GlyphRasterMode::grayscale),
             "ordinary glyph admitted a vertical SVG phase");
+    require(!fonts.rasterize(regular.font, id, GlyphRasterPhase::quarter, GlyphRasterPhase::zero,
+                             GlyphRasterMode::svg_layout),
+            "ordinary glyph admitted an SVG-only raster mode");
 }
 
 } // namespace

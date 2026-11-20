@@ -87,6 +87,7 @@ struct GlyphPlacement {
     runtime::Point translation_pixels{};
     std::array<float, 4> color{1.0F, 1.0F, 1.0F, 1.0F};
     float opacity{1.0F};
+    bool snap_static_svg{};
 
     friend bool operator==(const GlyphPlacement&, const GlyphPlacement&) = default;
 };

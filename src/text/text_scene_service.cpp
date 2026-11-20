@@ -20,7 +20,7 @@ namespace {
 [[nodiscard]] bool same_position_geometry(const graphics::GlyphPlacement& left,
                                           const graphics::GlyphPlacement& right) noexcept {
     return left.origin_pixels == right.origin_pixels && left.viewport_pixels == right.viewport_pixels &&
-           left.translation_pixels == right.translation_pixels;
+           left.translation_pixels == right.translation_pixels && left.snap_static_svg == right.snap_static_svg;
 }
 
 [[nodiscard]] bool same_patchable_geometry(const graphics::GlyphPlacement& left,
@@ -523,11 +523,16 @@ bool TextSceneService::set_scroll_translation(TextSceneId id, runtime::Point pix
 }
 
 runtime::Point TextSceneService::set_phase_preserving_scroll_translation(TextSceneId id, runtime::Point pixels,
-                                                                         runtime::Point aligned_offset) {
+                                                                         runtime::Point aligned_offset,
+                                                                         bool snap_static_svg) {
     ensure_owner_thread();
     if (!std::isfinite(pixels.x) || !std::isfinite(pixels.y) || !std::isfinite(aligned_offset.x) ||
         !std::isfinite(aligned_offset.y)) {
         throw std::invalid_argument("Text translation must be finite");
+    }
+    if (snap_static_svg && fonts_->has_svg_rasterizer()) {
+        static_cast<void>(set_scroll_translation(id, aligned_offset));
+        return pixels;
     }
     auto& record = require_record(id);
     if (record.scroll_scale_revision != record.state->revision()) {
@@ -659,6 +664,7 @@ bool TextSceneService::set_coverage_clips(TextSceneId id, std::span<const TextCo
 bool TextSceneService::update_placement(TextSceneId id, graphics::GlyphPlacement placement, bool request_frame) {
     ensure_owner_thread();
     auto& record = require_record(id);
+    placement.snap_static_svg = placement.snap_static_svg && fonts_->has_svg_rasterizer();
     const bool had_placement = record.placement.has_value();
     const bool position_changed = !had_placement || !same_position_geometry(*record.placement, placement);
     const bool patchable_changed = !had_placement || !same_patchable_geometry(*record.placement, placement);

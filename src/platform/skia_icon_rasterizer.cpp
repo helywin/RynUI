@@ -59,6 +59,11 @@ struct SvgIconLayer {
     return x >= 0 && y >= 0 && x < mask.width() && y < mask.height() ? *mask.getAddr8(x, y) : 0;
 }
 
+[[nodiscard]] float pixel_interval_coverage(int index, float first, float last) noexcept {
+    return std::clamp(std::min(last, static_cast<float>(index + 1)) - std::max(first, static_cast<float>(index)), 0.0F,
+                      1.0F);
+}
+
 } // namespace
 
 bool has_bundled_svg_glyph(std::uint32_t glyph) noexcept {
@@ -66,7 +71,7 @@ bool has_bundled_svg_glyph(std::uint32_t glyph) noexcept {
 }
 
 font::FontError rasterize_bundled_svg_glyph(std::uint32_t glyph, float physical_em, float phase_x, float phase_y,
-                                            font::GlyphBitmap& result) {
+                                            font::GlyphRasterMode mode, font::GlyphBitmap& result) {
     if (!has_bundled_svg_glyph(glyph) || !(physical_em > 0 && physical_em <= 2048) || !(phase_x >= 0 && phase_x < 1) ||
         !(phase_y >= 0 && phase_y < 1)) {
         return error("Bundled SVG glyph or physical placement is invalid.");
@@ -78,7 +83,8 @@ font::FontError rasterize_bundled_svg_glyph(std::uint32_t glyph, float physical_
     if (!mask.tryAllocPixels(SkImageInfo::MakeA8(width, height))) {
         return error("Cannot allocate the bundled SVG glyph mask.");
     }
-    const bool filter = layer.composited && (phase_x != 0 || phase_y != 0);
+    const bool clip_stationary_viewport = layer.composited && mode == font::GlyphRasterMode::svg_layout;
+    const bool filter = layer.composited && !clip_stationary_viewport && (phase_x != 0 || phase_y != 0);
     if (!rasterize_layer(layer, mask, physical_em, filter ? 0.0F : phase_x, filter ? 0.0F : phase_y)) {
         return error("Cannot decode a locked bundled SVG path.");
     }
@@ -91,14 +97,21 @@ font::FontError rasterize_bundled_svg_glyph(std::uint32_t glyph, float physical_
     bitmap.coverage.resize(static_cast<std::size_t>(width) * height);
     for (int y = 0; y < height; ++y) {
         auto destination = std::span{bitmap.coverage}.subspan(static_cast<std::size_t>(y) * width, width);
-        if (!filter) {
+        if (clip_stationary_viewport) {
+            // The spinner layer is one viewBox wide. Its height includes the
+            // line leading, so only the inline edges clip the SVG a second time.
+            for (int x = 0; x < width; ++x) {
+                const auto coverage_x = pixel_interval_coverage(x, phase_x, phase_x + physical_em);
+                destination[x] = static_cast<std::uint8_t>(std::lround(coverage_x * sample(mask, x, y)));
+            }
+        } else if (!filter) {
             std::copy_n(mask.getAddr8(0, y), width, destination.begin());
-            continue;
-        }
-        for (int x = 0; x < width; ++x) {
-            const float same_row = std::lerp(sample(mask, x, y), sample(mask, x - 1, y), phase_x);
-            const float previous_row = std::lerp(sample(mask, x, y - 1), sample(mask, x - 1, y - 1), phase_x);
-            destination[x] = static_cast<std::uint8_t>(std::lround(std::lerp(same_row, previous_row, phase_y)));
+        } else {
+            for (int x = 0; x < width; ++x) {
+                const float same_row = std::lerp(sample(mask, x, y), sample(mask, x - 1, y), phase_x);
+                const float previous_row = std::lerp(sample(mask, x, y - 1), sample(mask, x - 1, y - 1), phase_x);
+                destination[x] = static_cast<std::uint8_t>(std::lround(std::lerp(same_row, previous_row, phase_y)));
+            }
         }
     }
     result = std::move(bitmap);

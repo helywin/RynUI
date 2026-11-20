@@ -189,6 +189,7 @@ struct GlyphLookupResult {
 
 enum class GlyphRasterMode : std::uint8_t {
     grayscale,
+    svg_layout,
 };
 
 enum class GlyphRasterPhase : std::uint8_t {
@@ -352,7 +353,7 @@ struct FontRuntimeOptions {
     std::shared_ptr<FontRuntimeCounters> counters;
     std::shared_ptr<PlatformFontRasterizer> platform_rasterizer;
     bool (*has_svg_glyph)(std::uint32_t) noexcept {};
-    FontError (*svg_glyph)(std::uint32_t, float, float, float, GlyphBitmap&){};
+    FontError (*svg_glyph)(std::uint32_t, float, float, float, GlyphRasterMode, GlyphBitmap&){};
 };
 
 class FontRuntime;
