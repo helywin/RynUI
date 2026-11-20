@@ -17,7 +17,7 @@ from pathlib import Path
 
 from .adapters import RunError
 from .oracle import exact
-from .protocol import ProtocolError, validate
+from .protocol import ROOT, ProtocolError, validate
 from .regions import (crop_rgba, geometry, physical_box, raster_metrics, rect, relative, union, sample_anchor, text_groups,
                       capture_aperture, vertical_capture_slices)
 from .runner_evidence import artifact, metrics
@@ -39,7 +39,7 @@ def algorithm_hash():
     from .protocol import FIXTURES
     files={name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
            for name in ('comparison.py', 'regions.py', 'color_metrics.py','calibration.py','schema_definitions.py',
-                        'pilots.py','glyph_witness.py','formal_icon_source.py')}
+                        'pilots.py','glyph_witness.py','formal_icon_source.py','shape_witness.py','shape_blend_witness.py')}
     files['profile.schema.json']=hashlib.sha256((FIXTURES/'profile.schema.json').read_bytes()).hexdigest()
     return digest(files)
 

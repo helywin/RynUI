@@ -3,10 +3,14 @@ from copy import deepcopy
 from pathlib import Path
 import struct
 import sys
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 
+from demo_differential import comparison
+from demo_differential.adapters import RunError
 from demo_differential.comparison import _layer_coverage
 from demo_differential.protocol import ProtocolError
 from demo_differential.shape_blend_witness import _samples, _stacks, bind_blends, verified_blend
@@ -123,6 +127,28 @@ class RoundedBlendWitnessTests(unittest.TestCase):
         self.assertFalse(bind_blends((web, native), 1.5, Path.cwd(), Path('out/bin/mock'), {}))
         with self.assertRaises(ProtocolError):
             _samples([[3, 4, 0, 0, 0, 0, 0, 0]])
+
+
+class RoundedWitnessEntryTests(unittest.TestCase):
+    def test_pinned_comparison_initializes_witnesses_at_the_repository_root(self):
+        manifest = dict(environment=dict(native_capture=dict(shape_rasterizer='skia-rounded-coverage')),
+                        tools=dict(control_binary='out/bin/control'))
+        case = dict(identity='test', profile={}, fixture={})
+        native = dict(hello=dict(provenance=dict(binary_sha256='test')))
+        profile = dict(scope=dict(cases=[]))
+        proof = SimpleNamespace(manifest=lambda: manifest)
+        with (patch.object(comparison, 'binding', return_value={}),
+              patch.object(comparison, 'profile_thresholds', return_value={}),
+              patch.object(comparison, '_glyph_priors_for_run', return_value={}),
+              self.assertRaisesRegex(RunError, 'outside the finite independent pilot scope')):
+            comparison.compare(case, native, {}, {}, profile, None, profile_proof=proof)
+
+    def test_profile_hash_reads_both_rounded_witness_modules(self):
+        current = comparison.algorithm_hash()
+        read = Path.read_bytes
+        for name in ('shape_witness.py', 'shape_blend_witness.py'):
+            with patch.object(Path, 'read_bytes', lambda path: read(path) + (b'x' if path.name == name else b'')):
+                self.assertNotEqual(comparison.algorithm_hash(), current)
 
 
 if __name__ == '__main__':
