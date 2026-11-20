@@ -291,6 +291,23 @@ class LayeredTests(unittest.TestCase):
         clipped=dict(svg,clips=[box(4.6,6,3,4)])
         self.assertEqual(_layer_coverage(clipped,(4.5,6.5),1.5),(0,False))
 
+    def test_rgb8_paint_writes_allow_fixed_rounding_without_accepting_wrong_material(self):
+        group=[('body',.65)]
+        body=dict(kind='fill',color=(22/255,119/255,1.),alpha=1,opacity=1,groups=group)
+        self.assertTrue(_paint_coordinates((103,166,255),_bounded_paint_basis([body],[1.],[0]))[0])
+        self.assertFalse(_paint_coordinates((103,162,241),_bounded_paint_basis([body],[1.],[0]))[0])
+        cast=dict(kind='shadow',blur=0,color=(5/255,145/255,1.),alpha=.1,opacity=1,groups=group)
+        self.assertTrue(_paint_coordinates((103,166,255),_bounded_paint_basis([cast,body],[1.,1.],[1]))[0])
+        ink=dict(kind='glyph',color=(1.,1.,1.),alpha=1,opacity=1,groups=group)
+        self.assertTrue(_paint_coordinates((103,166,255),_bounded_paint_basis([body,ink],[1.,0.],[1]))[0])
+        self.assertFalse(_paint_coordinates((95,165,255),_bounded_paint_basis([body,ink],[1.,0.],[1]))[0])
+        disabled=[dict(body,color=(0.,0.,0.),alpha=.04,groups=[]),
+                  dict(ink,color=(0.,0.,0.),alpha=.25,groups=[])]
+        basis=_bounded_paint_basis(disabled,[1.,1.],[1])
+        self.assertTrue(_paint_coordinates((183,183,183),basis)[0])
+        self.assertTrue(_paint_coordinates((184,184,184),basis)[0])
+        self.assertFalse(_paint_coordinates((181,181,181),basis)[0])
+
     def test_near_parallel_hard_shadow_and_outline_keep_a_physical_output_gate(self):
         layers=[dict(kind='shadow',blur=0,groups=[],color=(5/255,145/255,1),alpha=.1,opacity=1),
                 dict(kind='outline',groups=[],color=(145/255,202/255,1),alpha=1,opacity=1)]
@@ -350,7 +367,7 @@ class LayeredTests(unittest.TestCase):
         source=dict(glyph_id=44,display_scale=1.5,padding=1,bearing_x=-2,bearing_y=3,
                     coverage_width=2,coverage_height=2,phase=0,
                     font=dict(sha256='font',logical_pixel_size=14,face_index=0))
-        layer=dict(bounds=box(4,6,8/3,8/3),color=(0,0,0),alpha=1,opacity=1,
+        layer=dict(kind='glyph',bounds=box(4,6,8/3,8/3),color=(0,0,0),alpha=1,opacity=1,
                    glyph_source=(dict(content='I'),dict(atlas_source=source,byte_begin=0,byte_end=1)))
         rasterizer='directwrite-3x1'
         key=mask_identity('I',source)
@@ -359,6 +376,15 @@ class LayeredTests(unittest.TestCase):
         gate=lambda point,pixel: _glyph_witness_gate(layer,point,1.5,priors,(1,1,1),pixel)
         self.assertTrue(gate((7.5/1.5,10.5/1.5),(0,0,0)))
         self.assertFalse(gate((7.5/1.5,10.5/1.5),(255,255,255)))
+        from demo_differential.glyph_witness import scenario_origin
+        mask=priors['scenario_masks'][1][key]
+        layer['native_glyph_mask']=(mask,*scenario_origin(mask,source,layer['bounds'],1.5))
+        self.assertEqual(_layer_coverage(layer,(7.5/1.5,10.5/1.5),1.5),(1,True))
+        self.assertEqual(_layer_coverage(layer,(8.5/1.5,10.5/1.5),1.5),(0,False))
+        disabled=dict(layer,alpha=.25)
+        priors['scenario_masks'][1][key]=GlyphWitness(-2,-3,2,2,bytes((60,0,192,0)))
+        self.assertTrue(_glyph_witness_gate(disabled,(5,7),1.5,priors,(245/255,)*3,(233,)*3))
+        self.assertFalse(_glyph_witness_gate(disabled,(5,7),1.5,priors,(245/255,)*3,(245,)*3))
         self.assertIsNone(gate((8.5/1.5,10.5/1.5),(255,255,255)))
         level=round(255*(1-encoded_coverage(192,(0,0,0),rasterizer)))
         self.assertTrue(gate((7.5/1.5,11.5/1.5),(level,)*3))

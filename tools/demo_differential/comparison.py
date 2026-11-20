@@ -491,8 +491,9 @@ def _layer_coverage(layer,point,dpr):
         exposed=(b['x']-reach<x<b['x']+b['width']+reach and
                  b['y']-reach<y<b['y']+b['height']+reach)
         return float(_contains(b,point)),exposed
-    if layer.get('web_glyph_mask') is not None:
-        mask,x,y=layer['web_glyph_mask']
+    glyph_mask=layer.get('web_glyph_mask') or layer.get('native_glyph_mask')
+    if glyph_mask is not None:
+        mask,x,y=glyph_mask
         if mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y)==0:
             return 0,False
     if kind in ('glyph','caret'):
@@ -884,11 +885,47 @@ def _hard_shadow_box_domain(layers,endpoints):
     return contribution_domain(endpoints)
 
 
+def _isolated_opacity_interface(layers,coverages,variable):
+    if len(variable)!=1 or variable[0]!=len(layers)-1:
+        return False
+    groups=lambda row:tuple((name,opacity) for name,opacity in row['groups'] if opacity!=1)
+    interface=layers[-1]
+    opacity=groups(interface)
+    if len(opacity)!=1 or any(groups(row)!=opacity for row in layers):
+        return False
+    if interface['kind']=='fill':
+        # A fixed, unblurred shadow can be the backing at the lower edge.
+        return interface['alpha']*interface['opacity']==1 and (
+            len(layers)==1 or len(layers)==2 and layers[0]['kind']=='shadow' and layers[0].get('blur')==0)
+    if len(layers)<2:
+        return False
+    # A fully covered opaque backing in the same group hides all earlier
+    # members. The remaining interface is one glyph over this RGB8 backing.
+    backing=layers[-2]
+    return (interface['kind']=='glyph' and backing['kind']=='fill' and coverages[-2]==1 and
+            backing['alpha']*backing['opacity']==1)
+
+
+def _two_translucent_black_writes(layers,coverages,variable):
+    return (len(layers)==2 and variable==[1] and coverages[0]==1 and
+        tuple(row['kind'] for row in layers)==('fill','glyph') and
+        all(not row['groups'] and row['color']==(0.,0.,0.) for row in layers) and
+        all(0<row['alpha']*row['opacity']<1 for row in layers))
+
+
+def _paint_byte_error(layers,coverages,variable):
+    # Admit an extra half-code only for the witnessed intermediate RGB8 writes.
+    if (_opaque_white_border_box(layers) or _isolated_opacity_interface(layers,coverages,variable) or
+        _two_translucent_black_writes(layers,coverages,variable)):
+        return 1/255
+    return .5/255
+
+
 def _bounded_paint_basis(layers,coverages,variable):
     from .color_metrics import visible_basis
     # The CSS border path quantizes its PM color and then the final RGB8 blend.
     # Scope the two half-code terms to the observed single opaque CSS box.
-    byte_error=(1 if _opaque_white_border_box(layers) else .5)/255
+    byte_error=_paint_byte_error(layers,coverages,variable)
     if len(variable)==1:
         lower,upper=_paint_endpoints(layers,coverages,variable)
         if all(row['kind']=='fill' and row['alpha']==1 and row['opacity']==1 and not row['groups'] for row in layers):
@@ -1098,7 +1135,7 @@ def _glyph_priors_for_run(native,manifest,*,independent_masks=False,web=None):
     return result
 
 
-def _glyph_witness_gate(row,point,dpr,priors,lower,observed):
+def _glyph_witness_gate(row,point,dpr,priors,lower,observed,*,upper=None):
     """Independent SFNT interior witnesses; atlas padding and border are no ink."""
     from .calibration import outline_point
     from .color_metrics import unmix_coverage
@@ -1131,7 +1168,8 @@ def _glyph_witness_gate(row,point,dpr,priors,lower,observed):
         # The interior disk is independently contained in the outline and pixel.
         minimum=math.pi*min(.5,max(0,distance*scale*dpr-1/1024))**2
     # A witness is used only where the caller proved this glyph is exposed.
-    try:unmixed=unmix_coverage(tuple(v/255 for v in observed),row['color'],lower,row['alpha']*row['opacity'],byte_error=1/255)
+    foreground,alpha=(row['color'],row['alpha']*row['opacity']) if upper is None else (upper,1.)
+    try:unmixed=unmix_coverage(tuple(v/255 for v in observed),foreground,lower,alpha,byte_error=1/255)
     except ProtocolError:return False
     if minimum<=2*unmixed['quantization_bound']:return None
     return unmixed['coverage']+unmixed['quantization_bound']>=minimum
@@ -1289,6 +1327,19 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 row['web_glyph_mask']=(mask,x,y)
                 row['bounds']=dict(x=(x+mask.left)/dpr,y=(y+mask.top)/dpr,
                                    width=mask.width/dpr,height=mask.height/dpr)
+    if glyph_priors and glyph_priors.get('scenario_masks'):
+        from .glyph_witness import mask_identity,scenario_origin
+        _,masks=glyph_priors['scenario_masks']
+        for row in native_layers:
+            if row['kind']!='glyph':
+                continue
+            text,ink=row['glyph_source']
+            if text.get('kind')=='icon-font':
+                continue
+            scalar=text['content'].encode()[ink['byte_begin']:ink['byte_end']].decode()
+            source=ink['atlas_source']
+            if len(scalar)==1 and not scalar.isspace() and (mask:=masks.get(mask_identity(scalar,source))) is not None:
+                row['native_glyph_mask']=(mask,*scenario_origin(mask,source,row['bounds'],dpr))
     inventories=(web_layers,native_layers)
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
     caret=_status_input_caret(case,(wt,nt),inventories,origins,dpr)
@@ -1432,8 +1483,16 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                         not _same_glyph_interface(row,active[i]) for i in variable if i!=position):continue
                     if any(coverages[i]>0 and active[i]['alpha']*active[i]['opacity']>=1 for i in range(position+1,len(active))):continue
                     if glyph_priors is None:raise RunError(3,'calibration','independent actual SFNT outline priors unavailable')
-                    below=_composite_point(active[:position],coverages[:position])
-                    witness=_glyph_witness_gate(row,point,dpr,glyph_priors,below,observed)
+                    if _isolated_opacity_interface(active,coverages,variable):
+                        # Applying the group's alpha to a white glyph changes
+                        # its visible contrast against the composed backing.
+                        below,upper=_paint_endpoints(active,coverages,variable)
+                    else:
+                        below=_composite_point(active[:position],coverages[:position])
+                        if _two_translucent_black_writes(active,coverages,variable):
+                            below=tuple(round(channel*255)/255 for channel in below)
+                        upper=None
+                    witness=_glyph_witness_gate(row,point,dpr,glyph_priors,below,observed,upper=upper)
                     if witness is not None:
                         glyph_witnesses[row['identity']]=glyph_witnesses.get(row['identity'],0)+1
                         if not witness:fail('typography','independent SFNT interior glyph witness has no ink',pixel=point,source=row['identity'])

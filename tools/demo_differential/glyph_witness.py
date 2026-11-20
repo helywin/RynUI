@@ -114,15 +114,19 @@ def mask_identity(scalar, source):
             source['display_scale'], source['phase'])
 
 
-def scenario_ink_byte(mask, source, bounds, point, dpr):
+def scenario_origin(mask, source, bounds, dpr):
     if (mask.left != source['bearing_x'] or mask.top != -source['bearing_y'] or
             mask.width != source['coverage_width'] or mask.height != source['coverage_height']):
         raise ProtocolError('submitted glyph extent differs from the independently rasterized face')
     x, y = (bounds[name] * dpr for name in ('x', 'y'))
     if abs(x - round(x)) > 1/64 or abs(y - round(y)) > 1/64:
         raise ProtocolError('submitted unrotated glyph is not positioned on the capture device grid')
-    return mask.at(math.floor(point[0] * dpr) - round(x) + mask.left - source['padding'],
-                   math.floor(point[1] * dpr) - round(y) + mask.top - source['padding'])
+    return round(x) + source['padding'] - mask.left, round(y) + source['padding'] - mask.top
+
+
+def scenario_ink_byte(mask, source, bounds, point, dpr):
+    x, y = scenario_origin(mask, source, bounds, dpr)
+    return mask.at(math.floor(point[0] * dpr) - x, math.floor(point[1] * dpr) - y)
 
 
 @lru_cache(maxsize=4096)
