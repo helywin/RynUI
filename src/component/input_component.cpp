@@ -3274,8 +3274,9 @@ bool InputComponentHost::synchronize_auxiliary_fragments() {
         std::array<graphics::SceneDrawCommand, input_effect_layer_count * 4> container;
         std::size_t count{};
         const auto stride = state->compact ? 4U : 1U;
-        const bool fill_before_border =
-            state->variant == InputVariant::Filled || (state->variant == InputVariant::Outlined && !state->compact);
+        const bool fill_before_border = state->variant == InputVariant::Filled ||
+                                        state->variant == InputVariant::Underlined ||
+                                        (state->variant == InputVariant::Outlined && !state->compact);
         for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
             const auto paint_layer = fill_before_border && layer == input_border_layer       ? input_background_layer
                                      : fill_before_border && layer == input_background_layer ? input_border_layer

@@ -119,11 +119,11 @@ void paint_query_preserves_preedit() {
             "read-only paint query changed editing/selection/composition or scheduled work");
 }
 
-void actual_command_order_and_surface_generation() {
+void actual_command_order_and_surface_generation(InputVariant variant) {
     ryn_test::input_component::Fixture fixture;
-    fixture.inputs.mount(Content{[] {
+    fixture.inputs.mount(Content{[variant] {
         Flex(FlexProps{}.vertical(true),
-             FlexContent{[] { Input(InputProps{}.variant(InputVariant::Filled).defaultValue(u8"order")); }});
+             FlexContent{[variant] { Input(InputProps{}.variant(variant).defaultValue(u8"order")); }});
     }});
     fixture.synchronize();
     const auto mounted = fixture.inputs.mounted_inputs().front();
@@ -150,7 +150,7 @@ void actual_command_order_and_surface_generation() {
             }
         }
     }
-    require(background && border && *background < *border, "Filled Input actual order differs from role enum order");
+    require(background && border && *background < *border, "Input did not paint its border over the background");
     const auto surface = fixture.services.surfaces().paint_snapshot(paint.selection_surface);
     require(surface && surface->id == paint.selection_surface && surface->binding &&
                 surface->owner == fixture.services.components().fragment_component(surface->fragment) &&
@@ -192,7 +192,8 @@ int main() {
     try {
         paint_identity_and_readonly();
         paint_query_preserves_preedit();
-        actual_command_order_and_surface_generation();
+        actual_command_order_and_surface_generation(InputVariant::Filled);
+        actual_command_order_and_surface_generation(InputVariant::Underlined);
         std::cout << "Input retained paint snapshot contracts passed\n";
         return 0;
     } catch (const std::exception& error) {
