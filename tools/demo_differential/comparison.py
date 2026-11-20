@@ -896,40 +896,47 @@ def _bounded_paint_basis(layers,coverages,variable):
         except ProtocolError:pass
     try:return _palette_basis(layers,(1.,1.,1.),byte_error=byte_error)
     except RunError:
-        joint=_hard_shadow_outline_basis(layers,coverages,variable)
+        joint=_joint_outline_output_basis(layers,coverages,variable)
         if joint is None:raise
         return joint
 
 
-def _hard_shadow_outline_basis(layers,coverages,variable):
-    """Observe the joint output of a hard shadow and focus outline at RGB8.
+def _joint_outline_output_basis(layers,coverages,variable):
+    """Observe the joint output of a focus outline and adjacent shadow at RGB8.
 
     Their nearly parallel colors can leave individual weights unobservable.
     The fixed source-over endpoints still bound every visible pixel and
     determine an output scale without fitting it to either capture.
     """
     from .color_metrics import contribution_domain
-    if len(variable)!=2:
-        return None
-    shadow,outline=(layers[position] for position in variable)
-    if shadow['kind']!='shadow' or shadow.get('blur')!=0 or outline['kind']!='outline':
+    kinds=tuple(row['kind'] for row in layers)
+    hard_outline=(kinds==('shadow','outline') and variable==[0,1] and layers[0].get('blur')==0)
+    floating_shadow=(kinds[:3]==('shadow','fill','outline') and 4<=len(layers)<=6 and len(variable)>=2 and
+                     layers[0].get('blur')==0 and layers[1]['color']==(1.,1.,1.) and
+                     all(row['kind']=='shadow' and row.get('blur',0)>0 for row in layers[3:]))
+    if not (hard_outline or floating_shadow):
         return None
     if any(layer['groups'] for layer in layers):
         return None
     endpoints=tuple(_paint_endpoints(layers,coverages,variable))
-    base=endpoints[0]
+    # Set the origin at the lightest attainable value on each channel.
+    # A white fill over a fixed lower shadow must not create negative ink.
+    base=tuple(max(channel) for channel in zip(*endpoints,strict=True))
     span=max(abs(a-b) for endpoint in endpoints for a,b in zip(base,endpoint,strict=True))
-    if span<=4/255:
+    # Each physical RGB8 source-over can round the output by at most half
+    # a code. Later layers attenuate earlier errors. The fixed output
+    # domain must itself be distinguishable at the existing .05 cap.
+    rounding=len(layers)*.5/255
+    if not span or rounding/span>.05:
         return None
-    return dict(mode='joint-hard-output',base=base,span=span,domain=contribution_domain(endpoints))
+    return dict(mode='joint-outline-output',base=base,span=span,domain=contribution_domain(endpoints),rounding=rounding)
 
 
 def _paint_coordinates(observed,basis):
     from .color_metrics import in_contribution_domain,solve_visible_contributions
     rgb=tuple(v/255 for v in observed)
-    if basis['mode']=='joint-hard-output':
-        # At most two rounded RGB8 blends contribute a half-code per channel.
-        valid=in_contribution_domain(rgb,basis['domain'],(1/255,)*3)
+    if basis['mode']=='joint-outline-output':
+        valid=in_contribution_domain(rgb,basis['domain'],(basis['rounding'],)*3)
         values=tuple((b-v)/basis['span'] for b,v in zip(basis['base'],rgb,strict=True))
         return valid,values
     solution=solve_visible_contributions(rgb,basis)

@@ -11,7 +11,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.comparison import (_layered_context,_actual_material,css_shadows,_composite_point,
                                           _layer_coverage,_native_paint_inventory,_paint_bins,_contains,_inset,
                                           _support,_PAINT_BIN_PHYSICAL_PX,_glyph_witness_gate,
-                                          _hard_shadow_outline_basis,_paint_coordinates,_palette_basis,_bounded_paint_basis,
+                                          _joint_outline_output_basis,_paint_coordinates,_palette_basis,_bounded_paint_basis,
                                           _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints,_status_input_caret,
                                           _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error)
 from demo_differential.calibration import CAPS
@@ -287,7 +287,7 @@ class LayeredTests(unittest.TestCase):
                 dict(kind='outline',groups=[],color=(145/255,202/255,1),alpha=1,opacity=1)]
         with self.assertRaises(RunError):
             _palette_basis(layers,(1,1,1))
-        basis=_hard_shadow_outline_basis(layers,[0.,0.],[0,1])
+        basis=_joint_outline_output_basis(layers,[0.,0.],[0,1])
         original=tuple(round(value*255) for value in _composite_point(layers,[1.,.2]))
         missing=tuple(round(value*255) for value in _composite_point(layers,[0.,.2]))
         visible,a=_paint_coordinates(original,basis)
@@ -296,10 +296,36 @@ class LayeredTests(unittest.TestCase):
         self.assertTrue(visible)
         self.assertGreater(max(abs(x-y) for x,y in zip(a,b,strict=True)),CAPS['overlap.contribution_max_error'])
         self.assertFalse(_paint_coordinates((220,239,240),basis)[0])
-        self.assertIsNone(_hard_shadow_outline_basis(layers[::-1],[0.,0.],[0,1]))
+        self.assertIsNone(_joint_outline_output_basis(layers[::-1],[0.,0.],[0,1]))
         fixed=_bounded_paint_basis(layers,[1.,0.],[1])
         self.assertEqual(fixed['rank'],1)
         self.assertTrue(_paint_coordinates(original,fixed)[0])
+
+    def test_opaque_focus_outline_overlapped_by_floating_shadow_keeps_joint_gate(self):
+        layers=[dict(kind='shadow',blur=0,groups=[],color=(145/255,202/255,1),alpha=1,opacity=1),
+                dict(kind='fill',groups=[],color=(1,1,1),alpha=1,opacity=1),
+                dict(kind='outline',groups=[],color=(22/255,119/255,1),alpha=1,opacity=1),
+                dict(kind='shadow',blur=12,groups=[],color=(0,0,0),alpha=.05,opacity=1)]
+        variable=[0,1,2,3]
+        with self.assertRaises(RunError):
+            _palette_basis(layers,(1,1,1))
+        coverage=[1.,0.,.25,.17]
+        basis=_bounded_paint_basis(layers,coverage,variable)
+        self.assertEqual(basis['mode'],'joint-outline-output')
+        raw=lambda values:tuple(round(x*255) for x in _composite_point(layers,values))
+        accepted,output=_paint_coordinates(raw(coverage),basis)
+        self.assertTrue(accepted)
+        accepted,missing=_paint_coordinates(raw([0.,0.,0.,.17]),basis)
+        self.assertTrue(accepted)
+        self.assertGreater(max(abs(x-y) for x,y in zip(output,missing,strict=True)),
+                           CAPS['overlap.contribution_max_error'])
+        self.assertFalse(_paint_coordinates((137,185,205),basis)[0])
+        self.assertIsNone(_joint_outline_output_basis(
+            [dict(row,color=(254/255,254/255,254/255)) for row in layers],coverage,variable))
+        layers.append(dict(layers[-1],blur=20,alpha=.08))
+        basis=_bounded_paint_basis(layers,coverage+[0.001],variable+[4])
+        self.assertEqual(basis['mode'],'joint-outline-output')
+        self.assertTrue(_paint_coordinates(raw(coverage+[0.001]),basis)[0])
 
     def test_submitted_degenerate_quad_validates_membership_without_paint(self):
         _,_,native,_,_,_,origins=synthetic()
