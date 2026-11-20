@@ -2945,12 +2945,20 @@ void SelectComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
             if (!row || !services_->components().branch_active(row_id)) {
                 continue;
             }
-            const bool selected = row->index && s->model.selected(s->model.options()[*row->index].value);
-            const bool active = row->index && s->model.active() == row->index;
-            auto item = quad(intersect(services_->nodes().require(row->node).bounds, menu_clip),
-                             selected ? token.colors.option_selected_background : token.colors.option_active_background,
+            const auto* option = row->index ? &s->model.options()[*row->index] : nullptr;
+            const bool selected = option && s->model.selected(option->value);
+            const bool active = option && s->model.active() == row->index && !row->disabled.get();
+            auto background_color = token.colors.option_active_background;
+            if (selected) {
+                background_color =
+                    active ? token.colors.option_active_selected_background : token.colors.option_selected_background;
+                if (option->disabled) {
+                    background_color = token.colors.option_disabled_selected_background;
+                }
+            }
+            auto item = quad(intersect(services_->nodes().require(row->node).bounds, menu_clip), background_color,
                              token.metrics.option_border_radius);
-            item.opacity = selected || (active && !s->loading) ? s->motion.opacity : 0.0F;
+            item.opacity = selected || active ? s->motion.opacity : 0.0F;
             static_cast<void>(services_->surfaces().update_surface(row->surface, std::span{&item, 1}));
             services_->scene_composer().set_fragment(row->hit, {}, row->interaction, menu_clip);
         }

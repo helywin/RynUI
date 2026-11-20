@@ -137,7 +137,8 @@ void pointer_keyboard_and_clear() {
           "Select has multiple Tab stops");
     check(reference.focus(), "Select ref focus");
     f.synchronize();
-    const auto clear_owner = f.services.select().paint_owners(id)->clear.owner;
+    const auto clear = f.services.select().paint_owners(id)->clear;
+    const auto clear_owner = clear.owner;
     const auto clear_action = f.services.components().children(clear_owner).front();
     auto clear_hit = [&] {
         for (const auto hit : f.services.interactions().declaration_order()) {
@@ -160,6 +161,9 @@ void pointer_keyboard_and_clear() {
               f.inputs.layout_snapshot(selector).viewport == input_viewport &&
               f.services.components().children(clear_owner).front() == clear_action,
           "Select hover must replace its suffix in place while retaining the editor and clear action");
+    const auto& surfaces = f.services.surfaces();
+    const auto clear_quad = surfaces.visual_range(clear.surface).first;
+    check(surfaces.instances().at(clear_quad).color[3] == 0, "default Select clear action painted a white square");
     // The only eligible non-input interaction inside the selector is clear.
     bool cleared = false;
     const auto interactions = f.services.interactions().declaration_order();
@@ -445,6 +449,18 @@ void controlled_states_and_theme() {
     };
     check(!paint.rows.empty() && radius(paint.popup) == 8 && radius(paint.rows.front()) == 4,
           "Select popup and option used the same painted corner radius");
+    const auto selected_background = [&] {
+        return surfaces.instances().at(surfaces.visual_range(paint.rows.front().surface).first).color;
+    };
+    const auto& colors = f.services.components().theme_scope(id)->snapshot().select().colors;
+    const auto to_rgba = [](Color c) {
+        return std::array{c.red(), c.green(), c.blue(), c.alpha()};
+    };
+    check(selected_background() == to_rgba(colors.option_active_selected_background),
+          "active selected row did not paint the highlighted selection color");
+    key(f, Key::down);
+    check(selected_background() == to_rgba(colors.option_selected_background),
+          "moving active option repainted the retained selection with the wrong color");
     key(f, Key::escape);
     check(f.services.select().snapshot(id).visible && requests.back() == false, "controlled open refusal ignored");
     loading.set(true);

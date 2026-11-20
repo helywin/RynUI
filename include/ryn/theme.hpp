@@ -561,14 +561,23 @@ struct SelectColorToken final {
     Color hover_border_color;
     Color active_border_color;
     Color active_outline_color;
+    Color option_active_selected_background;
+    Color option_disabled_selected_background;
 
     [[nodiscard]] auto values() const noexcept {
-        return std::array{popup_background,           option_color,
-                          option_disabled_color,      option_selected_color,
-                          option_selected_background, option_active_background,
-                          selector_background,        clear_background,
-                          hover_border_color,         active_border_color,
-                          active_outline_color};
+        return std::array{popup_background,
+                          option_color,
+                          option_disabled_color,
+                          option_selected_color,
+                          option_selected_background,
+                          option_active_background,
+                          selector_background,
+                          clear_background,
+                          hover_border_color,
+                          active_border_color,
+                          active_outline_color,
+                          option_active_selected_background,
+                          option_disabled_selected_background};
     }
 
     friend bool operator==(const SelectColorToken&, const SelectColorToken&) = default;
@@ -635,6 +644,7 @@ struct SelectTokenOverride final {
     std::optional<ShadowList> shadow;
     std::optional<std::int32_t> z_index_popup;
     std::optional<LogicalLength> option_border_radius;
+    std::optional<Color> option_active_selected_background;
     friend bool operator==(const SelectTokenOverride&, const SelectTokenOverride&) = default;
 };
 

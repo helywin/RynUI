@@ -2228,20 +2228,22 @@ SelectThemeToken derive_select(const AntDesignDefaultSeed& seed, const ThemeMapT
     if (seed.z_index_popup_base > std::numeric_limits<std::int32_t>::max() - 50) {
         throw std::invalid_argument("Select z-index exceeds the supported integer range");
     }
-    const auto primary_background = button_palette(seed.color_primary, dark, alias.color_background_container).light;
+    const auto primary_palette = button_palette(seed.color_primary, dark, alias.color_background_container);
     SelectThemeToken token;
     token.colors = {
         alias.color_background_elevated,
         alias.color_text,
         alias.color_text_disabled,
         alias.color_text,
-        primary_background,
+        primary_palette.light,
         Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), dark ? 0.08F : 0.04F),
         alias.color_background_container,
-        alias.color_background_container,
+        Color::rgba8(0, 0, 0, 0),
         map.color_primary_hover,
         map.color_primary,
-        get_alpha_color(primary_background, alias.color_background_container)};
+        get_alpha_color(primary_palette.light, alias.color_background_container),
+        primary_palette.light_hover,
+        alias.color_background_container_disabled};
     token.typography = {seed.font_family, map.font_size, map.font_size * map.line_height, 400, 600};
     token.metrics = {map.control_height,
                      map.size_small,
@@ -2387,6 +2389,10 @@ void apply_select_override(SelectThemeToken& token, const SelectTokenOverride& o
     }
     if (o.option_selected_background) {
         token.colors.option_selected_background = *o.option_selected_background;
+        token.colors.option_active_selected_background = *o.option_selected_background;
+    }
+    if (o.option_active_selected_background) {
+        token.colors.option_active_selected_background = *o.option_active_selected_background;
     }
     if (o.option_active_background) {
         token.colors.option_active_background = *o.option_active_background;
@@ -6939,6 +6945,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             // Locked Mentions uses ordinary text/hover, never Select's selected palette or bold weight.
             suggestions.colors.option_selected_color = suggestions.colors.option_color;
             suggestions.colors.option_selected_background = suggestions.colors.option_active_background;
+            suggestions.colors.option_active_selected_background = suggestions.colors.option_active_background;
             suggestions.typography.selected_font_weight = suggestions.typography.font_weight;
             editor = derive_input_theme(component_seed, component_map, component_alias, algorithms);
             token->input_seed = mentions_input_seed(component_seed);

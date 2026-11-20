@@ -25,6 +25,8 @@ void tokens_and_inheritance() {
               token.typography.selected_font_weight == 600 && token.z_index_popup == 1050,
           "locked Select defaults drifted");
     check(token.colors.option_selected_background == Color::rgba8(230, 244, 255) &&
+              token.colors.option_active_selected_background == Color::rgba8(186, 224, 255) &&
+              token.colors.clear_background.alpha() == 0 &&
               token.colors.selector_background == base.alias().color_background_container &&
               token.colors.option_selected_color == base.alias().color_text,
           "Select default color recipe");
@@ -40,14 +42,20 @@ void tokens_and_inheritance() {
     const auto parent = resolve_theme(custom);
     check(parent.select().colors.active_outline_color == *custom.select.tokens.active_outline_color,
           "Select focus shadow override did not remain authoritative");
+    check(parent.select().colors.option_active_selected_background == *custom.select.tokens.option_selected_background,
+          "Select selected background override no longer applies to the highlighted selection");
     check(parent.select().metrics.border_radius == 12 && parent.select().metrics.option_border_radius == 12,
           "legacy Select radius override no longer applies to both surfaces");
     check(resolve_theme({}, &parent).select() == parent.select(), "Select inheritance");
     ThemeConfig reset;
     reset.select.tokens.option_border_radius = dp(2);
-    check(resolve_theme(reset, &parent).select().metrics.option_border_radius == 2,
-          "Select option radius could not be overridden in a child scope");
+    reset.select.tokens.option_active_selected_background = Color::rgba8(20, 40, 60);
+    const auto child = resolve_theme(reset, &parent).select();
+    check(child.metrics.option_border_radius == 2, "Select option radius could not be overridden in a child scope");
+    check(child.colors.option_active_selected_background == *reset.select.tokens.option_active_selected_background,
+          "Select highlighted selection color could not be overridden in a child scope");
     reset.select.tokens.option_border_radius.reset();
+    reset.select.tokens.option_active_selected_background.reset();
     reset.inherit = false;
     check(resolve_theme(reset, &parent).select() == token, "Select inherit reset");
     check(parent.button() == base.button() && parent.tooltip() == base.tooltip() &&
