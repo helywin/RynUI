@@ -26,6 +26,8 @@ const inputEvents = [];
 let server, browser, context;
 let sequence = 0;
 let lastTimestamp = 0;
+let pointerPosition;
+const pointerButtons = new Set();
 const completedSteps = [], completedCheckpoints = [];
 const savedRects = new Map();
 const outputStream = fs.createWriteStream(path.join(output, 'observations.jsonl'), { flags: 'wx' });
@@ -577,9 +579,16 @@ try {
       expect(x >= 0 && y >= 0 && x < fixture.viewport.width && y < fixture.viewport.height,
         'pointer/wheel target is outside the visible viewport');
       await page.mouse.move(x, y);
+      pointerPosition = { x, y };
       hit = await page.evaluate(({ x, y }) => window.__reference.semantic(document.elementFromPoint(x, y)), { x, y });
-      if (action.kind === 'pointer-down') await page.mouse.down({ button: parameters.button === 'primary' ? 'left' : 'right' });
-      if (action.kind === 'pointer-up') await page.mouse.up({ button: parameters.button === 'primary' ? 'left' : 'right' });
+      if (action.kind === 'pointer-down') {
+        await page.mouse.down({ button: parameters.button === 'primary' ? 'left' : 'right' });
+        pointerButtons.add(parameters.button);
+      }
+      if (action.kind === 'pointer-up') {
+        await page.mouse.up({ button: parameters.button === 'primary' ? 'left' : 'right' });
+        pointerButtons.delete(parameters.button);
+      }
       if (action.kind === 'wheel') {
         await page.evaluate(() => {
           window.__pendingWheelReceipt = new Promise(resolve => window.addEventListener('wheel', event =>
@@ -658,6 +667,11 @@ try {
       const tiles = [];
       if (sample.bounds.height > fixture.viewport.height * .75) {
         const camera = await page.evaluate(() => ({ offset: window.scrollY, focus: window.__reference.instance(document.activeElement) }));
+        const passivePointer = pointerButtons.size === 0 ? pointerPosition : undefined;
+        if (passivePointer) {
+          // Keep camera-only views free of hover changes caused by scrolling beneath the pointer.
+          await page.mouse.move(-1, -1);
+        }
         const beginning = camera.offset + sample.bounds.y - 20;
         const stride = 2 * Math.floor(fixture.viewport.height * .625 / 2);
         for (let ordinal = 0; ordinal < 8; ++ordinal) {
@@ -678,6 +692,9 @@ try {
           if (target.bounds.y + target.bounds.height + 6 <= fixture.viewport.height) break;
         }
         await page.evaluate(top => window.scrollTo({top,behavior:'instant'}), camera.offset);
+        if (passivePointer) {
+          await page.mouse.move(passivePointer.x, passivePointer.y);
+        }
         await paint();
         expect(await page.evaluate(cam => window.scrollY === cam.offset &&
           window.__reference.instance(document.activeElement) === cam.focus, camera),

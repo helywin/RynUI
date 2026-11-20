@@ -1595,6 +1595,18 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
                 const auto primary_paint = observer.captured_paint;
                 const auto callback_count = observer.actions.context->callbacks.size();
                 const auto focus = observer.actions.app.focus().state().focused;
+                const auto mouse = input::PointerIdentity::mouse();
+                const auto pointer = observer.actions.app.pointer().state(mouse);
+                const bool passive_pointer = pointer && !pointer->primary_down && !pointer->capture;
+                const auto move_pointer = [&](runtime::Point point) {
+                    observer.actions.pages.dispatch(input::PointerInputEvent{
+                        mouse, input::PointerAction::move, input::PointerButton::none, point.x, point.y});
+                    observer.actions.render();
+                };
+                if (passive_pointer) {
+                    // Use the same neutral pointer position as the passive browser camera.
+                    move_pointer({-1, -1});
+                }
                 const auto stride = 2 * std::floor(logical_height * .625F / 2);
                 const auto initial_offset = page.document.offset;
                 const auto at_sample_top = initial_offset + sample.y - lane.y - 20;
@@ -1648,6 +1660,9 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
                     }
                 }
                 move_document(initial_offset);
+                if (passive_pointer) {
+                    move_pointer(pointer->position);
+                }
                 if (observer.actions.pages.snapshot().document.offset != initial_offset ||
                     observer.actions.app.focus().state().focused != focus ||
                     observer.actions.context->callbacks.size() != callback_count) {
