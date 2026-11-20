@@ -35,8 +35,29 @@ function actualNode() {
       ['d','viewBox','transform','clip-path','fill-rule','role','aria-label'].map(name=>[name,element.getAttribute(name)]))};
   if(node.nodeType===Node.TEXT_NODE) {
     const range=document.createRange();range.selectNodeContents(node);
-    result.text={content:node.textContent,boxes:[...range.getClientRects()].map(rect),
+    const boxes=[...range.getClientRects()].map(rect);
+    result.text={content:node.textContent,boxes,
       semantic_groups:window.__observedTextGroups(node)};
+    const button=element.parentElement;
+    if (element.tagName==='SPAN' && button?.tagName==='BUTTON' && element.childNodes.length===1 &&
+        element.getClientRects().length===1 && boxes.length===1 &&
+        Object.keys(result.bounds).every(key=>boxes[0][key]===result.bounds[key])) {
+      const style=getComputedStyle(element), buttonStyle=getComputedStyle(button);
+      const verticalInsets=[style.paddingTop,style.paddingBottom,style.borderTopWidth,style.borderBottomWidth];
+      const generatedContent=['::before','::after'].some(pseudo=>
+        !['none','normal'].includes(getComputedStyle(element,pseudo).content));
+      let untransformed=Number.isInteger(window.scrollY);
+      for (let ancestor=element;ancestor && untransformed;ancestor=ancestor.parentElement) {
+        const s=getComputedStyle(ancestor);
+        untransformed=s.transform==='none' && s.translate==='none' && s.rotate==='none' &&
+          s.scale==='none' && s.zoom==='1' && Number.isInteger(ancestor.scrollTop);
+      }
+      // The only text fills one line in the blockified flex item. Its top is
+      // the line-fragment origin Blink rounds in TextFragmentPainter.
+      if (untransformed && !generatedContent && verticalInsets.every(value=>value==='0px') &&
+          style.display==='block' && style.writingMode==='horizontal-tb' &&
+          ['flex','inline-flex'].includes(buttonStyle.display)) result.text.block_line_top=result.bounds.y;
+    }
     const host=node.getRootNode()?.host;
     if(host?.matches('input,textarea') && document.activeElement===host && typeof host.selectionStart==='number') {
       const selected=getComputedStyle(host,'::selection');

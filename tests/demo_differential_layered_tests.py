@@ -87,6 +87,33 @@ class LayeredTests(unittest.TestCase):
         rows,_=_web_paint_inventory(web,origins[0],1.5)
         self.assertEqual(rows[-1]['bounds']['width'],40.125)
 
+    def test_web_button_line_origin_precedes_device_glyph_placement(self):
+        _,_,_,web,_,_,_=synthetic()
+        bounds=box(16,16.5,8,19)
+        group=dict(byte_begin=0,byte_end=1,boxes=[bounds],color='rgb(0, 0, 0)',
+                   inline_ink=dict(x=16,right=24,top=21.5,bottom=36.5,baseline=31.5))
+        text=dict(content='F',boxes=[bounds],semantic_groups=[group],block_line_top=16.5)
+        stack=web['resources']['paint_stack']
+        stack['layers']=[dict(source_material_id='node:2',backend_node_id=2,node_type=3,layout_text='F',
+                              actual=dict(bounds=bounds,tag='SPAN',text=text),style={},paint_order=1,
+                              layout_ordinal=0,composition_group_path=[],bounds=bounds)]
+
+        def glyph():
+            return _web_paint_inventory(web,box(0,0),1.5)[0][0]
+
+        row=glyph()
+        self.assertEqual(row['outline_origin'],(16,32))
+        self.assertEqual({y for _,y,_ in browser_placements('directwrite-3x1', row['outline_origin'],1.5)}, {48})
+        self.assertEqual(row['bounds'],box(16,16.5,8,20.5))
+        self.assertEqual(group['boxes'],[bounds])
+        self.assertEqual(group['inline_ink']['baseline'],31.5)
+        text['block_line_top']=16.25
+        with self.assertRaisesRegex(ProtocolError,'single-line block origin'):
+            glyph()
+        del text['block_line_top']
+        self.assertEqual(glyph()['outline_origin'],(16,31.5))
+        self.assertEqual({y for _,y,_ in browser_placements('directwrite-3x1', glyph()['outline_origin'],1.5)}, {47})
+
     def test_selected_label_preserves_declaration_order_and_actual_active_layer(self):
         from demo_differential.comparison import _text_rows
         label=dict(content='Desktop',kind='editor-placeholder',semantic_role='selector-caption')

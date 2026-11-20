@@ -787,6 +787,16 @@ def _web_paint_inventory(checkpoint,origin,dpr):
         if node['node_type']==3:
             text=a.get('text')
             if not text or text['content']!=node['layout_text']:raise RunError(3,'calibration','actual DOM/UA Text paint source unavailable')
+            line_top=text.get('block_line_top')
+            line_shift=0
+            if line_top is not None:
+                span=a.get('bounds',{})
+                if (type(line_top) not in (float,int) or not math.isfinite(line_top) or
+                        span.get('y')!=line_top or text['boxes']!=[span] or a.get('tag')!='SPAN'):
+                    raise ProtocolError('invalid Chromium single-line block origin')
+                # Blink snaps the line fragment in CSS pixels before glyphs
+                # are rasterized at the device scale. The Range stays unsnapped.
+                line_shift=math.floor(line_top+.5)-line_top
             for group in text['semantic_groups']:
                 content=text['content'].encode()[group['byte_begin']:group['byte_end']].decode()
                 if content.isspace():continue
@@ -808,10 +818,12 @@ def _web_paint_inventory(checkpoint,origin,dpr):
                         right=max(local['x']+local['width'],ink['right']-origin['x'])
                         local=dict(local,x=left,width=right-left)
                         if 'baseline' in ink:
-                            top=min(local['y'],ink['top']-origin['y'])
-                            bottom=max(local['y']+local['height'],ink['bottom']-origin['y'])
+                            if line_top is not None and box['y']!=line_top:
+                                raise ProtocolError('Chromium glyph is outside its observed block line')
+                            top=min(local['y'],ink['top']+line_shift-origin['y'])
+                            bottom=max(local['y']+local['height'],ink['bottom']+line_shift-origin['y'])
                             local=dict(local,y=top,height=bottom-top)
-                            outline_origin=(box['x']-origin['x'],ink['baseline']-origin['y'])
+                            outline_origin=(box['x']-origin['x'],ink['baseline']+line_shift-origin['y'])
                     add('glyph',_css_rgba(selection['color']) if selected else color,
                         f'/text/{group["byte_begin"]}/{i}',bounds=local,text_group=group,content=content,
                         outline_origin=outline_origin)
