@@ -833,7 +833,7 @@ struct InputPropsAccess {
                 InputSuffix{[&owner, component, clear_visible, suffix, count_text, has_clear, has_count,
                              clear_icon = props.common_.clear_icon_, clear_disabled = props.common_.clear_disabled_] {
                     if (has_clear) {
-                        mount_input_affix_action(
+                        mount_input_clear_action(
                             *owner.host_, clear_icon, clear_disabled, [&owner, component] { owner.clear(component); },
                             clear_visible);
                     }
@@ -3732,7 +3732,12 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
     auto value = String::from_utf8(editor->value()).value();
     check(editor->note_emitted_value());
     const auto proposed_revision = editor->revision();
-    update_text(component);
+    // A rejected empty edit must leave the existing clear action eligible and focused.
+    const bool defer_clear =
+        callback && !state->number && state->authoritative_value && value.empty() && state->clear_visible.get();
+    if (!defer_clear) {
+        update_text(component);
+    }
     if (state->number) {
         state->number->edited = true;
         state->number->format_frozen = true;
@@ -3769,7 +3774,14 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
         return;
     }
     if (callback && host_->components().state<InputState>(component) && editors_.find(editor_id)) {
-        callback(std::move(value));
+        try {
+            callback(std::move(value));
+        } catch (...) {
+            if (defer_clear) {
+                update_text(component);
+            }
+            throw;
+        }
         state = host_->components().state<InputState>(component);
         editor = editors_.find(editor_id);
         if (!state || !editor || editor->revision() != proposed_revision || !state->authoritative_value) {
@@ -3784,7 +3796,7 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
         }
         const auto settled = editor->reconcile(accepted.bytes());
         check(settled.edit);
-        if (settled.edit.value_changed) {
+        if (settled.edit.value_changed || defer_clear) {
             update_text(component);
         }
     }

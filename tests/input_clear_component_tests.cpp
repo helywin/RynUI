@@ -55,6 +55,13 @@ void clear_uncontrolled_and_composition() {
     const auto icon = fixture.buttons.text().mounted_texts().front().scene;
     require(fixture.scene.text_state(icon).content().bytes() == String{u8"\uE003"}.bytes(),
             "clear action did not mount CloseCircleFilled");
+    const auto bounds = fixture.nodes.require(fixture.buttons.interactions().require(action).node).bounds;
+    require(bounds.width == 12 && bounds.height == 12 && fixture.scene.text_state(icon).material().color[3] == 0.25F,
+            "clear icon paint does not use the default small size and neutral color");
+    fixture.buttons.pointer().dispatch({PointerIdentity::mouse(), PointerAction::move, PointerButton::none,
+                                        bounds.x + bounds.width / 2, bounds.y + bounds.height / 2});
+    fixture.synchronize();
+    require(fixture.scene.text_state(icon).material().color[3] == 0.45F, "clear icon did not show hover contrast");
     require(suffix_runs == 1 && fixture.buttons.interactions().require(action).eligible,
             "clear action or custom suffix missing");
     require(!fixture.buttons.interactions().require(action).focus_on_pointer, "clear pointer focus policy incorrect");
@@ -85,11 +92,15 @@ void controlled_reactive_and_keyboard() {
     Signal<bool> disabled{false};
     Signal<bool> read_only{false};
     int changes{};
+    bool accept{};
     fixture.inputs.mount(Content{[&] {
         Input(InputProps{}.value(value).allowClear(allowed).disabled(disabled).readOnly(read_only).onChange(
             [&](String next) {
                 require(next.empty(), "clear callback did not receive empty value");
                 ++changes;
+                if (accept) {
+                    value.set(std::move(next));
+                }
             }));
     }});
     const auto input = fixture.inputs.mounted_inputs().front();
@@ -111,14 +122,24 @@ void controlled_reactive_and_keyboard() {
     fixture.synchronize();
     require(fixture.buttons.focus().request_focus(action, FocusModality::keyboard),
             "clear action keyboard focus failed");
-    fixture.buttons.focus().dispatch({Key::space, KeyAction::down, KeyModifier::none, false, KeyModifier::control});
-    fixture.buttons.focus().dispatch({Key::space, KeyAction::up, KeyModifier::none, false, KeyModifier::control});
-    fixture.synchronize();
-    require(changes == 1 && fixture.inputs.editors().require(input.editor).value().empty(), "keyboard clear failed");
+    const auto keyboard_clear = [&] {
+        fixture.buttons.focus().dispatch({Key::space, KeyAction::down, KeyModifier::none, false, KeyModifier::control});
+        fixture.buttons.focus().dispatch({Key::space, KeyAction::up, KeyModifier::none, false, KeyModifier::control});
+        fixture.synchronize();
+    };
+    keyboard_clear();
+    require(changes == 1 && fixture.inputs.editors().require(input.editor).value() == "abc" &&
+                fixture.buttons.interactions().require(action).eligible &&
+                fixture.buttons.focus().state().focused == action,
+            "controlled clear rejection did not preserve the authoritative value and clear focus");
+    accept = true;
+    keyboard_clear();
+    require(changes == 2 && fixture.inputs.editors().require(input.editor).value().empty(),
+            "accepted keyboard clear failed");
     value.set(String{u8"external"});
     fixture.synchronize();
     require(fixture.inputs.editors().require(input.editor).value() == "external" &&
-                fixture.buttons.interactions().require(action).eligible && changes == 1,
+                fixture.buttons.interactions().require(action).eligible && changes == 2,
             "controlled echo did not restore visible value");
 }
 
