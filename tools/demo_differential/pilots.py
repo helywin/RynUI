@@ -170,7 +170,9 @@ def input_case():
         oracle.append(predicate('equals', step, path=f'/callbacks/{index}/payload',
                       value={'proposed': proposed, 'committed': 'accepted', 'accepted': accepted}))
         oracle.append(predicate('equals', step, path='/targets/1/state/value', value='accepted'))
-    return _base('input', controls, data, slots, composition, steps, oracle)
+    case = _base('input', controls, data, slots, composition, steps, oracle)
+    case['features'].append('native-status-caret')
+    return validate('case', case)
 
 
 def select_case():

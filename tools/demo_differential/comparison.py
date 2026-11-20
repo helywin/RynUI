@@ -376,6 +376,25 @@ def _shape_distance(point,bounds,radii):
     return rounded_distance(*point,bounds,radius)
 
 
+def _shadow_edge(row):
+    spread=row['spread'] if row['kind']=='shadow' else -row['spread']
+    bounds=_inset(row['bounds'],-spread)
+    bounds['x']+=row['offset'][0]
+    bounds['y']+=row['offset'][1]
+    radius=row['radii']
+    return bounds,max(0,radius+spread) if radius>0 else 0
+
+
+def _shadow_tail(row,point,dpr):
+    bounds,radius=_shadow_edge(row)
+    if min(bounds['width'],bounds['height'])<=0:
+        return False
+    distance=_shape_distance(point,bounds,radius)
+    if row['kind']=='inset-shadow':
+        distance=-distance
+    return distance>max(math.sqrt(.5)/dpr,row['blur'])
+
+
 def _square_border_side(bounds,widths,edge):
     """One CSS square side owns the miters adjoining transparent sides."""
     def corners(rect):
@@ -425,6 +444,12 @@ def _layer_coverage(layer,point,dpr):
     # A hard shape can partially cover a unit pixel only if an edge reaches
     # its square aperture. The half diagonal bounds every edge direction.
     pixel_reach=math.sqrt(.5)
+    if layer.get('solid_status_caret'):
+        return float(_contains(b,point)),False
+    if layer.get('web_glyph_mask') is not None:
+        mask,x,y=layer['web_glyph_mask']
+        if mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y)==0:
+            return 0,False
     if kind in ('glyph','caret'):
         return (1 if _contains(b,point) else 0),_contains(b,point)
     if kind in ('shadow','inset-shadow'):
@@ -435,19 +460,17 @@ def _layer_coverage(layer,point,dpr):
         if kind=='shadow' and layer.get('knockout') and distance*dpr < -1:return 0,False
         straight=(b['x']+r<=point[0]<=b['x']+b['width']-r or b['y']+r<=point[1]<=b['y']+b['height']-r)
         if kind=='shadow' and layer.get('knockout') and straight and distance*dpr<=-.5:return 0,False
-        spread=layer['spread'] if kind=='shadow' else -layer['spread']
-        shape=_inset(b,-spread);radius=max(0,r+spread) if r>0 else 0
+        shape,radius=_shadow_edge(layer)
         if shape['width']<=0 or shape['height']<=0:return (0 if kind=='shadow' else float(distance<=0)),False
         if layer['blur']>0:
-            shadow={'offset':layer['offset'],'blur':layer['blur'],'spread':0}
+            shadow={'offset':[0,0],'blur':layer['blur'],'spread':0}
             value=gaussian_rounded_shadow(*point,shape,shadow,radius)
         else:
-            shift=dict(shape,x=shape['x']+layer['offset'][0],y=shape['y']+layer['offset'][1])
             if kind=='shadow' and any(p+.5<=lo or p-.5>=hi for p,lo,hi in (
-                    (point[0]*dpr,shift['x']*dpr,(shift['x']+shift['width'])*dpr),
-                    (point[1]*dpr,shift['y']*dpr,(shift['y']+shift['height'])*dpr))):
+                    (point[0]*dpr,shape['x']*dpr,(shape['x']+shape['width'])*dpr),
+                    (point[1]*dpr,shape['y']*dpr,(shape['y']+shape['height'])*dpr))):
                 return 0,False
-            edge=_shape_distance(point,shift,radius);value=float(edge<=0)
+            edge=_shape_distance(point,shape,radius);value=float(edge<=0)
             if kind=='shadow' and (edge*dpr>pixel_reach or
                     layer.get('knockout') and distance*dpr < -pixel_reach):
                 return 0,False
@@ -559,7 +582,6 @@ def _native_paint_inventory(checkpoint,origin,dpr=1):
                 row.update(kind='shadow' if effect==0 else 'inset-shadow',offset=a['offset'],blur=a['blur'],spread=a['spread'],knockout=False)
             elif effect==2:row.update(kind='outline',width=a['outline_width'],offset_width=a['outline_offset'])
             elif effect==6:
-                if a['blur']<=0:raise ProtocolError('actual exterior shadow has no blur')
                 row.update(kind='shadow',offset=a['offset'],blur=a['blur'],spread=a['spread'],knockout=True)
             elif effect not in (0,1):raise RunError(3,'calibration','non-round effect unsupported in finite pilot')
         for group in group_paths[actual[0]['command']]:
@@ -644,18 +666,29 @@ def _web_paint_inventory(checkpoint,origin,dpr):
                     local=relative(box,origin)
                     if selected:add('fill',_css_rgba(selection['background']),f'/selection/{group["byte_begin"]}/{i}',bounds=local)
                     ink=group.get('inline_ink')
+                    outline_origin=None
                     if ink is not None:
-                        if (i!=0 or len(group['boxes'])!=1 or len(content)!=1 or set(ink)!={'x','right'} or
+                        if (i!=0 or len(group['boxes'])!=1 or len(content)!=1 or
+                                set(ink) not in ({'x','right'},{'x','right','top','bottom','baseline'}) or
                                 not all(type(v) in (float,int) and math.isfinite(v) for v in ink.values()) or
-                                ink['right']<ink['x']):
+                                ink['right']<ink['x'] or ('baseline' in ink and ink['bottom']<ink['top'])):
                             raise ProtocolError('invalid actual Chromium glyph ink metrics')
                         left=min(local['x'],ink['x']-origin['x'])
                         right=max(local['x']+local['width'],ink['right']-origin['x'])
                         local=dict(local,x=left,width=right-left)
-                    add('glyph',_css_rgba(selection['color']) if selected else color,f'/text/{group["byte_begin"]}/{i}',bounds=local,text_group=group,content=content)
+                        if 'baseline' in ink:
+                            top=min(local['y'],ink['top']-origin['y'])
+                            bottom=max(local['y']+local['height'],ink['bottom']-origin['y'])
+                            local=dict(local,y=top,height=bottom-top)
+                            outline_origin=(box['x']-origin['x'],ink['baseline']-origin['y'])
+                    add('glyph',_css_rgba(selection['color']) if selected else color,
+                        f'/text/{group["byte_begin"]}/{i}',bounds=local,text_group=group,content=content,
+                        outline_origin=outline_origin)
             caret=text.get('caret')
             if caret and caret['edge']['height']>0 and caret['animation']=='manual':
-                edge=caret['edge'];b=dict(edge,x=edge['x']-1/dpr,width=2/dpr)
+                edge=caret['edge'];top=math.floor(edge['y']*dpr)/dpr
+                bottom=math.ceil((edge['y']+edge['height'])*dpr)/dpr
+                b=dict(x=edge['x']-1/dpr,y=top,width=2/dpr,height=bottom-top)
                 add('caret',_css_rgba(caret['color']),'/caret',bounds=relative(b,origin),
                     caret_edge=dict(edge,x=edge['x']-origin['x'],y=edge['y']-origin['y']),
                     geometry_status='actual collapsed UA Range edge; thickness measured from unmasked pixels within one physical pixel of edge')
@@ -890,7 +923,16 @@ def _hard_paint_gates(native_layers,web_layers,step):
         if not candidates:
             errors.append(dict(category='visual',step=step,target=row['identity'],message='actual retained material has no matching observed Web part'))
             continue
-        if row['kind'] in ('shadow','inset-shadow','outline'):continue
+        if row['kind'] in ('shadow','inset-shadow'):
+            if not any(candidate['kind']==row['kind'] and
+                       all(abs(a-b)<=.25 for a,b in zip(row['offset'],candidate['offset'],strict=True)) and
+                       all(abs(row[field]-candidate[field])<=.25 for field in ('blur','spread','radii')) and
+                       all(abs(row['bounds'][field]-candidate['bounds'][field])<=.25 for field in row['bounds'])
+                       for candidate in candidates):
+                errors.append(dict(category='layout',step=step,target=row['identity'],
+                                   message='actual retained shadow geometry differs from observed Web shadow'))
+            continue
+        if row['kind']=='outline':continue
         matched=False
         for candidate in candidates:
             radii=candidate.get('radii',0);radii=(radii,)*4 if not isinstance(radii,(tuple,list)) else radii
@@ -909,10 +951,10 @@ def _hard_paint_gates(native_layers,web_layers,step):
     return errors
 
 
-def _glyph_priors_for_run(native,manifest,*,independent_masks=False):
+def _glyph_priors_for_run(native,manifest,*,independent_masks=False,web=None):
     from .calibration import scenario_font_priors,font_priors_from_bytes
     from .formal_icon_source import official_font_bytes
-    from .glyph_witness import scenario_masks
+    from .glyph_witness import scenario_masks,browser_scenario_masks
     from .protocol import ROOT,relative_path
     ordinary=set();icons=set();texts=[]
     for step,checkpoint in native['checkpoints'].items():
@@ -922,10 +964,31 @@ def _glyph_priors_for_run(native,manifest,*,independent_masks=False):
                 texts.append(text)
                 destination=icons if text.get('kind')=='icon-font' else ordinary
                 destination.update(char for char in text['content'] if not char.isspace())
+    web_rows=[]
+    if web is not None:
+        dpr=manifest['scope']['actual_dpr']
+        for step,checkpoint in web['checkpoints'].items():
+            views=[checkpoint]
+            views.extend(dict(checkpoint,targets=[tile['target']],captures=[tile['capture']],resources=tile)
+                         for tile in web.get('context_tiles',{}).get(step,[]))
+            for view in views:
+                anchor=next(row for row in view['targets'] if 'sample_anchor' in row['tokens'])
+                rows,_=_web_paint_inventory(view,sample_anchor(anchor),dpr)
+                for row in rows:
+                    if row['kind']=='glyph' and not row.get('formal_svg'):
+                        web_rows.append(row)
+                        ordinary.update(row['content'])
     library=ROOT/relative_path(manifest['fonttools_library'])
     result=scenario_font_priors(manifest['fonts'],sorted(ordinary),library)
+    aliases={};web_fonts={}
+    for index,font in enumerate(manifest['fonts']):
+        alias=aliases.setdefault(font['identity'],'ReferenceFont'+str(index))
+        web_fonts[alias,int(font['weight'])]=font['sha256']
+    result['web_fonts']=web_fonts
     if independent_masks:
         result['scenario_masks']=scenario_masks(manifest,ROOT,texts,result)
+        if web_rows:
+            result['web_masks']=browser_scenario_masks(manifest,ROOT,(_web_glyph_source(row,result) for row in web_rows))
     if icons:result.update(font_priors_from_bytes(official_font_bytes(),[ord(c) for c in sorted(icons)],library))
     return result
 
@@ -978,16 +1041,153 @@ def _same_glyph_interface(first,second):
     return identity(a)==identity(b)
 
 
+def _joint_glyph_samples(side,priors,point,dpr):
+    from .glyph_witness import encoded_coverage,mask_identity,scenario_ink_byte
+    pairs=[];coverages=side['coverages'].copy()
+    rasterizer,masks=priors['scenario_masks']
+    for position in side['variable']:
+        row=side['active'][position]
+        if row['kind']!='glyph' or row['groups'] or row.get('formal_svg'):
+            return None
+        if row.get('web_glyph_mask') is not None:
+            mask,x,y=row['web_glyph_mask']
+            byte=mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y)
+            source=row['outline_source']
+            face=source['actual_font_sha256'];scalar=source['content']
+        elif row.get('glyph_source') is not None:
+            text,ink=row['glyph_source'];source=ink['atlas_source'];face=source['font']['sha256']
+            scalar=text['content'].encode()[ink['byte_begin']:ink['byte_end']].decode()
+            mask=masks.get(mask_identity(scalar,source))
+            if mask is None:
+                return None
+            byte=scenario_ink_byte(mask,source,row['bounds'],point,dpr)
+            x=round(row['bounds']['x']*dpr)+source['padding']-source['bearing_x']
+            y=round(row['bounds']['y']*dpr)+source['padding']+source['bearing_y']
+        else:
+            return None
+        coverages[position]=encoded_coverage(byte,row['color'],rasterizer)
+        if byte:
+            pairs.append(((face,scalar,mask,x,y,row['color']),row['alpha']*row['opacity']))
+    return pairs,_composite_point(side['active'],coverages)
+
+
+def _joint_glyph_rounding(sides,basis,observations,priors,point,dpr):
+    """Allow RGB8 rounding only for identically witnessed overlapping glyphs."""
+    if basis.get('rank')!=1 or not priors or not priors.get('scenario_masks'):
+        return None
+    samples=[_joint_glyph_samples(side,priors,point,dpr) for side in sides]
+    if any(sample is None for sample in samples):
+        return None
+    (web,web_rgb),(native,native_rgb)=samples
+    if len(web)<2 or len(web)!=len(native) or len({key[-1] for key,_ in web})!=1:
+        return None
+    if any(a!=b or abs(x-y)>1e-6 for (a,x),(b,y) in zip(web,native,strict=True)):
+        return None
+    if any(abs(a-b)>1e-6 for a,b in zip(web_rgb,native_rgb,strict=True)):
+        return None
+    # Each glyph's quantized coverage and its RGB8 blend can contribute half
+    # a code each. Source-over cannot amplify preceding rounding error.
+    radius=sum((1+alpha)*.5 for _,alpha in web)
+    if any(abs(actual-ideal*255)>radius+1e-9 for colors,rgb in zip(observations,(web_rgb,native_rgb),strict=True)
+           for actual,ideal in zip(colors,rgb,strict=True)):
+        return None
+    return tuple(round(value*255) for value in web_rgb)
+
+
+def _web_glyph_source(row,priors):
+    group=row['text_group'];text=row['content'];baseline=row.get('outline_origin')
+    if baseline is None or len(text)!=1:
+        raise RunError(3,'calibration','actual Chromium glyph has no finite outline origin')
+    families=[name.strip(' "\'') for name in row['source']['style']['font-family'].split(',')]
+    weight=int(group['font_weight']);prior=None
+    for family in families:
+        sha=priors['web_fonts'].get((family,weight))
+        if sha and (prior:=priors.get(f'{sha}:{text}')) is not None:
+            break
+    if prior is None:
+        raise RunError(3,'calibration','actual Chromium glyph has no fixed-font SFNT prior')
+    return dict(actual_font_sha256=sha,content=text),_css_number(group['font_size']),baseline,prior
+
+
+def _web_glyph_support(row,priors,dpr,coverage,uncertainty,size,origin):
+    """Check visible AA against the fixed SFNT outline, including thin strokes."""
+    from .calibration import outline_witness
+    _,font_size,baseline,prior=_web_glyph_source(row,priors)
+    scale=font_size/prior['units'];reach=1/(dpr*scale)
+    width=size[0]
+    for index,(alpha,error) in enumerate(zip(coverage,uncertainty,strict=True)):
+        if alpha<=error:
+            continue
+        x=((origin[0]+index%width+.5)/dpr-baseline[0])/scale
+        y=(baseline[1]-(origin[1]+index//width+.5)/dpr)/scale
+        if outline_witness(prior,x,y,reach) is False:
+            return False
+    return True
+
+
+def _status_input_caret(case,targets,inventories,origins,dpr):
+    """Bind the declared desktop status caret and Chromium UA caret separately."""
+    if 'native-status-caret' not in case.get('features',()):
+        return None
+    controls=case['fixture']['props']['controls']
+    names=[name for name,control in controls.items() if control['component']=='Input' and control.get('status') in ('warning','error')]
+    if len(names)!=1:
+        raise ProtocolError('status caret requires exactly one declared status Input')
+    name=names[0]
+    actual=[side[name] for side in targets]
+    rows=[[row for row in side if row['kind']=='caret' and name in row['source'].get('owner_targets',())]
+          for side in inventories]
+    focus=[entry['state']['focused'] for entry in actual]
+    if focus==[False,False] and rows==[[],[]]:
+        return None
+    if focus!=[True,True] or any(len(side)!=1 for side in rows):
+        raise ProtocolError('focused status Input has no unique observed caret on both sides')
+    web,native=(side[0] for side in rows)
+    border=[row for row in inventories[0] if row['kind']=='border' and name in row['source'].get('owner_targets',())]
+    edge=web['caret_edge'];bounds=native['bounds']
+    editor=relative(actual[1]['tokens']['editor_clip'],origins[1])
+    native_rgba=(*native['color'],native['alpha']*native['opacity'])
+    web_rgba=(*web['color'],web['alpha']*web['opacity'])
+    color=lambda row:(*row['color'],row['alpha']*row['opacity'])
+    same=lambda a,b:all(abs(x-y)<=1e-6 for x,y in zip(a,b,strict=True))
+    if (not border or not any(same(native_rgba,color(row)) for row in border) or
+        not same(web_rgba,_css_rgba(web['source']['style']['color'])) or native_rgba[3]!=1 or
+        any(opacity!=1 for row in (web,native) for _,opacity in row['groups'])):
+        raise ProtocolError('observed status caret colors do not satisfy their source contracts')
+    width=max(1,math.floor(dpr+.5))
+    if (abs(bounds['width']*dpr-width)>1e-3 or any(abs(bounds[key]-editor[key])*dpr>1e-3 for key in ('y','height')) or
+        bounds['x']<editor['x']-1e-4 or bounds['x']+bounds['width']>editor['x']+editor['width']+1e-4 or
+        abs(bounds['x']-edge['x'])*dpr>1 or
+        abs(bounds['y']+bounds['height']/2-edge['y']-edge['height']/2)*dpr>1):
+        raise ProtocolError('status caret does not track the observed collapsed selection edge')
+    return web,native
+
+
 def _layered_context(case,declaration,native,web,images,thresholds,origins,*,glyph_priors=None,physical_region=None):
     from .color_metrics import rgb8_delta_e00,solve_visible_contributions,unmix_coverage,contribution_domain,in_contribution_domain,visible_segment
     from .regions import coverage_metrics,shadow_profile_metrics
     dpr=case['fixture']['viewport']['dpr'];sample=case['native']['sample_id']
     native_layers,native_stack=_native_paint_inventory(native,origins[1],dpr)
     web_layers,web_stack=_web_paint_inventory(web,origins[0],dpr)
+    web_masks=glyph_priors and glyph_priors.get('web_masks')
+    if web_masks:
+        from .glyph_witness import place
+        for row in web_layers:
+            if row['kind']=='glyph' and not row.get('formal_svg'):
+                source,font_size,baseline,_=_web_glyph_source(row,glyph_priors)
+                mask,x,y=place(web_masks,source,font_size,baseline,dpr)
+                row['outline_source']=source
+                row['web_glyph_mask']=(mask,x,y)
+                row['bounds']=dict(x=(x+mask.left)/dpr,y=(y+mask.top)/dpr,
+                                   width=mask.width/dpr,height=mask.height/dpr)
     inventories=(web_layers,native_layers)
     hard_failures=_formal_paint_gates(native,web,native_stack)
     hard_failures.extend(_hard_paint_gates(native_layers,web_layers,declaration['step']))
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
+    caret=_status_input_caret(case,(wt,nt),inventories,origins,dpr)
+    if caret:
+        caret[1]['solid_status_caret']=True
+    caret_rows={}
     context=next(r for r in declaration['rois'] if r['kind']=='sample-context')
     scope=union(relative(wt[sample]['bounds'],origins[0]),relative(nt[sample]['bounds'],origins[1]))
     for rows in inventories:
@@ -1096,13 +1296,17 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 position=variable[0];row=active[position]
                 low=coverages.copy();high=coverages.copy();low[position]=0.;high[position]=1.
                 lower=_composite_point(active,low);upper=_composite_point(active,high)
+                uncertainty=0.
                 try:
-                    soft=row['kind'] in ('shadow','inset-shadow') and row.get('blur',0)>0
-                    if soft:
+                    shadow=row['kind'] in ('shadow','inset-shadow')
+                    if shadow:
                         solved=visible_segment(tuple(v/255 for v in observed),lower,upper,_visible_weight(active,coverages,position))
                         if not solved['valid']:raise ProtocolError('known visible alpha pixel differs')
                         value=solved['contribution']
-                    else:value=unmix_coverage(tuple(v/255 for v in observed),upper,lower,1.,byte_error=1/255)['coverage']
+                    else:
+                        unmixed=unmix_coverage(tuple(v/255 for v in observed),upper,lower,1.,byte_error=1/255)
+                        value=unmixed['coverage']
+                        uncertainty=unmixed['quantization_bound']
                 except ProtocolError:
                     fail('typography' if row['kind'] in ('glyph','caret') else 'visual','known local material pixel differs',side=side,pixel=point)
                     value=None
@@ -1110,8 +1314,9 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                     # Quantization-safe integration only; invalid model pixels
                     # already failed and are never clamped into a valid result.
                     value=min(1.,max(0.,value))
-                    prefix='text' if row['kind'] in ('glyph','caret') else 'shadow' if row['kind'] in ('shadow','inset-shadow') and row['blur']>0 else 'pixels'
                     presence[(side,row['identity'])]=presence.get((side,row['identity']),0)+value
+                    if caret and side==0 and row is caret[0]:
+                        caret_rows[y]=caret_rows.get(y,0)+value+uncertainty
             if side==1:
                 for position in variable:
                     row=active[position]
@@ -1126,6 +1331,11 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                         if not witness:fail('typography','independent SFNT interior glyph witness has no ink',pixel=point,source=row['identity'])
             sides.append(dict(active=active,coverages=coverages,variable=variable,kind=kind,values=tuple(values),basis=basis))
         classification=sides[0]['kind'];counts[classification]+=1
+        if caret and any(any(row is marker for row in sides[side]['active']) for side,marker in enumerate(caret)):
+            # These source-specific pixels already went through independent
+            # material/opacity checks. Retain the ordinary comparison everywhere
+            # outside those two observed caret footprints.
+            continue
         # Every actual context pixel is compared, including overlaps and tails.
         # No full-context byte equality veto is used for calibrated AA.
         a,b=[tuple(data[index*4:index*4+3]) for data in crops]
@@ -1139,11 +1349,11 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             lower=_composite_point(reference['active'],low);upper=_composite_point(reference['active'],high)
             values=[]
             reference_uncertainty=None
-            soft=row['kind'] in ('shadow','inset-shadow') and row.get('blur',0)>0
-            maximum=_visible_weight(reference['active'],reference['coverages'],position) if soft else 1.
+            shadow=row['kind'] in ('shadow','inset-shadow')
+            maximum=_visible_weight(reference['active'],reference['coverages'],position) if shadow else 1.
             for side,rgb in enumerate((a,b)):
                 try:
-                    if soft:
+                    if shadow:
                         solved=visible_segment(tuple(v/255 for v in rgb),lower,upper,maximum)
                         value=solved['contribution'] if solved['valid'] else None
                     else:
@@ -1180,11 +1390,21 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                     if classification=='joint':
                         if error>cap:fail('visual','joint visible contribution differs',pixel=point,actual=error,threshold=cap)
                         group=tuple(row['identity'] for row in sides[0]['active'])
+                        common_ink=_joint_glyph_rounding(sides,basis,(a,b),glyph_priors,point,dpr) if a!=b else None
+                        shared=(_paint_coordinates(common_ink,basis)[1] if common_ink is not None else None)
                         for axis,(first,second) in enumerate(zip(*coordinates)):
                             key=(group,axis)
                             if key not in joint_planes:joint_planes[key]=({}, {})
-                            joint_planes[key][0][index]=min(1.,max(0.,first));joint_planes[key][1][index]=min(1.,max(0.,second))
+                            joint_planes[key][0][index]=min(1.,max(0.,shared[axis] if shared else first))
+                            joint_planes[key][1][index]=min(1.,max(0.,shared[axis] if shared else second))
     if sum(counts.values())!=size[0]*size[1]:raise ProtocolError('paint strata did not account for the entire crop exactly once')
+    if caret:
+        edge=caret[0]['caret_edge']
+        core=range(math.ceil(edge['y']*dpr+.5),math.ceil((edge['y']+edge['height'])*dpr-1.5))
+        if not core or any(caret_rows.get(row,0)<.5 for row in core):
+            fail('typography','browser caret has a missing exposed physical stroke row')
+        measurements.append(dict(target=sample,category='native-status-caret',physical_rows=len(core),
+                                 native_source=caret[1]['identity'],web_source=caret[0]['identity']))
     for identity,(row,reference,native_plane,uncertainty) in paired_planes.items():
         if not reference:continue
         coordinates=[(i%size[0],i//size[0]) for i in reference]
@@ -1192,24 +1412,33 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
         top=min(y for x,y in coordinates);bottom=max(y for x,y in coordinates)+1
         local_size=(right-left,bottom-top)
         local=[[],[]];tail=[];local_uncertainty=[]
+        shadow=row['kind'] in ('shadow','inset-shadow')
         for y in range(top,bottom):
             for x in range(left,right):
                 index=y*size[0]+x;local_index=(y-top)*local_size[0]+x-left
                 for values,plane in zip(local,(reference,native_plane)):values.append(plane.get(index,0.))
                 if uncertainty:local_uncertainty.append(uncertainty.get(index,0.))
                 point=((box[0]+x+.5)/dpr,(box[1]+y+.5)/dpr)
-                if not _contains(_inset(row['bounds'],-max(1/dpr,row.get('blur',0)/2)),point):tail.append(local_index)
-        soft=row['kind'] in ('shadow','inset-shadow') and row['blur']>0
-        prefix='shadow' if soft else 'text' if row['kind'] in ('glyph','caret') else 'pixels'
+                if shadow and _shadow_tail(row,point,dpr):tail.append(local_index)
+        prefix='shadow' if shadow else 'text' if row['kind'] in ('glyph','caret') else 'pixels'
         thin_ink = row.get('formal_svg') is True
-        result=shadow_profile_metrics(*local,local_size,tail_indices=tail) if soft else coverage_metrics(
+        result=shadow_profile_metrics(*local,local_size,tail_indices=tail) if shadow else coverage_metrics(
             *local,local_size,thin_ink=thin_ink)
-        if not soft:
+        if prefix=='text':
             from .regions import reference_aa_is_bounded
-            if not reference_aa_is_bounded(local[0],local_size,uncertainty=local_uncertainty,thin_ink=thin_ink):
-                fail('typography' if prefix=='text' else 'visual','reference hard-edge transition exceeds the fixed one physical pixel AA bound',source=identity)
+            if row.get('web_glyph_mask') is not None:
+                # Only physical pixels with an independently reconstructed
+                # nonzero raster sample could enter this coverage plane.
+                bounded=True
+            elif row['kind']=='glyph' and not thin_ink and glyph_priors and 'web_fonts' in glyph_priors:
+                bounded=_web_glyph_support(row,glyph_priors,dpr,local[0],local_uncertainty,local_size,
+                                           (box[0]+left,box[1]+top))
+            else:
+                bounded=reference_aa_is_bounded(local[0],local_size,uncertainty=local_uncertainty,thin_ink=thin_ink)
+            if not bounded:
+                fail('typography','reference glyph transition exceeds the fixed one physical pixel AA bound',source=identity)
         if not result['required_ink_present']:fail('typography' if prefix=='text' else 'visual','required independently exposed paint ink missing',source=identity)
-        fields=('coverage_mass_relative_error','projection_relative_error','profile_max_error','tail_max_error') if soft else (
+        fields=('coverage_mass_relative_error','projection_relative_error','profile_max_error','tail_max_error') if shadow else (
             'coverage_mass_relative_error','contour_distance_px','projection_relative_error' if prefix=='text' else 'coverage_local_relative_error')
         for field in fields:
             key=prefix+'.'+field
@@ -1487,7 +1716,7 @@ def compare(case, native, web, directories, profile, image_module, *, profile_pr
                                     native_binary_sha256=native['hello']['provenance']['binary_sha256'])
     from .calibration import evidence_manifest
     manifest=profile_proof.manifest() if profile_proof is not None else evidence_manifest(profile)[0]
-    glyph_priors=_glyph_priors_for_run(native,manifest,independent_masks=True)
+    glyph_priors=_glyph_priors_for_run(native,manifest,independent_masks=True,web=web)
     scope=profile['scope']
     fixture=case['fixture']
     if (case['identity'] not in scope['cases'] or fixture['locale']!=scope['locale'] or fixture['direction']!=scope['direction'] or

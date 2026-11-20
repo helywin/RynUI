@@ -175,6 +175,33 @@ void test_exterior_shadow_masks_the_unshifted_caster() {
             "rounded shadow corners did not contribute the finite two-dimensional blur");
 }
 
+void test_sharp_exterior_shadow_samples_the_physical_square() {
+    using namespace ryn;
+    const graphics::LogicalRoundedRect caster{{0, 132, 260, 32}, 6};
+    const ShadowLayer layer{ShadowKind::outer, {}, 0, 2, Color::rgba8(255, 215, 5, 26)};
+    require_invalid([&] { static_cast<void>(graphics::make_exterior_shadow_effect(caster, layer)); },
+                    "an unblurred exterior shadow accepted a Gaussian filter");
+    const auto effect = graphics::make_exterior_shadow_effect(caster, layer, {}, std::nullopt, false,
+                                                              graphics::RoundedShadowFilter::device_box);
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        const detail::SceneDeviceMetrics metrics{800, 600, scale};
+        const auto packed = detail::pack_rounded_effect_instance(effect, metrics);
+        const auto sample = [&](runtime::Point point) {
+            const auto logical = graphics::rounded_effect_coverage(point, effect, 1 / scale);
+            require(near(logical,
+                         detail::rounded_effect_gpu_coverage_reference({point.x * scale, point.y * scale}, packed),
+                         0.004F),
+                    "sharp exterior shadow CPU and packed coverage differ");
+            return logical;
+        };
+        require(near(sample({130, 148}), 0) && near(sample({130, 131}), 1) && near(sample({263, 148}), 0),
+                "sharp shadow lost its caster knockout, straight edge or guard");
+    }
+
+    const float corner = graphics::rounded_effect_coverage({261.0F, 133.666666F}, effect, 1 / 1.5F);
+    require(near(corner, 0.127F, 0.015F), "sharp corner lost visible coverage within the physical pixel square");
+}
+
 std::array<float, 4> source_over(std::array<float, 4> source, std::array<float, 4> destination) {
     return {
         source[0] * source[3] + destination[0] * (1.0F - source[3]),
@@ -420,6 +447,7 @@ int main() {
         test_shader_reference_matches_logical_reference();
         test_inset_translation_and_density_reference();
         test_exterior_shadow_masks_the_unshifted_caster();
+        test_sharp_exterior_shadow_samples_the_physical_square();
         test_device_box_shadow_uses_the_physical_lattice();
         test_straight_alpha_and_overlapping_layer_contract();
         test_invalid_metrics_rejected_and_clipped_pack_is_degenerate();

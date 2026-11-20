@@ -57,8 +57,11 @@ function observedTextGroups(node = this) {
     // ink overhang enlarges raster support for a single scalar only.
     const ink = boxes.length === 1 && [...part.segment].length === 1 && part.segment.trim()
       ? context.measureText(part.segment) : null;
+    const baseline = ink ? boxes[0].y + ink.fontBoundingBoxAscent : null;
     const inlineInk = ink ? { x: boxes[0].x - ink.actualBoundingBoxLeft,
-      right: boxes[0].x + ink.actualBoundingBoxRight } : null;
+      right: boxes[0].x + ink.actualBoundingBoxRight,
+      top: baseline - ink.actualBoundingBoxAscent, bottom: baseline + ink.actualBoundingBoxDescent,
+      baseline } : null;
     groups.push({ byte_begin: encoder.encode(content.slice(0,part.index)).length,
       byte_end: encoder.encode(content.slice(0,part.index+part.segment.length)).length,
       boxes, advance: boxes.reduce((sum,box) => sum+box.width,0), line: top === undefined ? 0 : lines.indexOf(top),

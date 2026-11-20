@@ -109,8 +109,9 @@ struct RoundedEffectInstance final {
                                                        runtime::Point translation = {},
                                                        std::optional<EffectClip> ancestor_clip = std::nullopt);
 
-// Blurred outer box shadow with an unshifted caster knockout. An opaque fill may
-// cover the inner pixel of the shadow without cutting away its edge coverage.
+// Outer box shadow with an unshifted caster knockout. The device box filter
+// also supports a sharp shadow. An opaque fill may cover the inner pixel of
+// the shadow without cutting away its edge coverage.
 [[nodiscard]] RoundedEffectInstance
 make_exterior_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer, runtime::Point translation = {},
                             std::optional<EffectClip> ancestor_clip = std::nullopt, bool opaque_caster = false,

@@ -3014,9 +3014,16 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                     if (source < visual.shadow->size()) {
                         const auto& shadow = (*visual.shadow)[source];
                         if ((shadow.kind == ShadowKind::outer) == outer) {
-                            effect =
-                                graphics::make_shadow_effect(effect.geometry.shape, shadow, {},
-                                                             graphics::EffectClip{1, outer ? decoration_clip : clip});
+                            const auto shadow_clip = graphics::EffectClip{1, outer ? decoration_clip : clip};
+                            if (outer && full_outlined_fill && shadow.blur == 0 && shadow.spread > 0) {
+                                const bool opaque =
+                                    presentation.colors[0].alpha() == 1 && next_container.inherited_opacity == 1;
+                                effect = graphics::make_exterior_shadow_effect(
+                                    effect.geometry.shape, shadow, {}, shadow_clip, opaque,
+                                    graphics::RoundedShadowFilter::device_box);
+                            } else {
+                                effect = graphics::make_shadow_effect(effect.geometry.shape, shadow, {}, shadow_clip);
+                            }
                             effect.material.color = shadow_colors[source];
                             effect.material.opacity = presentation.shadow_opacity;
                         }

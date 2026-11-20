@@ -88,6 +88,26 @@ def scenario_masks(manifest, root, texts, priors):
     return rasterizer, read_masks(manifest, root, rasterizer, specs, policy=policy, fonts=fonts)
 
 
+def browser_scenario_masks(manifest, root, glyphs):
+    """Rasterize the independently resolved Web faces and observed placements."""
+    policy, = manifest['environment']['native_capture']['font_raster_policies']
+    rasterizer = policy['rasterizer']
+    if rasterizer not in ('directwrite-3x1', 'fontations-skia-a8'):
+        return None
+    dpr=manifest['scope']['actual_dpr']
+    fonts=[{**font,'path':str(root/relative_path(font['path']))} for font in manifest['fonts']]
+    indices={font['sha256']:i for i,font in enumerate(fonts)}
+    specs={}
+    for source,size,origin,prior in glyphs:
+        sha=source['actual_font_sha256'];scalar=source['content']
+        if sha not in indices:
+            raise ProtocolError('browser glyph has no independent locked face or cmap')
+        _,_,phase=placement(rasterizer,origin,dpr)
+        specs[sha,scalar,size,phase]=dict(font=indices[sha],glyph_id=prior['glyph_id'],phase=phase,
+                                           physical_em=size*dpr)
+    return rasterizer,read_masks(manifest,root,rasterizer,specs,policy=policy,fonts=fonts) if specs else {}
+
+
 def mask_identity(scalar, source):
     font = source['font']
     return (font['sha256'], font['face_index'], scalar, font['logical_pixel_size'],
@@ -128,6 +148,15 @@ def encoded_coverage(byte, color, rasterizer):
 
 
 def read_masks(manifest, root, identity, specs, **inputs):
+    # Each process has the same bounded input as the finite control producer.
+    ordered=list(specs.items())
+    result={}
+    for start in range(0,len(ordered),384):
+        result.update(_read_mask_batch(manifest,root,identity,dict(ordered[start:start+384]),**inputs))
+    return result
+
+
+def _read_mask_batch(manifest, root, identity, specs, **inputs):
     from .calibration import exact_fields
 
     work = root / 'out/demo-differential/control-witnesses' / uuid.uuid4().hex
@@ -194,14 +223,19 @@ def icon_ink_at(layers, x, y):
     return True if coverage == 1 else False if coverage == 0 else None
 
 
-def place(witnesses, source, size, origin, dpr):
-    identity, masks = witnesses
+def placement(identity, origin, dpr):
     physical_x, physical_y = (value * dpr for value in origin)
     y = math.floor(physical_y + .5)
     if identity == 'directwrite-3x1':
         x, phase = divmod(math.floor(4 * physical_x + .5), 4)
     else:
         x, phase = math.floor(physical_x + .5), 0
+    return x,y,phase
+
+
+def place(witnesses, source, size, origin, dpr):
+    identity, masks = witnesses
+    x,y,phase=placement(identity,origin,dpr)
     key = source['actual_font_sha256'], source['content'], size, phase
     try:
         return masks[key], x, y

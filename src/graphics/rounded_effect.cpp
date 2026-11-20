@@ -299,8 +299,8 @@ RoundedEffectInstance make_shadow_effect(LogicalRoundedRect shape, const ShadowL
 RoundedEffectInstance make_exterior_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer,
                                                   runtime::Point translation, std::optional<EffectClip> ancestor_clip,
                                                   bool opaque_caster, RoundedShadowFilter filter) {
-    if (layer.kind != ShadowKind::outer || layer.blur <= 0.0F) {
-        throw std::invalid_argument("Exterior shadow requires a blurred outer layer");
+    if (layer.kind != ShadowKind::outer || (layer.blur == 0.0F && filter != RoundedShadowFilter::device_box)) {
+        throw std::invalid_argument("An unblurred exterior shadow requires device-pixel coverage");
     }
     auto result = make_shadow_effect(shape, layer, translation, std::move(ancestor_clip));
     result.geometry.kind = RoundedEffectKind::exterior_shadow;
@@ -409,7 +409,8 @@ void validate_rounded_effect(const RoundedEffectInstance& instance) {
     case RoundedEffectKind::inset_shadow:
         if (geometry.outline_width != 0.0F || geometry.outline_offset != 0.0F ||
             !std::holds_alternative<std::monostate>(geometry.path) ||
-            (geometry.kind == RoundedEffectKind::exterior_shadow && geometry.blur <= 0.0F)) {
+            (geometry.kind == RoundedEffectKind::exterior_shadow && geometry.blur == 0.0F &&
+             geometry.shadow_filter != RoundedShadowFilter::device_box)) {
             throw std::invalid_argument("Shadow effect cannot contain outline geometry");
         }
         break;

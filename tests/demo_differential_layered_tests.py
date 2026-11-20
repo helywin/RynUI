@@ -11,7 +11,8 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _layer_coverage,_native_paint_inventory,_paint_bins,_contains,_inset,
                                           _support,_PAINT_BIN_PHYSICAL_PX,_glyph_witness_gate,
                                           _hard_shadow_outline_basis,_paint_coordinates,_palette_basis,_bounded_paint_basis,
-                                          _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints)
+                                          _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints,_status_input_caret,
+                                          _web_glyph_support,_joint_glyph_rounding,_shadow_tail)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
@@ -67,6 +68,106 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_shadow_tail_starts_after_spread_and_offset(self):
+        row=dict(bounds=box(0,132,260,32),kind='shadow',offset=[0,0],spread=2,blur=0,radii=6)
+        self.assertFalse(_shadow_tail(row,(261,133+2/3),1.5))
+        self.assertTrue(_shadow_tail(row,(263,148),1.5))
+        self.assertFalse(_shadow_tail(dict(row,offset=[3,0]),(263,148),1.5))
+        self.assertFalse(_shadow_tail(dict(row,blur=2),(263,148),1.5))
+        inset=dict(row,kind='inset-shadow',offset=[3,0],blur=2)
+        self.assertTrue(_shadow_tail(inset,(130,148),1.5))
+        self.assertFalse(_shadow_tail(inset,(5.25,148),1.5))
+
+    def test_joint_glyph_rounding_requires_identical_witnesses_and_exposed_ink(self):
+        source=dict(font=dict(sha256='font',face_index=0,logical_pixel_size=14),display_scale=1,
+                    phase=0,padding=0,bearing_x=0,bearing_y=0,coverage_width=1,coverage_height=1)
+        masks={mask_identity(scalar,source):GlyphWitness(0,0,1,1,bytes([byte]))
+               for scalar,byte in [('A',5),('B',4)]}
+        priors={'scenario_masks':('directwrite-3x1',masks)}
+        ink=dict(color=(0,0,0),kind='glyph',groups=[],alpha=.88,opacity=1)
+        web=[dict(ink,web_glyph_mask=(masks[mask_identity(scalar,source)],0,0),
+                  outline_source=dict(actual_font_sha256='font',content=scalar)) for scalar in 'AB']
+        native=[dict(ink,bounds=box(0,0,1,1),glyph_source=(dict(content=scalar),
+                     dict(atlas_source=source,byte_begin=0,byte_end=1))) for scalar in 'AB']
+        sides=[dict(variable=[0,1],active=rows,coverages=[1,1]) for rows in (web,native)]
+        basis={'mode':'visible-contribution','rank':1}
+        rgb=((247,)*3,(249,)*3)
+        self.assertEqual(_joint_glyph_rounding(sides,basis,rgb,priors,(.5,.5),1),(248,)*3)
+        self.assertIsNone(_joint_glyph_rounding(sides,dict(basis,rank=2),rgb,priors,(.5,.5),1))
+        self.assertIsNone(_joint_glyph_rounding(sides,basis,(rgb[0],(252,)*3),priors,(.5,.5),1))
+        self.assertIsNone(_joint_glyph_rounding(sides,basis,((255,)*3,(255,)*3),priors,(.5,.5),1))
+        native[1]=dict(native[1],bounds=box(1,0,1,1))
+        self.assertIsNone(_joint_glyph_rounding(sides,basis,rgb,priors,(.5,.5),1))
+
+    def test_web_outline_admits_a_subpixel_stroke_and_rejects_a_disconnected_halo(self):
+        row=dict(content='I',outline_origin=(0,1),text_group=dict(font_size='1px',font_weight='400'),
+                 source={'style':{'font-family':'ReferenceFont0'}})
+        priors={'web_fonts':{('ReferenceFont0',400):'font'},'font:I':dict(units=1,bounds=[1,0,1.3,1],
+                  contours=[[(1,0),(1.3,0),(1.3,1),(1,1),(1,0)]])}
+        common=([.004]*4,(4,1),(0,0))
+        self.assertTrue(_web_glyph_support(row,priors,1,[0,.3,0,0],*common))
+        self.assertFalse(_web_glyph_support(row,priors,1,[0,.3,0,.05],*common))
+        row['text_group']['font_weight']='600'
+        with self.assertRaises(RunError):
+            _web_glyph_support(row,priors,1,[0,.3,0,0],*common)
+
+    def test_status_caret_requires_the_focused_owner_source_and_location(self):
+        case=dict(features=['native-status-caret'],fixture={'props':{'controls':{
+            'editor':dict(component='Input',status='warning')}}})
+        target=dict(state=dict(focused=True),tokens=dict(editor_clip=box(12,14,36,22)))
+        targets=({'editor':target},{'editor':target})
+        source=dict(owner_targets=['editor'],style={'color':'rgba(0,0,0,.88)'})
+        web=dict(kind='caret',source=source,groups=[],color=(0,0,0),alpha=.88,opacity=1,
+                 caret_edge=box(18,15,0,20))
+        border=dict(kind='border',source=source,color=(1,.7,.1),alpha=1,opacity=1)
+        native=dict(kind='caret',source=source,groups=[],color=border['color'],alpha=1,opacity=1,
+                    bounds=box(18,14,1,22))
+        self.assertEqual(_status_input_caret(case,targets,([web,border],[native]),(box(0,0),box(0,0)),1),
+                         (web,native))
+        bad_cases=([],[dict(native,color=(0,0,0))],[dict(native,bounds=box(20,14,1,22))],
+                   [dict(native,bounds=box(18,14,2,22))],[dict(native,source={'owner_targets':['other']})])
+        for bad in bad_cases:
+            with self.assertRaises(ProtocolError):
+                _status_input_caret(case,targets,([web,border],bad),(box(0,0),box(0,0)),1)
+
+    def test_status_caret_pixels_have_independent_stroke_and_guard_checks(self):
+        args=synthetic();case,_,native,web,images,_,_=args
+        case['features']=['native-status-caret']
+        case['fixture']['props']={'controls':{'control':dict(component='Input',status='warning')}}
+        for view in (native,web):
+            view['targets'][1]['state']={'focused':True}
+        native['targets'][1]['tokens']['editor_clip']=box(14,14,30,10)
+        ws=web['resources']['paint_stack']['layers']
+        ws[0]['owner_targets']=['control']
+        edge=box(20,14,0,10)
+        ws.append(dict(source_material_id='ua-text',node_type=3,node_name='#text',layout_text='x',
+                       bounds=box(19,14,10,10),owner_targets=['control'],composition_group_path=[],
+                       style={'color':'rgba(0,0,0,.88)'},paint_order=2,layout_ordinal=1,
+                       actual=dict(clips=[],text=dict(content='x',semantic_groups=[],
+                                   caret=dict(edge=edge,color='rgba(0,0,0,.88)',animation='manual')))))
+        ns=native['resources']['paint_stack']
+        ns['commands'].append(dict(ordinal=2,kind=0,first=2,count=1,atlas_page=4294967295))
+        ns['layers'].append(dict(ns['layers'][0],source_material_id='native-caret',owner_targets=['control'],
+                                 packed_index=2,submitted_membership=[dict(command=2,instance=0)],role='caret',
+                                 actual=dict(bounds=box(20,14,1,10),color=[0,0,0,1],opacity=1,
+                                             translation=[0,0],radius=0)))
+        def pixel(image,x,y,value):
+            data,width=bytearray(image[0]),image[1][0]
+            offset=(y*width+x)*4
+            data[offset:offset+4]=bytes((value,value,value,255))
+            return bytes(data),image[1]
+        for y in range(14,24):
+            images[0]=pixel(images[0],20,y,31)
+            images[1]=pixel(images[1],20,y,0)
+        self.assertEqual(_layered_context(*args)[0],[])
+        images[0]=pixel(images[0],20,18,255)
+        self.assertTrue(any(f['message']=='browser caret has a missing exposed physical stroke row'
+                            for f in _layered_context(*args)[0]))
+        images[0]=pixel(images[0],20,18,31)
+        images[1]=pixel(images[1],23,18,0)
+        self.assertTrue(any(f['message']=='independent flat/material/guard color differs'
+                            for f in _layered_context(*args)[0]))
+
     def test_hard_shadow_box_bounds_rounding_in_physical_rgb8(self):
         layers=[dict(kind='shadow',blur=0,groups=[],color=(1,215/255,5/255),alpha=.1,opacity=1),
                 dict(kind='fill',groups=[],color=(1,1,1),alpha=1,opacity=1),
