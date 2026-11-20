@@ -269,6 +269,8 @@ private:
     bool ensure_backdrop_pipelines();
     void execute_backdrop(void* command, const CompositionFrame&, std::uint32_t request);
     void execute_composition(void* command);
+    void blit_composition(void* command, const CompositionFrame& frame, void* destination, std::uint32_t width,
+                          std::uint32_t height);
     runtime::FrameSubmissionResult submit_composition();
     std::uint64_t store_composition_fence(void* fence);
     std::array<void*, 8> composition_pipelines_{};

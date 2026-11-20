@@ -234,6 +234,8 @@ void locked_coverage_in_composition(const std::string& driver) {
     f.order.set_composition(std::move(p));
     before = renderer.counters().locked_coverage_draws;
     const auto composed = f.read(&quads);
+    require(composed.evidence.source_bgra == baseline.evidence.source_bgra,
+            "composition export must use the same presentation storage as an ordinary frame");
     require(renderer.counters().locked_coverage_draws - before == 4,
             "root and cropped passes must both draw their locked masks");
     for (unsigned y = 0; y < baseline.height; ++y) {

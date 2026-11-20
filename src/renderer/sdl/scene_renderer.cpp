@@ -1009,9 +1009,7 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
         last_error_ = "Composition readback requires matching window metrics";
         return false;
     }
-    const auto format = attachment().composition()
-                            ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
-                            : SDL_GetGPUSwapchainTextureFormat(device, static_cast<SDL_Window*>(platform_->window()));
+    const auto format = SDL_GetGPUSwapchainTextureFormat(device, static_cast<SDL_Window*>(platform_->window()));
     if (width == 0 || height == 0 || width > 16384 || height > 16384 ||
         (format != SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM && format != SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM)) {
         last_error_ = "Frame export requires an SDR RGBA8 or BGRA8 target of valid size";
@@ -1068,26 +1066,23 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
         texture_info.layer_count_or_depth = 1;
         texture_info.num_levels = 1;
         texture_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
-        if (!attachment().composition()) {
-            scope.texture = SDL_CreateGPUTexture(device, &texture_info);
-        }
+        scope.texture = SDL_CreateGPUTexture(device, &texture_info);
         const Uint32 pitch = (width * 4U + 255U) & ~255U;
         const SDL_GPUTransferBufferCreateInfo transfer_info{SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, pitch * height, 0};
         scope.transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
         scope.command = SDL_AcquireGPUCommandBuffer(device);
-        if ((!scope.texture && !attachment().composition()) || !scope.transfer || !scope.command) {
+        if (!scope.texture || !scope.transfer || !scope.command) {
             last_error_ = sdl_error("Failed to allocate frame export resources");
             return false;
         }
-        SDL_GPUTexture* rendered = scope.texture;
         if (attachment().composition()) {
             auto& frame = *attachment().composition();
             if (frame.fence && !composition_fence_complete(frame.fence)) {
                 throw std::runtime_error("Composition readback awaits prior frame fence");
             }
             execute_composition(scope.command);
-            rendered =
-                static_cast<SDL_GPUTexture*>(native_resource(frame.targets[0], ResourceKind::composition_target));
+            // Match presentation, including the final target's channel order.
+            blit_composition(scope.command, frame, scope.texture, width, height);
         } else {
             const auto viewport = quad_viewport_uniform(width, height);
             SDL_PushGPUVertexUniformData(scope.command, 0, &viewport, sizeof(viewport));
@@ -1112,7 +1107,7 @@ bool SdlSceneRenderer::read_frame_rgba(SceneRgbaReadback& output) {
             last_error_ = sdl_error("Failed to begin frame export readback");
             return false;
         }
-        const SDL_GPUTextureRegion source{rendered, 0, 0, 0, 0, 0, width, height, 1};
+        const SDL_GPUTextureRegion source{scope.texture, 0, 0, 0, 0, 0, width, height, 1};
         const SDL_GPUTextureTransferInfo destination{scope.transfer, 0, pitch / 4U, height};
         SDL_DownloadFromGPUTexture(scope.copy, &source, &destination);
         SDL_EndGPUCopyPass(scope.copy);
@@ -1978,6 +1973,17 @@ void SdlSceneRenderer::execute_composition(void* command_handle) {
     }
 }
 
+void SdlSceneRenderer::blit_composition(void* command, const CompositionFrame& frame, void* destination,
+                                        std::uint32_t width, std::uint32_t height) {
+    auto* resolved = static_cast<SDL_GPUTexture*>(native_resource(frame.targets[0], ResourceKind::composition_target));
+    SDL_GPUBlitInfo blit{};
+    blit.source = {resolved, 0, 0, 0, 0, frame.plan.metrics.pixel_width, frame.plan.metrics.pixel_height};
+    blit.destination = {static_cast<SDL_GPUTexture*>(destination), 0, 0, 0, 0, width, height};
+    blit.load_op = SDL_GPU_LOADOP_DONT_CARE;
+    blit.filter = SDL_GPU_FILTER_NEAREST;
+    SDL_BlitGPUTexture(static_cast<SDL_GPUCommandBuffer*>(command), &blit);
+}
+
 runtime::FrameSubmissionResult SdlSceneRenderer::submit_composition() {
     auto& frame = *attachment().composition();
     if (frame.fence && !composition_fence_complete(frame.fence)) {
@@ -1992,8 +1998,6 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_composition() {
     bool acquired = false;
     try {
         execute_composition(command);
-        auto* resolved_root =
-            static_cast<SDL_GPUTexture*>(native_resource(frame.targets[0], ResourceKind::composition_target));
         SDL_GPUTexture* swapchain = nullptr;
         Uint32 width = 0;
         Uint32 height = 0;
@@ -2004,12 +2008,7 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_composition() {
         acquired = swapchain != nullptr;
         if (swapchain) {
             // All fallible rendering happened before swapchain acquisition.
-            SDL_GPUBlitInfo blit{};
-            blit.source = {resolved_root, 0, 0, 0, 0, frame.plan.metrics.pixel_width, frame.plan.metrics.pixel_height};
-            blit.destination = {swapchain, 0, 0, 0, 0, width, height};
-            blit.load_op = SDL_GPU_LOADOP_DONT_CARE;
-            blit.filter = SDL_GPU_FILTER_NEAREST;
-            SDL_BlitGPUTexture(command, &blit);
+            blit_composition(command, frame, swapchain, width, height);
         }
         auto* fence = SDL_SubmitGPUCommandBufferAndAcquireFence(command);
         command = nullptr;
