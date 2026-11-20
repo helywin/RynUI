@@ -733,7 +733,8 @@ class LayeredTests(unittest.TestCase):
         for layer in stack['layers']:layer['submitted_membership'][0]['command']+=1
         stack['commands'].insert(0,dict(ordinal=0,kind=2,first=0,count=1,atlas_page=4294967295))
         actual=dict(bounds=box(),color=[0,0,0,.2],opacity=1,translation=[0,0],radius=0,
-                    effect_kind=6,outline_width=0,outline_offset=0,offset=[0,0],blur=2,spread=0)
+                    effect_kind=6,outline_width=0,outline_offset=0,offset=[0,0],blur=2,spread=0,
+                    shadow_caster_inset=0)
         stack['layers'].append(dict(source_material_id='effect:1',owner=dict(index=0,generation=1),fragment=dict(index=0,generation=1),
             publication_revision=1,in_fragment=True,in_submitted_scene=True,packed_index=0,kind=2,atlas_page=4294967295,
             submitted_membership=[dict(command=0,instance=0)],primitive=dict(index=0,generation=1),actual=actual,role='shadow'))
@@ -754,12 +755,33 @@ class LayeredTests(unittest.TestCase):
         failures,measured=_layered_context(*values)
         self.assertEqual(failures,[])
         self.assertTrue(any(row['category']=='shadow' for row in measured))
+        for side, (rgba, size) in enumerate(values[4]):
+            pixels = bytearray(rgba)
+            offset = (20 * size[0] + 10) * 4
+            pixels[offset:offset+4] = bytes((255,255,255,255))
+            values[4][side] = (bytes(pixels), size)
+        failures,_ = _layered_context(*values)
+        self.assertTrue(any(failure['message'] == 'independent flat/material/guard color differs'
+                            for failure in failures))
         shifted_origin=box(0,0)
         rows,_=_native_paint_inventory(native,shifted_origin)
         shadow=next(row for row in rows if row['kind']=='shadow')
         self.assertTrue(shadow['knockout'])
         self.assertEqual(_layer_coverage(shadow,(12,20),1),(0,False))
         self.assertEqual(_layer_coverage(shadow,(10.5,20),1),(0,False))
+        actual['shadow_caster_inset'] = 1
+        rows,_ = _native_paint_inventory(native,shifted_origin)
+        inset_shadow = next(row for row in rows if row['kind'] == 'shadow')
+        web_rows,_ = _web_paint_inventory(web,shifted_origin,dpr=1.5)
+        web_shadow = next(row for row in web_rows if row['kind'] == 'shadow')
+        self.assertEqual(inset_shadow['caster_inset'], web_shadow['caster_inset'])
+        self.assertEqual(web_shadow['caster_inset'], 1)
+        for row in (web_shadow, inset_shadow):
+            self.assertGreater(_layer_coverage(row,(10.5,20),1.5)[0], .5)
+            self.assertEqual(_layer_coverage(row,(12,20),1.5),(0,False))
+        del actual['shadow_caster_inset']
+        with self.assertRaises(ProtocolError):
+            _native_paint_inventory(native,shifted_origin)
         actual['effect_kind']=0
         rows,_=_native_paint_inventory(native,shifted_origin)
         legacy=next(row for row in rows if row['kind']=='shadow')

@@ -527,9 +527,18 @@ def _layer_coverage(layer,point,dpr):
                 not any(layer['offset'])):
             return 0,False
         if kind=='inset-shadow' and distance>0:return 0,abs(distance)*dpr<=1
-        if kind=='shadow' and layer.get('knockout') and distance*dpr < -1:return 0,False
-        straight=(b['x']+r<=point[0]<=b['x']+b['width']-r or b['y']+r<=point[1]<=b['y']+b['height']-r)
-        if kind=='shadow' and layer.get('knockout') and straight and distance*dpr<=-.5:return 0,False
+        caster_distance = math.inf
+        if kind == 'shadow' and layer.get('knockout'):
+            inset = layer.get('caster_inset', 0)
+            caster = _inset(b, inset)
+            if caster['width'] > 0 and caster['height'] > 0:
+                caster_radius = max(0, r - inset)
+                caster_distance = _shape_distance(point, caster, caster_radius)
+                x, y = point
+                straight = (caster['x'] + caster_radius <= x <= caster['x'] + caster['width'] - caster_radius or
+                            caster['y'] + caster_radius <= y <= caster['y'] + caster['height'] - caster_radius)
+                if caster_distance * dpr < -pixel_reach or straight and caster_distance * dpr <= -.5:
+                    return 0, False
         shape,radius=_shadow_edge(layer)
         if shape['width']<=0 or shape['height']<=0:return (0 if kind=='shadow' else float(distance<=0)),False
         if layer['blur']>0:
@@ -541,13 +550,12 @@ def _layer_coverage(layer,point,dpr):
                     (point[1]*dpr,shape['y']*dpr,(shape['y']+shape['height'])*dpr))):
                 return 0,False
             edge=_shape_distance(point,shape,radius);value=float(edge<=0)
-            if kind=='shadow' and (edge*dpr>pixel_reach or
-                    layer.get('knockout') and distance*dpr < -pixel_reach):
+            if kind=='shadow' and edge*dpr>pixel_reach:
                 return 0,False
         if kind=='inset-shadow':value=1-value
-        elif layer.get('knockout') and distance<0:value=0
+        elif caster_distance<0:value=0
         if layer['blur']>0:return value,True
-        return value,abs(edge)*dpr<=pixel_reach or layer.get('knockout') and abs(distance)*dpr<=pixel_reach
+        return value,min(abs(edge),abs(caster_distance))*dpr<=pixel_reach
     if kind=='outline':
         outer=_inset(b,-layer['offset_width']-layer['width'])
         inner=_inset(b,-layer['offset_width'])
@@ -557,7 +565,13 @@ def _layer_coverage(layer,point,dpr):
     if kind=='border':
         inner=_inset(b,layer['widths']);inner_r=tuple(max(0,v-max(layer['widths'])) for v in r)
         inner_distance=_shape_distance(point,inner,inner_r) if inner['width'] and inner['height'] else math.inf
+        if layer.get('device_aligned_square'):
+            # Each aperture is wholly inside or outside both snapped
+            # rectangles, including a pixel touching a straight edge.
+            return float(distance <= 0 and inner_distance >= 0), False
         return float(distance<=0 and inner_distance>=0),min(abs(distance),abs(inner_distance))*dpr<=pixel_reach
+    if layer.get('device_aligned_square'):
+        return float(distance <= 0), False
     return float(distance<=0),abs(distance)*dpr<=pixel_reach
 
 
@@ -652,7 +666,11 @@ def _native_paint_inventory(checkpoint,origin,dpr=1):
                 row.update(kind='shadow' if effect==0 else 'inset-shadow',offset=a['offset'],blur=a['blur'],spread=a['spread'],knockout=False)
             elif effect==2:row.update(kind='outline',width=a['outline_width'],offset_width=a['outline_offset'])
             elif effect==6:
-                row.update(kind='shadow',offset=a['offset'],blur=a['blur'],spread=a['spread'],knockout=True)
+                inset = a.get('shadow_caster_inset')
+                if type(inset) not in (int, float) or not math.isfinite(inset) or inset < 0:
+                    raise ProtocolError('submitted exterior shadow lacks its actual caster inset')
+                row.update(kind='shadow',offset=a['offset'],blur=a['blur'],spread=a['spread'],knockout=True,
+                           caster_inset=inset)
             elif effect not in (0,1):raise RunError(3,'calibration','non-round effect unsupported in finite pilot')
         for group in group_paths[actual[0]['command']]:
             requests=stack.get('composition_requests',[])
@@ -826,14 +844,32 @@ def _web_paint_inventory(checkpoint,origin,dpr):
             widths.append(width if style!='none' else 0);colors.append(_css_rgba(s.get('border-'+edge+'-color','rgba(0, 0, 0, 0)')))
         shadows=css_shadows(s.get('box-shadow','none'))
         if shadows and len(set(radii))!=1:raise RunError(3,'calibration','asymmetric-radius shadow has no fixed integral control')
+        fill_color = _css_rgba(s.get('background-color','rgba(0, 0, 0, 0)'))
         for shadow in reversed(shadows):
-            if not shadow['inset']:add('shadow',shadow['color'],'/shadow/'+str(shadow['ordinal']),offset=shadow['offset'],blur=shadow['blur'],spread=shadow['spread'],knockout=True,radii=radii[0])
+            if not shadow['inset']:
+                # Blink ClipToBorderEdge insets the knockout by one CSS pixel
+                # when the local background paint is opaque.
+                add('shadow',shadow['color'],'/shadow/'+str(shadow['ordinal']),offset=shadow['offset'],
+                    blur=shadow['blur'],spread=shadow['spread'],knockout=True,radii=radii[0],
+                    caster_inset=1 if fill_color[3] == 1 else 0)
         clip=s.get('background-clip','border-box');fill_bounds=bounds;fill_radii=tuple(radii)
         if clip in ('padding-box','content-box'):
             fill_bounds=_inset(fill_bounds,widths);fill_radii=tuple(max(0,r-max(widths)) for r in radii)
             if clip=='content-box':fill_bounds=_inset(fill_bounds,[_css_number(s['padding-'+edge]) for edge in ('top','right','bottom','left')])
         elif clip!='border-box':raise RunError(3,'calibration','unsupported actual background clip')
-        if fill_bounds['width'] and fill_bounds['height']:add('fill',_css_rgba(s.get('background-color','rgba(0, 0, 0, 0)')),'/fill',bounds=fill_bounds,radii=fill_radii)
+        def rect_on_device_grid(rect):
+            x, y = rect['x'], rect['y']
+            edges = (x, y, x+rect['width'], y+rect['height'])
+            return all(edge * dpr == round(edge * dpr) for edge in edges)
+
+        # With shadow ink beneath the square interfaces, keep fully covered
+        # device pixels fixed so the hidden shadow is never an extra unknown.
+        square_shadow = not any(radii) and any(
+            not shadow['inset'] and (any(shadow['offset']) or shadow['blur'] or shadow['spread'])
+            for shadow in shadows)
+        if fill_bounds['width'] and fill_bounds['height']:
+            add('fill',fill_color,'/fill',bounds=fill_bounds,radii=fill_radii,
+                device_aligned_square=square_shadow and rect_on_device_grid(fill_bounds))
         for shadow in reversed(shadows):
             if shadow['inset']:
                 padding_box=_inset(bounds,widths)
@@ -843,7 +879,10 @@ def _web_paint_inventory(checkpoint,origin,dpr):
         if any(widths):
             visible=[edge for edge,(width,color) in enumerate(zip(widths,colors)) if width and color[3]]
             if visible and len({colors[edge] for edge,width in enumerate(widths) if width})==1:
-                add('border',colors[visible[0]],'/border',widths=widths)
+                inner = _inset(bounds,widths)
+                aligned = square_shadow and rect_on_device_grid(bounds) and (
+                    min(inner['width'],inner['height']) == 0 or rect_on_device_grid(inner))
+                add('border',colors[visible[0]],'/border',widths=widths,device_aligned_square=aligned)
             elif len(visible)==1 and not any(radii):
                 edge=visible[0]
                 polygon,box=_square_border_side(bounds,widths,edge)
