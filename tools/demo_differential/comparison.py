@@ -929,7 +929,26 @@ def _two_translucent_black_writes(layers,coverages,variable):
         all(0<row['alpha']*row['opacity']<1 for row in layers))
 
 
+def _hard_shadow_fill_group_opacity(layers,variable):
+    if len(layers)!=2 or variable!=[0,1]:
+        return None
+    shadow,fill=layers
+    if (shadow['kind']!='shadow' or shadow.get('blur')!=0 or fill['kind']!='fill' or
+            shadow['bounds']!=fill['bounds'] or fill['alpha']*fill['opacity']!=1):
+        return None
+    shadow_groups=tuple(group for group in shadow['groups'] if group[1]!=1)
+    fill_groups=tuple(group for group in fill['groups'] if group[1]!=1)
+    if shadow_groups==fill_groups and len(fill_groups)==1 and 0<fill_groups[0][1]<1:
+        return fill_groups[0][1]
+    return None
+
+
 def _paint_byte_error(layers,coverages,variable):
+    group_opacity=_hard_shadow_fill_group_opacity(layers,variable)
+    if group_opacity is not None:
+        # Each draw writes premultiplied RGB and alpha in the isolated target.
+        # The transparent group's blit attenuates both errors before the final RGB write.
+        return (1+4*group_opacity)*.5/255
     # Admit an extra half-code only for the witnessed intermediate RGB8 writes.
     if (_opaque_white_border_box(layers) or _isolated_opacity_interface(layers,coverages,variable) or
         _two_translucent_black_writes(layers,coverages,variable)):
@@ -957,13 +976,13 @@ def _bounded_paint_basis(layers,coverages,variable):
         except ProtocolError:pass
     try:return _palette_basis(layers,(1.,1.,1.),byte_error=byte_error)
     except RunError:
-        joint=_joint_outline_output_basis(layers,coverages,variable)
+        joint=_joint_paint_output_basis(layers,coverages,variable)
         if joint is None:raise
         return joint
 
 
-def _joint_outline_output_basis(layers,coverages,variable):
-    """Observe the joint output of a focus outline and adjacent shadow at RGB8.
+def _joint_paint_output_basis(layers,coverages,variable):
+    """Observe inseparable RGB8 paint produced by a recognized finite stack.
 
     Their nearly parallel colors can leave individual weights unobservable.
     The fixed source-over endpoints still bound every visible pixel and
@@ -975,9 +994,8 @@ def _joint_outline_output_basis(layers,coverages,variable):
     floating_shadow=(kinds[:3]==('shadow','fill','outline') and 4<=len(layers)<=6 and len(variable)>=2 and
                      layers[0].get('blur')==0 and layers[1]['color']==(1.,1.,1.) and
                      all(row['kind']=='shadow' and row.get('blur',0)>0 for row in layers[3:]))
-    if not (hard_outline or floating_shadow):
-        return None
-    if any(layer['groups'] for layer in layers):
+    group_opacity=_hard_shadow_fill_group_opacity(layers,variable)
+    if group_opacity is None and (not (hard_outline or floating_shadow) or any(layer['groups'] for layer in layers)):
         return None
     endpoints=tuple(_paint_endpoints(layers,coverages,variable))
     # Set the origin at the lightest attainable value on each channel.
@@ -987,16 +1005,16 @@ def _joint_outline_output_basis(layers,coverages,variable):
     # Each physical RGB8 source-over can round the output by at most half
     # a code. Later layers attenuate earlier errors. The fixed output
     # domain must itself be distinguishable at the existing .05 cap.
-    rounding=len(layers)*.5/255
+    rounding=(len(layers)*.5/255 if group_opacity is None else _paint_byte_error(layers,coverages,variable))
     if not span or rounding/span>.05:
         return None
-    return dict(mode='joint-outline-output',base=base,span=span,domain=contribution_domain(endpoints),rounding=rounding)
+    return dict(mode='joint-paint-output',base=base,span=span,domain=contribution_domain(endpoints),rounding=rounding)
 
 
 def _paint_coordinates(observed,basis):
     from .color_metrics import in_contribution_domain,solve_visible_contributions
     rgb=tuple(v/255 for v in observed)
-    if basis['mode']=='joint-outline-output':
+    if basis['mode']=='joint-paint-output':
         valid=in_contribution_domain(rgb,basis['domain'],(basis['rounding'],)*3)
         values=tuple((b-v)/basis['span'] for b,v in zip(basis['base'],rgb,strict=True))
         return valid,values
