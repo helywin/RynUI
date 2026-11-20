@@ -600,15 +600,22 @@ void test_remaining_workflows_and_drafts() {
     auto select = f.active.target("gallery.select.outlined");
     auto selector = f.services.select().snapshot(select).selector;
     require(f.services.select().snapshot(select).value == SelectSelection{u8"desktop"}, "Select default changed");
-    // Clear the real native clear action; a null draft must stay uncontrolled and empty.
+    // Hover swaps the default suffix for the real clear action. A null draft
+    // produced by the pointer click must survive an uncontrolled page round trip.
+    const auto& selector_node = f.nodes.require(f.services.components().root(selector));
+    f.services.pointer().dispatch(
+        {input::PointerIdentity::mouse(), input::PointerAction::move, input::PointerButton::none,
+         selector_node.bounds.x + selector_node.translation.x + selector_node.bounds.width / 2,
+         selector_node.bounds.y + selector_node.translation.y + selector_node.bounds.height / 2});
+    f.sync();
     bool cleared{};
     for (const auto id : f.services.interactions().declaration_order()) {
         const auto record = f.services.interactions().require(id);
         if (!record.focusable && record.eligible && record.component != selector &&
             f.within(record.component, selector)) {
-            const auto b = f.nodes.require(f.services.components().root(record.component)).bounds;
-            const auto x = b.x + b.width / 2;
-            const auto y = b.y + b.height / 2;
+            const auto& node = f.nodes.require(f.services.components().root(record.component));
+            const auto x = node.bounds.x + node.translation.x + node.bounds.width / 2;
+            const auto y = node.bounds.y + node.translation.y + node.bounds.height / 2;
             f.services.pointer().dispatch(
                 {input::PointerIdentity::mouse(), input::PointerAction::down, input::PointerButton::primary, x, y});
             f.services.pointer().dispatch(
