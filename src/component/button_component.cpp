@@ -175,7 +175,7 @@ struct ButtonComponentState final {
     runtime::SceneFragmentId decoration_fragment;
     component::RetainedSurfaceId decoration_range;
     std::vector<graphics::RoundedEffectInstance> decorations;
-    std::optional<std::array<float, 14>> decoration_geometry;
+    std::optional<std::array<float, 15>> decoration_geometry;
     std::optional<CompactMetadata> compact;
     std::weak_ptr<CompactContext> compact_context;
     component::RetainedSurfaceId compact_range;
@@ -588,6 +588,13 @@ float logical_radius(runtime::Rect bounds, float radius) noexcept {
     return std::clamp(radius, 0.0F, 0.5F * std::min(bounds.width, bounds.height));
 }
 
+[[nodiscard]] bool paints_continuous_border(const ButtonComponentState& state, runtime::Rect bounds,
+                                            const ButtonThemeToken& token) {
+    const auto width = token.border_width;
+    return !state.compact && !dashed(state) && !unbordered(state) && !solid_fills_border_box(state) && width > 0 &&
+           2 * width < std::min(bounds.width, bounds.height) && width <= button_radius(state, bounds, token);
+}
+
 graphics::QuadInstance make_quad(runtime::Rect bounds, runtime::Size viewport, std::array<float, 4> color,
                                  float opacity, float radius, runtime::Point translation) {
     return {
@@ -827,7 +834,7 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(runtime::ComponentId compo
         resolved_variant(*state).color,
         resolved_variant(*state).variant,
         state->ghost,
-        state->decorations.size(),
+        dashed(*state) ? state->decorations.size() : 0,
         state->shape,
         state->icon_placement,
         state->block,
@@ -1300,10 +1307,11 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     const auto& visual = visual_token(button, state);
     const float loading_mix = std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
     const float layer_opacity = 1.0F + (button.loading_opacity - 1.0F) * loading_mix;
+    const bool outlined = paints_continuous_border(state, nodes_->require(state.node).bounds, button);
     auto next = state.visuals;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].color = channels(state.presentation_border);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].opacity =
-        dashed(state) || state.compact ? 0.0F : layer_opacity;
+        dashed(state) || state.compact || outlined ? 0.0F : layer_opacity;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].color =
         channels(state.presentation_background);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].opacity =
@@ -1311,8 +1319,9 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     for (std::size_t segment = 0; segment < component::button_loading_segment_count; ++segment) {
         auto& indicator = next[component::button_loading_segment_index(segment)];
         indicator.color = channels(state.presentation_foreground);
-        indicator.opacity =
-            button.loading_opacity * loading_mix * spinner_segment_strength(state.spinner_phase, segment);
+        indicator.opacity = state.has_loading_icon ? 0.0F
+                                                   : button.loading_opacity * loading_mix *
+                                                         spinner_segment_strength(state.spinner_phase, segment);
     }
 
     bool changed_material = false;
@@ -1669,14 +1678,20 @@ void ButtonComponentHost::update_decoration_material(ButtonComponentState& state
     const auto& token = components().theme_scope(state.component)->snapshot().button();
     const float opacity =
         1.0F + (token.loading_opacity - 1.0F) * std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
+    const bool outlined = paints_continuous_border(state, nodes_->require(state.node).bounds, token);
     for (auto& effect : state.decorations) {
-        effect.material = {state.presentation_border, opacity, dashed(state)};
+        const bool visible =
+            effect.geometry.kind == graphics::RoundedEffectKind::dashed_outline ? dashed(state) : outlined;
+        effect.material = {state.presentation_border, opacity, visible};
     }
     button_scene_.update_content_effects(state.decoration_range, state.decorations);
 }
 
 void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, runtime::Rect clip) {
-    if (!dashed(state)) {
+    const bool dashed_border = dashed(state);
+    const auto& token = components().theme_scope(state.component)->snapshot().button();
+    const auto& node = nodes_->require(state.node);
+    if (!dashed_border && !paints_continuous_border(state, node.bounds, token)) {
         if (!state.decorations.empty()) {
             state.decorations.clear();
             state.decoration_geometry.reset();
@@ -1684,8 +1699,6 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
         }
         return;
     }
-    const auto& token = components().theme_scope(state.component)->snapshot().button();
-    const auto& node = nodes_->require(state.node);
     const float radius = logical_radius(node.bounds, button_radius(state, node.bounds, token));
     const std::array key{node.bounds.x,
                          node.bounds.y,
@@ -1700,13 +1713,14 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
                          radius,
                          token.border_width,
                          token.dash_length,
-                         token.dash_gap};
+                         token.dash_gap,
+                         dashed_border ? 1.0F : 0.0F};
     if (state.decoration_geometry == key) {
         return;
     }
     const float width = std::min(token.border_width, 0.5F * std::min(node.bounds.width, node.bounds.height));
     std::vector<graphics::RoundedEffectInstance> effects;
-    if (width > 0) {
+    if (width > 0 && dashed_border) {
         const float period = token.dash_length + token.dash_gap;
         const auto corners = state.compact ? state.compact->corners : std::array{true, true, true, true};
         const graphics::LogicalRoundedRect centerline{{node.bounds.x + width / 2, node.bounds.y + width / 2,
@@ -1721,6 +1735,12 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
         effects.push_back(graphics::make_dashed_outline_effect(
             {node.bounds, radius}, width, {token.dash_length, token.dash_gap, 0, corners}, state.presentation_border, 1,
             node.translation, graphics::EffectClip{1, clip}));
+    } else if (width > 0) {
+        const runtime::Rect inner{node.bounds.x + width, node.bounds.y + width, node.bounds.width - 2 * width,
+                                  node.bounds.height - 2 * width};
+        effects.push_back(graphics::make_outline_effect({inner, std::max(0.0F, radius - width)}, width, 0,
+                                                        state.presentation_border, 1, node.translation,
+                                                        graphics::EffectClip{1, clip}));
     }
     if (!state.decoration_range.valid() && !effects.empty()) {
         if (!state.decoration_fragment.valid()) {
@@ -1786,11 +1806,15 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
         std::max(0.0F, node.bounds.width - 2.0F * button.border_width),
         std::max(0.0F, node.bounds.height - 2.0F * button.border_width),
     };
-    const bool border_box_fill = solid_fills_border_box(state);
+    const bool outlined = paints_continuous_border(state, node.bounds, button);
+    const bool border_box_fill = solid_fills_border_box(state) || outlined;
     const auto background_bounds = border_box_fill ? node.bounds : inset_background_bounds;
     auto next = state.visuals;
+    const auto opacity =
+        1.0F + (button.loading_opacity - 1.0F) * std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)] =
-        make_quad(node.bounds, viewport, next[0].color, next[0].opacity, radius, node.translation);
+        make_quad(node.bounds, viewport, next[0].color, dashed(state) || state.compact || outlined ? 0.0F : opacity,
+                  radius, node.translation);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)] =
         make_quad(background_bounds, viewport, next[1].color, next[1].opacity,
                   border_box_fill ? radius : std::max(0.0F, radius - button.border_width), node.translation);

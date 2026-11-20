@@ -234,7 +234,7 @@ void test_mount_scene_composition_and_lifecycle() {
     require(content_runs == 2 && fixture.host->components().mount_runs() == 1 &&
                 fixture.host->components().component_count() == 4 && fixture.host->mounted_buttons().size() == 2 &&
                 fixture.host->text().mounted_texts().size() == 2 && fixture.host->interactions().size() == 2 &&
-                fixture.host->button_scene().size() == 2 && fixture.host->animations().diagnostics().scopes == 2 &&
+                fixture.host->button_scene().size() == 3 && fixture.host->animations().diagnostics().scopes == 2 &&
                 fixture.host->animations().diagnostics().targets == 2 * ryn::detail::button_animation_channel_count &&
                 fixture.nodes.size() == 4,
             "Button mount did not create stable component resources");
@@ -260,12 +260,13 @@ void test_mount_scene_composition_and_lifecycle() {
                     ryn::detail::default_theme_snapshot().button().primary_shadow[0].color,
             "Default and Primary Button shadows did not resolve component tokens");
     const auto commands = fixture.host->scene_composer().ordered_scene().commands();
-    require(commands.size() == 6 && commands[0].kind == ryn::graphics::SceneDrawKind::rounded_effect &&
+    require(commands.size() == 7 && commands[0].kind == ryn::graphics::SceneDrawKind::rounded_effect &&
                 commands[1].kind == ryn::graphics::SceneDrawKind::quad &&
-                commands[2].kind == ryn::graphics::SceneDrawKind::glyph &&
-                commands[3].kind == ryn::graphics::SceneDrawKind::rounded_effect &&
-                commands[4].kind == ryn::graphics::SceneDrawKind::quad &&
-                commands[5].kind == ryn::graphics::SceneDrawKind::glyph,
+                commands[2].kind == ryn::graphics::SceneDrawKind::rounded_effect &&
+                commands[3].kind == ryn::graphics::SceneDrawKind::glyph &&
+                commands[4].kind == ryn::graphics::SceneDrawKind::rounded_effect &&
+                commands[5].kind == ryn::graphics::SceneDrawKind::quad &&
+                commands[6].kind == ryn::graphics::SceneDrawKind::glyph,
             "Button/Text paint traversal did not preserve sibling composition");
     require(fixture.host->hit_test().hit_test(fixture.center(0)) == first.interaction &&
                 fixture.host->hit_test().hit_test(fixture.center(1)) == second.interaction,
@@ -507,10 +508,8 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
     const auto primary_background = quad_bounds(fixture.layer(1, ryn::component::ButtonVisualLayer::background));
     const auto danger_background = quad_bounds(fixture.layer(2, ryn::component::ButtonVisualLayer::background));
 
-    require(near(default_background.x, default_root.x + 1.0F) && near(default_background.y, default_root.y + 1.0F) &&
-                near(default_background.width, default_root.width - 2.0F) &&
-                near(default_background.height, default_root.height - 2.0F) &&
-                near_rect(primary_background, primary_root) && near_rect(danger_background, danger_root) &&
+    require(near_rect(default_background, default_root) && near_rect(primary_background, primary_root) &&
+                near_rect(danger_background, danger_root) &&
                 fixture.layer(1, ryn::component::ButtonVisualLayer::border).color[3] == 0.0F &&
                 fixture.layer(2, ryn::component::ButtonVisualLayer::border).color[3] == 0.0F,
             "solid Button fill did not cover the transparent border box");
@@ -530,8 +529,15 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
     }
 
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(0)));
-    require(fixture.layer(0, ryn::component::ButtonVisualLayer::border).color ==
-                channels(ryn::detail::default_theme_snapshot().button().default_hover_color),
+    require(fixture.synchronize() &&
+                std::ranges::any_of(fixture.host->rounded_effects().packed_instances(),
+                                    [](const auto& effect) {
+                                        return effect.geometry.kind == ryn::graphics::RoundedEffectKind::outline &&
+                                               effect.geometry.outline_offset == 0 &&
+                                               effect.geometry.outline_width == 1 && effect.material.visible &&
+                                               effect.material.color ==
+                                                   ryn::detail::default_theme_snapshot().button().default_hover_color;
+                                    }),
             "Default hover missed its existing 1px border");
     require(fixture.host->button_scene().focus_effect(default_button.scene).material.opacity == 0.0F,
             "Default hover incorrectly created a focus ring");
@@ -1325,6 +1331,32 @@ void test_native_sugar_props_and_theme_palette_inheritance() {
             "Button locked blue preset differs from Ant palette");
 }
 
+void test_continuous_border_has_independent_ring_coverage() {
+    Fixture fixture;
+    fixture.host->mount(ryn::Content{[] { ryn::Button(ryn::ButtonProps{}, [] { ryn::Text(u8"Outlined"); }); }});
+    require(fixture.synchronize(), "Continuous Button border layout failed");
+    const auto bounds = fixture.bounds(0);
+    const auto& backdrop = fixture.layer(0, ryn::component::ButtonVisualLayer::background);
+    const auto& old_border = fixture.layer(0, ryn::component::ButtonVisualLayer::border);
+    require(old_border.opacity == 0 && backdrop.bounds == std::array{bounds.x, bounds.y, bounds.width, bounds.height},
+            "Continuous border put two independent fills on the geometry edge");
+    const auto effects = fixture.host->rounded_effects().packed_instances();
+    const auto ring = std::ranges::find_if(effects, [](const auto& effect) {
+        return effect.geometry.kind == ryn::graphics::RoundedEffectKind::outline && effect.material.visible &&
+               effect.material.opacity > 0;
+    });
+    require(ring != effects.end(), "Continuous border did not publish an independent ring");
+    const auto width = ring->geometry.outline_width;
+    require(width > 0 && ring->geometry.outline_offset == 0 &&
+                ring->geometry.shape.rect == ryn::runtime::Rect{bounds.x + width, bounds.y + width,
+                                                                bounds.width - 2 * width, bounds.height - 2 * width},
+            "Continuous border ring is not contained in the layout border box");
+    require(ryn::graphics::rounded_effect_coverage({bounds.x + bounds.width / 2, bounds.y + width / 2}, *ring) > .5F &&
+                ryn::graphics::rounded_effect_coverage({bounds.x + bounds.width / 2, bounds.y + bounds.height / 2},
+                                                       *ring) == 0.F,
+            "Continuous border did not retain a hollow center");
+}
+
 void test_ghost_dashed_gaps_and_material_only_theme_updates() {
     Fixture fixture;
     fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
@@ -1545,6 +1577,10 @@ void test_retained_icon_loading_slots_and_end_placement() {
                 !fixture.layout.horizontal_content_geometry(mounted.node).loading_indicator_bounds &&
                 !fixture.host->snapshot(mounted.component).spinner_running,
             "Button custom loading duplicated icon/spinner/gap or moved before content");
+    for (std::size_t segment = 0; segment < ryn::component::button_loading_segment_count; ++segment) {
+        require(fixture.loading_segment(0, segment).opacity == 0,
+                "Button custom loading activated a hidden built-in spinner segment");
+    }
     label.set(ryn::String{u8"Updated label"});
     icon.set(ryn::String{u8"II"});
     loading.set(false);
@@ -2027,6 +2063,7 @@ int main() {
         test_flex_composes_text_button_and_nested_flex();
         test_native_color_variant_matrix_and_precedence();
         test_native_sugar_props_and_theme_palette_inheritance();
+        test_continuous_border_has_independent_ring_coverage();
         test_ghost_dashed_gaps_and_material_only_theme_updates();
         test_button_variant_invalid_inputs_and_effect_limit();
         test_button_palette_phase_identity_and_destructive_dash_activation();
