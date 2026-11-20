@@ -1179,6 +1179,12 @@ def _hard_paint_gates(native_layers,web_layers,step):
             for border in web_layers:
                 if border['kind']=='border' and owners(border)==owners(candidate) and border['bounds']==candidate['bounds']:
                     boxes.append((_inset(border['bounds'],border['widths']),tuple(max(0,r-max(border['widths'])) for r in radii)))
+                    if (candidate['kind']=='fill' and any(radii) and border['alpha']==1 and
+                            len(set(border['widths']))==1):
+                        # Chromium's opaque rounded border uses a half-stroke
+                        # inset to keep the background from bleeding at the edge.
+                        inset=border['widths'][0]*.5
+                        boxes.append((_inset(border['bounds'],inset),tuple(max(0,r-inset) for r in radii)))
             radius=row.get('radii',0)
             if any(all(abs(row['bounds'][k]-bounds[k])<=.25 for k in bounds) and
                    (all(abs(radius-r)<=.25 for r in expected) or row.get('clips') and any(abs(radius-r)<=.25 for r in expected))

@@ -1,4 +1,5 @@
 #include "support/input_fixture.hpp"
+#include "theme/input_tokens.hpp"
 #include <ryn/flex.hpp>
 
 #include <algorithm>
@@ -34,6 +35,12 @@ void paint_identity_and_readonly() {
             "Input retained surface and primitive identities are absent");
     std::optional<std::size_t> background;
     std::optional<std::size_t> border;
+    const auto& theme = fixture.services.components().theme_scope(mounted.component)->snapshot();
+    const auto& tokens = detail::derive_input_tokens(theme);
+    const auto bounds = fixture.nodes.require(mounted.node).bounds;
+    const auto inset = tokens.border_width * .5F;
+    const runtime::Rect background_box{bounds.x + inset, bounds.y + inset, bounds.width - 2 * inset,
+                                       bounds.height - 2 * inset};
     bool focus{};
     for (const auto& layer : paint.layers) {
         require(layer.exists && layer.retained.has_value() &&
@@ -43,8 +50,8 @@ void paint_identity_and_readonly() {
                 "snapshot differs from actual retained geometry/material");
         if (layer.role == detail::InputPaintLayerRole::background) {
             background = layer.command_ordinal;
-            require(layer.retained->geometry.shape.rect == fixture.nodes.require(mounted.node).bounds,
-                    "Outlined Input background does not cover the complete border box");
+            require(layer.retained->geometry.shape.rect == background_box,
+                    "Outlined Input background does not reach its opaque border centerline");
         }
         if (layer.role == detail::InputPaintLayerRole::border) {
             border = layer.command_ordinal;
@@ -54,7 +61,7 @@ void paint_identity_and_readonly() {
         focus |= layer.role == detail::InputPaintLayerRole::focus;
     }
     require(background && border && *background < *border && focus,
-            "Outlined Input did not submit its full background before the border ring");
+            "Outlined Input did not submit its background before the border ring");
     for (int index = 0; index < 5; ++index) {
         static_cast<void>(fixture.inputs.paint_snapshot(mounted.component));
     }

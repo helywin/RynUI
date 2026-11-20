@@ -2990,13 +2990,19 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
             host_->nodes().content_opacity(mounted.node) * host_->nodes().paint_opacity(mounted.node)};
         if (state->container_presentation != next_container) {
             const std::size_t stride = state->compact ? 4 : 1;
-            // The background owns the complete exterior before the border ring is drawn.
-            const bool full_outlined_fill = state->variant == InputVariant::Outlined && !state->compact;
+            const bool outlined = state->variant == InputVariant::Outlined && !state->compact;
+            // Meet an opaque rounded border at its centerline. The border
+            // still covers the edge, while the fill cannot wash out the shadow
+            // through the partially covered exterior pixels.
+            const float outlined_background_inset =
+                radius > 0 && presentation.colors[1].alpha() == 1 ? border * .5F : 0.0F;
             for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
                 const bool outer = layer < input_shadow_layer_capacity;
                 const bool inner = layer >= input_inset_shadow_layer && layer < input_focus_layer;
                 auto bounds = root_bounds;
-                const float inset = (layer == input_background_layer && !full_outlined_fill) || inner ? border : 0.0F;
+                const float inset = layer == input_background_layer ? (outlined ? outlined_background_inset : border)
+                                    : inner                         ? border
+                                                                    : 0.0F;
                 bounds.x += inset;
                 bounds.y += inset;
                 bounds.width -= 2 * inset;
@@ -3045,7 +3051,7 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                         const auto& shadow = (*visual.shadow)[source];
                         if ((shadow.kind == ShadowKind::outer) == outer) {
                             const auto shadow_clip = graphics::EffectClip{1, outer ? decoration_clip : clip};
-                            if (outer && full_outlined_fill && shadow.blur == 0 && shadow.spread > 0) {
+                            if (outer && outlined && shadow.blur == 0 && shadow.spread > 0) {
                                 const bool opaque =
                                     presentation.colors[0].alpha() == 1 && next_container.inherited_opacity == 1;
                                 effect = graphics::make_exterior_shadow_effect(
