@@ -27,7 +27,7 @@ def _rgb8(color):
     return channels if struct.pack('<3f', *color) == struct.pack('<3f', *(v / 255 for v in channels)) else None
 
 
-def _stacks(rows, side, dpr):
+def _stacks(rows, side, dpr, split_coverage=False):
     for shadow, fill, border in zip(rows, rows[1:], rows[2:]):
         layers = (shadow, fill, border)
         if tuple(layer['kind'] for layer in layers) != ('shadow', 'fill', 'border' if side == 'web' else 'outline'):
@@ -65,8 +65,10 @@ def _stacks(rows, side, dpr):
             continue
         dx, dy = math.floor(x) - guard, math.floor(y) - guard
         alpha = struct.unpack('<f', struct.pack('<f', shadow['alpha']))[0]
+        split_border = (split_coverage and width == 1 and
+                        all(value == round(value) for value in (x, y, w, h, radius)))
         spec = (x - dx, y - dy, w, h, radius, width, inset, spread, alpha, shadow_color, border_color,
-                (255, 255, 255), 0, 0)
+                (255, 255, 255), 0, 0, split_border)
         yield (spec, dx, dy), layers
     for shadow, fill in zip(rows, rows[1:]):
         layers = (shadow, fill)
@@ -92,7 +94,7 @@ def _stacks(rows, side, dpr):
             continue
         dx, dy = math.floor(x) - guard, math.floor(y) - guard
         alpha = struct.unpack('<f', struct.pack('<f', shadow['alpha']))[0]
-        spec = (x - dx, y - dy, w, h, radius, 0, inset, 0, alpha, shadow_color, (0, 0, 0), fill_color, ox, oy)
+        spec = (x - dx, y - dy, w, h, radius, 0, inset, 0, alpha, shadow_color, (0, 0, 0), fill_color, ox, oy, False)
         yield (spec, dx, dy), layers
     for fill, border in zip(rows, rows[1:]):
         layers = (fill, border)
@@ -120,7 +122,7 @@ def _stacks(rows, side, dpr):
                 or any(value != round(value) for value in (x, y, w, h, radius))):
             continue
         dx, dy = round(x) - 4, round(y) - 4
-        spec = (4, 4, w, h, radius, width, 0, 0, 0, (0, 0, 0), color, (255, 255, 255), 0, 0)
+        spec = (4, 4, w, h, radius, width, 0, 0, 0, (0, 0, 0), color, (255, 255, 255), 0, 0, False)
         yield (spec, dx, dy), layers
 
 
@@ -144,8 +146,8 @@ def _batch(root, binary, needed, cache):
     request, output = work / 'request.json', work / 'output'
     stacks = [dict(bounds=dict(x=x, y=y, width=w, height=h), radius=radius, border_width=width,
                    caster_inset=inset, spread=spread, shadow_alpha=alpha, shadow_color=shadow, border_color=border,
-                   fill_color=fill, offset_x=ox, offset_y=oy)
-              for x, y, w, h, radius, width, inset, spread, alpha, shadow, border, fill, ox, oy in needed]
+                   fill_color=fill, offset_x=ox, offset_y=oy, split_border=split_border)
+              for x, y, w, h, radius, width, inset, spread, alpha, shadow, border, fill, ox, oy, split_border in needed]
     write_json(request, dict(stacks=stacks))
     process([binary, '--shape-blend-witnesses', request, '--output', output], work / 'process', 60, failure_code=3)
     receipt = read(output / 'shape-blend-witnesses.json')
@@ -156,10 +158,10 @@ def _batch(root, binary, needed, cache):
     cache.update({spec: _samples(item) for spec, item in zip(needed, receipt['stacks'], strict=True)})
 
 
-def bind_blends(inventories, dpr, root, binary, cache):
+def bind_blends(inventories, dpr, root, binary, cache, *, split_coverage=False):
     paired = {}
     for side, rows in zip(('web', 'native'), inventories, strict=True):
-        for key, layers in _stacks(rows, side, dpr):
+        for key, layers in _stacks(rows, side, dpr, split_coverage):
             paired.setdefault(key, {}).setdefault(side, []).append(layers)
     valid = {key: (sides['web'][0], sides['native'][0]) for key, sides in paired.items()
              if len(sides) == 2 and all(len(value) == 1 for value in sides.values())}

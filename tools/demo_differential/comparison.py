@@ -1580,6 +1580,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
     for index,x,y,key_bin in _layered_pixels(crops,size,box,bins,counts):
         point=((x+.5)/dpr,(y+.5)/dpr)
         sides=[]
+        domain_failures=[]
         for side,indexed in enumerate(bins):
             active=[];coverages=[];variable=[]
             for row,support in indexed.get(key_bin,()):
@@ -1644,7 +1645,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                     rounding=len(active)*.5/255
                     inside=in_contribution_domain(tuple(v/255 for v in observed),rounded_box,(rounding,)*3)
                 if not inside:
-                    fail('visual','visible contributions violate actual source-over order/opacity domain',side=side,pixel=point)
+                    domain_failures.append(side)
             if basis['mode']=='joint-collinear':
                 domain_key=('collinear',key,tuple(variable),tuple(0 if i in variable else c for i,c in enumerate(coverages)))
                 if domain_key not in domain_cache:
@@ -1719,8 +1720,14 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
         a,b=[tuple(data[index*4:index*4+3]) for data in crops]
         # The same source stack can have two exact RGB8 encodings. Both actual
         # pixels must independently match their encoding before pairing them.
-        if blend_pixels and (same:=verified_blend(blend_pixels,x,y,dpr,sides,(a,b))) is not None:
-            a=b=same
+        encoded=verified_blend(blend_pixels,x,y,dpr,sides,(a,b)) if blend_pixels else None
+        if encoded is not None:
+            a=b=encoded
+        else:
+            # The continuous inverse can reject a boundary RGB8 value. A
+            # verified pair already proves the exact encoded source order.
+            for side in domain_failures:
+                fail('visual','visible contributions violate actual source-over order/opacity domain',side=side,pixel=point)
         if svg_masks and (same:=_witnessed_svg_rounding(sides,(a,b),svg_masks,point,dpr,svg_placements)) is not None:
             a=b=same
         compared_coverage=False

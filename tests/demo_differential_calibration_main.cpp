@@ -321,12 +321,13 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         const float spread = number("spread");
         const float alpha = number("shadow_alpha");
         const runtime::Point offset{number("offset_x"), number("offset_y")};
+        const bool split_border = probe.at("split_border").boolean();
         const bool bordered = width > 0;
         const float max_offset = std::max(std::abs(offset.x), std::abs(offset.y));
-        const bool opaque_stroke = alpha == 0 && width == 1 && spread == 0 && max_offset == 0 && caster_inset == 0 &&
-                                   std::floor(bounds.x) == bounds.x && std::floor(bounds.y) == bounds.y &&
-                                   std::floor(bounds.width) == bounds.width &&
-                                   std::floor(bounds.height) == bounds.height && std::floor(radius) == radius;
+        const bool integer_stroke = width == 1 && std::floor(bounds.x) == bounds.x &&
+                                    std::floor(bounds.y) == bounds.y && std::floor(bounds.width) == bounds.width &&
+                                    std::floor(bounds.height) == bounds.height && std::floor(radius) == radius;
+        const bool opaque_stroke = alpha == 0 && integer_stroke && spread == 0 && max_offset == 0 && caster_inset == 0;
         const bool translucent_caster = caster_inset > 0 && caster_inset <= radius && alpha > 0 && alpha < 1 &&
                                         (bordered ? max_offset == 0 && spread > 0 && spread <= 32
                                                   : max_offset > 0 && max_offset <= 32 && spread == 0);
@@ -335,7 +336,7 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         const auto extent_y = std::ceil(bounds.y + bounds.height + guard);
         require(extent_x <= 512 && extent_y <= 512 && bounds.x >= guard && bounds.y >= guard && width >= 0 &&
                     width <= 16 && radius > width && radius <= 0.5F * std::min(bounds.width, bounds.height) &&
-                    (opaque_stroke || translucent_caster),
+                    (opaque_stroke || translucent_caster) && (!split_border || (integer_stroke && translucent_caster)),
                 "rounded blend source outside the fixed physical domain");
         LockedShapeGeometry outer{bounds, radius};
         LockedShapeGeometry fill = inset(outer, width * 0.5F);
@@ -352,10 +353,10 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         outer.shadow_caster_inset = caster_inset;
         outer.shadow_alpha = alpha;
         Json::Array samples;
-        for (const auto& sample :
-             shape_blend_samples({outer, fill, bordered ? std::optional{border} : std::nullopt,
-                                  rgb8(probe.at("shadow_color")), fill_color, border_color,
-                                  static_cast<std::uint32_t>(extent_x), static_cast<std::uint32_t>(extent_y)})) {
+        for (const auto& sample : shape_blend_samples({outer, fill, bordered ? std::optional{border} : std::nullopt,
+                                                       rgb8(probe.at("shadow_color")), fill_color, border_color,
+                                                       static_cast<std::uint32_t>(extent_x),
+                                                       static_cast<std::uint32_t>(extent_y), split_border})) {
             samples.emplace_back(Json::Array{integer(sample.x), integer(sample.y), integer(sample.web[0]),
                                              integer(sample.web[1]), integer(sample.web[2]), integer(sample.native[0]),
                                              integer(sample.native[1]), integer(sample.native[2])});

@@ -100,6 +100,15 @@ def hard_shadow_stack(side):
 
 
 class RoundedBlendWitnessTests(unittest.TestCase):
+    def test_llvmpipe_integer_shadow_stroke_has_separate_encoding(self):
+        web, native = (hard_shadow_stack(side) for side in ('web', 'native'))
+        expected, _ = next(_stacks(web, 'web', 1, True))
+        actual, _ = next(_stacks(native, 'native', 1, True))
+        self.assertEqual(actual, expected)
+        self.assertTrue(actual[0][-1])
+        self.assertFalse(next(_stacks(native, 'native', 1, False))[0][0][-1])
+        self.assertFalse(next(_stacks(native, 'native', 1.5, True))[0][0][-1])
+
     def test_integer_opaque_stroke_requires_exact_box_and_both_encoded_colors(self):
         web, native = (hard_shadow_stack(side)[1:] for side in ('web', 'native'))
         for rows in (web, native):

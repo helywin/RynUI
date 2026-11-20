@@ -48,7 +48,7 @@ void draw_web(SkBitmap& bitmap, const ShapeBlendSource& source) {
     canvas.drawRRect(rounded(source.fill), paint);
     if (source.border) {
         paint.setColor(rgb(source.border_color));
-        if (source.caster.shadow_alpha > 0) {
+        if (source.caster.shadow_alpha > 0 && !source.split_border) {
             canvas.drawDRRect(rounded(source.caster), rounded(*source.border), paint);
         } else {
             const auto width = source.border->outline_width;
@@ -68,6 +68,10 @@ unsigned coverage(const LockedShapeCoverage& mask, std::uint32_t x, std::uint32_
 
 unsigned over_rgb8(unsigned source, unsigned dest, unsigned alpha) {
     return (source * alpha + dest * (255 - alpha) + 127) / 255;
+}
+
+unsigned over_rgb8_split(unsigned source, unsigned dest, unsigned alpha) {
+    return (source * alpha + 127) / 255 + (dest * (255 - alpha) + 127) / 255;
 }
 
 } // namespace
@@ -109,7 +113,9 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
             for (std::size_t i = 0; i < sample.native.size(); ++i) {
                 const auto shadowed = over_rgb8(source.shadow_color[i], 255, shadow_alpha);
                 const auto filled = over_rgb8(source.fill_color[i], shadowed, fill_alpha);
-                sample.native[i] = static_cast<std::uint8_t>(over_rgb8(source.border_color[i], filled, border_alpha));
+                const auto output = source.split_border ? over_rgb8_split(source.border_color[i], filled, border_alpha)
+                                                        : over_rgb8(source.border_color[i], filled, border_alpha);
+                sample.native[i] = static_cast<std::uint8_t>(output);
                 adjacent_codes &= std::abs(int(sample.web[i]) - int(sample.native[i])) <= 1;
             }
             if (sample.web != sample.native && ((source.border && caster.shadow_alpha > 0) || adjacent_codes)) {

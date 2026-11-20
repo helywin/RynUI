@@ -80,9 +80,16 @@ class ShapeWitnesses:
         self.samples = {}
         self.shared = {}
         self.blend_samples = {}
+        environment = manifest.get('environment', {})
+        native = environment.get('native', {})
+        capture = environment.get('native_capture', {})
+        self.split_coverage = (native.get('backend') == 'vulkan' and
+                               native.get('gpu', {}).get('driver_name') == 'llvmpipe' and
+                               capture.get('framebuffer_format') == 'BGRA8_UNORM')
 
     def blend_pixels(self, inventories, dpr):
-        return bind_blends(inventories, dpr, self.root, self.binary, self.blend_samples)
+        return bind_blends(inventories, dpr, self.root, self.binary, self.blend_samples,
+                           split_coverage=self.split_coverage)
 
     def bind(self, layers, dpr):
         paired = {}
