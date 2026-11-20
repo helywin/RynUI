@@ -151,6 +151,9 @@ struct SelectState final {
     Signal<runtime::SemanticForeground> suffix_foreground{runtime::SemanticForeground{}};
     Signal<bool> action_disabled{false};
     Signal<LayoutGap> tag_gap{LayoutGap{dp(4)}};
+    Signal<TagTokenOverride> chip_tokens{TagTokenOverride{}};
+    Signal<runtime::SemanticForeground> chip_disabled_foreground{runtime::SemanticForeground{}};
+    std::shared_ptr<theme_runtime::ThemeScope> chip_theme;
     Prop<runtime::SemanticTypography> selector_typography{runtime::SemanticTypography{}};
     Signal<IconSource> clear_icon{IconSource{IconName::CloseCircleFilled}};
     Signal<IconSource> suffix_icon{IconSource{IconName::DownOutlined}};
@@ -944,7 +947,7 @@ void SelectComponentHost::edit(runtime::ComponentId id, String query) {
 
 void SelectComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
     auto* s = select_state(*services_, id);
-    if (!s) {
+    if (!s || !services_->components().contains(s->selector)) {
         return;
     }
     const auto suffix_typography = s->suffix_typography;
@@ -955,11 +958,53 @@ void SelectComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
     suffix_typography.set({.font_size = suffix_size, .line_height = suffix_size});
     suffix_foreground.set(suffix_color);
     s = select_state(*services_, id);
-    if (!s) {
+    if (!s || !services_->components().contains(s->selector)) {
         return;
     }
     const auto& theme = services_->components().theme_scope(id)->snapshot();
     const auto& token = theme.select();
+    const auto* inputs = services_->input_runtime();
+    const auto size = inputs->size(s->selector);
+    const auto variant = inputs->variant(s->selector);
+    const auto input = derive_input_tokens(theme);
+    const auto& density = input.size(size);
+    const auto& map = theme.map();
+    const auto& alias = theme.alias();
+    const float item_padding = map.size_xs * .5F;
+    const float height =
+        std::min(density.control_height - 2 * item_padding, density.control_height - 2 * input.border_width);
+    const bool dark = std::ranges::find(theme.algorithms(), ThemeAlgorithm::Dark) != theme.algorithms().end();
+    const auto ink = map.color_text_base;
+    const auto radius = size == ControlSize::Small   ? map.border_radius_small * .5F
+                        : size == ControlSize::Large ? map.border_radius
+                                                     : map.border_radius_small;
+    TagTokenOverride chip;
+    chip.default_background = variant == InputVariant::Filled
+                                  ? alias.color_background_container
+                                  : Color{ink.red(), ink.green(), ink.blue(), dark ? .12F : .06F};
+    chip.default_border =
+        variant == InputVariant::Filled && !s->disabled ? alias.color_split : Color::rgba8(0, 0, 0, 0);
+    chip.default_color = alias.color_text;
+    chip.padding_inline = dp(item_padding);
+    chip.border_width = dp(input.border_width);
+    chip.border_radius = dp(radius);
+    chip.font_size = dp(density.font_size);
+    chip.line_height = dp(std::max(1.0F, height - 2 * input.border_width));
+    const auto disabled_ink = foreground(alias.color_text_disabled);
+    auto chip_tokens = s->chip_tokens;
+    auto chip_disabled_foreground = s->chip_disabled_foreground;
+    const auto chip_theme = s->chip_theme;
+    if (chip_theme) {
+        auto config = std::make_unique<ThemeConfig>();
+        config->tag.tokens = chip;
+        static_cast<void>(chip_theme->update(*config));
+    }
+    chip_tokens.set(std::move(chip));
+    chip_disabled_foreground.set(disabled_ink);
+    s = select_state(*services_, id);
+    if (!s) {
+        return;
+    }
     InputTokenOverride input_tokens;
     input_tokens.background = token.colors.selector_background;
     input_tokens.hover_background = token.colors.selector_background;
@@ -1374,6 +1419,8 @@ void SelectComponentHost::reconcile_tags(runtime::ComponentId id) {
                 const auto direction = select_state(*services_, id)->direction;
                 const auto remove_icon = select_state(*services_, id)->remove_icon;
                 const auto tag_gap = select_state(*services_, id)->tag_gap;
+                const auto chip_tokens = select_state(*services_, id)->chip_tokens;
+                const auto disabled_foreground = select_state(*services_, id)->chip_disabled_foreground;
                 const auto selector_typography = select_state(*services_, id)->selector_typography;
                 auto* services = services_;
                 build.mount_slot(
@@ -1385,32 +1432,65 @@ void SelectComponentHost::reconcile_tags(runtime::ComponentId id) {
                         } else if (single) {
                             Text(TextProps{}.content(label).direction(direction));
                         } else {
-                            Tag(TagProps{}.visible(true).disabled(disabled), TagContent{[=] {
-                                    Flex(FlexProps{}.align(FlexAlign::Center).gap(tag_gap).direction(bind([direction] {
-                                        return direction.get() == TextDirection::RightToLeft
-                                                   ? FlexDirection::RightToLeft
-                                                   : FlexDirection::LeftToRight;
-                                    })),
-                                         FlexContent{[=] {
-                                             auto& label_build = runtime::require_component_build_context();
-                                             const auto chip_typography = label_build.semantic_typography().value();
-                                             const auto label_typography = bind([=] {
-                                                 auto typography = read_prop(selector_typography);
-                                                 typography.line_height = read_prop(chip_typography).line_height;
-                                                 return typography;
-                                             });
-                                             const auto label_group = select_group(*services);
-                                             label_build.mount_slot_with_semantic_text_style(
-                                                 label_group, Content{[=] {
-                                                     Text(TextProps{}.content(label).direction(direction));
-                                                 }},
-                                                 label_build.semantic_foreground().value(), label_typography);
-                                             if (!overflow) {
-                                                 mount_input_affix_action(*services, remove_icon, disabled, remove,
-                                                                          true, false, false);
-                                             }
-                                         }});
-                                }});
+                            const auto rtl =
+                                bind([direction] { return direction.get() == TextDirection::RightToLeft; });
+                            const auto padding =
+                                bind([chip_tokens] { return chip_tokens.get().padding_inline.value_or(dp(0)); });
+                            auto& chip_build = runtime::require_component_build_context();
+                            auto* owner = select_state(*services, id);
+                            if (!owner) {
+                                return;
+                            }
+                            if (!owner->chip_theme) {
+                                auto config = std::make_unique<ThemeConfig>();
+                                config->tag.tokens = chip_tokens.get();
+                                owner->chip_theme =
+                                    theme_runtime::ThemeScope::create(chip_build.theme_scope(), *config);
+                            }
+                            const auto chip_theme = owner->chip_theme;
+                            chip_build.mount_slot_with_theme_scope(
+                                Content{[=] {
+                                    Tag(TagProps{}.rtl(rtl), TagContent{[=] {
+                                            auto layout =
+                                                LayoutStyle{}
+                                                    .margin_left(
+                                                        bind([=] { return rtl.get() ? dp(0) : padding.get(); }))
+                                                    .margin_right(
+                                                        bind([=] { return rtl.get() ? padding.get() : dp(0); }));
+                                            Flex(FlexProps{}
+                                                     .align(FlexAlign::Center)
+                                                     .gap(tag_gap)
+                                                     .direction(bind([rtl] {
+                                                         return rtl.get() ? FlexDirection::RightToLeft
+                                                                          : FlexDirection::LeftToRight;
+                                                     }))
+                                                     .layout(std::move(layout)),
+                                                 FlexContent{[=] {
+                                                     auto& slots = runtime::require_component_build_context();
+                                                     const auto inherited_type = slots.semantic_typography().value();
+                                                     const auto label_type = bind([=] {
+                                                         auto typography = read_prop(selector_typography);
+                                                         typography.line_height = read_prop(inherited_type).line_height;
+                                                         return typography;
+                                                     });
+                                                     const auto inherited_color = slots.semantic_foreground().value();
+                                                     const auto label_color = bind([=] {
+                                                         return disabled.get() ? disabled_foreground.get()
+                                                                               : read_prop(inherited_color);
+                                                     });
+                                                     slots.mount_slot_with_semantic_text_style(
+                                                         select_group(*services), Content{[=] {
+                                                             Text(TextProps{}.content(label).direction(direction));
+                                                         }},
+                                                         label_color, label_type);
+                                                     if (!overflow) {
+                                                         mount_select_remove_action(*services, remove_icon, disabled,
+                                                                                    remove);
+                                                     }
+                                                 }});
+                                        }});
+                                }},
+                                chip_theme);
                         }
                     }});
             }};
@@ -2087,6 +2167,12 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
             }
         });
     };
+    if (PropAccess::binding(props.size_)) {
+        connect(props.size_, [this, id](ControlSize) { update_theme(id); });
+    }
+    if (PropAccess::binding(props.variant_)) {
+        connect(props.variant_, [this, id](InputVariant) { update_theme(id); });
+    }
     if (!props.groups_) {
         connect(props.options_, [this, id](std::vector<SelectOption> value) {
             const auto changed =
@@ -2224,7 +2310,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                 s->suppressed = true;
                 request_open(id, false);
             }
-            refresh(id);
+            update_theme(id);
         }
     });
     connect(empty_content, [this, id](String value) { update_empty_label(id, std::move(value)); });

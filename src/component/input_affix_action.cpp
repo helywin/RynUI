@@ -10,7 +10,9 @@
 
 namespace ryn::detail {
 namespace {
-struct ClearIconPaint {
+enum class AffixPresentation { padded, clear, selection_remove };
+
+struct AffixIconPaint {
     Signal<runtime::SemanticForeground> foreground{runtime::SemanticForeground{}};
     Signal<runtime::SemanticTypography> typography{runtime::SemanticTypography{}};
     theme_runtime::Subscription theme;
@@ -29,19 +31,28 @@ struct InputAffixActionState {
     bool activate_on_hover{};
     input::FocusPresentation focus;
     Signal<TextTone> tone{TextTone::Secondary};
-    std::optional<ClearIconPaint> clear_paint;
+    AffixPresentation presentation{AffixPresentation::padded};
+    std::optional<AffixIconPaint> icon_paint;
 };
 
 void update_foreground(InputAffixActionState& state, WindowComponentServices& host) {
-    if (state.clear_paint) {
+    if (state.icon_paint) {
         const auto theme = host.components().theme_scope(state.component);
         const auto& base = theme->map().color_text_base;
+        if (state.presentation == AffixPresentation::selection_remove) {
+            const auto color = state.disabled || !state.visible ? theme->alias().color_text_disabled
+                               : state.hovered || state.press.pressed() || state.focus.focus_visible
+                                   ? theme->alias().color_text
+                                   : Color{base.red(), base.green(), base.blue(), 0.45F};
+            state.icon_paint->foreground.set({color.red(), color.green(), color.blue(), color.alpha()});
+            return;
+        }
         const auto color = state.press.pressed() ? theme->alias().color_text : base;
         const float alpha = state.disabled || !state.visible             ? 0.25F
                             : state.press.pressed()                      ? color.alpha()
                             : state.hovered || state.focus.focus_visible ? 0.45F
                                                                          : 0.25F;
-        state.clear_paint->foreground.set({color.red(), color.green(), color.blue(), alpha});
+        state.icon_paint->foreground.set({color.red(), color.green(), color.blue(), alpha});
         return;
     }
     const auto tone = state.disabled || !state.visible                                      ? TextTone::Disabled
@@ -52,12 +63,12 @@ void update_foreground(InputAffixActionState& state, WindowComponentServices& ho
 
 void update_clear_typography(InputAffixActionState& state, const theme_runtime::ThemeScope& theme) {
     const float size = theme.map().font_size_small;
-    state.clear_paint->typography.set({.font_size = size, .line_height = size});
+    state.icon_paint->typography.set({.font_size = size, .line_height = size});
 }
 
 layout::BoxLayout affix_layout(const InputAffixActionState& state) {
     layout::BoxLayout box;
-    if (state.visible && !state.clear_paint) {
+    if (state.visible && state.presentation == AffixPresentation::padded) {
         box.padding.left = box.padding.right = 4.0F;
     }
     return box;
@@ -83,7 +94,7 @@ void synchronize(InputAffixActionState& state, WindowComponentServices& host, bo
 
 void mount_affix_action(WindowComponentServices& host, Prop<IconSource> icon, Prop<bool> disabled,
                         std::function<void()> activate, Prop<bool> visible, Prop<bool> focusable, Prop<bool> tab_stop,
-                        Prop<bool> activate_on_hover, bool clear_presentation) {
+                        Prop<bool> activate_on_hover, AffixPresentation presentation) {
     auto& build = runtime::require_component_build_context();
     const auto component = build.mount_component<InputAffixActionState>();
     auto& state = build.state<InputAffixActionState>(component);
@@ -93,14 +104,21 @@ void mount_affix_action(WindowComponentServices& host, Prop<IconSource> icon, Pr
     state.disabled = read_prop(disabled);
     state.visible = read_prop(visible);
     state.activate_on_hover = read_prop(activate_on_hover);
-    if (clear_presentation) {
+    state.presentation = presentation;
+    if (presentation != AffixPresentation::padded) {
         const auto theme = build.theme_scope();
-        auto& clear = state.clear_paint.emplace();
-        update_clear_typography(state, *theme);
-        clear.theme = theme->capture(
+        auto& paint = state.icon_paint.emplace();
+        if (presentation == AffixPresentation::clear) {
+            update_clear_typography(state, *theme);
+        } else {
+            paint.typography.set({.font_size = 10, .line_height = 10});
+        }
+        paint.theme = theme->capture(
             [&host, component](auto) {
                 if (auto* current = host.components().state<InputAffixActionState>(component)) {
-                    update_clear_typography(*current, *host.components().theme_scope(component));
+                    if (current->presentation == AffixPresentation::clear) {
+                        update_clear_typography(*current, *host.components().theme_scope(component));
+                    }
                     update_foreground(*current, host);
                 }
             },
@@ -219,13 +237,13 @@ void mount_affix_action(WindowComponentServices& host, Prop<IconSource> icon, Pr
             current->activate_on_hover = value;
         }
     }));
-    if (state.clear_paint) {
+    if (state.icon_paint) {
         const Content content{[icon = std::move(icon), visible = std::move(visible)] {
             Icon(IconProps{}.source(icon).visible(visible));
         }};
         build.mount_slot_with_semantic_text_style(component, content,
-                                                  Prop<runtime::SemanticForeground>{state.clear_paint->foreground},
-                                                  Prop<runtime::SemanticTypography>{state.clear_paint->typography});
+                                                  Prop<runtime::SemanticForeground>{state.icon_paint->foreground},
+                                                  Prop<runtime::SemanticTypography>{state.icon_paint->typography});
     } else {
         build.mount_slot(component, Content{[icon = std::move(icon), visible = std::move(visible), tone = state.tone] {
                              Icon(IconProps{}.source(icon).tone(tone).visible(visible));
@@ -238,13 +256,20 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<IconSource> ic
                               std::function<void()> activate, Prop<bool> visible, Prop<bool> focusable,
                               Prop<bool> tab_stop, Prop<bool> activate_on_hover) {
     mount_affix_action(host, std::move(icon), std::move(disabled), std::move(activate), std::move(visible),
-                       std::move(focusable), std::move(tab_stop), std::move(activate_on_hover), false);
+                       std::move(focusable), std::move(tab_stop), std::move(activate_on_hover),
+                       AffixPresentation::padded);
 }
 
 void mount_input_clear_action(WindowComponentServices& host, Prop<IconSource> icon, Prop<bool> disabled,
                               std::function<void()> activate, Prop<bool> visible, bool focusable) {
     mount_affix_action(host, std::move(icon), std::move(disabled), std::move(activate), std::move(visible), focusable,
-                       false, false, true);
+                       false, false, AffixPresentation::clear);
+}
+
+void mount_select_remove_action(WindowComponentServices& host, Prop<IconSource> icon, Prop<bool> disabled,
+                                std::function<void()> activate) {
+    mount_affix_action(host, std::move(icon), std::move(disabled), std::move(activate), true, false, false, false,
+                       AffixPresentation::selection_remove);
 }
 
 } // namespace ryn::detail

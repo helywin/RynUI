@@ -114,6 +114,29 @@ void multiple_selection_uses_the_leading_inset() {
           "Multiple Select did not mirror its retained value inset");
 }
 
+void built_in_selection_chips_follow_control_density() {
+    Fixture f;
+    Signal<ControlSize> size{ControlSize::Middle};
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .mode(SelectMode::Multiple)
+                   .options({{1, u8"桌面"}})
+                   .defaultValues({1})
+                   .size(size)
+                   .layout(LayoutStyle{}.width(dp(180))));
+    }});
+    f.synchronize();
+    const auto id = f.services.select().mounted().front();
+    const auto tag = f.services.select().snapshot(id).tags.front();
+    const auto middle = bounds(f, tag);
+    check(middle.width == 56 && middle.height == 24, "Middle Select chip has the wrong retained extent");
+
+    size.set(ControlSize::Large);
+    f.synchronize();
+    check(f.services.select().snapshot(id).tags.front() == tag && bounds(f, tag).height == 32,
+          "Large Select did not size its existing chip to the selector");
+}
+
 void open_popup_remains_attached_during_document_scroll() {
     Fixture f;
     Signal<bool> open{false};
@@ -808,6 +831,7 @@ int main() {
         pointer_keyboard_and_clear();
         direction_and_rich_affix_size();
         multiple_selection_uses_the_leading_inset();
+        built_in_selection_chips_follow_control_density();
         open_popup_remains_attached_during_document_scroll();
         popup_first_shadow_is_painted_in_front();
         selected_values_use_the_live_selector_font();

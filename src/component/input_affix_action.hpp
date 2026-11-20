@@ -17,4 +17,7 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<IconSource> ic
 void mount_input_clear_action(WindowComponentServices& host, Prop<IconSource> icon, Prop<bool> disabled,
                               std::function<void()> activate, Prop<bool> visible, bool focusable = true);
 
+void mount_select_remove_action(WindowComponentServices& host, Prop<IconSource> icon, Prop<bool> disabled,
+                                std::function<void()> activate);
+
 } // namespace ryn::detail
