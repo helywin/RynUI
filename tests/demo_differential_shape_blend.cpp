@@ -1,9 +1,11 @@
 #include "demo_differential_shape_blend.hpp"
 
 #include "include/core/SkBitmap.h"
+#include "include/core/SkBlurTypes.h"
 #include "include/core/SkCanvas.h"
 #include "include/core/SkColorFilter.h"
 #include "include/core/SkColorSpace.h"
+#include "include/core/SkMaskFilter.h"
 #include "include/core/SkPaint.h"
 #include "include/core/SkRRect.h"
 
@@ -131,6 +133,37 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
         }
     }
     return different;
+}
+
+std::vector<std::uint8_t> shadow_group_alpha(const ShadowGroupSource& source) {
+    SkBitmap bitmap;
+    const auto srgb = SkColorSpace::MakeSRGB();
+    if (!bitmap.tryAllocPixels(
+            SkImageInfo::MakeN32Premul(static_cast<int>(source.width), static_cast<int>(source.height), srgb))) {
+        throw std::runtime_error("isolated shadow group could not allocate its bounded raster");
+    }
+    const LockedShapeGeometry caster{source.caster, source.radius};
+    SkCanvas canvas(bitmap);
+    canvas.clear(SK_ColorTRANSPARENT);
+    canvas.clipRRect(rounded(caster, source.caster_inset), SkClipOp::kDifference, true);
+    for (const auto& shadow : source.shadows) {
+        SkPaint paint;
+        paint.setAntiAlias(true);
+        paint.setColor(SK_ColorBLACK);
+        paint.setMaskFilter(SkMaskFilter::MakeBlur(kNormal_SkBlurStyle, shadow.blur * .5F));
+        paint.setColorFilter(SkColorFilters::Blend({0, 0, 0, shadow.alpha}, srgb, SkBlendMode::kSrcIn));
+        canvas.save();
+        canvas.translate(shadow.offset.x, shadow.offset.y);
+        canvas.drawRRect(rounded(caster, -shadow.spread), paint);
+        canvas.restore();
+    }
+    std::vector<std::uint8_t> alpha(static_cast<std::size_t>(source.width) * source.height);
+    for (std::uint32_t y = 0; y < source.height; ++y) {
+        for (std::uint32_t x = 0; x < source.width; ++x) {
+            alpha[static_cast<std::size_t>(y) * source.width + x] = SkColorGetA(*bitmap.getAddr32(x, y));
+        }
+    }
+    return alpha;
 }
 
 } // namespace rynui::example

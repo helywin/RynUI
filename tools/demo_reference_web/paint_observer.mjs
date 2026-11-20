@@ -149,6 +149,73 @@ async function observeEmptySelectCaret(cdp, layer, compositorLayers, viewport) {
   }
 }
 
+function isolatedShadowCommands(log, layer, bounds) {
+  if (log[0]?.method!=='drawPaint' || log[0].params?.paint?.color!=='#00000000' ||
+      log[0].params?.paint?.blendMode!=='Src') return null;
+  let offset=layer.transform.slice(12,14);
+  const offsets=[];
+  const matches=[];
+  const coordinate=(shape,spread)=>shape?.type==='Simple' && offset &&
+    shape.left+offset[0]===bounds.x-spread && shape.top+offset[1]===bounds.y-spread &&
+    shape.right+offset[0]===bounds.x+bounds.width+spread &&
+    shape.bottom+offset[1]===bounds.y+bounds.height+spread;
+  const radius=(shape,value)=>['upperLeft','upperRight','lowerRight','lowerLeft'].every(corner=>
+    shape[corner+'Radius']?.xRadius===value && shape[corner+'Radius']?.yRadius===value);
+  for (let index=1;index<log.length;index++) {
+    const {method,params}=log[index];
+    if (method==='save' || method==='saveLayer') offsets.push(offset);
+    if (method==='restore') offset=offsets.pop()??null;
+    if (method==='translate' && offset) offset=[offset[0]+params.dx,offset[1]+params.dy];
+    if (['setMatrix','concat44','scale','setM44','concat'].includes(method)) offset=null;
+    if (method!=='clipRRect' || params['SkRegion::Op']!=='kDifference_Op' ||
+        params.softClipEdgeStyle!==true || !coordinate(params.rrect,-1)) continue;
+    const casterRadius=params.rrect.upperLeftRadius?.xRadius+1;
+    if (!(casterRadius>1) || !radius(params.rrect,casterRadius-1)) continue;
+    const shadows=[];
+    let next=index+1;
+    for (;next+3<log.length;next+=4) {
+      const [save,translate,draw,restore]=log.slice(next,next+4);
+      const shape=draw.params?.rrect;
+      const spread=shape && bounds.x-shape.left-offset[0];
+      if (save.method!=='save' || translate.method!=='translate' || draw.method!=='drawRRect' ||
+          restore.method!=='restore' || draw.params?.paint?.color!=='#FF000000' ||
+          !coordinate(shape,spread) || !radius(shape,casterRadius+spread)) break;
+      shadows.push({spread,offset:[translate.params.dx,translate.params.dy]});
+    }
+    if (log[next]?.method==='restore' && shadows.length>=2 && shadows.length<=4)
+      matches.push({radius:casterRadius,shadows});
+  }
+  return matches.length===1 ? matches[0] : null;
+}
+
+async function observeIsolatedShadowGroup(cdp, node, compositorLayers) {
+  const bounds=node.actual.bounds;
+  const matrix=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+  const layers=compositorLayers.filter(layer=>layer.drawsContent && layer.transform?.length===matrix.length &&
+    layer.transform.every((value,i)=>i===12 || i===13 || value===matrix[i]) &&
+    layer.transform[12]<=bounds.x && layer.transform[13]<=bounds.y &&
+    layer.transform[12]+layer.width>=bounds.x+bounds.width && layer.transform[13]+layer.height>=bounds.y+bounds.height);
+  const matches=[];
+  for (const layer of layers) {
+    // A popup's compositor layer can have another backend owner. Match the
+    // submitted content rect and the unique rounded knockout draw in that layer.
+    const handler=layer.scrollRects?.some(({rect,type})=>type==='TouchEventHandler' &&
+      rect.x+layer.transform[12]===bounds.x && rect.y+layer.transform[13]===bounds.y &&
+      rect.width===bounds.width && rect.height===bounds.height);
+    if (!handler) continue;
+    const {snapshotId}=await cdp.send('LayerTree.makeSnapshot',{layerId:layer.layerId});
+    try {
+      const {commandLog}=await cdp.send('LayerTree.snapshotCommandLog',{snapshotId});
+      const witness=isolatedShadowCommands(commandLog,layer,bounds);
+      if (witness) matches.push({source:'Chromium LayerTree.snapshotCommandLog',layer_id:layer.layerId,
+        bounds,...witness});
+    } finally {
+      await cdp.send('LayerTree.releaseSnapshot',{snapshotId});
+    }
+  }
+  return matches.length===1 ? matches[0] : null;
+}
+
 export async function observePaintStack(cdp, identities, {nonce,step,revision,viewport,compositorLayers=[]}) {
   const liveViewport=(await cdp.send('Runtime.evaluate',{expression:'({scroll_x:scrollX,scroll_y:scrollY,width:innerWidth,height:innerHeight,dpr:devicePixelRatio})',returnByValue:true})).result.value;
   const objectGroup = 'readonly-paint-roots';
@@ -207,6 +274,16 @@ export async function observePaintStack(cdp, identities, {nonce,step,revision,vi
   for(const layer of layers)layer.composition_group_path=layer.ancestry.slice().reverse()
     .filter(id=>groupByNode.has(id)).map(id=>({backend_node_id:id,paint_order:groupByNode.get(id).paint_order,
       opacity:groupByNode.get(id).style.opacity}));
+  for (const layer of layers) {
+    const bounds=layer.actual.bounds;
+    if (layer.node_type!==1 || !bounds || !layer.stacking_context ||
+        !layer.owner_targets.some(identity=>identity.endsWith('.popup')) ||
+        !layer.style['box-shadow'] || layer.style['box-shadow']==='none' ||
+        bounds.y>=liveViewport.height || bounds.y+bounds.height<=0 ||
+        layer.style.transform!=='none' || layer.composition_group_path.some(group=>group.opacity!=='1')) continue;
+    const witness=await observeIsolatedShadowGroup(cdp,layer,compositorLayers);
+    if (witness) layer.isolated_shadow_group=witness;
+  }
   const focused=layers.find(layer=>layer.actual.editor?.focused);
   if(focused) {
     const caret=await observeEmptySelectCaret(cdp,focused,compositorLayers,liveViewport);

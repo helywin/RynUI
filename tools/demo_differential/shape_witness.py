@@ -1,6 +1,7 @@
 """Source-only physical samples for locked rounded fills and borders."""
 from __future__ import annotations
 
+import hashlib
 import math
 import struct
 import uuid
@@ -73,6 +74,41 @@ def edge_samples(entry):
     return result
 
 
+def shadow_group_request(rows, dpr):
+    source = rows[0]['source']
+    fact = source.get('isolated_shadow_group')
+    if fact is None:
+        return None
+    if (not isinstance(fact, dict) or fact.get('source') != 'Chromium LayerTree.snapshotCommandLog' or
+            not isinstance(fact.get('layer_id'), str) or not fact['layer_id'].isdigit() or
+            fact.get('bounds') != source['actual']['bounds']):
+        raise ProtocolError('invalid Chromium isolated shadow source')
+    if (not 2 <= len(rows) <= 4 or any(row['kind'] != 'shadow' or row['color'] != (0, 0, 0) or
+            row['bounds'] != rows[0]['bounds'] or row['clips'] or row['opacity'] != 1 or
+            not row.get('knockout') or row.get('caster_inset') != 1 or
+            any(opacity != 1 for _, opacity in row['groups']) for row in rows)):
+        return None
+    if (fact.get('shadows') != [dict(spread=row['spread'], offset=list(row['offset'])) for row in rows]
+            or any(row['radii'] != fact.get('radius') for row in rows)):
+        raise ProtocolError('Chromium isolated shadow draw differs from its actual CSS source')
+    box = rows[0]['bounds']
+    x, y, w, h = [box[key] * dpr for key in ('x', 'y', 'width', 'height')]
+    radius = fact['radius'] * dpr
+    values = tuple((row['offset'][0] * dpr, row['offset'][1] * dpr, row['blur'] * dpr,
+                    row['spread'] * dpr, row['alpha']) for row in rows)
+    if (not all(v * 4 == round(v * 4) for v in (x, y, w, h, radius)) or radius <= dpr or
+            any(not 0 < blur <= 64 or abs(spread) > 32 or max(abs(ox), abs(oy)) > 64 or not 0 < alpha < 1 or
+                radius + spread <= 0 for ox, oy, blur, spread, alpha in values)):
+        return None
+    pad = math.ceil(max(2 + max(abs(ox), abs(oy)) + abs(spread) + 2 * blur
+                        for ox, oy, blur, spread, _ in values))
+    left, top = math.floor(x) - pad, math.floor(y) - pad
+    width, height = math.ceil(x + w) - left + pad, math.ceil(y + h) - top + pad
+    if max(width, height) > 1024:
+        return None
+    return ((x - left, y - top, w, h, radius, dpr, width, height, values), (left, top))
+
+
 class ShapeWitnesses:
     def __init__(self, manifest, root):
         self.root = root
@@ -80,6 +116,7 @@ class ShapeWitnesses:
         self.samples = {}
         self.shared = {}
         self.blend_samples = {}
+        self.shadow_groups = {}
         environment = manifest.get('environment', {})
         native = environment.get('native', {})
         capture = environment.get('native_capture', {})
@@ -90,6 +127,48 @@ class ShapeWitnesses:
     def blend_pixels(self, inventories, dpr):
         return bind_blends(inventories, dpr, self.root, self.binary, self.blend_samples,
                            split_coverage=self.split_coverage)
+
+    def bind_shadow_groups(self, layers, dpr):
+        owned = {}
+        for row in layers:
+            if row['kind'] in ('shadow', 'inset-shadow') and row['source'].get('isolated_shadow_group'):
+                owned.setdefault(row['source']['source_material_id'], []).append(row)
+        inputs = [(rows, request) for rows in owned.values()
+                  if (request := shadow_group_request(rows, dpr)) is not None]
+        needed = list(dict.fromkeys(spec for _, (spec, _) in inputs if spec not in self.shadow_groups))
+        for start in range(0, len(needed), 8):
+            self._shadow_batch(needed[start:start+8])
+        for rows, (spec, shift) in inputs:
+            witness = self.shadow_groups[spec], spec[6], spec[7], shift
+            for row in rows:
+                row['isolated_shadow_witness'] = witness
+
+    def _shadow_batch(self, specs):
+        work = self.root / 'out/demo-differential/shadow-group-witnesses' / uuid.uuid4().hex
+        work.mkdir(parents=True)
+        request, output = work / 'request.json', work / 'output'
+        groups = [dict(caster=dict(x=x, y=y, width=w, height=h), radius=r, caster_inset=i, width=width, height=height,
+                       shadows=[dict(offset_x=ox, offset_y=oy, blur=b, spread=s, alpha=a)
+                                for ox, oy, b, s, a in shadows])
+                  for x, y, w, h, r, i, width, height, shadows in specs]
+        write_json(request, dict(groups=groups))
+        process([self.binary, '--shadow-group-witnesses', request, '--output', output], work / 'process', 60,
+                failure_code=3)
+        receipt = read(output / 'shadow-group-witnesses.json')
+        if (not isinstance(receipt, dict) or receipt.get('rasterizer') != 'skia-isolated-shadow-n32' or
+                not isinstance(receipt.get('groups'), list) or len(receipt['groups']) != len(specs)):
+            raise ProtocolError('CPU shadow witness set differs from its source requests')
+        for index, (spec, result) in enumerate(zip(specs, receipt['groups'], strict=True)):
+            name = f'shadow-alpha-{index}.r8'
+            width, height = spec[6:8]
+            path = output / name
+            if (not isinstance(result, dict) or result.get('path') != name or result.get('width') != width or
+                    result.get('height') != height or not path.is_file() or path.stat().st_size != width * height):
+                raise ProtocolError('CPU shadow witness alpha extent differs')
+            alpha = path.read_bytes()
+            if hashlib.sha256(alpha).hexdigest() != result.get('sha256'):
+                raise ProtocolError('CPU shadow witness alpha bytes differ')
+            self.shadow_groups[spec] = alpha
 
     def bind(self, layers, dpr):
         paired = {}

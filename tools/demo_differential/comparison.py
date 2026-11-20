@@ -1007,6 +1007,23 @@ def _matches_soft_shadow_rgb(layers,coverages,variable,observed,predicted):
     return in_contribution_domain(tuple(channel/255 for channel in observed),domain,(2/255,)*3)
 
 
+def _matches_isolated_shadow_rgb(layers,coverages,variable,observed,x,y):
+    first=variable[0]
+    if variable!=list(range(first,len(layers))):
+        return False
+    witness=layers[first].get('isolated_shadow_witness')
+    if not witness or any(row.get('isolated_shadow_witness') is not witness for row in layers[first:]):
+        return False
+    if _composite_point(layers[:first],coverages[:first])!=(1,1,1):
+        return False
+    alpha,width,height,(left,top)=witness
+    dx,dy=x-left,y-top
+    if not 0<=dx<width or not 0<=dy<height:
+        return False
+    output=255-alpha[dy*width+dx]
+    return tuple(observed)==(output,output,output)
+
+
 def _opaque_white_border_box(layers):
     kinds=tuple(row['kind'] for row in layers)
     if kinds not in (('fill','border'),('shadow','fill','border')):
@@ -1603,6 +1620,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
     blend_pixels={}
     if shape_witnesses is not None:
         shape_witnesses.bind([*web_layers,*native_layers],dpr)
+        shape_witnesses.bind_shadow_groups(web_layers,dpr)
         blend_pixels=shape_witnesses.blend_pixels(inventories,dpr)
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
     caret=_status_input_caret(case,(wt,nt),inventories,origins,dpr)
@@ -1718,7 +1736,8 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 # Gaussian source geometry is independently fixed, and can
                 # expose a missing same-color shadow even when its alpha cannot
                 # be individually unmixed from the final RGB.
-                if not _matches_soft_shadow_rgb(active,coverages,variable,observed,predicted):
+                if (not _matches_soft_shadow_rgb(active,coverages,variable,observed,predicted) and
+                        not _matches_isolated_shadow_rgb(active,coverages,variable,observed,x,y)):
                     fail('visual','independent soft-shadow profile/tail differs',side=side,pixel=point)
             if len(variable)==1:
                 position=variable[0];row=active[position]

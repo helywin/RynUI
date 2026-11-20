@@ -14,7 +14,7 @@ from demo_differential.adapters import RunError
 from demo_differential.comparison import _layer_coverage
 from demo_differential.protocol import ProtocolError
 from demo_differential.shape_blend_witness import _samples, _stacks, bind_blends, verified_blend
-from demo_differential.shape_witness import ShapeWitnesses, edge_samples, locked_edge_value, shape_request
+from demo_differential.shape_witness import ShapeWitnesses, edge_samples, locked_edge_value, shape_request, shadow_group_request
 
 
 def native_outline():
@@ -23,6 +23,36 @@ def native_outline():
 
 
 class RoundedWitnessTests(unittest.TestCase):
+    def test_isolated_black_shadows_require_actual_clip_order_and_exact_rgb(self):
+        bounds = dict(x=0, y=1460, width=340, height=204)
+        measured = [dict(offset=[0, 9], spread=8), dict(offset=[0, 6], spread=0)]
+        fact = dict(source='Chromium LayerTree.snapshotCommandLog', layer_id='33', bounds=bounds,
+                    radius=8, shadows=measured)
+        source = dict(source_material_id='popup', isolated_shadow_group=fact, actual=dict(bounds=bounds))
+        base = dict(kind='shadow', source=source, bounds=bounds, color=(0, 0, 0), clips=[], opacity=1,
+                    caster_inset=1, knockout=True, groups=[('popup', 1)], radii=8, blur=28, alpha=.05)
+        rows = [dict(base, **shadow) for shadow in measured]
+        spec, (left, top) = shadow_group_request(rows, 1.5)
+        self.assertEqual(spec[2:6], (510, 306, 12, 1.5))
+        with self.assertRaisesRegex(ProtocolError, 'draw differs'):
+            shadow_group_request(rows[::-1], 1.5)
+        self.assertIsNone(shadow_group_request([dict(rows[0], clips=[bounds]), rows[1]], 1.5))
+        self.assertIsNone(shadow_group_request([dict(rows[0], groups=[('popup', .5)]), rows[1]], 1.5))
+
+        widths = spec[6:8]
+        witnesses = ShapeWitnesses({'tools': {'control_binary': 'out/bin/mock'}}, Path.cwd())
+        witnesses.shadow_groups[spec] = bytes([5]) + bytes(widths[0] * widths[1] - 1)
+        witnesses.bind_shadow_groups(rows, 1.5)
+        self.assertIs(rows[0]['isolated_shadow_witness'], rows[1]['isolated_shadow_witness'])
+        match = comparison._matches_isolated_shadow_rgb
+        self.assertTrue(match(rows, [.25, .25], [0, 1], (250, 250, 250), left, top))
+        self.assertFalse(match(rows, [.25, .25], [0, 1], (251, 251, 251), left, top))
+        self.assertFalse(match(rows, [.25, .25], [0, 1], (255, 255, 255), left, top))
+        self.assertFalse(match(rows, [.25, .25], [0, 1], (250, 250, 250), left-1, top))
+        self.assertFalse(match(rows, [.25, .25], [0], (250, 250, 250), left, top))
+        lower = dict(base, kind='fill', alpha=1, color=(.95, .95, .95))
+        self.assertFalse(match([lower, *rows], [1, .25, .25], [1, 2], (250, 250, 250), left, top))
+
     def test_border_and_outline_share_the_same_physical_geometry(self):
         native = native_outline()
         web = dict(native, kind='border', side='web', bounds=dict(x=0, y=132, width=260, height=32),

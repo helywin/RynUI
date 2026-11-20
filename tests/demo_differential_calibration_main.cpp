@@ -377,6 +377,62 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
 #endif
 }
 
+void write_shadow_group_witnesses(const Json& request, const std::filesystem::path& output) {
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+    const auto& groups = request.at("groups").array();
+    require(!groups.empty() && groups.size() <= 8, "shadow group inputs exceed the fixed control bounds");
+    Json::Array results;
+    for (const auto& group : groups) {
+        const auto width = group.at("width").integer();
+        const auto height = group.at("height").integer();
+        const auto& shadows = group.at("shadows").array();
+        require(width > 0 && width <= 1024 && height > 0 && height <= 1024 && shadows.size() >= 2 &&
+                    shadows.size() <= 4,
+                "isolated shadow group exceeds the fixed physical extent");
+
+        ShadowGroupSource source;
+        source.caster = rect(group.at("caster"));
+        source.radius = static_cast<float>(group.at("radius").number());
+        source.caster_inset = static_cast<float>(group.at("caster_inset").number());
+        source.width = static_cast<std::uint32_t>(width);
+        source.height = static_cast<std::uint32_t>(height);
+        float guard = 2;
+        for (const auto& item : shadows) {
+            ShadowGroupSource::Shadow shadow{
+                {static_cast<float>(item.at("offset_x").number()), static_cast<float>(item.at("offset_y").number())},
+                static_cast<float>(item.at("blur").number()),
+                static_cast<float>(item.at("spread").number()),
+                static_cast<float>(item.at("alpha").number())};
+            const auto offset = std::max(std::abs(shadow.offset.x), std::abs(shadow.offset.y));
+            require(offset <= 64 && shadow.blur > 0 && shadow.blur <= 64 && std::abs(shadow.spread) <= 32 &&
+                        source.radius + shadow.spread > 0 && shadow.alpha > 0 && shadow.alpha < 1,
+                    "isolated shadow material outside the admitted profile");
+            guard = std::max(guard, 2 + offset + std::abs(shadow.spread) + 2 * shadow.blur);
+            source.shadows.push_back(shadow);
+        }
+        const auto& bounds = source.caster;
+        require(source.radius > 0 && source.radius <= .5F * std::min(bounds.width, bounds.height) &&
+                    source.caster_inset >= 0 && source.caster_inset < source.radius && bounds.x >= guard &&
+                    bounds.y >= guard && bounds.x + bounds.width + guard <= static_cast<float>(width) &&
+                    bounds.y + bounds.height + guard <= static_cast<float>(height),
+                "isolated shadow source exceeds its fixed raster aperture");
+        const auto bytes = shadow_group_alpha(source);
+        const auto name = "shadow-alpha-" + std::to_string(results.size()) + ".r8";
+        write(output / name, std::as_bytes(std::span{bytes}));
+        results.emplace_back(Json::Object{{"path", name},
+                                          {"sha256", gallery_demo_file_sha256(output / name)},
+                                          {"width", integer(width)},
+                                          {"height", integer(height)}});
+    }
+    write_json(output / "shadow-group-witnesses.json",
+               Json::Object{{"rasterizer", "skia-isolated-shadow-n32"}, {"groups", std::move(results)}});
+#else
+    static_cast<void>(request);
+    static_cast<void>(output);
+    throw std::runtime_error("the pinned isolated shadow witness rasterizer is unavailable");
+#endif
+}
+
 Json rectangle(runtime::Rect value) {
     return Json::Object{{"x", value.x}, {"y", value.y}, {"width", value.width}, {"height", value.height}};
 }
@@ -922,8 +978,10 @@ int main(int argc, char** argv) {
         const bool glyph_witness = argc == 5 && std::string_view{argv[1]} == "--glyph-witnesses";
         const bool shape_witness = argc == 5 && std::string_view{argv[1]} == "--shape-witnesses";
         const bool shape_blend = argc == 5 && std::string_view{argv[1]} == "--shape-blend-witnesses";
+        const bool shadow_group = argc == 5 && std::string_view{argv[1]} == "--shadow-group-witnesses";
         require(argc == 5 &&
-                    (glyph_witness || shape_witness || shape_blend || std::string_view{argv[1]} == "--request") &&
+                    (glyph_witness || shape_witness || shape_blend || shadow_group ||
+                     std::string_view{argv[1]} == "--request") &&
                     std::string_view{argv[3]} == "--output",
                 "expected a calibration or witness mode <owned.json> --output <fresh-out>");
         const auto request = read_json(owned_path(argv[2]));
@@ -940,6 +998,10 @@ int main(int argc, char** argv) {
         }
         if (shape_blend) {
             write_shape_blend_witnesses(request, output);
+            return 0;
+        }
+        if (shadow_group) {
+            write_shadow_group_witnesses(request, output);
             return 0;
         }
         require(request.at("calibration_kind").string() == "pilot-independent-v1", "unknown control kind");
