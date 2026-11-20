@@ -776,6 +776,20 @@ def _paint_endpoints(layers,coverages,variable):
         yield _composite_point(layers,candidate)
 
 
+def _hard_shadow_box_domain(layers,endpoints):
+    """RGB8 domain for an opaque white box and its border over a hard shadow."""
+    from .color_metrics import contribution_domain
+    if tuple(row['kind'] for row in layers)!=('shadow','fill','border'):
+        return None
+    shadow,fill,border=layers
+    if (shadow.get('blur')!=0 or fill['color']!=(1.,1.,1.) or
+        shadow['source'] is not fill['source'] or fill['source'] is not border['source'] or
+        any(opacity!=1 for row in layers for _,opacity in row['groups']) or
+        any(row['alpha']*row['opacity']!=1 for row in (fill,border))):
+        return None
+    return contribution_domain(endpoints)
+
+
 def _bounded_paint_basis(layers,coverages,variable):
     from .color_metrics import visible_basis
     if len(variable)==1:
@@ -1047,10 +1061,18 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             if basis['mode']=='visible-contribution':
                 domain_key=(key,tuple(variable),tuple(0 if i in variable else c for i,c in enumerate(coverages)))
                 if domain_key not in domain_cache:
-                    vertices=[coordinates(solve_visible_contributions(endpoint,basis))
-                              for endpoint in _paint_endpoints(active,coverages,variable)]
-                    domain_cache[domain_key]=contribution_domain(vertices)
-                if not in_contribution_domain(values,domain_cache[domain_key],basis['quantization_bounds']):
+                    endpoints=tuple(_paint_endpoints(active,coverages,variable))
+                    vertices=[coordinates(solve_visible_contributions(endpoint,basis)) for endpoint in endpoints]
+                    domain_cache[domain_key]=(contribution_domain(vertices),_hard_shadow_box_domain(active,endpoints))
+                domain,rounded_box=domain_cache[domain_key]
+                if rounded_box is None:
+                    inside=in_contribution_domain(values,domain,basis['quantization_bounds'])
+                else:
+                    # The hard shadow and opaque framed box are two RGB8 paints.
+                    # Each may round by half a code. Keep this bound in RGB8,
+                    # where a corner's weak shadow cannot magnify that rounding.
+                    inside=in_contribution_domain(tuple(v/255 for v in observed),rounded_box,(1/255,)*3)
+                if not inside:
                     fail('visual','visible contributions violate actual source-over order/opacity domain',side=side,pixel=point)
             if basis['mode']=='joint-collinear':
                 domain_key=('collinear',key,tuple(variable),tuple(0 if i in variable else c for i,c in enumerate(coverages)))

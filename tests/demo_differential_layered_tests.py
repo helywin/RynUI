@@ -11,9 +11,10 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _layer_coverage,_native_paint_inventory,_paint_bins,_contains,_inset,
                                           _support,_PAINT_BIN_PHYSICAL_PX,_glyph_witness_gate,
                                           _hard_shadow_outline_basis,_paint_coordinates,_palette_basis,_bounded_paint_basis,
-                                          _web_paint_inventory)
+                                          _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
+from demo_differential.color_metrics import in_contribution_domain
 from demo_differential.glyph_witness import GlyphWitness,mask_identity,encoded_coverage
 from demo_differential.protocol import ProtocolError,_plain_json
 
@@ -66,6 +67,25 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_hard_shadow_box_bounds_rounding_in_physical_rgb8(self):
+        layers=[dict(kind='shadow',blur=0,groups=[],color=(1,215/255,5/255),alpha=.1,opacity=1),
+                dict(kind='fill',groups=[],color=(1,1,1),alpha=1,opacity=1),
+                dict(kind='border',groups=[],color=(250/255,173/255,20/255),alpha=1,opacity=1)]
+        source={}
+        for row in layers:
+            row['source']=source
+            row['groups']=[('framed-input',1.)]
+        geometry=tuple(_paint_endpoints(layers,[1.,0.,0.],[0,1,2]))
+        domain=_hard_shadow_box_domain(layers,geometry)
+        rgb=tuple(c/255 for c in (255,249,222))
+        self.assertFalse(in_contribution_domain(rgb,domain,(.5/255,)*3))
+        self.assertTrue(in_contribution_domain(rgb,domain,(1/255,)*3))
+        self.assertFalse(in_contribution_domain((1,249/255,210/255),domain,(1/255,)*3))
+        self.assertIsNone(_hard_shadow_box_domain(layers[::-1],geometry))
+        self.assertIsNone(_hard_shadow_box_domain([dict(layers[0],blur=2),*layers[1:]],geometry))
+        self.assertIsNone(_hard_shadow_box_domain([dict(layers[0],source={}),*layers[1:]],geometry))
+        self.assertIsNone(_hard_shadow_box_domain([dict(layers[0],groups=[('a',.5)]),*layers[1:]],geometry))
+
     def test_only_provably_hidden_dom_nodes_can_omit_paint_order(self):
         _,_,_,web,_,_,origins=synthetic()
         node=web['resources']['paint_stack']['layers'][0]
