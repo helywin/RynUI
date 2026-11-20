@@ -2,6 +2,7 @@
 #include "runtime/invalidation.hpp"
 #include "support/input_fixture.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <utility>
@@ -147,6 +148,35 @@ void popup_first_shadow_is_painted_in_front() {
     check(paint.shadows.size() == 2 && paint.shadows[0].actual.material.color == red &&
               paint.shadows[1].actual.material.color == blue,
           "The first CSS shadow was submitted behind the second color");
+}
+
+void selected_values_use_the_live_selector_font() {
+    Fixture f;
+    Signal<ControlSize> size{ControlSize::Middle};
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .mode(SelectMode::Multiple)
+                   .size(size)
+                   .options({{1, u8"Desk chip"}})
+                   .defaultValues({1})
+                   .layout(LayoutStyle{}.width(dp(240))));
+    }});
+    const auto observe = [&](std::uint32_t expected_size) {
+        f.synchronize();
+        const auto& text = f.buttons.text();
+        const auto found = std::ranges::find_if(text.mounted_texts(), [&](const auto& mounted) {
+            return text.scene_service().text_state(mounted.scene).content().bytes() == "Desk chip" &&
+                   f.buttons.components().branch_active(mounted.component);
+        });
+        check(found != text.mounted_texts().end(), "The selected chip has no mounted text");
+        const auto& runs = text.scene_service().text_state(found->scene).shaped().runs;
+        check(!runs.empty() && runs.front().font == f.resolve(expected_size).front(),
+              "Selected chip did not use the current Select typography");
+        return found->scene;
+    };
+    const auto original = observe(14);
+    size.set(ControlSize::Large);
+    check(observe(16) == original, "Changing selector typography remounted the selected value");
 }
 
 void pointer_keyboard_and_clear() {
@@ -752,6 +782,7 @@ int main() {
         direction_and_rich_affix_size();
         open_popup_remains_attached_during_document_scroll();
         popup_first_shadow_is_painted_in_front();
+        selected_values_use_the_live_selector_font();
         search_ime_and_dynamic_options();
         controlled_close_preserves_search_until_accepted();
         open_selected_value_dims_only_the_editor_content();

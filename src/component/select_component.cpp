@@ -151,6 +151,7 @@ struct SelectState final {
     Signal<runtime::SemanticForeground> suffix_foreground{runtime::SemanticForeground{}};
     Signal<bool> action_disabled{false};
     Signal<LayoutGap> tag_gap{LayoutGap{dp(4)}};
+    Prop<runtime::SemanticTypography> selector_typography{runtime::SemanticTypography{}};
     Signal<IconSource> clear_icon{IconSource{IconName::CloseCircleFilled}};
     Signal<IconSource> suffix_icon{IconSource{IconName::DownOutlined}};
     Signal<IconSource> search_icon{IconSource{IconName::SearchOutlined}};
@@ -1373,6 +1374,7 @@ void SelectComponentHost::reconcile_tags(runtime::ComponentId id) {
                 const auto direction = select_state(*services_, id)->direction;
                 const auto remove_icon = select_state(*services_, id)->remove_icon;
                 const auto tag_gap = select_state(*services_, id)->tag_gap;
+                const auto selector_typography = select_state(*services_, id)->selector_typography;
                 auto* services = services_;
                 build.mount_slot(
                     child, Content{[=] {
@@ -1390,7 +1392,19 @@ void SelectComponentHost::reconcile_tags(runtime::ComponentId id) {
                                                    : FlexDirection::LeftToRight;
                                     })),
                                          FlexContent{[=] {
-                                             Text(TextProps{}.content(label).direction(direction));
+                                             auto& label_build = runtime::require_component_build_context();
+                                             const auto chip_typography = label_build.semantic_typography().value();
+                                             const auto label_typography = bind([=] {
+                                                 auto typography = read_prop(selector_typography);
+                                                 typography.line_height = read_prop(chip_typography).line_height;
+                                                 return typography;
+                                             });
+                                             const auto label_group = select_group(*services);
+                                             label_build.mount_slot_with_semantic_text_style(
+                                                 label_group, Content{[=] {
+                                                     Text(TextProps{}.content(label).direction(direction));
+                                                 }},
+                                                 label_build.semantic_foreground().value(), label_typography);
                                              if (!overflow) {
                                                  mount_input_affix_action(*services, remove_icon, disabled, remove,
                                                                           true, false, false);
@@ -1871,6 +1885,8 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                   ThemeContent{[&] {
                       FormPrivateEditorScope private_editor;
                       const std::optional<InputPrefix> input_prefix = InputPrefix{[&] {
+                          s.selector_typography =
+                              runtime::require_component_build_context().semantic_typography().value();
                           const auto prefix_root = select_group(services);
                           layout::FlexLayout prefix_layout;
                           prefix_layout.align = layout::FlexAlign::center;
@@ -2386,11 +2402,11 @@ void SelectComponentHost::on_window_active(bool active) {
 void SelectComponentHost::on_input_boundary_changed() {
     const auto ids = mounted_;
     for (auto id : ids) {
-        if (const auto* s = select_state(*services_, id); s && s->declaring) {
+        auto* s = select_state(*services_, id);
+        if (!s || s->declaring || !services_->components().contains(s->selector)) {
             continue;
         }
-        if (auto* s = select_state(*services_, id);
-            s && s->open && !s->suppressed && !services_->interactions().component_active(id)) {
+        if (s->open && !s->suppressed && !services_->interactions().component_active(id)) {
             s->suppressed = true;
             request_open(id, false);
         } else {
