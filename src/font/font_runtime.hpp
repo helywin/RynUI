@@ -246,6 +246,11 @@ public:
 
     [[nodiscard]] virtual std::unique_ptr<PlatformFontFace>
     create_face(std::shared_ptr<const std::vector<std::byte>> bytes, long face_index, FontError& error) = 0;
+
+    // Only an integer-position text policy rounds logical advances and offsets.
+    [[nodiscard]] virtual bool snaps_shaping_positions() const noexcept {
+        return false;
+    }
 };
 
 struct GlyphRasterResult {

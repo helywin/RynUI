@@ -907,16 +907,21 @@ FontShapeResult FontRuntime::shape_utf8_segment(FontIdentity font, std::string_v
     const auto pixels = [units = static_cast<float>(record->shaping_units_per_pixel)](hb_position_t value) {
         return static_cast<float>(value) / units;
     };
+    const bool snap_positions = record->platform_face && impl_->platform_rasterizer->snaps_shaping_positions();
+    const auto position = [&](hb_position_t value) {
+        const auto logical = pixels(value);
+        return snap_positions ? std::round(logical) : logical;
+    };
     for (unsigned int index = 0; index < glyph_count; ++index) {
         hb_glyph_extents_t extents{};
         static_cast<void>(hb_font_get_glyph_extents(record->harfbuzz_font, glyph_info[index].codepoint, &extents));
         result.glyphs.push_back({
             glyph_info[index].codepoint,
             glyph_info[index].cluster,
-            pixels(glyph_positions[index].x_advance),
-            pixels(glyph_positions[index].y_advance),
-            pixels(glyph_positions[index].x_offset),
-            pixels(glyph_positions[index].y_offset),
+            position(glyph_positions[index].x_advance),
+            position(glyph_positions[index].y_advance),
+            position(glyph_positions[index].x_offset),
+            position(glyph_positions[index].y_offset),
             pixels(extents.x_bearing),
             pixels(extents.y_bearing),
             pixels(extents.width),

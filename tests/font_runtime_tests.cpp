@@ -437,12 +437,18 @@ void test_platform_rasterizer_owns_a_generation() {
     };
 
     struct Backend final : PlatformFontRasterizer {
+        explicit Backend(bool use_integer_positions = false) : snap(use_integer_positions) {}
+
         std::string_view name() const noexcept override {
             return "unit-platform";
         }
 
         bool snaps_horizontal() const noexcept override {
             return true;
+        }
+
+        bool snaps_shaping_positions() const noexcept override {
+            return snap;
         }
 
         std::unique_ptr<PlatformFontFace> create_face(std::shared_ptr<const std::vector<std::byte>> bytes, long index,
@@ -453,6 +459,7 @@ void test_platform_rasterizer_owns_a_generation() {
         }
 
         std::weak_ptr<const std::vector<std::byte>> source;
+        bool snap;
     };
 
     const auto bytes = read_bytes(RYNUI_VALIDATION_LATIN_FONT);
@@ -488,6 +495,25 @@ void test_platform_rasterizer_owns_a_generation() {
     require(bool(runtime.runtime->remove_font(font.font)) && backend->source.expired() &&
                 runtime.runtime->glyph_cache_size() == 0,
             "retired platform font retained its face, source or cache");
+
+    auto integer_positions = FontRuntime::create({.platform_rasterizer = std::make_shared<Backend>(true)});
+    require(bool(integer_positions), "integer-position platform font could not initialize");
+    constexpr std::string_view text = "Input accepted";
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        config.display_scale = scale;
+        const auto face = integer_positions.runtime->load_font_bytes(bytes, 0, config);
+        require(bool(face), "integer-position platform font could not load the font");
+        const auto result = integer_positions.runtime->shape_utf8_segment(face.font, text, 0, text.size());
+        require(result && !result.glyphs.empty() && result.glyphs.front().advance_x == 5 &&
+                    std::ranges::all_of(result.glyphs,
+                                        [](const auto& glyph) {
+                                            return glyph.advance_x == std::round(glyph.advance_x) &&
+                                                   glyph.advance_y == std::round(glyph.advance_y) &&
+                                                   glyph.offset_x == std::round(glyph.offset_x) &&
+                                                   glyph.offset_y == std::round(glyph.offset_y);
+                                        }),
+                "integer shaping positions were not rounded in logical space at each display density");
+    }
 }
 
 void test_svg_glyph_cache_tracks_both_physical_axes() {

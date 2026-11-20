@@ -117,6 +117,10 @@ public:
         return true;
     }
 
+    bool snaps_shaping_positions() const noexcept override {
+        return true;
+    }
+
     std::unique_ptr<font::PlatformFontFace> create_face(std::shared_ptr<const std::vector<std::byte>> bytes, long index,
                                                         font::FontError& error) override {
         if (!bytes || bytes->empty() || index < 0 || static_cast<unsigned long>(index) > UINT32_MAX) {
