@@ -13162,10 +13162,13 @@ GallerySamplePage make_gallery_sample_page(const GalleryPageRoute& route, const 
                 const auto& descriptor = factory.descriptor;
                 has_sample = true;
                 ++(*runs)[std::string{descriptor.identity}];
+                // The paired fixture keeps the real factory and its layout.
+                // The ordinary Gallery card is outside that fixture's paint.
+                const bool paired = state->demo && state->demo->sample_identity == descriptor.identity;
                 ReferenceSurface(
                     ReferenceSurfaceProps{}
                         .identity(descriptor.identity)
-                        .role(ReferenceSurfaceRole::example)
+                        .role(paired ? ReferenceSurfaceRole::comparison_example : ReferenceSurfaceRole::example)
                         .content_padding(card_padding)
                         .layout(ryn::LayoutStyle{}.width(card_width)),
                     [state, factory, footer] {

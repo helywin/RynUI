@@ -14,6 +14,7 @@ enum class GalleryDemoInputFault { none, popup_placeholder, popup_label, popup_t
 
 struct GalleryDemoSampleContext final {
     GalleryDemoJson fixture;
+    std::string sample_identity;
     std::function<void(std::string_view, bool)> factory_boundary;
     GalleryDemoJson::Array callbacks;
     GalleryDemoJson::Object consumed_props;

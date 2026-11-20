@@ -109,6 +109,7 @@ void validate_role(ReferenceSurfaceRole role) {
     switch (role) {
     case ReferenceSurfaceRole::reference:
     case ReferenceSurfaceRole::example:
+    case ReferenceSurfaceRole::comparison_example:
     case ReferenceSurfaceRole::document_heading:
     case ReferenceSurfaceRole::document_note:
     case ReferenceSurfaceRole::site_header:
@@ -204,6 +205,11 @@ ryn::Color chrome_background(const detail::ReferenceSurfaceComponentState& state
     return {foreground.red(), foreground.green(), foreground.blue(), alpha};
 }
 
+bool paints_chrome(ReferenceSurfaceRole role) noexcept {
+    return role != ReferenceSurfaceRole::document_heading && role != ReferenceSurfaceRole::document_note &&
+           role != ReferenceSurfaceRole::comparison_example;
+}
+
 void refresh_material(ReferenceSurfaceHost& host, detail::ReferenceSurfaceComponentState& state) {
     const auto& theme = host.application().components().theme_scope(state.component)->snapshot();
     if (state.role != ReferenceSurfaceRole::reference && state.role != ReferenceSurfaceRole::example) {
@@ -213,10 +219,7 @@ void refresh_material(ReferenceSurfaceHost& host, detail::ReferenceSurfaceCompon
         }
         auto& fill = state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::background)];
         fill.color = channels(background);
-        fill.opacity = state.visible && state.role != ReferenceSurfaceRole::document_heading &&
-                               state.role != ReferenceSurfaceRole::document_note
-                           ? 1.0F
-                           : 0.0F;
+        fill.opacity = state.visible && paints_chrome(state.role) ? 1.0F : 0.0F;
         if (state.role == ReferenceSurfaceRole::site_header) {
             auto& border = state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)];
             border.color = channels(theme.alias().color_border_secondary);
@@ -461,11 +464,7 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(ryn::runtime::Size vie
                     ? ryn::runtime::Rect{0.0F, 0.0F, viewport.width,
                                          node.bounds.y + node.bounds.height + GalleryLayoutMetrics::body_gap}
                     : node.bounds;
-            fill = make_quad(fill_bounds, viewport, color,
-                             state->visible && state->role != ReferenceSurfaceRole::document_heading &&
-                                     state->role != ReferenceSurfaceRole::document_note
-                                 ? 1.0F
-                                 : 0.0F,
+            fill = make_quad(fill_bounds, viewport, color, state->visible && paints_chrome(state->role) ? 1.0F : 0.0F,
                              state->role == ReferenceSurfaceRole::site_header ? 0.0F : node.bounds.width * 0.5F,
                              node.translation);
             if (state->role == ReferenceSurfaceRole::site_header) {

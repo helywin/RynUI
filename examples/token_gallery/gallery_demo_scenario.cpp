@@ -1358,6 +1358,7 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
     }
     std::filesystem::create_directories(observations.parent_path());
     actions.context->fixture = scenario.definition.at("fixture");
+    actions.context->sample_identity = scenario.route.sample_identity;
     actions.context->parent_policy = actions.context->fixture.at("parent_policy").string();
     actions.context->fault = scenario.fault;
     Observer observer{scenario, std::move(actions), observations, std::move(provenance)};

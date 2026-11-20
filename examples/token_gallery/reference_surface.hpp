@@ -45,6 +45,7 @@ enum class ReferenceSurfaceRole : std::uint8_t {
     document_heading,
     document_note,
     example,
+    comparison_example,
 };
 
 class ReferenceSurfaceProps final {

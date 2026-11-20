@@ -370,6 +370,24 @@ void semantic_and_retirement_controls() {
         metrics,
         [&](const auto& path) {
             // Mock transport receipt only. No GPU pixels or actual SDL fence are claimed by this test.
+            if (capture_id == 0) {
+                bool found = false;
+                for (const auto& surface : fixture.surfaces.mounted_surfaces()) {
+                    const auto snapshot = fixture.surfaces.snapshot(surface.component);
+                    if (snapshot.identity != scenario.route.sample_identity) {
+                        continue;
+                    }
+                    require(snapshot.role == ReferenceSurfaceRole::comparison_example && snapshot.visible,
+                            "paired sample did not retain the transparent document shell");
+                    const auto& instances = fixture.services.surfaces().instances();
+                    for (std::uint32_t i = 0; i < snapshot.visual_range.count; ++i) {
+                        require(instances.at(snapshot.visual_range.first + i).opacity == 0,
+                                "native-only card edge was submitted inside the paired guard");
+                    }
+                    found = true;
+                }
+                require(found, "the paired sample shell was not mounted");
+            }
             std::ofstream(path, std::ios::binary) << "mock-readback";
             return evidence(++capture_id);
         },
