@@ -35,6 +35,13 @@ void test_bundled_svg_mask_scan_guard() {
     // Pinned Skia rasterizing the same path into an interior 18x18 device viewport.
     require(bitmap.coverage[8 * 18 + 17] == 239 && bitmap.coverage[12 * 18 + 17] == 63,
             "SVG scan conversion clipped coverage against the bitmap edge");
+
+    constexpr auto search_outlined = 3U;
+    const auto search_error = ryn::detail::rasterize_bundled_svg_glyph(search_outlined, 21, 0, 0,
+                                                                       ryn::font::GlyphRasterMode::svg_layout, bitmap);
+    require(search_error.kind == ryn::font::FontErrorKind::none && bitmap.width == 21 && bitmap.height == 21,
+            "bundled search outline did not rasterize");
+    require(bitmap.coverage[21 + 4] == 8, "SVG perimeter repair changed the search outline's interior coverage");
 }
 #endif
 

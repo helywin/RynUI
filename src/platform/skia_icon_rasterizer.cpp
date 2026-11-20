@@ -37,12 +37,14 @@ constexpr int scan_guard = 4;
     return {font::FontErrorStage::rasterization, font::FontErrorKind::rasterization_failed, {}, {}, message};
 }
 
-[[nodiscard]] bool rasterize_layer(const SvgIconLayer& layer, SkBitmap& mask, float em, float x, float y) {
+[[nodiscard]] bool rasterize_layer(const SvgIconLayer& layer, SkBitmap& mask, float em, float x, float y,
+                                   bool* touches_perimeter = nullptr) {
     SkCanvas canvas(mask);
     canvas.clear(SK_ColorTRANSPARENT);
     canvas.clipRect(SkRect::MakeXYWH(x, y, em, em), SkClipOp::kIntersect, true);
     canvas.translate(x, y);
-    canvas.scale(em / layer.view_width, em / layer.view_width);
+    const float scale = em / layer.view_width;
+    canvas.scale(scale, scale);
     canvas.translate(-layer.view_x, -layer.view_y);
     SkPaint paint;
     paint.setAntiAlias(true);
@@ -52,13 +54,20 @@ constexpr int scan_guard = 4;
         if (!SkParsePath::FromSVGString(source.data, &path)) {
             return false;
         }
+        if (touches_perimeter && !*touches_perimeter && !path.isEmpty()) {
+            const auto bounds = path.getBounds();
+            *touches_perimeter = x + (bounds.left() - layer.view_x) * scale <= 1 ||
+                                 y + (bounds.top() - layer.view_y) * scale <= 1 ||
+                                 x + (bounds.right() - layer.view_x) * scale >= mask.width() - 1 ||
+                                 y + (bounds.bottom() - layer.view_y) * scale >= mask.height() - 1;
+        }
         path.setFillType(source.even_odd ? SkPathFillType::kEvenOdd : SkPathFillType::kWinding);
         canvas.drawPath(path, paint);
     }
     return true;
 }
 
-[[nodiscard]] std::uint8_t sample(const SkBitmap& mask, int x, int y) noexcept {
+[[nodiscard]] std::uint8_t sample_composited(const SkBitmap& mask, int x, int y) noexcept {
     return x >= 0 && y >= 0 && x < mask.width() - 2 * scan_guard && y < mask.height() - 2 * scan_guard
                ? *mask.getAddr8(x + scan_guard, y + scan_guard)
                : 0;
@@ -84,16 +93,27 @@ font::FontError rasterize_bundled_svg_glyph(std::uint32_t glyph, float physical_
     const auto& layer = svg_icon_layers[glyph - 1];
     const int width = static_cast<int>(std::ceil(physical_em + phase_x));
     const int height = static_cast<int>(std::ceil(physical_em + phase_y));
+    const int guard = layer.composited ? scan_guard : 0;
     SkBitmap mask;
-    if (!mask.tryAllocPixels(SkImageInfo::MakeA8(width + 2 * scan_guard, height + 2 * scan_guard))) {
+    if (!mask.tryAllocPixels(SkImageInfo::MakeA8(width + 2 * guard, height + 2 * guard))) {
         return error("Cannot allocate the bundled SVG glyph mask.");
     }
     const bool clip_stationary_viewport = layer.composited && mode == font::GlyphRasterMode::svg_layout;
     const bool filter = layer.composited && !clip_stationary_viewport && (phase_x != 0 || phase_y != 0);
-    const float mask_x = scan_guard + (filter ? 0.0F : phase_x);
-    const float mask_y = scan_guard + (filter ? 0.0F : phase_y);
-    if (!rasterize_layer(layer, mask, physical_em, mask_x, mask_y)) {
+    const float mask_x = guard + (filter ? 0.0F : phase_x);
+    const float mask_y = guard + (filter ? 0.0F : phase_y);
+    bool touches_perimeter = false;
+    if (!rasterize_layer(layer, mask, physical_em, mask_x, mask_y, layer.composited ? nullptr : &touches_perimeter)) {
         return error("Cannot decode a locked bundled SVG path.");
+    }
+    SkBitmap perimeter_mask;
+    if (touches_perimeter) {
+        if (!perimeter_mask.tryAllocPixels(SkImageInfo::MakeA8(width + 2 * scan_guard, height + 2 * scan_guard))) {
+            return error("Cannot allocate the bundled SVG perimeter mask.");
+        }
+        if (!rasterize_layer(layer, perimeter_mask, physical_em, mask_x + scan_guard, mask_y + scan_guard)) {
+            return error("Cannot decode a locked bundled SVG path.");
+        }
     }
     font::GlyphBitmap bitmap;
     bitmap.width = static_cast<std::uint32_t>(width);
@@ -109,14 +129,26 @@ font::FontError rasterize_bundled_svg_glyph(std::uint32_t glyph, float physical_
             // line leading, so only the inline edges clip the SVG a second time.
             for (int x = 0; x < width; ++x) {
                 const auto coverage_x = pixel_interval_coverage(x, phase_x, phase_x + physical_em);
-                destination[x] = static_cast<std::uint8_t>(std::lround(coverage_x * sample(mask, x, y)));
+                destination[x] = static_cast<std::uint8_t>(std::lround(coverage_x * sample_composited(mask, x, y)));
             }
         } else if (!filter) {
-            std::copy_n(mask.getAddr8(scan_guard, y + scan_guard), width, destination.begin());
+            std::copy_n(mask.getAddr8(guard, y + guard), width, destination.begin());
+            if (touches_perimeter) {
+                // Repair bitmap-edge coverage without moving the scan conversion of interior pixels.
+                const auto* row = perimeter_mask.getAddr8(scan_guard, y + scan_guard);
+                if (y == 0 || y == height - 1) {
+                    std::copy_n(row, width, destination.begin());
+                } else {
+                    destination.front() = row[0];
+                    destination.back() = row[width - 1];
+                }
+            }
         } else {
             for (int x = 0; x < width; ++x) {
-                const float same_row = std::lerp(sample(mask, x, y), sample(mask, x - 1, y), phase_x);
-                const float previous_row = std::lerp(sample(mask, x, y - 1), sample(mask, x - 1, y - 1), phase_x);
+                const float same_row =
+                    std::lerp(sample_composited(mask, x, y), sample_composited(mask, x - 1, y), phase_x);
+                const float previous_row =
+                    std::lerp(sample_composited(mask, x, y - 1), sample_composited(mask, x - 1, y - 1), phase_x);
                 destination[x] = static_cast<std::uint8_t>(std::lround(std::lerp(same_row, previous_row, phase_y)));
             }
         }
