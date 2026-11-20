@@ -165,7 +165,19 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming* timing) {
         validate_scene_capabilities(capabilities);
         CompositionPlan composition_plan;
         if (data.composition_scene) {
-            composition_plan = pack_composition(*data.composition_scene, data.metrics, capabilities);
+            const auto& program = data.composition_scene->composition();
+            if (data.effects && program &&
+                std::ranges::any_of(program->requests, [](const auto& request) { return request.opacity_group; })) {
+                static_cast<void>(data.effects->compact(scene_logical_viewport(data.metrics),
+                                                        std::max(1.0, double(1.0F / data.metrics.display_scale))));
+            }
+            const CompositionDrawSources sources{
+                data.quads ? data.quads->instances() : std::span<const graphics::QuadInstance>{},
+                data.glyphs.instances(),
+                data.effects ? data.effects->packed_instances() : std::span<const graphics::RoundedEffectInstance>{},
+                data.images ? data.images->slots() : std::span<const graphics::ImageSlot>{},
+            };
+            composition_plan = pack_composition(*data.composition_scene, data.metrics, capabilities, sources);
         }
         composition_.preflight(composition_plan, backend_->owner_id(), backend_->device_epoch(), capabilities);
         RoundedEffectGpuResources::preflight(data.effects, data.metrics, capabilities,

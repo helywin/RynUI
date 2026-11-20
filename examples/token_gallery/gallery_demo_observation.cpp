@@ -159,7 +159,8 @@ GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
                                                {"radius", request.shape.radius},
                                                {"backdrop", request.backdrop},
                                                {"sigma", request.sigma},
-                                               {"activation", request.activation}});
+                                               {"activation", request.activation},
+                                               {"opacity_group", request.opacity_group}});
         }
         std::vector<std::uint32_t> open;
         for (const auto& op : program->operations) {

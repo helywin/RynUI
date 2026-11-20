@@ -52,6 +52,7 @@ public:
     void set_fragment_composition(runtime::SceneFragmentId fragment, bool outside_own_mask,
                                   graphics::DrawCoverageRole coverage = graphics::DrawCoverageRole::Normal,
                                   std::optional<graphics::SceneCompositionRequest> backdrop = std::nullopt);
+    void set_fragment_opacity_group(runtime::SceneFragmentId fragment, float opacity);
     void rebuild(runtime::Rect window_clip, std::optional<runtime::Rect> document_clip = std::nullopt);
 
     void invalidate_composition() noexcept {
@@ -79,6 +80,7 @@ private:
         bool outside_own_mask{};
         graphics::DrawCoverageRole coverage{};
         std::optional<graphics::SceneCompositionRequest> backdrop;
+        float group_opacity{1.0F};
         std::uint64_t publication_revision{};
     };
 

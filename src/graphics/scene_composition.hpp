@@ -20,6 +20,8 @@ struct SceneCompositionRequest final {
     float sigma{};
     runtime::Color tint{};
     float activation{1};
+    // A paint-only group uses its submitted draw extent without a shape mask.
+    bool opacity_group{};
     friend bool operator==(const SceneCompositionRequest&, const SceneCompositionRequest&) = default;
 };
 

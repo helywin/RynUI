@@ -62,8 +62,8 @@
       "bytes": 55
     },
     "shaders/masked_group.hlsl": {
-      "sha256": "80f6030d5ce94936826124a31c1e208f19e88d359640255a77a344b6da7592da",
-      "bytes": 1317
+      "sha256": "d884f97a3e825b193d7312412dd8e6f901596e64f69745e5e3f5b11da76f73ff",
+      "bytes": 1427
     },
     "shaders/quad.hlsl": {
       "sha256": "7414b40a10c842340eafafc901f1fde263c23d481d4654edb1a50653134484e0",
@@ -394,7 +394,7 @@
         "shaders/rect_coverage.hlsli",
         "shaders/rounded_effect_coverage.hlsli"
       ],
-      "closure_sha256": "01dba65a8e534e9be99d7ed6e39f9ab4d97a8613e2ec16bed0623b856be1e6ef",
+      "closure_sha256": "33464e63311a7bca2c934d1f818db5409573c7a6e771b3b70f5b8c6d5a45716c",
       "vertex_inputs": [],
       "fragment_storage_buffers": 0,
       "vertex_uniform_buffers": 0,

@@ -31,10 +31,16 @@ VertexOutput VSMain(uint id : SV_VertexID) {
 float4 PSMain(VertexOutput input) : SV_Target0 {
     float2 p = input.position.xy + targetOriginExtent.xy;
     if (any(p < hardClip.xy) || any(p >= hardClip.zw) || any(p < sourceOriginExtent.xy) ||
-        any(p >= sourceOriginExtent.xy + sourceOriginExtent.zw) || any(shapeRect.zw <= 0)) {
+        any(p >= sourceOriginExtent.xy + sourceOriginExtent.zw)) {
         discard;
     }
-    float coverage = RoundedRectFillCoverage(p, shapeRect, radiusAA.x, radiusAA.y);
+    float coverage = radiusAA.z;
+    if (radiusAA.w == 0.0) {
+        if (any(shapeRect.zw <= 0)) {
+            discard;
+        }
+        coverage *= RoundedRectFillCoverage(p, shapeRect, radiusAA.x, radiusAA.y);
+    }
     // Source is already PM. ONE blending is part of this pass's ABI.
     return SourceTexture.Load(int3(int2(p - sourceOriginExtent.xy), 0)) * coverage;
 }

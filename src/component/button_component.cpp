@@ -517,10 +517,14 @@ ResolvedButtonVisualState visual_token(const ButtonThemeToken& button, const But
 
 runtime::SemanticForeground content_foreground(const ButtonThemeToken& button, const ButtonComponentState& state) {
     auto foreground = channels(visual_token(button, state).foreground);
-    if (state.loading) {
+    if (state.loading && state.compact) {
         foreground[3] *= button.loading_opacity;
     }
     return foreground;
+}
+
+float loading_opacity(const ButtonThemeToken& token, const ButtonComponentState& state) {
+    return 1.0F + (token.loading_opacity - 1.0F) * std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
 }
 
 layout::HorizontalContentLayout content_layout(const ButtonThemeToken& button, const ButtonComponentState& state) {
@@ -1308,7 +1312,8 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     const auto& alias = theme.alias();
     const auto& visual = visual_token(button, state);
     const float loading_mix = std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
-    const float layer_opacity = 1.0F + (button.loading_opacity - 1.0F) * loading_mix;
+    const float total_opacity = loading_opacity(button, state);
+    const float layer_opacity = state.compact ? total_opacity : 1.0F;
     const bool outlined = paints_continuous_border(state, nodes_->require(state.node).bounds, button);
     auto next = state.visuals;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].color = channels(state.presentation_border);
@@ -1322,7 +1327,7 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
         auto& indicator = next[component::button_loading_segment_index(segment)];
         indicator.color = channels(state.presentation_foreground);
         indicator.opacity = state.has_loading_icon ? 0.0F
-                                                   : button.loading_opacity * loading_mix *
+                                                   : (state.compact ? button.loading_opacity : 1.0F) * loading_mix *
                                                          spinner_segment_strength(state.spinner_phase, segment);
     }
 
@@ -1336,6 +1341,8 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     auto next_effects = state.effects;
     next_effects.shadows = visual.shadow;
     next_effects.shadow_opacity = state.disabled ? 0.0F : layer_opacity;
+    next_effects.opaque_shadow_caster =
+        !state.compact && total_opacity != 1.0F && state.presentation_background.alpha() == 1.0F;
     next_effects.focus_width = alias.line_width_focus;
     next_effects.focus_offset = alias.focus_outline_offset;
     next_effects.focus_color = alias.color_focus_outline;
@@ -1344,6 +1351,7 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     const bool changed_effect = next_effects != state.effects;
     state.effects = std::move(next_effects);
     if (state.scene.valid()) {
+        scene_composer_.set_fragment_opacity_group(state.fragment, state.compact ? 1.0F : total_opacity);
         auto published = state.visuals;
         if (state.compact) {
             for (std::size_t i = 2; i < published.size(); ++i) {
@@ -1678,8 +1686,7 @@ void ButtonComponentHost::update_decoration_material(ButtonComponentState& state
         return;
     }
     const auto& token = components().theme_scope(state.component)->snapshot().button();
-    const float opacity =
-        1.0F + (token.loading_opacity - 1.0F) * std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
+    const float opacity = state.compact ? loading_opacity(token, state) : 1.0F;
     const bool outlined = paints_continuous_border(state, nodes_->require(state.node).bounds, token);
     for (auto& effect : state.decorations) {
         const bool visible =
@@ -1764,8 +1771,7 @@ void ButtonComponentHost::synchronize_compact(ButtonComponentState& state) {
     const auto& button = components().theme_scope(state.component)->snapshot().button();
     const float radius = logical_radius(node.bounds, button_radius(state, node.bounds, button));
     const auto clip = state.wave_clip ? std::optional{graphics::EffectClip{1, *state.wave_clip}} : std::nullopt;
-    const float mix = std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
-    const float opacity = 1 + (button.loading_opacity - 1) * mix;
+    const float opacity = loading_opacity(button, state);
     const auto border =
         graphics::make_corner_fill_effects({node.bounds, radius}, state.compact->corners, state.presentation_border,
                                            dashed(state) ? 0 : opacity, node.translation, clip);
@@ -1812,8 +1818,7 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     const bool border_box_fill = solid_fills_border_box(state) || outlined;
     const auto background_bounds = border_box_fill ? node.bounds : inset_background_bounds;
     auto next = state.visuals;
-    const auto opacity =
-        1.0F + (button.loading_opacity - 1.0F) * std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
+    const float opacity = state.compact ? loading_opacity(button, state) : 1.0F;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)] =
         make_quad(node.bounds, viewport, next[0].color, dashed(state) || state.compact || outlined ? 0.0F : opacity,
                   radius, node.translation);

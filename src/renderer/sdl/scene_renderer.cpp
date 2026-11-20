@@ -136,6 +136,7 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, bool debug_mode, boo
         SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, SDL_GPU_TEXTURETYPE_2D,
                                      SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER);
     capabilities_.masked_groups = composition_format;
+    capabilities_.opacity_groups = composition_format;
     capabilities_.rounded_clip = composition_format;
     capabilities_.cropped_target_coordinates = composition_format;
     capabilities_.premultiplied_targets = composition_format;

@@ -604,6 +604,13 @@ def _native_paint_inventory(checkpoint,origin,dpr=1):
             requests=stack.get('composition_requests',[])
             if not 0<=group<len(requests):raise ProtocolError('composition group has no actual request')
             request=requests[group]
+            if request.get('opacity_group') is True:
+                opacity=request['activation']
+                if request.get('backdrop') or type(opacity) not in (int,float) or not 0<=opacity<=1:
+                    raise ProtocolError('invalid submitted opacity composition')
+                row['clips'].append(relative(request['hard_clip'],origin))
+                row['groups'].append((f'paint:{group}',opacity))
+                continue
             if request.get('backdrop') or request.get('activation',1)!=1:
                 raise RunError(3,'calibration','intersecting backdrop/animated mask outside finite pilot')
             support=_support(row);shape=relative(request['shape'],origin);hard=relative(request['hard_clip'],origin)

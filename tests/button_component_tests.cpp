@@ -476,12 +476,16 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
             "loading transition incorrectly cleared Button focus");
     require(fixture.synchronize(), "loading Button did not synchronize");
     const auto loading_layer = fixture.layer(0, ryn::component::ButtonVisualLayer::loading_indicator);
-    require(fixture.host->snapshot(target.component).loading &&
-                loading_layer.opacity == ryn::detail::default_theme_snapshot().button().loading_opacity &&
-                loading_layer.bounds[2] > 0.0F && loading_layer.bounds[3] > 0.0F &&
-                fixture.text_color(0)[3] == ryn::detail::default_theme_snapshot().button().loading_opacity,
-            "loading state missed indicator geometry, opacity, or Text context");
+    const auto& program = fixture.host->scene_composer().ordered_scene().composition();
+    require(fixture.host->snapshot(target.component).loading && loading_layer.opacity == 1 &&
+                loading_layer.bounds[2] > 0.0F && loading_layer.bounds[3] > 0.0F && fixture.text_color(0)[3] == 1 &&
+                program && program->requests.size() == 1 && program->requests.front().owner == target.node &&
+                program->requests.front().opacity_group &&
+                program->requests.front().activation == ryn::detail::default_theme_snapshot().button().loading_opacity,
+            "loading Button did not publish a single opacity group for its full-opacity content");
     loading.set(false);
+    require(fixture.synchronize() && !fixture.host->scene_composer().ordered_scene().composition(),
+            "settled Button retained its opacity group");
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, {500.0F, 300.0F}));
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(0)));
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
@@ -514,9 +518,8 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
                     channels(ryn::detail::default_theme_snapshot().button().danger_background) &&
                 danger_shadow.size() == 1 &&
-                fixture.host->rounded_effects().at(danger_shadow.front()).material.opacity ==
-                    ryn::detail::default_theme_snapshot().button().loading_opacity,
-            "Danger loading precedence lost its normal color or faded shadow");
+                fixture.host->rounded_effects().at(danger_shadow.front()).material.opacity == 1,
+            "Danger loading precedence lost its normal color or applied opacity before composition");
     loading.set(false);
     disabled.set(true);
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==

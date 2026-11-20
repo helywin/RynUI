@@ -1,6 +1,9 @@
 #pragma once
 #include "graphics/scene_composition.hpp"
 #include "graphics/glyph_scene.hpp"
+#include "graphics/image_scene.hpp"
+#include "graphics/quad_primitive.hpp"
+#include "graphics/rounded_effect.hpp"
 #include "renderer/common/scene_metrics.hpp"
 #include <array>
 #include <cstddef>
@@ -87,7 +90,16 @@ struct CompositionPlan final {
     std::uint64_t allocated_bytes{};
 };
 struct SceneBackendCapabilities;
+
+struct CompositionDrawSources final {
+    std::span<const graphics::QuadInstance> quads;
+    std::span<const graphics::GlyphInstance> glyphs;
+    std::span<const graphics::RoundedEffectInstance> effects;
+    std::span<const graphics::ImageSlot> images;
+};
+
 [[nodiscard]] CompositionPlan pack_composition(const graphics::OrderedScene& scene, SceneDeviceMetrics metrics,
-                                               const SceneBackendCapabilities& capabilities);
+                                               const SceneBackendCapabilities& capabilities,
+                                               CompositionDrawSources sources = {});
 [[nodiscard]] PassViewportV1 composition_viewport(SceneDeviceMetrics metrics, CompositionCrop crop);
 } // namespace ryn::detail

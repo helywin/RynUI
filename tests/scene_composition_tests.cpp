@@ -275,6 +275,33 @@ void target_reentry_and_alias_preflight() {
     require(f.backend.live_resources() == baseline && f.backend.counters().commits == 0,
             "aliased nested request reached resource creation/upload");
 }
+
+void opacity_crop_uses_actual_submitted_bounds() {
+    OrderedScene scene;
+    scene.append_command({SceneDrawKind::quad, 0, 1});
+    scene.append_command({SceneDrawKind::glyph, 0, 1, 0});
+    auto program = std::make_shared<SceneCompositionProgram>();
+    program->scene_revision = scene.revision();
+    program->requests.push_back(
+        {.owner = {1, 1}, .hard_clip = {0, 0, 70, 60}, .activation = .65F, .opacity_group = true});
+    program->operations = {{SceneCompositionOpKind::BeginMaskedGroup, 0, 0, 0},
+                           {SceneCompositionOpKind::DrawRange, 0, 2},
+                           {SceneCompositionOpKind::EndMaskedGroup, 0, 0, 0}};
+    scene.set_composition(program);
+    const std::array quads{QuadInstance{.bounds = {10, 14, 24, 16}, .translation = {2, 0}}};
+    const std::array glyphs{
+        GlyphInstance{.position_size = {36, 18, 10, 4}, .clip_bounds = {0, 0, 70, 60}, .transform = {{36, 18}, 90}}};
+    const auto caps = recording_scene_capabilities();
+    const auto plan = pack_composition(scene, {160, 120, 1}, caps, {.quads = quads, .glyphs = glyphs});
+    const auto& group = plan.requests.front();
+    require(group.crop == CompositionCrop{11, 13, 26, 18} && group.target == 1 &&
+                group.clip.radius_aa == std::array{0.0F, 1.0F, .65F, 1.0F} && plan.targets.size() == 2,
+            "opacity crop lost translated or rotated paint or allocated the viewport");
+    rejects([&] { (void)pack_composition(scene, {160, 120, 1}, caps); });
+    auto unsupported = caps;
+    unsupported.opacity_groups = false;
+    rejects([&] { (void)pack_composition(scene, {160, 120, 1}, unsupported, {.quads = quads, .glyphs = glyphs}); });
+}
 } // namespace
 
 int main() {
@@ -284,6 +311,7 @@ int main() {
         actual_capacity_includes_old_resize();
         unsupported_and_cold();
         target_reentry_and_alias_preflight();
+        opacity_crop_uses_actual_submitted_bounds();
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         return 1;

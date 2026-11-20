@@ -40,6 +40,8 @@ RoundedEffect 的内部 path kind 3/4/5 分别表示有限圆弧、圆角虚线�
 
 Kind 6 表示带镂空的外阴影。偏移和 spread 作用于阴影轮廓，未偏移的圆角主体以一物理像素 AA 从阴影中镂空，半透明填充下也不会透出内部阴影。GPU 复用原 112-byte 字段，backend 显式声明 `exterior_shadows`，SceneResources 在上传前检查所有 live effect。`effect_params.z` 在 kind 6 中表示镂空向内收缩的物理像素距离。覆盖主体的不透明填充可将镂空向内收缩一个逻辑像素，保留抗锯齿边缘下的阴影。半透明填充和淡入淡出沿用完整镂空。`device_box` 支持 blur 为零，通过一个物理像素的方形孔径采样圆角轮廓，用于非 Compact 的 Outlined Input 外扩阴影。现有 kind 0 继续支持无镂空的阴影与零模糊填充。分角和显式过渡轮廓沿用原路径。
 
+绘制透明组复用 Composition 的 begin/end 操作和 PM target。Backend 通过 `opacity_groups` 显式接收该能力。Common 在上传前按实际提交的 Quad、Glyph、RoundedEffect 和 Image 范围计算裁剪目标，包括平移、旋转和阴影的光栅范围，并与祖先硬裁区相交。组内按原顺序完整绘制，组退出时对预乘 RGB 和 alpha 一次乘以 `activation`。透明组不接管圆角裁剪或命中。`RoundedClipUniformV1.radius_aa.zw` 用于传递组透明度与纯透明组标志，原 uniform 大小和圆角组行为保持一致。
+
 Kind 6 可选择物理像素上的三段 box 卷积。`material_params.z` 为 1 时，两轴分别在离散像素上积分，镂空使用圆角主体在单像素内的面积，输出 alpha 量化至 8 bit。窗口超过 64 个物理像素时使用连续高斯近似。选择此模式要求 backend 显式声明 `device_box_shadows`，原能力 preflight 同时生效。
 
 固定差分环境可启用 SDL 的 Skia 圆角覆盖。后端对合格的圆角 Quad、实色圆角 Effect、圆角描边及离散外阴影生成物理像素 R8 覆盖，沿用同一有序命令、材质、资源上传事务和半开硬裁剪。覆盖纹理最大 512×512，超过范围、子合成和 paint 路径继续使用对应 shader。在实际原生捕获中记录启用的光栅方式和已提交的覆盖绘制次数。

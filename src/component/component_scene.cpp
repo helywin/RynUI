@@ -1,6 +1,7 @@
 #include "component/component_scene.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 namespace ryn::component {
@@ -50,6 +51,7 @@ void ComponentSceneComposer::set_fragment(runtime::SceneFragmentId fragment,
         replacement.outside_own_mask = previous->outside_own_mask;
         replacement.coverage = previous->coverage;
         replacement.backdrop = previous->backdrop;
+        replacement.group_opacity = previous->group_opacity;
     }
     bindings_[fragment.index] = std::move(replacement);
     bindings_dirty_ = true;
@@ -84,6 +86,19 @@ void ComponentSceneComposer::set_fragment_composition(runtime::SceneFragmentId f
     bindings_dirty_ = true;
 }
 
+void ComponentSceneComposer::set_fragment_opacity_group(runtime::SceneFragmentId fragment, float opacity) {
+    ensure_owner_thread();
+    auto* binding = find_binding(fragment);
+    if (!binding || !components_->contains(fragment) || !std::isfinite(opacity) || opacity < 0 || opacity > 1) {
+        throw std::invalid_argument("Opacity composition requires a live fragment and a finite opacity in 0..1");
+    }
+    if (binding->group_opacity != opacity) {
+        binding->group_opacity = opacity;
+        binding->publication_revision = ++publication_revision_;
+        bindings_dirty_ = true;
+    }
+}
+
 std::optional<FragmentPaintSnapshot> ComponentSceneComposer::paint_snapshot(runtime::SceneFragmentId fragment) const {
     ensure_owner_thread();
     const auto* binding = find_binding(fragment);
@@ -110,7 +125,7 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<ru
     graphics::SceneCompositionProgram storage;
     auto* program = &storage;
     const auto owners = nodes.live_rounded_content_owners();
-    for (const auto owner : owners) {
+    const auto hard_clip = [&](runtime::NodeId owner) {
         auto hard = nodes.content_clip(owner, window_clip);
         bool window_boundary = false;
         for (auto current = std::optional{owner}; current; current = nodes.require(*current).parent) {
@@ -126,14 +141,35 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<ru
             const float bottom = std::min(hard.y + hard.height, document_clip->y + document_clip->height);
             hard = {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
         }
-        program->requests.push_back({owner, nodes.rounded_content_clip(owner), hard});
+        return hard;
+    };
+    for (const auto owner : owners) {
+        program->requests.push_back({owner, nodes.rounded_content_clip(owner), hard_clip(owner)});
     }
     // A hidden request is still live and must be validated by the renderer.
+    std::vector<std::pair<runtime::NodeId, std::uint32_t>> opacity_groups;
     for (std::size_t index = 0; index < bindings_.size(); ++index) {
         const auto& binding = bindings_[index];
-        if (binding && binding->backdrop &&
-            components_->contains(runtime::SceneFragmentId{static_cast<std::uint32_t>(index), binding->generation})) {
+        if (!binding || (!binding->backdrop && binding->group_opacity == 1)) {
+            continue;
+        }
+        const runtime::SceneFragmentId fragment{static_cast<std::uint32_t>(index), binding->generation};
+        if (!components_->contains(fragment)) {
+            continue;
+        }
+        if (binding->backdrop) {
             program->requests.push_back(*binding->backdrop);
+        }
+        if (binding->group_opacity != 1) {
+            const auto owner = components_->root(components_->fragment_component(fragment));
+            if (std::ranges::any_of(opacity_groups, [&](auto entry) { return entry.first == owner; })) {
+                throw std::invalid_argument("A component has more than one opacity group");
+            }
+            opacity_groups.emplace_back(owner, static_cast<std::uint32_t>(program->requests.size()));
+            program->requests.push_back({.owner = owner,
+                                         .hard_clip = hard_clip(owner),
+                                         .activation = binding->group_opacity,
+                                         .opacity_group = true});
         }
     }
     std::vector<std::uint32_t> open;
@@ -165,14 +201,24 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip, std::optional<ru
         }
         ++diagnostics_.fragments_emitted;
         const auto root = components_->root(entry.component);
-        auto chain = nodes.rounded_content_owners(root);
-        if (binding->outside_own_mask && !chain.empty() && chain.back() == root) {
-            chain.pop_back();
-        }
         std::vector<std::uint32_t> next;
-        for (const auto owner : chain) {
-            const auto found = std::find(owners.begin(), owners.end(), owner);
-            next.push_back(static_cast<std::uint32_t>(found - owners.begin()));
+        if (!owners.empty() || !opacity_groups.empty()) {
+            for (auto current = std::optional{root}; current; current = nodes.require(*current).parent) {
+                const auto& node = nodes.require(*current);
+                if (node.rounded_content_radius && (!binding->outside_own_mask || *current != root)) {
+                    const auto found = std::find(owners.begin(), owners.end(), *current);
+                    next.push_back(static_cast<std::uint32_t>(found - owners.begin()));
+                }
+                const auto opacity =
+                    std::ranges::find_if(opacity_groups, [&](auto entry) { return entry.first == *current; });
+                if (opacity != opacity_groups.end()) {
+                    next.push_back(opacity->second);
+                }
+                if (node.clip_boundary) {
+                    break;
+                }
+            }
+            std::ranges::reverse(next);
         }
         transition(next);
         if (binding->backdrop) {

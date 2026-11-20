@@ -54,6 +54,7 @@ struct SceneBackendCapabilities final {
     bool exterior_shadows{};
     bool glyph_coverage_transfer{};
     bool device_box_shadows{};
+    bool opacity_groups{};
 };
 
 [[nodiscard]] constexpr SceneBackendCapabilities baseline_scene_capabilities() noexcept {

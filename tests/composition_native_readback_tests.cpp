@@ -154,6 +154,37 @@ void masks(SdlSceneRenderer& renderer, PlatformState& platform) {
     }
 }
 
+void opacity_group(SdlSceneRenderer& renderer, PlatformState& platform) {
+    for (const float scale : {1.0F, 1.5F}) {
+        RawScene f(renderer, platform, scale);
+        (void)f.effects.add(make_shadow_effect({{8, 12, 28, 24}, 0}, {ShadowKind::outer, {}, 0, 0, Color{1, 0, 0}}));
+        (void)f.effects.add(make_shadow_effect({{22, 12, 38, 24}, 0}, {ShadowKind::outer, {}, 0, 0, Color{0, 0, 1}}));
+        f.order.append_command({SceneDrawKind::rounded_effect, 0, 2});
+        auto p = std::make_shared<SceneCompositionProgram>();
+        p->scene_revision = f.order.revision();
+        p->requests.push_back(
+            {.owner = {1, 1}, .hard_clip = {0, 0, 40, 60}, .activation = .65F, .opacity_group = true});
+        p->operations = {{SceneCompositionOpKind::BeginMaskedGroup, 0, 0, 0},
+                         {SceneCompositionOpKind::DrawRange, 0, 1, 0},
+                         {SceneCompositionOpKind::EndMaskedGroup, 0, 0, 0}};
+        f.order.set_composition(p);
+        const auto physical = [&](float logical) {
+            return static_cast<unsigned>(logical * scale);
+        };
+        renderer.set_clear_color(Color{0, 0, 0, 0});
+        const auto transparent = f.read();
+        pixel(transparent, physical(13), physical(18), {166, 0, 0, 166});
+        pixel(transparent, physical(25), physical(18), {0, 0, 166, 166});
+        pixel(transparent, physical(39), physical(18), {0, 0, 166, 166});
+        pixel(transparent, physical(40), physical(18), {0, 0, 0, 0});
+        renderer.set_clear_color(Color{1, 1, 1, 1});
+        const auto opaque = f.read();
+        pixel(opaque, physical(13), physical(18), {255, 89, 89, 255});
+        pixel(opaque, physical(25), physical(18), {89, 89, 255, 255});
+        pixel(opaque, physical(40), physical(18), {255, 255, 255, 255});
+    }
+}
+
 void real_card(SdlSceneRenderer& renderer, float scale) {
     ryn_test::input_component::Fixture f;
     f.font_scale = scale;
@@ -735,6 +766,7 @@ int main(int argc, char** argv) {
         require((flags & SDL_WINDOW_HIDDEN) != 0 && (flags & SDL_WINDOW_INPUT_FOCUS) == 0,
                 "test window took desktop focus");
         masks(renderer, *platform.state);
+        opacity_group(renderer, *platform.state);
         for (const float scale : {.75F, 1.0F, 1.25F, 1.5F, 2.0F}) {
             real_card(renderer, scale);
         }

@@ -27,6 +27,7 @@ enum class RecordingFailure { none, begin, create, upload, commit, upload_except
     value.rounded_clip_abi_version = rounded_clip_abi_version;
     value.backdrop_filter_abi_version = backdrop_filter_abi_version;
     value.masked_groups = true;
+    value.opacity_groups = true;
     value.rounded_clip = true;
     value.cropped_target_coordinates = true;
     value.premultiplied_targets = true;
