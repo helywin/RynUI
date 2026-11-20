@@ -1,6 +1,10 @@
 #include "platform/default_font_chain.hpp"
 #include "text/text_engine.hpp"
 
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+#include "platform/skia_icon_rasterizer.hpp"
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -17,6 +21,22 @@ void require(bool condition, const char* message) {
         throw std::runtime_error(message);
     }
 }
+
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+void test_bundled_svg_mask_scan_guard() {
+    constexpr auto close_circle_filled = 4U;
+    ryn::font::GlyphBitmap bitmap;
+    const auto error = ryn::detail::rasterize_bundled_svg_glyph(close_circle_filled, 18, 0, 0,
+                                                                ryn::font::GlyphRasterMode::svg_layout, bitmap);
+    require(error.kind == ryn::font::FontErrorKind::none, "bundled close circle did not rasterize");
+    require(bitmap.width == 18 && bitmap.height == 18 && bitmap.row_stride == 18 && bitmap.advance_x == 18 &&
+                bitmap.svg_viewport_origin && bitmap.coverage.size() == 18 * 18,
+            "SVG temporary scan guard changed the exported glyph viewport");
+    // Pinned Skia rasterizing the same path into an interior 18x18 device viewport.
+    require(bitmap.coverage[8 * 18 + 17] == 239 && bitmap.coverage[12 * 18 + 17] == 63,
+            "SVG scan conversion clipped coverage against the bitmap edge");
+}
+#endif
 
 void test_default_ui_font_chain() {
     auto created = ryn::font::FontRuntime::create();
@@ -451,6 +471,9 @@ void test_explicit_file_chain_rejects_implicit_faces() {
 
 int main() {
     try {
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+        test_bundled_svg_mask_scan_guard();
+#endif
         test_default_ui_font_chain();
         test_windows_system_emoji_rendering();
         test_monospace_chain_resolution();

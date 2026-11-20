@@ -30,6 +30,9 @@ struct SvgIconLayer {
 
 #include "icons/ant_design_icon_svg_layers.inc"
 
+// Keep the SVG viewport clear of Skia's bitmap-edge scan conversion.
+constexpr int scan_guard = 4;
+
 [[nodiscard]] font::FontError error(const char* message) {
     return {font::FontErrorStage::rasterization, font::FontErrorKind::rasterization_failed, {}, {}, message};
 }
@@ -56,7 +59,9 @@ struct SvgIconLayer {
 }
 
 [[nodiscard]] std::uint8_t sample(const SkBitmap& mask, int x, int y) noexcept {
-    return x >= 0 && y >= 0 && x < mask.width() && y < mask.height() ? *mask.getAddr8(x, y) : 0;
+    return x >= 0 && y >= 0 && x < mask.width() - 2 * scan_guard && y < mask.height() - 2 * scan_guard
+               ? *mask.getAddr8(x + scan_guard, y + scan_guard)
+               : 0;
 }
 
 [[nodiscard]] float pixel_interval_coverage(int index, float first, float last) noexcept {
@@ -80,12 +85,14 @@ font::FontError rasterize_bundled_svg_glyph(std::uint32_t glyph, float physical_
     const int width = static_cast<int>(std::ceil(physical_em + phase_x));
     const int height = static_cast<int>(std::ceil(physical_em + phase_y));
     SkBitmap mask;
-    if (!mask.tryAllocPixels(SkImageInfo::MakeA8(width, height))) {
+    if (!mask.tryAllocPixels(SkImageInfo::MakeA8(width + 2 * scan_guard, height + 2 * scan_guard))) {
         return error("Cannot allocate the bundled SVG glyph mask.");
     }
     const bool clip_stationary_viewport = layer.composited && mode == font::GlyphRasterMode::svg_layout;
     const bool filter = layer.composited && !clip_stationary_viewport && (phase_x != 0 || phase_y != 0);
-    if (!rasterize_layer(layer, mask, physical_em, filter ? 0.0F : phase_x, filter ? 0.0F : phase_y)) {
+    const float mask_x = scan_guard + (filter ? 0.0F : phase_x);
+    const float mask_y = scan_guard + (filter ? 0.0F : phase_y);
+    if (!rasterize_layer(layer, mask, physical_em, mask_x, mask_y)) {
         return error("Cannot decode a locked bundled SVG path.");
     }
     font::GlyphBitmap bitmap;
@@ -105,7 +112,7 @@ font::FontError rasterize_bundled_svg_glyph(std::uint32_t glyph, float physical_
                 destination[x] = static_cast<std::uint8_t>(std::lround(coverage_x * sample(mask, x, y)));
             }
         } else if (!filter) {
-            std::copy_n(mask.getAddr8(0, y), width, destination.begin());
+            std::copy_n(mask.getAddr8(scan_guard, y + scan_guard), width, destination.begin());
         } else {
             for (int x = 0; x < width; ++x) {
                 const float same_row = std::lerp(sample(mask, x, y), sample(mask, x - 1, y), phase_x);
