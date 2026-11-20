@@ -162,6 +162,9 @@ try {
   }, fixture.motion === 'disabled');
   const cdp = await context.newCDPSession(page);
   await cdp.send('DOM.enable');
+  let compositorLayers = [];
+  cdp.on('LayerTree.layerTreeDidChange', ({layers}) => { if (layers) compositorLayers = layers; });
+  await cdp.send('LayerTree.enable');
   await cdp.send('CSS.enable');
   await cdp.send('Animation.enable');
   await cdp.send('Animation.setPlaybackRate', { playbackRate: 0 });
@@ -603,7 +606,7 @@ try {
       });
       async function captureCurrent(revision, pngPath, captureNonce, captureSequence) {
         const observePaint = () => observePaintStack(cdp,paintIdentities,{nonce,step:action.step,
-          revision,viewport:realRAF});
+          revision,viewport:realRAF,compositorLayers});
         const paintStack=await observePaint();
         const screenshot = await page.screenshot({ path: path.join(output, pngPath), animations: 'allow', caret: 'initial',
           scale: 'device', timeout: 5000 });

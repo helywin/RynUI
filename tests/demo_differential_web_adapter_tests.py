@@ -380,6 +380,13 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
         for row in dimmed_text:
             owners = [group['backend_node_id'] for group in row['composition_group_path']]
             self.assertTrue(text_ids.isdisjoint(owners), 'Text layout row established a second opacity group')
+        carets = [row for row in opened if 'compositor_caret' in row]
+        self.assertEqual(len(carets), 1)
+        editor, caret = carets[0]['actual'], carets[0]['compositor_caret']
+        self.assertEqual((editor['semantic'], editor['editor']['value']), ('gallery.select.controlled-search', ''))
+        self.assertEqual(caret['source'], 'Chromium LayerTree.snapshotCommandLog')
+        self.assertEqual((caret['bounds']['width'], caret['argb']), (1, '#E0000000'))
+        self.assertLess(caret['bounds']['height'], editor['bounds']['height'])
         initial = deepcopy(rows[0]['effective_inputs']['actual_initial_inputs'])
         self.assertEqual(initial['instances']['gallery.select.popup-note']['status'], 'deferred')
         self.assertEqual(initial['instances']['gallery.select.deliver']['status'], 'deferred')

@@ -483,6 +483,13 @@ def _layer_coverage(layer,point,dpr):
         return coverage,0<coverage<1
     if layer.get('solid_status_caret'):
         return float(_contains(b,point)),False
+    if layer.get('caret_paint_bounds'):
+        half=.5/dpr
+        x,y=point
+        width=max(0.,min(x+half,b['x']+b['width'])-max(x-half,b['x']))
+        height=max(0.,min(y+half,b['y']+b['height'])-max(y-half,b['y']))
+        coverage=min(1.,width*dpr)*min(1.,height*dpr)
+        return coverage,0<coverage<1-1e-10
     if layer.get('formal_svg'):
         # Chromium supplies continuous path bounds. Their intersection
         # with the pixel aperture can be nonempty outside the pixel center.
@@ -617,7 +624,7 @@ def _native_paint_inventory(checkpoint,origin,dpr=1):
         row=dict(identity=identity,side='native',bounds=bounds,radii=a.get('radius',0),color=tuple(rgba[:3]),
                  alpha=rgba[3],opacity=opacity,groups=[],clips=clips,order=(actual[0]['command'],actual[0]['instance']),
                  source=layer,kind='fill',role=layer.get('role'))
-        if kind==0 and layer.get('role')=='caret':row['kind']='caret'
+        if kind==0 and layer.get('role')=='caret':row.update(kind='caret',caret_paint_bounds=True)
         if kind==1:
             source=sources.get((index,page))
             if source is None:raise ProtocolError('submitted glyph has no actual scene/atlas/font inventory')
@@ -659,6 +666,36 @@ def _native_paint_inventory(checkpoint,origin,dpr=1):
     # Retain real composition program separately. No claim that an unobserved mask
     # is equivalent to a hard clip or opacity applied to each child.
     return sorted(result,key=lambda row:row['order']),stack
+
+
+def _empty_select_compositor_caret(node,viewport):
+    actual=node['actual'];editor=actual.get('editor',{})
+    fact=node.get('compositor_caret')
+    if (actual.get('attributes',{}).get('role')!='combobox' or not editor.get('focused') or
+            editor.get('value')!='' or any(editor.get('selection_'+end)!=0 for end in ('start','end')) or
+            editor.get('caret_animation')!='manual' or
+            not any(0<float(group['opacity'])<1 for group in node['composition_group_path'])):
+        if fact is not None:raise ProtocolError('empty Select caret is not bound to its focused DOM owner')
+        return None
+    box=actual['bounds'];rtl=node['style'].get('direction')=='rtl';edge=box['x']+(box['width'] if rtl else 0)
+    if not 0<=edge<viewport['width'] or box['y']>=viewport['height'] or box['y']+box['height']<=0:
+        if fact is not None:raise ProtocolError('invisible empty Select caret has unexpected compositor evidence')
+        return None
+    if not isinstance(fact,dict) or fact.get('source')!='Chromium LayerTree.snapshotCommandLog':
+        raise RunError(3,'calibration','actual empty Select compositor caret unavailable')
+    geometry=fact.get('bounds',{});encoded=fact.get('argb','')
+    if (not isinstance(geometry,dict) or set(geometry)!={'x','y','width','height'} or
+            any(type(value) not in (int,float) or not math.isfinite(value) for value in geometry.values()) or
+            geometry['width']!=1 or geometry['height']<=0 or
+            abs(geometry['x']+(geometry['width'] if rtl else 0)-edge)>1 or geometry['y']<box['y'] or
+            geometry['y']+geometry['height']>box['y']+box['height'] or
+            not re.fullmatch(r'[0-9]+',str(fact.get('compositor_layer_id',''))) or
+            not isinstance(encoded,str) or not re.fullmatch(r'#[0-9A-Fa-f]{8}',encoded)):
+        raise ProtocolError('invalid observed empty Select compositor caret geometry or material')
+    rgba=tuple(int(encoded[i:i+2],16)/255 for i in (3,5,7,1))
+    if any(abs(a-b)>.5/255 for a,b in zip(rgba,_css_rgba(editor['caret_color']),strict=True)):
+        raise ProtocolError('empty Select compositor caret differs from actual editor material')
+    return geometry,rgba
 
 
 def _web_paint_inventory(checkpoint,origin,dpr):
@@ -712,6 +749,10 @@ def _web_paint_inventory(checkpoint,origin,dpr):
         def add(kind,color,suffix,**fields):
             if color[3]==0:return
             result.append(dict(base,identity=identity+suffix,kind=kind,color=color[:3],alpha=color[3],**fields))
+        compositor_caret=_empty_select_compositor_caret(node,stack.get('viewport',{}))
+        if compositor_caret:
+            geometry,rgba=compositor_caret
+            add('caret',rgba,'/compositor-caret',bounds=relative(geometry,origin),caret_paint_bounds=True)
         if node['node_type']==3:
             text=a.get('text')
             if not text or text['content']!=node['layout_text']:raise RunError(3,'calibration','actual DOM/UA Text paint source unavailable')

@@ -93,7 +93,42 @@ async function readActualNodes(cdp, nodes) {
   return records;
 }
 
-export async function observePaintStack(cdp, identities, {nonce,step,revision,viewport}) {
+async function observeEmptySelectCaret(cdp, layer, compositorLayers, viewport) {
+  const {editor,attributes,bounds}=layer.actual;
+  if (attributes?.role!=='combobox' || !editor?.focused || editor.value!=='' || editor.selection_end!==0 ||
+      editor.selection_start!==0 || editor.caret_animation!=='manual' ||
+      !layer.composition_group_path.some(group=>Number(group.opacity)>0 && Number(group.opacity)<1)) return;
+  const rtl=layer.style.direction==='rtl';
+  const edge=rtl?bounds.x+bounds.width:bounds.x;
+  if (edge<0 || edge>=viewport.width || bounds.y+bounds.height<=0 || bounds.y>=viewport.height) return;
+  const matches=compositorLayers.filter(candidate=>{
+    const transform=candidate.transform;
+    const identity=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+    if (!candidate.drawsContent || candidate.backendNodeId || candidate.width!==1 || candidate.height<=0 ||
+        transform?.length!==identity.length || transform.some((value,i)=>i!==12 && i!==13 && value!==identity[i]))
+      return false;
+    // The anonymous caret layer must belong to the actual focused editor's
+    // inline start and fit vertically in that editor's real layout box.
+    return Math.abs(transform[12]+(rtl?candidate.width:0)-edge)<=1 &&
+      transform[13]>=bounds.y && transform[13]+candidate.height<=bounds.y+bounds.height;
+  });
+  if (matches.length!==1) throw new Error('visible empty Select caret has no unique compositor layer');
+  const candidate=matches[0];
+  const {snapshotId}=await cdp.send('LayerTree.makeSnapshot',{layerId:candidate.layerId});
+  try {
+    const {commandLog}=await cdp.send('LayerTree.snapshotCommandLog',{snapshotId});
+    const color=commandLog[0]?.params?.paint?.color;
+    if (commandLog.length!==1 || commandLog[0].method!=='drawPaint' || !/^#[0-9A-Fa-f]{8}$/.test(color))
+      throw new Error('empty Select caret does not have a single compositor paint');
+    return {source:'Chromium LayerTree.snapshotCommandLog',compositor_layer_id:candidate.layerId,
+      bounds:{x:candidate.transform[12],y:candidate.transform[13],width:candidate.width,height:candidate.height},
+      argb:color};
+  } finally {
+    await cdp.send('LayerTree.releaseSnapshot',{snapshotId});
+  }
+}
+
+export async function observePaintStack(cdp, identities, {nonce,step,revision,viewport,compositorLayers=[]}) {
   const liveViewport=(await cdp.send('Runtime.evaluate',{expression:'({scroll_x:scrollX,scroll_y:scrollY,width:innerWidth,height:innerHeight,dpr:devicePixelRatio})',returnByValue:true})).result.value;
   const objectGroup = 'readonly-paint-roots';
   let roots;
@@ -151,6 +186,11 @@ export async function observePaintStack(cdp, identities, {nonce,step,revision,vi
   for(const layer of layers)layer.composition_group_path=layer.ancestry.slice().reverse()
     .filter(id=>groupByNode.has(id)).map(id=>({backend_node_id:id,paint_order:groupByNode.get(id).paint_order,
       opacity:groupByNode.get(id).style.opacity}));
+  const focused=layers.find(layer=>layer.actual.editor?.focused);
+  if(focused) {
+    const caret=await observeEmptySelectCaret(cdp,focused,compositorLayers,liveViewport);
+    if(caret)focused.compositor_caret=caret;
+  }
   // Chromium can omit paint order for a retained placeholder hidden by its
   // computed visibility or a zero-opacity group. Keep its DOM evidence and
   // require order for each node that can contribute to the screenshot.

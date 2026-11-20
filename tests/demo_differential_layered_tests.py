@@ -14,7 +14,7 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _joint_paint_output_basis,_paint_coordinates,_palette_basis,_bounded_paint_basis,
                                           _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints,_status_input_caret,
                                           _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error,
-                                          _matches_soft_shadow_rgb)
+                                          _matches_soft_shadow_rgb,_empty_select_compositor_caret)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
@@ -70,6 +70,30 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_empty_select_caret_binds_compositor_paint_to_the_focused_editor(self):
+        viewport=box(0,0,80,60)
+        editor=dict(focused=True,value='',selection_start=0,selection_end=0,caret_animation='manual',
+                    caret_color='rgba(0, 0, 0, 0.88)')
+        node=dict(actual=dict(editor=editor,attributes={'role':'combobox'},bounds=box(10,10,45,22)),
+                  style={'direction':'ltr'},composition_group_path=[dict(opacity='0.25')])
+        with self.assertRaises(RunError):
+            _empty_select_compositor_caret(node,viewport)
+        source=box(10,12,1,19)
+        node['compositor_caret']=dict(source='Chromium LayerTree.snapshotCommandLog',compositor_layer_id='7',
+                                      bounds=source,argb='#E0000000')
+        observed,rgba=_empty_select_compositor_caret(node,viewport)
+        self.assertEqual((observed,rgba),(source,(0.,0.,0.,224/255)))
+        coverage,edge=_layer_coverage(dict(bounds=source,kind='caret',caret_paint_bounds=True),(11,13),1.5)
+        self.assertAlmostEqual(coverage,.5)
+        self.assertTrue(edge)
+        node['compositor_caret']['argb']='#E0000010'
+        with self.assertRaises(ProtocolError):
+            _empty_select_compositor_caret(node,viewport)
+        node['compositor_caret']['argb']='#E0000000'
+        editor['focused']=False
+        with self.assertRaises(ProtocolError):
+            _empty_select_compositor_caret(node,viewport)
+
     def test_gapped_focus_ring_compares_fixed_output_under_near_parallel_colors(self):
         common=dict(bounds=box(),alpha=1.,opacity=1.,groups=[])
         fill=dict(common,kind='fill',color=(22/255,119/255,1.))
