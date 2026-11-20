@@ -3454,6 +3454,9 @@ if(RYNUI_HAS_SDL_GPU)
     target_compile_definitions(rynui_composition_native_readback_tests PRIVATE
         "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    if(RYNUI_ENABLE_PINNED_SVG_ICON_RASTER)
+        target_compile_definitions(rynui_composition_native_readback_tests PRIVATE RYNUI_TEST_LOCKED_SHAPE_COVERAGE=1)
+    endif()
     rynui_embed_target_shaders(rynui_composition_native_readback_tests)
     if(WIN32)
         add_test(NAME rynui.composition_d3d12_hidden COMMAND rynui_composition_native_readback_tests direct3d12)

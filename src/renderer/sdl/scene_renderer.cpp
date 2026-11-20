@@ -814,7 +814,7 @@ void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
         throw std::logic_error("Quad draw resources are not attached");
     }
     const auto* owned = resource(quad_buffer_, ResourceKind::quad);
-    if (!composition_active_ && owned && owned->coverage) {
+    if (owned && owned->coverage && !(composition_active_ && composition_owns_outer_coverage_)) {
         draw_coverage_ranges(*owned, first, count, &SdlSceneRenderer::draw_quad_range);
         return;
     }
@@ -863,7 +863,8 @@ void SdlSceneRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t co
         throw std::logic_error("Rounded effect draw resources are not attached");
     }
     const auto* owned = resource(effect_resources_->buffer(), ResourceKind::effect);
-    if (!composition_active_ && owned && owned->coverage && !effect_resources_->draw_binding(first, count).link) {
+    if (owned && owned->coverage && !(composition_active_ && composition_owns_outer_coverage_) &&
+        !effect_resources_->draw_binding(first, count).link) {
         draw_coverage_ranges(*owned, first, count, &SdlSceneRenderer::draw_effect_range);
         return;
     }
@@ -1947,6 +1948,7 @@ void SdlSceneRenderer::execute_composition(void* command_handle) {
                 SDL_BindGPUFragmentSamplers(pass, 0, &sample, 1);
                 SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
             } else if (op.kind == graphics::SceneCompositionOpKind::DrawRange) {
+                composition_owns_outer_coverage_ = op.coverage == graphics::DrawCoverageRole::GroupOwnsOuterCoverage;
                 const DrawCoverageControlV1 control{{static_cast<std::uint32_t>(op.coverage), 0, 0, 0}};
                 SDL_PushGPUFragmentUniformData(command, 1, &control, sizeof(control));
                 RoundedClipUniformV1 owner{};

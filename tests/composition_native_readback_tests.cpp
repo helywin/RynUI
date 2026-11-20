@@ -23,6 +23,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <span>
 #include <stdexcept>
 #include <string>
 
@@ -99,8 +100,8 @@ struct RawScene {
         metrics = {std::uint32_t(m.pixel_width), std::uint32_t(m.pixel_height), scale};
     }
 
-    SceneRgbaReadback read() {
-        require(resources.synchronize({nullptr, atlas, glyphs, &effects, metrics, &images, &order}),
+    SceneRgbaReadback read(QuadInstanceStore* quads = nullptr) {
+        require(resources.synchronize({quads, atlas, glyphs, &effects, metrics, &images, &order}),
                 "composition upload");
         require(renderer.attach_scene(resources.attach(order)), "composition attach");
         SceneRgbaReadback result;
@@ -184,6 +185,70 @@ void opacity_group(SdlSceneRenderer& renderer, PlatformState& platform) {
         pixel(opaque, physical(40), physical(18), {255, 255, 255, 255});
     }
 }
+
+#if defined(RYNUI_TEST_LOCKED_SHAPE_COVERAGE)
+void locked_coverage_in_composition(const std::string& driver) {
+    PlatformConfig config;
+    config.title = "RynUI hidden locked coverage readback";
+    config.width = 128;
+    config.height = 96;
+    config.hidden = true;
+    config.high_pixel_density = false;
+    auto platform = PlatformState::create(config);
+    require(bool(platform), "hidden locked coverage platform");
+    SdlSceneRenderer renderer(*platform.state, default_sdl_gpu_debug, true);
+    require(renderer.locked_coverage() && std::string(renderer.gpu_driver()) == driver, "actual locked coverage GPU");
+    renderer.set_clear_color(Color{0, 0, 0, 0});
+
+    constexpr float scale = 1.5F;
+    QuadInstanceStore quads;
+    RawScene f(renderer, *platform.state, scale);
+    for (const float y : {9.25F, 50.25F}) {
+        const QuadInstance quad{.bounds = {18.25F / scale, y / scale, 31 / scale, 27 / scale},
+                                .color = {1, 0, 0, 1},
+                                .corner_radius = 7 / scale};
+        (void)quads.append(std::span{&quad, 1});
+        (void)f.effects.add(make_shadow_effect({{57.5F / scale, y / scale, 28 / scale, 27 / scale}, 7 / scale},
+                                               {ShadowKind::outer, {}, 0, 0, Color{0, 0, 1}}));
+    }
+    for (const unsigned i : {0U, 1U}) {
+        f.order.append_command({SceneDrawKind::quad, i, 1});
+        f.order.append_command({SceneDrawKind::rounded_effect, i, 1});
+    }
+    auto before = renderer.counters().locked_coverage_draws;
+    const auto baseline = f.read(&quads);
+    require(renderer.counters().locked_coverage_draws - before == 4, "ordinary frame must draw all four locked masks");
+
+    auto p = std::make_shared<SceneCompositionProgram>();
+    p->scene_revision = f.order.revision();
+    p->requests.push_back({.owner = {1, 1},
+                           .hard_clip = {12 / scale, 43 / scale, 82 / scale, 41 / scale},
+                           .activation = .65F,
+                           .opacity_group = true});
+    p->operations = {{SceneCompositionOpKind::DrawRange, 0, 2, 0},
+                     {SceneCompositionOpKind::BeginMaskedGroup, 0, 0, 0},
+                     {SceneCompositionOpKind::DrawRange, 2, 2, 0},
+                     {SceneCompositionOpKind::EndMaskedGroup, 0, 0, 0}};
+    f.order.set_composition(std::move(p));
+    before = renderer.counters().locked_coverage_draws;
+    const auto composed = f.read(&quads);
+    require(renderer.counters().locked_coverage_draws - before == 4,
+            "root and cropped passes must both draw their locked masks");
+    for (unsigned y = 0; y < baseline.height; ++y) {
+        for (unsigned x = 0; x < baseline.width; ++x) {
+            const auto offset = std::size_t(y) * baseline.row_pitch + x * 4;
+            std::array<int, 4> rgba{};
+            for (std::size_t channel = 0; channel < rgba.size(); ++channel) {
+                const int code = std::to_integer<unsigned char>(baseline.pixels[offset + channel]);
+                rgba[channel] = y < 43 ? code : int(std::lround(code * .65));
+            }
+            pixel(composed, x, y, rgba, y < 43 ? 0 : 1);
+        }
+    }
+    // For self coverage the rounded group still owns the outer mask once.
+    masks(renderer, *platform.state);
+}
+#endif
 
 void real_card(SdlSceneRenderer& renderer, float scale) {
     ryn_test::input_component::Fixture f;
@@ -767,6 +832,9 @@ int main(int argc, char** argv) {
                 "test window took desktop focus");
         masks(renderer, *platform.state);
         opacity_group(renderer, *platform.state);
+#if defined(RYNUI_TEST_LOCKED_SHAPE_COVERAGE)
+        locked_coverage_in_composition(argv[1]);
+#endif
         for (const float scale : {.75F, 1.0F, 1.25F, 1.5F, 2.0F}) {
             real_card(renderer, scale);
         }

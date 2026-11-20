@@ -174,7 +174,8 @@ void SdlSceneRenderer::draw_coverage(const CoverageDraw& draw) {
         throw std::logic_error("Locked coverage sampler is not attached");
     }
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
-    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
+    SDL_BindGPUGraphicsPipeline(
+        pass, static_cast<SDL_GPUGraphicsPipeline*>(composition_active_ ? composition_pipelines_[1] : glyph_pipeline_));
     const SDL_GPUBufferBinding vertices{
         static_cast<SDL_GPUBuffer*>(native_resource(draw.vertices, ResourceKind::glyph)), 0};
     SDL_BindGPUVertexBuffers(pass, 0, &vertices, 1);

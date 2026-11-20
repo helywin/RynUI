@@ -165,6 +165,8 @@ Core 内部 Node 的 paint opacity 是祖先相乘的纯绘制包络，与输入
 
 全部旧 instances 按完整窗口 metrics 打包，新 pass 才映射 crop；直边和圆角 draw support 外延 1 physical px，真实 ancestor hard clip 不扩大。composition 的新物理 shape 坐标必须保留 half-pixel 表示能力，不向无 composition 的旧 logical scene 增加该约束。
 
+启用 pinned 形状光栅化时，普通 Quad 和 Effect 在 composition 的根目标与局部目标中继续使用已经上传的 R8 覆盖。局部目标复用 glyph composition 管线，将原窗口物理坐标映射到 crop。使用 `GroupOwnsOuterCoverage` 的 draw range 由圆角 group 统一计算外边缘覆盖，避免同一边缘重复合成。
+
 SDL 使用 RGBA8_UNORM、PM 中间 target、sample_count1；primitive 保持 straight source-over，masked PM 输出使用 ONE 合成。Backdrop 冻结 root 的当前 prefix 到独立 B，完整窗口作为保守 halo ROI，H/F 两遍 normalized Gaussian 后以禁用 blending 的 replacement 写回；不读写同一 texture，不跨帧缓存像素。绘制和 RGBA readback 调用同一个 program 执行器。
 
 SDL 的实际接受上限为 target 16384×16384、全部未完成 frame 加本次容量 512 MiB、2 frame sets、32 层、4096 live requests、1048576 ops、Gaussian radius256、weights16 MiB；这些不是显存可用保证。共同 preflight 检查所有 live 请求，包括 hidden/opacity0；target 按实际容量计预算。资源与旧 primitive/Image 共享上传事务，失败失效附件并完整重试；frame fence 完成前不能重写同一 target，owner/epoch 改变失效资格，关闭后的安全资源释放回冷路径。冷场景不创建 composition target、weights 或 pipeline。shader closure/反射和 Recording 属于必要源码/资源检查，Windows D3D12 与 Linux Vulkan 的真实 GPU 结果分别记录。

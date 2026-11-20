@@ -277,6 +277,7 @@ private:
     std::uint64_t completed_composition_fence_{};
     std::uint64_t next_readback_id_{};
     bool composition_active_{};
+    bool composition_owns_outer_coverage_{};
     bool locked_coverage_{};
     PlatformState* platform_;
     SdlGpuBinding binding_;
