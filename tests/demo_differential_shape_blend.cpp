@@ -116,7 +116,8 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
             bool adjacent_codes = true;
             for (std::size_t i = 0; i < sample.native.size(); ++i) {
                 const auto shadowed = over_rgb8(source.shadow_color[i], 255, shadow_alpha);
-                const auto filled = over_rgb8(source.fill_color[i], shadowed, fill_alpha);
+                const auto filled = source.split_fill ? over_rgb8_split(source.fill_color[i], shadowed, fill_alpha)
+                                                      : over_rgb8(source.fill_color[i], shadowed, fill_alpha);
                 const auto border_over_fill = source.split_border
                                                   ? over_rgb8_split(source.border_color[i], filled, border_alpha)
                                                   : over_rgb8(source.border_color[i], filled, border_alpha);
@@ -127,7 +128,8 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
                 sample.native[i] = static_cast<std::uint8_t>(output);
                 adjacent_codes &= std::abs(int(sample.web[i]) - int(sample.native[i])) <= 1;
             }
-            if (sample.web != sample.native && ((source.border && caster.shadow_alpha > 0) || adjacent_codes)) {
+            if (sample.web != sample.native &&
+                ((source.border && caster.shadow_alpha > 0) || source.split_fill || adjacent_codes)) {
                 different.push_back(sample);
             }
         }

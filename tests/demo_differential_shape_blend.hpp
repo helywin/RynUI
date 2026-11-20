@@ -19,6 +19,7 @@ struct ShapeBlendSource {
     std::uint32_t width;
     std::uint32_t height;
     bool split_border;
+    bool split_fill{};
 };
 
 struct ShapeBlendSample {

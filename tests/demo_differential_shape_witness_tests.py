@@ -154,9 +154,25 @@ class RoundedBlendWitnessTests(unittest.TestCase):
         expected, _ = next(_stacks(web, 'web', 1, True))
         actual, _ = next(_stacks(native, 'native', 1, True))
         self.assertEqual(actual, expected)
-        self.assertTrue(actual[0][-1])
-        self.assertFalse(next(_stacks(native, 'native', 1, False))[0][0][-1])
-        self.assertFalse(next(_stacks(native, 'native', 1.5, True))[0][0][-1])
+        self.assertEqual(actual[0][-2:], (True, False))
+        self.assertEqual(next(_stacks(native, 'native', 1, False))[0][0][-2:], (False, False))
+        self.assertEqual(next(_stacks(native, 'native', 1.5, True))[0][0][-2:], (False, False))
+
+    def test_split_fill_is_only_admitted_on_proven_integer_llvmpipe_path(self):
+        def source(side, left=268):
+            shadow, fill, _ = hard_shadow_stack(side)
+            bounds = dict(x=left, y=0, width=260, height=24)
+            shadow.update(bounds=bounds, radii=4, offset=[0, 2], spread=0, knockout=side == 'web')
+            fill.update(bounds=bounds, radii=4, color=(22/255, 119/255, 1))
+            return shadow, fill
+
+        web, native = source('web'), source('native')
+        actual = next(_stacks(web, 'web', 1, True))[0]
+        self.assertEqual(actual, next(_stacks(native, 'native', 1, True))[0])
+        self.assertEqual(actual[0][-2:], (False, True))
+        self.assertEqual(next(_stacks(native, 'native', 1, False))[0][0][-2:], (False, False))
+        self.assertEqual(next(_stacks(native, 'native', 1.5, True))[0][0][-2:], (False, False))
+        self.assertEqual(next(_stacks(source('native', 268.25), 'native', 1, True))[0][0][-2:], (False, False))
 
     def test_integer_opaque_stroke_requires_exact_box_and_both_encoded_colors(self):
         web, native = (hard_shadow_stack(side)[1:] for side in ('web', 'native'))

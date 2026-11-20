@@ -68,7 +68,7 @@ def _stacks(rows, side, dpr, split_coverage=False):
         split_border = (split_coverage and width == 1 and
                         all(value == round(value) for value in (x, y, w, h, radius)))
         spec = (x - dx, y - dy, w, h, radius, width, inset, spread, alpha, shadow_color, border_color,
-                (255, 255, 255), 0, 0, 0, split_border)
+                (255, 255, 255), 0, 0, 0, split_border, False)
         yield (spec, dx, dy), layers
     for index, (shadow, following) in enumerate(zip(rows, rows[1:])):
         if shadow['kind'] != 'shadow':
@@ -108,7 +108,10 @@ def _stacks(rows, side, dpr, split_coverage=False):
             continue
         dx, dy = math.floor(x) - guard, math.floor(y) - guard
         alpha = struct.unpack('<f', struct.pack('<f', shadow['alpha']))[0]
-        spec = (x - dx, y - dy, w, h, radius, 0, inset, 0, alpha, shadow_color, (0, 0, 0), fill_color, ox, oy, 0, False)
+        split_fill = (split_coverage and dpr == 1 and
+                      all(value == round(value) for value in (x, y, w, h, radius, ox, oy)))
+        spec = (x - dx, y - dy, w, h, radius, 0, inset, 0, alpha, shadow_color, (0, 0, 0),
+                fill_color, ox, oy, 0, False, split_fill)
         yield (spec, dx, dy), layers
         if (not outline or outline['bounds'] != bounds or _radius(outline) * dpr != radius
                 or outline['alpha'] != 1 or outline['opacity'] != 1
@@ -122,7 +125,7 @@ def _stacks(rows, side, dpr, split_coverage=False):
             continue
         dx, dy = math.floor(x) - pad, math.floor(y) - pad
         spec = (x - dx, y - dy, w, h, radius, stroke, inset, 0, alpha, shadow_color, focus_color,
-                fill_color, ox, oy, gap, False)
+                fill_color, ox, oy, gap, False, False)
         layers = (shadow, fill, outline) if side == 'web' else (shadow, outline, fill)
         yield (spec, dx, dy), layers
     for fill, border in zip(rows, rows[1:]):
@@ -151,7 +154,7 @@ def _stacks(rows, side, dpr, split_coverage=False):
                 or any(value != round(value) for value in (x, y, w, h, radius))):
             continue
         dx, dy = round(x) - 4, round(y) - 4
-        spec = (4, 4, w, h, radius, width, 0, 0, 0, (0, 0, 0), color, (255, 255, 255), 0, 0, 0, False)
+        spec = (4, 4, w, h, radius, width, 0, 0, 0, (0, 0, 0), color, (255, 255, 255), 0, 0, 0, False, False)
         yield (spec, dx, dy), layers
 
 
@@ -175,8 +178,10 @@ def _batch(root, binary, needed, cache):
     request, output = work / 'request.json', work / 'output'
     stacks = [dict(bounds=dict(x=x, y=y, width=w, height=h), radius=radius, border_width=width,
                    caster_inset=inset, spread=spread, shadow_alpha=alpha, shadow_color=shadow, border_color=border,
-                   fill_color=fill, offset_x=ox, offset_y=oy, outline_gap=gap, split_border=split_border)
-              for x, y, w, h, radius, width, inset, spread, alpha, shadow, border, fill, ox, oy, gap, split_border in needed]
+                   fill_color=fill, offset_x=ox, offset_y=oy, outline_gap=gap,
+                   split_border=split_border, split_fill=split_fill)
+              for x, y, w, h, radius, width, inset, spread, alpha, shadow, border, fill, ox, oy, gap,
+              split_border, split_fill in needed]
     write_json(request, dict(stacks=stacks))
     process([binary, '--shape-blend-witnesses', request, '--output', output], work / 'process', 60, failure_code=3)
     receipt = read(output / 'shape-blend-witnesses.json')
