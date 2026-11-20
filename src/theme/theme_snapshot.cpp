@@ -2426,6 +2426,13 @@ void apply_select_override(SelectThemeToken& token, const SelectTokenOverride& o
     token.metrics.option_border_radius =
         fixed_length(o.option_border_radius, option_radius, "Select option_border_radius must be non-negative");
     token.metrics.gap = fixed_length(o.gap, token.metrics.gap, "Select gap must be non-negative");
+    if (o.selected_open_opacity) {
+        const auto opacity = *o.selected_open_opacity;
+        if (!std::isfinite(opacity) || opacity < 0 || opacity > 1) {
+            throw std::invalid_argument("Select selected_open_opacity must be in [0, 1]");
+        }
+        token.metrics.selected_open_opacity = opacity;
+    }
     if (o.font_family) {
         token.typography.font_family = *o.font_family;
     }

@@ -242,6 +242,7 @@ struct InputState {
     InputStatus status{InputStatus::Default};
     InputVariant variant{InputVariant::Outlined};
     String placeholder;
+    std::optional<float> embedded_value_opacity;
     std::function<void(String)> on_change;
     std::function<void(String)> on_submit;
     std::function<void()> on_form_submit;
@@ -388,6 +389,15 @@ InputMaterialValues material_values(const InputState& state, const InputTokenSet
     result.colors[5] = tokens.colors.placeholder;
     result.colors[6] = tokens.colors.selection_background;
     result.colors[7] = tokens.colors.selection_foreground;
+    if (state.embedded_value_opacity) {
+        const auto dim = [opacity = *state.embedded_value_opacity](Color color) {
+            return Color{color.red(), color.green(), color.blue(), color.alpha() * opacity};
+        };
+        result.colors[2] = dim(visual.foreground);
+        result.colors[4] = dim(visual.caret);
+        // A compound selector uses this slot for its selected value while the query is empty.
+        result.colors[5] = dim(visual.foreground);
+    }
     for (std::size_t i = 0; i < input_shadow_layer_capacity; ++i) {
         result.colors[8 + i] = i < visual.shadow->size() ? (*visual.shadow)[i].color : Color(0, 0, 0, 0);
     }
@@ -860,6 +870,7 @@ struct InputPropsAccess {
         state.layout.suffix = state.custom_suffix || state.clear_visible.get();
         state.layout.right_to_left = props.mirror_affixes_ && direction == TextDirection::RightToLeft;
         state.layout.fit_affixes = props.fit_affixes_;
+        state.embedded_value_opacity = detail::read_prop(props.embedded_value_opacity_);
         build.mount_slot(
             component, Content{[&] {
                 auto& slots = runtime::require_component_build_context();
@@ -935,6 +946,12 @@ struct InputPropsAccess {
                 }
             }));
         };
+        connect(props.embedded_value_opacity_, [](auto& owner, auto& current, std::optional<float> opacity) {
+            if (current.embedded_value_opacity != opacity) {
+                current.embedded_value_opacity = opacity;
+                owner.invalidate(current.mounted.component, runtime::DirtyFlags::Material);
+            }
+        });
         connect(props.common_.direction_, [mirror_affixes = props.mirror_affixes_](auto& owner, auto& current,
                                                                                    TextDirection value) {
             if (!text::valid_text_direction(value)) {

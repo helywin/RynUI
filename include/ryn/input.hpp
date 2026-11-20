@@ -300,6 +300,7 @@ private:
     std::shared_ptr<detail::InputNumberConfig> number_;
     bool fit_affixes_{};
     bool mirror_affixes_{};
+    Prop<std::optional<float>> embedded_value_opacity_{std::optional<float>{}};
 };
 
 struct InputPrefixSlot final {};

@@ -37,6 +37,7 @@ void tokens_and_inheritance() {
     custom.select.tokens.active_outline_color = Color::rgba8(10, 30, 50, 98);
     custom.select.tokens.border_radius = dp(12);
     custom.select.tokens.option_height = dp(40);
+    custom.select.tokens.selected_open_opacity = .4F;
     custom.select.tokens.selected_font_weight = 700;
     custom.select.tokens.z_index_popup = 1100;
     const auto parent = resolve_theme(custom);
@@ -46,6 +47,8 @@ void tokens_and_inheritance() {
           "Select selected background override no longer applies to the highlighted selection");
     check(parent.select().metrics.border_radius == 12 && parent.select().metrics.option_border_radius == 12,
           "legacy Select radius override no longer applies to both surfaces");
+    check(token.metrics.selected_open_opacity == .25F && parent.select().metrics.selected_open_opacity == .4F,
+          "Select selected-value opacity default and override changed");
     check(resolve_theme({}, &parent).select() == parent.select(), "Select inheritance");
     ThemeConfig reset;
     reset.select.tokens.option_border_radius = dp(2);

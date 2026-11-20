@@ -1,7 +1,9 @@
 #include "component/select_component.hpp"
 #include "support/input_fixture.hpp"
 
+#include <cmath>
 #include <iostream>
+#include <utility>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
 #endif
@@ -337,6 +339,54 @@ void controlled_close_preserves_search_until_accepted() {
           "accepted close did not clear search after the close callback");
 }
 
+void open_selected_value_dims_only_the_editor_content() {
+    Fixture f;
+    f.services.set_motion_preference(animation::MotionPreference::reduced);
+    Signal<bool> open{false};
+    Signal<String> query{String{}};
+    SelectRef ref;
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .options({{1, u8"One"}, {2, u8"Two"}})
+                   .defaultValue(1)
+                   .open(open)
+                   .showSearch()
+                   .searchValue(query)
+                   .ref(ref));
+    }});
+    f.synchronize();
+    const auto owner = f.services.select().mounted().front();
+    const auto selector = f.services.select().snapshot(owner).selector;
+    const auto layers = f.inputs.text_layers(selector);
+    const auto alpha = [&](auto id) {
+        return std::as_const(f.scene).text_state(id).material().color[3];
+    };
+    const auto caret_alpha = [&] {
+        const auto paint = f.inputs.paint_snapshot(selector);
+        const auto overlay = f.services.surfaces().paint_snapshot(paint.overlay_surface);
+        check(overlay && paint.caret_surface_offset, "retained Select caret source missing");
+        return overlay->quads.at(*paint.caret_surface_offset).color[3];
+    };
+    const auto base_alpha = alpha(layers.base);
+    check(ref.focus(), "searchable Select did not focus");
+    f.synchronize();
+    const auto base_caret_alpha = caret_alpha();
+    open.set(true);
+    f.synchronize();
+    check(f.services.select().snapshot(owner).visible &&
+              std::abs(alpha(layers.placeholder) - base_alpha * .25F) < 1e-6F &&
+              std::abs(caret_alpha() - base_caret_alpha * .25F) < 1e-6F,
+          "open Select failed to dim the retained selected value and caret");
+    query.set(String{u8"Tw"});
+    f.synchronize();
+    check(alpha(layers.base) == base_alpha && caret_alpha() == base_caret_alpha,
+          "active Select query inherited selected-value opacity");
+    open.set(false);
+    f.synchronize();
+    check(alpha(layers.base) == base_alpha && f.inputs.text_layers(selector).base == layers.base,
+          "closing Select changed value paint or remounted its editor");
+}
+
 void scrolling_edges_and_idle() {
     std::vector<SelectOption> options;
     for (int i = 0; i < 100; ++i) {
@@ -605,6 +655,7 @@ int main() {
         direction_and_rich_affix_size();
         search_ime_and_dynamic_options();
         controlled_close_preserves_search_until_accepted();
+        open_selected_value_dims_only_the_editor_content();
         scrolling_edges_and_idle();
         controlled_states_and_theme();
         callback_retirement_and_validation();

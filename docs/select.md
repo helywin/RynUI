@@ -69,6 +69,8 @@ Multiple 选择既有选项，Tags 允许通过 Enter 创建字符串值。分�
 
 高亮的选中项默认使用更深的选中背景。`option_selected_background` 可同时覆盖普通和高亮选中背景。`option_active_selected_background` 可单独覆盖高亮选中背景。清空按钮默认使用透明背景，仍可通过 `clear_background` 覆盖。
 
+单选弹层打开、已有选中值且搜索为空时，显示的选中值和搜索光标使用 `selected_open_opacity`，默认 0.25。输入查询或关闭弹层后恢复对应的常态颜色，保留编辑器和输入会话。
+
 ## 异步、事件和 Form
 
 `SelectSource = AsyncOptionsSource<SelectOption>` 与 AutoComplete 使用同一应用 provider、线程安全取消票据和 `OwnerThreadPost` 合同；应用负责 transport 与 owner-thread event loop，Core 不直接联网。新查询替代旧请求，关闭/reset/隐藏/禁用/窗口失活/source 更换/销毁后旧结果失效；仅当前 generation 的首次 owner-thread 完成可发布。错误交给 `onLoadError`，不替换 options。完整适配说明见 [AutoComplete](auto-complete.md)。Gallery 的异步样例是明确标注的可交付合成数据。

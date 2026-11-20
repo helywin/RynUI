@@ -160,6 +160,7 @@ struct SelectState final {
     Signal<IconSource> arrow{IconSource{IconName::DownOutlined}};
     Signal<bool> spinning{false};
     Signal<InputTokenOverride> selector_theme{InputTokenOverride{}};
+    Signal<std::optional<float>> embedded_value_opacity{std::optional<float>{}};
     std::array<theme_runtime::Subscription, 5> subscriptions;
     bool show_search{};
     bool allow_clear{};
@@ -529,6 +530,16 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         return;
     }
     read_only.set(!s->show_search || s->explicit_read_only);
+    s = select_state(*services_, id);
+    if (!s) {
+        return;
+    }
+    const auto embedded_opacity =
+        s->visible && !multi && s->model.value() && s->model.query().empty()
+            ? std::optional{services_->components().theme_scope(id)->snapshot().select().metrics.selected_open_opacity}
+            : std::nullopt;
+    const auto presentation = s->embedded_value_opacity;
+    presentation.set(embedded_opacity);
     s = select_state(*services_, id);
     if (!s) {
         return;
@@ -1879,6 +1890,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                       InputProps input_props;
                       input_props.fit_affixes_ = prefix.has_value() || suffix.has_value();
                       input_props.mirror_affixes_ = true;
+                      input_props.embedded_value_opacity_ = s.embedded_value_opacity;
                       Input(input_props.value(s.display)
                                 .placeholder(s.placeholder)
                                 .readOnly(s.read_only)
