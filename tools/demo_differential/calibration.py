@@ -379,6 +379,7 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
     fences={}
     transparent_probes={}
     raster_measurements={}
+    control_pixel_results={}
     partitions={'train':[],'holdout':[],'negative':[]}
     for trial in trials:
         exact_fields(trial,'identity partition board fault restart native web','calibration trial')
@@ -507,11 +508,14 @@ def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=No
         # Pixel-identical repeats with identical submitted sources have the
         # same deterministic measurement within this evidence evaluation.
         raster_key=(trial['board'],trial['fault'],tuple(
-            (record['capture']['raw_sha256'],record['snapshot_sha256']) for record in observations))
+            (capture['raw_sha256'],record['snapshot_sha256'],capture['width'],capture['height'],capture['dpr'],
+             request_bytes(capture['clear_rgba']))
+            for record in observations for capture in (record['capture'],)))
         if raster_key not in raster_measurements:
             details = None if measurements is None else {}
             values,hard_failures=measure_controls(corpus,trial,observations,images,manifest['font_priors'],
-                                                  details=details,witnesses=witnesses,icon_masks=icon_masks)
+                                                  details=details,witnesses=witnesses,icon_masks=icon_masks,
+                                                  pixel_results=control_pixel_results)
             raster_measurements[raster_key]=(values,hard_failures,details)
         values,hard_failures,details=raster_measurements[raster_key]
         if measurements is not None:
@@ -889,7 +893,8 @@ def hard_clip_matches_device_grid(declared, actual, dpr):
                for logical, observed in zip(edges(declared), edges(actual), strict=True))
 
 
-def measure_controls(corpus,trial,observations,images,priors,*,details=None,witnesses=None,icon_masks=None):
+def measure_controls(corpus,trial,observations,images,priors,*,details=None,witnesses=None,
+                     icon_masks=None,pixel_results=None):
     """Recompute from full raw planes and observed control geometry/material/font.
 
     Every control is checked on its own before entering the positive partition.
@@ -1049,7 +1054,7 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
                 if icon_masks is None:
                     icon_outlines=outlines
                 else:
-                    from .glyph_witness import place_icon, icon_ink_at
+                    from .glyph_witness import place_icon
                     placed_icons=place_icon(icon_masks,cell,dpr)
             except ProtocolError:
                 fail('icon.independent-placement')
@@ -1058,193 +1063,24 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
         box=(math.floor(r['x']*dpr)-guard,math.floor(r['y']*dpr)-guard,
              math.ceil((r['x']+r['width'])*dpr)+guard,math.ceil((r['y']+r['height'])*dpr)+guard)
         crops=[crop_rgba(data,size,box) for data,size in images]
-        width,height=box[2]-box[0],box[3]-box[1]
-        background=cell['background']
-        foreground=cell.get('rgb',cell['foreground'])
-        alpha=cell.get('source_alpha',1)*cell.get('paint_opacity',1)
-        overlap_basis=None
-        if cell['kind']=='sourceover':
-            second=cell['second_alpha']
-            overlap_colors=(foreground,cell['second_rgb'])
-            overlap_alphas=(alpha,second)
-            overlap_basis=visible_basis([v/255 for v in background],[[v/255 for v in color] for color in overlap_colors])
-            if overlap_basis['mode']!='visible-contribution':
-                raise ProtocolError('source-over controls require two identifiable colors')
-            combined=second+(1-second)*alpha
-            if combined<=0:
-                raise ProtocolError('source-over controls require visible alpha')
-            foreground=[(second*b+(1-second)*alpha*a)/combined for a,b in zip(foreground,cell['second_rgb'])]
-            alpha=combined
-        if cell['kind']=='shadow':
-            foreground=cell['shadow']['rgb']
-            alpha=cell['shadow']['alpha']
-            if foreground==background:
-                # Black-on-black is visually unidentifiable; still validate source/order.
-                if any(list(data[p:p+3])!=background for data in crops for p in range(0,len(data),4)):
-                    fail('shadow.unidentifiable-flat-output')
-                continue
-            basis=visible_basis([v/255 for v in background],[[v/255 for v in foreground]])
-            planes=[[],[]]
-            for pixel in range(width*height):
-                lx=(box[0]+pixel%width+.5)/dpr;ly=(box[1]+pixel//width+.5)/dpr
-                distance=rounded_distance(lx,ly,r,cell['radius'])*dpr
-                gaussian=gaussian_rounded_shadow(lx,ly,r,cell['shadow'],cell['radius'])
-                for side,data in enumerate(crops):
-                    rgb=[v/255 for v in data[pixel*4:pixel*4+3]]
-                    result=solve_visible_contributions(rgb,basis,alphas=[alpha])
-                    if not result['valid']:
-                        fail('shadow.output-material',side=('native','web')[side],
-                             physical_pixel=[box[0]+pixel%width,box[1]+pixel//width])
-                    contribution=result['contributions'][0]
-                    planes[side].append(min(1,max(0,contribution)))
-                    # The border box clips the shadow before the fill composites.
-                    if abs(distance)>1:
-                        shadow_alpha=0 if distance<0 else alpha*gaussian
-                        predicted=source_over([v/255 for v in foreground],[v/255 for v in background],shadow_alpha)
-                        if max(abs(a-b) for a,b in zip(rgb,predicted))>2/255:
-                            fail('shadow.independent-gaussian-profile',side=('native','web')[side],
-                                 physical_pixel=[box[0]+pixel%width,box[1]+pixel//width])
-            shifted={**r,'x':r['x']+cell['shadow']['offset'][0],'y':r['y']+cell['shadow']['offset'][1]}
-            tails=tuple(i for i in range(width*height) if rounded_distance(
-                (box[0]+i%width+.5)/dpr,(box[1]+i//width+.5)/dpr,shifted,cell['radius'])>cell['shadow']['blur'])
-            measured=shadow_profile_metrics(planes[1],planes[0],(width,height),tail_indices=tails)
-            if not measured['required_ink_present']:fail('presence.shadow')
-            for key in ('coverage_mass_relative_error','projection_relative_error','profile_max_error','tail_max_error'):
-                collect('shadow.'+key,measured[key])
-            continue
-        is_text=cell['kind'] in ('text','icon')
-        if is_text:
-            # Semantic ink boxes restrict presence; an enclosing control border
-            # cannot stand in for a missing glyph in the interior.
-            core_boxes=[]
-            for row in actual:
-                core_boxes.extend(row['source'].get('ink_boxes',[]))
-            if not core_boxes:
-                continue
-        # If even one code exceeds the complete 2x2 coverage budget, compare
-        # the actual bytes to each independently known opaque box raster path.
-        # The matching high-contrast controls still enforce the coverage caps.
-        contrast=max(abs(f-b) for f,b in zip(foreground,background,strict=True))
-        weak_fill=(locked_software_box and cell['kind']=='fill' and alpha==1 and
-                   0<4*contrast*CAPS['pixels.coverage_local_relative_error']<1)
-        flat_rgb=[round(v*255) for v in source_over([v/255 for v in foreground],[v/255 for v in background],alpha)]
-        planes=[[],[]]
-        for pixel in range(width*height):
-            x,y=box[0]+pixel%width+.5,box[1]+pixel//width+.5
-            lx,ly=x/dpr,y/dpr
-            observed=[list(data[pixel*4:pixel*4+3]) for data in crops]
-            if weak_fill:
-                area=physical_box_coverage(r,x,y,dpr)
-                for side,rgb in enumerate(observed):
-                    if not weak_fill_pixel_matches(rgb,foreground,background,area,software=side==1):
-                        fail('color.independent-weak-contrast-fill',side=('native','web')[side],
-                             physical_pixel=[int(x),int(y)])
-                continue
-            if not is_text:
-                distance=rounded_distance(lx,ly,r,cell.get('radius',0))*dpr
-                if cell['kind']=='clip':distance=max(distance,(lx-r['x']-cell['clip_width'])*dpr)
-                border=cell.get('border',0)*dpr
-                distance=max(distance,-distance-border) if border else distance
-                if abs(distance)>1:
-                    expected_rgb=background if distance>1 else flat_rgb
-                    for side,rgb in enumerate(observed):
-                        if rgb8_delta_e00(rgb,expected_rgb)>1:
-                            fail('geometry.independent-shape-or-guard',side=('native','web')[side],
-                                 physical_pixel=[int(x),int(y)])
-            if cell['kind'] in ('fill','alpha','sourceover') and distance<=-1:
-                # Keep transport zero only on integer-phase opaque flat sentinels.
-                # Per-side correctness is independent of paired agreement.
-                collect('color.flat_delta_e00',rgb8_delta_e00(*observed))
-                if alpha==1 and cell['kind']=='fill' and cell['identity'].split('.')[1].startswith('rgb'):
-                    collect('transport.max_channel_residual',max(abs(a-b) for a,b in zip(*observed)))
-                for rgb in observed:
-                    if rgb8_delta_e00(rgb,flat_rgb)>1:
-                        fail('color.independent-source-over')
-            if overlap_basis is not None:
-                vectors=[]
-                for side,rgb in enumerate(observed):
-                    solved=solve_visible_contributions([v/255 for v in rgb],overlap_basis,alphas=overlap_alphas)
-                    if not solved['valid']:
-                        matches=False
-                        if side==1 and locked_software_box:
-                            matches=tuple(rgb)==software_box_source_over(background,overlap_colors,overlap_alphas,
-                                                                         physical_box_coverage(r,x,y,dpr))
-                        if not matches:
-                            fail('overlap.output-material',side=('native','web')[side],physical_pixel=[int(x),int(y)])
-                    weights=solved['contributions']
-                    vectors.append(weights)
-                    # The sum is total visible alpha of two draws. A single
-                    # fixed foreground would imply the wrong edge layer ratio.
-                    planes[side].append(min(1,max(0,sum(weights)/alpha)))
-                collect('overlap.contribution_max_error',max(abs(a-b) for a,b in zip(*vectors)))
-                continue
-            if foreground==background or alpha==0:
-                if any(rgb!=background for rgb in observed):fail('guard.unidentifiable-flat-output')
-                continue
-            for side,rgb in enumerate(observed):
-                try:
-                    unmixed=unmix_coverage([v/255 for v in rgb],[v/255 for v in foreground],
-                                          [v/255 for v in background],alpha,byte_error=1/255)
-                    k=unmixed['coverage']
-                    # Only accept the proven quantization interval, then bound
-                    # the mathematical integration value. It is never a color repair.
-                    planes[side].append(min(1,max(0,k)))
-                except ProtocolError:
-                    fail('material.unmix')
-                    planes[side].append(0)
-            ink_core=0
-            if cell['kind']=='text':
-                for side,outline in enumerate(text_outlines):
-                    if text_witnesses[side] is not None:
-                        witness, ox, oy = text_witnesses[side]
-                        byte = witness.at(int(x)-ox, int(y)-oy)
-                        ink = True if byte == 255 else False if byte == 0 else None
-                    elif outline is not None:
-                        prior,origin,scale,tolerance=outline
-                        px,py=(lx-origin[0])/scale,(origin[1]-ly)/scale
-                        ink=outline_witness(prior,px,py,tolerance)
-                    else:
-                        continue
-                    ink_core+=ink is True
-                    k=planes[side][-1]
-                    if ink is True and k<.98 or ink is False and k>1/255:
-                        fail('font.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
-                             expected='ink' if ink else 'clear',observed_rgb=observed[side])
-            if placed_icons is not None:
-                ink=icon_ink_at(placed_icons,int(x),int(y))
-                ink_core+=2*(ink is True)
-                for side,k in enumerate((planes[0][-1],planes[1][-1])):
-                    if ink is True and k<.98 or ink is False and k>1/255:
-                        fail('icon.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
-                             expected='ink' if ink else 'clear',observed_rgb=observed[side])
-            elif icon_outlines is not None:
-                for side,outlines in enumerate(icon_outlines):
-                    icon_witnesses=[outline_witness(prior,(lx-origin[0])/scale,(origin[1]-ly)/scale,1/(scale*dpr))
-                                    for prior,origin,scale in outlines]
-                    ink_core+=any(witness is True for witness in icon_witnesses)
-                    if None not in icon_witnesses:
-                        k=planes[side][-1]
-                        if any(icon_witnesses) and k<.98 or not any(icon_witnesses) and k>1/255:
-                            fail('icon.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
-                                 expected='ink' if any(icon_witnesses) else 'clear',observed_rgb=observed[side])
-            # Both outlines must prove solid ink before a pixel enters the
-            # interior color gate. Edge pixels still participate in coverage.
-            if ink_core==2:
-                collect('color.text_interior_delta_e00',rgb8_delta_e00(*observed),pixel=[int(x),int(y)])
-        if planes[0]:
-            # Support was checked against the independent geometry above.
-            # A square corner may legitimately touch four partially covered pixels.
-            contrast_rgb8=(not is_text and alpha==1 and
-                           {tuple(foreground),tuple(background)}=={(0,0,0),(255,255,255)})
-            measured=coverage_metrics(planes[1],planes[0],(width,height),full_contrast_rgb8=contrast_rgb8,
-                                      thin_ink=cell['kind']=='icon')
-            prefix='text' if cell['kind']=='text' else 'pixels'
-            if not measured['required_ink_present']:
-                fail('presence.glyph' if cell['kind']=='text' else 'presence.icon' if cell['kind']=='icon' else 'presence.shape')
-            for key in ('coverage_mass_relative_error','contour_distance_px'):
-                collect(prefix+'.'+key,measured[key])
-            key='projection_relative_error' if cell['kind']=='text' else 'coverage_local_relative_error'
-            collect(prefix+'.'+key,measured[key])
+        # Only the deterministic crop math is shared. Each trial still
+        # verifies its own control sources, command membership and canvas.
+        # The witnesses and priors are fixed within one evaluate_trials call.
+        key = None
+        if pixel_results is not None:
+            key = (dpr, box, locked_software_box, request_bytes(cell), request_bytes(actual),
+                   *(hashlib.sha256(crop).digest() for crop in crops))
+        pixel_result = None if key is None else pixel_results.get(key)
+        if pixel_result is None:
+            pixel_result = _measure_control_pixels(cell, actual, crops, box, dpr, locked_software_box,
+                                                  text_outlines, text_witnesses, icon_outlines, placed_icons)
+            if key is not None:
+                pixel_results[key] = pixel_result
+        pixel_values,pixel_failures=pixel_result
+        for name,(value,pixel) in pixel_values.items():
+            collect(name,value,pixel=pixel)
+        for name,witness in pixel_failures.items():
+            fail(name,**witness)
     for index,declared_alpha in enumerate(corpus['alpha']):
         pair=[next(c for c in cells if c['identity']==f'p{panel}.alpha{index}') for panel in (0,1)]
         location={'controls':[cell['identity'] for cell in pair]}
@@ -1269,6 +1105,211 @@ def measure_controls(corpus,trial,observations,images,priors,*,details=None,witn
     for name in sorted(canvas_failures):
         fail(name)
     return values,sorted(failures)
+
+
+def _measure_control_pixels(cell,actual,crops,box,dpr,locked_software_box,
+                            text_outlines,text_witnesses,icon_outlines,placed_icons):
+    values={}
+    failures={}
+
+    def fail(name,**witness):
+        failures.setdefault(name,witness)
+
+    def collect(name,value,*,pixel=None):
+        if value is None or not math.isfinite(value):
+            fail(name)
+        elif name not in values or value>values[name][0]:
+            values[name]=(value,pixel)
+    r=cell['rect']
+    width,height=box[2]-box[0],box[3]-box[1]
+    background=cell['background']
+    foreground=cell.get('rgb',cell['foreground'])
+    alpha=cell.get('source_alpha',1)*cell.get('paint_opacity',1)
+    overlap_basis=None
+    if cell['kind']=='sourceover':
+        second=cell['second_alpha']
+        overlap_colors=(foreground,cell['second_rgb'])
+        overlap_alphas=(alpha,second)
+        overlap_basis=visible_basis([v/255 for v in background],[[v/255 for v in color] for color in overlap_colors])
+        if overlap_basis['mode']!='visible-contribution':
+            raise ProtocolError('source-over controls require two identifiable colors')
+        combined=second+(1-second)*alpha
+        if combined<=0:
+            raise ProtocolError('source-over controls require visible alpha')
+        foreground=[(second*b+(1-second)*alpha*a)/combined for a,b in zip(foreground,cell['second_rgb'])]
+        alpha=combined
+    if cell['kind']=='shadow':
+        foreground=cell['shadow']['rgb']
+        alpha=cell['shadow']['alpha']
+        if foreground==background:
+            # Black-on-black is visually unidentifiable; still validate source/order.
+            if any(list(data[p:p+3])!=background for data in crops for p in range(0,len(data),4)):
+                fail('shadow.unidentifiable-flat-output')
+            return values,failures
+        basis=visible_basis([v/255 for v in background],[[v/255 for v in foreground]])
+        planes=[[],[]]
+        for pixel in range(width*height):
+            lx=(box[0]+pixel%width+.5)/dpr;ly=(box[1]+pixel//width+.5)/dpr
+            distance=rounded_distance(lx,ly,r,cell['radius'])*dpr
+            gaussian=gaussian_rounded_shadow(lx,ly,r,cell['shadow'],cell['radius'])
+            for side,data in enumerate(crops):
+                rgb=[v/255 for v in data[pixel*4:pixel*4+3]]
+                result=solve_visible_contributions(rgb,basis,alphas=[alpha])
+                if not result['valid']:
+                    fail('shadow.output-material',side=('native','web')[side],
+                         physical_pixel=[box[0]+pixel%width,box[1]+pixel//width])
+                contribution=result['contributions'][0]
+                planes[side].append(min(1,max(0,contribution)))
+                # The border box clips the shadow before the fill composites.
+                if abs(distance)>1:
+                    shadow_alpha=0 if distance<0 else alpha*gaussian
+                    predicted=source_over([v/255 for v in foreground],[v/255 for v in background],shadow_alpha)
+                    if max(abs(a-b) for a,b in zip(rgb,predicted))>2/255:
+                        fail('shadow.independent-gaussian-profile',side=('native','web')[side],
+                             physical_pixel=[box[0]+pixel%width,box[1]+pixel//width])
+        shifted={**r,'x':r['x']+cell['shadow']['offset'][0],'y':r['y']+cell['shadow']['offset'][1]}
+        tails=tuple(i for i in range(width*height) if rounded_distance(
+            (box[0]+i%width+.5)/dpr,(box[1]+i//width+.5)/dpr,shifted,cell['radius'])>cell['shadow']['blur'])
+        measured=shadow_profile_metrics(planes[1],planes[0],(width,height),tail_indices=tails)
+        if not measured['required_ink_present']:fail('presence.shadow')
+        for key in ('coverage_mass_relative_error','projection_relative_error','profile_max_error','tail_max_error'):
+            collect('shadow.'+key,measured[key])
+        return values,failures
+    is_text=cell['kind'] in ('text','icon')
+    if is_text:
+        # Semantic ink boxes restrict presence; an enclosing control border
+        # cannot stand in for a missing glyph in the interior.
+        core_boxes=[]
+        for row in actual:
+            core_boxes.extend(row['source'].get('ink_boxes',[]))
+        if not core_boxes:
+            return values,failures
+    # If even one code exceeds the complete 2x2 coverage budget, compare
+    # the actual bytes to each independently known opaque box raster path.
+    # The matching high-contrast controls still enforce the coverage caps.
+    contrast=max(abs(f-b) for f,b in zip(foreground,background,strict=True))
+    weak_fill=(locked_software_box and cell['kind']=='fill' and alpha==1 and
+               0<4*contrast*CAPS['pixels.coverage_local_relative_error']<1)
+    flat_rgb=[round(v*255) for v in source_over([v/255 for v in foreground],[v/255 for v in background],alpha)]
+    planes=[[],[]]
+    for pixel in range(width*height):
+        x,y=box[0]+pixel%width+.5,box[1]+pixel//width+.5
+        lx,ly=x/dpr,y/dpr
+        observed=[list(data[pixel*4:pixel*4+3]) for data in crops]
+        if weak_fill:
+            area=physical_box_coverage(r,x,y,dpr)
+            for side,rgb in enumerate(observed):
+                if not weak_fill_pixel_matches(rgb,foreground,background,area,software=side==1):
+                    fail('color.independent-weak-contrast-fill',side=('native','web')[side],
+                         physical_pixel=[int(x),int(y)])
+            continue
+        if not is_text:
+            distance=rounded_distance(lx,ly,r,cell.get('radius',0))*dpr
+            if cell['kind']=='clip':distance=max(distance,(lx-r['x']-cell['clip_width'])*dpr)
+            border=cell.get('border',0)*dpr
+            distance=max(distance,-distance-border) if border else distance
+            if abs(distance)>1:
+                expected_rgb=background if distance>1 else flat_rgb
+                for side,rgb in enumerate(observed):
+                    if rgb8_delta_e00(rgb,expected_rgb)>1:
+                        fail('geometry.independent-shape-or-guard',side=('native','web')[side],
+                             physical_pixel=[int(x),int(y)])
+        if cell['kind'] in ('fill','alpha','sourceover') and distance<=-1:
+            # Keep transport zero only on integer-phase opaque flat sentinels.
+            # Per-side correctness is independent of paired agreement.
+            collect('color.flat_delta_e00',rgb8_delta_e00(*observed))
+            if alpha==1 and cell['kind']=='fill' and cell['identity'].split('.')[1].startswith('rgb'):
+                collect('transport.max_channel_residual',max(abs(a-b) for a,b in zip(*observed)))
+            for rgb in observed:
+                if rgb8_delta_e00(rgb,flat_rgb)>1:
+                    fail('color.independent-source-over')
+        if overlap_basis is not None:
+            vectors=[]
+            for side,rgb in enumerate(observed):
+                solved=solve_visible_contributions([v/255 for v in rgb],overlap_basis,alphas=overlap_alphas)
+                if not solved['valid']:
+                    matches=False
+                    if side==1 and locked_software_box:
+                        matches=tuple(rgb)==software_box_source_over(background,overlap_colors,overlap_alphas,
+                                                                     physical_box_coverage(r,x,y,dpr))
+                    if not matches:
+                        fail('overlap.output-material',side=('native','web')[side],physical_pixel=[int(x),int(y)])
+                weights=solved['contributions']
+                vectors.append(weights)
+                # The sum is total visible alpha of two draws. A single
+                # fixed foreground would imply the wrong edge layer ratio.
+                planes[side].append(min(1,max(0,sum(weights)/alpha)))
+            collect('overlap.contribution_max_error',max(abs(a-b) for a,b in zip(*vectors)))
+            continue
+        if foreground==background or alpha==0:
+            if any(rgb!=background for rgb in observed):fail('guard.unidentifiable-flat-output')
+            continue
+        for side,rgb in enumerate(observed):
+            try:
+                unmixed=unmix_coverage([v/255 for v in rgb],[v/255 for v in foreground],
+                                      [v/255 for v in background],alpha,byte_error=1/255)
+                k=unmixed['coverage']
+                # Only accept the proven quantization interval, then bound
+                # the mathematical integration value. It is never a color repair.
+                planes[side].append(min(1,max(0,k)))
+            except ProtocolError:
+                fail('material.unmix')
+                planes[side].append(0)
+        ink_core=0
+        if cell['kind']=='text':
+            for side,outline in enumerate(text_outlines):
+                if text_witnesses[side] is not None:
+                    witness, ox, oy = text_witnesses[side]
+                    byte = witness.at(int(x)-ox, int(y)-oy)
+                    ink = True if byte == 255 else False if byte == 0 else None
+                elif outline is not None:
+                    prior,origin,scale,tolerance=outline
+                    px,py=(lx-origin[0])/scale,(origin[1]-ly)/scale
+                    ink=outline_witness(prior,px,py,tolerance)
+                else:
+                    continue
+                ink_core+=ink is True
+                k=planes[side][-1]
+                if ink is True and k<.98 or ink is False and k>1/255:
+                    fail('font.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
+                         expected='ink' if ink else 'clear',observed_rgb=observed[side])
+        if placed_icons is not None:
+            from .glyph_witness import icon_ink_at
+            ink=icon_ink_at(placed_icons,int(x),int(y))
+            ink_core+=2*(ink is True)
+            for side,k in enumerate((planes[0][-1],planes[1][-1])):
+                if ink is True and k<.98 or ink is False and k>1/255:
+                    fail('icon.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
+                         expected='ink' if ink else 'clear',observed_rgb=observed[side])
+        elif icon_outlines is not None:
+            for side,outlines in enumerate(icon_outlines):
+                icon_witnesses=[outline_witness(prior,(lx-origin[0])/scale,(origin[1]-ly)/scale,1/(scale*dpr))
+                                for prior,origin,scale in outlines]
+                ink_core+=any(witness is True for witness in icon_witnesses)
+                if None not in icon_witnesses:
+                    k=planes[side][-1]
+                    if any(icon_witnesses) and k<.98 or not any(icon_witnesses) and k>1/255:
+                        fail('icon.independent-outline',side=('native','web')[side],physical_pixel=[int(x),int(y)],
+                             expected='ink' if any(icon_witnesses) else 'clear',observed_rgb=observed[side])
+        # Both outlines must prove solid ink before a pixel enters the
+        # interior color gate. Edge pixels still participate in coverage.
+        if ink_core==2:
+            collect('color.text_interior_delta_e00',rgb8_delta_e00(*observed),pixel=[int(x),int(y)])
+    if planes[0]:
+        # Support was checked against the independent geometry above.
+        # A square corner may legitimately touch four partially covered pixels.
+        contrast_rgb8=(not is_text and alpha==1 and
+                       {tuple(foreground),tuple(background)}=={(0,0,0),(255,255,255)})
+        measured=coverage_metrics(planes[1],planes[0],(width,height),full_contrast_rgb8=contrast_rgb8,
+                                  thin_ink=cell['kind']=='icon')
+        prefix='text' if cell['kind']=='text' else 'pixels'
+        if not measured['required_ink_present']:
+            fail('presence.glyph' if cell['kind']=='text' else 'presence.icon' if cell['kind']=='icon' else 'presence.shape')
+        for key in ('coverage_mass_relative_error','contour_distance_px'):
+            collect(prefix+'.'+key,measured[key])
+        key='projection_relative_error' if cell['kind']=='text' else 'coverage_local_relative_error'
+        collect(prefix+'.'+key,measured[key])
+    return values,failures
 
 
 def canvas_guard(corpus,trial,observations,images):

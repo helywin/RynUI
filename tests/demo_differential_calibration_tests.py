@@ -276,6 +276,30 @@ class CalibrationTests(unittest.TestCase):
             details={}
             values, failures=measure_controls(*inputs,details=details)
             self.assertEqual((values,failures),measure_controls(*inputs))
+            pixel_results={}
+            cached_details={}
+            self.assertEqual(measure_controls(*inputs,details=cached_details,pixel_results=pixel_results),
+                             (values,failures))
+            self.assertEqual(cached_details,details)
+            with patch('demo_differential.calibration._measure_control_pixels',
+                       side_effect=AssertionError('identical control pixels measured again')), \
+                    patch('demo_differential.calibration.verify_native_control_geometry',
+                          side_effect=ProtocolError('wrong submitted command')) as verify:
+                repeated_details={}
+                self.assertIn('source.geometry-order-membership',
+                              measure_controls(*inputs,details=repeated_details,pixel_results=pixel_results)[1])
+                self.assertEqual(verify.call_count,len(cells))
+                self.assertEqual(repeated_details['metrics'],details['metrics'])
+
+            # A changed raw pixel in just one control must miss even when the
+            # input request and actual control sources are otherwise identical.
+            changed=bytearray(images[0][0])
+            changed[(30*64+30)*4]=0
+            different=(inputs[0],inputs[1],inputs[2],[(bytes(changed),(64,64)),images[1]],inputs[4])
+            count=len(pixel_results)
+            self.assertEqual(measure_controls(*different,pixel_results=pixel_results),
+                             measure_controls(*different))
+            self.assertEqual(len(pixel_results),count+1)
         self.assertIn('shadow.independent-gaussian-profile', failures)
         self.assertIn('alpha.independent-unmix', failures)
         first=details['first_hard_failures']['shadow.independent-gaussian-profile']
