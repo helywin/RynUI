@@ -601,6 +601,26 @@ float logical_radius(runtime::Rect bounds, float radius) noexcept {
            2 * width < std::min(bounds.width, bounds.height) && width <= button_radius(state, bounds, token);
 }
 
+[[nodiscard]] runtime::Rect button_paint_bounds(const ButtonComponentState& state, const runtime::Node& node,
+                                                const ButtonThemeToken& token) {
+    auto bounds = node.bounds;
+    const auto& layout = node.external_layout;
+    if (state.shape != ButtonShape::Default || state.block || state.search_variant || layout.width ||
+        layout.min_width || layout.max_width || !paints_continuous_border(state, bounds, token)) {
+        return bounds;
+    }
+    // Snap the intrinsic border box at its displayed inline position. Layout,
+    // child placement and hit testing continue to use the measured size.
+    const float x = bounds.x + node.translation.x;
+    const float left = std::floor(x + 0.5F);
+    const float right = std::floor(x + bounds.width + 0.5F);
+    if (right - left > 2 * token.border_width) {
+        bounds.x = left - node.translation.x;
+        bounds.width = right - left;
+    }
+    return bounds;
+}
+
 graphics::QuadInstance make_quad(runtime::Rect bounds, runtime::Size viewport, std::array<float, 4> color,
                                  float opacity, float radius, runtime::Point translation) {
     return {
@@ -1243,8 +1263,8 @@ void ButtonComponentHost::publish_wave(ButtonComponentState& state) {
     }
     const auto& node = nodes_->require(state.node);
     const auto& token = components().theme_scope(state.component)->snapshot().button();
-    const graphics::LogicalRoundedRect shape{node.bounds,
-                                             logical_radius(node.bounds, button_radius(state, node.bounds, token))};
+    const auto bounds = button_paint_bounds(state, node, token);
+    const graphics::LogicalRoundedRect shape{bounds, logical_radius(bounds, button_radius(state, bounds, token))};
     const auto clip = state.wave_clip ? std::optional{graphics::EffectClip{1, *state.wave_clip}} : std::nullopt;
     const float width = std::min(token.wave_width, token.wave_spread) * state.wave_progress;
     const float offset = token.wave_spread * state.wave_progress - width;
@@ -1701,7 +1721,8 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
     const bool dashed_border = dashed(state);
     const auto& token = components().theme_scope(state.component)->snapshot().button();
     const auto& node = nodes_->require(state.node);
-    if (!dashed_border && !paints_continuous_border(state, node.bounds, token)) {
+    const auto bounds = button_paint_bounds(state, node, token);
+    if (!dashed_border && !paints_continuous_border(state, bounds, token)) {
         if (!state.decorations.empty()) {
             state.decorations.clear();
             state.decoration_geometry.reset();
@@ -1709,11 +1730,11 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
         }
         return;
     }
-    const float radius = logical_radius(node.bounds, button_radius(state, node.bounds, token));
-    const std::array key{node.bounds.x,
-                         node.bounds.y,
-                         node.bounds.width,
-                         node.bounds.height,
+    const float radius = logical_radius(bounds, button_radius(state, bounds, token));
+    const std::array key{bounds.x,
+                         bounds.y,
+                         bounds.width,
+                         bounds.height,
                          node.translation.x,
                          node.translation.y,
                          clip.x,
@@ -1728,26 +1749,25 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
     if (state.decoration_geometry == key) {
         return;
     }
-    const float width = std::min(token.border_width, 0.5F * std::min(node.bounds.width, node.bounds.height));
+    const float width = std::min(token.border_width, 0.5F * std::min(bounds.width, bounds.height));
     std::vector<graphics::RoundedEffectInstance> effects;
     if (width > 0 && dashed_border) {
         const float period = token.dash_length + token.dash_gap;
         const auto corners = state.compact ? state.compact->corners : std::array{true, true, true, true};
-        const graphics::LogicalRoundedRect centerline{{node.bounds.x + width / 2, node.bounds.y + width / 2,
-                                                       node.bounds.width - width, node.bounds.height - width},
-                                                      std::max(0.0F, radius - width / 2)};
-        const auto perimeter =
-            graphics::rounded_rect_path_sample({node.bounds.x, node.bounds.y}, centerline, corners).length;
+        const graphics::LogicalRoundedRect centerline{
+            {bounds.x + width / 2, bounds.y + width / 2, bounds.width - width, bounds.height - width},
+            std::max(0.0F, radius - width / 2)};
+        const auto perimeter = graphics::rounded_rect_path_sample({bounds.x, bounds.y}, centerline, corners).length;
         const double count = std::ceil(static_cast<double>(perimeter) / period);
         if (!std::isfinite(period) || !std::isfinite(count) || count > component::retained_content_visual_capacity) {
             throw std::length_error("Button dashed border exceeds 4096 path intervals");
         }
         effects.push_back(graphics::make_dashed_outline_effect(
-            {node.bounds, radius}, width, {token.dash_length, token.dash_gap, 0, corners}, state.presentation_border, 1,
+            {bounds, radius}, width, {token.dash_length, token.dash_gap, 0, corners}, state.presentation_border, 1,
             node.translation, graphics::EffectClip{1, clip}));
     } else if (width > 0) {
-        const runtime::Rect inner{node.bounds.x + width, node.bounds.y + width, node.bounds.width - 2 * width,
-                                  node.bounds.height - 2 * width};
+        const runtime::Rect inner{bounds.x + width, bounds.y + width, bounds.width - 2 * width,
+                                  bounds.height - 2 * width};
         effects.push_back(graphics::make_outline_effect({inner, std::max(0.0F, radius - width)}, width, 0,
                                                         state.presentation_border, 1, node.translation,
                                                         graphics::EffectClip{1, clip}));
@@ -1807,22 +1827,23 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
     const auto& node = nodes_->require(state.node);
-    const float radius = button_radius(state, node.bounds, button);
+    const auto bounds = button_paint_bounds(state, node, button);
+    const float radius = button_radius(state, bounds, button);
     const auto& content = layout_->horizontal_content_geometry(state.node);
     const runtime::Rect inset_background_bounds{
-        node.bounds.x + button.border_width,
-        node.bounds.y + button.border_width,
-        std::max(0.0F, node.bounds.width - 2.0F * button.border_width),
-        std::max(0.0F, node.bounds.height - 2.0F * button.border_width),
+        bounds.x + button.border_width,
+        bounds.y + button.border_width,
+        std::max(0.0F, bounds.width - 2.0F * button.border_width),
+        std::max(0.0F, bounds.height - 2.0F * button.border_width),
     };
-    const bool outlined = paints_continuous_border(state, node.bounds, button);
+    const bool outlined = paints_continuous_border(state, bounds, button);
     const bool border_box_fill = solid_fills_border_box(state) || outlined;
-    const auto background_bounds = border_box_fill ? node.bounds : inset_background_bounds;
+    const auto background_bounds = border_box_fill ? bounds : inset_background_bounds;
     auto next = state.visuals;
     const float opacity = state.compact ? loading_opacity(button, state) : 1.0F;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)] =
-        make_quad(node.bounds, viewport, next[0].color, dashed(state) || state.compact || outlined ? 0.0F : opacity,
-                  radius, node.translation);
+        make_quad(bounds, viewport, next[0].color, dashed(state) || state.compact || outlined ? 0.0F : opacity, radius,
+                  node.translation);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)] =
         make_quad(background_bounds, viewport, next[1].color, next[1].opacity,
                   border_box_fill ? radius : std::max(0.0F, radius - button.border_width), node.translation);
@@ -1832,9 +1853,9 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
         if (next[index].opacity == 0.0F) {
             continue;
         }
-        const auto bounds = spinner_segment_bounds(indicator_bounds, segment);
-        next[index] = make_quad(bounds, viewport, next[index].color, next[index].opacity,
-                                0.5F * std::min(bounds.width, bounds.height), node.translation);
+        const auto segment_bounds = spinner_segment_bounds(indicator_bounds, segment);
+        next[index] = make_quad(segment_bounds, viewport, next[index].color, next[index].opacity,
+                                0.5F * std::min(segment_bounds.width, segment_bounds.height), node.translation);
     }
     state.visuals = next;
     auto published = state.visuals;
@@ -1845,7 +1866,7 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     }
     static_cast<void>(button_scene_.update(state.scene, published));
     auto effects = state.effects;
-    effects.shape = {node.bounds, logical_radius(node.bounds, radius)};
+    effects.shape = {bounds, logical_radius(bounds, radius)};
     effects.translation = node.translation;
     effects.ancestor_clip = graphics::EffectClip{1, decoration_clip};
     if (effects != state.effects) {

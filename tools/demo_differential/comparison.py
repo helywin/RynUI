@@ -847,6 +847,17 @@ def _web_paint_inventory(checkpoint,origin,dpr):
         shadows=css_shadows(s.get('box-shadow','none'))
         if shadows and len(set(radii))!=1:raise RunError(3,'calibration','asymmetric-radius shadow has no fixed integral control')
         fill_color = _css_rgba(s.get('background-color','rgba(0, 0, 0, 0)'))
+        if (node['node_name']=='BUTTON' and transform=='none' and fill_color[3]==1 and len(set(widths))==1 and
+                len(set(colors))==1 and colors[0][3]==1 and len(set(radii))==1 and widths[0]>0 and
+                widths[0]<=radii[0]<.5*min(bounds['width'],bounds['height'])):
+            # Blink's uniform opaque rounded border paints a pixel-snapped
+            # border box. Keep the actual DOM bounds on the source record.
+            x=bounds['x']+origin['x']
+            left=math.floor(x+.5)
+            right=math.floor(x+bounds['width']+.5)
+            if right-left>2*widths[0]:
+                bounds=dict(bounds,x=left-origin['x'],width=right-left)
+                base['bounds']=bounds
         for shadow in reversed(shadows):
             if not shadow['inset']:
                 # Blink ClipToBorderEdge insets the knockout by one CSS pixel

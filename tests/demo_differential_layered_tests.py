@@ -71,6 +71,22 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_web_button_paint_snaps_without_changing_actual_layout(self):
+        _,_,_,web,_,_,origins=synthetic()
+        node=web['resources']['paint_stack']['layers'][0]
+        node['node_name']='BUTTON'
+        actual=box(10.25,10,40.125,30)
+        node['actual']['bounds']=actual
+        node['style'].update({f'border-{corner}-radius':'6px' for corner in
+                              ('top-left','top-right','bottom-left','bottom-right')})
+        rows,_=_web_paint_inventory(web,origins[0],1.5)
+        self.assertEqual([(r['kind'],r['bounds']['x'],r['bounds']['width']) for r in rows],
+                         [('fill',0,40),('border',0,40)])
+        self.assertEqual(node['actual']['bounds'],actual)
+        node['style']['background-color']='rgba(0, 0, 0, 0)'
+        rows,_=_web_paint_inventory(web,origins[0],1.5)
+        self.assertEqual(rows[-1]['bounds']['width'],40.125)
+
     def test_selected_label_preserves_declaration_order_and_actual_active_layer(self):
         from demo_differential.comparison import _text_rows
         label=dict(content='Desktop',kind='editor-placeholder',semantic_role='selector-caption')

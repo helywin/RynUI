@@ -45,6 +45,11 @@ bool near_rect(ryn::runtime::Rect actual, ryn::runtime::Rect expected) {
            near(actual.height, expected.height);
 }
 
+ryn::runtime::Rect snapped_inline(ryn::runtime::Rect bounds) {
+    const auto left = std::floor(bounds.x + .5F);
+    return {left, bounds.y, std::floor(bounds.x + bounds.width + .5F) - left, bounds.height};
+}
+
 struct Fixture final {
     Fixture()
         : layout(nodes), dirty(nodes, &frames), fonts(create_runtime()), engine(*fonts),
@@ -548,8 +553,8 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
     const auto primary_background = quad_bounds(fixture.layer(1, ryn::component::ButtonVisualLayer::background));
     const auto danger_background = quad_bounds(fixture.layer(2, ryn::component::ButtonVisualLayer::background));
 
-    require(near_rect(default_background, default_root) && near_rect(primary_background, primary_root) &&
-                near_rect(danger_background, danger_root) &&
+    require(near_rect(default_background, snapped_inline(default_root)) &&
+                near_rect(primary_background, primary_root) && near_rect(danger_background, danger_root) &&
                 fixture.layer(1, ryn::component::ButtonVisualLayer::border).color[3] == 0.0F &&
                 fixture.layer(2, ryn::component::ButtonVisualLayer::border).color[3] == 0.0F,
             "solid Button fill did not cover the transparent border box");
@@ -1411,7 +1416,7 @@ void test_continuous_border_has_independent_ring_coverage() {
     Fixture fixture;
     fixture.host->mount(ryn::Content{[] { ryn::Button(ryn::ButtonProps{}, [] { ryn::Text(u8"Outlined"); }); }});
     require(fixture.synchronize(), "Continuous Button border layout failed");
-    const auto bounds = fixture.bounds(0);
+    const auto bounds = snapped_inline(fixture.bounds(0));
     const auto& backdrop = fixture.layer(0, ryn::component::ButtonVisualLayer::background);
     const auto& old_border = fixture.layer(0, ryn::component::ButtonVisualLayer::border);
     require(old_border.opacity == 0 && backdrop.bounds == std::array{bounds.x, bounds.y, bounds.width, bounds.height},
@@ -1426,7 +1431,7 @@ void test_continuous_border_has_independent_ring_coverage() {
     require(width > 0 && ring->geometry.outline_offset == 0 &&
                 ring->geometry.shape.rect == ryn::runtime::Rect{bounds.x + width, bounds.y + width,
                                                                 bounds.width - 2 * width, bounds.height - 2 * width},
-            "Continuous border ring is not contained in the layout border box");
+            "Continuous border ring is not contained in the painted border box");
     require(ryn::graphics::rounded_effect_coverage({bounds.x + bounds.width / 2, bounds.y + width / 2}, *ring) > .5F &&
                 ryn::graphics::rounded_effect_coverage({bounds.x + bounds.width / 2, bounds.y + bounds.height / 2},
                                                        *ring) == 0.F,
@@ -1748,6 +1753,30 @@ void test_button_shape_block_constraints_and_reactive_resize() {
     const auto node = unbounded.host->mounted_buttons()[0].node;
     const auto measured = unbounded.layout.measure(node, {0, std::numeric_limits<float>::infinity(), 0, 100});
     require(std::isfinite(measured.width) && measured.width > 32, "Button block created infinite unconstrained width");
+}
+
+void test_intrinsic_button_snaps_only_its_paint_box() {
+    Fixture fixture;
+    fixture.host->mount(ryn::Content{[] {
+        ryn::Button(ryn::ButtonProps{}.layout(ryn::LayoutStyle{}.margin_left(ryn::dp(.25F))),
+                    [] { ryn::Text(u8"Change selection"); });
+        ryn::Button(ryn::ButtonProps{}.layout(ryn::LayoutStyle{}.width(ryn::dp(120.25F))),
+                    [] { ryn::Text(u8"Explicit"); });
+    }});
+    require(fixture.synchronize(), "could not place the fractional Button paint regression");
+    const auto bounds = fixture.bounds(0);
+    const auto left = std::floor(bounds.x + .5F);
+    const auto right = std::floor(bounds.x + bounds.width + .5F);
+    require(!near(left, bounds.x), "intrinsic Button test did not create a fractional logical position");
+    const auto background = quad_bounds(fixture.layer(0, ryn::component::ButtonVisualLayer::background));
+    const auto& button = fixture.host->mounted_buttons()[0];
+    const auto shadow = fixture.host->button_scene().shadow_effects(button.scene).front();
+    require(near_rect(background, {left, bounds.y, right - left, bounds.height}) &&
+                near_rect(fixture.host->rounded_effects().at(shadow).geometry.shape.rect, background) &&
+                fixture.host->hit_test().hit_test(fixture.center(0)) == button.interaction,
+            "intrinsic Button background and shadow missed the snapped paint box");
+    require(near_rect(quad_bounds(fixture.layer(1, ryn::component::ButtonVisualLayer::background)), fixture.bounds(1)),
+            "Button paint snapping affected an explicit fractional width");
 }
 
 void test_button_ref_thread_generation_autofocus_and_mount_rollback() {
@@ -2148,6 +2177,7 @@ int main() {
         test_retained_icon_loading_slots_and_end_placement();
         test_builtin_loading_at_end_without_reordering_content_and_icon_only();
         test_button_shape_block_constraints_and_reactive_resize();
+        test_intrinsic_button_snaps_only_its_paint_box();
         test_button_ref_thread_generation_autofocus_and_mount_rollback();
         test_button_loading_delay_cancellation_reconfiguration_and_idle();
         test_button_wave_finite_feedback_restarts_and_cleanup();
