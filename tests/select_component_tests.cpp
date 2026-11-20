@@ -114,6 +114,48 @@ void multiple_selection_uses_the_leading_inset() {
           "Multiple Select did not mirror its retained value inset");
 }
 
+void rtl_selector_aligns_text_and_hit_testing_with_the_inline_start() {
+    Fixture f;
+    Signal<TextDirection> direction{TextDirection::RightToLeft};
+    SelectRef ref;
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .showSearch()
+                   .placeholder(u8"中文 Home/End")
+                   .options({{1, u8"abcd"}})
+                   .direction(direction)
+                   .ref(ref)
+                   .layout(LayoutStyle{}.width(dp(240))),
+               SelectPrefix{[] {
+                   Button(ButtonProps{}.size(ControlSize::Small),
+                          ButtonSlots{.icon = ButtonIcon{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }}});
+               }});
+    }});
+    f.synchronize();
+    const auto input = f.inputs.mounted_inputs().front();
+    const auto layers = f.inputs.text_layers(input.component);
+    const auto placeholder = f.inputs.layout_snapshot(input.component);
+    check(placeholder.scroll_offset == placeholder.text_width - placeholder.viewport.width &&
+              placeholder.caret_x == placeholder.viewport.x + placeholder.viewport.width,
+          "RTL Select placeholder and empty caret did not align to the right edge");
+    check(ref.focus(), "RTL Select did not focus");
+    key(f, Key::down);
+    const auto session = f.inputs.sessions().active();
+    check(bool(f.inputs.dispatch(TextCommitted{String{u8"abcd"}, session})), "RTL Select query was rejected");
+    f.synchronize();
+    const auto query = f.inputs.layout_snapshot(input.component);
+    check(query.scroll_offset == query.text_width - query.viewport.width, "RTL Select query lost its inline alignment");
+    click(f, {query.viewport.x - query.scroll_offset, query.viewport.y, 0, query.viewport.height});
+    check(f.inputs.editors().require(input.editor).selection().caret == 0,
+          "Pointer at the start of the RTL Select query placed the caret at the wrong byte");
+    direction.set(TextDirection::LeftToRight);
+    f.synchronize();
+    check(f.inputs.layout_snapshot(input.component).scroll_offset == 0 &&
+              f.inputs.text_layers(input.component).base == layers.base &&
+              f.inputs.editors().require(input.editor).value() == "abcd",
+          "Changing Select direction remounted its text or discarded the active query");
+}
+
 void empty_tags_editor_uses_the_selector_inset() {
     Fixture f;
     Signal<SelectValues> values{SelectValues{}};
@@ -882,6 +924,7 @@ int main() {
         pointer_keyboard_and_clear();
         direction_and_rich_affix_size();
         multiple_selection_uses_the_leading_inset();
+        rtl_selector_aligns_text_and_hit_testing_with_the_inline_start();
         empty_tags_editor_uses_the_selector_inset();
         built_in_selection_chips_follow_control_density();
         open_popup_remains_attached_during_document_scroll();

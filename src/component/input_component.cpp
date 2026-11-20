@@ -2863,6 +2863,11 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                       .value();
         // Whole physical pixels preserve the cached glyph raster phase.
         state->geometry.scroll_offset = std::ceil(scroll * display_scale_) / display_scale_;
+        const float inline_alignment =
+            state->layout.right_to_left ? std::max(0.0F, viewport.width - measurement.width) : 0.0F;
+        if (inline_alignment > 0) {
+            state->geometry.scroll_offset = -inline_alignment;
+        }
         if (state->otp && measurement.width < usable_width) {
             state->geometry.scroll_offset =
                 -std::round((usable_width - measurement.width) * .5F * display_scale_) / display_scale_;
@@ -2886,11 +2891,15 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
             state->geometry.vertical_scroll = area.vertical_scroll;
             state->geometry.baseline = viewport.y + caret_stop.baseline - area.vertical_scroll;
         }
-        const auto x = [&](std::size_t byte) {
-            return viewport.x + state->carets.at(byte, state->carets.revision()).value().x -
-                   state->geometry.scroll_offset;
+        const auto line_x = [&](float shaped_x) {
+            return state->layout.right_to_left && display.placeholder
+                       ? viewport.x + viewport.width
+                       : viewport.x + shaped_x - state->geometry.scroll_offset;
         };
-        state->geometry.caret_x = viewport.x + caret_stop.x - state->geometry.scroll_offset;
+        const auto x = [&](std::size_t byte) {
+            return line_x(state->carets.at(byte, state->carets.revision()).value().x);
+        };
+        state->geometry.caret_x = line_x(caret_stop.x);
         const auto range_extents = [&](input::TextSelection range) {
             auto first = x(range.begin());
             auto last = first;
@@ -3240,7 +3249,7 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
         text_scene.set_opacity(state->placeholder_scene, display.placeholder ? 1.0F : 0.0F);
         const auto& viewport_node = host_->nodes().require(state->viewport);
         graphics::GlyphPlacement placement{
-            {viewport_node.bounds.x, viewport_node.bounds.y}, window, state->geometry.clip};
+            {viewport_node.bounds.x + inline_alignment, viewport_node.bounds.y}, window, state->geometry.clip};
         const auto scene_started =
             sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         for (const auto id : {state->text_scene, state->selected_scene, state->placeholder_scene}) {
@@ -3257,10 +3266,11 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                 ++sync_profile_.text_scene_calls;
             }
             auto layer_placement = placement;
-            // Input's horizontal caret scroll is already aligned to the window
-            // display scale; retain that exact offset when adding node motion.
+            // Alignment contributes to the glyph origin and its raster phase.
+            // Scrolling is a separate whole-pixel translation.
             layer_placement.translation_pixels = text_scene.set_phase_preserving_scroll_translation(
-                id, viewport_node.translation, {-state->geometry.scroll_offset, -state->geometry.vertical_scroll});
+                id, viewport_node.translation,
+                {-state->geometry.scroll_offset - inline_alignment, -state->geometry.vertical_scroll});
             if (!text_scene.synchronize(id, layer_placement)) {
                 throw std::runtime_error("Input glyph synchronization failed");
             }
