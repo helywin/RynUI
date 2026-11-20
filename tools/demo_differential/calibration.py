@@ -1455,10 +1455,29 @@ from functools import lru_cache
 
 @lru_cache(maxsize=100000)
 def _gaussian_integral(x,y,width,height,blur,radius):
-    sigma=blur/2
     dx=width/256
     total=0
-    root2=math.sqrt(2)
+    for horizontal,vertical in zip(_gaussian_columns(x,width,blur),
+                                   _gaussian_rows(y,width,height,blur,radius),strict=True):
+        # Retain the fixed quadrature and its sequential floating-point sum.
+        total+=horizontal*vertical*dx
+    return total
+
+
+@lru_cache(maxsize=1024)
+def _gaussian_columns(x,width,blur):
+    sigma=blur/2
+    dx=width/256
+    norm=sigma*math.sqrt(2*math.pi)
+    return tuple(math.exp(-(((i+.5)*dx-x)/sigma)**2/2)/norm for i in range(256))
+
+
+@lru_cache(maxsize=1024)
+def _gaussian_rows(y,width,height,blur,radius):
+    sigma=blur/2
+    dx=width/256
+    norm=sigma*math.sqrt(2)
+    vertical=[]
     for i in range(256):
         u=(i+.5)*dx
         inset=0
@@ -1466,9 +1485,8 @@ def _gaussian_integral(x,y,width,height,blur,radius):
             inset=radius-math.sqrt(max(0,radius*radius-(u-radius)**2))
         elif u>width-radius:
             inset=radius-math.sqrt(max(0,radius*radius-(u-(width-radius))**2))
-        vertical=(math.erf((height-inset-y)/(sigma*root2))-math.erf((inset-y)/(sigma*root2)))/2
-        total+=math.exp(-((u-x)/sigma)**2/2)/(sigma*math.sqrt(2*math.pi))*vertical*dx
-    return total
+        vertical.append((math.erf((height-inset-y)/norm)-math.erf((inset-y)/norm))/2)
+    return tuple(vertical)
 
 
 def calibrate(options):
