@@ -2957,11 +2957,13 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
             host_->nodes().content_opacity(mounted.node) * host_->nodes().paint_opacity(mounted.node)};
         if (state->container_presentation != next_container) {
             const std::size_t stride = state->compact ? 4 : 1;
+            // The background owns the complete exterior before the border ring is drawn.
+            const bool full_outlined_fill = state->variant == InputVariant::Outlined && !state->compact;
             for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
                 const bool outer = layer < input_shadow_layer_capacity;
                 const bool inner = layer >= input_inset_shadow_layer && layer < input_focus_layer;
                 auto bounds = root_bounds;
-                const float inset = layer == input_background_layer || inner ? border : 0.0F;
+                const float inset = (layer == input_background_layer && !full_outlined_fill) || inner ? border : 0.0F;
                 bounds.x += inset;
                 bounds.y += inset;
                 bounds.width -= 2 * inset;
@@ -2984,8 +2986,7 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                     }
                 }
                 if (layer == input_border_layer && state->variant == InputVariant::Outlined) {
-                    // A translucent background cannot erase a solid border fill.
-                    // Draw the border as an actual ring around the inset surface.
+                    // Keep a hollow border so a translucent surface retains its own alpha.
                     effect.geometry.shape = {
                         {root_bounds.x + border, root_bounds.y + border, root_bounds.width - 2 * border,
                          root_bounds.height - 2 * border},
@@ -3230,11 +3231,12 @@ bool InputComponentHost::synchronize_auxiliary_fragments() {
         std::array<graphics::SceneDrawCommand, input_effect_layer_count * 4> container;
         std::size_t count{};
         const auto stride = state->compact ? 4U : 1U;
+        const bool fill_before_border =
+            state->variant == InputVariant::Filled || (state->variant == InputVariant::Outlined && !state->compact);
         for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
-            const auto paint_layer =
-                state->variant == InputVariant::Filled && layer == input_border_layer       ? input_background_layer
-                : state->variant == InputVariant::Filled && layer == input_background_layer ? input_border_layer
-                                                                                            : layer;
+            const auto paint_layer = fill_before_border && layer == input_border_layer       ? input_background_layer
+                                     : fill_before_border && layer == input_background_layer ? input_border_layer
+                                                                                             : layer;
             for (std::size_t corner = 0; corner < stride; ++corner) {
                 const auto effect = state->container_effects[paint_layer * stride + corner];
                 if (const auto index = host_->rounded_effects().packed_index(effect)) {

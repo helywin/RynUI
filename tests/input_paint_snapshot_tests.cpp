@@ -32,8 +32,8 @@ void paint_identity_and_readonly() {
             "Input paint must bind actual retained owner/generation/editor/fragment");
     require(paint.selection_surface.valid() && paint.overlay_surface.valid() && !paint.layers.empty(),
             "Input retained surface and primitive identities are absent");
-    bool background{};
-    bool border{};
+    std::optional<std::size_t> background;
+    std::optional<std::size_t> border;
     bool focus{};
     for (const auto& layer : paint.layers) {
         require(layer.exists && layer.retained.has_value() &&
@@ -41,11 +41,20 @@ void paint_identity_and_readonly() {
                 "snapshot invented a primitive");
         require(*layer.retained == fixture.services.rounded_effects().at(layer.primitive),
                 "snapshot differs from actual retained geometry/material");
-        background |= layer.role == detail::InputPaintLayerRole::background;
-        border |= layer.role == detail::InputPaintLayerRole::border;
+        if (layer.role == detail::InputPaintLayerRole::background) {
+            background = layer.command_ordinal;
+            require(layer.retained->geometry.shape.rect == fixture.nodes.require(mounted.node).bounds,
+                    "Outlined Input background does not cover the complete border box");
+        }
+        if (layer.role == detail::InputPaintLayerRole::border) {
+            border = layer.command_ordinal;
+            require(layer.retained->geometry.kind == graphics::RoundedEffectKind::outline,
+                    "Outlined Input border filled its interior");
+        }
         focus |= layer.role == detail::InputPaintLayerRole::focus;
     }
-    require(background && border && focus, "actual background/border/focus layers must remain distinct");
+    require(background && border && *background < *border && focus,
+            "Outlined Input did not submit its full background before the border ring");
     for (int index = 0; index < 5; ++index) {
         static_cast<void>(fixture.inputs.paint_snapshot(mounted.component));
     }
