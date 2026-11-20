@@ -748,6 +748,7 @@ def _web_paint_inventory(checkpoint,origin,dpr):
             binding.get('scene_revision')!=capture['scene_revision']):
         raise RunError(4,'protocol','Web paint inventory/capture binding differs')
     result=[];seen=set()
+    svg_roots={node['backend_node_id']:node for node in stack['layers'] if node.get('node_name','').lower()=='svg'}
     for node in stack['layers']:
         identity=node['source_material_id'];s=node['style'];a=node['actual']
         if identity in seen:raise ProtocolError('duplicate Web backend paint node')
@@ -851,7 +852,15 @@ def _web_paint_inventory(checkpoint,origin,dpr):
         if node['node_name'].lower()=='path':
             if s.get('stroke','none')!='none':raise RunError(3,'calibration','SVG stroke is outside formal finite fill domain')
             color=_css_rgba(s['fill']);color=(*color[:3],color[3]*float(s.get('fill-opacity','1')))
-            add('glyph',color,'/path',formal_svg=True)
+            ancestors=node.get('ancestry',[])
+            svg=svg_roots.get(ancestors[1]) if len(ancestors)>1 else None
+            viewport=view_box=None
+            if svg and svg['style'].get('transform','none')=='none' and svg['actual'].get('bounds'):
+                attrs=svg['actual'].get('attributes',{})
+                if attrs.get('transform') in (None,''):
+                    viewport=relative(svg['actual']['bounds'],origin)
+                    view_box=attrs.get('viewBox')
+            add('glyph',color,'/path',formal_svg=True,svg_viewport=viewport,svg_view_box=view_box)
             continue
         radii=[]
         for corner in ('top-left','top-right','bottom-right','bottom-left'):
@@ -1332,6 +1341,7 @@ def _glyph_priors_for_run(native,manifest,*,independent_masks=False,web=None):
     if independent_masks:
         result['scenario_masks']=scenario_masks(manifest,ROOT,texts,result)
         result['quarter_icon_masks']=quarter_icon_masks(manifest,ROOT,texts)
+        result['svg_tinted_framebuffer']=manifest['environment'].get('native',{}).get('backend') in ('direct3d12','d3d12')
         if web_rows:
             result['web_masks']=browser_scenario_masks(manifest,ROOT,(_web_glyph_source(row,result) for row in web_rows))
     if icons:result.update(font_priors_from_bytes(official_font_bytes(),[ord(c) for c in sorted(icons)],library))
@@ -1423,26 +1433,21 @@ def _glyph_samples_at_pixel(side,priors,point,dpr):
     return pairs,_composite_point(side['active'],coverages)
 
 
-def _witnessed_black_glyph_over_tint(sides,samples,observations,point,dpr):
-    if any(len(side['active'])!=3 or side['variable']!=[2] or side['coverages'][:2]!=[1,1] or
-           tuple(row['kind'] for row in side['active'])!=('fill','fill','glyph') for side in sides):
-        return None
+def _encoded_black_glyph_over_tint(sides,observations):
     alphas=[]
     for side in sides:
-        base,tint,glyph=side['active']
-        if (base['color']!=(1,1,1) or base['alpha']*base['opacity']!=1 or
-                tint['color']!=(0,0,0) or glyph['color']!=(0,0,0) or
-                any(opacity!=1 for row in (base,tint,glyph) for _,opacity in row['groups'])):
+        rows=side['active']
+        if (not 2<=len(rows)<=3 or side['variable']!=[len(rows)-1] or
+                any(coverage!=1 for coverage in side['coverages'][:-1]) or
+                any(row['kind']!='fill' for row in rows[:-1]) or rows[-1]['kind']!='glyph' or
+                any(opacity!=1 for row in rows for _,opacity in row['groups'])):
+            return None
+        tint,glyph=rows[-2:]
+        if (any(row['color']!=(1,1,1) or row['alpha']*row['opacity']!=1 for row in rows[:-2]) or
+                tint['color']!=(0,0,0) or glyph['color']!=(0,0,0)):
             return None
         alphas.append((tint['alpha']*tint['opacity'],glyph['alpha']*glyph['opacity']))
-    if (any(not 0<a<1 for a in alphas[0]) or struct.pack('<2f',*alphas[0])!=struct.pack('<2f',*alphas[1]) or
-            any(len(items)!=1 for items in samples)):
-        return None
-    (web,_),(native,_)=(items[0] for items in samples)
-    if web[:2]!=native[:2] or web[3:]!=native[3:]:
-        return None
-    px,py=(math.floor(value*dpr) for value in point)
-    if any(sample[2].at(px-sample[3],py-sample[4])!=255 for sample in (web,native)):
+    if any(not 0<a<1 for a in alphas[0]) or struct.pack('<2f',*alphas[0])!=struct.pack('<2f',*alphas[1]):
         return None
     # SkPMSrcOver uses a 256 denominator for its opaque destination.
     # The native target encodes each normal source-over write as UNORM8.
@@ -1453,6 +1458,18 @@ def _witnessed_black_glyph_over_tint(sides,samples,observations,point,dpr):
     if tuple(observations)==((browser,)*3,(target,)*3):
         return (target,)*3
     return None
+
+
+def _witnessed_black_glyph_over_tint(sides,samples,observations,point,dpr):
+    if any(len(items)!=1 for items in samples):
+        return None
+    (web,_),(native,_)=(items[0] for items in samples)
+    if web[:2]!=native[:2] or web[3:]!=native[3:]:
+        return None
+    px,py=(math.floor(value*dpr) for value in point)
+    if any(sample[2].at(px-sample[3],py-sample[4])!=255 for sample in (web,native)):
+        return None
+    return _encoded_black_glyph_over_tint(sides,observations)
 
 
 def _witnessed_glyph_rounding(sides,basis,observations,priors,point,dpr):
@@ -1483,7 +1500,7 @@ def _witnessed_glyph_rounding(sides,basis,observations,priors,point,dpr):
     return tuple(round(value*255) for value in web_rgb)
 
 
-def _witnessed_svg_rounding(sides,observed,masks,point,dpr,placements):
+def _witnessed_svg_rounding(sides,observed,masks,point,dpr,placements,*,tinted_framebuffer=False):
     from .formal_icon_source import single_path_for_glyph
     from .glyph_witness import quarter_icon_key,scenario_origin,verified_quarter_icon_tie
 
@@ -1504,24 +1521,34 @@ def _witnessed_svg_rounding(sides,observed,masks,point,dpr,placements):
         mask=masks.get(quarter_icon_key(ink))
         attrs=web['source']['actual']['attributes'];style=web['source']['style']
         path=(re.sub(r'\s+','',attrs.get('d') or ''),style.get('fill-rule','nonzero'))
+        viewport=web.get('svg_viewport')
+        if viewport:
+            signature=(*path,web['svg_view_box'])
+        else:
+            signature=path
         placements[key]=None
-        if (mask and all(float(native['bounds'][axis]*dpr).is_integer() for axis in ('x','y')) and
+        if (mask and (viewport or not tinted_framebuffer) and
                 attrs.get('transform') in (None,'') and style.get('transform','none')=='none' and
-                path==single_path_for_glyph(glyph)):
+                signature==single_path_for_glyph(glyph,include_view_box=bool(viewport))):
             try:
                 x,y=scenario_origin(mask,source,native['bounds'],dpr)
             except ProtocolError:
                 pass
             else:
-                viewport=tuple(web['bounds'][name]*dpr for name in ('x','y','width','height'))
-                if viewport==(x,y,mask.width,mask.height):
+                region=tuple((viewport or web['bounds'])[name]*dpr for name in ('x','y','width','height'))
+                if region==(x,y,mask.width,mask.height):
                     placements[key]=(mask,x,y)
     placement=placements[key]
-    if placement is None or any(_composite_point(side['active'][:-1],side['coverages'][:-1])!=(1,1,1)
-                                for side in sides):
+    if placement is None:
         return None
     mask,x,y=placement
-    return verified_quarter_icon_tie(mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y),observed)
+    coverage=mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y)
+    if tinted_framebuffer:
+        return _encoded_black_glyph_over_tint(sides,observed) if coverage==255 else None
+    if any(_composite_point(side['active'][:-1],side['coverages'][:-1])!=(1,1,1)
+                                for side in sides):
+        return None
+    return verified_quarter_icon_tie(coverage,observed)
 
 
 def _web_glyph_source(row,priors):
@@ -1814,7 +1841,9 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             # verified pair already proves the exact encoded source order.
             for side in domain_failures:
                 fail('visual','visible contributions violate actual source-over order/opacity domain',side=side,pixel=point)
-        if svg_masks and (same:=_witnessed_svg_rounding(sides,(a,b),svg_masks,point,dpr,svg_placements)) is not None:
+        if svg_masks and (same:=_witnessed_svg_rounding(
+                sides,(a,b),svg_masks,point,dpr,svg_placements,
+                tinted_framebuffer=glyph_priors.get('svg_tinted_framebuffer',False))) is not None:
             a=b=same
         compared_coverage=False
         if not sides[0]['variable'] and not sides[1]['variable']:

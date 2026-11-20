@@ -268,6 +268,22 @@ class LayeredTests(unittest.TestCase):
         sides[1]['active'][1]=dict(tint,alpha=.07)
         self.assertIsNone(check(rows))
 
+    def test_disabled_glyph_can_use_the_framebuffer_without_a_white_quad(self):
+        tint=dict(kind='fill',color=(0,0,0),alpha=.04,opacity=1,groups=[])
+        glyph=dict(tint,kind='glyph',alpha=.25)
+        sides=[dict(active=[tint,glyph],variable=[1],coverages=[1,1]) for _ in range(2)]
+        mask=GlyphWitness(0,0,1,1,bytes([255]))
+        sample=(('font','禁',mask,10,20,(0,0,0)),.25)
+        exact=lambda a,b: _witnessed_black_glyph_over_tint(
+            sides,([sample],[sample]),((a,)*3,(b,)*3),(10.5,20.5),1)
+        self.assertEqual(exact(183,184),(184,)*3)
+        self.assertIsNone(exact(184,184))
+        self.assertIsNone(exact(183,245))
+        sides[0]['active']=[dict(tint,color=(1,1,1),alpha=.5),tint,glyph]
+        sides[0]['variable']=[2]
+        sides[0]['coverages']=[1,1,1]
+        self.assertIsNone(exact(183,184))
+
     def test_color_coverage_uses_the_observed_canonical_a8_luminance(self):
         color=tuple(channel/255 for channel in (250,173,20))
         self.assertEqual(encoded_coverage(128,color,'directwrite-3x1'),164/255)
@@ -413,6 +429,20 @@ class LayeredTests(unittest.TestCase):
         face['sha256']=manifest['outline_container_sha256']
         web['source']['actual']['attributes']['d']='M 0 0 L 1 1 Z'
         self.assertIsNone(_witnessed_svg_rounding(sides,observed,masks,(.5,.5),1,{}))
+
+        web['source']['actual']['attributes']['d']=svg[0].attrib['d']
+        web['svg_viewport']=box(0,0,12,12)
+        web['svg_view_box']=svg.attrib['viewBox']
+        web['bounds']=box(0,0,10,10)
+        masks[(glyph,12)]=GlyphWitness(0,0,12,12,bytes((255,))+bytes(12*12-1))
+        white.update(color=(0,0,0),alpha=.04)
+        observed=((183,)*3,(184,)*3)
+        self.assertEqual(_witnessed_svg_rounding(sides,observed,masks,(.5,.5),1,{},tinted_framebuffer=True),
+                         observed[1])
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed[::-1],masks,(.5,.5),1,{},tinted_framebuffer=True))
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed,masks,(1.5,.5),1,{},tinted_framebuffer=True))
+        web['svg_view_box']='0 0 1 1'
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed,masks,(.5,.5),1,{},tinted_framebuffer=True))
 
     def test_status_caret_requires_the_focused_owner_source_and_location(self):
         case=dict(features=['native-status-caret'],fixture={'props':{'controls':{

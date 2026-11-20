@@ -253,7 +253,7 @@ def quarter_icon_key(ink):
 def quarter_icon_masks(manifest, root, texts):
     environment = manifest['environment']
     capture = environment['native_capture']
-    if (environment.get('native',{}).get('backend')!='vulkan' or
+    if (environment.get('native',{}).get('backend') not in ('vulkan','direct3d12','d3d12') or
             capture.get('icon_rasterizer')!='skia-svg-a8' or capture.get('framebuffer_format')!='BGRA8_UNORM'):
         return {}
     specs = {}
