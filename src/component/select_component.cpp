@@ -176,6 +176,7 @@ struct SelectState final {
     bool above{};
     bool reveal_active{true};
     bool needs_layout{true};
+    bool popup_side_resolved{};
     std::uint64_t layout_generation{};
     runtime::Rect layout_anchor;
     runtime::Rect layout_clip;
@@ -495,6 +496,7 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     const bool changed = s->visible != visible;
     s->visible = visible;
     if (changed) {
+        s->popup_side_resolved = false;
         if (visible) {
             s->motion.begin(services_->components().theme_scope(id)->snapshot(), services_->motion_preference(),
                             services_->animation_time(), s->animate);
@@ -2304,6 +2306,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
             throw std::invalid_argument("Invalid Select placement");
         }
         if (auto* s = select_state(*services_, id)) {
+            s->popup_side_resolved = false;
             s->placement = placement;
             refresh(id);
         }
@@ -2834,16 +2837,25 @@ void SelectComponentHost::position_window_layer(runtime::ComponentId id, runtime
     }
     const float wanted = body_size.height + metrics.popup_padding * 2;
     const bool prefer_above = s->placement == SelectPlacement::TopLeft || s->placement == SelectPlacement::TopRight;
-    s->above = prefer_above ? (above >= wanted || above >= below) : (below < wanted && above > below);
+    const bool anchor_outside = anchor.y + anchor.height <= clip.y || anchor.y >= clip.y + clip.height;
+    if (!anchor_outside) {
+        if (!s->popup_side_resolved || (s->above ? above : below) < wanted) {
+            s->above = prefer_above ? (above >= wanted || above >= below) : (below < wanted && above > below);
+        }
+        s->popup_side_resolved = true;
+    } else if (!s->popup_side_resolved) {
+        s->above = prefer_above;
+    }
     const bool align_right = s->placement == SelectPlacement::BottomRight ||
                              s->placement == SelectPlacement::TopRight ||
                              s->direction.get() == TextDirection::RightToLeft;
-    const float height = std::min(wanted, s->above ? above : below);
+    const float height = std::min(wanted, anchor_outside ? clip.height : (s->above ? above : below));
+    const float attached_y = s->above ? anchor.y - metrics.gap - height : anchor.y + anchor.height + metrics.gap;
+    // A scrolled-away trigger keeps its popup attached. Window clipping
+    // removes whatever leaves the viewport instead of pinning it to an edge.
     s->popup_bounds = {
         std::clamp(align_right ? anchor.x + anchor.width - width : anchor.x, clip.x, clip.x + clip.width - width),
-        std::clamp(s->above ? anchor.y - metrics.gap - height : anchor.y + anchor.height + metrics.gap, clip.y,
-                   clip.y + clip.height - height),
-        width, height};
+        anchor_outside ? attached_y : std::clamp(attached_y, clip.y, clip.y + clip.height - height), width, height};
     (void)engine.measure_child(popup_node, layout::Constraints::fixed(width, height));
     engine.place_child(popup_node, s->popup_bounds);
     const runtime::Rect body_bounds{s->popup_bounds.x + inset, s->popup_bounds.y + inset,

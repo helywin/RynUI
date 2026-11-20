@@ -1,4 +1,5 @@
 #include "component/select_component.hpp"
+#include "runtime/invalidation.hpp"
 #include "support/input_fixture.hpp"
 
 #include <cmath>
@@ -83,6 +84,49 @@ void direction_and_rich_affix_size() {
           "Changing Select direction did not mirror the existing affixes and editor");
     click(f, ltr_prefix);
     check(clicks == 2, "Retained Select prefix did not receive input after changing direction");
+}
+
+void open_popup_remains_attached_during_document_scroll() {
+    Fixture f;
+    Signal<bool> open{false};
+    Signal<SelectPlacement> placement{SelectPlacement::BottomLeft};
+    int open_requests = 0;
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .open(open)
+                   .placement(placement)
+                   .options({{1, u8"One"}, {2, u8"Two"}})
+                   .onOpenChange([&](bool) { ++open_requests; })
+                   .layout(LayoutStyle{}.width(dp(180))));
+    }});
+    f.synchronize();
+    const auto id = f.services.select().mounted().front();
+    const auto node = f.services.components().root(id);
+    runtime::NodePropertyWriter writer{f.nodes, f.dirty};
+    const auto scroll = [&](float y) {
+        static_cast<void>(writer.set_translation(node, {0, y}));
+        f.synchronize();
+        return f.services.select().snapshot(id);
+    };
+    scroll(190);
+    open.set(true);
+    f.synchronize();
+    const auto lower = f.services.select().snapshot(id);
+    check(lower.visible && lower.above && lower.popup.height > 64, "Select did not flip on open near the lower edge");
+    const auto middle = scroll(110);
+    check(middle.above && middle.popup.y == lower.popup.y - 80 && middle.rows == lower.rows,
+          "Scrolling flipped a fitting popup or replaced its options");
+    const auto outside = scroll(550);
+    check(outside.visible && outside.above && outside.popup.y == middle.popup.y + 440 && outside.rows == middle.rows,
+          "An offscreen trigger pinned its open popup on the visible viewport edge");
+    const auto restored = scroll(110);
+    check(restored.popup == middle.popup && restored.rows == middle.rows && open_requests == 0,
+          "Restoring the scroll offset moved the retained popup or dispatched an open request");
+    check(!scroll(15).above, "The popup did not flip when the current side ran out of room");
+    scroll(110);
+    placement.set(SelectPlacement::TopLeft);
+    f.synchronize();
+    check(f.services.select().snapshot(id).above, "An explicit placement change did not replace the retained side");
 }
 
 void pointer_keyboard_and_clear() {
@@ -686,6 +730,7 @@ int main() {
     try {
         pointer_keyboard_and_clear();
         direction_and_rich_affix_size();
+        open_popup_remains_attached_during_document_scroll();
         search_ime_and_dynamic_options();
         controlled_close_preserves_search_until_accepted();
         open_selected_value_dims_only_the_editor_content();
