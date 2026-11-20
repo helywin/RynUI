@@ -14,13 +14,38 @@ sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
     png_metadata,verify_profile_evidence,evidence_manifest,outline_point,outline_witness,measure_controls,
     weak_fill_pixel_matches,control_icon_outlines,control_text_origin,software_box_source_over,
-    hard_clip_matches_device_grid,physical_box_coverage,_ProfileProof)
+    hard_clip_matches_device_grid,physical_box_coverage,_ProfileProof,canvas_guard)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 from demo_differential.glyph_witness import GlyphWitness, place
 
 
 class CalibrationTests(unittest.TestCase):
+    def test_canvas_spans_include_the_first_panel_pixel_and_exclude_the_last(self):
+        # At this synthetic scale x=12 and x=36 are exact pixel centers.
+        dpr=.125
+        size=(round(1280*dpr),round(900*dpr))
+        panel=dict(x=12,y=4,width=24,height=900,rgb=[17,17,17])
+        corpus={'panels':[panel]}
+        trial={'board':'train'}
+        clears=([0,0,0,1],[1,1,1,1])
+        observations=[{'capture':{'dpr':dpr,'clear_rgba':rgba}} for rgba in clears]
+        images=[]
+        for rgba in clears:
+            pixels=bytearray(bytes(round(value*255) for value in rgba)*(size[0]*size[1]))
+            for y in range(size[1]):
+                for x in (1,2,3):
+                    offset=(y*size[0]+x)*4
+                    pixels[offset:offset+4]=bytes((17,17,17,255))
+            images.append((bytes(pixels),size))
+        with patch('demo_differential.calibration.control_cells',return_value=[]):
+            self.assertEqual(canvas_guard(corpus,trial,observations,images),({},set()))
+            for x in (0,1,3,4):
+                damaged=bytearray(images[0][0])
+                damaged[x*4]^=255
+                self.assertEqual(canvas_guard(corpus,trial,observations,[(bytes(damaged),size),images[1]])[1],
+                                 {'guard.complete-canvas'})
+
     def test_calibration_replay_is_once_per_invocation_with_exact_inputs(self):
         profile={'identity':'pilot','metrics':[{'threshold':.25}]}
         manifest={'fonts':['fixed']}

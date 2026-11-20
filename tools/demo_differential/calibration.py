@@ -1291,38 +1291,73 @@ def canvas_guard(corpus,trial,observations,images):
             frames[cell['identity']]=record
             for y in range(max(0,box[1]),min(size[1],box[3])):by_y.setdefault(y,[]).append(record)
     failures=set();values={};classified=0
+    clear_colors=[]
+    for record in observations:
+        clear=record['capture']['clear_rgba']
+        if len(clear)!=4 or clear[3]!=1:
+            raise RunError(3,'calibration','actual opaque control clear unavailable')
+        clear_colors.append(bytes(round(v*255) for v in clear))
+    def clipped_edge(value):
+        return max(0,min(size[0],value))
+    def first_pixel_at_or_after(logical):
+        offset=math.ceil(logical*dpr-.5)
+        if (offset-.5)/dpr>=logical:
+            return offset-1
+        if (offset+.5)/dpr<logical:
+            return offset+1
+        return offset
     for y in range(size[1]):
-        spans=rows.get(y,[])
-        for x in range(size[0]):
-            if any(l<=x<r for l,r in spans):
-                classified+=1
-                continue # Already classified by the control stratum.
-            lx,ly=(x+.5)/dpr,(y+.5)/dpr
-            panel=next((p for p in corpus['panels'] if p['x']<=lx<p['x']+p['width'] and p['y']<=ly<p['y']+p['height']),None)
-            near=[]
-            for frame in by_y.get(y,[]):
-                distance=rounded_distance(lx,ly,frame['rect'],0)
-                if max(distance,-distance-1)*dpr<=1:near.append(frame)
-            if not near:
-                classified+=1
+        ly=(y+.5)/dpr
+        controls=rows.get(y,[])
+        possible_frames=by_y.get(y,[])
+        panels=[]
+        for panel in corpus['panels']:
+            if panel['y']<=ly<panel['y']+panel['height']:
+                left=first_pixel_at_or_after(panel['x'])
+                right=first_pixel_at_or_after(panel['x']+panel['width'])
+                panels.append((left,right,bytes(panel['rgb']+[255])))
+        # Every span has constant potential ownership. For the clear spans,
+        # compare every original byte with one bulk equality check.
+        edges={0,size[0]}
+        for left,right in (*controls,*((f['box'][0],f['box'][2]) for f in possible_frames),
+                           *((left,right) for left,right,_ in panels)):
+            edges.update((clipped_edge(left),clipped_edge(right)))
+        ordered=sorted(edges)
+        for left,right in zip(ordered,ordered[1:]):
+            classified+=right-left
+            if any(l<=left<r for l,r in controls):
+                continue  # Already classified by the control stratum.
+            panel_color=next((color for l,r,color in panels if l<=left<r),None)
+            expected=(panel_color,)*len(images) if panel_color else clear_colors
+            candidates=[frame for frame in possible_frames if frame['box'][0]<=left<frame['box'][2]]
+            start,end=(y*size[0]+left)*4,(y*size[0]+right)*4
+            if not candidates:
+                if any(raw[start:end]!=color*(right-left) for (raw,_),color in zip(images,expected,strict=True)):
+                    failures.add('guard.complete-canvas')
+                continue
+            for x in range(left,right):
+                for frame in candidates:
+                    distance=rounded_distance((x+.5)/dpr,ly,frame['rect'],0)
+                    if max(distance,-distance-1)*dpr<=1:
+                        break
+                else:
+                    frame=None
+                offset=(y*size[0]+x)*4
                 for side,(raw,_) in enumerate(images):
-                    clear=observations[side]['capture']['clear_rgba']
-                    if len(clear)!=4 or clear[3]!=1:raise RunError(3,'calibration','actual opaque control clear unavailable')
-                    expected=bytes(panel['rgb']+[255]) if panel else bytes(round(v*255) for v in clear)
-                    if raw[(y*size[0]+x)*4:(y*size[0]+x)*4+4]!=expected:failures.add('guard.complete-canvas')
-            else:
-                classified+=1
-                near=near[:1] # Fixed source order gives touching frames one primary owner.
-                for side,(raw,_) in enumerate(images):
-                    pixel=raw[(y*size[0]+x)*4:(y*size[0]+x)*4+3];background=near[0]['cell']['background']
+                    if frame is None:
+                        if raw[offset:offset+4]!=expected[side]:
+                            failures.add('guard.complete-canvas')
+                        continue
+                    pixel=raw[offset:offset+3]
+                    background=frame['cell']['background']
                     if len(pixel)!=3 or pixel[0]!=pixel[1] or pixel[0]!=pixel[2]:
                         failures.add('guard.frame-material')
                         k=0
                     else:
                         k=(pixel[0] if background[0]==0 else 255-pixel[0])/255
-                    for frame in near:
-                        box=frame['box'];w=frame['size'][0]
-                        if box[0]<=x<box[2] and box[1]<=y<box[3]:frame['planes'][side][(y-box[1])*w+x-box[0]]=k
+                    box=frame['box']
+                    index=(y-box[1])*frame['size'][0]+x-box[0]
+                    frame['planes'][side][index]=k
     if classified!=size[0]*size[1]:raise ProtocolError('control canvas classification is incomplete')
     for frame in frames.values():
         native,reference=frame['planes']
