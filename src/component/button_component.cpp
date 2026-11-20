@@ -401,7 +401,7 @@ ResolvedButtonVisualState legacy_visual_token(const ButtonThemeToken& button, co
         };
     }
     const bool active = !state.loading && (state.press.pressed() || state.focus.keyboard_pressed);
-    const bool hovered = !state.loading && !active && state.hovered;
+    const bool hovered = !active && state.hovered;
     switch (state.type) {
     case ButtonType::Default:
         return {
@@ -464,7 +464,7 @@ ResolvedButtonVisualState visual_token(const ButtonThemeToken& button, const But
                 {}};
     }
     const bool active = !state.loading && (state.press.pressed() || state.focus.keyboard_pressed);
-    const bool hover = !state.loading && !active && state.hovered;
+    const bool hover = !active && state.hovered;
     const Color color = active ? palette.active : hover ? palette.hover : palette.base;
     const Color light = active ? palette.light_active : hover ? palette.light_hover : palette.light;
     const bool neutral = selected.color == ButtonColor::Default;

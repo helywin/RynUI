@@ -690,6 +690,42 @@ void test_animated_presentation_retarget_and_motion_policy() {
             "reduced motion did not snap to final retained Button presentation");
 }
 
+void test_loading_keeps_hover_without_activation() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    int clicks = 0;
+    fixture.host->mount(ryn::Content{[&] {
+        const auto click = [&] {
+            ++clicks;
+        };
+        ryn::Button(ryn::ButtonProps{}.type(ryn::ButtonType::Primary).loading(true).onClick(click),
+                    [] { ryn::Text(u8"Legacy primary"); });
+        ryn::Button(ryn::ButtonProps{}
+                        .color(ryn::ButtonColor::Primary)
+                        .variant(ryn::ButtonVariant::Solid)
+                        .loading(true)
+                        .onClick(click),
+                    [] { ryn::Text(u8"Typed primary"); });
+    }});
+    require(fixture.synchronize(), "Loading hover fixtures did not synchronize");
+    const auto& token = ryn::detail::default_theme_snapshot().button();
+    for (std::size_t index = 0; index < 2; ++index) {
+        const auto point = fixture.center(index);
+        const auto component = fixture.host->mounted_buttons()[index].component;
+        fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, point));
+        fixture.host->pointer().dispatch(
+            pointer_event(ryn::input::PointerAction::down, point, ryn::input::PointerButton::primary));
+        fixture.host->pointer().dispatch(
+            pointer_event(ryn::input::PointerAction::up, point, ryn::input::PointerButton::primary));
+        const auto state = fixture.host->snapshot(component);
+        const auto expected = index == 0
+                                  ? token.primary_hover_background
+                                  : token.variants.colors[static_cast<std::size_t>(ryn::ButtonColor::Primary)].hover;
+        require(state.hovered && !state.pointer_pressed && state.presentation_background == expected && clicks == 0,
+                "Loading Button dropped hover feedback or activated");
+    }
+}
+
 void test_transparent_spinner_scroll_and_reveal() {
     Fixture fixture;
     fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
@@ -2054,6 +2090,7 @@ int main() {
         test_reactive_state_matrix_and_minimal_dirty_ranges();
         test_solid_border_box_and_focus_modalities_at_simulated_dpi();
         test_animated_presentation_retarget_and_motion_policy();
+        test_loading_keeps_hover_without_activation();
         test_retained_loading_spinner_phase_and_policy_lifecycle();
         test_transparent_spinner_scroll_and_reveal();
         test_pointer_keyboard_click_path_and_callback_mutation();
