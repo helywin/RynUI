@@ -3437,6 +3437,10 @@ if(RYNUI_HAS_SDL_GPU)
     if(WIN32 OR TARGET rynui_platform_font_raster)
         target_link_libraries(rynui_demo_differential_calibration PRIVATE rynui_default_fonts)
     endif()
+    if(RYNUI_ENABLE_PINNED_SVG_ICON_RASTER)
+        target_sources(rynui_demo_differential_calibration PRIVATE demo_differential_shape_blend.cpp)
+        target_link_libraries(rynui_demo_differential_calibration PRIVATE rynui_skia_raster_lib)
+    endif()
     target_include_directories(rynui_demo_differential_calibration PRIVATE "${PROJECT_SOURCE_DIR}/src")
     target_compile_definitions(rynui_demo_differential_calibration PRIVATE
         "RYNUI_CONTROL_SOURCE_ROOT=\"${PROJECT_SOURCE_DIR}\""

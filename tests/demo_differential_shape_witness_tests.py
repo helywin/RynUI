@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 
 from demo_differential.comparison import _layer_coverage
 from demo_differential.protocol import ProtocolError
+from demo_differential.shape_blend_witness import _samples, _stacks, bind_blends, verified_blend
 from demo_differential.shape_witness import ShapeWitnesses, edge_samples, locked_edge_value, shape_request
 
 
@@ -76,6 +77,52 @@ class RoundedWitnessTests(unittest.TestCase):
         witnesses.bind((web, native), 1.5)
         self.assertEqual(web['locked_edge_witness'][0], {(4, 7): 248/255})
         self.assertEqual(web['locked_edge_witness'], native['locked_edge_witness'])
+
+
+def hard_shadow_stack(side):
+    owner = {}
+    bounds = dict(x=0, y=132, width=260, height=32)
+    web = side == 'web'
+    base = dict(groups=[('owner', 1.)] if web else [], alpha=1., opacity=1., source=owner)
+    return (
+        dict(base, kind='shadow', bounds=bounds, radii=6, alpha=.1, color=(1, 215/255, 5/255),
+             blur=0, spread=2, offset=[0, 0], caster_inset=1, knockout=True),
+        dict(base, kind='fill', bounds=bounds if web else dict(x=.5, y=132.5, width=259, height=31),
+             radii=(6,)*4 if web else 5.5, color=(1., 1., 1.)),
+        dict(base, kind='border' if web else 'outline', color=(250/255, 173/255, 20/255),
+             bounds=bounds if web else dict(x=1, y=133, width=258, height=30),
+             radii=(6,)*4 if web else 5, widths=[1, 1, 1, 1], width=1, offset_width=0),
+    )
+
+
+class RoundedBlendWitnessTests(unittest.TestCase):
+    def test_only_exact_paired_readback_can_use_the_shared_encoding(self):
+        web = hard_shadow_stack('web')
+        native = hard_shadow_stack('native')
+        (spec, dx, dy), _ = next(_stacks(web, 'web', 1.5))
+        self.assertEqual(next(_stacks(native, 'native', 1.5))[0], (spec, dx, dy))
+        colors = ((254, 236, 191), (254, 237, 192))
+        cache = {spec: _samples([[5-dx, 198-dy, *colors[0], *colors[1]]])}
+        pixels = bind_blends((web, native), 1.5, Path.cwd(), Path('out/bin/mock'), cache)
+        sides = ({'active': web}, {'active': native[::2]})
+        self.assertEqual(verified_blend(pixels, 5, 198, 1.5, sides, colors), colors[0])
+        for wrong in (((255, 236, 191), colors[1]), (colors[0], (254, 237, 193)), (colors[0], colors[0])):
+            self.assertIsNone(verified_blend(pixels, 5, 198, 1.5, sides, wrong))
+        other = dict(native[0], kind='glyph')
+        self.assertIsNone(verified_blend(pixels, 5, 198, 1.5, (sides[0], {'active': [other]}), colors))
+        native[1]['clips'] = [dict(x=4, y=132, width=255, height=32)]
+        self.assertIsNone(verified_blend(pixels, 5, 198, 1.5, sides, colors))
+
+    def test_moved_or_translucent_sources_have_no_shared_encoding(self):
+        web = hard_shadow_stack('web')
+        native = hard_shadow_stack('native')
+        native[1]['bounds'] = dict(native[1]['bounds'], y=133)
+        self.assertFalse(bind_blends((web, native), 1.5, Path.cwd(), Path('out/bin/mock'), {}))
+        native = hard_shadow_stack('native')
+        native[0]['groups'] = [('faded', .65)]
+        self.assertFalse(bind_blends((web, native), 1.5, Path.cwd(), Path('out/bin/mock'), {}))
+        with self.assertRaises(ProtocolError):
+            _samples([[3, 4, 0, 0, 0, 0, 0, 0]])
 
 
 if __name__ == '__main__':

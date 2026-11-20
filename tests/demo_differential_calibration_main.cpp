@@ -13,6 +13,7 @@
 #include "platform/fontations_grayscale.hpp"
 #endif
 #if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+#include "demo_differential_shape_blend.hpp"
 #include "platform/skia_icon_rasterizer.hpp"
 #include "renderer/sdl/locked_shape_coverage.hpp"
 #endif
@@ -282,6 +283,82 @@ void write_shape_witnesses(const Json& request, const std::filesystem::path& out
     static_cast<void>(request);
     static_cast<void>(output);
     throw std::runtime_error("the pinned rounded witness rasterizer is unavailable");
+#endif
+}
+
+void write_shape_blend_witnesses(const Json& request, const std::filesystem::path& output) {
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+    const auto rgb8 = [](const Json& value) {
+        const auto& channels = value.array();
+        require(channels.size() == 3, "rounded blend source RGB8 extent");
+        std::array<std::uint8_t, 3> result{};
+        for (std::size_t i = 0; i < result.size(); ++i) {
+            const auto component = channels[i].integer();
+            require(component >= 0 && component <= 255, "rounded blend source RGB8 channel");
+            result[i] = static_cast<std::uint8_t>(component);
+        }
+        return result;
+    };
+    const auto inset = [](LockedShapeGeometry shape, float amount) {
+        shape.bounds.x += amount;
+        shape.bounds.y += amount;
+        shape.bounds.width -= 2 * amount;
+        shape.bounds.height -= 2 * amount;
+        shape.radius -= amount;
+        return shape;
+    };
+    const auto& probes = request.at("stacks").array();
+    require(!probes.empty() && probes.size() <= 32, "rounded blend inputs exceed the fixed control bounds");
+    Json::Array stacks;
+    for (const auto& probe : probes) {
+        const auto number = [&](const char* key) {
+            return static_cast<float>(probe.at(key).number());
+        };
+        const auto bounds = rect(probe.at("bounds"));
+        const float radius = number("radius");
+        const float width = number("border_width");
+        const float caster_inset = number("caster_inset");
+        const float spread = number("spread");
+        const float alpha = number("shadow_alpha");
+        const float guard = 2 + spread;
+        const auto extent_x = std::ceil(bounds.x + bounds.width + guard);
+        const auto extent_y = std::ceil(bounds.y + bounds.height + guard);
+        require(extent_x <= 512 && extent_y <= 512 && bounds.x >= guard && bounds.y >= guard && width > 0 &&
+                    width <= 16 && radius > width && radius <= 0.5F * std::min(bounds.width, bounds.height) &&
+                    caster_inset > 0 && caster_inset <= radius && spread > 0 && spread <= 32 && alpha > 0 && alpha < 1,
+                "rounded blend source outside the fixed physical domain");
+        LockedShapeGeometry outer{bounds, radius};
+        LockedShapeGeometry fill = inset(outer, width * 0.5F);
+        LockedShapeGeometry border = inset(outer, width);
+        border.kind = LockedShapeKind::outline;
+        border.outline_width = width;
+        const auto border_color = rgb8(probe.at("border_color"));
+        border.dark_ink = border_color[0] * 0.2126F + border_color[1] * 0.7152F + border_color[2] * 0.0722F < 127.5F;
+        outer.kind = LockedShapeKind::exterior_shadow;
+        outer.shadow_spread = spread;
+        outer.shadow_caster_inset = caster_inset;
+        outer.shadow_alpha = alpha;
+        Json::Array samples;
+        for (const auto& sample : shape_blend_samples({outer,
+                                                       fill,
+                                                       border,
+                                                       rgb8(probe.at("shadow_color")),
+                                                       {255, 255, 255},
+                                                       border_color,
+                                                       static_cast<std::uint32_t>(extent_x),
+                                                       static_cast<std::uint32_t>(extent_y)})) {
+            samples.emplace_back(Json::Array{integer(sample.x), integer(sample.y), integer(sample.web[0]),
+                                             integer(sample.web[1]), integer(sample.web[2]), integer(sample.native[0]),
+                                             integer(sample.native[1]), integer(sample.native[2])});
+        }
+        stacks.emplace_back(std::move(samples));
+    }
+    write_json(output / "shape-blend-witnesses.json",
+               Json::Object{{"rasterizer", "skia-and-sdl-rgb8-source-over"}, {"stacks", std::move(stacks)}});
+#else
+    static_cast<void>(request);
+    static_cast<void>(output);
+    throw std::runtime_error("the pinned rounded blend witness rasterizer is unavailable");
 #endif
 }
 
@@ -829,9 +906,11 @@ int main(int argc, char** argv) {
             nullptr);
         const bool glyph_witness = argc == 5 && std::string_view{argv[1]} == "--glyph-witnesses";
         const bool shape_witness = argc == 5 && std::string_view{argv[1]} == "--shape-witnesses";
-        require(argc == 5 && (glyph_witness || shape_witness || std::string_view{argv[1]} == "--request") &&
+        const bool shape_blend = argc == 5 && std::string_view{argv[1]} == "--shape-blend-witnesses";
+        require(argc == 5 &&
+                    (glyph_witness || shape_witness || shape_blend || std::string_view{argv[1]} == "--request") &&
                     std::string_view{argv[3]} == "--output",
-                "expected --request, --glyph-witnesses or --shape-witnesses <owned.json> --output <fresh-out>");
+                "expected a calibration or witness mode <owned.json> --output <fresh-out>");
         const auto request = read_json(owned_path(argv[2]));
         const auto output = owned_path(argv[4]);
         require(!std::filesystem::exists(output), "control output must be fresh");
@@ -842,6 +921,10 @@ int main(int argc, char** argv) {
         }
         if (shape_witness) {
             write_shape_witnesses(request, output);
+            return 0;
+        }
+        if (shape_blend) {
+            write_shape_blend_witnesses(request, output);
             return 0;
         }
         require(request.at("calibration_kind").string() == "pilot-independent-v1", "unknown control kind");

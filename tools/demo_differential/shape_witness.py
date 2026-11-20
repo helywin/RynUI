@@ -8,6 +8,7 @@ import uuid
 from .adapters import process
 from .protocol import ProtocolError, read, relative_path
 from .reporting import write_json
+from .shape_blend_witness import bind_blends
 
 
 def shape_request(row, dpr):
@@ -78,6 +79,10 @@ class ShapeWitnesses:
         self.binary = root / relative_path(manifest['tools']['control_binary'])
         self.samples = {}
         self.shared = {}
+        self.blend_samples = {}
+
+    def blend_pixels(self, inventories, dpr):
+        return bind_blends(inventories, dpr, self.root, self.binary, self.blend_samples)
 
     def bind(self, layers, dpr):
         paired = {}

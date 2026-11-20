@@ -1,0 +1,137 @@
+"""Exact RGB8 encoding checks for finite opaque rounded and hard-shadow stacks."""
+from __future__ import annotations
+
+import math
+import struct
+import uuid
+
+from .adapters import process
+from .protocol import ProtocolError, read
+from .reporting import write_json
+
+
+def _radius(row):
+    radius = row['radii']
+    if isinstance(radius, (tuple, list)):
+        return radius[0] if len(set(radius)) == 1 else 0
+    return radius
+
+
+def _inset(bounds, width):
+    return dict(x=bounds['x'] + width, y=bounds['y'] + width, width=bounds['width'] - 2 * width,
+                height=bounds['height'] - 2 * width)
+
+
+def _rgb8(color):
+    channels = tuple(round(channel * 255) for channel in color)
+    return channels if struct.pack('<3f', *color) == struct.pack('<3f', *(v / 255 for v in channels)) else None
+
+
+def _stacks(rows, side, dpr):
+    for shadow, fill, border in zip(rows, rows[1:], rows[2:]):
+        layers = (shadow, fill, border)
+        if tuple(layer['kind'] for layer in layers) != ('shadow', 'fill', 'border' if side == 'web' else 'outline'):
+            continue
+        if (any(opacity != 1 for layer in layers for _, opacity in layer['groups'])
+                or not shadow.get('knockout') or shadow['blur'] != 0 or any(shadow['offset'])
+                or not 0 < shadow['alpha'] < 1 or shadow['opacity'] != 1
+                or any(layer['alpha'] != 1 or layer['opacity'] != 1 for layer in (fill, border))
+                or fill['color'] != (1., 1., 1.)):
+            continue
+        bounds = shadow['bounds']
+        radius = _radius(shadow)
+        if side == 'web':
+            if (not all(layer['source'] is shadow['source'] for layer in (fill, border))
+                    or len(set(border['widths'])) != 1 or fill['bounds'] != bounds or border['bounds'] != bounds
+                    or _radius(fill) != radius or _radius(border) != radius):
+                continue
+            width = border['widths'][0]
+        else:
+            width = border['width']
+            if (border['offset_width'] != 0 or fill['bounds'] != _inset(bounds, width * .5)
+                    or border['bounds'] != _inset(bounds, width)
+                    or _radius(fill) != radius - width * .5 or _radius(border) != radius - width):
+                continue
+        shadow_color, border_color = _rgb8(shadow['color']), _rgb8(border['color'])
+        if shadow_color is None or border_color is None:
+            continue
+        x, y, w, h, radius, width, inset, spread = (value * dpr for value in (
+            bounds['x'], bounds['y'], bounds['width'], bounds['height'], radius, width,
+            shadow.get('caster_inset', 0), shadow['spread']))
+        guard = 4 + math.ceil(spread)
+        if (not 0 < width <= 16 or not width < radius <= .5 * min(w, h)
+                or not 0 < inset <= radius or not 0 < spread <= 32 or max(w, h) + 2 * guard + 1 > 512
+                or any(value * 4 != round(value * 4) for value in (x, y, w, h, radius, width, inset, spread))):
+            continue
+        dx, dy = math.floor(x) - guard, math.floor(y) - guard
+        alpha = struct.unpack('<f', struct.pack('<f', shadow['alpha']))[0]
+        spec = (x - dx, y - dy, w, h, radius, width, inset, spread, alpha, shadow_color, border_color)
+        yield (spec, dx, dy), layers
+
+
+def _samples(samples):
+    if not isinstance(samples, list) or len(samples) > 512 * 512:
+        raise ProtocolError('invalid rounded blend witness extent')
+    result = {}
+    for row in samples:
+        if (not isinstance(row, list) or len(row) != 8 or any(type(v) is not int for v in row)
+                or any(not 0 <= coordinate < 512 for coordinate in row[:2])
+                or any(not 0 <= channel <= 255 for channel in row[2:]) or row[2:5] == row[5:]
+                or tuple(row[:2]) in result):
+            raise ProtocolError('malformed rounded blend witness sample')
+        result[tuple(row[:2])] = tuple(row[2:5]), tuple(row[5:])
+    return result
+
+
+def _batch(root, binary, needed, cache):
+    work = root / 'out/demo-differential/shape-blend-witnesses' / uuid.uuid4().hex
+    work.mkdir(parents=True)
+    request, output = work / 'request.json', work / 'output'
+    stacks = [dict(bounds=dict(x=x, y=y, width=w, height=h), radius=radius, border_width=width,
+                   caster_inset=inset, spread=spread, shadow_alpha=alpha, shadow_color=shadow, border_color=border)
+              for x, y, w, h, radius, width, inset, spread, alpha, shadow, border in needed]
+    write_json(request, dict(stacks=stacks))
+    process([binary, '--shape-blend-witnesses', request, '--output', output], work / 'process', 60, failure_code=3)
+    receipt = read(output / 'shape-blend-witnesses.json')
+    if (not isinstance(receipt, dict) or set(receipt) != {'rasterizer', 'stacks'}
+            or receipt['rasterizer'] != 'skia-and-sdl-rgb8-source-over'
+            or not isinstance(receipt['stacks'], list) or len(receipt['stacks']) != len(needed)):
+        raise ProtocolError('rounded blend witness set differs from requested sources')
+    cache.update({spec: _samples(item) for spec, item in zip(needed, receipt['stacks'], strict=True)})
+
+
+def bind_blends(inventories, dpr, root, binary, cache):
+    paired = {}
+    for side, rows in zip(('web', 'native'), inventories, strict=True):
+        for key, layers in _stacks(rows, side, dpr):
+            paired.setdefault(key, {}).setdefault(side, []).append(layers)
+    valid = {key: (sides['web'][0], sides['native'][0]) for key, sides in paired.items()
+             if len(sides) == 2 and all(len(value) == 1 for value in sides.values())}
+    needed = list(dict.fromkeys(spec for spec, _, _ in valid if spec not in cache))
+    for start in range(0, len(needed), 32):
+        _batch(root, binary, needed[start:start+32], cache)
+    pixels = {}
+    for (spec, dx, dy), layers in valid.items():
+        for (x, y), values in cache[spec].items():
+            pixels.setdefault((x + dx, y + dy), []).append((layers, values))
+    return pixels
+
+
+def verified_blend(pixels, x, y, dpr, sides, observed):
+    if observed[0] == observed[1]:
+        return None
+    candidates = pixels.get((x, y), ())
+    if len(candidates) != 1:
+        return None
+    layers, expected = candidates[0]
+    if expected != observed:
+        return None
+    px, py = (x + .5) / dpr, (y + .5) / dpr
+    for allowed, side in zip(layers, sides, strict=True):
+        if not side['active'] or any(not any(row is item for item in allowed) for row in side['active']):
+            return None
+        for row in allowed:
+            if any(not (clip['x'] <= px < clip['x'] + clip['width'] and
+                        clip['y'] <= py < clip['y'] + clip['height']) for clip in row.get('clips', ())):
+                return None
+    return expected[0]

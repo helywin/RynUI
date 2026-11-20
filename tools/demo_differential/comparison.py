@@ -23,6 +23,7 @@ from .regions import (crop_rgba, geometry, physical_box, raster_metrics, rect, r
 from .runner_evidence import artifact, metrics
 from .calibration import CAPS
 from .pilots import displayed_slot_text
+from .shape_blend_witness import verified_blend
 from .shape_witness import ShapeWitnesses, locked_edge_value
 
 LEGACY_DIAGNOSTIC_CAPS = {'geometry.logical_px': .25, 'pixels.max_channel_residual': 0,
@@ -1500,8 +1501,10 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             if len(scalar)==1 and not scalar.isspace() and (mask:=masks.get(mask_identity(scalar,source))) is not None:
                 row['native_glyph_mask']=(mask,*scenario_origin(mask,source,row['bounds'],dpr))
     inventories=(web_layers,native_layers)
+    blend_pixels={}
     if shape_witnesses is not None:
         shape_witnesses.bind([*web_layers,*native_layers],dpr)
+        blend_pixels=shape_witnesses.blend_pixels(inventories,dpr)
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
     caret=_status_input_caret(case,(wt,nt),inventories,origins,dpr)
     if caret:
@@ -1670,6 +1673,10 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
         # Every actual context pixel is compared, including overlaps and tails.
         # No full-context byte equality veto is used for calibrated AA.
         a,b=[tuple(data[index*4:index*4+3]) for data in crops]
+        # The same source stack can have two exact RGB8 encodings. Both actual
+        # pixels must independently match their encoding before pairing them.
+        if blend_pixels and (same:=verified_blend(blend_pixels,x,y,dpr,sides,(a,b))) is not None:
+            a=b=same
         compared_coverage=False
         if not sides[0]['variable'] and not sides[1]['variable']:
             error=rgb8_delta_e00(a,b)
