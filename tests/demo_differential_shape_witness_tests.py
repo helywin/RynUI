@@ -158,6 +158,27 @@ class RoundedBlendWitnessTests(unittest.TestCase):
         self.assertEqual(next(_stacks(native, 'native', 1, False))[0][0][-2:], (False, False))
         self.assertEqual(next(_stacks(native, 'native', 1.5, True))[0][0][-2:], (False, False))
 
+    def test_translated_integer_stroke_requires_outer_fill_and_exact_offset(self):
+        web, native = (hard_shadow_stack(side) for side in ('web', 'native'))
+        for side, (shadow, fill, _) in enumerate((web, native)):
+            shadow.update(offset=[0, 2], spread=0, knockout=side == 0)
+            fill.update(bounds=shadow['bounds'], radii=shadow['radii'])
+        (spec, dx, dy), layers = next(_stacks(web, 'web', 1, True))
+        self.assertEqual(layers, web)
+        self.assertEqual(next(_stacks(native, 'native', 1, True)), ((spec, dx, dy), native))
+        self.assertEqual(spec[-5:], (0, 2, 0, True, False))
+        for dpr, split in ((1, False), (1.5, True)):
+            self.assertFalse(any(len(rows) == 3 for _, rows in _stacks(web, 'web', dpr, split)))
+        colors = ((233,)*3, (236,)*3)
+        cache = {spec: _samples([[259-dx, 161-dy, *colors[0], *colors[1]]])}
+        pixels = bind_blends((web, native), 1, Path.cwd(), Path('out/bin/mock'), cache, split_coverage=True)
+        sides = tuple({'active': rows} for rows in (web, native))
+        self.assertEqual(verified_blend(pixels, 259, 161, 1, sides, colors), colors[0])
+        self.assertIsNone(verified_blend(pixels, 259, 161, 1, sides, (colors[0], (235,)*3)))
+        native[0]['offset'] = [0, 3]
+        self.assertFalse(bind_blends((web, native), 1, Path.cwd(), Path('out/bin/mock'), cache,
+                                    split_coverage=True))
+
     def test_split_fill_is_only_admitted_on_proven_integer_llvmpipe_path(self):
         def source(side, left=268):
             shadow, fill, _ = hard_shadow_stack(side)

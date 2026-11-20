@@ -335,9 +335,12 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
                                   std::floor(bounds.height) == bounds.height && std::floor(radius) == radius &&
                                   std::floor(offset.x) == offset.x && std::floor(offset.y) == offset.y;
         const bool opaque_stroke = alpha == 0 && integer_stroke && spread == 0 && max_offset == 0 && caster_inset == 0;
-        const bool translucent_caster = caster_inset > 0 && caster_inset <= radius && alpha > 0 && alpha < 1 &&
-                                        (bordered && !focus ? max_offset == 0 && spread > 0 && spread <= 32
-                                                            : max_offset > 0 && max_offset <= 32 && spread == 0);
+        const bool translated_stroke = integer_stroke && integer_body && split_border && caster_inset == 1 &&
+                                       max_offset > 0 && max_offset <= 32 && spread == 0;
+        const bool translucent_caster =
+            caster_inset > 0 && caster_inset <= radius && alpha > 0 && alpha < 1 &&
+            (bordered && !focus ? translated_stroke || (max_offset == 0 && spread > 0 && spread <= 32)
+                                : max_offset > 0 && max_offset <= 32 && spread == 0);
         const float guard = 2 + std::max(spread + max_offset, focus ? width + outline_gap : 0.0F);
         const auto extent_x = std::ceil(bounds.x + bounds.width + guard);
         const auto extent_y = std::ceil(bounds.y + bounds.height + guard);
@@ -349,7 +352,7 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
                     (!split_fill || (!bordered && !focus && translucent_caster && integer_body)),
                 "rounded blend source outside the fixed physical domain");
         LockedShapeGeometry outer{bounds, radius};
-        LockedShapeGeometry fill = focus ? outer : inset(outer, width * 0.5F);
+        LockedShapeGeometry fill = (focus || translated_stroke) ? outer : inset(outer, width * 0.5F);
         LockedShapeGeometry border = focus ? outer : inset(outer, width);
         border.kind = LockedShapeKind::outline;
         border.outline_width = width;
@@ -358,7 +361,8 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         fill.dark_ink = fill_color[0] * 0.2126F + fill_color[1] * 0.7152F + fill_color[2] * 0.0722F < 127.5F;
         const auto border_color = rgb8(probe.at("border_color"));
         border.dark_ink = border_color[0] * 0.2126F + border_color[1] * 0.7152F + border_color[2] * 0.0722F < 127.5F;
-        outer.kind = bordered && !focus ? LockedShapeKind::exterior_shadow : LockedShapeKind::hard_shadow;
+        outer.kind =
+            bordered && !focus && !translated_stroke ? LockedShapeKind::exterior_shadow : LockedShapeKind::hard_shadow;
         outer.shadow_offset = offset;
         outer.shadow_spread = spread;
         outer.shadow_caster_inset = caster_inset;

@@ -28,12 +28,15 @@ def _rgb8(color):
 
 
 def _stacks(rows, side, dpr, split_coverage=False):
+    translated_borders = set()
     for shadow, fill, border in zip(rows, rows[1:], rows[2:]):
         layers = (shadow, fill, border)
         if tuple(layer['kind'] for layer in layers) != ('shadow', 'fill', 'border' if side == 'web' else 'outline'):
             continue
+        translated = any(shadow['offset'])
         if (any(opacity != 1 for layer in layers for _, opacity in layer['groups'])
-                or not shadow.get('knockout') or shadow['blur'] != 0 or any(shadow['offset'])
+                or shadow.get('knockout') != (side == 'web' or not translated) or shadow['blur'] != 0
+                or (translated and not split_coverage)
                 or not 0 < shadow['alpha'] < 1 or shadow['opacity'] != 1
                 or any(layer['alpha'] != 1 or layer['opacity'] != 1 for layer in (fill, border))
                 or fill['color'] != (1., 1., 1.)):
@@ -48,30 +51,39 @@ def _stacks(rows, side, dpr, split_coverage=False):
             width = border['widths'][0]
         else:
             width = border['width']
-            if (border['offset_width'] != 0 or fill['bounds'] != _inset(bounds, width * .5)
+            fill_inset = 0 if translated else width * .5
+            if (border['offset_width'] != 0 or fill['bounds'] != _inset(bounds, fill_inset)
                     or border['bounds'] != _inset(bounds, width)
-                    or _radius(fill) != radius - width * .5 or _radius(border) != radius - width):
+                    or _radius(fill) != radius - fill_inset or _radius(border) != radius - width):
                 continue
         shadow_color, border_color = _rgb8(shadow['color']), _rgb8(border['color'])
         if shadow_color is None or border_color is None:
             continue
-        x, y, w, h, radius, width, inset, spread = (value * dpr for value in (
+        x, y, w, h, radius, width, inset, spread, ox, oy = (value * dpr for value in (
             bounds['x'], bounds['y'], bounds['width'], bounds['height'], radius, width,
-            shadow.get('caster_inset', 0), shadow['spread']))
-        guard = 4 + math.ceil(spread)
+            1 if translated else shadow.get('caster_inset', 0), shadow['spread'], *shadow['offset']))
+        guard = 4 + math.ceil(max(spread, abs(ox), abs(oy)))
         if (not 0 < width <= 16 or not width < radius <= .5 * min(w, h)
-                or not 0 < inset <= radius or not 0 < spread <= 32 or max(w, h) + 2 * guard + 1 > 512
+                or not 0 < inset <= radius or max(w, h) + 2 * guard + 1 > 512
                 or any(value * 4 != round(value * 4) for value in (x, y, w, h, radius, width, inset, spread))):
+            continue
+        split_border = (split_coverage and width == 1 and
+                        all(value == round(value) for value in (x, y, w, h, radius)))
+        if translated:
+            if (not split_border or dpr != 1 or spread != 0
+                    or max(abs(ox), abs(oy)) > 32 or any(value != round(value) for value in (ox, oy))
+                    or (side == 'web' and shadow.get('caster_inset') != 1)):
+                continue
+            translated_borders.add(id(shadow))
+        elif not 0 < spread <= 32:
             continue
         dx, dy = math.floor(x) - guard, math.floor(y) - guard
         alpha = struct.unpack('<f', struct.pack('<f', shadow['alpha']))[0]
-        split_border = (split_coverage and width == 1 and
-                        all(value == round(value) for value in (x, y, w, h, radius)))
         spec = (x - dx, y - dy, w, h, radius, width, inset, spread, alpha, shadow_color, border_color,
-                (255, 255, 255), 0, 0, 0, split_border, False)
+                (255, 255, 255), ox, oy, 0, split_border, False)
         yield (spec, dx, dy), layers
     for index, (shadow, following) in enumerate(zip(rows, rows[1:])):
-        if shadow['kind'] != 'shadow':
+        if shadow['kind'] != 'shadow' or id(shadow) in translated_borders:
             continue
         outline = None
         if following['kind'] == 'fill':

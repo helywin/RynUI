@@ -47,7 +47,12 @@ void draw_web(SkBitmap& bitmap, const ShapeBlendSource& source) {
         paint.setColorFilter(nullptr);
     }
     paint.setColor(rgb(source.fill_color));
-    canvas.drawRRect(rounded(source.fill), paint);
+    const bool translated_stroke = source.border && source.border->outline_offset == 0 &&
+                                   source.caster.kind == ryn::detail::LockedShapeKind::hard_shadow;
+    // Blink fills the stroke centerline before drawing its border. The native
+    // translated-shadow path fills the full outer box.
+    canvas.drawRRect(
+        translated_stroke ? rounded(source.caster, source.border->outline_width * .5F) : rounded(source.fill), paint);
     if (source.border) {
         paint.setColor(rgb(source.border_color));
         const auto gap = source.border->outline_offset;
