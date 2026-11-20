@@ -123,6 +123,10 @@ class ShapeWitnesses:
         self.split_coverage = (native.get('backend') == 'vulkan' and
                                native.get('gpu', {}).get('driver_name') == 'llvmpipe' and
                                capture.get('framebuffer_format') == 'BGRA8_UNORM')
+        self.opacity_surface_rgb8 = (
+            environment.get('web', {}).get('version') == '141.0.7390.37' and
+            (self.split_coverage or (native.get('backend', '').lower() in ('d3d12', 'direct3d12')
+                                     and capture.get('framebuffer_format') == 'BGRA8_UNORM')))
 
     def blend_pixels(self, inventories, dpr):
         return bind_blends(inventories, dpr, self.root, self.binary, self.blend_samples,

@@ -16,7 +16,7 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error,
                                           _matches_soft_shadow_rgb,_empty_select_compositor_caret,_hard_paint_gates,
                                           _clip_intersection,_tiled_target_clips,_glyph_in_sampled_region,
-                                          _witnessed_black_glyph_over_tint)
+                                          _witnessed_black_glyph_over_tint,_opaque_fill_encoding,_flat_opacity_fill)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
@@ -625,6 +625,27 @@ class LayeredTests(unittest.TestCase):
         self.assertIsNone(_joint_paint_output_basis(layers[::-1],coverage,variable))
         self.assertIsNone(_joint_paint_output_basis(
             [layers[0],dict(layers[1],groups=[('paint:1',.65)])],coverage,variable))
+
+    def test_flat_opacity_encodings_require_the_observed_surface_and_opaque_fill(self):
+        source=dict(backend_node_id=65,opacity_surface=dict(source='Chromium LayerTree',owner=65,member=31,
+                    owner_layer='11',member_layer='12',parent_layer='7'))
+        nodes={31:dict(ancestry=[31,65],composition_group_path=[dict(backend_node_id=65,opacity='0.65')])}
+        row=dict(kind='fill',groups=[('65',.65)],color=(22/255,119/255,1),alpha=1,opacity=1,source=source)
+        web=_opaque_fill_encoding(row,nodes)
+        native=_opaque_fill_encoding(dict(row,groups=[('paint:0',struct.unpack('<f',struct.pack('<f',.65))[0])]))
+        self.assertEqual(web[0],native[0])
+        self.assertEqual(web[1],(104,167,255))
+        self.assertEqual(native[1],(103,166,255))
+        self.assertIsNone(_opaque_fill_encoding(dict(row,alpha=.9),nodes))
+        self.assertIsNone(_opaque_fill_encoding(dict(row,groups=[('paint:0',.5)])))
+        self.assertIsNone(_opaque_fill_encoding(row,{31:dict(nodes[31],ancestry=[31,64])}))
+        self.assertIsNone(_opaque_fill_encoding(row,{}))
+        row['opacity_fill_encoding']=web
+        self.assertEqual(_flat_opacity_fill([row],[1.]),web)
+        self.assertIsNone(_flat_opacity_fill([row],[.99]))
+        under=dict(row,kind='shadow')
+        self.assertEqual(_flat_opacity_fill([under,row],[.2,1.]),web)
+        self.assertIsNone(_flat_opacity_fill([dict(under,groups=[]),row],[.2,1.]))
 
     def test_opaque_focus_outline_overlapped_by_floating_shadow_keeps_joint_gate(self):
         layers=[dict(kind='shadow',blur=0,groups=[],color=(145/255,202/255,1),alpha=1,opacity=1),

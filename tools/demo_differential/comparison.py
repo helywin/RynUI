@@ -1470,6 +1470,54 @@ def _witnessed_black_glyph_over_tint(sides,samples,observations,point,dpr):
     return _encoded_black_glyph_over_tint(sides,observations)
 
 
+def _opacity_surface_owner(source,nodes):
+    fact=source.get('opacity_surface')
+    if not isinstance(fact,dict) or fact.get('source')!='Chromium LayerTree':
+        return False
+    owner,member=fact.get('owner'),fact.get('member')
+    layer_ids=tuple(fact.get(name) for name in ('owner_layer','member_layer','parent_layer'))
+    if (type(owner) is not int or owner!=source['backend_node_id'] or type(member) is not int or owner==member or
+            any(not isinstance(value,str) or not value for value in layer_ids) or len(set(layer_ids))!=3):
+        return False
+    descendant=nodes.get(member)
+    return bool(descendant and owner in descendant['ancestry'] and
+                [group['backend_node_id'] for group in descendant['composition_group_path']
+                 if group['opacity']!='1']==[owner])
+
+
+def _opaque_fill_encoding(row,web_nodes=None):
+    if (row['kind']!='fill' or row['alpha']!=1 or row['opacity']!=1 or len(row['groups'])!=1 or
+            (web_nodes is not None and not _opacity_surface_owner(row['source'],web_nodes))):
+        return None
+    opacity=row['groups'][0][1]
+    if not 0<opacity<1:
+        return None
+    color=tuple(round(channel*255) for channel in row['color'])
+    if struct.pack('<3f',*row['color'])!=struct.pack('<3f',*(channel/255 for channel in color)):
+        return None
+    if web_nodes is not None:
+        alpha=math.floor(opacity*255)
+        encoded=tuple(channel*(alpha+1)//256+255-alpha for channel in color)
+    else:
+        # The native target rounds source and destination contributions separately.
+        # A half-code tie can depend on shader or blend precision.
+        terms=tuple(channel*opacity for channel in color)+(255*(1-opacity),)
+        if any(abs(value-math.floor(value)-.5)<=2**-14 for value in terms):
+            return None
+        values=tuple(math.floor(value+.5) for value in terms)
+        encoded=tuple(min(255,channel+values[-1]) for channel in values[:-1])
+    return (color,struct.pack('<f',opacity)),encoded
+
+
+def _flat_opacity_fill(active,coverages):
+    if not active or coverages[-1]!=1 or not active[-1].get('opacity_fill_encoding'):
+        return None
+    top=active[-1]
+    if any(row['groups']!=top['groups'] for row in active[:-1]):
+        return None
+    return top['opacity_fill_encoding']
+
+
 def _witnessed_glyph_rounding(sides,basis,observations,priors,point,dpr):
     """Resolve RGB8 rounding only where both captured glyph sources agree."""
     if basis.get('rank')!=1 or not priors or not priors.get('scenario_masks'):
@@ -1653,10 +1701,21 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 row['native_glyph_mask']=(mask,*scenario_origin(mask,source,row['bounds'],dpr))
     inventories=(web_layers,native_layers)
     blend_pixels={}
+    opacity_surfaces=False
     if shape_witnesses is not None:
         shape_witnesses.bind([*web_layers,*native_layers],dpr)
         shape_witnesses.bind_shadow_groups(web_layers,dpr)
         blend_pixels=shape_witnesses.blend_pixels(inventories,dpr)
+        if getattr(shape_witnesses,'opacity_surface_rgb8',False):
+            nodes={node['backend_node_id']:node for node in web_stack['layers']}
+            for row in web_layers:
+                if (encoding:=_opaque_fill_encoding(row,nodes)) is not None:
+                    row['opacity_fill_encoding']=encoding
+                    opacity_surfaces=True
+            if opacity_surfaces:
+                for row in native_layers:
+                    if (encoding:=_opaque_fill_encoding(row)) is not None:
+                        row['opacity_fill_encoding']=encoding
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
     caret=_status_input_caret(case,(wt,nt),inventories,origins,dpr)
     if caret:
@@ -1721,9 +1780,13 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             predicted=_composite_point(active,coverages)
             observed=tuple(crops[side][index*4:index*4+3])
             if not variable:
-                error=rgb8_delta_e00(observed,tuple(round(v*255) for v in predicted));max_color=max(max_color,error)
-                if error>thresholds['color.flat_delta_e00']:fail('visual','independent flat/material/guard color differs',side=side,pixel=point,actual=error)
-                sides.append(dict(active=active,variable=variable,kind='flat' if active else 'guard',values=()))
+                flat=tuple(round(v*255) for v in predicted)
+                opacity_fill=_flat_opacity_fill(active,coverages) if opacity_surfaces else None
+                if opacity_fill is None:
+                    error=rgb8_delta_e00(observed,flat);max_color=max(max_color,error)
+                    if error>thresholds['color.flat_delta_e00']:fail('visual','independent flat/material/guard color differs',side=side,pixel=point,actual=error)
+                sides.append(dict(active=active,variable=variable,kind='flat' if active else 'guard',values=(),
+                                  flat=flat,opacity_fill=opacity_fill))
                 continue
             # The basis is chosen solely from retained/DOM source colors, never
             # fitted to either observed pixel. Full layer alpha is not recovered.
@@ -1836,6 +1899,20 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
         # Every actual context pixel is compared, including overlaps and tails.
         # No full-context byte equality veto is used for calibrated AA.
         a,b=[tuple(data[index*4:index*4+3]) for data in crops]
+        if opacity_surfaces:
+            opacity_fills=[side.get('opacity_fill') for side in sides]
+            same_opacity_source=all(opacity_fills) and opacity_fills[0][0]==opacity_fills[1][0]
+            for side,(predicted,observed) in enumerate(zip(opacity_fills,(a,b),strict=True)):
+                if predicted is None:
+                    continue
+                expected=predicted[1] if same_opacity_source else sides[side]['flat']
+                error=rgb8_delta_e00(observed,expected);max_color=max(max_color,error)
+                if same_opacity_source and observed!=expected:
+                    fail('visual','isolated opacity surface color differs from its encoding',side=side,pixel=point,actual=error)
+                elif error>thresholds['color.flat_delta_e00']:
+                    fail('visual','independent flat/material/guard color differs',side=side,pixel=point,actual=error)
+            if same_opacity_source and (a,b)==tuple(fill[1] for fill in opacity_fills):
+                b=a
         # The same source stack can have two exact RGB8 encodings. Both actual
         # pixels must independently match their encoding before pairing them.
         encoded=verified_blend(blend_pixels,x,y,dpr,sides,(a,b)) if blend_pixels else None

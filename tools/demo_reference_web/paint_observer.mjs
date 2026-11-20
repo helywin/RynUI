@@ -216,6 +216,25 @@ async function observeIsolatedShadowGroup(cdp, node, compositorLayers) {
   return matches.length===1 ? matches[0] : null;
 }
 
+async function observeOpacitySurface(cdp, node, layers, compositorLayers) {
+  const bounds=node.actual.bounds;
+  const owner=compositorLayers.filter(layer=>layer.drawsContent && layer.backendNodeId===node.backend_node_id &&
+    layer.scrollRects?.some(({type,rect})=>type==='TouchEventHandler' && rect.x===0 && rect.y===0 &&
+      rect.width===bounds.width && rect.height===bounds.height));
+  if (owner.length!==1) return null;
+  const descendants=new Set(layers.filter(layer=>layer.backend_node_id!==node.backend_node_id &&
+    layer.ancestry.includes(node.backend_node_id) &&
+    layer.composition_group_path.filter(group=>group.opacity!=='1').length===1).map(layer=>layer.backend_node_id));
+  const children=compositorLayers.filter(layer=>layer.drawsContent && descendants.has(layer.backendNodeId) &&
+    layer.parentLayerId===owner[0].parentLayerId && layer.width>0 && layer.height>0);
+  if (children.length!==1) return null;
+  const [child]=children;
+  const childReasons=await cdp.send('LayerTree.compositingReasons',{layerId:child.layerId});
+  if (!childReasons.compositingReasonIds?.includes('ActiveTransformAnimation')) return null;
+  return {source:'Chromium LayerTree',owner:node.backend_node_id,member:child.backendNodeId,
+    owner_layer:owner[0].layerId,member_layer:child.layerId,parent_layer:child.parentLayerId};
+}
+
 export async function observePaintStack(cdp, identities, {nonce,step,revision,viewport,compositorLayers=[]}) {
   const liveViewport=(await cdp.send('Runtime.evaluate',{expression:'({scroll_x:scrollX,scroll_y:scrollY,width:innerWidth,height:innerHeight,dpr:devicePixelRatio})',returnByValue:true})).result.value;
   const objectGroup = 'readonly-paint-roots';
@@ -276,6 +295,14 @@ export async function observePaintStack(cdp, identities, {nonce,step,revision,vi
       opacity:groupByNode.get(id).style.opacity}));
   for (const layer of layers) {
     const bounds=layer.actual.bounds;
+    const opacity=Number(layer.style.opacity);
+    if (layer.node_type===1 && bounds && layer.stacking_context && opacity>0 && opacity<1 &&
+        bounds.y<liveViewport.height && bounds.y+bounds.height>0 &&
+        layer.style.transform==='none' && layer.style['mix-blend-mode']==='normal' &&
+        layer.composition_group_path.every(group=>group.backend_node_id===layer.backend_node_id || group.opacity==='1')) {
+      const witness=await observeOpacitySurface(cdp,layer,layers,compositorLayers);
+      if (witness) layer.opacity_surface=witness;
+    }
     if (layer.node_type!==1 || !bounds || !layer.stacking_context ||
         !layer.owner_targets.some(identity=>identity.endsWith('.popup')) ||
         !layer.style['box-shadow'] || layer.style['box-shadow']==='none' ||
