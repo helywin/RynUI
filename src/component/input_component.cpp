@@ -2906,6 +2906,20 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                                    : caret_clip.y;
         const auto caret_height = state->textarea ? state->typography.line_height : caret_clip.height;
         state->geometry.caret = {caret_left, caret_top, std::min(thickness, caret_clip.width), caret_height};
+        if (state->embedded_value_opacity && display.placeholder) {
+            // An empty Select editor paints the caret over the selected label.
+            // Use the font box and logical stroke before applying device coverage.
+            const auto& metrics = text_scene.text_state(state->text_scene).shaped().default_metrics;
+            const float font_height =
+                std::min(viewport.height, std::round(metrics.ascent) - std::round(metrics.descent));
+            if (font_height > 0 && viewport.width > 0) {
+                const auto width = std::min(1.0F, viewport.width);
+                const auto stroke_x =
+                    std::clamp(std::round(caret_origin), viewport.x, viewport.x + viewport.width - width);
+                const auto stroke_y = viewport.y + std::round((viewport.height - font_height) * .5F);
+                state->geometry.caret = {stroke_x, stroke_y, width, font_height};
+            }
+        }
         const auto underline_left = snap(state->geometry.composition_start);
         state->geometry.underline = {underline_left,
                                      std::max(caret_clip.y, caret_clip.y + caret_clip.height - thickness),

@@ -373,14 +373,22 @@ void open_selected_value_dims_only_the_editor_content() {
     const auto base_caret_alpha = caret_alpha();
     open.set(true);
     f.synchronize();
+    const auto empty = f.inputs.layout_snapshot(selector);
+    const auto& metrics = std::as_const(f.scene).text_state(layers.base).shaped().default_metrics;
+    const auto font_height = std::round(metrics.ascent) - std::round(metrics.descent);
     check(f.services.select().snapshot(owner).visible &&
               std::abs(alpha(layers.placeholder) - base_alpha * .25F) < 1e-6F &&
               std::abs(caret_alpha() - base_caret_alpha * .25F) < 1e-6F,
           "open Select failed to dim the retained selected value and caret");
+    check(empty.caret.width == 1 && empty.caret.height == font_height &&
+              empty.caret.y == empty.viewport.y + std::round((empty.viewport.height - font_height) * .5F),
+          "empty Select caret did not use the centered primary font box");
     query.set(String{u8"Tw"});
     f.synchronize();
+    const auto typed = f.inputs.layout_snapshot(selector);
     check(alpha(layers.base) == base_alpha && caret_alpha() == base_caret_alpha,
           "active Select query inherited selected-value opacity");
+    check(typed.caret.height == typed.clip.height, "active Select query did not restore the normal editor caret");
     open.set(false);
     f.synchronize();
     check(alpha(layers.base) == base_alpha && f.inputs.text_layers(selector).base == layers.base,
