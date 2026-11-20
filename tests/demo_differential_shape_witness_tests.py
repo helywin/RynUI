@@ -40,6 +40,22 @@ class RoundedWitnessTests(unittest.TestCase):
         self.assertEqual(locked_edge_value(row, point, 1.5, 1), 248/255)
         self.assertEqual(locked_edge_value(row, point, 1.5, 0), 0)
 
+    def test_opaque_rounded_fill_accepts_only_matching_uniform_geometry(self):
+        native = dict(kind='fill', side='native', bounds=dict(x=268, y=96, width=260, height=32),
+                      radii=6, alpha=1, opacity=1, color=(22/255, 119/255, 1.))
+        web = dict(native, side='web', radii=(6, 6, 6, 6))
+        spec, (dx, dy) = shape_request(native, 1.5)
+        self.assertEqual(shape_request(web, 1.5), (spec, (dx, dy)))
+        self.assertIsNone(shape_request(dict(web, radii=(6, 6, 6, 7)), 1.5))
+        self.assertIsNone(shape_request(dict(web, alpha=.65), 1.5))
+        witnesses = ShapeWitnesses({'tools': {'control_binary': 'out/bin/mock'}}, Path.cwd())
+        witnesses.samples[spec] = {(403 - dx, 186 - dy): 248/255}
+        witnesses.bind((web, native), 1.5)
+        point = (269., 124 + 1/3)
+        self.assertEqual(_layer_coverage(native, point, 1.5), (1, False))
+        for row in (web, native):
+            self.assertEqual(locked_edge_value(row, point, 1.5, 1), 248/255)
+
     def test_receipt_rejects_invalid_and_repeated_samples(self):
         good = dict(coverage_extent=[1, 2, 15, 8], edges=[[2, 3, 180]])
         self.assertEqual(edge_samples(good), {(2, 3): 180/255})

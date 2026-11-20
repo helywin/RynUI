@@ -242,19 +242,23 @@ void write_shape_witnesses(const Json& request, const std::filesystem::path& out
     Json::Array shapes;
     for (const auto& probe : probes) {
         const auto& kind = probe.at("kind").string();
-        require(kind == "outline" || kind == "border", "unknown rounded witness shape");
+        require(kind == "outline" || kind == "border" || kind == "fill", "unknown rounded witness shape");
         LockedShapeGeometry shape;
         shape.bounds = rect(probe.at("bounds"));
         shape.radius = static_cast<float>(probe.at("radius").number());
-        shape.kind = kind == "outline" ? LockedShapeKind::outline : LockedShapeKind::double_rounded_border;
+        if (kind == "outline") {
+            shape.kind = LockedShapeKind::outline;
+        } else if (kind == "border") {
+            shape.kind = LockedShapeKind::double_rounded_border;
+        }
         shape.outline_width = static_cast<float>(probe.at("outline_width").number());
         shape.outline_offset = static_cast<float>(probe.at("outline_offset").number());
         shape.dark_ink = probe.at("dark_ink").boolean();
         const auto& bounds = shape.bounds;
         require(bounds.x >= 0 && bounds.y >= 0 && bounds.width > 0 && bounds.height > 0 &&
                     bounds.x + bounds.width <= 512 && bounds.y + bounds.height <= 512 && shape.radius > 0 &&
-                    shape.radius <= 256 && shape.outline_width > 0 && shape.outline_offset >= 0 &&
-                    shape.outline_width + shape.outline_offset <= 32 &&
+                    shape.radius <= 256 && (kind == "fill" ? shape.outline_width == 0 : shape.outline_width > 0) &&
+                    shape.outline_offset >= 0 && shape.outline_width + shape.outline_offset <= 32 &&
                     (shape.kind == LockedShapeKind::outline || shape.outline_offset == 0),
                 "rounded witness shape lies outside the fixed physical domain");
         const auto mask = rasterize_locked_shape(shape, 576, 576);

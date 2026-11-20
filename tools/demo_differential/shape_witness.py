@@ -1,4 +1,4 @@
-"""Source-only physical samples for the locked rounded border paths."""
+"""Source-only physical samples for locked rounded fills and borders."""
 from __future__ import annotations
 
 import math
@@ -14,11 +14,18 @@ def shape_request(row, dpr):
     if row['alpha'] != 1 or row['opacity'] != 1:
         return None
     kind = row['kind']
-    if (row['side'], kind) not in (('native', 'outline'), ('web', 'border')):
+    if kind not in ('fill', 'outline', 'border'):
         return None
     bounds = row['bounds']
     radii = row['radii']
-    if row['side'] == 'native' and kind == 'outline':
+    if kind == 'fill' and row['side'] in ('native', 'web'):
+        if isinstance(radii, (list, tuple)):
+            if len(set(radii)) != 1:
+                return None
+            radii = radii[0]
+        radius = radii
+        width = offset = 0
+    elif row['side'] == 'native' and kind == 'outline':
         width = row['width']
         offset = row['offset_width']
         radius = radii
@@ -30,7 +37,7 @@ def shape_request(row, dpr):
                       width=bounds['width'] - 2 * width, height=bounds['height'] - 2 * width)
     else:
         return None
-    if radius <= 0 or width <= 0 or offset < 0 or min(bounds['width'], bounds['height']) <= 0:
+    if radius <= 0 or (kind != 'fill' and width <= 0) or offset < 0 or min(bounds['width'], bounds['height']) <= 0:
         return None
     x, y, w, h, radius, width, offset = (
         value * dpr for value in (bounds['x'], bounds['y'], bounds['width'], bounds['height'], radius, width, offset))
