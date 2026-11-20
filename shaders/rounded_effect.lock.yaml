@@ -46,8 +46,8 @@
       "bytes": 6825
     },
     "shaders/glyph.hlsl": {
-      "sha256": "fc49b784b35f4068e5bd389abe07f191243fb8a7689c5c343a76b99496085432",
-      "bytes": 3995
+      "sha256": "8bae652213299e6978d21403612346c6b4a1b84e858f2304c62cd73f7921f17d",
+      "bytes": 4179
     },
     "shaders/glyph_composition.hlsl": {
       "sha256": "82a21beadd46bb9dbd36bf9ced4702840dcf6212b9ce383991c083555e0f09fe",
@@ -232,7 +232,7 @@
         "shaders/glyph_composition.hlsl",
         "shaders/scene_pass.hlsli"
       ],
-      "closure_sha256": "69a452ef1bf46875a7bb3665f8eab42dd182145a30a466a6827e4c1f9d72888f",
+      "closure_sha256": "f19d06c74fe10cd0caf5efeb10754842f6591e3f62a0ec5f092eb9143d6fc2f5",
       "vertex_inputs": [
         "float4",
         "float4",

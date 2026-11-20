@@ -64,16 +64,19 @@ float TextContrastCoverage(float coverage, float3 encodedColor, bool srgb) {
     if (coverage <= 0.0 || coverage >= 1.0) {
         return coverage;
     }
+    // Skia encodes the nominal 1.2 gamma in unsigned 2.6 fixed point
+    // before producing the grayscale text mask table.
+    const float maskGamma = 76.0 / 64.0;
     float foreground = TextMaskLuminance(encodedColor);
     float backdrop = 1.0 - foreground;
-    float backdropLinear = srgb ? DecodeGlyphSrgb(backdrop) : pow(backdrop, 1.2);
+    float backdropLinear = srgb ? DecodeGlyphSrgb(backdrop) : pow(backdrop, maskGamma);
     float contrast = srgb ? 1.0 : 0.2;
     float adjusted = coverage + (1.0 - coverage) * coverage * backdropLinear * contrast;
     float range = foreground - backdrop;
     if (abs(range) > 1.0 / 256.0) {
-        float foregroundLinear = srgb ? DecodeGlyphSrgb(foreground) : pow(foreground, 1.2);
+        float foregroundLinear = srgb ? DecodeGlyphSrgb(foreground) : pow(foreground, maskGamma);
         float linearValue = lerp(backdropLinear, foregroundLinear, adjusted);
-        float encoded = srgb ? EncodeGlyphSrgb(linearValue) : pow(linearValue, 1.0 / 1.2);
+        float encoded = srgb ? EncodeGlyphSrgb(linearValue) : pow(linearValue, 1.0 / maskGamma);
         adjusted = (encoded - backdrop) / range;
     }
     return floor(255.0 * saturate(adjusted) + 0.5) / 255.0;

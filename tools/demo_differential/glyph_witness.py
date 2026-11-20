@@ -143,14 +143,16 @@ def encoded_coverage(byte, color, rasterizer):
     luma = canonical((r*54 + g*183 + b*19) >> 8) / 255
     inverse = 1 - luma
     srgb = rasterizer == 'directwrite-3x1'
-    back, front = srgb_to_linear((inverse, luma, 0))[:2] if srgb else (inverse**1.2, luma**1.2)
+    # The grayscale mask table receives Skia's 2.6 fixed-point gamma.
+    gamma = 76 / 64
+    back, front = srgb_to_linear((inverse, luma, 0))[:2] if srgb else (inverse**gamma, luma**gamma)
     weight = coverage + (1 - coverage) * coverage * back * (1 if srgb else .2)
     if abs(luma - inverse) > 1/256:
         linear = back * (1 - weight) + front * weight
         if srgb:
             encoded = 12.92 * linear if linear <= .0031308 else 1.055 * linear**(1/2.4) - .055
         else:
-            encoded = linear**(1/1.2)
+            encoded = linear**(1/gamma)
         weight = (encoded - inverse) / (luma - inverse)
     return math.floor(255 * min(1, max(0, weight)) + .5) / 255
 

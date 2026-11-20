@@ -74,7 +74,10 @@ class LayeredTests(unittest.TestCase):
         self.assertEqual(encoded_coverage(128,color,'directwrite-3x1'),164/255)
         self.assertEqual(encoded_coverage(128,color,'fontations-skia-a8'),136/255)
         self.assertEqual(encoded_coverage(128,(0.,0.,0.),'directwrite-3x1'),119/255)
-        self.assertEqual(encoded_coverage(128,(1.,1.,1.),'fontations-skia-a8'),144/255)
+        self.assertEqual(encoded_coverage(128,(1.,1.,1.),'fontations-skia-a8'),143/255)
+        # Frozen Chromium grayscale samples expose the fixed-point gamma step.
+        self.assertEqual(encoded_coverage(131,(0.,0.,0.),'fontations-skia-a8'),128/255)
+        self.assertEqual(encoded_coverage(74,(1.,0.,0.),'fontations-skia-a8'),76/255)
 
     def test_packed_solid_fill_uses_same_byte_grid_as_exact_css_color(self):
         white=dict(kind='fill',color=(1.,)*3,alpha=1,opacity=1,groups=[])
