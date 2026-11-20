@@ -6,7 +6,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from demo_differential.regions import (geometry, union, physical_box, crop_rgba, raster_metrics, contour_distance,
-                                       coverage_metrics,reference_aa_is_bounded,capture_aperture,vertical_capture_slices)
+                                       coverage_metrics,reference_aa_is_bounded,capture_aperture,vertical_capture_slices,
+                                       text_groups)
 from demo_differential.protocol import ProtocolError
 
 
@@ -20,6 +21,20 @@ def pixels(width, height, points):
 
 
 class RegionTests(unittest.TestCase):
+    def test_culled_native_run_preserves_measured_groups_without_fabricating_ink(self):
+        group = dict(byte_begin=0, byte_end=3, advance=14, line=0, boxes=[])
+        text = dict(content='眀', bounds=rectangle(y=30), content_clip=rectangle(height=30),
+                    semantic_groups=[group], ink_instances=[])
+        self.assertEqual(text_groups(text, 'native', allow_native_cull=True), [dict(group, content='眀')])
+        for invalid in (dict(text, content_clip=rectangle(height=31)),
+                        dict(text, content_clip=rectangle(height=-1)),
+                        dict(text, content_clip=None),
+                        dict(text, ink_instances=[{'byte_begin': 10, 'byte_end': 13}])):
+            with self.assertRaises(ProtocolError):
+                text_groups(invalid, 'native', allow_native_cull=True)
+        with self.assertRaises(ProtocolError):
+            text_groups(text, 'native')
+
     def test_vertical_tiles_use_actual_clips_and_guard_overlap(self):
         size=(1920,1350)
         required=(-2,-2,1010,2690)

@@ -71,6 +71,27 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_selected_label_preserves_declaration_order_and_actual_active_layer(self):
+        from demo_differential.comparison import _text_rows
+        label=dict(content='Desktop',kind='editor-placeholder',semantic_role='selector-caption')
+        base=dict(content='Desktop',kind='editor-base',semantic_role='unused-base')
+        query=dict(content='desk',kind='editor-base')
+        literal=dict(content='Choose a device',kind='text')
+        hint=dict(content='Enter a name',kind='editor-placeholder',semantic_role='editor-hint')
+        target={'text':[label,base,hint,query,literal]}
+        self.assertEqual(_text_rows(target,'native'),[label,literal,hint,query])
+        target={'text':[literal,query,label,base,hint]}
+        self.assertEqual(_text_rows(target,'native'),[literal,label,query,hint])
+
+    def test_web_text_requires_a_proven_zero_paint_axis_or_invisibility(self):
+        from demo_differential.comparison import _text_rows
+        hidden=dict(content='A',actual_ancestor_opacity=0)
+        a11y=dict(content='B',zero_clip=dict(bounds=box(0,0,0,20),overflow_x='hidden',overflow_y='visible'))
+        partial=dict(content='C',zero_clip=dict(bounds=box(0,0,.25,20),overflow_x='hidden',overflow_y='visible'))
+        open_axis=dict(content='D',zero_clip=dict(bounds=box(0,0,0,20),overflow_x='visible',overflow_y='hidden'))
+        hint=dict(content='Enter a name',editable=True,editor_text_role='placeholder')
+        self.assertEqual(_text_rows({'text':[hidden,a11y,partial,hint,open_axis]},'web'),[partial,open_axis,hint])
+
     def test_opaque_rounded_border_admits_its_actual_background_centerline(self):
         owner=dict(owner_targets=['input'])
         white=dict(kind='fill',color=(1,1,1),bounds=box(),radii=(6,)*4,alpha=1,source=owner)

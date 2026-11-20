@@ -387,6 +387,15 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
         self.assertEqual(caret['source'], 'Chromium LayerTree.snapshotCommandLog')
         self.assertEqual((caret['bounds']['width'], caret['argb']), (1, '#E0000000'))
         self.assertLess(caret['bounds']['height'], editor['bounds']['height'])
+        mounted = {row['identity']: row for row in observed['checkpoints']['virtual-mounted']['targets']}
+        hint, = mounted['gallery.select.popup-note']['text']
+        self.assertEqual(hint['editor_text_role'], 'placeholder')
+        self.assertTrue(hint['semantic_groups'] and hint['layout_runs'])
+        from demo_differential.comparison import _text_rows
+        popup = mounted['gallery.select.virtual.popup']
+        self.assertTrue(any(row.get('zero_clip') for row in popup['text']))
+        self.assertIn(hint, _text_rows(popup, 'web'))
+        self.assertFalse(any(row.get('zero_clip') for row in _text_rows(popup, 'web')))
         initial = deepcopy(rows[0]['effective_inputs']['actual_initial_inputs'])
         self.assertEqual(initial['instances']['gallery.select.popup-note']['status'], 'deferred')
         self.assertEqual(initial['instances']['gallery.select.deliver']['status'], 'deferred')

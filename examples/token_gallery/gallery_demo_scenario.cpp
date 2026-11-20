@@ -321,7 +321,8 @@ public:
         return bounds(actions.app, id);
     }
 
-    [[nodiscard]] Json text_record(ryn::detail::TextSceneId scene, runtime::ComponentId component, bool icon = false) {
+    [[nodiscard]] Json text_record(ryn::detail::TextSceneId scene, runtime::ComponentId component,
+                                   runtime::Rect viewport, bool icon = false) {
         auto result = gallery_demo_text_snapshot(
             actions.app.text().scene_service(), scene, bounds(actions.app, component),
             [&](auto font) {
@@ -330,13 +331,17 @@ public:
                 return info;
             },
             actions.nominal_glyph);
-        std::get<Json::Object>(result.value)
-            .emplace("owner",
-                     Json::Object{{"index", count(component.index)}, {"generation", count(component.generation)}});
+        auto& fields = std::get<Json::Object>(result.value);
+        fields.emplace("owner",
+                       Json::Object{{"index", count(component.index)}, {"generation", count(component.generation)}});
+        fields.emplace("content_clip",
+                       rect(actions.app.nodes().content_clip(actions.app.components().root(component), viewport)));
         return result;
     }
 
-    [[nodiscard]] Json snapshot(std::string_view name) {
+    enum class TextScope { target_window, descendant_windows };
+
+    [[nodiscard]] Json snapshot(std::string_view name, TextScope text_scope = TextScope::target_window) {
         const auto id = target(name);
         const auto& components = actions.app.components();
         const auto window_root = [&](runtime::ComponentId component) {
@@ -349,7 +354,7 @@ public:
         const auto target_window = window_root(id);
         const auto in_target_plane = [&](runtime::ComponentId component) {
             return contains(name, component) && components.branch_active(component) &&
-                   window_root(component) == target_window;
+                   (text_scope == TextScope::descendant_windows || window_root(component) == target_window);
         };
         const auto page = actions.pages.snapshot();
         const runtime::Rect viewport{0, 0, static_cast<float>(actions.metrics().at("logical_width").number()),
@@ -385,6 +390,14 @@ public:
         Json::Object tokens;
         Json::Array texts;
         Json::Array icons;
+        std::map<std::uint32_t, bool> selector_labels;
+        for (const auto selector : actions.app.services().select().mounted()) {
+            if (in_target_plane(selector)) {
+                const auto select = actions.app.services().select().snapshot(selector);
+                selector_labels.emplace(select.selector.index,
+                                        select.value && (!select.visible || select.query.empty()));
+            }
+        }
         for (const auto& button : actions.app.mounted_buttons()) {
             if (!contains(name, button.component)) {
                 continue;
@@ -453,11 +466,21 @@ public:
                 tokens["paint"] = gallery_demo_input_paint_snapshot(actions.inputs.paint_snapshot(input.component));
             }
             const auto layers = actions.inputs.text_layers(input.component);
+            const auto selector = selector_labels.find(input.component.index);
             for (const auto& [kind, scene] :
                  std::array{std::pair{"editor-base", layers.base}, std::pair{"editor-selected", layers.selected},
                             std::pair{"editor-placeholder", layers.placeholder}}) {
-                auto item = text_record(scene, input.component);
-                std::get<Json::Object>(item.value).emplace("kind", kind);
+                auto item = text_record(scene, input.component, viewport);
+                auto& fields = std::get<Json::Object>(item.value);
+                fields.emplace("kind", kind);
+                if (display.placeholder && scene == layers.base) {
+                    fields.emplace("semantic_role", "unused-base");
+                } else if (display.placeholder && scene == layers.placeholder) {
+                    fields.emplace("semantic_role",
+                                   selector == selector_labels.end() ? "editor-hint" : "selector-caption");
+                } else if (scene == layers.base && selector != selector_labels.end() && selector->second) {
+                    fields.emplace("semantic_role", "selector-caption");
+                }
                 texts.push_back(std::move(item));
             }
         }
@@ -503,7 +526,7 @@ public:
                     Json::Array layers;
                     const auto source_layers = ryn::detail::bundled_layers(*bundled);
                     for (std::size_t ordinal = 0; ordinal < icon.layers.size(); ++ordinal) {
-                        auto layer = text_record(icon.layers[ordinal], text.component, true);
+                        auto layer = text_record(icon.layers[ordinal], text.component, viewport, true);
                         auto& fields = std::get<Json::Object>(layer.value);
                         fields.emplace("layer_ordinal", count(ordinal));
                         const auto& scalars =
@@ -524,10 +547,34 @@ public:
             } catch (const std::out_of_range&) {
                 // The existing read-only icon query rejects ordinary Text.
             }
-            auto text_item = text_record(text.scene, text.component, is_icon);
+            auto text_item = text_record(text.scene, text.component, viewport, is_icon);
             std::get<Json::Object>(text_item.value).emplace("kind", is_icon ? "icon-font" : "text");
             texts.push_back(std::move(text_item));
         }
+        // Mount history and the editor/text registries are independent. Read
+        // the current declaration order from the retained children instead.
+        std::map<std::uint32_t, std::size_t> declaration_order;
+        const auto visit = [&](auto&& self, runtime::ComponentId component) -> void {
+            declaration_order.emplace(component.index, declaration_order.size());
+            for (const auto child : components.children(component)) {
+                if (components.branch_active(child) &&
+                    (text_scope == TextScope::descendant_windows || !components.is_window_layer_root(child))) {
+                    self(self, child);
+                }
+            }
+        };
+        if (sample) {
+            for (const auto root : factory_roots) {
+                if (components.contains(root) && in_target_plane(root)) {
+                    visit(visit, root);
+                }
+            }
+        } else {
+            visit(visit, id);
+        }
+        std::ranges::stable_sort(texts, {}, [&](const auto& item) {
+            return declaration_order.at(static_cast<std::uint32_t>(item.at("owner").at("index").integer()));
+        });
         if (sample) {
             const auto host = sample_layout_host();
             const auto* flex = std::as_const(actions.app.components()).state<ryn::detail::FlexComponentState>(host);
@@ -1461,9 +1508,14 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
                         }
                         std::get<Json::Object>(layer.value).emplace("owner_targets", std::move(owners));
                     }
-                    stack_fields.emplace("glyph_inventory",
-                                         live_sample ? observer.snapshot(scenario.route.sample_identity).at("text")
-                                                     : Json{Json::Array{}});
+                    // The paint receipt covers every submitted sample window.
+                    // Individual semantic targets still describe only their own window.
+                    stack_fields.emplace(
+                        "glyph_inventory",
+                        live_sample
+                            ? observer.snapshot(scenario.route.sample_identity, Observer::TextScope::descendant_windows)
+                                  .at("text")
+                            : Json{Json::Array{}});
                     stack_fields.erase("snapshot_digest");
                     const auto bytes = stack.dump();
                     stack_fields.emplace("snapshot_digest",

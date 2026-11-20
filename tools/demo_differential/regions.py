@@ -363,18 +363,29 @@ def sample_anchor(target):
     return content
 
 
-def text_groups(text, side):
+def text_groups(text, side, *, allow_native_cull=False):
     """Common UTF-8 semantic groups. Borders/background are not glyph geometry.
 
     Web groups are actual Range/UA Range observations, not evenly divided boxes.
     Native coverage must be exported from GlyphPrimitive alongside each instance.
-    No bounding-box fallback is permitted for missing observations.
+    A fully culled native run still supplies its measured advances and byte
+    groups. It cannot supply ink. Visible runs must supply actual instances.
     """
     content = text['content']
     encoded = content.encode('utf-8')
     groups = text.get('semantic_groups')
     if not isinstance(groups,list) or not groups:
         raise ProtocolError('text lacks actual semantic glyph/group observations')
+    culled = False
+    if side == 'native' and allow_native_cull and text.get('ink_instances') == []:
+        clip = text.get('content_clip')
+        if (isinstance(clip, dict) and set(clip) == {'x', 'y', 'width', 'height'}
+                and all(type(value) in (int, float) and math.isfinite(value) for value in clip.values())
+                and clip['width'] >= 0 and clip['height'] >= 0):
+            bounds = rect(text['bounds'])
+            culled = (clip['width'] == 0 or clip['height'] == 0 or
+                      bounds['x'] >= clip['x'] + clip['width'] or bounds['x'] + bounds['width'] <= clip['x'] or
+                      bounds['y'] >= clip['y'] + clip['height'] or bounds['y'] + bounds['height'] <= clip['y'])
     boundaries = {0}
     offset = 0
     for scalar in content:
@@ -390,14 +401,14 @@ def text_groups(text, side):
         seen.add((begin,end))
         string = encoded[begin:end].decode('utf-8')
         boxes = group.get('boxes')
-        if (not isinstance(boxes,list) or not boxes and not string.isspace() or
+        if (not isinstance(boxes,list) or not boxes and not (culled or string.isspace()) or
                 type(group.get('advance')) not in (int,float) or not math.isfinite(group['advance']) or group['advance'] < 0):
             raise ProtocolError('semantic group has no actual layout boxes')
         for box in boxes:
             rect(box)
         if side == 'native':
             instances = [i for i in text.get('ink_instances', []) if i.get('byte_begin') == begin and i.get('byte_end') == end]
-            if not string.isspace() and not instances:
+            if not (culled or string.isspace()) and not instances:
                 raise ProtocolError('printable semantic group has no actual glyph primitive')
             for instance in instances:
                 if (instance.get('rotation_degrees') != 0 or not isinstance(instance.get('line'),int)

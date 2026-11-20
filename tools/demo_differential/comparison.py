@@ -179,7 +179,7 @@ def _font_evidence(target, side, fonts, provenance):
             raise RunError(3, 'environment', 'Web actual font byte sources differ')
         names = {name for f in sources for name in f.get('names', {}).get('6', [])}
         faces = target['tokens'].get('platform_fonts')
-        if any(t.get('content') for t in target['text']) and (not faces or any(
+        if _text_rows(target,'web') and (not faces or any(
                 f.get('isCustomFont') is not True or f.get('postScriptName') not in names for f in faces)):
             raise RunError(3, 'environment', 'Web selected font face/fallback is unverified')
 
@@ -193,13 +193,24 @@ def _css_number(value):
 
 
 def _text_rows(target, side):
-    # Selected/placeholder layers remain in original evidence. For this pilot,
-    # editing assertions use the actual base/display text, not duplicate layers.
-    rows=[t for t in target['text'] if t.get('content') and
-          t.get('kind') not in ('editor-selected','editor-placeholder','icon-font')]
-    # DOM text and UA editor text are independent semantic streams. Preserve
-    # their respective source order without comparing enumeration across APIs.
-    return sorted(rows,key=lambda t: bool(t.get('editable') or t.get('kind')=='editor-base'))
+    rows=[t for t in target['text'] if t.get('content') and t.get('semantic_role')!='unused-base' and
+          (t.get('semantic_role') in ('selector-caption','editor-hint') or
+           t.get('kind') not in ('editor-selected','editor-placeholder','icon-font'))]
+    if side=='web':
+        rows=[text for text in rows if not _suppressed_web_text(text)]
+    # DOM text and UA editor text are independent semantic streams. A Select
+    # value can paint a static label with its editor's base or placeholder face.
+    return sorted(rows,key=lambda t: bool(t.get('editable') or t.get('semantic_role')=='editor-hint' or
+                                          t.get('kind')=='editor-base' and t.get('semantic_role')!='selector-caption'))
+
+
+def _suppressed_web_text(text):
+    clip=text.get('zero_clip',{})
+    bounds=clip.get('bounds',{})
+    clips=('hidden','clip','scroll','auto')
+    return (text.get('actual_ancestor_opacity')==0 or text.get('hidden_visibility') in ('hidden','collapse') or
+            bounds.get('width')==0 and clip.get('overflow_x') in clips or
+            bounds.get('height')==0 and clip.get('overflow_y') in clips)
 
 
 def _text_advance_error(web,native,*,layered):
@@ -1892,7 +1903,8 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
                     if any(run['font']['logical_pixel_size']!=web_size or
                            weights.get((run['font']['sha256'],run['font']['face_index']))!=web_weight for run in bn['font_runs']):
                         fail('typography',target,'actual font face weight/size differs between paired semantic runs')
-                ag, bg = text_groups(aw,'web'), text_groups(bn,'native')
+                ag = text_groups(aw, 'web')
+                bg = text_groups(bn, 'native', allow_native_cull=layered)
                 if [(g['byte_begin'],g['byte_end'],g['content']) for g in ag] != [
                         (g['byte_begin'],g['byte_end'],g['content']) for g in bg]:
                     raise RunError(3,'calibration','actual glyph/grapheme groups cannot be paired without guessing')
@@ -1902,7 +1914,7 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
                     if error>advance_cap:
                         fail('typography',target,'semantic group advance differs',metric='text.geometry_logical_px',
                              actual=error,raw=abs(ga['advance']-gb['advance']),threshold=advance_cap)
-                    if ga['content'].isspace():
+                    if layered or ga['content'].isspace():
                         continue
                     def group_rect(group):
                         value=group['boxes'][0]
@@ -1912,16 +1924,15 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
                     # Presence uses the common semantic interior, without guards.
                     # Full union+guard is separately compared by raster().
                     ar,br=group_rect(ga),group_rect(gb)
-                    if not layered:
-                        local_background=_local_background(a,background)
-                        for (data,size),box in zip(images,(ar,br)):
-                            l,t,r,bottom=physical_box(box,dpr,2)
-                            raw=crop_rgba(data,size,(l+2,t+2,r-2,bottom-2))
-                            presence=raster_metrics(raw,raw,(r-l-4,bottom-t-4),local_background)
-                            if not presence['required_ink_present']:
-                                fail('typography',target+'.text','required semantic glyph ink missing')
-                        raster(target + '.text', ar, br, 2, 'typography', text=True,
-                               local_background=local_background)
+                    local_background=_local_background(a,background)
+                    for (data,size),box in zip(images,(ar,br)):
+                        l,t,r,bottom=physical_box(box,dpr,2)
+                        raw=crop_rgba(data,size,(l+2,t+2,r-2,bottom-2))
+                        presence=raster_metrics(raw,raw,(r-l-4,bottom-t-4),local_background)
+                        if not presence['required_ink_present']:
+                            fail('typography',target+'.text','required semantic glyph ink missing')
+                    raster(target + '.text', ar, br, 2, 'typography', text=True,
+                           local_background=local_background)
         if layered:
             continue  # Formal identities and visible membership are checked per captured aperture.
         if len(a['icons']) != len(b['icons']):

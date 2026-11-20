@@ -360,16 +360,35 @@ try {
           const range = document.createRange(); range.selectNodeContents(node);
           const boxes = [...range.getClientRects()].map(rect);
           if (!boxes.length) continue;
+          const textStyle = getComputedStyle(node.parentElement);
+          const visibility = ['hidden', 'collapse'].includes(textStyle.visibility) ? textStyle.visibility : undefined;
+          let zeroClip;
+          let zeroOpacity = false;
+          for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+            const style = getComputedStyle(parent);
+            if (style.opacity === '0') zeroOpacity = true;
+            const bounds = parent.getBoundingClientRect();
+            const hides = overflow => /^(hidden|clip|auto|scroll)$/.test(overflow);
+            if (!zeroClip && ((bounds.width === 0 && hides(style.overflowX)) ||
+              (bounds.height === 0 && hides(style.overflowY)))) {
+              zeroClip = { bounds: rect(bounds), overflow_x: style.overflowX, overflow_y: style.overflowY };
+            }
+          }
           text.push({ content: node.textContent, boxes,
+            ...(zeroClip ? { zero_clip: zeroClip } : {}),
+            ...(visibility ? { hidden_visibility: visibility } : {}),
+            ...(zeroOpacity ? { actual_ancestor_opacity: 0 } : {}),
             semantic_groups: window.__observedTextGroups(node),
-            font_family: getComputedStyle(node.parentElement).fontFamily, font_size: getComputedStyle(node.parentElement).fontSize,
-            font_weight: getComputedStyle(node.parentElement).fontWeight, direction: getComputedStyle(node.parentElement).direction });
+            font_family: textStyle.fontFamily, font_size: textStyle.fontSize,
+            font_weight: textStyle.fontWeight, direction: textStyle.direction });
         }
         const editors = element.matches('input,textarea') ? [element] : [...element.querySelectorAll('input,textarea')];
         for (const [editorOrdinal, editor] of editors.entries()) {
-          if (!editor.value || !editor.getClientRects().length) continue;
+          const content = editor.value || editor.placeholder;
+          if (!content || !editor.getClientRects().length) continue;
           const editorStyle = getComputedStyle(editor);
-          text.push({ content: editor.value, editable: true, editor_ordinal: editorOrdinal, boxes: [],
+          text.push({ content, editable: true, editor_ordinal: editorOrdinal, boxes: [],
+            editor_text_role: editor.value ? 'value' : 'placeholder',
             bounds_source: 'pending Chromium DOMSnapshot textBoxes, never input bounding box',
             font_family: editorStyle.fontFamily, direction: editorStyle.direction,
             font_size: editorStyle.fontSize, font_weight: editorStyle.fontWeight });
@@ -444,7 +463,7 @@ try {
     // The locked Chromium captureSnapshot omits UA-shadow layout text. The
     // explicit UA-shadow snapshot exposes its real inline text boxes instead.
     const layoutSnapshot = await cdp.send('DOMSnapshot.getSnapshot', {
-      computedStyleWhitelist: [], includeUserAgentShadowTree: true });
+      computedStyleWhitelist: ['visibility'], includeUserAgentShadowTree: true });
     const editorObservations = new Map();
     for (const target of observed.targets) {
       const editable = target.text.filter(t => t.editable && t.content);
@@ -462,7 +481,14 @@ try {
           const key = editor.backendNodeId;
           if (!editorObservations.has(key)) editorObservations.set(key, await editorSnapshot(editor));
           const { boxes, runs, semanticGroups, fullText } = editorObservations.get(key);
-          expect(fullText === text.content, 'editable layout text differs from actual input value: ' + target.identity);
+          if (!boxes.length && text.editor_text_role === 'placeholder') {
+            // The attribute merely identifies a possible source. A hidden UA
+            // placeholder has no text evidence and must not become a row.
+            target.text = target.text.filter(row => row !== text);
+            continue;
+          }
+          expect(boxes.length > 0 && fullText === text.content,
+            'editable layout text differs from observed editor content: ' + target.identity);
           text.boxes = boxes;
           text.layout_runs = runs;
           text.semantic_groups = semanticGroups;
@@ -486,6 +512,8 @@ try {
         visit(rootIndex);
         for (const layout of layoutSnapshot.layoutTreeNodes) {
           if (!descendants.has(layout.domNodeIndex) || !layout.layoutText) continue;
+          const style = layoutSnapshot.computedStyles[layout.styleIndex]?.properties ?? [];
+          if (style.some(property => property.name === 'visibility' && property.value === 'hidden')) continue;
           if (!groupedNodes.has(layout.domNodeIndex)) {
             groupedNodes.add(layout.domNodeIndex);
             const backendNodeId = layoutSnapshot.domNodes[layout.domNodeIndex].backendNodeId;
@@ -506,7 +534,6 @@ try {
               length: inline.numCharacters, unit: 'UTF-16' });
           }
         }
-        expect(boxes.length > 0, 'editable actual Chromium text boxes unavailable');
         const fullText = [...new Set(runs.map(run => run.content))].join('');
         return { boxes, runs, semanticGroups, fullText };
     }
@@ -516,7 +543,7 @@ try {
       expect(node.nodeId, 'semantic actual font owner missing: ' + target.identity);
       {
         const runs = await platformFontRuns(cdp, node.nodeId, provenance.actual_font_sources,
-          target.text.some(run => run.content.trim()));
+          target.text.some(run => !run.zero_clip && !run.hidden_visibility && run.actual_ancestor_opacity !== 0 && run.content.trim()));
         target.tokens.font_runs = runs;
         target.tokens.platform_fonts = runs.flatMap(run => run.sources);
       }
