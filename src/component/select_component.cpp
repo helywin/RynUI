@@ -15,6 +15,7 @@
 #include "theme/input_tokens.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <stdexcept>
 #include <utility>
@@ -2953,7 +2954,11 @@ void SelectComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
         component::RetainedSurfaceEffects effects;
         effects.focus_enabled = false;
         effects.shape = {{bounds.x, bounds.y, bounds.width, bounds.height}, token.metrics.border_radius};
-        effects.shadows = token.shadow;
+        // Tokens follow CSS order, with the first shadow nearest the viewer.
+        // The retained surface paints its layers from back to front.
+        std::array<ShadowLayer, ShadowList::capacity> shadow_draw_order;
+        std::ranges::reverse_copy(token.shadow.layers(), shadow_draw_order.begin());
+        effects.shadows = ShadowList{std::span{shadow_draw_order}.first(token.shadow.size())};
         effects.shadow_opacity = s->motion.opacity;
         effects.opaque_shadow_caster = token.colors.popup_background.alpha() == 1.0F && s->motion.opacity == 1.0F;
         effects.shadow_filter = graphics::RoundedShadowFilter::device_box;

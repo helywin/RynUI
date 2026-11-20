@@ -129,6 +129,26 @@ void open_popup_remains_attached_during_document_scroll() {
     check(f.services.select().snapshot(id).above, "An explicit placement change did not replace the retained side");
 }
 
+void popup_first_shadow_is_painted_in_front() {
+    Fixture f;
+    const auto blue = Color::rgba8(0, 0, 255, 128);
+    const auto red = Color::rgba8(255, 0, 0, 128);
+    auto config = std::make_unique<ThemeConfig>();
+    config->select.tokens.shadow = ShadowList{{ShadowKind::outer, {}, 8, 2, blue}, {ShadowKind::outer, {}, 16, 2, red}};
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(*config), ThemeContent{[] {
+                  Select(SelectProps{}.defaultOpen(true).options({{1, u8"One"}}).layout(LayoutStyle{}.width(dp(180))));
+              }});
+    }});
+    f.synchronize();
+    const auto id = f.services.select().mounted().front();
+    const auto popup = f.services.select().paint_owners(id).value().popup.surface;
+    const auto paint = f.services.surfaces().paint_snapshot(popup).value();
+    check(paint.shadows.size() == 2 && paint.shadows[0].actual.material.color == red &&
+              paint.shadows[1].actual.material.color == blue,
+          "The first CSS shadow was submitted behind the second color");
+}
+
 void pointer_keyboard_and_clear() {
     SelectRef reference;
     int focused = 0;
@@ -731,6 +751,7 @@ int main() {
         pointer_keyboard_and_clear();
         direction_and_rich_affix_size();
         open_popup_remains_attached_during_document_scroll();
+        popup_first_shadow_is_painted_in_front();
         search_ime_and_dynamic_options();
         controlled_close_preserves_search_until_accepted();
         open_selected_value_dims_only_the_editor_content();
