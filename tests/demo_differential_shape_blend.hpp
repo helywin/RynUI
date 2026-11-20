@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace rynui::example {
@@ -11,7 +12,7 @@ namespace rynui::example {
 struct ShapeBlendSource {
     ryn::detail::LockedShapeGeometry caster;
     ryn::detail::LockedShapeGeometry fill;
-    ryn::detail::LockedShapeGeometry border;
+    std::optional<ryn::detail::LockedShapeGeometry> border;
     std::array<std::uint8_t, 3> shadow_color;
     std::array<std::uint8_t, 3> fill_color;
     std::array<std::uint8_t, 3> border_color;

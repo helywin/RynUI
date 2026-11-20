@@ -65,7 +65,34 @@ def _stacks(rows, side, dpr):
             continue
         dx, dy = math.floor(x) - guard, math.floor(y) - guard
         alpha = struct.unpack('<f', struct.pack('<f', shadow['alpha']))[0]
-        spec = (x - dx, y - dy, w, h, radius, width, inset, spread, alpha, shadow_color, border_color)
+        spec = (x - dx, y - dy, w, h, radius, width, inset, spread, alpha, shadow_color, border_color,
+                (255, 255, 255), 0, 0)
+        yield (spec, dx, dy), layers
+    for shadow, fill in zip(rows, rows[1:]):
+        layers = (shadow, fill)
+        if (shadow['kind'] != 'shadow' or fill['kind'] != 'fill'
+                or any(opacity != 1 for layer in layers for _, opacity in layer['groups'])
+                or shadow['knockout'] != (side == 'web') or shadow['blur'] != 0 or shadow['spread'] != 0
+                or not any(shadow['offset']) or not 0 < shadow['alpha'] < 1 or shadow['opacity'] != 1
+                or fill['opacity'] != 1 or fill['alpha'] != 1 or fill['bounds'] != shadow['bounds']
+                or _radius(fill) != _radius(shadow)):
+            continue
+        if side == 'web' and (fill['source'] is not shadow['source'] or shadow['caster_inset'] != 1):
+            continue
+        shadow_color, fill_color = _rgb8(shadow['color']), _rgb8(fill['color'])
+        if shadow_color is None or fill_color is None:
+            continue
+        bounds = shadow['bounds']
+        x, y, w, h, radius, inset, ox, oy = (value * dpr for value in (
+            bounds['x'], bounds['y'], bounds['width'], bounds['height'], _radius(shadow), 1, *shadow['offset']))
+        offset = max(abs(ox), abs(oy))
+        guard = 4 + math.ceil(offset)
+        if (not 0 < inset <= radius <= .5 * min(w, h) or offset > 32 or max(w, h) + 2 * guard + 1 > 512
+                or any(value * 4 != round(value * 4) for value in (x, y, w, h, radius, inset, ox, oy))):
+            continue
+        dx, dy = math.floor(x) - guard, math.floor(y) - guard
+        alpha = struct.unpack('<f', struct.pack('<f', shadow['alpha']))[0]
+        spec = (x - dx, y - dy, w, h, radius, 0, inset, 0, alpha, shadow_color, (0, 0, 0), fill_color, ox, oy)
         yield (spec, dx, dy), layers
 
 
@@ -88,8 +115,9 @@ def _batch(root, binary, needed, cache):
     work.mkdir(parents=True)
     request, output = work / 'request.json', work / 'output'
     stacks = [dict(bounds=dict(x=x, y=y, width=w, height=h), radius=radius, border_width=width,
-                   caster_inset=inset, spread=spread, shadow_alpha=alpha, shadow_color=shadow, border_color=border)
-              for x, y, w, h, radius, width, inset, spread, alpha, shadow, border in needed]
+                   caster_inset=inset, spread=spread, shadow_alpha=alpha, shadow_color=shadow, border_color=border,
+                   fill_color=fill, offset_x=ox, offset_y=oy)
+              for x, y, w, h, radius, width, inset, spread, alpha, shadow, border, fill, ox, oy in needed]
     write_json(request, dict(stacks=stacks))
     process([binary, '--shape-blend-witnesses', request, '--output', output], work / 'process', 60, failure_code=3)
     receipt = read(output / 'shape-blend-witnesses.json')

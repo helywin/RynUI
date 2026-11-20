@@ -320,33 +320,37 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         const float caster_inset = number("caster_inset");
         const float spread = number("spread");
         const float alpha = number("shadow_alpha");
-        const float guard = 2 + spread;
+        const runtime::Point offset{number("offset_x"), number("offset_y")};
+        const bool bordered = width > 0;
+        const float max_offset = std::max(std::abs(offset.x), std::abs(offset.y));
+        const float guard = 2 + spread + max_offset;
         const auto extent_x = std::ceil(bounds.x + bounds.width + guard);
         const auto extent_y = std::ceil(bounds.y + bounds.height + guard);
-        require(extent_x <= 512 && extent_y <= 512 && bounds.x >= guard && bounds.y >= guard && width > 0 &&
+        require(extent_x <= 512 && extent_y <= 512 && bounds.x >= guard && bounds.y >= guard && width >= 0 &&
                     width <= 16 && radius > width && radius <= 0.5F * std::min(bounds.width, bounds.height) &&
-                    caster_inset > 0 && caster_inset <= radius && spread > 0 && spread <= 32 && alpha > 0 && alpha < 1,
+                    caster_inset > 0 && caster_inset <= radius && alpha > 0 && alpha < 1 &&
+                    (bordered ? max_offset == 0 && spread > 0 && spread <= 32
+                              : max_offset > 0 && max_offset <= 32 && spread == 0),
                 "rounded blend source outside the fixed physical domain");
         LockedShapeGeometry outer{bounds, radius};
         LockedShapeGeometry fill = inset(outer, width * 0.5F);
         LockedShapeGeometry border = inset(outer, width);
         border.kind = LockedShapeKind::outline;
         border.outline_width = width;
+        const auto fill_color = rgb8(probe.at("fill_color"));
+        fill.dark_ink = fill_color[0] * 0.2126F + fill_color[1] * 0.7152F + fill_color[2] * 0.0722F < 127.5F;
         const auto border_color = rgb8(probe.at("border_color"));
         border.dark_ink = border_color[0] * 0.2126F + border_color[1] * 0.7152F + border_color[2] * 0.0722F < 127.5F;
-        outer.kind = LockedShapeKind::exterior_shadow;
+        outer.kind = bordered ? LockedShapeKind::exterior_shadow : LockedShapeKind::hard_shadow;
+        outer.shadow_offset = offset;
         outer.shadow_spread = spread;
         outer.shadow_caster_inset = caster_inset;
         outer.shadow_alpha = alpha;
         Json::Array samples;
-        for (const auto& sample : shape_blend_samples({outer,
-                                                       fill,
-                                                       border,
-                                                       rgb8(probe.at("shadow_color")),
-                                                       {255, 255, 255},
-                                                       border_color,
-                                                       static_cast<std::uint32_t>(extent_x),
-                                                       static_cast<std::uint32_t>(extent_y)})) {
+        for (const auto& sample :
+             shape_blend_samples({outer, fill, bordered ? std::optional{border} : std::nullopt,
+                                  rgb8(probe.at("shadow_color")), fill_color, border_color,
+                                  static_cast<std::uint32_t>(extent_x), static_cast<std::uint32_t>(extent_y)})) {
             samples.emplace_back(Json::Array{integer(sample.x), integer(sample.y), integer(sample.web[0]),
                                              integer(sample.web[1]), integer(sample.web[2]), integer(sample.native[0]),
                                              integer(sample.native[1]), integer(sample.native[2])});

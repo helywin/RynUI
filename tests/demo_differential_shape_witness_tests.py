@@ -100,6 +100,29 @@ def hard_shadow_stack(side):
 
 
 class RoundedBlendWitnessTests(unittest.TestCase):
+    def test_translated_hard_shadow_requires_same_offset_and_opaque_colored_fill(self):
+        def translated(side):
+            shadow, fill, _ = hard_shadow_stack(side)
+            shadow.update(offset=[0, 2], spread=0, color=(5/255, 145/255, 1.), knockout=side == 'web')
+            fill.update(bounds=shadow['bounds'], radii=shadow['radii'], color=(22/255, 119/255, 1.))
+            return shadow, fill
+
+        web, native = translated('web'), translated('native')
+        spec, dx, dy = next(_stacks(web, 'web', 1.5))[0]
+        self.assertEqual(next(_stacks(native, 'native', 1.5))[0], (spec, dx, dy))
+        colors = ((79, 153, 255), (80, 154, 255))
+        cache = {spec: _samples([[0-dx, 229-dy, *colors[0], *colors[1]]])}
+        pixels = bind_blends((web, native), 1.5, Path.cwd(), Path('out/bin/mock'), cache)
+        sides = tuple({'active': rows} for rows in (web, native))
+        self.assertEqual(verified_blend(pixels, 0, 229, 1.5, sides, colors), colors[0])
+        self.assertIsNone(verified_blend(pixels, 0, 229, 1.5, sides, (colors[0], (79, 154, 255))))
+
+        native[0]['offset'] = [0, 1]
+        self.assertFalse(bind_blends((web, native), 1.5, Path.cwd(), Path('out/bin/mock'), cache))
+        native = translated('native')
+        native[1]['alpha'] = .9
+        self.assertFalse(bind_blends((web, native), 1.5, Path.cwd(), Path('out/bin/mock'), cache))
+
     def test_only_exact_paired_readback_can_use_the_shared_encoding(self):
         web = hard_shadow_stack('web')
         native = hard_shadow_stack('native')

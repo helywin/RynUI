@@ -7,6 +7,7 @@
 #include "include/core/SkPaint.h"
 #include "include/core/SkRRect.h"
 
+#include <cstdlib>
 #include <stdexcept>
 
 namespace rynui::example {
@@ -43,8 +44,10 @@ void draw_web(SkBitmap& bitmap, const ShapeBlendSource& source) {
     paint.setColorFilter(nullptr);
     paint.setColor(rgb(source.fill_color));
     canvas.drawRRect(rounded(source.fill), paint);
-    paint.setColor(rgb(source.border_color));
-    canvas.drawDRRect(rounded(source.caster), rounded(source.border), paint);
+    if (source.border) {
+        paint.setColor(rgb(source.border_color));
+        canvas.drawDRRect(rounded(source.caster), rounded(*source.border), paint);
+    }
 }
 
 unsigned coverage(const LockedShapeCoverage& mask, std::uint32_t x, std::uint32_t y) {
@@ -61,10 +64,16 @@ unsigned over_rgb8(unsigned source, unsigned dest, unsigned alpha) {
 } // namespace
 
 std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source) {
-    const auto shadow = rasterize_locked_shape(source.caster, source.width, source.height);
+    auto caster = source.caster;
+    if (caster.kind == ryn::detail::LockedShapeKind::hard_shadow) {
+        caster.bounds.x += caster.shadow_offset.x;
+        caster.bounds.y += caster.shadow_offset.y;
+    }
+    const auto shadow = rasterize_locked_shape(caster, source.width, source.height);
     const auto fill = rasterize_locked_shape(source.fill, source.width, source.height);
-    const auto border = rasterize_locked_shape(source.border, source.width, source.height);
-    if (!shadow || !fill || !border) {
+    const auto border =
+        source.border ? rasterize_locked_shape(*source.border, source.width, source.height) : std::nullopt;
+    if (!shadow || !fill || (source.border && !border)) {
         throw std::runtime_error("rounded blend source produced no bounded raster");
     }
     SkBitmap bitmap;
@@ -85,13 +94,15 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
                                     {}};
             const auto shadow_alpha = coverage(*shadow, x, y);
             const auto fill_alpha = coverage(*fill, x, y);
-            const auto border_alpha = coverage(*border, x, y);
+            const auto border_alpha = border ? coverage(*border, x, y) : 0;
+            bool adjacent_codes = true;
             for (std::size_t i = 0; i < sample.native.size(); ++i) {
                 const auto shadowed = over_rgb8(source.shadow_color[i], 255, shadow_alpha);
                 const auto filled = over_rgb8(source.fill_color[i], shadowed, fill_alpha);
                 sample.native[i] = static_cast<std::uint8_t>(over_rgb8(source.border_color[i], filled, border_alpha));
+                adjacent_codes &= std::abs(int(sample.web[i]) - int(sample.native[i])) <= 1;
             }
-            if (sample.web != sample.native) {
+            if (sample.web != sample.native && (source.border || adjacent_codes)) {
                 different.push_back(sample);
             }
         }
