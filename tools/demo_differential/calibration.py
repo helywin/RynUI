@@ -685,10 +685,14 @@ def control_cells(corpus, board):
     phase=corpus[board]['phase']
     for panel_index,panel in enumerate(corpus['panels']):
         foreground=[255,255,255] if panel_index==0 else [0,0,0]
-        def add(name,kind,x,y,w,h,*,phase_offset=(0,0),**fields):
+        color_controls=corpus['glyph_color_controls']
+        glyph_colors=dict(zip(color_controls['scalar_indices'],
+                              (corpus['rgb_sentinels'][index] for index in
+                               color_controls['panel_rgb_sentinel_indices'][panel_index]),strict=True))
+        def add(name,kind,x,y,w,h,*,phase_offset=(0,0),ink_color=None,**fields):
             cells.append(dict(identity=f'p{panel_index}.{name}',kind=kind,
                 rect=dict(x=panel['x']+x+phase+phase_offset[0],y=panel['y']+y+phase+phase_offset[1],width=w,height=h),
-                background=panel['rgb'],foreground=foreground,alpha=1,**fields))
+                background=panel['rgb'],foreground=foreground if ink_color is None else ink_color,alpha=1,**fields))
         for i,rgb in enumerate(corpus['rgb_sentinels']):
             add('rgb'+str(i),'fill',12+64*i,16,28,24,rgb=rgb)
         for i,gray in enumerate(corpus['gray_ramp']):
@@ -711,9 +715,9 @@ def control_cells(corpus, board):
         index=0
         for size in corpus['font_sizes']:
             for weight in corpus['font_weights']:
-                for char in corpus[board]['text']:
+                for scalar_index,char in enumerate(corpus[board]['text']):
                     add('glyph'+str(index),'text',12+(index%12)*44,340+(index//12)*40,30,32,
-                        content=char,font_size=size,font_weight=weight)
+                        content=char,font_size=size,font_weight=weight,ink_color=glyph_colors.get(scalar_index))
                     index+=1
         add('shadow','shadow',48,760,40,24,radius=6,shadow=corpus['shadow'],
             occluding_fill=dict(rgb=panel['rgb'],alpha=1))

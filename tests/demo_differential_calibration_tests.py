@@ -234,6 +234,22 @@ class CalibrationTests(unittest.TestCase):
             self.assertTrue(any(a[changed]!=b[changed] for a,b in pairs))
             self.assertTrue(all(a[stable]==b[stable] and b[changed]==a[changed]**2 for a,b in pairs))
 
+    def test_chromatic_glyph_controls_preserve_neutral_and_disjoint_source_samples(self):
+        corpus=read(FIXTURES/'pilot-calibration.json')
+        by_board=[]
+        for board in ('train','holdout'):
+            rows=[cell for cell in control_cells(corpus,board) if cell['kind']=='text']
+            chromatic=[row for row in rows if len(set(row['foreground']))>1]
+            self.assertEqual(len(chromatic),48)
+            self.assertEqual({row['font_size'] for row in chromatic},set(corpus['font_sizes']))
+            self.assertEqual({row['font_weight'] for row in chromatic},set(corpus['font_weights']))
+            self.assertTrue(any(row['content'].isascii() for row in chromatic))
+            self.assertTrue(any(not row['content'].isascii() for row in chromatic))
+            self.assertTrue(any(row['foreground']==[0,0,0] for row in rows))
+            self.assertTrue(any(row['foreground']==[255,255,255] for row in rows))
+            by_board.append({row['content'] for row in chromatic})
+        self.assertTrue(by_board[0].isdisjoint(by_board[1]))
+
     def test_translucent_shadow_still_checks_dual_background_alpha(self):
         black, white = [0, 0, 0], [255, 255, 255]
         shadow = dict(identity='shadow', kind='shadow', rect=dict(x=24, y=24, width=12, height=12),
