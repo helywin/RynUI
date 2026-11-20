@@ -6,12 +6,13 @@ import unittest
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 from demo_differential.formal_icon_source import resource,verify_web_icon,verify_native_icon,official_font_bytes
+from demo_differential.comparison import _formal_paint_gates
 from demo_differential.protocol import ProtocolError
 
 
 class FormalIconTests(unittest.TestCase):
-    def receipts(self):
-        entry,svg,manifest,cmap=resource('SearchOutlined')
+    def receipts(self,name='SearchOutlined'):
+        entry,svg,manifest,cmap=resource(name)
         neutral=dict(transform_attr=None,transform_css='none',clip_path='none',mask='none',filter='none')
         paths=[]
         def visit(node,rule='nonzero',opacity=1):
@@ -28,6 +29,38 @@ class FormalIconTests(unittest.TestCase):
                 paint_opacity=l['opacity'])]) for i,l in enumerate(entry['layers'])]
         commands=[dict(kind='glyph',first_instance=0,instance_count=len(native),atlas_page=0)]
         return web,native,commands
+
+    def test_tiled_formal_icons_match_visible_sources_independent_of_declaration_order(self):
+        native=[]
+        web=[]
+        bounds=lambda x,y:dict(x=x,y=y,width=12,height=12)
+        for index,(name,label,y,opacity) in enumerate((
+                ('DownOutlined','down',8,1),('CloseCircleFilled','close-circle',8,0),
+                ('SearchOutlined','search',80,1))):
+            wr,nr,_=self.receipts(name)
+            web.append(dict(wr,identity=label,bounds=bounds(8,y)))
+            for path in wr['paths']:
+                path['opacity']=opacity
+            nr[0]['scene_identity']['index']=index
+            nr[0]['ink_instances'][0].update(bounds=bounds(8,y),instance_index=index,clip=[0,0,100,100],
+                                             translation=[0,0],color=[0,0,0,1],paint_opacity=opacity)
+            for layer in nr:
+                layer['ink_instances'][0]['atlas_source']=dict(glyph_id=layer['glyph_id'],
+                    font=dict(sha256=layer['font_sha256'],source=layer['font_source'],face_index=layer['face_index']))
+            native.insert(0,dict(identity=name,layers=nr))
+        clip=dict(x=0,y=0,width=100,height=100)
+        native_frame=dict(step='tile',targets=[dict(identity='sample',icons=native,clip=clip)])
+        web_frame=dict(step='tile',targets=[dict(identity='sample',icons=web,clip=clip)])
+        stack=dict(commands=[dict(kind=1,first=0,count=3,atlas_page=0)])
+        origins=({'x':0,'y':0},)*2
+        self.assertEqual(_formal_paint_gates(native_frame,web_frame,stack,origins,(0,0,64,64),1),[])
+        native[1]['layers'][0]['ink_instances'][0]['paint_opacity']=1
+        errors=_formal_paint_gates(native_frame,web_frame,stack,origins,(0,0,64,64),1)
+        self.assertEqual(errors[0]['expected'],{'DownOutlined':1})
+        self.assertEqual(errors[0]['actual'],{'CloseCircleFilled':1,'DownOutlined':1})
+        web[1]['paths'][0]['d']='M0 0L1 1Z'
+        with self.assertRaises(ProtocolError):
+            _formal_paint_gates(native_frame,web_frame,stack,origins,(0,0,64,64),1)
 
     def test_actual_svg_and_actual_font_are_different_source_kinds(self):
         web,native,commands=self.receipts()

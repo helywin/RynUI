@@ -105,6 +105,29 @@ def verify_web_icon(name, observed, *, calibration_offset=None):
     return entry
 
 
+@lru_cache(maxsize=1024)
+def _aria_candidates(label):
+    _,manifest,_=official()
+    return tuple(icon['name'] for icon in manifest['icons']
+                 if re.sub(r'(Outlined|Filled|TwoTone)$','',icon['name']).lower()==label)
+
+
+def observed_web_icon_name(observed):
+    """Resolve the measured SVG against the pinned formal variants of its aria label."""
+    label=observed.get('identity','').replace('-','').lower()
+    candidates=_aria_candidates(label)
+    need(candidates,'unknown Web aria identity')
+    matches=[]
+    for name in candidates:
+        try:
+            verify_web_icon(name,observed)
+        except ProtocolError:
+            continue
+        matches.append(name)
+    need(len(matches)==1,'actual Web path/style does not resolve uniquely to its formal aria identity')
+    return matches[0]
+
+
 def verify_native_icon(name, layers, commands):
     entry,_,manifest,cmap=resource(name)
     need(isinstance(layers,list) and len(layers)==len(entry['layers']),'native layer count differs')

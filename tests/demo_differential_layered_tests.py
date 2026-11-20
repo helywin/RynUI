@@ -432,6 +432,23 @@ class LayeredTests(unittest.TestCase):
             self.assertTrue(_plain_json(failures),failures)
             self.assertTrue(any(type(f.get('pixel')) is list for f in failures))
 
+    def test_white_guard_spans_still_check_a_shared_stray_pixel(self):
+        values=synthetic()
+        region=(-10,-10,70,50)
+        clean,clean_measurements=_layered_context(*values,physical_region=region)
+        self.assertEqual(clean,[])
+        x,y=73,44
+        index=(y*80+x)*4
+        for side,(source,size) in enumerate(values[4]):
+            pixels=bytearray(source)
+            pixels[index:index+4]=bytes((255,0,0,255))
+            values[4][side]=(bytes(pixels),size)
+        failures,measurements=_layered_context(*values,physical_region=region)
+        self.assertEqual([(f.get('side'),f.get('pixel')) for f in failures],
+                         [(0,[x-9.5,y-9.5]),(1,[x-9.5,y-9.5])])
+        self.assertEqual([m['counts'] for m in clean_measurements if m['category']=='paint-strata'],
+                         [m['counts'] for m in measurements if m['category']=='paint-strata'])
+
     def test_actual_order_change_does_not_become_unknown_environment(self):
         values=synthetic();stack=values[2]['resources']['paint_stack'];stack['commands'].reverse()
         for i,command in enumerate(stack['commands']):command['ordinal']=i

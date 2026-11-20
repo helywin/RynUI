@@ -11,6 +11,7 @@ import math
 import re
 import platform
 import struct
+from collections import Counter
 from functools import reduce
 from pathlib import Path
 
@@ -383,6 +384,30 @@ def _paint_bins(layers,box,dpr):
             for x in range(left//block,(right-1)//block+1):
                 bins.setdefault((x,y),[]).append((row,support))
     return bins
+
+
+def _layered_pixels(crops,size,box,bins,counts):
+    block=_PAINT_BIN_PHYSICAL_PX
+    white=tuple(b'\xff\xff\xff\xff'*length for length in range(block+1))
+    for y in range(box[1],box[3]):
+        index=(y-box[1])*size[0]
+        row_bin=y//block
+        for column_bin in range(box[0]//block,(box[2]-1)//block+1):
+            x=max(box[0],column_bin*block)
+            end=min(box[2],(column_bin+1)*block)
+            length=end-x
+            key=(column_bin,row_bin)
+            start_byte=index*4
+            end_byte=start_byte+length*4
+            # Both independent source predictions and both actual spans are
+            # opaque white. A shared stray pixel still takes the normal path.
+            if (key not in bins[0] and key not in bins[1] and
+                    crops[0][start_byte:end_byte]==crops[1][start_byte:end_byte]==white[length]):
+                counts['guard']+=length
+            else:
+                for offset in range(length):
+                    yield index+offset,x+offset,y,key
+            index+=length
 
 
 def _shape_distance(point,bounds,radii):
@@ -904,36 +929,62 @@ def _paint_coordinates(observed,basis):
     return solution['valid'],tuple(values) if values is not None else (solution['joint_contrast'],)
 
 
-def _formal_paint_gates(native,web,stack):
-    from .formal_icon_source import verify_formal_icon,verify_web_icon
+def _formal_paint_gates(native,web,stack,origins,box,dpr):
+    from .formal_icon_source import observed_web_icon_name,verify_native_icon
+
+    def in_capture(bounds,clip,origin):
+        left=max(bounds['x'],clip['x'],origin['x']+box[0]/dpr)
+        top=max(bounds['y'],clip['y'],origin['y']+box[1]/dpr)
+        right=min(bounds['x']+bounds['width'],clip['x']+clip['width'],origin['x']+box[2]/dpr)
+        bottom=min(bounds['y']+bounds['height'],clip['y']+clip['height'],origin['y']+box[3]/dpr)
+        return left<right and top<bottom
+
     commands=[dict(kind={0:'quad',1:'glyph',2:'rounded_effect',3:'image'}[c['kind']],
                    first_instance=c['first'],instance_count=c['count'],atlas_page=c['atlas_page']) for c in stack['commands']]
+    def shown(ink):
+        if ink.get('paint_opacity',0)<=0 or ink['color'][3]<=0:
+            return False
+        x,y=ink['translation']
+        bounds=dict(ink['bounds'],x=ink['bounds']['x']+x,y=ink['bounds']['y']+y)
+        left,top,right,bottom=ink['clip']
+        clip=dict(x=left,y=top,width=right-left,height=bottom-top)
+        return in_capture(bounds,clip,origins[1]) and any(c['kind']=='glyph' and
+            c['atlas_page']==ink['atlas_page'] and
+            c['first_instance']<=ink['instance_index']<c['first_instance']+c['instance_count'] for c in commands)
+
     seen=set();errors=[]
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
-    for target in nt.keys() & wt.keys():
-        for a,b in zip(wt[target]['icons'],nt[target]['icons']):
-            key=tuple((layer['scene_identity']['index'],layer['scene_identity']['generation']) for layer in b.get('layers',[]))
-            if key in seen:continue
-            seen.add(key);layers=[]
-            native_visible=any(ink.get('paint_opacity',ink.get('opacity',0))>0 and
-                any(c['kind']=='glyph' and c['atlas_page']==ink.get('atlas_page') and
-                    c['first_instance']<=ink.get('instance_index',-1)<c['first_instance']+c['instance_count'] for c in commands)
-                for layer in b.get('layers',[]) for ink in layer.get('ink_instances',[]))
-            web_visible=a.get('bounds',{}).get('width',0)>0 and a.get('bounds',{}).get('height',0)>0 and any(
-                float(p.get('opacity',0))*float(p.get('fill_opacity',0))>0 for p in a.get('paths',[]))
-            verify_web_icon(b['identity'],a)
-            if not native_visible and not web_visible:continue
-            if native_visible!=web_visible:
-                errors.append(dict(category='visual',step=native['step'],target=target,message='actual formal icon submitted visibility differs'))
+    for target in sorted(nt.keys() & wt.keys()):
+        native_icons=Counter()
+        web_icons=Counter()
+        for icon in wt[target]['icons']:
+            identity=observed_web_icon_name(icon)
+            if in_capture(icon['bounds'],wt[target]['clip'],origins[0]) and any(
+                    float(p['opacity'])*float(p['fill_opacity'])>0 for p in icon['paths']):
+                web_icons[identity]+=1
+        for icon in nt[target]['icons']:
+            layers=icon.get('layers',[])
+            if not any(shown(ink) for layer in layers for ink in layer.get('ink_instances',[])):
                 continue
-            for layer in b.get('layers',[]):
+            identity=icon['identity']
+            native_icons[identity]+=1
+            key=tuple((layer['scene_identity']['index'],layer['scene_identity']['generation']) for layer in layers)
+            if key in seen:
+                continue
+            seen.add(key)
+            actual_layers=[]
+            for layer in layers:
                 ink=layer.get('ink_instances',[])
                 if not ink:raise ProtocolError('formal icon layer has no actual atlas source')
                 source=ink[0].get('atlas_source',{})
                 font=source.get('font',{})
-                layers.append(dict(layer,layer_opacity=layer.get('layer_opacity'),
+                actual_layers.append(dict(layer,layer_opacity=layer.get('layer_opacity'),
                     font_sha256=font.get('sha256'),font_source=font.get('source'),face_index=font.get('face_index'),glyph_id=source.get('glyph_id')))
-            verify_formal_icon(b['identity'],a,layers,commands)
+            verify_native_icon(identity,actual_layers,commands)
+        if web_icons!=native_icons:
+            errors.append(dict(category='visual',step=native['step'],target=target,
+                               message='actual formal icon submitted visibility differs',
+                               expected=dict(sorted(web_icons.items())),actual=dict(sorted(native_icons.items()))))
     return errors
 
 
@@ -1216,8 +1267,6 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 row['bounds']=dict(x=(x+mask.left)/dpr,y=(y+mask.top)/dpr,
                                    width=mask.width/dpr,height=mask.height/dpr)
     inventories=(web_layers,native_layers)
-    hard_failures=_formal_paint_gates(native,web,native_stack)
-    hard_failures.extend(_hard_paint_gates(native_layers,web_layers,declaration['step']))
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
     caret=_status_input_caret(case,(wt,nt),inventories,origins,dpr)
     if caret:
@@ -1235,7 +1284,9 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             crops,size,box=_crop_pair(images,*absolute,origins,dpr,int(context['guard_px']))
     except ProtocolError as error:
         raise RunError(4,'capture-coverage','full paint support/shadow/outline/popup plus guard is not captured; required relative support '+str(scope)) from error
-    failures=list(hard_failures);measurements=[];counts={k:0 for k in ('flat','edge','glyph','shadow','joint','guard')}
+    failures=_formal_paint_gates(native,web,native_stack,origins,box,dpr)
+    failures.extend(_hard_paint_gates(native_layers,web_layers,declaration['step']))
+    measurements=[];counts={k:0 for k in ('flat','edge','glyph','shadow','joint','guard')}
     def fail(category,message,**data):
         if len(failures)<64:
             # Numeric loops use tuples for physical coordinates and source sets.
@@ -1244,10 +1295,8 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             failures.append(dict(category=category,step=declaration['step'],target=sample,message=message,**details))
     basis_cache={};domain_cache={};presence={};paired_planes={};joint_planes={};max_joint=0.;max_color=0.;glyph_witnesses={}
     bins=[_paint_bins(rows,box,dpr) for rows in inventories]
-    for index in range(size[0]*size[1]):
-        x,y=box[0]+index%size[0],box[1]+index//size[0]
+    for index,x,y,key_bin in _layered_pixels(crops,size,box,bins,counts):
         point=((x+.5)/dpr,(y+.5)/dpr)
-        key_bin=(x//_PAINT_BIN_PHYSICAL_PX,y//_PAINT_BIN_PHYSICAL_PX)
         sides=[]
         for side,indexed in enumerate(bins):
             active=[];coverages=[];variable=[]
@@ -1662,6 +1711,8 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
                                 fail('typography',target+'.text','required semantic glyph ink missing')
                         raster(target + '.text', ar, br, 2, 'typography', text=True,
                                local_background=local_background)
+        if layered:
+            continue  # Formal identities and visible membership are checked per captured aperture.
         if len(a['icons']) != len(b['icons']):
             fail('visual', target, 'required icon identity/count differs')
         for aw, bn in zip(a['icons'], b['icons']):
@@ -1669,9 +1720,8 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
                 raise ProtocolError('icon source identity is unavailable')
             if aw['identity'].replace('-', '').lower() != re.sub(r'(Outlined|Filled|TwoTone)$','',bn['identity']).lower():
                 fail('visual', target, 'required icon identity differs')
-            if not layered:
-                raster(target + '.icon', aw['bounds'], bn['bounds'], 2, 'visual',
-                       local_background=_local_background(a, background))
+            raster(target + '.icon', aw['bounds'], bn['bounds'], 2, 'visual',
+                   local_background=_local_background(a, background))
     if layered:
         if context_tiles:
             for tile_index,(n,w,frames,tile_origins,region) in enumerate(context_tiles):
