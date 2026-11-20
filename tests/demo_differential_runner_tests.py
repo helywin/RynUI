@@ -249,6 +249,17 @@ class RunnerTests(unittest.TestCase):
         for name in ('report.json', 'junit.xml', 'index.html'):
             self.assertTrue((self.options['output'] / name).is_file())
 
+    def test_report_keeps_replay_options_and_omits_process_local_profile_proof(self):
+        proof = object()
+        self.options['profile_proof'] = proof
+        code, report, _ = self.execute()
+        self.assertEqual(code, 0)
+        self.assertEqual(report['provenance']['options']['profile_file'], str(self.profile))
+        self.assertEqual(report['provenance']['options']['binary'], str(self.binary))
+        self.assertEqual(report['provenance']['options']['repro_argv'], ['unit-mechanism-only'])
+        self.assertNotIn('profile_proof', report['provenance']['options'])
+        self.assertIs(self.options['profile_proof'], proof)
+
     def test_tile_reference_requires_its_original_sidecar_bytes(self):
         case = control_case()
         adapter = AdapterControl()

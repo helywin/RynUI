@@ -336,6 +336,11 @@ def run(options, definitions, *, adapters=None, comparator=None, coverage_docume
             report['errors'].append({'category': 'protocol', 'message': str(error)})
         report['coverage']['paired_pass'] = len(report['passed'])
         report['timings']['total'] = time.monotonic() - started
-        report['provenance']['options'] = {k: str(v) if isinstance(v, Path) else v for k, v in options.items()}
+        # Replay re-verifies the profile from disk. The in-process proof is
+        # neither a CLI option nor a serializable attestation.
+        report['provenance']['options'] = {
+            key: str(value) if isinstance(value, Path) else value
+            for key, value in options.items() if key != 'profile_proof'
+        }
         publish(directory, report)
     return report['exit_code']
