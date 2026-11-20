@@ -387,6 +387,31 @@ void open_selected_value_dims_only_the_editor_content() {
           "closing Select changed value paint or remounted its editor");
 }
 
+void borderless_variant_keeps_the_selector_frame_inset() {
+    Fixture f;
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}.options({{1, u8"One"}}).defaultValue(1).layout(LayoutStyle{}.width(dp(180))));
+        Select(SelectProps{}
+                   .options({{1, u8"One"}})
+                   .defaultValue(1)
+                   .variant(InputVariant::Borderless)
+                   .layout(LayoutStyle{}.width(dp(180))));
+        Input(
+            InputProps{}.defaultValue(u8"One").variant(InputVariant::Borderless).layout(LayoutStyle{}.width(dp(180))));
+    }});
+    f.synchronize();
+    const auto mounted = f.services.select().mounted();
+    const auto outlined = f.services.select().snapshot(mounted[0]).selector;
+    const auto borderless = f.services.select().snapshot(mounted[1]).selector;
+    const auto direct = f.inputs.mounted_inputs().back().component;
+    const auto inline_inset = [&](runtime::ComponentId id) {
+        return f.inputs.layout_snapshot(id).viewport.x - bounds(f, id).x;
+    };
+    check(inline_inset(borderless) == inline_inset(outlined),
+          "borderless Select did not reserve its transparent selector frame");
+    check(inline_inset(direct) < inline_inset(borderless), "standalone borderless Input gained a selector frame");
+}
+
 void scrolling_edges_and_idle() {
     std::vector<SelectOption> options;
     for (int i = 0; i < 100; ++i) {
@@ -656,6 +681,7 @@ int main() {
         search_ime_and_dynamic_options();
         controlled_close_preserves_search_until_accepted();
         open_selected_value_dims_only_the_editor_content();
+        borderless_variant_keeps_the_selector_frame_inset();
         scrolling_edges_and_idle();
         controlled_states_and_theme();
         callback_retirement_and_validation();

@@ -234,6 +234,7 @@ struct InputState {
     bool counting{};
     bool count_ready{};
     bool search_control_height{};
+    bool reserve_borderless_frame{};
     std::shared_ptr<void> password_lifetime;
     std::size_t hovering_pointers{};
     std::optional<input::PointerIdentity> selecting_pointer;
@@ -870,6 +871,7 @@ struct InputPropsAccess {
         state.layout.suffix = state.custom_suffix || state.clear_visible.get();
         state.layout.right_to_left = props.mirror_affixes_ && direction == TextDirection::RightToLeft;
         state.layout.fit_affixes = props.fit_affixes_;
+        state.reserve_borderless_frame = props.reserve_borderless_frame_;
         state.embedded_value_opacity = detail::read_prop(props.embedded_value_opacity_);
         build.mount_slot(
             component, Content{[&] {
@@ -2186,7 +2188,7 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
         model.flush_suffix = true;
     }
     model.padding_block = size_tokens.padding_block;
-    if (state->variant == InputVariant::Borderless) {
+    if (state->variant == InputVariant::Borderless && !state->reserve_borderless_frame) {
         model.border_width = 0;
         model.padding_block += tokens.border_width;
     }

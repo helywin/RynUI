@@ -1890,6 +1890,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                       InputProps input_props;
                       input_props.fit_affixes_ = prefix.has_value() || suffix.has_value();
                       input_props.mirror_affixes_ = true;
+                      input_props.reserve_borderless_frame_ = true;
                       input_props.embedded_value_opacity_ = s.embedded_value_opacity;
                       Input(input_props.value(s.display)
                                 .placeholder(s.placeholder)
