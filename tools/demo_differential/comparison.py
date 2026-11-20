@@ -21,7 +21,7 @@ from .protocol import ROOT, ProtocolError, validate
 from .regions import (crop_rgba, geometry, physical_box, raster_metrics, rect, relative, union, sample_anchor, text_groups,
                       capture_aperture, vertical_capture_slices)
 from .runner_evidence import artifact, metrics
-from .calibration import CAPS
+from .calibration import CAPS, gaussian_rounded_shadow, rounded_distance
 from .pilots import displayed_slot_text
 from .shape_blend_witness import verified_blend
 from .shape_witness import ShapeWitnesses, locked_edge_value
@@ -434,7 +434,6 @@ def _layered_pixels(crops,size,box,bins,counts):
 
 
 def _shape_distance(point,bounds,radii):
-    from .calibration import rounded_distance
     radius=radii[(0 if point[1]<bounds['y']+bounds['height']/2 else 3) if point[0]<bounds['x']+bounds['width']/2
                   else (1 if point[1]<bounds['y']+bounds['height']/2 else 2)] if isinstance(radii,(tuple,list)) else radii
     return rounded_distance(*point,bounds,radius)
@@ -498,7 +497,6 @@ def _square_side_coverage(polygon,point,dpr):
 
 def _layer_coverage(layer,point,dpr):
     """Independent source geometry; transitions are exactly <=1 physical pixel."""
-    from .calibration import gaussian_rounded_shadow
     if any(not _contains(clip,point) for clip in layer.get('clips',[])):return 0,False
     b=layer['bounds'];kind=layer['kind'];r=layer.get('radii',0)
     if kind=='border-side':
@@ -1686,6 +1684,12 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             details={key:list(value) if isinstance(value,tuple) else value for key,value in data.items()}
             failures.append(dict(category=category,step=declaration['step'],target=sample,message=message,**details))
     basis_cache={};domain_cache={};presence={};paired_planes={};joint_planes={};max_joint=0.;max_color=0.;glyph_witnesses={}
+    unmix_sample=lru_cache(maxsize=8192)(unmix_coverage)
+
+    @lru_cache(maxsize=8192)
+    def paint_coordinates(rgb,basis_key):
+        return _paint_coordinates(rgb,basis_cache[basis_key])
+
     svg_masks=(glyph_priors or {}).get('quarter_icon_masks')
     svg_placements={}
     bins=[_paint_bins(rows,box,dpr) for rows in inventories]
@@ -1733,7 +1737,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 if error>thresholds['color.flat_delta_e00']:fail('visual','source-identical flat paint differs',side=side,pixel=point,actual=error)
                 sides.append(dict(active=active,coverages=coverages,variable=[],kind='flat',values=()))
                 continue
-            valid,values=_paint_coordinates(observed,basis)
+            valid,values=paint_coordinates(observed,basis_key)
             if not valid:fail('typography' if any(r['kind']=='glyph' for r in active) else 'visual',
                                           'known source pixel violates visible color domain',side=side,pixel=point)
             # Joint same-color opacity/order bounds use actual finite stack
@@ -1788,7 +1792,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                         if not solved['valid']:raise ProtocolError('known visible alpha pixel differs')
                         value=solved['contribution']
                     else:
-                        unmixed=unmix_coverage(tuple(v/255 for v in observed),upper,lower,1.,byte_error=1/255)
+                        unmixed=unmix_sample(tuple(v/255 for v in observed),upper,lower,1.,byte_error=1/255)
                         value=unmixed['coverage']
                         uncertainty=unmixed['quantization_bound']
                 except ProtocolError:
@@ -1821,7 +1825,8 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                     if witness is not None:
                         glyph_witnesses[row['identity']]=glyph_witnesses.get(row['identity'],0)+1
                         if not witness:fail('typography','independent SFNT interior glyph witness has no ink',pixel=point,source=row['identity'])
-            sides.append(dict(active=active,coverages=coverages,variable=variable,kind=kind,values=tuple(values),basis=basis))
+            sides.append(dict(active=active,coverages=coverages,variable=variable,kind=kind,values=tuple(values),
+                              basis=basis,basis_key=basis_key))
         classification=sides[0]['kind'];counts[classification]+=1
         if caret and any(any(row is marker for row in sides[side]['active']) for side,marker in enumerate(caret)):
             # These source-specific pixels already went through independent
@@ -1866,7 +1871,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                         solved=visible_segment(tuple(v/255 for v in rgb),lower,upper,maximum)
                         value=solved['contribution'] if solved['valid'] else None
                     else:
-                        unmixed=unmix_coverage(tuple(v/255 for v in rgb),upper,lower,1.,byte_error=1/255)
+                        unmixed=unmix_sample(tuple(v/255 for v in rgb),upper,lower,1.,byte_error=1/255)
                         value=unmixed['coverage']
                         if side==0:reference_uncertainty=unmixed['quantization_bound']
                 except ProtocolError:value=None
@@ -1890,7 +1895,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             else:
                 # One reference basis for both pixels; material differences are
                 # output differences, never a choice of a favorable native basis.
-                basis=sides[0]['basis'];solutions=[_paint_coordinates(rgb,basis) for rgb in (a,b)]
+                basis=sides[0]['basis'];solutions=[paint_coordinates(rgb,sides[0]['basis_key']) for rgb in (a,b)]
                 if not all(valid for valid,_ in solutions):fail('visual','known paired pixel is outside fixed reference visible basis',pixel=point)
                 else:
                     coordinates=[values for _,values in solutions]
