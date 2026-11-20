@@ -1029,10 +1029,14 @@ void retained_scene_layers() {
                 &read.text_state(layers.base) == &read.text_state(layers.placeholder),
             "Input duplicated shaping state");
     const auto commands = f.buttons.scene_composer().ordered_scene().commands();
-    require(commands.size() >= 4 && commands.front().kind == graphics::SceneDrawKind::rounded_effect &&
-                commands[1].kind == graphics::SceneDrawKind::quad &&
-                commands[2].kind == graphics::SceneDrawKind::glyph &&
-                commands.back().kind == graphics::SceneDrawKind::quad && commands.back().instance_count == 2,
+    const auto first_content = std::ranges::find_if(
+        commands, [](const auto& command) { return command.kind != graphics::SceneDrawKind::rounded_effect; });
+    const auto content = commands.subspan(static_cast<std::size_t>(first_content - commands.begin()));
+    // Paint order can split the background and outline into several effect runs.
+    require(first_content != commands.begin() && content.size() == 3 &&
+                content[0].kind == graphics::SceneDrawKind::quad && content[0].instance_count == 1 &&
+                content[1].kind == graphics::SceneDrawKind::glyph && content[2].kind == graphics::SceneDrawKind::quad &&
+                content[2].instance_count == 2,
             "Input layer order does not enclose glyphs with selection/caret");
     require(f.buttons.focus().request_focus(mounted.interaction, FocusModality::keyboard),
             "retained Input focus failed");

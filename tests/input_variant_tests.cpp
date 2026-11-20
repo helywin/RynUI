@@ -39,7 +39,8 @@ void variant_matrix() {
                                             .size(size)
                                             .status(status)
                                             .disabled(disabled)
-                                            .ref(reference));
+                                            .ref(reference),
+                                        InputPrefix{[] {}}, InputSuffix{[] {}});
                               }});
                     }});
                     f.synchronize();
@@ -61,6 +62,11 @@ void variant_matrix() {
                         require(background().material.color.alpha() == 0 && border().material.opacity == 0,
                                 "Borderless painted background or border");
                     } else if (variant == InputVariant::Underlined) {
+                        const auto viewport = f.inputs.layout_snapshot(mounted.component).viewport;
+                        const auto inset = tokens.size(size).padding_inline + tokens.border_width;
+                        require(background().geometry.shape.rect == root && near(viewport.x, root.x + inset) &&
+                                    near(viewport.width, root.width - 2 * inset),
+                                "Underlined must keep full background and content insets through empty affixes");
                         require(near(border().geometry.shape.rect.height, tokens.border_width) &&
                                     near(border().geometry.shape.rect.y, root.y + root.height - tokens.border_width) &&
                                     border().geometry.shape.radius == 0,

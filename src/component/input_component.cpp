@@ -2169,7 +2169,7 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
         model.flush_suffix = true;
     }
     model.padding_block = size_tokens.padding_block;
-    if (state->variant == InputVariant::Borderless || state->variant == InputVariant::Underlined) {
+    if (state->variant == InputVariant::Borderless) {
         model.border_width = 0;
         model.padding_block += tokens.border_width;
     }
@@ -2981,9 +2981,6 @@ void InputComponentHost::synchronize_input_geometry(runtime::Size window, runtim
                 if (layer == input_background_layer && state->variant != InputVariant::Outlined) {
                     effect.geometry.shape = {
                         root_bounds, std::clamp(radius, 0.0F, 0.5F * std::min(root_bounds.width, root_bounds.height))};
-                    if (state->variant == InputVariant::Underlined) {
-                        effect.geometry.shape.rect.height = std::max(0.0F, root_bounds.height - border);
-                    }
                 }
                 if (layer == input_border_layer && state->variant == InputVariant::Outlined) {
                     // Keep a hollow border so a translucent surface retains its own alpha.
