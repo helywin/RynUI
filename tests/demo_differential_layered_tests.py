@@ -1,6 +1,7 @@
 """Synthetic CPU stratum controls; these are not GPU calibration evidence."""
 from copy import deepcopy
 import math
+import struct
 from pathlib import Path
 import sys
 import unittest
@@ -126,6 +127,16 @@ class LayeredTests(unittest.TestCase):
         core=((30,)*3,(31,)*3)
         self.assertEqual(_witnessed_glyph_rounding(sides,basis,core,priors,(.5,.5),1),(31,)*3)
         self.assertIsNone(_witnessed_glyph_rounding(sides,basis,(core[0],(34,)*3),priors,(.5,.5),1))
+
+        masks[mask_identity('A',source)]=GlyphWitness(0,0,1,1,bytes([252]))
+        web[0]['web_glyph_mask']=(masks[mask_identity('A',source)],0,0)
+        color=tuple(channel/255 for channel in (250,173,20))
+        web[0].update(color=color,alpha=1.,groups=[('identity',1.)])
+        native[0].update(color=struct.unpack('<3f',struct.pack('<3f',*color)),alpha=1.)
+        tint=((250,173,21),(250,174,22))
+        self.assertEqual(_witnessed_glyph_rounding(sides,basis,tint,priors,(.5,.5),1),(250,174,22))
+        native[0]['color']=(250/255,172/255,20/255)
+        self.assertIsNone(_witnessed_glyph_rounding(sides,basis,tint,priors,(.5,.5),1))
 
     def test_web_outline_admits_a_subpixel_stroke_and_rejects_a_disconnected_halo(self):
         row=dict(content='I',outline_origin=(0,1),text_group=dict(font_size='1px',font_weight='400'),

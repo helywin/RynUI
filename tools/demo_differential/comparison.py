@@ -10,6 +10,7 @@ import json
 import math
 import re
 import platform
+import struct
 from functools import reduce
 from pathlib import Path
 
@@ -1070,7 +1071,8 @@ def _glyph_samples_at_pixel(side,priors,point,dpr):
     rasterizer,masks=priors['scenario_masks']
     for position in side['variable']:
         row=side['active'][position]
-        if row['kind']!='glyph' or row['groups'] or row.get('formal_svg'):
+        if (row['kind']!='glyph' or any(opacity!=1 for _,opacity in row['groups']) or
+                row.get('formal_svg')):
             return None
         if row.get('web_glyph_mask') is not None:
             mask,x,y=row['web_glyph_mask']
@@ -1104,7 +1106,10 @@ def _witnessed_glyph_rounding(sides,basis,observations,priors,point,dpr):
     (web,web_rgb),(native,native_rgb)=samples
     if not web or len(web)!=len(native) or len({key[-1] for key,_ in web})!=1:
         return None
-    if any(a!=b or abs(x-y)>1e-6 for (a,x),(b,y) in zip(web,native,strict=True)):
+    # CSS color numbers arrive as JSON doubles. The submitted native material
+    # stores the same channels as float32, so compare that exact representation.
+    if any(a[:-1]!=b[:-1] or struct.pack('<3f',*a[-1])!=struct.pack('<3f',*b[-1]) or abs(x-y)>1e-6
+           for (a,x),(b,y) in zip(web,native,strict=True)):
         return None
     if any(abs(a-b)>1e-6 for a,b in zip(web_rgb,native_rgb,strict=True)):
         return None
