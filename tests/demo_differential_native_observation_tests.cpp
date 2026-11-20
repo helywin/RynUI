@@ -421,6 +421,8 @@ void semantic_and_retirement_controls() {
     require(lifetime.at("window_deadline_us").number() > 0, "legal shell deadline was hidden");
     require(retired.at("resources").at("readback").at("readback_id").integer() == 2,
             "unchanged scene reused the prior capture receipt");
+    require(!retired.at("resources").contains("context_tiles"),
+            "retired sample tried to capture its old context tiles");
     require(std::holds_alternative<std::nullptr_t>(retired.at("resources").at("presented").value),
             "mock/readback fabricated presentation knowledge");
 }

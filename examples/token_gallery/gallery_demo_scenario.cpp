@@ -1400,6 +1400,8 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
             for (const auto& identity : declaration.at("targets").array()) {
                 targets.push_back(observer.snapshot(identity.string()));
             }
+            const bool live_sample = std::ranges::any_of(
+                observer.factory_roots, [&](auto root) { return observer.actions.app.components().contains(root); });
             const auto capture_current = [&](const std::string& filename, const std::string& nonce) -> Json {
                 const auto path = observations.parent_path() / filename;
                 if (std::filesystem::exists(path)) {
@@ -1415,23 +1417,38 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
                     auto stack = gallery_demo_paint_stack(observer.actions.app, observer.factory_roots,
                                                           observer.actions.submitted_scene());
                     auto& stack_fields = std::get<Json::Object>(stack.value);
+                    const auto& components = observer.actions.app.components();
+                    const auto& selectors = observer.actions.app.services().select();
+                    std::vector<std::pair<std::string, runtime::ComponentId>> semantic_owners;
+                    for (const auto& name : observer.input_targets()) {
+                        const auto owner = observer.actions.pages.target(name);
+                        if (!owner.valid() || !components.contains(owner)) {
+                            continue;
+                        }
+                        semantic_owners.emplace_back(name, owner);
+                        if (const auto select = selectors.paint_owners(owner)) {
+                            const auto popup = select->popup.owner;
+                            if (popup.valid() && components.contains(popup) && components.branch_active(popup)) {
+                                semantic_owners.emplace_back(name + ".popup", popup);
+                            }
+                        }
+                    }
                     for (auto& layer : std::get<Json::Array>(stack_fields.at("layers").value)) {
                         const auto& owner = layer.at("owner");
                         const runtime::ComponentId component{
                             static_cast<std::uint32_t>(owner.at("index").integer()),
                             static_cast<std::uint32_t>(owner.at("generation").integer())};
                         Json::Array owners;
-                        for (const auto& name : observer.input_targets()) {
-                            const auto semantic_owner = observer.actions.pages.target(name);
-                            if (semantic_owner.valid() && observer.actions.app.components().contains(semantic_owner) &&
-                                owns(observer.actions.app, semantic_owner, component)) {
+                        for (const auto& [name, semantic_owner] : semantic_owners) {
+                            if (owns(observer.actions.app, semantic_owner, component)) {
                                 owners.emplace_back(name);
                             }
                         }
                         std::get<Json::Object>(layer.value).emplace("owner_targets", std::move(owners));
                     }
                     stack_fields.emplace("glyph_inventory",
-                                         observer.snapshot(scenario.route.sample_identity).at("text"));
+                                         live_sample ? observer.snapshot(scenario.route.sample_identity).at("text")
+                                                     : Json{Json::Array{}});
                     stack_fields.erase("snapshot_digest");
                     const auto bytes = stack.dump();
                     stack_fields.emplace("snapshot_digest",
@@ -1491,7 +1508,7 @@ void run_gallery_demo_scenario(const GalleryDemoScenario& scenario, const std::f
             const auto nonce = scenario.nonce + "-capture-" + std::to_string(index);
             const auto capture = capture_current(prefix + ".bmp", nonce);
             Json::Array tiles;
-            const auto sample = observer.target_bounds(scenario.route.sample_identity);
+            const auto sample = live_sample ? observer.target_bounds(scenario.route.sample_identity) : runtime::Rect{};
             const auto page = observer.actions.pages.snapshot();
             const auto lane = page.layout.document;
             const auto logical_height = static_cast<float>(observer.actions.metrics().at("logical_height").number());
