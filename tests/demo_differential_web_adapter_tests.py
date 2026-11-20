@@ -390,10 +390,12 @@ declarations.editor.data = { value: 'FAKE wrapper declaration' };
         with self.assertRaisesRegex(ValueError, 'placeholder'):
             web.validate_observations(negative, req)
         def extra_origin_wrapper(text):
-            pattern = r'(\w+\.default\.createElement)\((Flex\w*), \{ vertical: true, gap: 4 \}, origin, slot\(slots\.popup\)\)'
+            pattern = (r'(\w+\.default\.createElement)\((Flex\w*), \{ vertical: true, gap: 4 \}, '
+                       r'((?:/\* @__PURE__ \*/ )?\1\("div", \{ "data-reference-popup-origin": "true" \}, origin\)), '
+                       r'slot\(slots\.popup\)\)')
             changed, count = re.subn(pattern, lambda match: (
                 f'{match[1]}({match[2]}, {{ vertical: true, gap: 4 }}, '
-                f'{match[1]}({match[2]}, {{ vertical: true, gap: 40 }}, origin), slot(slots.popup))'), text)
+                f'{match[1]}({match[2]}, {{ vertical: true, gap: 40 }}, {match[3]}), slot(slots.popup))'), text)
             self.assertEqual(count, 1, 'actual popup renderer source was not changed')
             return changed
         result, negative = self.worker_control(output, extra_origin_wrapper)

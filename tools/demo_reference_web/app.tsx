@@ -151,7 +151,9 @@ function Control({ identity, entry, includeCaption = true }: any) {
           popupOrigins.set(identity, origins);
         }
         origins.props.set(origin.props, { type: origin.type, key: origin.key });
-        return <Flex vertical gap={4}>{origin}{slot(slots.popup)}</Flex>;
+        // A Select origin can expose several DOM roots, including its invisible
+        // accessibility list. Treat the supplied origin as one Flex item.
+        return <Flex vertical gap={4}><div data-reference-popup-origin="true">{origin}</div>{slot(slots.popup)}</Flex>;
       };
       props.popupRender.sourceControl = slots.popup.control;
     }
@@ -538,8 +540,15 @@ function consumedInputs(queryStep = 'setup', initial = false) {
         (fiber.elementType === registered.type || fiber.type === registered.type) && fiber.key === registered.key;
     });
     if (origins.length !== 1) throw new Error('actual committed popup origin boundary is missing/ambiguous: ' + parent);
+    const originItem = parents.get(origins[0]);
+    const originHost = originItem?.stateNode;
+    if (!(originHost instanceof HTMLDivElement) || !originHost.isConnected || !popup.contains(originHost) ||
+        originHost.dataset.referencePopupOrigin !== 'true' || originHost.hasAttribute('style') ||
+        originItem.child !== origins[0] || origins[0].sibling) {
+      throw new Error('actual popup origin is not one committed layout item: ' + parent);
+    }
     // Project the actual Flex, retaining its applied props and real child order.
-    const tree = project(wrapper.fiber, origins[0]);
+    const tree = project(wrapper.fiber, originItem);
     slotComposition[parent] = { popup: tree };
   }
   const compositionRoot = committed.find(value => value.props['data-reference-composition'] === 'composition');

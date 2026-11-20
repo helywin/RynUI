@@ -104,7 +104,7 @@ def _base(component, controls, data, slots, composition, actions, oracle, target
             'demo_path': f'components/{component}/demo/{demo}', 'demo_sha256': demo_hash,
             'source_paths': [{'path': f'components/{component}/{source}', 'sha256': source_hash}],
             'adapter_id': 'antd665.reference-web.v1',
-            'adapter_sha256': '57bca1cbc11633290a1e967cef4c5ed1b7106ebe0590d0a4aff3611dff4f86b5',
+            'adapter_sha256': '128c01e84f3c1c4c82a18a49f024dbd5edcbd3985dc4f259d871c65668989f32',
             'mode': 'official-component-adapted', 'adaptation': [
                 {'field': field, 'value': deepcopy(fixture[field]),
                  'reason': f'{function}: declared public {field}; original sample content and default local Theme remain required; no measured native input'}
@@ -290,7 +290,7 @@ def select_case():
         *click(note, 'popup-note-focus'), action('popup-note-edit', 'text-commit', note, {'text': 'popup draft'}),
         action('virtual-drafted', 'checkpoint', note), *click(virtual, 'virtual-selector-focus'),
         *key(virtual, 'virtual-close', 'Escape'),
-        action('async-wheel', 'wheel', 'sample', {'delta_x': 0, 'delta_y': 96}),
+        action('async-wheel', 'wheel', 'sample', {'delta_x': 0, 'delta_y': 24}),
         *click(asynchronous, 'async-open'), action('async-mounted', 'checkpoint', asynchronous),
         action('async-query', 'text-commit', asynchronous, {'text': 'query'}),
         *click(deliver, 'async-deliver'), action('async-delivered', 'checkpoint', asynchronous),
