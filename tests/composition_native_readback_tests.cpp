@@ -249,6 +249,18 @@ void locked_coverage_in_composition(const std::string& driver) {
             pixel(composed, x, y, rgba, y < 43 ? 0 : 1);
         }
     }
+    {
+        RawScene shadow(renderer, *platform.state, scale);
+        renderer.set_clear_color(Color{1, 1, 1, 1});
+        (void)shadow.effects.add(make_shadow_effect({{0, 0, 60 / scale, 36 / scale}, 6 / scale},
+                                                    {ShadowKind::outer, {0, 3 / scale}, 0, 0, Color{0, 0, 0, .02F}}));
+        shadow.order.append_command({SceneDrawKind::rounded_effect, 0, 1});
+        const auto frame = shadow.read();
+        pixel(frame, 0, 34, {252, 252, 252, 255}, 0);
+        pixel(frame, 0, 35, {254, 254, 254, 255}, 0);
+        pixel(frame, 16, 38, {250, 250, 250, 255}, 0);
+        pixel(frame, 16, 39, {255, 255, 255, 255}, 0);
+    }
     // For self coverage the rounded group still owns the outer mask once.
     masks(renderer, *platform.state);
 }

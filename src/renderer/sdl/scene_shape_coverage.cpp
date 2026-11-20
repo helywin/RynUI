@@ -63,6 +63,12 @@ bool SdlSceneRenderer::upload_effect_coverage(RoundedEffectGpuBufferHandle handl
                 geometry = base;
                 geometry->bounds.x += shadow[1];
                 geometry->bounds.y += shadow[2];
+                const auto alpha = effect.color[3] * opacity;
+                if (alpha < 1 && (shadow[1] != 0 || shadow[2] != 0)) {
+                    // Resolve a displaced hard shadow's material alpha with its edge in the R8 mask.
+                    geometry->kind = LockedShapeKind::hard_shadow;
+                    geometry->shadow_alpha = alpha;
+                }
             } else if (kind == 2 && shadow[0] > 0) {
                 geometry = base;
                 geometry->kind = LockedShapeKind::outline;
@@ -135,7 +141,7 @@ bool SdlSceneRenderer::update_coverage(Resource& owner, std::uint32_t index,
             }
         }
     }
-    if (geometry->kind == LockedShapeKind::exterior_shadow) {
+    if (geometry->kind == LockedShapeKind::exterior_shadow || geometry->kind == LockedShapeKind::hard_shadow) {
         color[3] = 1;
         opacity = 1;
     }

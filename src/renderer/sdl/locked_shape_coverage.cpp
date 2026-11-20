@@ -49,7 +49,7 @@ std::optional<LockedShapeCoverage> rasterize_locked_shape(const LockedShapeGeome
     }
     const auto width = static_cast<std::uint32_t>(right - left);
     const auto height = static_cast<std::uint32_t>(bottom - top);
-    const bool shadow = shape.kind == LockedShapeKind::exterior_shadow;
+    const bool shadow = shape.kind == LockedShapeKind::exterior_shadow || shape.kind == LockedShapeKind::hard_shadow;
     const bool dark = shadow || shape.dark_ink;
     SkBitmap bitmap;
     if (!bitmap.tryAllocPixels(SkImageInfo::MakeN32Premul(static_cast<int>(width), static_cast<int>(height)))) {
@@ -61,7 +61,11 @@ std::optional<LockedShapeCoverage> rasterize_locked_shape(const LockedShapeGeome
     SkPaint paint;
     paint.setAntiAlias(true);
     paint.setColor(dark ? SK_ColorBLACK : SK_ColorWHITE);
-    if (shape.kind == LockedShapeKind::fill) {
+    if (shadow) {
+        paint.setColorFilter(
+            SkColorFilters::Blend({0, 0, 0, shape.shadow_alpha}, SkColorSpace::MakeSRGB(), SkBlendMode::kSrcIn));
+    }
+    if (shape.kind == LockedShapeKind::fill || shape.kind == LockedShapeKind::hard_shadow) {
         canvas.drawRRect(rounded_rect(rect, shape.radius), paint);
     } else if (shape.kind == LockedShapeKind::outline) {
         auto center = rect;
@@ -78,8 +82,6 @@ std::optional<LockedShapeCoverage> rasterize_locked_shape(const LockedShapeGeome
         auto caster = rect;
         caster.outset(shape.shadow_spread, shape.shadow_spread);
         paint.setMaskFilter(SkMaskFilter::MakeBlur(kNormal_SkBlurStyle, shape.shadow_blur * 0.5F));
-        paint.setColorFilter(
-            SkColorFilters::Blend({0, 0, 0, shape.shadow_alpha}, SkColorSpace::MakeSRGB(), SkBlendMode::kSrcIn));
         canvas.drawRRect(rounded_rect(caster, shape.radius + shape.shadow_spread), paint);
     }
     LockedShapeCoverage result{static_cast<std::uint32_t>(left), static_cast<std::uint32_t>(top), width, height, {}};

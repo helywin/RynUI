@@ -11,6 +11,7 @@ namespace ryn::detail {
 enum class LockedShapeKind {
     fill,
     outline,
+    hard_shadow,
     exterior_shadow,
 };
 
