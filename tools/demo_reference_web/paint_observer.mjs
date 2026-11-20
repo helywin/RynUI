@@ -64,36 +64,50 @@ function actualNode() {
 
 async function readActualNodes(cdp, nodes) {
   const records = new Map();
-  const batchSize = 16;
-  const declaration = actualNode.toString();
+  const batchSize = 64;
+  const objectGroup = 'readonly-paint-actual-nodes';
+  const declaration = `function (...nodes) {
+    const observe = ${actualNode.toString()};
+    return nodes.map(node => observe.call(node));
+  }`;
   for (let start = 0; start < nodes.length; start += batchSize) {
-    await Promise.all(nodes.slice(start, start + batchSize).map(async id => {
-      const remote = await cdp.send('DOM.resolveNode', {backendNodeId: id});
-      if (!remote.object.objectId) return;
-      try {
-        const query = await cdp.send('Runtime.callFunctionOn', {objectId: remote.object.objectId,
-          functionDeclaration: declaration, returnByValue: true});
-        if (query.exceptionDetails) throw new Error('actual paint-bearing node query failed');
-        records.set(id, query.result.value);
-      } finally {
-        await cdp.send('Runtime.releaseObject', {objectId: remote.object.objectId});
+    try {
+      const batch = await Promise.all(nodes.slice(start, start + batchSize).map(async id => {
+        const remote = await cdp.send('DOM.resolveNode', {backendNodeId: id, objectGroup});
+        return {id, objectId: remote.object.objectId};
+      }));
+      const resolved = batch.filter(node => node.objectId);
+      if (!resolved.length) continue;
+      const query = await cdp.send('Runtime.callFunctionOn', {objectId: resolved[0].objectId,
+        functionDeclaration: declaration, arguments: resolved.map(({objectId}) => ({objectId})),
+        returnByValue: true});
+      if (query.exceptionDetails || !Array.isArray(query.result.value)
+          || query.result.value.length !== resolved.length) {
+        throw new Error('actual paint-bearing node query failed');
       }
-    }));
+      resolved.forEach(({id}, index) => records.set(id, query.result.value[index]));
+    } finally {
+      await cdp.send('Runtime.releaseObjectGroup', {objectGroup});
+    }
   }
   return records;
 }
 
 export async function observePaintStack(cdp, identities, {nonce,step,revision,viewport}) {
   const liveViewport=(await cdp.send('Runtime.evaluate',{expression:'({scroll_x:scrollX,scroll_y:scrollY,width:innerWidth,height:innerHeight,dpr:devicePixelRatio})',returnByValue:true})).result.value;
-  const roots=[];
-  for(const identity of [...new Set(identities)]) {
-    const remote=await cdp.send('Runtime.evaluate',{expression:'window.__reference.element('+JSON.stringify(identity)+')',
-      objectGroup:'readonly-paint-roots'});
-    if(!remote.result.objectId)continue;
-    try {
-      const node=(await cdp.send('DOM.describeNode',{objectId:remote.result.objectId})).node;
-      roots.push({identity,backend_node_id:node.backendNodeId});
-    } finally {await cdp.send('Runtime.releaseObject',{objectId:remote.result.objectId});}
+  const objectGroup = 'readonly-paint-roots';
+  let roots;
+  try {
+    const resolved = await Promise.all([...new Set(identities)].map(async identity => {
+      const remote = await cdp.send('Runtime.evaluate',{
+        expression: 'window.__reference.element(' + JSON.stringify(identity) + ')', objectGroup});
+      if (!remote.result.objectId) return null;
+      const {node} = await cdp.send('DOM.describeNode',{objectId:remote.result.objectId});
+      return {identity,backend_node_id:node.backendNodeId};
+    }));
+    roots = resolved.filter(Boolean);
+  } finally {
+    await cdp.send('Runtime.releaseObjectGroup', {objectGroup});
   }
   const snapshot=await cdp.send('DOMSnapshot.getSnapshot',{computedStyleWhitelist:paintStyleNames,
     includeUserAgentShadowTree:true,includePaintOrder:true});
