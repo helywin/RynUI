@@ -1248,7 +1248,7 @@ def _hard_paint_gates(native_layers,web_layers,step):
 def _glyph_priors_for_run(native,manifest,*,independent_masks=False,web=None):
     from .calibration import scenario_font_priors,font_priors_from_bytes
     from .formal_icon_source import official_font_bytes
-    from .glyph_witness import scenario_masks,browser_scenario_masks
+    from .glyph_witness import scenario_masks,browser_scenario_masks,quarter_icon_masks
     from .protocol import ROOT,relative_path
     ordinary=set();icons=set();texts=[]
     for step,checkpoint in native['checkpoints'].items():
@@ -1281,6 +1281,7 @@ def _glyph_priors_for_run(native,manifest,*,independent_masks=False,web=None):
     result['web_fonts']=web_fonts
     if independent_masks:
         result['scenario_masks']=scenario_masks(manifest,ROOT,texts,result)
+        result['quarter_icon_masks']=quarter_icon_masks(manifest,ROOT,texts)
         if web_rows:
             result['web_masks']=browser_scenario_masks(manifest,ROOT,(_web_glyph_source(row,result) for row in web_rows))
     if icons:result.update(font_priors_from_bytes(official_font_bytes(),[ord(c) for c in sorted(icons)],library))
@@ -1396,6 +1397,47 @@ def _witnessed_glyph_rounding(sides,basis,observations,priors,point,dpr):
            for actual,ideal in zip(colors,rgb,strict=True)):
         return None
     return tuple(round(value*255) for value in web_rgb)
+
+
+def _witnessed_svg_rounding(sides,observed,masks,point,dpr,placements):
+    from .formal_icon_source import single_path_for_glyph
+    from .glyph_witness import quarter_icon_key,scenario_origin,verified_quarter_icon_tie
+
+    if (not masks or observed[0]==observed[1] or any(len(side['variable'])!=1 or
+            side['variable'][0]!=len(side['active'])-1 for side in sides)):
+        return None
+    web,native=(side['active'][-1] for side in sides)
+    if (not web.get('formal_svg') or not native.get('glyph_source') or
+            any(row['color']!=(0,0,0) or row['alpha']*row['opacity']!=.25 or
+                any(opacity!=1 for _,opacity in row['groups']) for row in (web,native))):
+        return None
+    text,ink=native['glyph_source']
+    if text.get('kind')!='icon-font':
+        return None
+    key=web['identity'],native['identity']
+    if key not in placements:
+        source=ink['atlas_source'];glyph=source['glyph_id']
+        mask=masks.get(quarter_icon_key(ink))
+        attrs=web['source']['actual']['attributes'];style=web['source']['style']
+        path=(re.sub(r'\s+','',attrs.get('d') or ''),style.get('fill-rule','nonzero'))
+        placements[key]=None
+        if (mask and all(float(native['bounds'][axis]*dpr).is_integer() for axis in ('x','y')) and
+                attrs.get('transform') in (None,'') and style.get('transform','none')=='none' and
+                path==single_path_for_glyph(glyph)):
+            try:
+                x,y=scenario_origin(mask,source,native['bounds'],dpr)
+            except ProtocolError:
+                pass
+            else:
+                viewport=tuple(web['bounds'][name]*dpr for name in ('x','y','width','height'))
+                if viewport==(x,y,mask.width,mask.height):
+                    placements[key]=(mask,x,y)
+    placement=placements[key]
+    if placement is None or any(_composite_point(side['active'][:-1],side['coverages'][:-1])!=(1,1,1)
+                                for side in sides):
+        return None
+    mask,x,y=placement
+    return verified_quarter_icon_tie(mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y),observed)
 
 
 def _web_glyph_source(row,priors):
@@ -1532,6 +1574,8 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             details={key:list(value) if isinstance(value,tuple) else value for key,value in data.items()}
             failures.append(dict(category=category,step=declaration['step'],target=sample,message=message,**details))
     basis_cache={};domain_cache={};presence={};paired_planes={};joint_planes={};max_joint=0.;max_color=0.;glyph_witnesses={}
+    svg_masks=(glyph_priors or {}).get('quarter_icon_masks')
+    svg_placements={}
     bins=[_paint_bins(rows,box,dpr) for rows in inventories]
     for index,x,y,key_bin in _layered_pixels(crops,size,box,bins,counts):
         point=((x+.5)/dpr,(y+.5)/dpr)
@@ -1676,6 +1720,8 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
         # The same source stack can have two exact RGB8 encodings. Both actual
         # pixels must independently match their encoding before pairing them.
         if blend_pixels and (same:=verified_blend(blend_pixels,x,y,dpr,sides,(a,b))) is not None:
+            a=b=same
+        if svg_masks and (same:=_witnessed_svg_rounding(sides,(a,b),svg_masks,point,dpr,svg_placements)) is not None:
             a=b=same
         compared_coverage=False
         if not sides[0]['variable'] and not sides[1]['variable']:

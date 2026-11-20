@@ -59,6 +59,24 @@ def resource(name):
     return entry,ET.fromstring(raw),manifest,cmap
 
 
+@lru_cache(maxsize=256)
+def single_path_for_glyph(glyph_id):
+    """A single opaque path with no additional layer state."""
+    _,manifest,cmap=official()
+    matches=[entry for entry in manifest['icons'] if len(entry['layers'])==1 and
+             cmap.get(entry['layers'][0]['codepoint'])==glyph_id and entry['layers'][0]['opacity']==1]
+    if len(matches)!=1:
+        return None
+    _,svg,_,_=resource(matches[0]['name'])
+    if len(svg)!=1:
+        return None
+    path=svg[0]
+    if (path.tag.split('}')[-1]!='path' or set(path.attrib)-{'d','fill-rule'} or
+            set(svg.attrib)-{'viewBox','fill-rule','focusable'} or 'd' not in path.attrib):
+        return None
+    return re.sub(r'\s+','',path.attrib['d']),path.get('fill-rule',svg.get('fill-rule','nonzero'))
+
+
 def verify_web_icon(name, observed, *, calibration_offset=None):
     """The calibration fixture may translate only its outer, measured owner."""
     entry,svg,_,_=resource(name)

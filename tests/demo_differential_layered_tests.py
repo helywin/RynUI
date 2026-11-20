@@ -306,6 +306,41 @@ class LayeredTests(unittest.TestCase):
         with self.assertRaises(RunError):
             _web_glyph_support(row,priors,1,[0,.3,0,0],*common)
 
+    def test_svg_tie_requires_matching_official_path_white_backdrop_and_exact_codes(self):
+        from demo_differential.comparison import _witnessed_svg_rounding
+        from demo_differential.formal_icon_source import resource
+
+        entry,svg,manifest,cmap=resource('CloseCircleFilled')
+        glyph=cmap[entry['layers'][0]['codepoint']]
+        face=dict(logical_pixel_size=12,sha256=manifest['outline_container_sha256'],face_index=0,source='bundled-icon',
+                  raster_policy=dict(rasterizer='skia-svg-a8'))
+        source=dict(font=face,glyph_id=glyph,display_scale=1,svg_viewport_origin=True,
+                    phase=0,padding=1,bearing_x=0,bearing_y=0,coverage_width=12,coverage_height=12)
+        ink=bytes((222,))+bytes(12*12-1)
+        masks={(glyph,12):GlyphWitness(0,0,12,12,ink)}
+        shared=dict(kind='glyph',color=(0,0,0),alpha=.25,opacity=1,groups=[])
+        web=dict(shared,identity='vector',formal_svg=True,bounds=box(0,0,12,12),
+                 source=dict(actual=dict(attributes={'d':svg[0].attrib['d']}),style={'fill-rule':'evenodd'}))
+        native=dict(shared,identity='glyph',bounds=box(-1.,-1.,14,14),
+                    glyph_source=(dict(kind='icon-font'),dict(atlas_source=source,color=[0,0,0,.25],paint_opacity=1)))
+        white=dict(kind='fill',color=(1,1,1),alpha=1,opacity=1,groups=[])
+        sides=[dict(active=[white,row],variable=[1],coverages=[1,.5]) for row in (web,native)]
+        observed=((200,)*3,(199,)*3)
+        self.assertEqual(_witnessed_svg_rounding(sides,observed,masks,(.5,.5),1,{}),observed[0])
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed[::-1],masks,(.5,.5),1,{}))
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed,masks,(1.5,.5),1,{}))
+        web['bounds']=box(1,0,12,12)
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed,masks,(.5,.5),1,{}))
+        web['bounds']=box(0,0,12,12)
+        white['color']=(.9,.9,.9)
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed,masks,(.5,.5),1,{}))
+        white['color']=(1,1,1)
+        face['sha256']='foreign-outline'
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed,masks,(.5,.5),1,{}))
+        face['sha256']=manifest['outline_container_sha256']
+        web['source']['actual']['attributes']['d']='M 0 0 L 1 1 Z'
+        self.assertIsNone(_witnessed_svg_rounding(sides,observed,masks,(.5,.5),1,{}))
+
     def test_status_caret_requires_the_focused_owner_source_and_location(self):
         case=dict(features=['native-status-caret'],fixture={'props':{'controls':{
             'editor':dict(component='Input',status='warning')}}})

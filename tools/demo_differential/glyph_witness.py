@@ -233,6 +233,50 @@ def build_icons(manifest, root, cells):
     return read_masks(manifest, root, 'skia-svg-a8', specs)
 
 
+def quarter_icon_key(ink):
+    from .formal_icon_source import official, single_path_for_glyph
+
+    _, source_manifest, _ = official()
+    source = ink['atlas_source']
+    font = source['font']
+    glyph = source['glyph_id']
+    em = font['logical_pixel_size'] * source['display_scale']
+    if (not source.get('svg_viewport_origin') or source['phase'] != 0 or source.get('phase_y', 0) != 0 or
+            font['sha256'] != source_manifest['outline_container_sha256'] or font['face_index'] != 0 or
+            font['source'] != 'bundled-icon' or font['raster_policy']['rasterizer'] != 'skia-svg-a8' or
+            tuple(ink['color'][:3]) != (0, 0, 0) or ink['color'][3] * ink['paint_opacity'] != .25 or
+            not 0 < em <= 256 or em != int(em) or not single_path_for_glyph(glyph)):
+        return None
+    return glyph, em
+
+
+def quarter_icon_masks(manifest, root, texts):
+    environment = manifest['environment']
+    capture = environment['native_capture']
+    if (environment.get('native',{}).get('backend')!='vulkan' or
+            capture.get('icon_rasterizer')!='skia-svg-a8' or capture.get('framebuffer_format')!='BGRA8_UNORM'):
+        return {}
+    specs = {}
+    for text in texts:
+        if text.get('kind')!='icon-font':
+            continue
+        for ink in text.get('ink_instances',[]):
+            if (key := quarter_icon_key(ink)) is not None:
+                glyph, em = key
+                specs[key] = dict(glyph_id=glyph, physical_em=em, phase=0, phase_y=0)
+    return read_masks(manifest, root, 'skia-svg-a8', specs) if specs else {}
+
+
+def verified_quarter_icon_tie(coverage,observed):
+    # Chromium rounds the destination gray. Vulkan's BGRA8 black source-over
+    # rounds the source contribution; only exact half codes can differ.
+    if coverage % 4 != 2:
+        return None
+    web=(255-(coverage+1)//4,)*3
+    native=(255-(coverage+2)//4,)*3
+    return web if observed==(web,native) else None
+
+
 def place_icon(masks, cell, dpr):
     return [(masks[key], x, y, opacity) for key, x, y, opacity in icon_layers(cell, dpr)]
 
