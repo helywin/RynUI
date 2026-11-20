@@ -494,7 +494,9 @@ def _layer_coverage(layer,point,dpr):
     glyph_mask=layer.get('web_glyph_mask') or layer.get('native_glyph_mask')
     if glyph_mask is not None:
         mask,x,y=glyph_mask
-        if mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y)==0:
+        px,py=(math.floor(coordinate*dpr) for coordinate in point)
+        if mask.at(px-x,py-y)==0 and not any(
+                alternate.at(px-ax,py-ay) for alternate,ax,ay in layer.get('web_glyph_alternates',())):
             return 0,False
     if kind in ('glyph','caret'):
         return (1 if _contains(b,point) else 0),_contains(b,point)
@@ -1209,7 +1211,12 @@ def _glyph_samples_at_pixel(side,priors,point,dpr):
             return None
         if row.get('web_glyph_mask') is not None:
             mask,x,y=row['web_glyph_mask']
-            byte=mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y)
+            px,py=(math.floor(coordinate*dpr) for coordinate in point)
+            byte=mask.at(px-x,py-y)
+            if any(alternate.at(px-ax,py-ay)!=byte
+                   for alternate,ax,ay in row.get('web_glyph_alternates',())):
+                # The source does not identify one exact raster transfer here.
+                return None
             source=row['outline_source']
             face=source['actual_font_sha256'];scalar=source['content']
         elif row.get('glyph_source') is not None:
@@ -1332,15 +1339,17 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
     web_layers,web_stack=_web_paint_inventory(web,origins[0],dpr)
     web_masks=glyph_priors and glyph_priors.get('web_masks')
     if web_masks:
-        from .glyph_witness import place
+        from .glyph_witness import place_browser
         for row in web_layers:
             if row['kind']=='glyph' and not row.get('formal_svg'):
                 source,font_size,baseline,_=_web_glyph_source(row,glyph_priors)
-                mask,x,y=place(web_masks,source,font_size,baseline,dpr)
+                placements=place_browser(web_masks,source,font_size,baseline,dpr)
                 row['outline_source']=source
-                row['web_glyph_mask']=(mask,x,y)
-                row['bounds']=dict(x=(x+mask.left)/dpr,y=(y+mask.top)/dpr,
-                                   width=mask.width/dpr,height=mask.height/dpr)
+                row['web_glyph_mask']=placements[0]
+                row['web_glyph_alternates']=placements[1:]
+                bounds=[dict(x=(x+mask.left)/dpr,y=(y+mask.top)/dpr,
+                             width=mask.width/dpr,height=mask.height/dpr) for mask,x,y in placements]
+                row['bounds']=reduce(union,bounds)
     if glyph_priors and glyph_priors.get('scenario_masks'):
         from .glyph_witness import mask_identity,scenario_origin
         _,masks=glyph_priors['scenario_masks']

@@ -18,7 +18,7 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
-from demo_differential.glyph_witness import GlyphWitness,mask_identity,encoded_coverage
+from demo_differential.glyph_witness import GlyphWitness,mask_identity,encoded_coverage,browser_placements
 from demo_differential.protocol import ProtocolError,_plain_json
 
 
@@ -84,6 +84,19 @@ class LayeredTests(unittest.TestCase):
         self.assertTrue(_matches_soft_shadow_rgb(layers,coverages,[0,1],pixel(.4,.12),predicted))
         self.assertFalse(_matches_soft_shadow_rgb(layers,coverages,[0,1],pixel(.4,0),predicted))
         self.assertFalse(_matches_soft_shadow_rgb(layers,coverages,[1],pixel(.4,.12),predicted))
+
+    def test_chromium_range_floor_exposes_only_admitted_horizontal_glyph_phases(self):
+        directwrite='directwrite-3x1'
+        self.assertEqual(list(browser_placements(directwrite,(121.078125,50),1.5)),
+                         [(181,75,2),(181,75,3)])
+        self.assertEqual(list(browser_placements(directwrite,(.125-1/64,0),1)),[(0,0,0)])
+        self.assertEqual(list(browser_placements('fontations-skia-a8',(.5,19),1)),[(1,19,0)])
+        first=GlyphWitness(0,0,2,1,bytes((255,0)))
+        second=GlyphWitness(0,0,2,1,bytes((255,128)))
+        glyph=dict(kind='glyph',bounds=box(0,0,2,1),web_glyph_mask=(first,0,0),
+                   web_glyph_alternates=((second,0,0),))
+        self.assertEqual(_layer_coverage(glyph,(1.5,.5),1),(1,True))
+        self.assertEqual(_layer_coverage(glyph,(2.5,.5),1),(0,False))
 
     def test_color_coverage_uses_the_observed_canonical_a8_luminance(self):
         color=tuple(channel/255 for channel in (250,173,20))

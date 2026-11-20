@@ -102,9 +102,9 @@ def browser_scenario_masks(manifest, root, glyphs):
         sha=source['actual_font_sha256'];scalar=source['content']
         if sha not in indices:
             raise ProtocolError('browser glyph has no independent locked face or cmap')
-        _,_,phase=placement(rasterizer,origin,dpr)
-        specs[sha,scalar,size,phase]=dict(font=indices[sha],glyph_id=prior['glyph_id'],phase=phase,
-                                           physical_em=size*dpr)
+        for _,_,phase in browser_placements(rasterizer,origin,dpr):
+            specs[sha,scalar,size,phase]=dict(font=indices[sha],glyph_id=prior['glyph_id'],phase=phase,
+                                               physical_em=size*dpr)
     return rasterizer,read_masks(manifest,root,rasterizer,specs,policy=policy,fonts=fonts) if specs else {}
 
 
@@ -241,6 +241,29 @@ def placement(identity, origin, dpr):
     else:
         x, phase = math.floor(physical_x + .5), 0
     return x,y,phase
+
+
+def browser_placements(rasterizer, origin, dpr):
+    # Chromium's horizontal DOM Range left edge floors the shaped float to a
+    # LayoutUnit. Enumerate only the raster phases in that half-open CSS cell.
+    phases=4 if rasterizer=='directwrite-3x1' else 1
+    left,baseline=origin
+    first=math.floor(left*dpr*phases+.5)
+    stop=math.ceil((left+1/64)*dpr*phases+.5)
+    y=math.floor(baseline*dpr+.5)
+    for ordinal in range(first,max(first+1,stop)):
+        x,phase=divmod(ordinal,phases)
+        yield x,y,phase
+
+
+def place_browser(witnesses, source, size, origin, dpr):
+    rasterizer,masks=witnesses
+    face=source['actual_font_sha256'];scalar=source['content']
+    try:
+        return tuple((masks[face,scalar,size,phase],x,y)
+                     for x,y,phase in browser_placements(rasterizer,origin,dpr))
+    except KeyError as error:
+        raise ProtocolError('browser source has no independent layout-cell glyph witness') from error
 
 
 def place(witnesses, source, size, origin, dpr):
