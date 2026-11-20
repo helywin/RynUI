@@ -15,7 +15,8 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints,_status_input_caret,
                                           _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error,
                                           _matches_soft_shadow_rgb,_empty_select_compositor_caret,_hard_paint_gates,
-                                          _clip_intersection,_tiled_target_clips,_witnessed_black_glyph_over_tint)
+                                          _clip_intersection,_tiled_target_clips,_glyph_in_sampled_region,
+                                          _witnessed_black_glyph_over_tint)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
@@ -71,6 +72,16 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_native_glyph_presence_is_checked_only_where_sampled(self):
+        glyph=dict(bounds=box(0,9,4,2),clips=[box(0,10,4,2)])
+        self.assertFalse(_glyph_in_sampled_region(glyph,(0,0,6,15),1.5))
+        self.assertTrue(_glyph_in_sampled_region(glyph,(0,15,6,17),1.5))
+        glyph['clips']=[box(0,10,4,.25)]
+        self.assertFalse(_glyph_in_sampled_region(glyph,(0,15,6,17),1.5))
+        glyph['clips']=[box(0,10,4,1/2)]
+        self.assertTrue(_glyph_in_sampled_region(glyph,(0,15,6,17),1.5))
+        self.assertFalse(_glyph_in_sampled_region(glyph,(6,15,12,17),1.5))
+
     def test_web_button_paint_snaps_without_changing_actual_layout(self):
         _,_,_,web,_,_,origins=synthetic()
         node=web['resources']['paint_stack']['layers'][0]

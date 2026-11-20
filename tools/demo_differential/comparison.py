@@ -378,6 +378,16 @@ def _contains(bounds,point):
     return bounds['x']<=point[0]<bounds['x']+bounds['width'] and bounds['y']<=point[1]<bounds['y']+bounds['height']
 
 
+def _glyph_in_sampled_region(row, box, dpr):
+    left,top,right,bottom=box
+    for rect in (row['bounds'],*row['clips']):
+        left=max(left,math.ceil(rect['x']*dpr-.5))
+        top=max(top,math.ceil(rect['y']*dpr-.5))
+        right=min(right,math.ceil((rect['x']+rect['width'])*dpr-.5))
+        bottom=min(bottom,math.ceil((rect['y']+rect['height'])*dpr-.5))
+    return left<right and top<bottom
+
+
 _PAINT_BIN_PHYSICAL_PX = 32
 
 
@@ -1916,7 +1926,8 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             if result[field] is None or result[field]>thresholds[key]:fail('typography' if prefix=='text' else 'visual','local paint contribution profile failed',source=identity,metric=key,actual=result[field],threshold=thresholds[key])
         measurements.append(dict(target=identity,category=prefix,metrics=result,exposed_pixels=len(reference)))
     for row in native_layers:
-        if row['kind']=='glyph' and row['identity'] not in glyph_witnesses:
+        if (row['kind']=='glyph' and row['identity'] not in glyph_witnesses and
+                _glyph_in_sampled_region(row,box,dpr)):
             # Thin glyphs may have no >1px core; they still require exposed local
             # coverage, projections and the strict actual atlas/SFNT source gate.
             joint_witness=any(_same_glyph_interface(row,other) and other['identity'] in glyph_witnesses for other in native_layers)
