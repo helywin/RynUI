@@ -14,6 +14,7 @@
 #endif
 #if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
 #include "platform/skia_icon_rasterizer.hpp"
+#include "renderer/sdl/locked_shape_coverage.hpp"
 #endif
 
 #include <SDL3/SDL.h>
@@ -232,6 +233,52 @@ void write_glyph_witnesses(const Json& request, const std::filesystem::path& out
 runtime::Rect rect(const Json& value) {
     return {static_cast<float>(value.at("x").number()), static_cast<float>(value.at("y").number()),
             static_cast<float>(value.at("width").number()), static_cast<float>(value.at("height").number())};
+}
+
+void write_shape_witnesses(const Json& request, const std::filesystem::path& output) {
+#if defined(RYNUI_HAS_PINNED_SVG_ICON_RASTER)
+    const auto& probes = request.at("shapes").array();
+    require(!probes.empty() && probes.size() <= 128, "rounded witness inputs exceed the fixed control bounds");
+    Json::Array shapes;
+    for (const auto& probe : probes) {
+        const auto& kind = probe.at("kind").string();
+        require(kind == "outline" || kind == "border", "unknown rounded witness shape");
+        LockedShapeGeometry shape;
+        shape.bounds = rect(probe.at("bounds"));
+        shape.radius = static_cast<float>(probe.at("radius").number());
+        shape.kind = kind == "outline" ? LockedShapeKind::outline : LockedShapeKind::double_rounded_border;
+        shape.outline_width = static_cast<float>(probe.at("outline_width").number());
+        shape.outline_offset = static_cast<float>(probe.at("outline_offset").number());
+        shape.dark_ink = probe.at("dark_ink").boolean();
+        const auto& bounds = shape.bounds;
+        require(bounds.x >= 0 && bounds.y >= 0 && bounds.width > 0 && bounds.height > 0 &&
+                    bounds.x + bounds.width <= 512 && bounds.y + bounds.height <= 512 && shape.radius > 0 &&
+                    shape.radius <= 256 && shape.outline_width > 0 && shape.outline_offset >= 0 &&
+                    shape.outline_width + shape.outline_offset <= 32 &&
+                    (shape.kind == LockedShapeKind::outline || shape.outline_offset == 0),
+                "rounded witness shape lies outside the fixed physical domain");
+        const auto mask = rasterize_locked_shape(shape, 576, 576);
+        require(mask.has_value(), "rounded witness produced no bounded source mask");
+        Json::Array edges;
+        for (std::uint32_t y = 0; y < mask->height; ++y) {
+            for (std::uint32_t x = 0; x < mask->width; ++x) {
+                const auto coverage = mask->pixels[static_cast<std::size_t>(y) * mask->width + x];
+                if (coverage > 0 && coverage < 255) {
+                    edges.emplace_back(Json::Array{integer(mask->left + x), integer(mask->top + y), integer(coverage)});
+                }
+            }
+        }
+        shapes.emplace_back(Json::Object{{"coverage_extent", Json::Array{integer(mask->left), integer(mask->top),
+                                                                         integer(mask->width), integer(mask->height)}},
+                                         {"edges", std::move(edges)}});
+    }
+    write_json(output / "shape-witnesses.json",
+               Json::Object{{"rasterizer", "skia-rounded-coverage"}, {"shapes", std::move(shapes)}});
+#else
+    static_cast<void>(request);
+    static_cast<void>(output);
+    throw std::runtime_error("the pinned rounded witness rasterizer is unavailable");
+#endif
 }
 
 Json rectangle(runtime::Rect value) {
@@ -776,16 +823,21 @@ int main(int argc, char** argv) {
                 return SDL_ASSERTION_ABORT;
             },
             nullptr);
-        const bool witness = argc == 5 && std::string_view{argv[1]} == "--glyph-witnesses";
-        require(argc == 5 && (witness || std::string_view{argv[1]} == "--request") &&
+        const bool glyph_witness = argc == 5 && std::string_view{argv[1]} == "--glyph-witnesses";
+        const bool shape_witness = argc == 5 && std::string_view{argv[1]} == "--shape-witnesses";
+        require(argc == 5 && (glyph_witness || shape_witness || std::string_view{argv[1]} == "--request") &&
                     std::string_view{argv[3]} == "--output",
-                "expected --request or --glyph-witnesses <owned.json> --output <fresh-out>");
+                "expected --request, --glyph-witnesses or --shape-witnesses <owned.json> --output <fresh-out>");
         const auto request = read_json(owned_path(argv[2]));
         const auto output = owned_path(argv[4]);
         require(!std::filesystem::exists(output), "control output must be fresh");
         std::filesystem::create_directories(output);
-        if (witness) {
+        if (glyph_witness) {
             write_glyph_witnesses(request, output);
+            return 0;
+        }
+        if (shape_witness) {
+            write_shape_witnesses(request, output);
             return 0;
         }
         require(request.at("calibration_kind").string() == "pilot-independent-v1", "unknown control kind");

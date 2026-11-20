@@ -23,6 +23,7 @@ from .regions import (crop_rgba, geometry, physical_box, raster_metrics, rect, r
 from .runner_evidence import artifact, metrics
 from .calibration import CAPS
 from .pilots import displayed_slot_text
+from .shape_witness import ShapeWitnesses, locked_edge_value
 
 LEGACY_DIAGNOSTIC_CAPS = {'geometry.logical_px': .25, 'pixels.max_channel_residual': 0,
         'pixels.coverage_mass_relative_error': .05, 'pixels.contour_distance_px': .5,
@@ -1465,7 +1466,8 @@ def _status_input_caret(case,targets,inventories,origins,dpr):
     return web,native
 
 
-def _layered_context(case,declaration,native,web,images,thresholds,origins,*,glyph_priors=None,physical_region=None):
+def _layered_context(case,declaration,native,web,images,thresholds,origins,*,glyph_priors=None,physical_region=None,
+                     shape_witnesses=None):
     from .color_metrics import rgb8_delta_e00,solve_visible_contributions,unmix_coverage,contribution_domain,in_contribution_domain,visible_segment
     from .regions import coverage_metrics,shadow_profile_metrics
     dpr=case['fixture']['viewport']['dpr'];sample=case['native']['sample_id']
@@ -1498,6 +1500,8 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             if len(scalar)==1 and not scalar.isspace() and (mask:=masks.get(mask_identity(scalar,source))) is not None:
                 row['native_glyph_mask']=(mask,*scenario_origin(mask,source,row['bounds'],dpr))
     inventories=(web_layers,native_layers)
+    if shape_witnesses is not None:
+        shape_witnesses.bind([*web_layers,*native_layers],dpr)
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
     caret=_status_input_caret(case,(wt,nt),inventories,origins,dpr)
     if caret:
@@ -1546,6 +1550,10 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             variable=[position for position in variable if not any(i not in variable and coverages[i]==1 and
                 active[i]['alpha']*active[i]['opacity']==1 and active[i]['groups']==active[position]['groups']
                 for i in range(position+1,len(active)))]
+            if not variable and shape_witnesses is not None:
+                # Correct known material predictions only. Variable interfaces
+                # continue through the same independently calibrated inverse.
+                coverages=[locked_edge_value(row,point,dpr,value) for row,value in zip(active,coverages)]
             predicted=_composite_point(active,coverages)
             observed=tuple(crops[side][index*4:index*4+3])
             if not variable:
@@ -1818,7 +1826,8 @@ def _tiled_target_clips(web,native,origins,camera):
                  for row,origin in zip(targets,origins,strict=True))
 
 
-def compare_checkpoint(case, declaration, native, web, images, thresholds, color,*,glyph_priors=None,context_tiles=()):
+def compare_checkpoint(case, declaration, native, web, images, thresholds, color,*,glyph_priors=None,context_tiles=(),
+                       shape_witnesses=None):
     failures = []
     step = declaration['step']
     def fail(category, target, message, **values):
@@ -1987,12 +1996,13 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
         if context_tiles:
             for tile_index,(n,w,frames,tile_origins,region) in enumerate(context_tiles):
                 errors,observed=_layered_context(case,declaration,n,w,frames,thresholds,tile_origins,
-                                                glyph_priors=glyph_priors,physical_region=region)
+                                                glyph_priors=glyph_priors,physical_region=region,
+                                                shape_witnesses=shape_witnesses)
                 failures.extend(dict(error,tile=tile_index) for error in errors)
                 measurements.extend(dict(value,tile=tile_index) for value in observed)
         else:
             errors,layer_measurements=_layered_context(case,declaration,native,web,images,thresholds,origins,
-                                                       glyph_priors=glyph_priors)
+                                                       glyph_priors=glyph_priors,shape_witnesses=shape_witnesses)
             failures.extend(errors);measurements.extend(layer_measurements)
     return failures, measurements
 
@@ -2068,6 +2078,9 @@ def compare(case, native, web, directories, profile, image_module, *, profile_pr
     from .calibration import evidence_manifest
     manifest=profile_proof.manifest() if profile_proof is not None else evidence_manifest(profile)[0]
     glyph_priors=_glyph_priors_for_run(native,manifest,independent_masks=True,web=web)
+    shape_witnesses=(ShapeWitnesses(manifest,ROOT)
+                     if manifest['environment']['native_capture'].get('shape_rasterizer') == 'skia-rounded-coverage'
+                     else None)
     scope=profile['scope']
     fixture=case['fixture']
     if (case['identity'] not in scope['cases'] or fixture['locale']!=scope['locale'] or fixture['direction']!=scope['direction'] or
@@ -2140,7 +2153,8 @@ def compare(case, native, web, directories, profile, image_module, *, profile_pr
             diff=bytes(abs(x-y) if index%4!=3 else 255 for index,(x,y) in enumerate(zip(*crops)))
             image_module.frombytes('RGBA',size,diff).save(destination/filename)
         errors, measured = compare_checkpoint(case, declaration, n, w, images, thresholds, color,
-                                              glyph_priors=glyph_priors,context_tiles=regions)
+                                              glyph_priors=glyph_priors,context_tiles=regions,
+                                              shape_witnesses=shape_witnesses)
         failures.extend(errors)
         measurements[step] = measured
     return failures, {'bindings': expected, 'thresholds': thresholds, 'checkpoints': measurements}

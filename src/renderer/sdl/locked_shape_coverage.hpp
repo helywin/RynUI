@@ -13,6 +13,7 @@ enum class LockedShapeKind {
     outline,
     hard_shadow,
     exterior_shadow,
+    double_rounded_border,
 };
 
 struct LockedShapeGeometry final {
