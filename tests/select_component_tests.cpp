@@ -114,6 +114,57 @@ void multiple_selection_uses_the_leading_inset() {
           "Multiple Select did not mirror its retained value inset");
 }
 
+void empty_tags_editor_uses_the_selector_inset() {
+    Fixture f;
+    Signal<SelectValues> values{SelectValues{}};
+    Signal<TextDirection> direction{TextDirection::LeftToRight};
+    Signal<ControlSize> size{ControlSize::Middle};
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .mode(SelectMode::Tags)
+                   .options({{1, u8"桌面"}})
+                   .values(values)
+                   .placeholder(u8"请输入标签")
+                   .direction(direction)
+                   .size(size)
+                   .layout(LayoutStyle{}.width(dp(180))));
+        Select(SelectProps{}
+                   .mode(SelectMode::Multiple)
+                   .options({{1, u8"桌面"}})
+                   .defaultValues({1})
+                   .layout(LayoutStyle{}.width(dp(180))),
+               SelectPrefix{[] { Button(ButtonProps{}, ButtonContent{[] { Text(u8"Prefix"); }}); }});
+    }});
+    f.synchronize();
+    const auto id = f.services.select().mounted().front();
+    const auto editor = f.inputs.mounted_inputs().front().editor;
+    const auto selector = f.services.select().snapshot(id).selector;
+    const auto text = f.inputs.text_layers(selector).placeholder;
+    const auto ltr = f.inputs.layout_snapshot(selector).viewport;
+    check(ltr.x - bounds(f, selector).x == 12, "Empty Tags editor started at the selected-chip inset");
+    const auto prefixed = f.services.select().snapshot(f.services.select().mounted().back()).selector;
+    const auto prefix = f.buttons.mounted_buttons().front().component;
+    check(bounds(f, prefix).x - bounds(f, prefixed).x == 12,
+          "Multiple Select custom prefix started at the selected-chip inset");
+
+    values.set(SelectValues{1});
+    f.synchronize();
+    const auto tag = f.services.select().snapshot(id).tags.front();
+    check(bounds(f, tag).x - bounds(f, selector).x == 4, "First selected Tag kept the empty-editor inset");
+
+    direction.set(TextDirection::RightToLeft);
+    values.set(SelectValues{});
+    size.set(ControlSize::Small);
+    f.synchronize();
+    const auto control = bounds(f, selector);
+    const auto rtl = f.inputs.layout_snapshot(selector).viewport;
+    check(control.x + control.width - rtl.x - rtl.width == 12,
+          "Clearing the last Tag did not restore the mirrored empty-editor inset");
+    check(f.services.select().snapshot(id).selector == selector && f.inputs.text_layers(selector).placeholder == text &&
+              f.inputs.mounted_inputs().front().editor == editor,
+          "Changing selection layout remounted the editor or its placeholder");
+}
+
 void built_in_selection_chips_follow_control_density() {
     Fixture f;
     Signal<ControlSize> size{ControlSize::Middle};
@@ -831,6 +882,7 @@ int main() {
         pointer_keyboard_and_clear();
         direction_and_rich_affix_size();
         multiple_selection_uses_the_leading_inset();
+        empty_tags_editor_uses_the_selector_inset();
         built_in_selection_chips_follow_control_density();
         open_popup_remains_attached_during_document_scroll();
         popup_first_shadow_is_painted_in_front();

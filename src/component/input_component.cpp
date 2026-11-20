@@ -235,7 +235,7 @@ struct InputState {
     bool count_ready{};
     bool search_control_height{};
     bool reserve_borderless_frame{};
-    bool multiple_selection_layout{};
+    detail::InputSelectionLayout selection_layout{detail::InputSelectionLayout::Default};
     std::shared_ptr<void> password_lifetime;
     std::size_t hovering_pointers{};
     std::optional<input::PointerIdentity> selecting_pointer;
@@ -873,7 +873,7 @@ struct InputPropsAccess {
         state.layout.right_to_left = props.mirror_affixes_ && direction == TextDirection::RightToLeft;
         state.layout.fit_affixes = props.fit_affixes_;
         state.reserve_borderless_frame = props.reserve_borderless_frame_;
-        state.multiple_selection_layout = detail::read_prop(props.multiple_selection_layout_);
+        state.selection_layout = detail::read_prop(props.selection_layout_);
         state.embedded_value_opacity = detail::read_prop(props.embedded_value_opacity_);
         build.mount_slot(
             component, Content{[&] {
@@ -956,9 +956,9 @@ struct InputPropsAccess {
                 owner.invalidate(current.mounted.component, runtime::DirtyFlags::Material);
             }
         });
-        connect(props.multiple_selection_layout_, [](auto& owner, auto& current, bool enabled) {
-            if (current.multiple_selection_layout != enabled) {
-                current.multiple_selection_layout = enabled;
+        connect(props.selection_layout_, [](auto& owner, auto& current, detail::InputSelectionLayout layout) {
+            if (current.selection_layout != layout) {
+                current.selection_layout = layout;
                 owner.update_theme(current.mounted.component);
             }
         });
@@ -2201,11 +2201,13 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
         model.padding_block += tokens.border_width;
     }
     model.padding_inline_start.reset();
-    if (state->multiple_selection_layout) {
-        // Multiple selection items reserve one half-gap at the start and on both block edges.
+    if (state->selection_layout != detail::InputSelectionLayout::Default) {
         const float padding = std::max(0.0F, theme.map().size_xs * 0.5F - model.border_width);
-        model.padding_inline_start = padding;
         model.padding_block = padding;
+        // Unadorned multi-select editors and custom prefixes start at the base selector inset.
+        model.padding_inline_start = state->selection_layout == detail::InputSelectionLayout::MultipleItems
+                                         ? padding
+                                         : tokens.size(ControlSize::Middle).padding_inline;
     }
     model.gap = tokens.affix_padding;
     runtime::SemanticTypography typography = state->inherited_typography.value_or(runtime::SemanticTypography{

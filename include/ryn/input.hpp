@@ -44,6 +44,8 @@ class OTPComponentHost;
 class AutoCompleteComponentHost;
 class SelectComponentHost;
 
+enum class InputSelectionLayout { Default, MultipleEditor, MultipleItems };
+
 struct InputPropsData final {
     bool config_resolved_{};
     std::optional<Prop<String>> value_;
@@ -301,7 +303,7 @@ private:
     bool fit_affixes_{};
     bool mirror_affixes_{};
     bool reserve_borderless_frame_{};
-    Prop<bool> multiple_selection_layout_{false};
+    Prop<detail::InputSelectionLayout> selection_layout_{detail::InputSelectionLayout::Default};
     Prop<std::optional<float>> embedded_value_opacity_{std::optional<float>{}};
 };
 

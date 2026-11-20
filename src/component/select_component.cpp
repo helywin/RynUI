@@ -68,6 +68,14 @@ struct SelectRetireOnFailure final {
 struct SelectState final {
     explicit SelectState(SelectModel value) : model(std::move(value)) {}
 
+    [[nodiscard]] InputSelectionLayout current_input_layout() const {
+        if (mode == SelectMode::Single) {
+            return InputSelectionLayout::Default;
+        }
+        return has_custom_prefix || model.values().empty() ? InputSelectionLayout::MultipleEditor
+                                                           : InputSelectionLayout::MultipleItems;
+    }
+
     SelectModel model;
     runtime::NodeId node;
     runtime::ComponentId selector;
@@ -96,6 +104,8 @@ struct SelectState final {
     Signal<TextDirection> direction{TextDirection::Auto};
     SelectMode mode{SelectMode::Single};
     Signal<bool> multiple{false};
+    bool has_custom_prefix{};
+    Signal<InputSelectionLayout> selection_layout{InputSelectionLayout::Default};
     SelectFilter filter;
     SelectSort sort;
     SelectOptionField filter_field{SelectOptionField::Label};
@@ -532,6 +542,12 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     placeholder.set(!multi && editing && s->model.value()
                         ? s->model.label()
                         : (multi && !s->model.values().empty() ? String{} : s->external_placeholder));
+    s = select_state(*services_, id);
+    if (!s) {
+        return;
+    }
+    const auto selection_layout = s->selection_layout;
+    selection_layout.set(s->current_input_layout());
     s = select_state(*services_, id);
     if (!s) {
         return;
@@ -1920,6 +1936,8 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
     s.reference = props.ref_.value_or(SelectRef{});
     s.mode = mode;
     s.multiple.set(mode != SelectMode::Single);
+    s.has_custom_prefix = prefix.has_value();
+    s.selection_layout.set(s.current_input_layout());
     s.labeled_authority = props.labeled_value_;
     s.labeled_values_authority = props.labeled_values_;
     s.authority = props.value_;
@@ -2000,7 +2018,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                       input_props.fit_affixes_ = prefix.has_value() || suffix.has_value();
                       input_props.mirror_affixes_ = true;
                       input_props.reserve_borderless_frame_ = true;
-                      input_props.multiple_selection_layout_ = s.multiple;
+                      input_props.selection_layout_ = s.selection_layout;
                       input_props.embedded_value_opacity_ = s.embedded_value_opacity;
                       Input(input_props.value(s.display)
                                 .placeholder(s.placeholder)
