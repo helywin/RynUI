@@ -130,6 +130,46 @@ void test_physical_phase_scale_and_size_matrix() {
     }
 }
 
+void test_physical_phase_midpoints() {
+    using ryn::font::GlyphRasterPhase;
+
+    struct Sample final {
+        float origin;
+        float integer_position;
+        GlyphRasterPhase phase;
+    };
+
+    constexpr std::array samples{
+        Sample{12.0625F, 12.0F, GlyphRasterPhase::zero},    Sample{12.125F, 12.0F, GlyphRasterPhase::zero},
+        Sample{12.1875F, 12.0F, GlyphRasterPhase::quarter}, Sample{12.375F, 12.0F, GlyphRasterPhase::half},
+        Sample{12.625F, 12.0F, GlyphRasterPhase::half},     Sample{12.875F, 13.0F, GlyphRasterPhase::zero},
+        Sample{-0.125F, 0.0F, GlyphRasterPhase::zero},      Sample{-0.375F, -1.0F, GlyphRasterPhase::half},
+    };
+    Fixture fixture;
+    const String content = u8"A";
+    const auto shaped = fixture.text_engine.shape(content.view(), fixture.chain);
+    const auto measured = fixture.text_engine.measure(shaped.text, {320.0F, std::numeric_limits<float>::infinity()});
+    require(shaped && measured && shaped.text.glyphs.size() == 1, "phase midpoint fixture did not shape a glyph");
+
+    for (const auto& sample : samples) {
+        ryn::graphics::GlyphAtlas atlas;
+        ryn::graphics::GlyphScene scene;
+        const ryn::graphics::GlyphPlacement placement{
+            {sample.origin - shaped.text.glyphs.front().offset_x, 20.0F},
+            {320.0F, 180.0F},
+            {0.0F, 0.0F, 320.0F, 180.0F},
+        };
+        const auto result = scene.append_text(*fixture.fonts, atlas, shaped.text, measured.measurement, placement);
+        require(result && result.primitive.instances.count == 1, "phase midpoint fixture did not retain a glyph");
+        const auto& entry = atlas.entries().front();
+        const auto& glyph = scene.instances().at(result.primitive.instances.first);
+        const float left = sample.integer_position + static_cast<float>(entry.bearing_x) -
+                           static_cast<float>(ryn::graphics::glyph_atlas_padding);
+        require(entry.key.phase == sample.phase && near(glyph.position_size[0], left),
+                "glyph atlas phase or position disagrees with the nearest even device midpoint");
+    }
+}
+
 void test_instance_layout_and_text_positioning() {
     constexpr std::array expected_bindings{
         ryn::detail::GlyphAttributeBinding{0, ryn::detail::GlyphAttributeFormat::float4, 0},
@@ -358,6 +398,7 @@ int main() {
     try {
         test_instance_layout_and_text_positioning();
         test_physical_phase_scale_and_size_matrix();
+        test_physical_phase_midpoints();
         test_dirty_ranges_remain_layered_and_sparse();
         test_out_of_order_glyph_ranges_and_shifted_suffix();
         test_full_retry_after_batch_submit_failure();

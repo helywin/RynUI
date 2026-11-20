@@ -36,7 +36,13 @@ struct QuantizedPhysicalOrigin final {
     if (round_to_pixel) {
         return {std::round(value), font::GlyphRasterPhase::zero};
     }
-    const float position = std::round(value * 4.0F) * 0.25F;
+    const float quarters = value * 4.0F;
+    float rounded = std::round(quarters);
+    // At exact midpoints, use the even device phase on either side of zero.
+    if (std::abs(quarters - rounded) == 0.5F && std::fmod(rounded, 2.0F) != 0.0F) {
+        rounded -= std::copysign(1.0F, quarters);
+    }
+    const float position = rounded * 0.25F;
     const float integer_position = std::floor(position);
     auto phase_index = static_cast<std::uint8_t>(std::lround((position - integer_position) * 4.0F));
     if (phase_index == 4) {
