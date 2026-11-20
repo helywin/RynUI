@@ -137,6 +137,29 @@ void pointer_keyboard_and_clear() {
           "Select has multiple Tab stops");
     check(reference.focus(), "Select ref focus");
     f.synchronize();
+    const auto clear_owner = f.services.select().paint_owners(id)->clear.owner;
+    const auto clear_action = f.services.components().children(clear_owner).front();
+    auto clear_hit = [&] {
+        for (const auto hit : f.services.interactions().declaration_order()) {
+            if (const auto* record = f.services.interactions().find(hit); record && record->component == clear_action) {
+                return hit;
+            }
+        }
+        throw std::runtime_error("Select clear action was not retained");
+    }();
+    auto move = [&](runtime::Rect box) {
+        f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::move, PointerButton::none,
+                                       box.x + box.width / 2, box.y + box.height / 2});
+        f.synchronize();
+    };
+    const auto input_viewport = f.inputs.layout_snapshot(selector).viewport;
+    move(bounds(f, f.buttons.mounted_buttons().back().component));
+    check(!f.services.interactions().require(clear_hit).eligible, "resting Select exposes a hidden clear action");
+    move(bounds(f, selector));
+    check(f.services.interactions().require(clear_hit).eligible &&
+              f.inputs.layout_snapshot(selector).viewport == input_viewport &&
+              f.services.components().children(clear_owner).front() == clear_action,
+          "Select hover must replace its suffix in place while retaining the editor and clear action");
     // The only eligible non-input interaction inside the selector is clear.
     bool cleared = false;
     const auto interactions = f.services.interactions().declaration_order();

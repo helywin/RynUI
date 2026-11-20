@@ -242,9 +242,9 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<IconSource> ic
 }
 
 void mount_input_clear_action(WindowComponentServices& host, Prop<IconSource> icon, Prop<bool> disabled,
-                              std::function<void()> activate, Prop<bool> visible) {
-    mount_affix_action(host, std::move(icon), std::move(disabled), std::move(activate), std::move(visible), true, false,
-                       false, true);
+                              std::function<void()> activate, Prop<bool> visible, bool focusable) {
+    mount_affix_action(host, std::move(icon), std::move(disabled), std::move(activate), std::move(visible), focusable,
+                       false, false, true);
 }
 
 } // namespace ryn::detail

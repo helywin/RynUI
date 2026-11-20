@@ -91,6 +91,7 @@ public:
 
     void on_dispose() noexcept override {
         mounted_.clear();
+        hovered_selector_.reset();
     }
 
     void on_window_active(bool active) override;
@@ -107,6 +108,7 @@ public:
 
 private:
     void update_empty_label(runtime::ComponentId id, String value);
+    void update_clear_visibility(runtime::ComponentId id);
     void refresh(runtime::ComponentId id, bool geometry = true);
     bool settle_closed_search(runtime::ComponentId id);
     void request_open(runtime::ComponentId id, bool open);
@@ -128,6 +130,7 @@ private:
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> mounted_;
     std::vector<runtime::ComponentId> positioning_;
+    std::optional<runtime::ComponentId> hovered_selector_;
     runtime::Size viewport_;
     runtime::Rect document_clip_;
     bool window_active_{true};

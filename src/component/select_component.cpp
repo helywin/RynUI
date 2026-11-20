@@ -146,6 +146,8 @@ struct SelectState final {
     std::uint64_t locale_generation{};
     Signal<bool> read_only{true};
     Signal<bool> clear_visible{false};
+    Signal<runtime::SemanticTypography> suffix_typography{runtime::SemanticTypography{}};
+    Signal<runtime::SemanticForeground> suffix_foreground{runtime::SemanticForeground{}};
     Signal<bool> action_disabled{false};
     Signal<LayoutGap> tag_gap{LayoutGap{dp(4)}};
     Signal<IconSource> clear_icon{IconSource{IconName::CloseCircleFilled}};
@@ -465,6 +467,17 @@ void SelectComponentHost::update_empty_label(runtime::ComponentId id, String val
     rollback.complete = true;
 }
 
+void SelectComponentHost::update_clear_visibility(runtime::ComponentId id) {
+    if (const auto* s = select_state(*services_, id); s && !s->mounting) {
+        const bool has_value =
+            s->mode == SelectMode::Single ? s->model.value().has_value() : !s->model.values().empty();
+        const bool show = hovered_selector_ == id && window_active_ && services_->interactions().component_active(id) &&
+                          has_value && s->allow_clear && !s->disabled && !s->loading && !s->explicit_read_only;
+        const auto visible = s->clear_visible;
+        visible.set(show);
+    }
+}
+
 void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     auto* s = select_state(*services_, id);
     if (!s || s->mounting) {
@@ -500,7 +513,6 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     const auto display = s->display;
     const auto placeholder = s->placeholder;
     const auto read_only = s->read_only;
-    const auto clear_visible = s->clear_visible;
     const auto action_disabled = s->action_disabled;
     const auto arrow = s->arrow;
     const auto spinning = s->spinning;
@@ -521,8 +533,7 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     if (!s) {
         return;
     }
-    clear_visible.set(s->allow_clear && (multi ? !s->model.values().empty() : s->model.value().has_value()) &&
-                      !s->disabled && !s->loading && !s->explicit_read_only);
+    update_clear_visibility(id);
     s = select_state(*services_, id);
     if (!s) {
         return;
@@ -918,6 +929,17 @@ void SelectComponentHost::edit(runtime::ComponentId id, String query) {
 
 void SelectComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
     auto* s = select_state(*services_, id);
+    if (!s) {
+        return;
+    }
+    const auto suffix_typography = s->suffix_typography;
+    const auto suffix_foreground = s->suffix_foreground;
+    const auto& suffix_theme = services_->components().theme_scope(id)->snapshot();
+    const auto suffix_color = foreground(suffix_theme.alias().color_text_disabled);
+    const float suffix_size = suffix_theme.map().font_size_small;
+    suffix_typography.set({.font_size = suffix_size, .line_height = suffix_size});
+    suffix_foreground.set(suffix_color);
+    s = select_state(*services_, id);
     if (!s) {
         return;
     }
@@ -1899,6 +1921,23 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                                 }),
                             input_prefix, InputSuffix{[&] {
                                 auto& children = runtime::require_component_build_context();
+                                if (!suffix) {
+                                    const auto clear_visible = s.clear_visible;
+                                    const auto arrow = s.arrow;
+                                    const auto spinning = s.spinning;
+                                    const Content default_suffix{[clear_visible, arrow, spinning] {
+                                        Icon(IconProps{}.source(arrow).spin(spinning).visible(
+                                            bind([clear_visible] { return !clear_visible.get(); })));
+                                    }};
+                                    const auto owner = children.mount_component<int>(0);
+                                    const auto node = children.root(owner);
+                                    services.layout().set_layout(node, layout::BoxLayout{});
+                                    children.on_resource_cleanup(owner, [&services, node] {
+                                        static_cast<void>(services.layout().remove_layout(node));
+                                    });
+                                    children.mount_slot_with_semantic_text_style(
+                                        owner, default_suffix, s.suffix_foreground, s.suffix_typography);
+                                }
                                 s.clear_wrapper = children.mount_component<int>(0);
                                 const auto clear_node = children.root(s.clear_wrapper);
                                 services.layout().set_layout(clear_node, layout::BoxLayout{});
@@ -1916,15 +1955,12 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                                                                  services.layout().remove_layout(clear_node);
                                                              });
                                 children.mount_slot(s.clear_wrapper, Content{[&] {
-                                                        mount_input_affix_action(
+                                                        mount_input_clear_action(
                                                             services, s.clear_icon, s.action_disabled,
-                                                            [this, id] { choose(id, {}); }, s.clear_visible, false,
-                                                            false);
+                                                            [this, id] { choose(id, {}); }, s.clear_visible, false);
                                                     }});
                                 if (suffix) {
                                     SlotContentAccess::function (*suffix)();
-                                } else {
-                                    Icon(IconProps{}.source(s.arrow).spin(s.spinning).tone(TextTone::Secondary));
                                 }
                             }});
                       const auto selector = services.components().children(id).at(selector_child_index);
@@ -2317,6 +2353,9 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
 
 void SelectComponentHost::on_window_active(bool active) {
     window_active_ = active;
+    if (!active) {
+        hovered_selector_.reset();
+    }
     const auto ids = mounted_;
     for (auto id : ids) {
         if (auto* s = select_state(*services_, id); s && !active) {
@@ -2577,6 +2616,27 @@ bool SelectComponentHost::on_keyboard_input(const input::KeyboardInputEvent& eve
 void SelectComponentHost::on_pointer_input(const input::PointerInputEvent& event,
                                            std::optional<input::InteractionId> hit,
                                            std::optional<input::InteractionId> origin) {
+    std::optional<runtime::ComponentId> hovered;
+    if (const auto* record = hit ? services_->interactions().find(*hit) : nullptr) {
+        const auto target = record->component;
+        for (auto component = std::optional{target}; component;
+             component = services_->components().parent(*component)) {
+            if (const auto* s = select_state(*services_, *component);
+                s && descendant(*services_, target, s->selector)) {
+                hovered = component;
+                break;
+            }
+        }
+    }
+    if (hovered != hovered_selector_) {
+        const auto previous = std::exchange(hovered_selector_, hovered);
+        if (previous) {
+            update_clear_visibility(*previous);
+        }
+        if (hovered) {
+            update_clear_visibility(*hovered);
+        }
+    }
     if (event.action != input::PointerAction::down && event.action != input::PointerAction::up) {
         return;
     }
