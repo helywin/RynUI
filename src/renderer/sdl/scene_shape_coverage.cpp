@@ -59,9 +59,10 @@ bool SdlSceneRenderer::upload_effect_coverage(RoundedEffectGpuBufferHandle handl
         std::optional<LockedShapeGeometry> geometry;
         if (opacity > 0 && effect.color[3] > 0 && effect.clip_rect[2] > 0 && effect.clip_rect[3] < 0) {
             const LockedShapeGeometry base{{a[0], a[1], a[2], a[3]}, shadow[0]};
-            if (kind == 0 && shadow[0] > 0 && shadow[1] == 0 && shadow[2] == 0 && shadow[3] == 0 &&
-                properties[0] == 0) {
+            if (kind == 0 && shadow[0] > 0 && shadow[3] == 0 && properties[0] == 0) {
                 geometry = base;
+                geometry->bounds.x += shadow[1];
+                geometry->bounds.y += shadow[2];
             } else if (kind == 2 && shadow[0] > 0) {
                 geometry = base;
                 geometry->kind = LockedShapeKind::outline;

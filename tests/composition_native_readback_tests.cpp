@@ -208,8 +208,8 @@ void locked_coverage_in_composition(const std::string& driver) {
                                 .color = {1, 0, 0, 1},
                                 .corner_radius = 7 / scale};
         (void)quads.append(std::span{&quad, 1});
-        (void)f.effects.add(make_shadow_effect({{57.5F / scale, y / scale, 28 / scale, 27 / scale}, 7 / scale},
-                                               {ShadowKind::outer, {}, 0, 0, Color{0, 0, 1}}));
+        (void)f.effects.add(make_shadow_effect({{55.5F / scale, (y - 3) / scale, 28 / scale, 27 / scale}, 7 / scale},
+                                               {ShadowKind::outer, {2 / scale, 3 / scale}, 0, 0, Color{0, 0, 1}}));
     }
     for (const unsigned i : {0U, 1U}) {
         f.order.append_command({SceneDrawKind::quad, i, 1});
@@ -218,6 +218,8 @@ void locked_coverage_in_composition(const std::string& driver) {
     auto before = renderer.counters().locked_coverage_draws;
     const auto baseline = f.read(&quads);
     require(renderer.counters().locked_coverage_draws - before == 4, "ordinary frame must draw all four locked masks");
+    pixel(baseline, 70, 7, {0, 0, 0, 0}, 0);
+    pixel(baseline, 70, 12, {0, 0, 255, 255}, 0);
 
     auto p = std::make_shared<SceneCompositionProgram>();
     p->scene_revision = f.order.revision();
