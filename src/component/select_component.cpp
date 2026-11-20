@@ -1586,6 +1586,15 @@ void SelectComponentHost::reconcile_tags(runtime::ComponentId id) {
     if (!s) {
         return;
     }
+    auto& selected = services_->nodes().require(services_->components().root(s->selected_root));
+    const bool hide_selected = std::ranges::none_of(s->tags, [&](auto child) {
+        return services_->components().contains(child) &&
+               !services_->nodes().require(services_->components().root(child)).out_of_flow;
+    });
+    if (selected.out_of_flow != hide_selected) {
+        selected.out_of_flow = hide_selected;
+        geometry_changed = true;
+    }
     if (responsive && !values.empty()) {
         // Responsive probes measure retained rich tags with unbounded width.
         // Refresh can run while positioning another window layer, after the
@@ -1900,6 +1909,7 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                                                }
                                                s.selected_root = select_group(services);
                                                const auto node = services.components().root(s.selected_root);
+                                               services.nodes().require(node).out_of_flow = true;
                                                auto flex = prefix_layout;
                                                flex.item_policy = layout::FlexItemPolicy::flex;
                                                services.layout().set_layout(node, flex);

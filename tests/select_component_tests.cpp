@@ -79,7 +79,7 @@ void direction_and_rich_affix_size() {
     const auto ltr_suffix = bounds(f, suffix);
     const auto ltr_viewport = f.inputs.layout_snapshot(input.component).viewport;
     check(ltr_prefix.x == selector.x + selector.width - (rtl_prefix.x - selector.x) - rtl_prefix.width &&
-              ltr_prefix.x + ltr_prefix.width <= ltr_viewport.x &&
+              ltr_prefix.x + ltr_prefix.width + 4 == ltr_viewport.x &&
               ltr_viewport.x + ltr_viewport.width <= ltr_suffix.x &&
               f.inputs.mounted_inputs().front().editor == input.editor,
           "Changing Select direction did not mirror the existing affixes and editor");
