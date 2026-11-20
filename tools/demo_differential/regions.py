@@ -152,19 +152,27 @@ def raster_metrics(reference, native, size, background, *, ink_minimum=1):
     mass = [0, 0]
     changed = set()
     max_channel = 0
-    for index in range(width * height):
-        a = reference[index * 4:index * 4 + 4]
-        b = native[index * 4:index * 4 + 4]
-        point = (index % width, index // width)
-        residual = max(abs(x - y) for x, y in zip(a, b))
-        max_channel = max(max_channel, residual)
-        if residual:
-            changed.add(point)
-        for side, pixel in enumerate((a, b)):
-            contrast = max(abs(x - y) for x, y in zip(pixel, background))
-            if contrast:
-                foreground[side].add(point)
-                mass[side] += contrast / 255
+    background_pixel = bytes(background)
+    block_pixels = 256
+    background_block = background_pixel * block_pixels
+    for first in range(0, width * height, block_pixels):
+        end = min(first + block_pixels, width * height)
+        if reference[first*4:end*4] == native[first*4:end*4] == background_block[:(end-first)*4]:
+            continue
+        for index in range(first, end):
+            a = reference[index * 4:index * 4 + 4]
+            b = native[index * 4:index * 4 + 4]
+            if a == b == background_pixel:
+                continue
+            point = (index % width, index // width)
+            if a != b:
+                max_channel = max(max_channel, max(abs(x - y) for x, y in zip(a, b, strict=True)))
+                changed.add(point)
+            for side, pixel in enumerate((a, b)):
+                if pixel != background_pixel:
+                    contrast = max(abs(x - y) for x, y in zip(pixel, background_pixel, strict=True))
+                    foreground[side].add(point)
+                    mass[side] += contrast / 255
     return {'max_channel_residual': max_channel, 'changed_pixels': len(changed),
             'changed_components': component_sizes(changed),
             'reference_occupancy': len(foreground[0]), 'native_occupancy': len(foreground[1]),
