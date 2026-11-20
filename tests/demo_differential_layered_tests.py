@@ -15,7 +15,7 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints,_status_input_caret,
                                           _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error,
                                           _matches_soft_shadow_rgb,_empty_select_compositor_caret,_hard_paint_gates,
-                                          _clip_intersection,_tiled_target_clips)
+                                          _clip_intersection,_tiled_target_clips,_witnessed_black_glyph_over_tint)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
@@ -237,6 +237,25 @@ class LayeredTests(unittest.TestCase):
                    web_glyph_alternates=((second,0,0),))
         self.assertEqual(_layer_coverage(glyph,(1.5,.5),1),(1,True))
         self.assertEqual(_layer_coverage(glyph,(2.5,.5),1),(0,False))
+
+    def test_opaque_glyph_interior_checks_both_rgb8_writes_exactly(self):
+        white=dict(kind='fill',color=(1,1,1),alpha=1,opacity=1,groups=[])
+        tint=dict(white,color=(0,0,0),alpha=.06)
+        glyph=dict(tint,kind='glyph',alpha=.88)
+        sides=[dict(active=[white,tint,glyph],variable=[2],coverages=[1,1,1]) for _ in range(2)]
+        mask=GlyphWitness(0,0,1,1,bytes([255]))
+        key=('font','桌',mask,10,20,(0,0,0))
+        materials=([(key,.88)],[(key,.88)])
+        check=lambda observations,point=(10.5,20.5),sources=materials: _witnessed_black_glyph_over_tint(
+            sides,sources,observations,point,1)
+        rows=((30,)*3,(29,)*3)
+        self.assertEqual(check(rows),(29,)*3)
+        self.assertIsNone(check(((31,)*3,(29,)*3)))
+        self.assertIsNone(check(((30,)*3,(240,)*3)))
+        self.assertIsNone(check(rows,point=(11.5,20.5)))
+        self.assertIsNone(check(rows,sources=([(key,.88)],[(('font','面',*key[2:]),.88)])))
+        sides[1]['active'][1]=dict(tint,alpha=.07)
+        self.assertIsNone(check(rows))
 
     def test_color_coverage_uses_the_observed_canonical_a8_luminance(self):
         color=tuple(channel/255 for channel in (250,173,20))

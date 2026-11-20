@@ -1396,6 +1396,38 @@ def _glyph_samples_at_pixel(side,priors,point,dpr):
     return pairs,_composite_point(side['active'],coverages)
 
 
+def _witnessed_black_glyph_over_tint(sides,samples,observations,point,dpr):
+    if any(len(side['active'])!=3 or side['variable']!=[2] or side['coverages'][:2]!=[1,1] or
+           tuple(row['kind'] for row in side['active'])!=('fill','fill','glyph') for side in sides):
+        return None
+    alphas=[]
+    for side in sides:
+        base,tint,glyph=side['active']
+        if (base['color']!=(1,1,1) or base['alpha']*base['opacity']!=1 or
+                tint['color']!=(0,0,0) or glyph['color']!=(0,0,0) or
+                any(opacity!=1 for row in (base,tint,glyph) for _,opacity in row['groups'])):
+            return None
+        alphas.append((tint['alpha']*tint['opacity'],glyph['alpha']*glyph['opacity']))
+    if (any(not 0<a<1 for a in alphas[0]) or struct.pack('<2f',*alphas[0])!=struct.pack('<2f',*alphas[1]) or
+            any(len(items)!=1 for items in samples)):
+        return None
+    (web,_),(native,_)=(items[0] for items in samples)
+    if web[:2]!=native[:2] or web[3:]!=native[3:]:
+        return None
+    px,py=(math.floor(value*dpr) for value in point)
+    if any(sample[2].at(px-sample[3],py-sample[4])!=255 for sample in (web,native)):
+        return None
+    # SkPMSrcOver uses a 256 denominator for its opaque destination.
+    # The native target encodes each normal source-over write as UNORM8.
+    browser=target=255
+    for browser_alpha,target_alpha in zip(*alphas,strict=True):
+        browser=(browser*(256-math.floor(255*browser_alpha+.5)))>>8
+        target=round(target*(1-target_alpha))
+    if tuple(observations)==((browser,)*3,(target,)*3):
+        return (target,)*3
+    return None
+
+
 def _witnessed_glyph_rounding(sides,basis,observations,priors,point,dpr):
     """Resolve RGB8 rounding only where both captured glyph sources agree."""
     if basis.get('rank')!=1 or not priors or not priors.get('scenario_masks'):
@@ -1406,6 +1438,8 @@ def _witnessed_glyph_rounding(sides,basis,observations,priors,point,dpr):
     (web,web_rgb),(native,native_rgb)=samples
     if not web or len(web)!=len(native) or len({key[-1] for key,_ in web})!=1:
         return None
+    if (exact:=_witnessed_black_glyph_over_tint(sides,(web,native),observations,point,dpr)) is not None:
+        return exact
     # CSS color numbers arrive as JSON doubles. The submitted native material
     # stores the same channels as float32, so compare that exact representation.
     if any(a[:-1]!=b[:-1] or struct.pack('<3f',*a[-1])!=struct.pack('<3f',*b[-1]) or abs(x-y)>1e-6
