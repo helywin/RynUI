@@ -80,7 +80,9 @@ Web 读取 `DOMSnapshot.getSnapshot` 的真实 paintOrder、stacking context、U
 
 最多三个 source-only 可见色轴使用固定小矩阵、秩/条件数/量化、非负/和约束及实际 source-over endpoint domain；同色或共线来源只给 joint contrast plane，逐层来源身份不合并，不反推出任意 layer alpha。真正的 opacity group 完成后只应用一次。shadow profile/tail 输入是实际可见 alpha/contribution，包含 source alpha、paint opacity、group 和上层遮挡，不把弱阴影除以其 opacity 后套用 tail 上限。flat DeltaE、局部 mass/projection/contour、独立 SFNT 墨迹 witness、shadow profile/tail、joint 与 guard 全部 AND；raw byte residual 仅作诊断。
 
-有限 Chromium 普通字形的绘制孔径由实际 Range 基线、锁定字面和独立设备光栅见证重建。同色字形重叠时，只有两个实际提交栈的字面、设备位置、光栅见证和来源 alpha 都相符，而且两侧实际 RGB8 像素各自在逐次量化范围内，才将共同来源的贡献用于局部投影。暗部漏字与来源不符仍保留差异。阴影 tail 由实际 spread、偏移和 blur 算出的轮廓确定。警告状态的 Input 另按编辑区验证原生状态色光标的完整竖线，并验证 Chromium 光标的实际前景与笔划，两侧各自的实际像素以外照常比对。
+有限 Chromium 普通字形的绘制孔径由实际 Range 基线、锁定字面和独立设备光栅见证重建。单个普通字形和同色重叠字形都要求两侧字面、设备位置、光栅见证和来源 alpha 一致，且实际 RGB8 像素各自在逐次量化范围内，才采用共同来源的贡献进行局部比较。单字、单矩形 Range 的两个端点位于已确认的 1/64 logical px 网格时，advance 按两端的量化区间计算残差，同时保留原始偏差和 hard cap。漏墨与来源不符仍保留差异。
+
+阴影 tail 由实际 spread、偏移和 blur 算出的轮廓确定。同一 CSS 节点的白底、实色边框及其硬阴影按已提交图层的数量核算 RGB8 逐次量化，随后仍执行独立校准的局部比较。警告状态的 Input 另按编辑区验证原生状态色光标的完整竖线，并验证 Chromium 光标的实际前景与笔划，两侧各自的实际像素以外照常比对。
 
 文字和阴影投影按轴比较最大行差、列差，分别以参考该轴的积分峰值为分母。固定 2×2 局部窗口同样以其参考积分峰值为分母。低覆盖阴影尾部仍单独逐像素使用绝对 alpha 残差，位移及其丢失和新增覆盖仍纳入投影、局部剖面和尾部检查。
 

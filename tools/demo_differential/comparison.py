@@ -200,6 +200,21 @@ def _text_rows(target, side):
     return sorted(rows,key=lambda t: bool(t.get('editable') or t.get('kind')=='editor-base'))
 
 
+def _text_advance_error(web,native,*,layered):
+    raw=abs(web['advance']-native['advance'])
+    if not layered or len(web['content'])!=1 or len(web['boxes'])!=1:
+        return raw
+    box=web['boxes'][0]
+    if (box['width']!=web['advance'] or any(abs(edge*64-round(edge*64))>1e-6
+            for edge in (box['x'],box['x']+box['width']))):
+        return raw
+    # The locked DOM Range reports each endpoint in Blink's 26.6 layout grid.
+    # Its width is a difference of two rounded endpoints; the native advance
+    # retains the unrounded shaping position. Charge the residual outside the
+    # two endpoint intervals, while preserving the raw hard cap.
+    return raw if raw>CAPS['text.geometry_logical_px'] else max(0.,raw-2/64)
+
+
 def _declared_text(case, target):
     fixture = case['fixture']
     if target == case['native']['sample_id']:
@@ -770,21 +785,21 @@ def _composite_point(layers,coverages):
     return tuple(frames[0][0])
 
 
-def _palette_basis(layers,background):
+def _palette_basis(layers,background,*,byte_error=.5/255):
     """Choose at most three source color axes, preserving every source identity."""
     from itertools import combinations
     from .color_metrics import visible_basis,solve_visible_contributions
     colors=list(dict.fromkeys(layer['color'] for layer in layers if layer['color']!=background))
-    if not colors:return visible_basis(background,[])
+    if not colors:return visible_basis(background,[],byte_error=byte_error)
     # Same-axis sources are joint observations. They are never assigned separate
     # alpha values, even if a color basis happens to be full rank.
-    joint=visible_basis(background,colors) if len(colors)==1 else None
-    try:joint=visible_basis(background,colors)
+    joint=visible_basis(background,colors,byte_error=byte_error) if len(colors)==1 else None
+    try:joint=visible_basis(background,colors,byte_error=byte_error)
     except ProtocolError:pass
     if joint is not None:return joint
     for count in (1,2,3):
         for palette in combinations(colors,count):
-            try:basis=visible_basis(background,palette)
+            try:basis=visible_basis(background,palette,byte_error=byte_error)
             except ProtocolError:continue
             if basis['mode']!='visible-contribution':continue
             if all(solve_visible_contributions(color,basis)['valid'] for color in colors):return basis
@@ -809,28 +824,36 @@ def _paint_endpoints(layers,coverages,variable):
         yield _composite_point(layers,candidate)
 
 
+def _opaque_white_border_box(layers):
+    kinds=tuple(row['kind'] for row in layers)
+    if kinds not in (('fill','border'),('shadow','fill','border')):
+        return False
+    fill,border=layers[-2:]
+    return (fill['color']==(1.,1.,1.) and all(row['source'] is fill['source'] for row in layers) and
+            (len(layers)==2 or layers[0].get('blur')==0) and
+            all(opacity==1 for row in layers for _,opacity in row['groups']) and
+            all(row['alpha']*row['opacity']==1 for row in (fill,border)))
+
+
 def _hard_shadow_box_domain(layers,endpoints):
     """RGB8 domain for an opaque white box and its border over a hard shadow."""
     from .color_metrics import contribution_domain
-    if tuple(row['kind'] for row in layers)!=('shadow','fill','border'):
-        return None
-    shadow,fill,border=layers
-    if (shadow.get('blur')!=0 or fill['color']!=(1.,1.,1.) or
-        shadow['source'] is not fill['source'] or fill['source'] is not border['source'] or
-        any(opacity!=1 for row in layers for _,opacity in row['groups']) or
-        any(row['alpha']*row['opacity']!=1 for row in (fill,border))):
+    if len(layers)!=3 or not _opaque_white_border_box(layers):
         return None
     return contribution_domain(endpoints)
 
 
 def _bounded_paint_basis(layers,coverages,variable):
     from .color_metrics import visible_basis
+    # The CSS border path quantizes its PM color and then the final RGB8 blend.
+    # Scope the two half-code terms to the observed single opaque CSS box.
+    byte_error=(1 if _opaque_white_border_box(layers) else .5)/255
     if len(variable)==1:
         lower,upper=_paint_endpoints(layers,coverages,variable)
         # Known neighboring paint is the backdrop, not a second unknown.
-        try:return visible_basis(lower,[] if lower==upper else [upper])
+        try:return visible_basis(lower,[] if lower==upper else [upper],byte_error=byte_error)
         except ProtocolError:pass
-    try:return _palette_basis(layers,(1.,1.,1.))
+    try:return _palette_basis(layers,(1.,1.,1.),byte_error=byte_error)
     except RunError:
         joint=_hard_shadow_outline_basis(layers,coverages,variable)
         if joint is None:raise
@@ -1041,7 +1064,7 @@ def _same_glyph_interface(first,second):
     return identity(a)==identity(b)
 
 
-def _joint_glyph_samples(side,priors,point,dpr):
+def _glyph_samples_at_pixel(side,priors,point,dpr):
     from .glyph_witness import encoded_coverage,mask_identity,scenario_ink_byte
     pairs=[];coverages=side['coverages'].copy()
     rasterizer,masks=priors['scenario_masks']
@@ -1071,15 +1094,15 @@ def _joint_glyph_samples(side,priors,point,dpr):
     return pairs,_composite_point(side['active'],coverages)
 
 
-def _joint_glyph_rounding(sides,basis,observations,priors,point,dpr):
-    """Allow RGB8 rounding only for identically witnessed overlapping glyphs."""
+def _witnessed_glyph_rounding(sides,basis,observations,priors,point,dpr):
+    """Resolve RGB8 rounding only where both captured glyph sources agree."""
     if basis.get('rank')!=1 or not priors or not priors.get('scenario_masks'):
         return None
-    samples=[_joint_glyph_samples(side,priors,point,dpr) for side in sides]
+    samples=[_glyph_samples_at_pixel(side,priors,point,dpr) for side in sides]
     if any(sample is None for sample in samples):
         return None
     (web,web_rgb),(native,native_rgb)=samples
-    if len(web)<2 or len(web)!=len(native) or len({key[-1] for key,_ in web})!=1:
+    if not web or len(web)!=len(native) or len({key[-1] for key,_ in web})!=1:
         return None
     if any(a!=b or abs(x-y)>1e-6 for (a,x),(b,y) in zip(web,native,strict=True)):
         return None
@@ -1268,10 +1291,11 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 if rounded_box is None:
                     inside=in_contribution_domain(values,domain,basis['quantization_bounds'])
                 else:
-                    # The hard shadow and opaque framed box are two RGB8 paints.
-                    # Each may round by half a code. Keep this bound in RGB8,
-                    # where a corner's weak shadow cannot magnify that rounding.
-                    inside=in_contribution_domain(tuple(v/255 for v in observed),rounded_box,(1/255,)*3)
+                    # Shadow, fill and border each write an RGB8 result. A later
+                    # source-over cannot amplify the preceding half-code error.
+                    # Keep the accumulated bound in the physical RGB8 domain.
+                    rounding=len(active)*.5/255
+                    inside=in_contribution_domain(tuple(v/255 for v in observed),rounded_box,(rounding,)*3)
                 if not inside:
                     fail('visual','visible contributions violate actual source-over order/opacity domain',side=side,pixel=point)
             if basis['mode']=='joint-collinear':
@@ -1351,7 +1375,10 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
             reference_uncertainty=None
             shadow=row['kind'] in ('shadow','inset-shadow')
             maximum=_visible_weight(reference['active'],reference['coverages'],position) if shadow else 1.
-            for side,rgb in enumerate((a,b)):
+            common_ink=(_witnessed_glyph_rounding(sides,sides[0]['basis'],(a,b),glyph_priors,point,dpr)
+                        if a!=b and row['kind']=='glyph' and sides[1]['variable'] else None)
+            paint_pixels=(common_ink,common_ink) if common_ink is not None else (a,b)
+            for side,rgb in enumerate(paint_pixels):
                 try:
                     if shadow:
                         solved=visible_segment(tuple(v/255 for v in rgb),lower,upper,maximum)
@@ -1369,7 +1396,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 first[index],second[index]=values
                 if reference_uncertainty is not None:uncertainty[index]=reference_uncertainty
                 if row['kind'] in ('glyph','caret') and min(values)>=.98:
-                    error=rgb8_delta_e00(a,b)
+                    error=rgb8_delta_e00(*paint_pixels)
                     if error>thresholds['color.text_interior_delta_e00']:fail('typography','high contrast glyph/caret interior color differs',pixel=point,actual=error)
         if sides[0]['variable'] or sides[1]['variable']:
             if not sides[0]['variable'] or not sides[1]['variable']:
@@ -1390,7 +1417,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                     if classification=='joint':
                         if error>cap:fail('visual','joint visible contribution differs',pixel=point,actual=error,threshold=cap)
                         group=tuple(row['identity'] for row in sides[0]['active'])
-                        common_ink=_joint_glyph_rounding(sides,basis,(a,b),glyph_priors,point,dpr) if a!=b else None
+                        common_ink=_witnessed_glyph_rounding(sides,basis,(a,b),glyph_priors,point,dpr) if a!=b else None
                         shared=(_paint_coordinates(common_ink,basis)[1] if common_ink is not None else None)
                         for axis,(first,second) in enumerate(zip(*coordinates)):
                             key=(group,axis)
@@ -1599,9 +1626,10 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
                     raise RunError(3,'calibration','actual glyph/grapheme groups cannot be paired without guessing')
                 for ga,gb in zip(ag,bg):
                     advance_cap=thresholds.get('text.geometry_logical_px',.5)
-                    if abs(ga['advance']-gb['advance']) > advance_cap:
+                    error=_text_advance_error(ga,gb,layered=layered)
+                    if error>advance_cap:
                         fail('typography',target,'semantic group advance differs',metric='text.geometry_logical_px',
-                             actual=abs(ga['advance']-gb['advance']),threshold=advance_cap)
+                             actual=error,raw=abs(ga['advance']-gb['advance']),threshold=advance_cap)
                     if ga['content'].isspace():
                         continue
                     def group_rect(group):

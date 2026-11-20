@@ -12,7 +12,7 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _support,_PAINT_BIN_PHYSICAL_PX,_glyph_witness_gate,
                                           _hard_shadow_outline_basis,_paint_coordinates,_palette_basis,_bounded_paint_basis,
                                           _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints,_status_input_caret,
-                                          _web_glyph_support,_joint_glyph_rounding,_shadow_tail)
+                                          _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
@@ -68,6 +68,27 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_dom_range_advance_charges_only_bounded_endpoint_quantization(self):
+        web=dict(content='n',advance=5.,boxes=[box(10+1/64,0,5,22)])
+        self.assertEqual(_text_advance_error(web,{'advance':5.02},layered=True),0.)
+        self.assertAlmostEqual(_text_advance_error(web,{'advance':5.05},layered=True),.05-2/64)
+        self.assertAlmostEqual(_text_advance_error(web,{'advance':5.51},layered=True),.51)
+        self.assertAlmostEqual(_text_advance_error(web,{'advance':5.02},layered=False),.02)
+        self.assertAlmostEqual(_text_advance_error(dict(web,boxes=[box(10.01,0,5,22)]),
+                                                  {'advance':5.02},layered=True),.02)
+
+    def test_opaque_css_border_uses_a_bounded_two_step_rgb8_domain(self):
+        source=object()
+        common=dict(source=source,alpha=1.,opacity=1.,groups=[])
+        fill=dict(common,kind='fill',color=(1.,1.,1.))
+        border=dict(common,kind='border',color=tuple(channel/255 for channel in (250,173,20)))
+        observed=(252,226,173)
+        basis=_bounded_paint_basis([fill,border],[0.,0.],[1])
+        self.assertTrue(_paint_coordinates(observed,basis)[0])
+        self.assertFalse(_paint_coordinates((250,226,173),basis)[0])
+        wrong_owner=_bounded_paint_basis([fill,dict(border,source=object())],[0.,0.],[1])
+        self.assertFalse(_paint_coordinates(observed,wrong_owner)[0])
+
     def test_shadow_tail_starts_after_spread_and_offset(self):
         row=dict(bounds=box(0,132,260,32),kind='shadow',offset=[0,0],spread=2,blur=0,radii=6)
         self.assertFalse(_shadow_tail(row,(261,133+2/3),1.5))
@@ -78,7 +99,7 @@ class LayeredTests(unittest.TestCase):
         self.assertTrue(_shadow_tail(inset,(130,148),1.5))
         self.assertFalse(_shadow_tail(inset,(5.25,148),1.5))
 
-    def test_joint_glyph_rounding_requires_identical_witnesses_and_exposed_ink(self):
+    def test_glyph_rounding_requires_identical_witnesses_and_exposed_ink(self):
         source=dict(font=dict(sha256='font',face_index=0,logical_pixel_size=14),display_scale=1,
                     phase=0,padding=0,bearing_x=0,bearing_y=0,coverage_width=1,coverage_height=1)
         masks={mask_identity(scalar,source):GlyphWitness(0,0,1,1,bytes([byte]))
@@ -92,12 +113,19 @@ class LayeredTests(unittest.TestCase):
         sides=[dict(variable=[0,1],active=rows,coverages=[1,1]) for rows in (web,native)]
         basis={'mode':'visible-contribution','rank':1}
         rgb=((247,)*3,(249,)*3)
-        self.assertEqual(_joint_glyph_rounding(sides,basis,rgb,priors,(.5,.5),1),(248,)*3)
-        self.assertIsNone(_joint_glyph_rounding(sides,dict(basis,rank=2),rgb,priors,(.5,.5),1))
-        self.assertIsNone(_joint_glyph_rounding(sides,basis,(rgb[0],(252,)*3),priors,(.5,.5),1))
-        self.assertIsNone(_joint_glyph_rounding(sides,basis,((255,)*3,(255,)*3),priors,(.5,.5),1))
+        self.assertEqual(_witnessed_glyph_rounding(sides,basis,rgb,priors,(.5,.5),1),(248,)*3)
+        self.assertIsNone(_witnessed_glyph_rounding(sides,dict(basis,rank=2),rgb,priors,(.5,.5),1))
+        self.assertIsNone(_witnessed_glyph_rounding(sides,basis,(rgb[0],(252,)*3),priors,(.5,.5),1))
+        self.assertIsNone(_witnessed_glyph_rounding(sides,basis,((255,)*3,(255,)*3),priors,(.5,.5),1))
         native[1]=dict(native[1],bounds=box(1,0,1,1))
-        self.assertIsNone(_joint_glyph_rounding(sides,basis,rgb,priors,(.5,.5),1))
+        self.assertIsNone(_witnessed_glyph_rounding(sides,basis,rgb,priors,(.5,.5),1))
+
+        masks[mask_identity('A',source)]=GlyphWitness(0,0,1,1,bytes([255]))
+        web[0]['web_glyph_mask']=(masks[mask_identity('A',source)],0,0)
+        sides=[dict(variable=[0],active=rows[:1],coverages=[1]) for rows in (web,native)]
+        core=((30,)*3,(31,)*3)
+        self.assertEqual(_witnessed_glyph_rounding(sides,basis,core,priors,(.5,.5),1),(31,)*3)
+        self.assertIsNone(_witnessed_glyph_rounding(sides,basis,(core[0],(34,)*3),priors,(.5,.5),1))
 
     def test_web_outline_admits_a_subpixel_stroke_and_rejects_a_disconnected_halo(self):
         row=dict(content='I',outline_origin=(0,1),text_group=dict(font_size='1px',font_weight='400'),
