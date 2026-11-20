@@ -12,7 +12,7 @@ import re
 import platform
 import struct
 from collections import Counter
-from functools import reduce
+from functools import lru_cache, reduce
 from pathlib import Path
 
 from .adapters import RunError
@@ -811,6 +811,15 @@ def _web_paint_inventory(checkpoint,origin,dpr):
 
 def _composite_point(layers,coverages):
     """One finite source-over stack; actual opacity groups close exactly once."""
+    materials=tuple((tuple(row['color']),row['alpha'],row['opacity'],tuple(tuple(group) for group in row['groups']))
+                    for row in layers)
+    return _composite_materials(materials,tuple(coverages))
+
+
+@lru_cache(maxsize=32768)
+def _composite_materials(materials,coverages):
+    # Only the full ordered material stack and source coverages enter this cache.
+    # Captured RGB never shares or substitutes any source-over calculation.
     from .color_metrics import source_over
     frames=[([1.,1.,1.],1.,None,1.)];opened=[]
     def close():
@@ -818,13 +827,13 @@ def _composite_point(layers,coverages):
         if alpha:
             parent=frames[-1];straight=[v/alpha for v in rgb]
             frames[-1]=(list(source_over(straight,parent[0],effective)),effective+(1-effective)*parent[1],parent[2],parent[3])
-    for layer,coverage in zip(layers,coverages):
-        chain=layer['groups'];common=0
+    for (color,source_alpha,source_opacity,chain),coverage in zip(materials,coverages):
+        common=0
         while common<min(len(chain),len(opened)) and chain[common][0]==opened[common]:common+=1
         while len(opened)>common:close()
         for name,opacity in chain[common:]:opened.append(name);frames.append(([0.,0.,0.],0.,name,opacity))
-        rgb,alpha,name,opacity=frames[-1];effective=coverage*layer['alpha']*layer['opacity']
-        frames[-1]=(list(source_over(layer['color'],rgb,effective)),effective+(1-effective)*alpha,name,opacity)
+        rgb,alpha,name,opacity=frames[-1];effective=coverage*source_alpha*source_opacity
+        frames[-1]=(list(source_over(color,rgb,effective)),effective+(1-effective)*alpha,name,opacity)
     while opened:close()
     return tuple(frames[0][0])
 

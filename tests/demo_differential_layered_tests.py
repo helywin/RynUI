@@ -70,6 +70,19 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_repeated_source_over_retains_coverage_order_and_group_opacity(self):
+        red=dict(color=(1.,0.,0.),alpha=1.,opacity=1.,groups=[('group',.5)])
+        blue=dict(red,color=(0.,0.,1.))
+        layers=[red,blue]
+        coverages=[1.,.5]
+        self.assertEqual(_composite_point(layers,coverages),(.75,.5,.75))
+        self.assertEqual(_composite_point(layers,[1.,1.]),(.5,.5,1.))
+        self.assertEqual(_composite_point(list(reversed(layers)),coverages),(.75,.5,.75))
+        self.assertEqual(_composite_point(list(reversed(layers)),[1.,1.]),(1.,.5,.5))
+        self.assertEqual(_composite_point([dict(row,groups=[('group',.25)]) for row in layers],
+                                         coverages),(.875,.75,.875))
+        self.assertEqual(_composite_point(layers,coverages),(.75,.5,.75))
+
     def test_soft_shadow_reference_allows_only_the_open_hard_edge(self):
         hard=dict(kind='shadow',blur=0,alpha=.1,opacity=1,groups=[],color=(5/255,145/255,1))
         soft=dict(kind='shadow',blur=16,alpha=.2,opacity=1,groups=[],color=(0,0,0))
