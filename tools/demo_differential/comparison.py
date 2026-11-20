@@ -110,7 +110,7 @@ def environment_description(case,native,web,actual_metrics,capture_facts):
             'os':os_fields,'fonts':case['fixture']['fonts']}
 
 
-def profile_thresholds(profile, expected, identity, *, image_module=None,native_binary_sha256=None):
+def profile_thresholds(profile, expected, identity, *, image_module=None,native_binary_sha256=None, proof=None):
     if profile.get('calibration_kind') != 'pilot-independent-v1' or not profile.get('evidence'):
         raise RunError(3, 'calibration', 'profile has no independent pilot evidence; hand-written calibrated declarations are invalid')
     validate('profile', profile)
@@ -121,6 +121,8 @@ def profile_thresholds(profile, expected, identity, *, image_module=None,native_
             raise RunError(3, 'calibration', 'profile binding differs: ' + key)
     if profile['masks']:
         raise RunError(2, 'calibration', 'pilot requires empty masks; protected content cannot be excluded')
+    if proof is not None:
+        return proof.thresholds_for(profile,image_module,native_binary_sha256)
     from .calibration import verify_profile_evidence
     return verify_profile_evidence(profile,image_module=image_module,native_binary_sha256=native_binary_sha256)
 
@@ -986,7 +988,11 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
         raise RunError(4,'capture-coverage','full paint support/shadow/outline/popup plus guard is not captured; required relative support '+str(scope)) from error
     failures=list(hard_failures);measurements=[];counts={k:0 for k in ('flat','edge','glyph','shadow','joint','guard')}
     def fail(category,message,**data):
-        if len(failures)<64:failures.append(dict(category=category,step=declaration['step'],target=sample,message=message,**data))
+        if len(failures)<64:
+            # Numeric loops use tuples for physical coordinates and source sets.
+            # The strict report wire format represents both as JSON arrays.
+            details={key:list(value) if isinstance(value,tuple) else value for key,value in data.items()}
+            failures.append(dict(category=category,step=declaration['step'],target=sample,message=message,**details))
     basis_cache={};domain_cache={};presence={};paired_planes={};joint_planes={};max_joint=0.;max_color=0.;glyph_witnesses={}
     bins=[_paint_bins(rows,box,dpr) for rows in inventories]
     for index in range(size[0]*size[1]):
@@ -1295,13 +1301,13 @@ def compare_checkpoint(case, declaration, native, web, images, thresholds, color
             result['required_ink_present'] = presence['required_ink_present']
         measurements.append({'target': target, 'category': category, 'box': box, 'metrics': result})
         if not result['required_ink_present']:
-            fail(category, target, 'required local foreground/ink missing', roi=box)
+            fail(category, target, 'required local foreground/ink missing', roi=list(box))
         for field in ('max_channel_residual', 'coverage_mass_relative_error', 'contour_distance_px'):
             prefix = 'text' if text and field != 'max_channel_residual' else 'pixels'
             threshold = thresholds[prefix + '.' + field]
             value = result[field]
             if value is None or value > threshold:
-                fail(category, target, 'local raster metric failed', roi=box, metric=prefix + '.' + field,
+                fail(category, target, 'local raster metric failed', roi=list(box), metric=prefix + '.' + field,
                      actual=value, threshold=threshold)
     for roi in declaration['rois']:
         guard = roi['guard_px']
@@ -1453,12 +1459,13 @@ def _is_window_paint(row):
     return any(name.endswith('.popup') for name in source.get('owner_targets',[]))
 
 
-def compare(case, native, web, directories, profile, image_module):
+def compare(case, native, web, directories, profile, image_module, *, profile_proof=None):
     expected = binding(case, native, web)
-    thresholds = profile_thresholds(profile, expected, case['profile'],image_module=image_module,
+    thresholds = profile_thresholds(profile, expected, case['profile'],image_module=image_module,proof=profile_proof,
                                     native_binary_sha256=native['hello']['provenance']['binary_sha256'])
     from .calibration import evidence_manifest
-    glyph_priors=_glyph_priors_for_run(native,evidence_manifest(profile)[0],independent_masks=True)
+    manifest=profile_proof.manifest() if profile_proof is not None else evidence_manifest(profile)[0]
+    glyph_priors=_glyph_priors_for_run(native,manifest,independent_masks=True)
     scope=profile['scope']
     fixture=case['fixture']
     if (case['identity'] not in scope['cases'] or fixture['locale']!=scope['locale'] or fixture['direction']!=scope['direction'] or

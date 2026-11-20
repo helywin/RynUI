@@ -363,7 +363,7 @@ def execute(request, prepared_dir, output, *, reference='locked', publish_cache=
     require(result == 0, 'Web browser execution failed; see ' + str(output / 'execute.log'))
     observations = validate_observations(output, request)
     captures = {c['path']: c['sha256'] for r in observations
-                for c in (*r['captures'],*(t['capture'] for t in r['resources'].get('context_tiles',[])))}
+                for c in (*r['captures'],*(t['capture'] for t in r.get('resources',{}).get('context_tiles',[])))}
     browser_environment = observations[0]['provenance']['browser']
     if cache_hit:
         old = verify_cache(cache, key)

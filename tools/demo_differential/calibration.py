@@ -301,16 +301,20 @@ def verify_profile_evidence(profile, *, image_module=None,native_binary_sha256=N
     validate('profile',profile)
     if profile['calibrated'] is not True:
         raise RunError(3,'calibration','uncalibrated profile cannot grant a working domain')
-    manifest,paths,root=evidence_manifest(profile)
+    return _verified_thresholds(profile, evidence_manifest(profile), image_module, native_binary_sha256)
+
+
+def _verified_thresholds(profile, evidence, image_module, binary_sha256):
+    manifest,paths,root=evidence
     if image_module is not None:
         site=Path(image_module.__file__).resolve().parent.parent
         files={f['path'] for f in manifest['tools']['files']}
         if any(p.relative_to(ROOT).as_posix() not in files for p in site.rglob('*')
                if p.is_file() and '__pycache__' not in p.parts and p.suffix!='.pyc'):
             raise ProtocolError('locked decoder installation is missing from the actual tool closure')
-    if native_binary_sha256 is not None:
+    if binary_sha256 is not None:
         files={f['path']:f for f in manifest['tools']['files']}
-        if files.get(manifest['tools']['native_binary'],{}).get('sha256')!=native_binary_sha256:
+        if files.get(manifest['tools']['native_binary'],{}).get('sha256')!=binary_sha256:
             raise RunError(3,'calibration','profile was calibrated against another native binary/configuration')
     # Trial re-evaluation is mandatory. A summary, signature-shaped marker or
     # arbitrary positive_max is never sufficient to produce a threshold.
@@ -320,11 +324,32 @@ def verify_profile_evidence(profile, *, image_module=None,native_binary_sha256=N
     return {row['identity']:row['threshold'] for row in recomputed}
 
 
+class _ProfileProof:
+    """The verified calibration snapshot reused only inside one invocation."""
+
+    def __init__(self, profile, evidence, decoder, binary_sha256):
+        self._thresholds = tuple(_verified_thresholds(profile, evidence, decoder, binary_sha256).items())
+        self._manifest = request_bytes(evidence[0])
+        self._input = digest(profile), Path(decoder.__file__).resolve(), binary_sha256
+
+    def thresholds_for(self, profile, decoder, binary_sha256):
+        actual = digest(profile), Path(decoder.__file__).resolve(), binary_sha256
+        if actual != self._input:
+            raise RunError(3,'calibration','verified profile, decoder or native binary changed within this invocation')
+        return dict(self._thresholds)
+
+    def manifest(self):
+        return json.loads(self._manifest)
+
+
 def preflight_profile(options):
     """Supported consumer entry: dependency/source/control recheck before probes."""
     from .comparison_dependencies import image_module
     profile=validate('profile',read(options['profile_file']))
-    manifest,_,_=evidence_manifest(profile)
+    if profile['calibrated'] is not True:
+        raise RunError(3,'calibration','uncalibrated profile cannot grant a working domain')
+    evidence=evidence_manifest(profile)
+    manifest=evidence[0]
     sites={str((ROOT/relative_path(item['path'])).parent.parent) for item in manifest['tools']['files']
            if item['path'].endswith('/PIL/__init__.py')}
     site=options.get('comparison_site')
@@ -333,8 +358,8 @@ def preflight_profile(options):
         site=next(iter(sites))
     site=output_path(site)
     decoder=image_module(site)
-    verify_profile_evidence(profile,image_module=decoder,native_binary_sha256=sha(Path(options['binary'])))
-    return {**options,'comparison_site':str(site)}
+    proof=_ProfileProof(profile,evidence,decoder,sha(Path(options['binary'])))
+    return {**options,'comparison_site':str(site),'profile_proof':proof}
 
 
 def evaluate_trials(manifest, paths, root, *, image_module=None, measurements=None):

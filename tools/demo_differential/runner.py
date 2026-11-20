@@ -282,8 +282,12 @@ def run(options, definitions, *, adapters=None, comparator=None, coverage_docume
                         raise RunError(3, 'environment', str(error)) from error
                 else:
                     images = None  # Pure unit tests may inject mechanism controls.
-                errors, measurements = compare(definition, n, w, {'native': Path(native_path).parent,
-                                                                  'web': Path(web_path).parent}, profile, images)
+                directories={'native': Path(native_path).parent, 'web': Path(web_path).parent}
+                if comparator is None:
+                    errors, measurements = compare(definition,n,w,directories,profile,images,
+                                                    profile_proof=options.get('profile_proof'))
+                else:
+                    errors, measurements = compare(definition,n,w,directories,profile,images)
                 failures.extend(errors)
                 write_json(case_dir / 'comparison.json', measurements)
                 write_json(case_dir / 'trace.json', {'native': projected_trace(n), 'web': projected_trace(w),

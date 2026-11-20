@@ -257,6 +257,11 @@ class RunnerTests(unittest.TestCase):
         checkpoint = next(row for row in (json.loads(line) for line in stream.read_text().splitlines())
                           if row['type'] == 'checkpoint')
         sample = next(target for target in checkpoint['targets'] if target['identity'] == case['native']['sample_id'])
+        anchorless = {**checkpoint, 'targets': []}
+        self.assertEqual(context_tiles(anchorless,case,directory,'web',set(),1),[])
+        anchorless['resources'] = {**checkpoint['resources'],'context_tiles':[{}]}
+        with self.assertRaisesRegex(IncompleteRun,'no declared sample observation'):
+            context_tiles(anchorless,case,directory,'web',set(),1)
         sample['bounds']['height'] = 24
         sample['scroll']['document_offset'] = 0
         with self.assertRaisesRegex(IncompleteRun, 'tile set is absent'):

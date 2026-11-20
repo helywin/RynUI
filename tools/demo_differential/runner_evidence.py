@@ -27,9 +27,15 @@ def artifact(directory, name):
 
 def context_tiles(row,case,directory,side,paths,sequence):
     references=row['resources'].get('context_tiles',[])
-    sample=next(t for t in row['targets'] if t['identity']==case['native']['sample_id'])
+    if not isinstance(references,list) or len(references)>8:
+        raise IncompleteRun(side+' context tile references exceed the finite aperture budget')
+    sample=next((t for t in row['targets'] if t['identity']==case['native']['sample_id']),None)
+    if sample is None:
+        if references:
+            raise IncompleteRun(side+' context tiles have no declared sample observation')
+        return []
     long_context=sample['bounds']['height']>case['fixture']['viewport']['height']*.75
-    if not isinstance(references,list) or len(references)>8 or bool(references)!=long_context:
+    if bool(references)!=long_context:
         raise IncompleteRun(side+' required context tile set is absent or exceeds the finite aperture budget')
     if not references:
         return []

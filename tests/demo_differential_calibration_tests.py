@@ -4,6 +4,7 @@ from pathlib import Path
 import struct
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import zlib
@@ -13,13 +14,32 @@ sys.path.insert(0,str(ROOT/'tools'))
 from demo_differential.calibration import (POLICY,CAPS,candidate_rows,control_cells,mutated_cells,
     png_metadata,verify_profile_evidence,evidence_manifest,outline_point,outline_witness,measure_controls,
     weak_fill_pixel_matches,control_icon_outlines,control_text_origin,software_box_source_over,
-    hard_clip_matches_device_grid,physical_box_coverage)
+    hard_clip_matches_device_grid,physical_box_coverage,_ProfileProof)
 from demo_differential.protocol import ProtocolError,FIXTURES,read,validate
 from demo_differential.adapters import RunError
 from demo_differential.glyph_witness import GlyphWitness, place
 
 
 class CalibrationTests(unittest.TestCase):
+    def test_calibration_replay_is_once_per_invocation_with_exact_inputs(self):
+        profile={'identity':'pilot','metrics':[{'threshold':.25}]}
+        manifest={'fonts':['fixed']}
+        evidence=(manifest,{},ROOT)
+        decoder=SimpleNamespace(__file__=str(ROOT/'out/decoder/PIL/Image.py'))
+        with patch('demo_differential.calibration._verified_thresholds',return_value={'geometry':.25}) as replay:
+            proof=_ProfileProof(profile,evidence,decoder,'native')
+            self.assertEqual(proof.thresholds_for(profile,decoder,'native'),{'geometry':.25})
+            self.assertEqual(proof.thresholds_for(profile,decoder,'native'),{'geometry':.25})
+            replay.assert_called_once_with(profile,evidence,decoder,'native')
+        manifest['fonts'].clear()
+        proof.manifest()['fonts'].clear()
+        self.assertEqual(proof.manifest()['fonts'],['fixed'])
+        for candidate,library,binary in (({**profile,'identity':'other'},decoder,'native'),
+                                         (profile,decoder,'other'),
+                                         (profile,SimpleNamespace(__file__='other.py'),'native')):
+            with self.assertRaises(RunError):
+                proof.thresholds_for(candidate,library,binary)
+
     def test_clip_boundary_preserves_half_open_device_samples(self):
         requested = dict(x=340.5, y=172.5, width=24, height=24)
         for dpr, left, top in ((1, 340, 172), (1.25, 426, 216), (1.5, 511, 259), (2, 681, 345)):

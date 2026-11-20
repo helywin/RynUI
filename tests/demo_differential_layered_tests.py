@@ -15,7 +15,7 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.glyph_witness import GlyphWitness,mask_identity,encoded_coverage
-from demo_differential.protocol import ProtocolError
+from demo_differential.protocol import ProtocolError,_plain_json
 
 
 def box(x=10,y=10,width=40,height=30):
@@ -262,6 +262,8 @@ class LayeredTests(unittest.TestCase):
             values[4][1]=(bytes(pixels),(80,60))
             failures,_=_layered_context(*values)
             self.assertTrue(any(f['category']=='visual' for f in failures))
+            self.assertTrue(_plain_json(failures),failures)
+            self.assertTrue(any(type(f.get('pixel')) is list for f in failures))
 
     def test_actual_order_change_does_not_become_unknown_environment(self):
         values=synthetic();stack=values[2]['resources']['paint_stack'];stack['commands'].reverse()
