@@ -76,6 +76,18 @@ class LayeredTests(unittest.TestCase):
         self.assertEqual(encoded_coverage(128,(0.,0.,0.),'directwrite-3x1'),119/255)
         self.assertEqual(encoded_coverage(128,(1.,1.,1.),'fontations-skia-a8'),144/255)
 
+    def test_packed_solid_fill_uses_same_byte_grid_as_exact_css_color(self):
+        white=dict(kind='fill',color=(1.,)*3,alpha=1,opacity=1,groups=[])
+        def basis(code):
+            native=struct.unpack('<f',struct.pack('<f',code/255))[0]
+            gray=dict(white,color=(native,)*3)
+            return _bounded_paint_basis([white,gray],[1,0],[1])
+        self.assertEqual(basis(245)['quantization_bounds'],(.05,))
+        self.assertTrue(_paint_coordinates((250,250,250),basis(245))[0])
+        self.assertFalse(_paint_coordinates((250,246,251),basis(245))[0])
+        with self.assertRaises(RunError):
+            basis(246)
+
     def test_dom_range_advance_charges_only_bounded_endpoint_quantization(self):
         web=dict(content='n',advance=5.,boxes=[box(10+1/64,0,5,22)])
         self.assertEqual(_text_advance_error(web,{'advance':5.02},layered=True),0.)

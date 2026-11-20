@@ -136,6 +136,23 @@ def visible_basis(background, colors, *, byte_error=.5/255, condition_cap=64, un
     fs = tuple(vector(c, unit=True) for c in colors)
     if not fs:
         return {'mode': 'flat', 'background': b, 'colors': fs, 'rank': 0, 'byte_error': byte_error}
+    if len(fs) == 1:
+        back_bytes,front_bytes=(tuple(round(channel*255) for channel in color) for color in (b,fs[0]))
+        if b==tuple(code/255 for code in back_bytes) and fs[0]==tuple(code/255 for code in front_bytes):
+            delta=tuple(fg-bg for fg,bg in zip(front_bytes,back_bytes,strict=True))
+            norm=sum(code*code for code in delta)
+            if math.sqrt(norm)<=4*byte_error*255:
+                raise ProtocolError('visible colors have no quantization-safe contrast')
+            total=sum(abs(code) for code in delta)
+            condition=max(map(abs,delta))*total/norm
+            uncertainty=byte_error*255*total/norm
+            if condition>condition_cap or uncertainty>uncertainty_cap:
+                raise ProtocolError('visible contribution basis is ill-conditioned at RGB8 precision')
+            # Evaluate exact byte-grid separations in code values. Subtracting
+            # independently normalized doubles can round a threshold equality outward.
+            return {'mode':'visible-contribution','background':b,'colors':fs,'rank':1,
+                    'inverse':(tuple(255*code/norm for code in delta),),'condition':condition,
+                    'quantization_bounds':(uncertainty,),'byte_error':byte_error}
     directions = [tuple(f-c for f,c in zip(color,b)) for color in fs]
     pivot = max(directions, key=lambda d: sum(x*x for x in d))
     norm = sum(x*x for x in pivot)

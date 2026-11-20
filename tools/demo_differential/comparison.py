@@ -826,7 +826,7 @@ def _palette_basis(layers,background,*,byte_error=.5/255):
     if not colors:return visible_basis(background,[],byte_error=byte_error)
     # Same-axis sources are joint observations. They are never assigned separate
     # alpha values, even if a color basis happens to be full rank.
-    joint=visible_basis(background,colors,byte_error=byte_error) if len(colors)==1 else None
+    joint=None
     try:joint=visible_basis(background,colors,byte_error=byte_error)
     except ProtocolError:pass
     if joint is not None:return joint
@@ -883,6 +883,14 @@ def _bounded_paint_basis(layers,coverages,variable):
     byte_error=(1 if _opaque_white_border_box(layers) else .5)/255
     if len(variable)==1:
         lower,upper=_paint_endpoints(layers,coverages,variable)
+        if all(row['kind']=='fill' and row['alpha']==1 and row['opacity']==1 and not row['groups'] for row in layers):
+            # An opaque fill on an RGB8 endpoint has the same source value
+            # in CSS and in the packed float material. Its transition still
+            # uses the unmodified observed pixels.
+            codes=[tuple(round(channel*255)/255 for channel in rgb) for rgb in (lower,upper)]
+            if all(struct.pack('<3f',*exact)==struct.pack('<3f',*actual)
+                   for exact,actual in zip(codes,(lower,upper),strict=True)):
+                lower,upper=codes
         # Known neighboring paint is the backdrop, not a second unknown.
         try:return visible_basis(lower,[] if lower==upper else [upper],byte_error=byte_error)
         except ProtocolError:pass

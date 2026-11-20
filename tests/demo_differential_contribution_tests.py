@@ -39,6 +39,16 @@ class Contributions(unittest.TestCase):
             with self.assertRaises(ProtocolError):
                 visible_basis((0,0,0) if len(colors)==3 else (1,1,1),colors)
 
+    def test_rgb8_rank_one_uses_exact_separation_at_uncertainty_limit(self):
+        white=(1,1,1)
+        gray=(245/255,)*3
+        basis=visible_basis(white,[gray])
+        self.assertEqual(basis['quantization_bounds'],(.05,))
+        self.assertTrue(solve_visible_contributions((250/255,)*3,basis)['valid'])
+        self.assertFalse(solve_visible_contributions((250/255,246/255,251/255),basis)['valid'])
+        with self.assertRaises(ProtocolError):
+            visible_basis(white,[(246/255,)*3])
+
     def test_joint_opacity_cannot_produce_opaque_ink(self):
         basis=visible_basis((1,1,1),[(0,0,0),(0,0,0)])
         self.assertFalse(solve_visible_contributions((0,0,0),basis,alphas=(.1,.1))['valid'])
