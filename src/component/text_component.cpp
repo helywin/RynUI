@@ -1274,7 +1274,9 @@ bool TextComponentHost::apply_typography(runtime::ComponentId component, runtime
     changed =
         text_scene_->set_pixel_size(state->scene, static_cast<std::uint32_t>(std::lround(typography.font_size))) ||
         changed;
-    changed = text_scene_->set_line_height(state->scene, typography.line_height) || changed;
+    changed = text_scene_->set_line_height(state->scene, typography.line_height,
+                                           !state->icon_font && typography.round_leading_above_baseline_up) ||
+              changed;
     state->resolved_typography = typography;
     if (state->icon) {
         auto icon_chain = resolve_fonts(typography);
@@ -1533,12 +1535,11 @@ void mount_text_component(const TextProps& props, bool icon_font) {
         initial_font_chain = {host.text_scene_->icon_font(
             initial_font_chain.front(), static_cast<std::uint32_t>(std::lround(initial_typography.font_size)))};
     }
-    const auto scene = host.text_scene_->create(node, initial_content, std::move(initial_font_chain),
-                                                static_cast<std::uint32_t>(std::lround(initial_typography.font_size)),
-                                                {
-                                                    initial_typography.line_height,
-                                                    std::numeric_limits<float>::infinity(),
-                                                });
+    const auto scene = host.text_scene_->create(
+        node, initial_content, std::move(initial_font_chain),
+        static_cast<std::uint32_t>(std::lround(initial_typography.font_size)),
+        {.line_height = initial_typography.line_height,
+         .round_leading_above_baseline_up = !icon_font && initial_typography.round_leading_above_baseline_up});
     const auto fragment = host.composer_ == nullptr
                               ? std::optional<runtime::SceneFragmentId>{}
                               : std::optional<runtime::SceneFragmentId>{build.register_scene_fragment(

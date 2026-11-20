@@ -557,9 +557,11 @@ float button_radius(const ButtonComponentState& state, runtime::Rect bounds, con
 
 runtime::SemanticTypography content_typography(const ThemeSnapshot& theme, const ButtonComponentState& state) {
     const auto size = size_token(theme.button(), state.size);
-    return {
-        theme.text().font_family, theme.text().font_weight, false, size.content_font_size, size.content_line_height,
-    };
+    return {.font_family = theme.text().font_family,
+            .font_weight = theme.text().font_weight,
+            .font_size = size.content_font_size,
+            .line_height = size.content_line_height,
+            .round_leading_above_baseline_up = true};
 }
 
 bool material_changed(const graphics::QuadInstance& left, const graphics::QuadInstance& right) noexcept {

@@ -321,6 +321,43 @@ void test_mount_scene_composition_and_lifecycle() {
             "wrong-thread Button mount changed retained state");
 }
 
+void test_centered_label_baseline_is_retained_across_size_changes() {
+    Fixture fixture;
+    const auto metrics = fixture.fonts->metrics(fixture.chain.front());
+    require(static_cast<bool>(metrics), "Button baseline fixture could not read font metrics");
+    const auto ascent = std::round(metrics.metrics.ascent);
+    const auto descent = std::round(-metrics.metrics.descent);
+    const auto even_line_height = ascent + descent + 4.0F;
+    const auto odd_line_height = even_line_height + 1.0F;
+    auto config = std::make_unique<ryn::ThemeConfig>();
+    config->button.tokens.content_line_height = ryn::dp(odd_line_height);
+    config->button.tokens.content_line_height_small = ryn::dp(even_line_height);
+    ryn::Signal<ryn::ControlSize> size{ryn::ControlSize::Middle};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(ryn::ThemeProps{}.config(*config), [&] {
+            ryn::Button(ryn::ButtonProps{}.size(size), [] { ryn::Text(u8"Button"); });
+            ryn::Text(u8"Ordinary text");
+        });
+    }});
+    require(fixture.synchronize(), "Button baseline fixture did not synchronize");
+    const auto label = fixture.host->text().mounted_texts()[0].scene;
+    const auto plain = fixture.host->text().mounted_texts()[1].scene;
+    const auto& label_text = fixture.text_scene.text_state(label);
+    const auto& plain_text = fixture.text_scene.text_state(plain);
+    require(near(label_text.measurement().lines.front().baseline, ascent + 3.0F),
+            "Button label lost the extra unit above its baseline");
+    const auto ordinary = fixture.engine.measure(plain_text.shaped(), {.line_height = plain_text.measurement().height});
+    require(ordinary &&
+                near(plain_text.measurement().lines.front().baseline, ordinary.measurement.lines.front().baseline),
+            "Button baseline policy escaped to ordinary text");
+
+    size.set(ryn::ControlSize::Small);
+    require(fixture.synchronize(), "Button label was not measured after resizing");
+    require(fixture.host->text().mounted_texts()[0].scene == label &&
+                near(fixture.text_scene.text_state(label).measurement().lines.front().baseline, ascent + 2.0F),
+            "Button size change did not update the retained label baseline");
+}
+
 void test_reactive_state_matrix_and_minimal_dirty_ranges() {
     Fixture fixture;
     fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
@@ -2087,6 +2124,7 @@ int main() {
         test_window_services_have_single_external_owner();
         test_pressable_behavior_pointer_identity_and_generation();
         test_mount_scene_composition_and_lifecycle();
+        test_centered_label_baseline_is_retained_across_size_changes();
         test_reactive_state_matrix_and_minimal_dirty_ranges();
         test_solid_border_box_and_focus_modalities_at_simulated_dpi();
         test_animated_presentation_retarget_and_motion_policy();

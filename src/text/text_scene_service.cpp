@@ -378,13 +378,13 @@ bool TextSceneService::set_pixel_size(TextSceneId id, std::uint32_t pixel_size) 
     return true;
 }
 
-bool TextSceneService::set_line_height(TextSceneId id, float line_height) {
+bool TextSceneService::set_line_height(TextSceneId id, float line_height, bool round_leading_above_baseline_up) {
     ensure_owner_thread();
     auto& record = require_record(id);
     if (record.view) {
         throw std::logic_error("Text views cannot replace shared line height");
     }
-    if (!record.state->set_line_height(line_height)) {
+    if (!record.state->set_line_height(line_height, round_leading_above_baseline_up)) {
         return false;
     }
     ++record.revisions.layout;

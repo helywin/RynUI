@@ -43,6 +43,7 @@ struct SemanticTypography final {
     bool italic{};
     float font_size{14.0F};
     float line_height{22.0F};
+    bool round_leading_above_baseline_up{};
 
     friend constexpr bool operator==(SemanticTypography, SemanticTypography) = default;
 };

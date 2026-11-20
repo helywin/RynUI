@@ -500,12 +500,13 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
     const auto primary_descent = -text.default_metrics.descent;
     auto baseline_offset = (config.line_height + primary_ascent - primary_descent) * 0.5F;
     if (config.line_height > primary_ascent + primary_descent) {
-        // Normal line boxes use integer logical font extents and assign the
-        // fractional leading remainder below the baseline. Tight lines with
-        // no extra height remain centered on the original font extents.
+        // Use integer font extents when there is extra leading. Centered
+        // control labels assign the remaining unit above the baseline.
         const auto ascent = std::round(primary_ascent);
         const auto descent = std::round(primary_descent);
-        baseline_offset = ascent + std::floor((config.line_height - ascent - descent) * 0.5F);
+        const auto half_leading = (config.line_height - ascent - descent) * 0.5F;
+        baseline_offset =
+            ascent + (config.round_leading_above_baseline_up ? std::ceil(half_leading) : std::floor(half_leading));
     }
 
     const auto emit_line = [&](const ShapedParagraph& paragraph, const std::vector<ClusterUnit>& units,
@@ -675,11 +676,13 @@ bool TextState::set_pixel_size(std::uint32_t pixel_size) {
     return true;
 }
 
-bool TextState::set_line_height(float line_height) {
-    if (layout_.line_height == line_height) {
+bool TextState::set_line_height(float line_height, bool round_leading_above_baseline_up) {
+    if (layout_.line_height == line_height &&
+        layout_.round_leading_above_baseline_up == round_leading_above_baseline_up) {
         return false;
     }
     layout_.line_height = line_height;
+    layout_.round_leading_above_baseline_up = round_leading_above_baseline_up;
     invalidate_layout();
     return true;
 }

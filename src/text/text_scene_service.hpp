@@ -101,7 +101,7 @@ public:
     bool set_font_ranges(TextSceneId id, std::vector<text::TextFontRange> ranges);
     bool set_color_ranges(TextSceneId id, std::vector<TextColorRange> ranges);
     bool set_pixel_size(TextSceneId id, std::uint32_t pixel_size);
-    bool set_line_height(TextSceneId id, float line_height);
+    bool set_line_height(TextSceneId id, float line_height, bool round_leading_above_baseline_up = false);
     bool set_ellipsis(TextSceneId id, text::TextEllipsisConfig config, bool request_frame = true);
     void request_reshape(TextSceneId id);
     bool set_width_constraint(TextSceneId id, float width);

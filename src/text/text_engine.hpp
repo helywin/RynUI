@@ -126,6 +126,7 @@ struct TextFontRange final {
 struct TextLayoutConfig {
     float line_height{20.0F};
     float max_width{std::numeric_limits<float>::infinity()};
+    bool round_leading_above_baseline_up{};
 
     friend bool operator==(const TextLayoutConfig&, const TextLayoutConfig&) = default;
 };
@@ -254,7 +255,7 @@ public:
     bool set_font_chain(std::vector<font::FontIdentity> fallback_chain);
     bool set_font_ranges(std::vector<TextFontRange> ranges);
     bool set_pixel_size(std::uint32_t pixel_size);
-    bool set_line_height(float line_height);
+    bool set_line_height(float line_height, bool round_leading_above_baseline_up = false);
     bool set_direction(TextDirection direction);
 
     [[nodiscard]] TextDirection direction() const noexcept {
