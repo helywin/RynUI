@@ -127,6 +127,7 @@ struct TextLayoutConfig {
     float line_height{20.0F};
     float max_width{std::numeric_limits<float>::infinity()};
     bool round_leading_above_baseline_up{};
+    bool preserve_fractional_leading{};
 
     friend bool operator==(const TextLayoutConfig&, const TextLayoutConfig&) = default;
 };

@@ -481,18 +481,26 @@ def _layer_coverage(layer,point,dpr):
     if kind=='border-side':
         coverage=_square_side_coverage(layer['polygon'],point,dpr)
         return coverage,0<coverage<1
-    distance=_shape_distance(point,b,r)
-    # A hard shape can partially cover a unit pixel only if an edge reaches
-    # its square aperture. The half diagonal bounds every edge direction.
-    pixel_reach=math.sqrt(.5)
     if layer.get('solid_status_caret'):
         return float(_contains(b,point)),False
+    if layer.get('formal_svg'):
+        # Chromium supplies continuous path bounds. Their intersection
+        # with the pixel aperture can be nonempty outside the pixel center.
+        reach=.5/dpr
+        x,y=point
+        exposed=(b['x']-reach<x<b['x']+b['width']+reach and
+                 b['y']-reach<y<b['y']+b['height']+reach)
+        return float(_contains(b,point)),exposed
     if layer.get('web_glyph_mask') is not None:
         mask,x,y=layer['web_glyph_mask']
         if mask.at(math.floor(point[0]*dpr)-x,math.floor(point[1]*dpr)-y)==0:
             return 0,False
     if kind in ('glyph','caret'):
         return (1 if _contains(b,point) else 0),_contains(b,point)
+    distance=_shape_distance(point,b,r)
+    # A hard shape can partially cover a unit pixel only if an edge reaches
+    # its square aperture. The half diagonal bounds every edge direction.
+    pixel_reach=math.sqrt(.5)
     if kind in ('shadow','inset-shadow'):
         if (kind=='shadow' and layer.get('knockout') and layer['blur']==0 and layer['spread']==0 and
                 not any(layer['offset'])):

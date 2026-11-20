@@ -282,6 +282,15 @@ class LayeredTests(unittest.TestCase):
         with self.assertRaises(RunError):
             _web_paint_inventory(web,origins[0],1)
 
+    def test_formal_svg_subpixel_path_can_paint_outside_its_center_bounds(self):
+        svg=dict(bounds=box(4.6,6.2,3,3),kind='glyph',formal_svg=True)
+        self.assertEqual(_layer_coverage(svg,(4.5,6.5),1.5),(0,True))
+        self.assertEqual(_layer_coverage(svg,(4.1,6.5),1.5),(0,False))
+        self.assertEqual(_layer_coverage(svg,(4.5,5.7),1.5),(0,False))
+        self.assertEqual(_layer_coverage(svg,(6.5,8.5),1.5),(1,True))
+        clipped=dict(svg,clips=[box(4.6,6,3,4)])
+        self.assertEqual(_layer_coverage(clipped,(4.5,6.5),1.5),(0,False))
+
     def test_near_parallel_hard_shadow_and_outline_keep_a_physical_output_gate(self):
         layers=[dict(kind='shadow',blur=0,groups=[],color=(5/255,145/255,1),alpha=.1,opacity=1),
                 dict(kind='outline',groups=[],color=(145/255,202/255,1),alpha=1,opacity=1)]

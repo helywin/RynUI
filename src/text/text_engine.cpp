@@ -499,7 +499,7 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
     const auto primary_ascent = text.default_metrics.ascent;
     const auto primary_descent = -text.default_metrics.descent;
     auto baseline_offset = (config.line_height + primary_ascent - primary_descent) * 0.5F;
-    if (config.line_height > primary_ascent + primary_descent) {
+    if (!config.preserve_fractional_leading && config.line_height > primary_ascent + primary_descent) {
         // Use integer font extents when there is extra leading. Centered
         // control labels assign the remaining unit above the baseline.
         const auto ascent = std::round(primary_ascent);

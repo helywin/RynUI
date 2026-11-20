@@ -574,7 +574,7 @@ void TextComponentHost::set_icon_source(runtime::ComponentId component, IconSour
             } else {
                 scene = text_scene_->create(
                     node, {}, chain, pixels,
-                    {state->resolved_typography.line_height, std::numeric_limits<float>::infinity()});
+                    {.line_height = state->resolved_typography.line_height, .preserve_fractional_leading = true});
                 created.push_back(scene);
             }
             next.push_back({scene, layers[index]});
@@ -1539,7 +1539,8 @@ void mount_text_component(const TextProps& props, bool icon_font) {
         node, initial_content, std::move(initial_font_chain),
         static_cast<std::uint32_t>(std::lround(initial_typography.font_size)),
         {.line_height = initial_typography.line_height,
-         .round_leading_above_baseline_up = !icon_font && initial_typography.round_leading_above_baseline_up});
+         .round_leading_above_baseline_up = !icon_font && initial_typography.round_leading_above_baseline_up,
+         .preserve_fractional_leading = icon_font});
     const auto fragment = host.composer_ == nullptr
                               ? std::optional<runtime::SceneFragmentId>{}
                               : std::optional<runtime::SceneFragmentId>{build.register_scene_fragment(

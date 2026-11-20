@@ -83,6 +83,10 @@ void retained_layers_and_material() {
     check_order(f, icon, sibling);
     const auto roles = detail::bundled_layers(IconName::HeartTwoTone);
     for (std::size_t index = 0; index < icon.layers.size(); ++index) {
+        const auto& line = f.scene.text_state(icon.layers[index]).measurement();
+        // The bundled 14px em has a 12.25px ascent. Center its viewBox in the full line box.
+        check(std::abs(line.first_baseline - 12.25F - (line.height - 14.0F) * .5F) < .001F,
+              "Icon line box inherited rounded text leading");
         check(f.scene.node(icon.layers[index]) == node &&
                   glyph(f, icon.layers[index]).color ==
                       channels(roles[index].secondary ? *colors.get().secondary : colors.get().primary),
