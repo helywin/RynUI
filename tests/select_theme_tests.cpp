@@ -20,6 +20,7 @@ void tokens_and_inheritance() {
     const auto& token = base.select();
     check(token.metrics.option_height == 32 && token.metrics.option_padding_inline == 12 &&
               token.metrics.option_padding_block == 5 && token.metrics.popup_padding == 4 &&
+              token.metrics.border_radius == 8 && token.metrics.option_border_radius == 4 &&
               token.typography.font_size == 14 && token.typography.line_height == 22 &&
               token.typography.selected_font_weight == 600 && token.z_index_popup == 1050,
           "locked Select defaults drifted");
@@ -27,14 +28,26 @@ void tokens_and_inheritance() {
               token.colors.selector_background == base.alias().color_background_container &&
               token.colors.option_selected_color == base.alias().color_text,
           "Select default color recipe");
+    check(token.colors.active_outline_color == Color{5.0F / 255, 145.0F / 255, 1, .1F},
+          "Select focus shadow must use the translucent controlOutline recipe");
     ThemeConfig custom;
     custom.select.tokens.option_selected_background = Color::rgba8(20, 50, 90);
+    custom.select.tokens.active_outline_color = Color::rgba8(10, 30, 50, 98);
+    custom.select.tokens.border_radius = dp(12);
     custom.select.tokens.option_height = dp(40);
     custom.select.tokens.selected_font_weight = 700;
     custom.select.tokens.z_index_popup = 1100;
     const auto parent = resolve_theme(custom);
+    check(parent.select().colors.active_outline_color == *custom.select.tokens.active_outline_color,
+          "Select focus shadow override did not remain authoritative");
+    check(parent.select().metrics.border_radius == 12 && parent.select().metrics.option_border_radius == 12,
+          "legacy Select radius override no longer applies to both surfaces");
     check(resolve_theme({}, &parent).select() == parent.select(), "Select inheritance");
     ThemeConfig reset;
+    reset.select.tokens.option_border_radius = dp(2);
+    check(resolve_theme(reset, &parent).select().metrics.option_border_radius == 2,
+          "Select option radius could not be overridden in a child scope");
+    reset.select.tokens.option_border_radius.reset();
     reset.inherit = false;
     check(resolve_theme(reset, &parent).select() == token, "Select inherit reset");
     check(parent.button() == base.button() && parent.tooltip() == base.tooltip() &&

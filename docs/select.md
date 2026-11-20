@@ -65,6 +65,8 @@ Multiple 选择既有选项，Tags 允许通过 Enter 创建字符串值。分�
 
 `virtualList` 默认开启；超过 32 项时只创建窗口与 overscan 普通行，Home/End/上下键滚入实际可见区域。离窗普通行释放，已访问的富内容作为不活动 keyed 子树暂存以保留草稿，删除 key 后释放；富内容缓存随访问 key 增长，普通行数量有界。过滤/离窗/禁用清除隐藏输入的 focus、capture 和 IME。`motion(true)` 提供 Theme fast duration 的有限淡入，默认保持旧版即时行为；hidden/reduced motion/Theme motion=false 停止，idle 不持续请求帧。
 
+弹层和选项分别使用 Theme 的大圆角和小圆角。`SelectTokenOverride::border_radius` 继续同时覆盖两处。`option_border_radius` 可单独设置选项圆角。
+
 ## 异步、事件和 Form
 
 `SelectSource = AsyncOptionsSource<SelectOption>` 与 AutoComplete 使用同一应用 provider、线程安全取消票据和 `OwnerThreadPost` 合同；应用负责 transport 与 owner-thread event loop，Core 不直接联网。新查询替代旧请求，关闭/reset/隐藏/禁用/窗口失活/source 更换/销毁后旧结果失效；仅当前 generation 的首次 owner-thread 完成可发布。错误交给 `onLoadError`，不替换 options。完整适配说明见 [AutoComplete](auto-complete.md)。Gallery 的异步样例是明确标注的可交付合成数据。

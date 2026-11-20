@@ -2949,7 +2949,7 @@ void SelectComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
             const bool active = row->index && s->model.active() == row->index;
             auto item = quad(intersect(services_->nodes().require(row->node).bounds, menu_clip),
                              selected ? token.colors.option_selected_background : token.colors.option_active_background,
-                             token.metrics.border_radius);
+                             token.metrics.option_border_radius);
             item.opacity = selected || (active && !s->loading) ? s->motion.opacity : 0.0F;
             static_cast<void>(services_->surfaces().update_surface(row->surface, std::span{&item, 1}));
             services_->scene_composer().set_fragment(row->hit, {}, row->interaction, menu_clip);

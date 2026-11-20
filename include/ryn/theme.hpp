@@ -581,10 +581,11 @@ struct SelectMetricToken final {
     float popup_padding{};
     float border_radius{};
     float gap{};
+    float option_border_radius{};
 
     [[nodiscard]] auto values() const noexcept {
-        return std::array{option_height, option_padding_inline, option_padding_block,
-                          popup_padding, border_radius,         gap};
+        return std::array{option_height, option_padding_inline, option_padding_block, popup_padding, border_radius,
+                          gap,           option_border_radius};
     }
 
     friend bool operator==(const SelectMetricToken&, const SelectMetricToken&) = default;
@@ -633,6 +634,7 @@ struct SelectTokenOverride final {
     std::optional<std::uint32_t> selected_font_weight;
     std::optional<ShadowList> shadow;
     std::optional<std::int32_t> z_index_popup;
+    std::optional<LogicalLength> option_border_radius;
     friend bool operator==(const SelectTokenOverride&, const SelectTokenOverride&) = default;
 };
 

@@ -438,6 +438,13 @@ void controlled_states_and_theme() {
     open.set(true);
     f.synchronize();
     check(f.services.select().snapshot(id).visible, "controlled open echo missing");
+    const auto paint = f.services.select().paint_owners(id).value();
+    const auto& surfaces = f.services.surfaces();
+    const auto radius = [&](const auto& owner) {
+        return surfaces.instances().at(surfaces.visual_range(owner.surface).first).corner_radius;
+    };
+    check(!paint.rows.empty() && radius(paint.popup) == 8 && radius(paint.rows.front()) == 4,
+          "Select popup and option used the same painted corner radius");
     key(f, Key::escape);
     check(f.services.select().snapshot(id).visible && requests.back() == false, "controlled open refusal ignored");
     loading.set(true);

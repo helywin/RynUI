@@ -2228,23 +2228,28 @@ SelectThemeToken derive_select(const AntDesignDefaultSeed& seed, const ThemeMapT
     if (seed.z_index_popup_base > std::numeric_limits<std::int32_t>::max() - 50) {
         throw std::invalid_argument("Select z-index exceeds the supported integer range");
     }
+    const auto primary_background = button_palette(seed.color_primary, dark, alias.color_background_container).light;
     SelectThemeToken token;
     token.colors = {
         alias.color_background_elevated,
         alias.color_text,
         alias.color_text_disabled,
         alias.color_text,
-        button_palette(seed.color_primary, dark, alias.color_background_container).light,
+        primary_background,
         Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), dark ? 0.08F : 0.04F),
         alias.color_background_container,
         alias.color_background_container,
         map.color_primary_hover,
         map.color_primary,
-        alias.color_focus_outline};
+        get_alpha_color(primary_background, alias.color_background_container)};
     token.typography = {seed.font_family, map.font_size, map.font_size * map.line_height, 400, 600};
-    token.metrics = {
-        map.control_height, map.size_small,    std::max(0.0F, (map.control_height - token.typography.line_height) / 2),
-        map.size_xs / 2,    map.border_radius, seed.size_unit};
+    token.metrics = {map.control_height,
+                     map.size_small,
+                     std::max(0.0F, (map.control_height - token.typography.line_height) / 2),
+                     map.size_xs / 2,
+                     map.border_radius_large,
+                     seed.size_unit,
+                     map.border_radius_small};
     token.shadow = alias.box_shadow_secondary;
     token.z_index_popup = seed.z_index_popup_base + 50;
     return token;
@@ -2411,6 +2416,9 @@ void apply_select_override(SelectThemeToken& token, const SelectTokenOverride& o
         fixed_length(o.popup_padding, token.metrics.popup_padding, "Select popup_padding must be non-negative");
     token.metrics.border_radius =
         fixed_length(o.border_radius, token.metrics.border_radius, "Select border_radius must be non-negative");
+    const auto option_radius = o.border_radius ? token.metrics.border_radius : token.metrics.option_border_radius;
+    token.metrics.option_border_radius =
+        fixed_length(o.option_border_radius, option_radius, "Select option_border_radius must be non-negative");
     token.metrics.gap = fixed_length(o.gap, token.metrics.gap, "Select gap must be non-negative");
     if (o.font_family) {
         token.typography.font_family = *o.font_family;
@@ -2435,7 +2443,8 @@ void apply_select_override(SelectThemeToken& token, const SelectTokenOverride& o
     }
     if (!std::isfinite(token.metrics.option_height + token.metrics.option_padding_block * 2 +
                        token.metrics.popup_padding * 2 + token.typography.line_height + token.metrics.gap +
-                       token.metrics.option_padding_inline * 2 + token.metrics.border_radius)) {
+                       token.metrics.option_padding_inline * 2 + token.metrics.border_radius +
+                       token.metrics.option_border_radius)) {
         throw std::invalid_argument("Select visual extents must be finite");
     }
 }
