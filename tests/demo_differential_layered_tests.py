@@ -13,7 +13,8 @@ from demo_differential.comparison import (_layered_context,_actual_material,css_
                                           _support,_PAINT_BIN_PHYSICAL_PX,_glyph_witness_gate,
                                           _joint_outline_output_basis,_paint_coordinates,_palette_basis,_bounded_paint_basis,
                                           _web_paint_inventory,_hard_shadow_box_domain,_paint_endpoints,_status_input_caret,
-                                          _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error)
+                                          _web_glyph_support,_witnessed_glyph_rounding,_shadow_tail,_text_advance_error,
+                                          _matches_soft_shadow_rgb)
 from demo_differential.calibration import CAPS
 from demo_differential.adapters import RunError
 from demo_differential.color_metrics import in_contribution_domain
@@ -69,6 +70,21 @@ def synthetic():
 
 
 class LayeredTests(unittest.TestCase):
+    def test_soft_shadow_reference_allows_only_the_open_hard_edge(self):
+        hard=dict(kind='shadow',blur=0,alpha=.1,opacity=1,groups=[],color=(5/255,145/255,1))
+        soft=dict(kind='shadow',blur=16,alpha=.2,opacity=1,groups=[],color=(0,0,0))
+        layers=[hard,soft]
+        coverages=[0.,.12]
+        predicted=_composite_point(layers,coverages)
+
+        def pixel(hard_coverage, soft_coverage):
+            return tuple(round(channel*255) for channel in
+                         _composite_point(layers,[hard_coverage,soft_coverage]))
+
+        self.assertTrue(_matches_soft_shadow_rgb(layers,coverages,[0,1],pixel(.4,.12),predicted))
+        self.assertFalse(_matches_soft_shadow_rgb(layers,coverages,[0,1],pixel(.4,0),predicted))
+        self.assertFalse(_matches_soft_shadow_rgb(layers,coverages,[1],pixel(.4,.12),predicted))
+
     def test_color_coverage_uses_the_observed_canonical_a8_luminance(self):
         color=tuple(channel/255 for channel in (250,173,20))
         self.assertEqual(encoded_coverage(128,color,'directwrite-3x1'),164/255)

@@ -866,6 +866,20 @@ def _paint_endpoints(layers,coverages,variable):
         yield _composite_point(layers,candidate)
 
 
+def _matches_soft_shadow_rgb(layers,coverages,variable,observed,predicted):
+    from .color_metrics import contribution_domain,in_contribution_domain
+
+    hard=[position for position in variable if layers[position]['blur']==0]
+    if not hard:
+        expected=tuple(round(channel*255) for channel in predicted)
+        return max(abs(a-b) for a,b in zip(observed,expected,strict=True))<=2
+    # Only the hard edge has unknown aperture coverage. Keep every soft
+    # source fixed at its independent profile and test the possible RGB
+    # outputs with the same two-code bound.
+    domain=contribution_domain(_paint_endpoints(layers,coverages,hard))
+    return in_contribution_domain(tuple(channel/255 for channel in observed),domain,(2/255,)*3)
+
+
 def _opaque_white_border_box(layers):
     kinds=tuple(row['kind'] for row in layers)
     if kinds not in (('fill','border'),('shadow','fill','border')):
@@ -1448,8 +1462,7 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 # Gaussian source geometry is independently fixed, and can
                 # expose a missing same-color shadow even when its alpha cannot
                 # be individually unmixed from the final RGB.
-                predicted8=tuple(round(v*255) for v in predicted)
-                if max(abs(a-b) for a,b in zip(observed,predicted8))>2:
+                if not _matches_soft_shadow_rgb(active,coverages,variable,observed,predicted):
                     fail('visual','independent soft-shadow profile/tail differs',side=side,pixel=point)
             if len(variable)==1:
                 position=variable[0];row=active[position]
