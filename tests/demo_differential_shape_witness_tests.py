@@ -13,7 +13,7 @@ from demo_differential import comparison
 from demo_differential.adapters import RunError
 from demo_differential.comparison import _layer_coverage
 from demo_differential.protocol import ProtocolError
-from demo_differential.shape_blend_witness import _samples, _stacks, bind_blends, verified_blend
+from demo_differential.shape_blend_witness import _isolated_opacity_stacks, _samples, _stacks, bind_blends, verified_blend
 from demo_differential.shape_witness import ShapeWitnesses, edge_samples, locked_edge_value, shape_request, shadow_group_request
 
 
@@ -130,6 +130,24 @@ def hard_shadow_stack(side):
 
 
 class RoundedBlendWitnessTests(unittest.TestCase):
+    def test_isolated_shadow_requires_actual_zero_origin_layer_extent(self):
+        web,native=[hard_shadow_stack(side)[:2] for side in ('web','native')]
+        for source,side in ((web,'web'),(native,'native')):
+            shadow,fill=source
+            shadow.update(offset=[0,2],spread=0,knockout=side=='web',groups=[(side,.65)])
+            fill.update(bounds=shadow['bounds'],radii=shadow['radii'],groups=shadow['groups'])
+        native[1]['color']=(.2,.3,.4)
+        web[1]['opacity_surface_extent']=[260,34]
+        spec,layers=next(_isolated_opacity_stacks(web,'web',1.5))
+        self.assertEqual(layers,web)
+        self.assertEqual(spec,next(_isolated_opacity_stacks(native,'native',1.5))[0])
+        self.assertEqual(spec[0][:4],(0,0,390,48))
+        self.assertEqual(spec[0][13],3)
+        web[1]['opacity_surface_extent']=[260,33]
+        self.assertFalse(list(_isolated_opacity_stacks(web,'web',1.5)))
+        web[1]['opacity_surface_extent']=None
+        self.assertFalse(list(_isolated_opacity_stacks(web,'web',1.5)))
+
     def test_focus_blend_requires_the_observed_order_on_each_side(self):
         def focused(side):
             shadow, fill, line = hard_shadow_stack(side)

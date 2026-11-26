@@ -324,6 +324,8 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         const runtime::Point offset{number("offset_x"), number("offset_y")};
         const bool split_border = probe.at("split_border").boolean();
         const bool split_fill = probe.object().contains("split_fill") && probe.at("split_fill").boolean();
+        const float isolated_opacity = probe.object().contains("isolated_opacity") ? number("isolated_opacity") : 0;
+        const bool isolated = isolated_opacity > 0;
         const bool bordered = width > 0;
         const bool focus = outline_gap > 0;
         const float max_offset = std::max(std::abs(offset.x), std::abs(offset.y));
@@ -342,11 +344,15 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
             (bordered && !focus ? translated_stroke || (max_offset == 0 && spread > 0 && spread <= 32)
                                 : max_offset > 0 && max_offset <= 32 && spread == 0);
         const float guard = 2 + std::max(spread + max_offset, focus ? width + outline_gap : 0.0F);
-        const auto extent_x = std::ceil(bounds.x + bounds.width + guard);
-        const auto extent_y = std::ceil(bounds.y + bounds.height + guard);
-        require(extent_x <= 512 && extent_y <= 512 && bounds.x >= guard && bounds.y >= guard && width >= 0 &&
-                    width <= 16 && radius > width && radius <= 0.5F * std::min(bounds.width, bounds.height) &&
-                    (opaque_stroke || translucent_caster) && outline_gap >= 0 && outline_gap <= 16 &&
+        const auto extent_x = isolated ? bounds.width : std::ceil(bounds.x + bounds.width + guard);
+        const auto extent_y = isolated ? bounds.height + offset.y : std::ceil(bounds.y + bounds.height + guard);
+        const bool isolated_extent = integer_body && bounds.x == 0 && bounds.y == 0 && width == 0 && offset.x == 0 &&
+                                     offset.y > 0 && !split_border && !split_fill && !focus && translucent_caster;
+        require(extent_x <= 512 && extent_y <= 512 && width >= 0 &&
+                    (isolated ? isolated_extent : bounds.x >= guard && bounds.y >= guard) && isolated_opacity >= 0 &&
+                    isolated_opacity < 1 && width <= 16 && radius > width &&
+                    radius <= 0.5F * std::min(bounds.width, bounds.height) && (opaque_stroke || translucent_caster) &&
+                    outline_gap >= 0 && outline_gap <= 16 &&
                     (!focus || (bordered && !split_border && translucent_caster)) &&
                     (!split_border || (integer_stroke && translucent_caster)) &&
                     (!split_fill || (!bordered && !focus && translucent_caster && integer_body)),
@@ -371,7 +377,7 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         for (const auto& sample : shape_blend_samples(
                  {outer, fill, bordered ? std::optional{border} : std::nullopt, rgb8(probe.at("shadow_color")),
                   fill_color, border_color, static_cast<std::uint32_t>(extent_x), static_cast<std::uint32_t>(extent_y),
-                  split_border, split_fill})) {
+                  split_border, split_fill, isolated_opacity})) {
             samples.emplace_back(Json::Array{integer(sample.x), integer(sample.y), integer(sample.web[0]),
                                              integer(sample.web[1]), integer(sample.web[2]), integer(sample.native[0]),
                                              integer(sample.native[1]), integer(sample.native[2])});

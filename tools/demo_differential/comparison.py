@@ -1705,17 +1705,18 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
     if shape_witnesses is not None:
         shape_witnesses.bind([*web_layers,*native_layers],dpr)
         shape_witnesses.bind_shadow_groups(web_layers,dpr)
-        blend_pixels=shape_witnesses.blend_pixels(inventories,dpr)
         if getattr(shape_witnesses,'opacity_surface_rgb8',False):
             nodes={node['backend_node_id']:node for node in web_stack['layers']}
             for row in web_layers:
                 if (encoding:=_opaque_fill_encoding(row,nodes)) is not None:
                     row['opacity_fill_encoding']=encoding
+                    row['opacity_surface_extent']=row['source']['opacity_surface'].get('extent')
                     opacity_surfaces=True
             if opacity_surfaces:
                 for row in native_layers:
                     if (encoding:=_opaque_fill_encoding(row)) is not None:
                         row['opacity_fill_encoding']=encoding
+        blend_pixels=shape_witnesses.blend_pixels(inventories,dpr)
     nt={t['identity']:t for t in native['targets']};wt={t['identity']:t for t in web['targets']}
     caret=_status_input_caret(case,(wt,nt),inventories,origins,dpr)
     if caret:

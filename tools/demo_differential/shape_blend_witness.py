@@ -27,6 +27,39 @@ def _rgb8(color):
     return channels if struct.pack('<3f', *color) == struct.pack('<3f', *(v / 255 for v in channels)) else None
 
 
+def _isolated_opacity_stacks(rows, side, dpr):
+    for shadow, fill in zip(rows, rows[1:]):
+        if (shadow['kind']!='shadow' or fill['kind']!='fill' or fill['opacity']!=1
+                or fill['alpha']!=1 or len(fill['groups'])!=1):
+            continue
+        if (not 0<shadow['alpha']<1 or shadow['opacity']!=1 or shadow['groups']!=fill['groups']
+                or shadow['bounds']!=fill['bounds'] or _radius(shadow)!=_radius(fill)
+                or shadow['blur'] or shadow['spread'] or shadow['knockout']!=(side=='web')
+                or (side=='web' and (fill['source'] is not shadow['source'] or shadow['caster_inset']!=1))):
+            continue
+        bounds=fill['bounds']
+        x,y,w,h,radius,ox,oy=(value*dpr for value in (
+            bounds['x'],bounds['y'],bounds['width'],bounds['height'],_radius(fill),*shadow['offset']))
+        if (ox or not 0<oy<=32 or not dpr<=radius<=min(w,h)*.5 or max(w,h+oy)>512
+                or any(value!=round(value) for value in (x,y,w,h,oy)) or radius*4!=round(radius*4)):
+            continue
+        opacity=struct.unpack('<f',struct.pack('<f',fill['groups'][0][1]))[0]
+        src=opacity*255
+        if not 0<opacity<1 or abs(src-round(src))<2**-14:
+            continue
+        extent=fill.get('opacity_surface_extent')
+        if side=='web' and (not isinstance(extent,list) or len(extent)!=2
+                           or any(type(value) is not int for value in extent)
+                           or tuple(value*dpr for value in extent)!=(w,h+oy)):
+            continue
+        shadow_color=_rgb8(shadow['color'])
+        if shadow_color is None:
+            continue
+        alpha=struct.unpack('<f',struct.pack('<f',shadow['alpha']))[0]
+        spec=(0,0,w,h,radius,0,dpr,0,alpha,shadow_color,(0,0,0),(0,0,0),0,oy,0,False,False,opacity)
+        yield (spec,round(x),round(y)),(shadow,fill)
+
+
 def _stacks(rows, side, dpr, split_coverage=False):
     translated_borders = set()
     for shadow, fill, border in zip(rows, rows[1:], rows[2:]):
@@ -188,12 +221,15 @@ def _batch(root, binary, needed, cache):
     work = root / 'out/demo-differential/shape-blend-witnesses' / uuid.uuid4().hex
     work.mkdir(parents=True)
     request, output = work / 'request.json', work / 'output'
-    stacks = [dict(bounds=dict(x=x, y=y, width=w, height=h), radius=radius, border_width=width,
-                   caster_inset=inset, spread=spread, shadow_alpha=alpha, shadow_color=shadow, border_color=border,
-                   fill_color=fill, offset_x=ox, offset_y=oy, outline_gap=gap,
-                   split_border=split_border, split_fill=split_fill)
-              for x, y, w, h, radius, width, inset, spread, alpha, shadow, border, fill, ox, oy, gap,
-              split_border, split_fill in needed]
+    stacks=[]
+    for spec in needed:
+        x,y,w,h,radius,width,inset,spread,alpha,shadow,border,fill,ox,oy,gap,split_border,split_fill=spec[:17]
+        stack=dict(bounds=dict(x=x,y=y,width=w,height=h),radius=radius,border_width=width,
+                   caster_inset=inset,spread=spread,shadow_alpha=alpha,shadow_color=shadow,border_color=border,
+                   fill_color=fill,offset_x=ox,offset_y=oy,outline_gap=gap,split_border=split_border,split_fill=split_fill)
+        if len(spec)==18:
+            stack['isolated_opacity']=spec[-1]
+        stacks.append(stack)
     write_json(request, dict(stacks=stacks))
     process([binary, '--shape-blend-witnesses', request, '--output', output], work / 'process', 60, failure_code=3)
     receipt = read(output / 'shape-blend-witnesses.json')
@@ -204,11 +240,14 @@ def _batch(root, binary, needed, cache):
     cache.update({spec: _samples(item) for spec, item in zip(needed, receipt['stacks'], strict=True)})
 
 
-def bind_blends(inventories, dpr, root, binary, cache, *, split_coverage=False):
+def bind_blends(inventories, dpr, root, binary, cache, *, split_coverage=False, isolated_opacity=False):
     paired = {}
     for side, rows in zip(('web', 'native'), inventories, strict=True):
         for key, layers in _stacks(rows, side, dpr, split_coverage):
             paired.setdefault(key, {}).setdefault(side, []).append(layers)
+        if isolated_opacity:
+            for key,layers in _isolated_opacity_stacks(rows,side,dpr):
+                paired.setdefault(key,{}).setdefault(side,[]).append(layers)
     valid = {key: (sides['web'][0], sides['native'][0]) for key, sides in paired.items()
              if len(sides) == 2 and all(len(value) == 1 for value in sides.values())}
     needed = list(dict.fromkeys(spec for spec, _, _ in valid if spec not in cache))

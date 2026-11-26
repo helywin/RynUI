@@ -231,7 +231,15 @@ async function observeOpacitySurface(cdp, node, layers, compositorLayers) {
   const [child]=children;
   const childReasons=await cdp.send('LayerTree.compositingReasons',{layerId:child.layerId});
   if (!childReasons.compositingReasonIds?.includes('ActiveTransformAnimation')) return null;
-  return {source:'Chromium LayerTree',owner:node.backend_node_id,member:child.backendNodeId,
+  const content=owner[0];
+  const identity=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+  const origin=content.transform;
+  // The isolated raster uses the compositor aperture, even when its left
+  // edge clips the AA support of a path touching the content box.
+  const extent=origin?.length===16 && origin[12]===bounds.x && origin[13]===bounds.y &&
+    origin.every((value,index)=>index===12 || index===13 || value===identity[index])
+    ? [content.width,content.height] : null;
+  return {source:'Chromium LayerTree',owner:node.backend_node_id,member:child.backendNodeId,extent,
     owner_layer:owner[0].layerId,member_layer:child.layerId,parent_layer:child.parentLayerId};
 }
 

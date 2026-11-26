@@ -130,7 +130,7 @@ class ShapeWitnesses:
 
     def blend_pixels(self, inventories, dpr):
         return bind_blends(inventories, dpr, self.root, self.binary, self.blend_samples,
-                           split_coverage=self.split_coverage)
+                           split_coverage=self.split_coverage, isolated_opacity=self.opacity_surface_rgb8)
 
     def bind_shadow_groups(self, layers, dpr):
         owned = {}
