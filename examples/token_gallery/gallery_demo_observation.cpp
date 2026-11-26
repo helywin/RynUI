@@ -268,6 +268,7 @@ GalleryDemoJson gallery_demo_paint_stack(ryn::detail::ButtonComponentHost& app,
             if (const auto paint = app.services().select().paint_owners(owner)) {
                 add_surface(paint->popup.surface);
                 add_surface(paint->clear.surface);
+                add_surface(paint->scrollbar.surface);
                 for (const auto& row : paint->rows) {
                     add_surface(row.surface);
                 }

@@ -13,6 +13,7 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
+#include "theme/select_scrollbar_tokens.hpp"
 
 #include <algorithm>
 #include <array>
@@ -65,6 +66,20 @@ struct SelectRetireOnFailure final {
     }
 };
 
+struct SelectScrollbar final {
+    runtime::ComponentId component;
+    input::InteractionId hit;
+    runtime::SceneFragmentId hit_fragment;
+    component::RetainedSurfaceId surface;
+    runtime::Rect track;
+    runtime::Rect thumb;
+    float maximum{};
+    std::optional<animation::AnimationTime> hide_at;
+    std::optional<float> drag_start;
+    float drag_thumb_origin{};
+    bool hovered{};
+};
+
 struct SelectState final {
     explicit SelectState(SelectModel value) : model(std::move(value)) {}
 
@@ -87,6 +102,7 @@ struct SelectState final {
     input::TextInputOwnerId editor;
     component::RetainedSurfaceId background;
     component::RetainedSurfaceId clear_background;
+    SelectScrollbar scrollbar;
     std::vector<runtime::ComponentId> rows;
     std::vector<runtime::ComponentId> parked;
     runtime::ComponentId selected_root;
@@ -426,7 +442,8 @@ std::optional<SelectPaintOwnerSnapshot> SelectComponentHost::paint_owners(runtim
                                     state->selector,
                                     {state->popup, state->background, {}},
                                     {state->clear_wrapper, state->clear_background, {}},
-                                    {}};
+                                    {},
+                                    {state->scrollbar.component, state->scrollbar.surface, {}}};
     for (const auto row_id : state->rows) {
         const auto* row = std::as_const(services_->components()).state<SelectRow>(row_id);
         if (row) {
@@ -520,6 +537,14 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             }
         } else {
             s->motion.stop();
+            auto& scrollbar = s->scrollbar;
+            scrollbar.track = {};
+            scrollbar.thumb = {};
+            scrollbar.hide_at.reset();
+            scrollbar.drag_start.reset();
+            scrollbar.hovered = false;
+            services_->interactions().set_eligible(scrollbar.hit, false);
+            services_->pointer().cancel_interaction(scrollbar.hit, false);
         }
     }
     services_->nodes().require(services_->components().root(s->popup)).content_opacity = s->motion.opacity;
@@ -1857,6 +1882,12 @@ void SelectComponentHost::rebuild_popup(runtime::ComponentId id) {
     s->parked.clear();
     s->list = {};
     s->popup_body = {};
+    s->scrollbar.track = {};
+    s->scrollbar.thumb = {};
+    s->scrollbar.drag_start.reset();
+    s->scrollbar.hovered = false;
+    services_->interactions().set_eligible(s->scrollbar.hit, false);
+    services_->pointer().cancel_interaction(s->scrollbar.hit, false);
     services_->set_input_blocked(body, true);
     if (!select_state(*services_, id)) {
         return;
@@ -1866,8 +1897,40 @@ void SelectComponentHost::rebuild_popup(runtime::ComponentId id) {
         return;
     }
     services_->append_slot(popup, Content{[this, id] { mount_popup(id); }});
+    // The rebuilt body must precede its scrollbar in paint and hit order.
+    if (const auto* current = select_state(*services_, id)) {
+        const std::array children{current->popup_body, current->scrollbar.component};
+        services_->components().reorder_children(popup, children);
+    }
     refresh(id);
     rollback.complete = true;
+}
+
+void SelectComponentHost::mount_scrollbar(runtime::ComponentId id) {
+    auto* s = select_state(*services_, id);
+    if (!s) {
+        return;
+    }
+    auto& build = runtime::require_component_build_context();
+    auto& scrollbar = s->scrollbar;
+    scrollbar.component = select_group(*services_, true);
+    const auto node = build.root(scrollbar.component);
+    services_->nodes().require(node).out_of_flow = true;
+    scrollbar.hit = services_->interactions().create({scrollbar.component, node, {}, false, false, {}, false, false});
+    scrollbar.hit_fragment =
+        build.register_scene_fragment(scrollbar.component, runtime::SceneFragmentPlacement::after_children);
+    const auto paint =
+        build.register_scene_fragment(scrollbar.component, runtime::SceneFragmentPlacement::after_children);
+    scrollbar.surface = services_->surfaces().create_content_range(paint, {});
+    services_->interactions().set_handlers(
+        scrollbar.hit, {{}, [this, id](input::PointerDispatchContext& event) { scrollbar_pointer(id, event); }, {}});
+    build.on_resource_cleanup(scrollbar.component, [services = services_, hit = scrollbar.hit,
+                                                    fragment = scrollbar.hit_fragment, surface = scrollbar.surface] {
+        services->pointer().cancel_interaction(hit, false);
+        services->interactions().remove(hit);
+        services->scene_composer().remove_fragment(fragment);
+        services->surfaces().destroy_content_range(surface);
+    });
 }
 
 void SelectComponentHost::mount(const SelectProps& props, const std::optional<SelectPrefix>& prefix,
@@ -2158,7 +2221,10 @@ void SelectComponentHost::mount(const SelectProps& props, const std::optional<Se
                     services.surfaces().destroy(surface);
                     services.layout().remove_layout(popup_node);
                 });
-            build.mount_slot(s.popup, Content{[this, id] { mount_popup(id); }});
+            build.mount_slot(s.popup, Content{[this, id] {
+                                 mount_popup(id);
+                                 mount_scrollbar(id);
+                             }});
         }});
     services.layout().set_layout(
         s.node, layout::ComponentLayout{
@@ -2840,21 +2906,77 @@ bool SelectComponentHost::on_scroll_input(const input::ScrollInputEvent& event) 
         const auto menu = intersect(services_->nodes().require(services_->components().root(s->list)).bounds,
                                     services_->nodes().require(services_->components().root(s->popup_body)).bounds);
         const float available = menu.height;
-        const float next =
-            std::clamp(s->scroll - event.delta_y * height * 3, 0.0F, std::max(0.0F, content - available));
-        if (next != s->scroll) {
-            s->scroll = next;
-            s->reveal_active = false;
-            s->needs_layout = true;
-            services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
-            const auto callback = s->on_scroll;
-            if (callback) {
-                invoke_select_callback(*services_, *it, callback, next);
-            }
-        }
+        const auto id = *it;
+        scroll_popup(id, std::clamp(s->scroll - event.delta_y * height * 3, 0.0F, std::max(0.0F, content - available)));
         return true;
     }
     return false;
+}
+
+void SelectComponentHost::scroll_popup(runtime::ComponentId id, float scroll) {
+    auto* s = select_state(*services_, id);
+    if (!s || scroll == s->scroll) {
+        return;
+    }
+    auto& scrollbar = s->scrollbar;
+    if (scrollbar.track.height > 0 && !scrollbar.drag_start) {
+        scrollbar.hide_at = services_->animation_time() + animation::AnimationDuration::milliseconds(3000);
+    }
+    s->scroll = scroll;
+    s->reveal_active = false;
+    s->needs_layout = true;
+    services_->dirty().invalidate(s->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    services_->request_frame();
+    if (s->on_scroll) {
+        invoke_select_callback(*services_, id, s->on_scroll, scroll);
+    }
+}
+
+void SelectComponentHost::scrollbar_pointer(runtime::ComponentId id, input::PointerDispatchContext& event) {
+    auto* s = select_state(*services_, id);
+    if (!s || !s->visible) {
+        return;
+    }
+    auto& scrollbar = s->scrollbar;
+    if (event.kind() == input::PointerEventKind::enter || event.kind() == input::PointerEventKind::leave ||
+        event.kind() == input::PointerEventKind::cancel) {
+        scrollbar.hovered = event.kind() == input::PointerEventKind::enter;
+        services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
+    }
+    if (event.kind() == input::PointerEventKind::up || event.kind() == input::PointerEventKind::cancel) {
+        if (scrollbar.drag_start) {
+            scrollbar.drag_start.reset();
+            scrollbar.hide_at = services_->animation_time() + animation::AnimationDuration::milliseconds(3000);
+            static_cast<void>(event.release_pointer_capture());
+            services_->request_frame();
+        }
+        return;
+    }
+    const float travel = scrollbar.track.height - scrollbar.thumb.height;
+    if (travel <= 0 || (!scrollbar.hide_at && !scrollbar.drag_start)) {
+        return;
+    }
+    const float pointer_y = event.event().y;
+    float offset = 0;
+    if (event.kind() == input::PointerEventKind::down && event.event().button == input::PointerButton::primary) {
+        event.stop_propagation();
+        if (inside(scrollbar.thumb, event.event().x, pointer_y)) {
+            if (event.capture_pointer()) {
+                scrollbar.drag_start = pointer_y;
+                scrollbar.drag_thumb_origin = scrollbar.thumb.y - scrollbar.track.y;
+                scrollbar.hide_at.reset();
+            }
+            return;
+        }
+        offset = pointer_y - scrollbar.track.y - scrollbar.thumb.height / 2;
+    } else if (event.kind() == input::PointerEventKind::move && scrollbar.drag_start) {
+        event.stop_propagation();
+        offset = scrollbar.drag_thumb_origin + (pointer_y - *scrollbar.drag_start);
+    } else {
+        return;
+    }
+    const float value = std::ceil(std::clamp(offset / travel, 0.0F, 1.0F) * scrollbar.maximum);
+    scroll_popup(id, std::min(value, scrollbar.maximum));
 }
 
 void SelectComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect clip) {
@@ -2999,7 +3121,9 @@ void SelectComponentHost::position_window_layer(runtime::ComponentId id, runtime
         return;
     }
     const auto menu = intersect(services_->nodes().require(list_node).bounds, body_bounds);
-    s->scroll = std::clamp(s->scroll, 0.0F, std::max(0.0F, content - menu.height));
+    const float previous_scroll = s->scroll;
+    const float scroll_max = std::max(0.0F, content - menu.height);
+    s->scroll = std::clamp(s->scroll, 0.0F, scroll_max);
     if (s->reveal_active && s->model.active()) {
         const auto it = std::ranges::find(filtered, *s->model.active());
         if (it != filtered.end()) {
@@ -3056,6 +3180,35 @@ void SelectComponentHost::position_window_layer(runtime::ComponentId id, runtime
     if (!s) {
         return;
     }
+    auto& scrollbar = s->scrollbar;
+    if (s->virtual_list && s->match_width && scroll_max > 0 && menu.width > 0 && menu.height > 0) {
+        const float track_width = std::min(menu.width, theme_runtime::SelectScrollbarTokens::width);
+        const float track_x =
+            s->direction.get() == TextDirection::RightToLeft ? menu.x : menu.x + menu.width - track_width;
+        const float thumb_height = std::min(menu.height, std::max(theme_runtime::SelectScrollbarTokens::min_height,
+                                                                  std::floor(menu.height / content * menu.height)));
+        if ((scrollbar.track.height <= 0 || previous_scroll != s->scroll) && !scrollbar.drag_start) {
+            scrollbar.hide_at = services_->animation_time() + animation::AnimationDuration::milliseconds(3000);
+        }
+        scrollbar.maximum = scroll_max;
+        scrollbar.track = {track_x, menu.y, track_width, menu.height};
+        scrollbar.thumb = {track_x, menu.y + (menu.height - thumb_height) * (s->scroll / scroll_max), track_width,
+                           thumb_height};
+    } else {
+        scrollbar.track = {};
+        scrollbar.thumb = {};
+        scrollbar.maximum = 0;
+        scrollbar.hide_at.reset();
+        scrollbar.hovered = false;
+        if (scrollbar.drag_start) {
+            scrollbar.drag_start.reset();
+            services_->pointer().cancel_interaction(scrollbar.hit, false);
+        }
+    }
+    const auto scrollbar_node = services_->components().root(scrollbar.component);
+    (void)engine.measure_child(scrollbar_node,
+                               layout::Constraints::fixed(scrollbar.track.width, scrollbar.track.height));
+    engine.place_child(scrollbar_node, scrollbar.track);
     s->needs_layout = false;
     s->layout_anchor = anchor;
     s->layout_clip = clip;
@@ -3123,6 +3276,22 @@ void SelectComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
             static_cast<void>(services_->surfaces().update_surface(row->surface, std::span{&item, 1}));
             services_->scene_composer().set_fragment(row->hit, {}, row->interaction, menu_clip);
         }
+        const auto& scrollbar = s->scrollbar;
+        const auto track_clip = intersect(scrollbar.track, window);
+        const bool visible = scrollbar.track.height > 0 && (scrollbar.hide_at || scrollbar.drag_start);
+        services_->interactions().set_eligible(scrollbar.hit, visible && track_clip.width > 0 && track_clip.height > 0);
+        services_->scene_composer().set_fragment(scrollbar.hit_fragment, {}, scrollbar.hit, track_clip);
+        std::array<graphics::QuadInstance, 2> visuals;
+        std::size_t count = 0;
+        if (visible) {
+            if (scrollbar.hovered) {
+                visuals[count++] = quad(scrollbar.track, token.colors.option_active_background);
+            }
+            visuals[count++] =
+                quad(scrollbar.thumb, theme_runtime::SelectScrollbarTokens::thumb, scrollbar.thumb.width / 2);
+        }
+        static_cast<void>(
+            services_->surfaces().update_content_range(scrollbar.surface, std::span{visuals}.first(count)));
     }
 }
 
@@ -3143,6 +3312,13 @@ std::size_t SelectComponentHost::tick_auxiliary(animation::AnimationTime time) {
             ++changed;
             services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material);
         }
+        auto& scrollbar = s->scrollbar;
+        if (scrollbar.hide_at && time >= *scrollbar.hide_at) {
+            scrollbar.hide_at.reset();
+            scrollbar.hovered = false;
+            ++changed;
+            services_->dirty().invalidate(s->node, runtime::DirtyFlags::Material | runtime::DirtyFlags::HitTest);
+        }
     }
     return changed;
 }
@@ -3151,9 +3327,10 @@ std::optional<animation::AnimationTime> SelectComponentHost::next_auxiliary_dead
     std::optional<animation::AnimationTime> next;
     for (auto id : mounted_) {
         if (const auto* s = select_state(*services_, id)) {
-            const auto deadline = s->motion.deadline();
-            if (deadline && (!next || *deadline < *next)) {
-                next = deadline;
+            for (const auto deadline : {s->motion.deadline(), s->scrollbar.hide_at}) {
+                if (deadline && (!next || *deadline < *next)) {
+                    next = deadline;
+                }
             }
         }
     }

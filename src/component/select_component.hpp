@@ -68,6 +68,7 @@ struct SelectPaintOwnerSnapshot final {
     SelectSurfaceOwnerSnapshot popup;
     SelectSurfaceOwnerSnapshot clear;
     std::vector<SelectSurfaceOwnerSnapshot> rows;
+    SelectSurfaceOwnerSnapshot scrollbar;
 };
 
 class SelectComponentHost final : public WindowComponentParticipant {
@@ -124,6 +125,9 @@ private:
     void configure(runtime::ComponentId);
     void mount_popup(runtime::ComponentId);
     void rebuild_popup(runtime::ComponentId);
+    void mount_scrollbar(runtime::ComponentId);
+    void scrollbar_pointer(runtime::ComponentId, input::PointerDispatchContext&);
+    void scroll_popup(runtime::ComponentId, float scroll);
     std::size_t tick_auxiliary(animation::AnimationTime) override;
     std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
     void update_theme(runtime::ComponentId id, bool geometry = true);

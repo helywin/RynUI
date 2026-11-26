@@ -691,6 +691,9 @@ void scrolling_edges_and_idle() {
     key(f, Key::home);
     check(f.services.select().snapshot(id).scroll == 0, "Home did not reveal first row");
     // A new virtual window resolves child metrics once; settled idle must not repeat work.
+    if (const auto deadline = f.services.next_frame_deadline()) {
+        (void)f.services.tick_animations(*deadline);
+    }
     f.synchronize();
     const auto before = f.services.surfaces().diagnostics();
     const auto popup = f.services.components().children(id)[1];
@@ -719,6 +722,87 @@ void scrolling_edges_and_idle() {
     f.synchronize();
     check(!f.services.select().snapshot(id).visible, "reactivation reopened dismissed menu");
     f.services.dispose();
+}
+
+void virtual_scrollbar_tracks_direction_and_pointer() {
+    Fixture f;
+    Signal<TextDirection> direction{TextDirection::RightToLeft};
+    Signal<bool> open{true};
+    Signal<bool> virtualized{true};
+    SelectRef ref;
+    std::vector<SelectOption> options;
+    for (int value = 0; value < 100; ++value) {
+        options.push_back({value, u8"Item"});
+    }
+    std::vector<float> events;
+    f.services.mount(Content{[&] {
+        Select(SelectProps{}
+                   .options(options)
+                   .direction(direction)
+                   .open(open)
+                   .virtualList(virtualized)
+                   .ref(ref)
+                   .listHeight(64.0F)
+                   .onPopupScroll([&](float offset) { events.push_back(offset); })
+                   .layout(LayoutStyle{}.width(dp(220))));
+    }});
+    f.synchronize();
+    const auto id = f.services.select().mounted().front();
+    const auto scrollbar = f.services.select().paint_owners(id)->scrollbar;
+    auto paint = [&] {
+        return f.services.surfaces().paint_snapshot(scrollbar.surface).value();
+    };
+    const auto menu = [&] {
+        return bounds(f, f.services.select().input_snapshot(id).list_root);
+    };
+    auto thumb = paint().quads.at(0).bounds;
+    check(thumb[0] == menu().x && thumb[1] == menu().y && thumb[2] == 8 && thumb[3] == 20,
+          "RTL virtual Select must paint its minimum rounded thumb on the leading edge");
+    check(ref.focus(), "scrollbar Select focus");
+    const float x = thumb[0] + thumb[2] / 2;
+    const float y = thumb[1] + thumb[3] / 2;
+    const auto pointer = PointerIdentity::mouse();
+    const auto hit = f.services.hit_test().hit_test({x, y});
+    check(hit && f.services.interactions().find(*hit)->component == scrollbar.owner,
+          "visible scrollbar must receive the hit above its option");
+    f.services.pointer().dispatch({pointer, PointerAction::down, PointerButton::primary, x, y});
+    check(f.services.pointer().state(pointer)->capture == hit, "scrollbar drag did not capture");
+    f.services.pointer().dispatch({pointer, PointerAction::move, PointerButton::none, x + 80, y + 10});
+    f.synchronize();
+    check(events.size() == 1 && events.back() > 0 && f.services.select().snapshot(id).scroll == events.back(),
+          "captured drag did not scroll the list and emit its actual offset");
+    const float previous = events.back();
+    f.services.pointer().dispatch({pointer, PointerAction::up, PointerButton::primary, x + 80, y + 10});
+    check(!f.services.pointer().state(pointer)->capture, "scrollbar release left pointer capture");
+    click(f, {x, menu().y + menu().height - 2, 0, 0});
+    check(events.size() == 2 && events.back() > previous && !f.services.select().snapshot(id).value,
+          "track click should scroll without selecting an option");
+
+    direction.set(TextDirection::LeftToRight);
+    f.synchronize();
+    const auto track = bounds(f, scrollbar.owner);
+    check(track.x + track.width == menu().x + menu().width &&
+              f.services.select().paint_owners(id)->scrollbar.owner == scrollbar.owner,
+          "changing direction must keep the retained scrollbar and move it to the trailing edge");
+    const auto deadline = f.services.next_frame_deadline();
+    check(deadline.has_value(), "visible optional scrollbar had no hide deadline");
+    (void)f.services.tick_animations(*deadline);
+    f.synchronize();
+    check(paint().quads.empty() && !f.services.next_frame_deadline() &&
+              f.services.hit_test().hit_test({track.x + 1, track.y + 1}) != hit,
+          "hidden scrollbar kept paint, input or a deadline");
+
+    check(f.inputs.dispatch(ScrollInputEvent{0, 1, menu().x + 15, menu().y + 5}),
+          "menu wheel did not consume the scroll");
+    f.synchronize();
+    check(!paint().quads.empty() && f.services.next_frame_deadline(), "wheel did not flash the released scrollbar");
+    virtualized.set(false);
+    f.synchronize();
+    check(paint().quads.empty() && !f.services.next_frame_deadline(), "nonvirtual list kept the virtual scrollbar");
+    open.set(false);
+    f.synchronize();
+    check(!f.services.select().snapshot(id).visible && !f.services.next_frame_deadline(),
+          "closed Select kept scrollbar work alive");
 }
 
 void controlled_states_and_theme() {
@@ -935,6 +1019,7 @@ int main() {
         open_selected_value_dims_only_the_editor_content();
         borderless_variant_keeps_the_selector_frame_inset();
         scrolling_edges_and_idle();
+        virtual_scrollbar_tracks_direction_and_pointer();
         controlled_states_and_theme();
         callback_retirement_and_validation();
     } catch (const std::exception& error) {
