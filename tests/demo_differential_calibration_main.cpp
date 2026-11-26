@@ -347,7 +347,7 @@ void write_shape_blend_witnesses(const Json& request, const std::filesystem::pat
         const auto extent_x = isolated ? bounds.width : std::ceil(bounds.x + bounds.width + guard);
         const auto extent_y = isolated ? bounds.height + offset.y : std::ceil(bounds.y + bounds.height + guard);
         const bool isolated_extent = integer_body && bounds.x == 0 && bounds.y == 0 && width == 0 && offset.x == 0 &&
-                                     offset.y > 0 && !split_border && !split_fill && !focus && translucent_caster;
+                                     offset.y > 0 && !split_border && !focus && translucent_caster;
         require(extent_x <= 512 && extent_y <= 512 && width >= 0 &&
                     (isolated ? isolated_extent : bounds.x >= guard && bounds.y >= guard) && isolated_opacity >= 0 &&
                     isolated_opacity < 1 && width <= 16 && radius > width &&

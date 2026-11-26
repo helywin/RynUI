@@ -27,7 +27,7 @@ def _rgb8(color):
     return channels if struct.pack('<3f', *color) == struct.pack('<3f', *(v / 255 for v in channels)) else None
 
 
-def _isolated_opacity_stacks(rows, side, dpr):
+def _isolated_opacity_stacks(rows, side, dpr, split_coverage=False):
     for shadow, fill in zip(rows, rows[1:]):
         if (shadow['kind']!='shadow' or fill['kind']!='fill' or fill['opacity']!=1
                 or fill['alpha']!=1 or len(fill['groups'])!=1):
@@ -41,7 +41,7 @@ def _isolated_opacity_stacks(rows, side, dpr):
         x,y,w,h,radius,ox,oy=(value*dpr for value in (
             bounds['x'],bounds['y'],bounds['width'],bounds['height'],_radius(fill),*shadow['offset']))
         if (ox or not 0<oy<=32 or not dpr<=radius<=min(w,h)*.5 or max(w,h+oy)>512
-                or any(value!=round(value) for value in (x,y,w,h,oy)) or radius*4!=round(radius*4)):
+                or any(value!=round(value) for value in (x,y,w,h,oy,radius))):
             continue
         opacity=struct.unpack('<f',struct.pack('<f',fill['groups'][0][1]))[0]
         src=opacity*255
@@ -56,7 +56,7 @@ def _isolated_opacity_stacks(rows, side, dpr):
         if shadow_color is None:
             continue
         alpha=struct.unpack('<f',struct.pack('<f',shadow['alpha']))[0]
-        spec=(0,0,w,h,radius,0,dpr,0,alpha,shadow_color,(0,0,0),(0,0,0),0,oy,0,False,False,opacity)
+        spec=(0,0,w,h,radius,0,dpr,0,alpha,shadow_color,(0,0,0),(0,0,0),0,oy,0,False,split_coverage,opacity)
         yield (spec,round(x),round(y)),(shadow,fill)
 
 
@@ -246,7 +246,7 @@ def bind_blends(inventories, dpr, root, binary, cache, *, split_coverage=False, 
         for key, layers in _stacks(rows, side, dpr, split_coverage):
             paired.setdefault(key, {}).setdefault(side, []).append(layers)
         if isolated_opacity:
-            for key,layers in _isolated_opacity_stacks(rows,side,dpr):
+            for key,layers in _isolated_opacity_stacks(rows,side,dpr,split_coverage):
                 paired.setdefault(key,{}).setdefault(side,[]).append(layers)
     valid = {key: (sides['web'][0], sides['native'][0]) for key, sides in paired.items()
              if len(sides) == 2 and all(len(value) == 1 for value in sides.values())}

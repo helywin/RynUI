@@ -143,6 +143,21 @@ class RoundedBlendWitnessTests(unittest.TestCase):
         self.assertEqual(spec,next(_isolated_opacity_stacks(native,'native',1.5))[0])
         self.assertEqual(spec[0][:4],(0,0,390,48))
         self.assertEqual(spec[0][13],3)
+        split, _ = next(_isolated_opacity_stacks(web,'web',1,True))
+        self.assertEqual(split[0][-3:-1],(False,True))
+        self.assertEqual(split,next(_isolated_opacity_stacks(native,'native',1,True))[0])
+        colors = ((244,250,255),(243,249,255))
+        request, x, y = split
+        cache = {request: _samples([[0,29,*colors[0],*colors[1]]])}
+        pixels = bind_blends((web,native),1,Path.cwd(),Path('out/bin/mock'),cache,
+                             split_coverage=True,isolated_opacity=True)
+        sides = tuple({'active': rows[:1]} for rows in (web,native))
+        self.assertEqual(verified_blend(pixels,x,y+29,1,sides,colors),colors[0])
+        self.assertIsNone(verified_blend(pixels,x,y+29,1,sides,(colors[0],(243,250,255))))
+        shadow, fill = web
+        shadow['radii'] = fill['radii'] = 4.25
+        self.assertFalse(list(_isolated_opacity_stacks(web,'web',1.5)))
+        shadow['radii'] = fill['radii'] = 6
         web[1]['opacity_surface_extent']=[260,33]
         self.assertFalse(list(_isolated_opacity_stacks(web,'web',1.5)))
         web[1]['opacity_surface_extent']=None

@@ -91,6 +91,14 @@ bool half_code(double value) {
     return std::abs(value - std::floor(value) - .5) <= 0x1p-14;
 }
 
+unsigned llvmpipe_opacity_code(unsigned code, float opacity) {
+    const float texel = static_cast<float>(code) * (1.0F / 255.0F);
+    const float byte = (texel * opacity) * 255.0F;
+    const auto lower = static_cast<unsigned>(byte);
+    const float fraction = byte - static_cast<float>(lower);
+    return lower + (fraction > .5F || (fraction == .5F && lower % 2 != 0));
+}
+
 } // namespace
 
 std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source) {
@@ -153,10 +161,14 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
                 const auto pixel = *bitmap.getAddr32(static_cast<int>(x), static_cast<int>(y));
                 const auto web_background = 255 - SkColorGetA(pixel) * opacity_scale / 256;
                 const auto background_term = 255 - shadow_alpha * double(source.isolated_opacity);
-                if (half_code(background_term)) {
+                if (!source.split_fill && half_code(background_term)) {
                     continue;
                 }
-                const auto native_background = static_cast<unsigned>(std::lround(background_term));
+                // The split UNORM path quantizes the foreground and its alpha
+                // before blending against the white backbuffer.
+                const auto native_background = source.split_fill
+                                                   ? 255U - llvmpipe_opacity_code(shadow_alpha, source.isolated_opacity)
+                                                   : static_cast<unsigned>(std::lround(background_term));
                 const std::array<unsigned, 3> web_premultiplied{SkColorGetR(pixel), SkColorGetG(pixel),
                                                                 SkColorGetB(pixel)};
                 ShapeBlendSample sample{x, y, {}, {}};
@@ -164,11 +176,14 @@ std::vector<ShapeBlendSample> shape_blend_samples(const ShapeBlendSource& source
                 for (std::size_t i = 0; i < sample.native.size(); ++i) {
                     const auto source_byte = over_rgb8(source.shadow_color[i], 0, shadow_alpha);
                     const auto source_term = source_byte * double(source.isolated_opacity);
-                    const auto scaled_source = static_cast<unsigned>(std::lround(source_term));
+                    const auto scaled_source = source.split_fill
+                                                   ? llvmpipe_opacity_code(source_byte, source.isolated_opacity)
+                                                   : static_cast<unsigned>(std::lround(source_term));
                     sample.web[i] =
                         static_cast<std::uint8_t>(web_background + web_premultiplied[i] * opacity_scale / 256);
                     sample.native[i] = static_cast<std::uint8_t>(std::min(255U, native_background + scaled_source));
-                    adjacent &= !half_code(source_term) && std::abs(int(sample.web[i]) - int(sample.native[i])) <= 1;
+                    adjacent &= (source.split_fill || !half_code(source_term)) &&
+                                std::abs(int(sample.web[i]) - int(sample.native[i])) <= 1;
                 }
                 if (adjacent && sample.web != sample.native) {
                     different.push_back(sample);
