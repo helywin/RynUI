@@ -2,95 +2,118 @@
 
 [简体中文](README.md) · English
 
-**Build reactive desktop interfaces with modern C++.**
+**Build fine-grained reactive native desktop interfaces with modern C++20.**
 
-RynUI is a C++20 desktop UI framework for Windows and Linux. It uses Ant Design 6 as the baseline for component behavior, design tokens, themes, and interaction states. Declare interfaces with typed C++ properties and content slots, connect them to reactive state, and render them on the GPU.
+RynUI is a modern C++20 desktop UI framework for Windows and Linux, designed against **Ant Design 6.6.5** for component semantics, Design Tokens, theming, and interaction states. Declare interfaces with type-safe C++ props, typed slots, and reactive `Prop<T>` bindings; state changes update only the affected layout or rendering data and render natively on the GPU.
 
-The project targets desktop tools, industrial control interfaces, robotics applications, and monitoring dashboards. Its UI runtime is native C++, with no browser, React, DOM, or Virtual DOM dependency.
+Built for desktop tools, industrial control interfaces, robotics applications, and monitoring dashboards, RynUI runs on a native C++ runtime with no browser, React, DOM, or Virtual DOM dependency.
 
-> In development: the core runtime, initial components, and examples are runnable. RynUI is suitable for exploring the source, evaluating prototypes, and contributing. Component coverage and platform validation are still in progress; this is not yet a complete general-purpose component library.
+> **In development**: The core runtime, GPU rendering pipeline, native i18n, and 71 native components across the Ant Design 6.6.5 catalog of 73 entries (`65 implemented` + `6 partial`) are runnable in `rynui_token_gallery` and standalone demos. API details, visual differential parity, and per-platform native validation (Windows/Linux GPU, real system IME, OS accessibility) are still actively progressing.
 
-## Key ideas
+## Key Highlights
 
-- **Declarative C++ API:** public APIs live in the `ryn` namespace and compose components through typed Props, content slots, and reactive `Prop<T>` values.
-- **Fine-grained reactivity:** mounted components retain their nodes and dependencies. Ordinary property updates affect the relevant layout or rendering data without rerunning unrelated components.
-- **Consistent theming:** Theme and Component Tokens control colors, typography, corners, shadows, and interaction states. `LayoutStyle` controls external layout.
-- **Native GPU rendering:** the SDL3 host manages windows and input, while a separate renderer binding owns the GPU. Dedicated renderers draw text, rectangles, rounded shapes, and shadows, with frames scheduled on demand.
+- **Declarative C++20 API**: Public APIs live in the `ryn` namespace and compose interfaces via typed Props, typed slots, and reactive `Prop<T>` values — no macros or external DSL compilers required.
+- **Fine-grained reactivity, no Virtual DOM**: `Signal`, `Memo`, `Effect`, `Binding`, and `Scope` drive a retained Node tree. Ordinary property updates trigger only the affected layout or paint data without rerunning unrelated components.
+- **Ant Design 6.6.5 themes & Design Tokens**: 1,198 locked Design Tokens derive Default, Dark, Compact, brand-color, and nested themes. `LayoutStyle` controls external layout only; visual styling comes exclusively from Theme and Component Tokens.
+- **Native text, bidi, and i18n**: UTF-8 `ryn::String`/`StringView`, FreeType + HarfBuzz + SheenBidi (Unicode 17 bidirectional layout, Latin/CJK & system font fallback, high-DPI rasterization), grapheme-safe editing with IME sessions, and built-in `zh-CN`/`en-US` i18n via `ConfigProvider` and `useI18n()`.
+- **Native GPU rendering & portable core**: An SDL3 host handles windows and input while a separate renderer owns GPU resources (Windows D3D12/DXIL, Linux Vulkan/SPIR-V), with on-demand frame scheduling and embedded shaders. Core and `renderer/common` stay isolated from platform SDKs and support SDL-free HEADLESS/Recording builds and tests.
 
-## Current status
+## Quick Taste
 
-| Area | Available implementation |
+```cpp
+#include <ryn/rynui.hpp>
+#include <string>
+
+ryn::Signal<int> count{0};
+ryn::Signal<bool> loading{false};
+
+ryn::Flex(ryn::FlexProps{}.vertical(true).gap(ryn::SpaceSize::Middle), [&] {
+    ryn::Title(ryn::TitleProps{}
+                   .level(ryn::TypographyLevel::H4)
+                   .content(ryn::bind([&] {
+                       return ryn::String::from_utf8("Count: " + std::to_string(count.get())).value();
+                   })));
+
+    ryn::Space(ryn::SpaceProps{}.size(ryn::SpaceSize::Small), [&] {
+        ryn::Button(ryn::ButtonProps{}
+                        .type(ryn::ButtonType::Primary)
+                        .loading(loading)
+                        .onClick([&] { count.set(count.get() + 1); }),
+                    [] { ryn::Text(u8"Increase"); });
+
+        ryn::Button(ryn::ButtonProps{}.onClick([&] { loading.set(!loading.get()); }),
+                    [] { ryn::Text(u8"Toggle loading"); });
+    });
+});
+```
+
+See [`examples/`](examples) (including the public-header [`examples/i18n_app/`](examples/i18n_app) and [`examples/app_notice/`](examples/app_notice) modules) or open the live C++ source panel inside `rynui_token_gallery` for full examples.
+
+## Current Status
+
+### Core Runtime & Infrastructure
+
+| Area | Available Capabilities |
 | --- | --- |
-| Reactive state | `Signal`, `Memo`, `Effect`, `Binding`, `Scope`, and `Prop<T>` |
-| Components and layout | `Title`, `Text`, `Paragraph`, `Link`, `Divider`, `Button`, single-line `Input`, `Flex`, and `Space`; wrapping, alignment, gaps, and flexible sizing |
-| Themes and interaction | Default, dark, compact, brand, and nested themes; pointer interaction, keyboard focus, disabled/loading states, and basic state animations |
-| Text | UTF-8 `ryn::String`/`StringView`, C++20 `u8"..."` literals, Latin/CJK shaping, font fallback, and high-DPI glyph rendering |
-| Typography and dividers | Five heading levels, inline semantics and decorations, grapheme-safe ellipsis and expansion, full-content copying, inline single-line editing, interactive Link; horizontal/vertical, labeled, dashed, and plain Divider |
-| Single-line editing | Input / Password / Search, four variants, statistics and soft/hard limits, focus refs, native hints and custom actions; grapheme-safe selection, clipboard, history and IME; see [Input](docs/input.md) |
-| Input suggestions | AutoComplete with free text, dynamic keyed suggestions, retained rich labels, controlled selection/visibility, keyboard input, composition gating and same-value Form reset; see [AutoComplete](docs/auto-complete.md) |
-| Hierarchical selection | Tree with fixed topology, controlled expansion/single selection, cascading checks, disabled isolation, retained rich titles, keyboard navigation and finite scrolling; see [Tree](docs/tree.md) |
-| Tab panels | Tabs with fixed retained panels, controlled selection, draft restoration, Line/Card, three sizes, top/bottom/centered headers, keyboard and horizontal overflow navigation; see [Tabs](docs/tabs.md) |
-| Collapsible panels | Collapse with fixed keyed panels, controlled/default expansion, accordion, independent extra slots, keyboard and retained body drafts; see [Collapse](docs/collapse.md) |
-| Segmented selection | Segmented with fixed options, controlled/default selection, icons/rich labels, horizontal/vertical and equal-width block layouts, three sizes and keyboard navigation; see [Segmented](docs/segmented.md) |
-| Dialogs | Controlled Modal, retained body/title/footer slots, nested layers, focus restoration and scrolling within the window; see [Modal](docs/modal.md) |
-| Drawers | Four-edge Drawer panels, controlled close, retained slots, fixed header/footer, body scrolling and shared Modal focus layers; see [Drawer](docs/drawer.md) |
-| Confirmation popups | Popconfirm with retained trigger/title/description, real confirm/cancel buttons, controlled or default visibility, keyboard/outside close, focus restoration and child popups; see [Popconfirm](docs/popconfirm.md) |
-| Interactive popovers | Popover with retained rich contents and editor drafts, controlled visibility, combined triggers, placement/arrows and child-popup input ownership; see [Popover](docs/popover.md) |
-| Tags and counts | Tag/CheckableTag colors, controlled close/selection; standalone or wrapped Badge count/overflow/dot/status with retained contents; see [Tag / Badge](docs/tag-and-badge.md) |
-| Avatars and member groups | Text/icon Avatar with measured font fitting and retained contents; keyed AvatarGroup members, overlapping layout and a wrapping/scrolling overflow popover; see [Avatar](docs/avatar.md) |
-| Ratings | Rate with text/icons and real half fills, controlled values, clearing, native keyboard input, dynamic counts and retained rich Tooltips; see [Rate](docs/rate.md) |
-| Statistics | Statistic with typed numbers/strings, precision truncation and padding, grouping/custom formatting, retained title/value/affixes and Skeleton loading; see [Statistic](docs/statistic.md) |
-| Status and progress | Alert with controlled close and content slots, Spin with retained contents and a loading shield, and line/circle/dashboard Progress; see [Feedback components](docs/feedback.md) |
-| Messages and notifications | Window-scoped Message/Notification holders and refs, keyed updates, corner notifications, rich contents and timed cleanup; see [Message / Notification](docs/message-notification.md) |
-| Timeline | Vertical retained rich items, alternating placement, reverse order, static loading rails, and editable content; see [Timeline](docs/timeline.md) |
-| Loading placeholders | Static Skeleton title/paragraph/avatar and standalone Avatar/Button/Input shapes, retaining contents and editor state across loading changes; see [Skeleton](docs/skeleton.md) |
-| Data browsing | Table with retained keyed rows, typed columns/slots, controlled sorting/selection and finite scrolling, composed with controlled or default Pagination; see [Table](docs/table.md) and [Pagination](docs/pagination.md) |
-| Detail panels | Descriptions with fixed keyed columns, spans, horizontal/vertical labels, borders and retained rich contents; see [Descriptions](docs/descriptions.md) |
-| Menus and commands | Menu with controlled selection, inline submenus and keyboard navigation; Dropdown with click/context-menu triggers, window layers and focus restoration; see [Menu / Dropdown](docs/menu-dropdown.md) |
-| Numeric editing | InputNumber with retained drafts, controlled values, bounds/precision/steps, keyboard and step buttons, using Input selection and IME; see [InputNumber](docs/input-number.md) |
-| Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
-| Sliders | Typed Slider / RangeSlider, controlled values and steps, mouse/touch capture, independent thumb focus, keyboard, vertical and reverse modes; see [Slider contracts](docs/slider.md) |
-| Tooltips | Text Tooltip, controlled visibility, hover/focus delays, Escape, twelve placements, overflow adjustment and arrows; see [Tooltip contracts](docs/tooltip.md) |
-| Portable framework foundation | Separate host/GPU ownership, shared scene upload transactions, owned Recording data, SDL-free HEADLESS builds, and nonblocking frame entry points |
+| Reactivity & layout | `Signal`, `Memo`, `Effect`, `Binding`, `Scope`, `Prop<T>`; retained Node tree, Constraints layout, shared responsive breakpoints, on-demand frame scheduling, and foundational state motion |
+| Text & desktop input | UTF-8 `ryn::String`/`StringView`, `u8"..."` literals, Unicode 17 bidi shaping/wrapping, system font fallback, high-DPI glyph rasterization; grapheme-safe selection, clipboard, undo/redo, and IME session bridge |
+| Theming & i18n | 1,198 locked Design Tokens; Default, Dark, Compact, brand, and nested themes; `ConfigProvider` inherited defaults and built-in `zh-CN`/`en-US` locale packs, plurals, and exact numeric formatting |
+| Rendering & portability | Separate host/GPU ownership, shared `SceneResources` upload transactions, Quad/Glyph/RoundedEffect/Image & composition paths, embedded shaders, and SDL-free HEADLESS/Recording builds |
+| Gallery & automated checks | Offline Ant Design 6.6.5 reference catalog and per-component pages in `rynui_token_gallery`, live theme/locale/direction switching, headless Wayland checks, and in-progress Web/native differential testing |
 
-The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. Typography rich text is not available yet.
+### Ant Design 6.6.5 Component Coverage (73 entries across 7 categories)
 
-Existing components are being completed for native desktops; Web-specific APIs are outside scope. See the [052 checklist](openspec/changes/052-20261003-complete-native-input-features/tasks.md) for single-line features and platform evidence. The Input family remains partial until TextArea, OTP and visual bidi caret navigation are complete.
+The table below reflects [`gallery/ant-design/6.6.5/support-overlay.json`](gallery/ant-design/6.6.5/support-overlay.json) (**65 `implemented` · 6 `partial` · 1 `deprecated` · 1 `web-only`**):
 
-Typography and Divider are implemented and have passed Windows Debug/Release builds and native D3D12/DXIL window validation at the system scale and four render scales. Native Linux Wayland validation remains open. Tooltip overlays, rich text, and multiline editing are outside this scope; see the [Typography / Divider checklist](openspec/changes/034-20261001-complete-typography-and-divider/tasks.md) and [Windows evidence](openspec/changes/034-20261001-complete-typography-and-divider/evidence/windows-typography.md).
+| Category | Status Breakdown | Components & Documentation |
+| --- | --- | --- |
+| General (4) | 4 implemented | [Button](docs/button.md), [FloatButton](docs/float-button.md), [Icon](docs/icon.md), [Typography](docs/typography.md) |
+| Layout (7) | 7 implemented | [Divider](docs/divider.md), [Flex](docs/flex-space.md), [Grid](docs/grid.md), [Layout](docs/components/layout.md), [Masonry](docs/masonry.md), [Space](docs/flex-space.md), [Splitter](docs/components/splitter.md) |
+| Navigation (7) | 7 implemented | [Anchor](docs/anchor.md), [Breadcrumb](docs/breadcrumb.md), [Dropdown](docs/menu-dropdown.md), [Menu](docs/menu-dropdown.md), [Pagination](docs/pagination.md), [Steps](docs/steps.md), [Tabs](docs/tabs.md) |
+| Data Entry (18) | 18 implemented | [AutoComplete](docs/auto-complete.md), [Cascader](docs/components/cascader.md), [Checkbox](docs/checkbox.md), [ColorPicker](docs/color-picker.md), [DatePicker](docs/date-picker.md), [Form](docs/form.md), [Input](docs/input.md) (incl. Search / Password / TextArea / OTP), [InputNumber](docs/input-number.md), [Mentions](docs/mentions.md), [Radio](docs/radio.md), [Rate](docs/rate.md), [Select](docs/select.md), [Slider](docs/slider.md), [Switch](docs/switch.md), [TimePicker](docs/time-picker.md), [Transfer](docs/components/transfer.md), [TreeSelect](docs/tree-select.md), [Upload](docs/components/upload.md) |
+| Data Display (21) | 15 implemented · 5 partial · 1 deprecated | **implemented**: [Avatar](docs/avatar.md), [Badge](docs/tag-and-badge.md), [Calendar](docs/calendar.md), [Card](docs/card.md), [Carousel](docs/carousel.md), [Collapse](docs/collapse.md), [Descriptions](docs/descriptions.md), [Image](docs/components/image.md), [Listy](docs/listy.md), [QRCode](docs/qrcode.md), [Segmented](docs/segmented.md), [Tag](docs/tag-and-badge.md), [Timeline](docs/timeline.md), [Tooltip](docs/tooltip.md), [Tree](docs/tree.md)<br>**partial**: [Empty](docs/empty-result.md), [Popover](docs/popover.md), [Statistic](docs/statistic.md), [Table](docs/table.md), [Tour](docs/tour.md)<br>**deprecated**: [List](docs/list-migration.md) (deprecated upstream; migrate to Listy) |
+| Feedback (11) | 10 implemented · 1 partial | **implemented**: [Alert](docs/feedback.md), [Drawer](docs/drawer.md), [Message](docs/message-notification.md), [Modal](docs/modal.md), [Notification](docs/message-notification.md), [Popconfirm](docs/popconfirm.md), [Result](docs/empty-result.md), [Skeleton](docs/skeleton.md), [Spin](docs/feedback.md), [Watermark](docs/components/watermark.md)<br>**partial**: [Progress](docs/feedback.md) |
+| Other (5) | 4 implemented · 1 web-only | **implemented**: [Affix](docs/components/affix.md), [App](docs/app.md), [BorderBeam](docs/components/border-beam.md), [ConfigProvider](docs/config-provider.md)<br>**web-only**: [Util](docs/util.md) (TypeScript compile-time type helpers upstream; C++ uses typed Props/refs directly) |
 
-Single-line `Input` is integrated into the Gallery and has passed platform-independent tests and Windows Debug/Release build validation. Real system IME behavior, candidate window placement, and visual results still require separate Windows and Linux validation. Animation and Gallery platform checks also remain open. See the [Input](openspec/changes/010-20260831-build-text-input-foundation/tasks.md), [animation](openspec/changes/009-20260829-build-animation-runtime-foundation/tasks.md), and [Gallery](openspec/changes/008-20260829-build-ant-design-reference-gallery/tasks.md) checklists for the detailed status.
+> **Scope & validation note**: Catalog status tracks native desktop feature contracts; Web-specific DOM/CSS/React APIs are intentionally excluded. Component implementation and HEADLESS/Recording checks do not substitute for full per-platform validation across Windows D3D12, Linux Vulkan/Wayland, real system IME, OS accessibility, cross-monitor DPI, or Web/native differential suites. See the [component completion checklist](docs/component-completion.md), [open issues](docs/open-issues.md), and [OpenSpec changes](openspec/changes) for detailed status and evidence.
 
-## Build and try it
+## Quick Start
 
-Start with `rynui_token_gallery` to explore design tokens, component support, and interactive Button / Input samples.
+### Platforms & Backends
 
-| Platform | Toolchain | Current GPU path |
+| Platform | Toolchain | Current Backend Path |
 | --- | --- | --- |
 | Windows | MSVC x64 | SDL3 GPU / D3D12 / DXIL |
 | Linux | GCC or Clang | SDL3 GPU / Vulkan / SPIR-V |
+| Contract tests | Windows MSVC / Linux GCC | `HEADLESS` + `RECORDING` (no SDL or GPU required) |
 
-macOS is a future architecture target; it does not yet have an official build preset or validation results.
+macOS, mobile, and Web remain future architecture targets without official build presets or device validation yet; see the [multi-backend portability study](docs/research/multi-backend-portability.md).
 
-The [035 checklist](openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md) and [renderer contract](docs/renderer-contract.md) record the portable foundation. HEADLESS/Recording exercise production shared components and text code; mobile/Web hosts and a second real GPU renderer remain future work.
+### Prerequisites
 
-You need Git, CMake 3.25+, Ninja, and a C++20 toolchain. Running the examples requires a graphical desktop and a driver supporting the corresponding GPU backend. On Windows, install the Visual Studio C++ x64 tools. On Linux, install Fontconfig 2.13+ development files; the default bundled Wayland build also requires Meson, pkg-config, patch, wayland-scanner, and development dependencies for Wayland, wayland-protocols, Cairo, and PangoCairo.
+- **Common**: Git, CMake 3.25+, Ninja, and a C++20 toolchain; running native examples requires a graphical desktop and a driver supporting the corresponding GPU backend.
+- **Windows**: Visual Studio C++ x64 tools (MSVC is required; MinGW is not accepted for Windows builds).
+- **Linux**: Fontconfig 2.13+ development files and `wayland-client >= 1.18` (for finite Gallery acceptance sync); the default `BUNDLED` Wayland build also requires Meson, pkg-config, patch, `wayland-scanner`, and development headers for Wayland, `wayland-protocols`, Cairo, and PangoCairo.
+
+### Clone & Build
+
+Official builds use [`CMakePresets.json`](CMakePresets.json) with `Ninja Multi-Config`. The default `BUNDLED` mode downloads and SHA256-verifies locked dependencies, so the first configuration requires network access.
 
 ```bash
 git clone https://github.com/helywin/RynUI.git
 cd RynUI
 ```
 
-Official builds use the repository's `CMakePresets.json` with `Ninja Multi-Config`. The default `BUNDLED` mode downloads and verifies locked dependencies, so the first configuration requires network access.
-
-Windows PowerShell:
+**Windows (PowerShell)**:
 
 ```powershell
 ./scripts/build-windows.ps1 -Configuration Debug
 ./out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe
 ```
 
-Linux / GCC:
+Use `-Configuration Release` for interactive evaluation and performance checks.
+
+**Linux (GCC)**:
 
 ```bash
 cmake --preset linux-gcc
@@ -99,28 +122,48 @@ ctest --preset linux-gcc-debug
 ./out/build/linux-gcc/examples/Debug/rynui_token_gallery
 ```
 
-Linux also has `linux-clang` presets. See the [build guide](docs/development/building.md) for Release builds and further configuration, and the [dependency guide](docs/development/third-party.md) for `SYSTEM` mode, version locks, and offline preparation.
+Linux also provides `linux-clang` presets and `linux-gcc-headless` for SDL-free contract tests (`windows-msvc-headless` on Windows). See the [build guide](docs/development/building.md) and [third-party dependency guide](docs/development/third-party.md) for Release builds, `SYSTEM` mode, and offline overrides.
 
 ## Examples
 
-| Executable | What it demonstrates |
+Start with `rynui_token_gallery` to explore dedicated pages for all 73 catalog entries, interactive demos, live Theme / Compact / brand / locale / direction switching, inline C++ source panels, and Design Tokens.
+
+| Executable | What It Demonstrates |
 | --- | --- |
-| `rynui_token_gallery` | Start here: themes, component support, catalog navigation, and Button / Input interaction |
-| `rynui_minimal` | The smallest reactive-state-to-GPU rendering loop |
-| `rynui_text_demo` | Latin/CJK shaping, font fallback, and text updates |
-| `rynui_button_demo` | Button states and pointer/keyboard interaction |
-| `rynui_layout_demo` | Flex / Space composition and reactive layout |
+| `rynui_token_gallery` | Start here: per-component pages, live demos, theme & i18n controls, inline C++ source, and Token browser |
+| `rynui_minimal` | Minimal reactive `Signal`-to-GPU Quad rendering loop |
+| `rynui_text_demo` | Latin/CJK shaping, system font fallback, and dynamic text updates |
+| `rynui_button_demo` | Button variants, state transitions, and pointer/keyboard focus interaction |
+| `rynui_layout_demo` | `Flex` / `Space` composition and reactive layout updates |
 
-Example sources live in [`examples/`](examples); public headers live in [`include/ryn/`](include/ryn).
+Example sources live in [`examples/`](examples) (including public-header examples [`examples/i18n_app/`](examples/i18n_app) and [`examples/app_notice/`](examples/app_notice)); public C++ headers live in [`include/ryn/`](include/ryn).
 
-## Documentation and participation
+## Documentation
 
-- [Build guide](docs/development/building.md): environment, presets, and build options.
-- [Architecture](docs/architecture.md): design goals, module boundaries, and long-term decisions, including plans that are not implemented yet.
-- [Design Token reference](docs/design-tokens.md): locked design tokens and their support status.
-- [Slider / RangeSlider](docs/slider.md): values, input, themes, supported scope, and validation evidence.
-- [Third-party dependencies](docs/development/third-party.md): versions, sources, verification, and dependency licenses.
-- [OpenSpec changes](openspec/changes): change scope, tasks, and validation evidence.
-- [Agent collaboration rules](AGENTS.md): repository development and verification conventions.
+### Architecture & Core Contracts
 
-Use [GitHub Issues](https://github.com/helywin/RynUI/issues) to report problems, discuss use cases, or request components. For runtime problems, include your operating system, build preset, window system, GPU/driver, and reproduction steps. Detailed technical documentation is currently primarily in Simplified Chinese.
+- [Architecture baseline](docs/architecture.md): design goals, module boundaries, and long-term technical decisions (including unimplemented roadmap items).
+- [Design Token reference](docs/design-tokens.md): 1,198 locked Ant Design 6.6.5 tokens and support classification.
+- [Renderer contract](docs/renderer-contract.md): logical CPU scene, packed GPU ABI, shared upload transactions, and backend capabilities.
+- [Native i18n](docs/i18n.md) · [ConfigProvider](docs/config-provider.md) · [App services](docs/app.md): locale packs, message catalogs, inherited defaults, and window-scoped notice/panel services.
+- [Bidirectional text](docs/bidirectional-text.md): Unicode 17 paragraph analysis, mixed-script shaping, and visual caret navigation.
+- [Multi-backend portability study](docs/research/multi-backend-portability.md): implemented portability foundation and future desktop, mobile, and Web roadmap.
+
+### Development, Build & Testing
+
+- [Build guide](docs/development/building.md): prerequisites, official presets, Release builds, and HEADLESS contract builds.
+- [Third-party dependencies](docs/development/third-party.md): `BUNDLED`/`SYSTEM` modes, version and SHA256 locks, offline overrides, and licenses.
+- [Embedded resources & deployment](docs/resources.md): embedded shaders, default system font chain, and acceptance font preparation.
+- [Gallery component pages](docs/development/gallery-pages.md): page host, state drafts, source panel, and targeted checks.
+- [Web/native differential testing](docs/development/demo-differential-testing.md): locked official Web reference and automated differential runner.
+- [VS Code setup](docs/development/vscode.md) · [Code formatting](docs/development/formatting.md): IntelliSense configuration and clang-format 22.x conventions.
+
+### Status & Collaboration
+
+- [Component completion checklist](docs/component-completion.md) · [Open issues](docs/open-issues.md): native feature status, known issues, and platform validation boundaries.
+- [OpenSpec changes](openspec/changes) · [OpenSpec tooling](docs/development/openspec.md): per-change scope, task checklists, and validation summaries.
+- [Agent collaboration rules](AGENTS.md): repository development, verification, and commit conventions for coding agents.
+
+## Feedback & Contributing
+
+Use [GitHub Issues](https://github.com/helywin/RynUI/issues) to report bugs, discuss desktop use cases, or request components. For runtime issues, include your operating system, build preset, window system, GPU/driver details, and reproduction steps. Detailed technical documentation is currently primarily in Simplified Chinese.

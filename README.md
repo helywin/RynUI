@@ -2,99 +2,118 @@
 
 简体中文 · [English](README.en.md)
 
-**用现代 C++ 构建响应式桌面界面。**
+**用现代 C++20 构建细粒度响应式的原生桌面界面。**
 
-RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Design 6 的组件语义、设计变量（Design Token）、主题和交互状态为设计基线。你可以用类型明确的 C++ 属性和嵌套内容声明界面，让状态变化自动更新相关组件，再通过 GPU 绘制窗口内容。
+RynUI 是一个面向 Windows 和 Linux 的现代 C++20 桌面 UI 框架，以 **Ant Design 6.6.5** 的组件语义、设计变量（Design Token）、主题体系与交互状态为设计基线。你可以用类型安全的 C++ Props、内容插槽和响应式 `Prop<T>` 声明界面，状态更新只推进受影响的布局或绘制数据，再由原生 GPU 渲染到窗口。
 
-项目面向桌面工具、工业控制、机器人应用和监控面板等场景。界面由原生 C++ 运行时实现，不依赖浏览器、React、DOM 或 Virtual DOM。
+项目面向桌面工具、工业控制、机器人应用和监控面板等原生场景，完全由原生 C++ 运行时驱动，不依赖浏览器、React、DOM 或 Virtual DOM。
 
-> 开发中：核心运行时、首批组件和示例已经可运行，适合源码学习、原型验证与参与开发。组件覆盖和平台验收仍在推进，尚不是完整的通用组件库。
+> **开发中**：核心运行时、GPU 渲染链路、原生国际化以及 Ant Design 6.6.5 七类 73 项参考目录中的 71 个原生组件（65 `implemented` + 6 `partial`）已实现并可在 `rynui_token_gallery` 中交互体验。API 细节、视觉差分与分平台实机验收（Windows / Linux GPU、系统 IME、无障碍等）仍在持续完善中。
 
 ## 核心特点
 
-- **声明式 C++ API**：公开 API 使用 `ryn` 命名空间，通过 typed Props、内容插槽和 reactive `Prop<T>` 组合组件。
-- **细粒度响应**：组件挂载后保留节点与依赖关系，普通属性更新只推进受影响的布局或绘制数据，不重新执行无关组件。
-- **统一主题**：颜色、字体、圆角、阴影和交互状态由 Theme 与 Component Token 控制；`LayoutStyle` 负责外部布局。
-- **原生 GPU 绘制**：SDL3 宿主管窗口和输入，独立 renderer binding 管 GPU；专用渲染链路绘制文字、矩形、圆角和阴影，并按需调度帧。
+- **声明式 C++20 API**：公开接口位于 `ryn` 命名空间，采用 typed Props、typed slots 与 reactive `Prop<T>` 组合界面，不依赖宏或额外 DSL 编译器。
+- **细粒度响应，无 Virtual DOM**：`Signal`、`Memo`、`Effect`、`Binding` 与 `Scope` 直接驱动持久化 Node 树；普通属性变更只触发局部布局或绘制更新，不重新执行无关组件。
+- **Ant Design 6.6.5 主题与 Token 体系**：基于 1198 项锁定 Design Token 派生 Default、Dark、Compact、品牌色与嵌套主题；`LayoutStyle` 仅负责外部布局，视觉样式统一归属 Theme 与 Component Token。
+- **原生文本、双向排版与国际化**：内置 UTF-8 `ryn::String`/`StringView`、FreeType + HarfBuzz + SheenBidi（Unicode 17 双向文本、中英文与系统字体回退、高 DPI 栅格化）、字素级编辑与 IME 会话，以及基于 `ConfigProvider` 和 `useI18n()` 的 `zh-CN`/`en-US` 原生国际化。
+- **原生 GPU 绘制与可移植核心**：SDL3 宿主管窗口与输入，独立 renderer 管 GPU（Windows D3D12/DXIL、Linux Vulkan/SPIR-V），支持按需帧调度与内嵌 shader；Core 与 `renderer/common` 隔离平台 SDK，支持无 SDL 的 HEADLESS/Recording 合同构建与测试。
+
+## 代码一瞥
+
+```cpp
+#include <ryn/rynui.hpp>
+#include <string>
+
+ryn::Signal<int> count{0};
+ryn::Signal<bool> loading{false};
+
+ryn::Flex(ryn::FlexProps{}.vertical(true).gap(ryn::SpaceSize::Middle), [&] {
+    ryn::Title(ryn::TitleProps{}
+                   .level(ryn::TypographyLevel::H4)
+                   .content(ryn::bind([&] {
+                       return ryn::String::from_utf8("Count: " + std::to_string(count.get())).value();
+                   })));
+
+    ryn::Space(ryn::SpaceProps{}.size(ryn::SpaceSize::Small), [&] {
+        ryn::Button(ryn::ButtonProps{}
+                        .type(ryn::ButtonType::Primary)
+                        .loading(loading)
+                        .onClick([&] { count.set(count.get() + 1); }),
+                    [] { ryn::Text(u8"增加 / Increase"); });
+
+        ryn::Button(ryn::ButtonProps{}.onClick([&] { loading.set(!loading.get()); }),
+                    [] { ryn::Text(u8"切换加载状态"); });
+    });
+});
+```
+
+更多完整用法可直接参考 [`examples/`](examples)（含国际化示例 [`examples/i18n_app/`](examples/i18n_app) 与全局通知示例 [`examples/app_notice/`](examples/app_notice)），或在 `rynui_token_gallery` 中展开各组件的实时 C++ 源码面板。
 
 ## 当前进展
 
-| 领域 | 已有实现 |
+### 核心运行时与基础设施
+
+| 领域 | 当前能力 |
 | --- | --- |
-| 响应式状态 | `Signal`、`Memo`、`Effect`、`Binding`、`Scope` 与 `Prop<T>` |
-| 组件与布局 | `Title`、`Text`、`Paragraph`、`Link`、`Divider`、`Button`、单行 `Input`、`Flex`、`Space`、`Row/Col`、`Layout/ContentArea/Sider`、`Masonry`、`Splitter`；见 [布局组件](docs/components/layout.md)、[Grid](docs/grid.md)、[Masonry](docs/masonry.md) 和 [Splitter](docs/components/splitter.md) |
-| 主题与交互 | 默认、暗色、紧凑、品牌色和嵌套主题；鼠标交互、键盘焦点、禁用/加载状态与基础状态动画 |
-| 文本 | UTF-8 `ryn::String`/`StringView`、C++20 `u8"..."` 字面量、中英文排版、字体回退与高 DPI 字形绘制 |
-| 排版与分割线 | 五级标题、typed rich runs 与混合语义排版、字素安全省略和展开、HTML/纯文本复制、操作提示、TextArea 多行原地编辑、Link 交互；范围见 [Typography](docs/typography.md) 与 [Divider](docs/divider.md) |
-| 浮动操作 | FloatButton、Group 与显式原生滚动目标 BackTop；见 [FloatButton](docs/float-button.md) |
-| 单行编辑 | Input / Password / Search、四变体、统计与软硬上限、焦点引用、原生用途提示、自定义图标和清空；字素安全选区、剪贴板、撤销/重做与 IME，见 [Input](docs/input.md) |
-| 输入建议 | AutoComplete 自由文本、动态键控建议、保留富标签、受控选择/开合、键盘、组合输入门禁和 Form 同值 reset；见 [AutoComplete](docs/auto-complete.md) |
-| 层级选择 | Tree 固定层级、受控展开/单选、级联勾选、禁用隔离、保留富标题、键盘导航与有限滚动；见 [Tree](docs/tree.md) |
-| 树形下拉 | TreeSelect 固定层级单值、受控开合/展开、清空、原生树键盘、有限列表与 Form String 绑定；范围及验收见 [TreeSelect](docs/tree-select.md) |
-| 下拉选择 | Select 单选、字符串/int64 值、Unicode 搜索、清空、动态选项、受控回写、键盘与窗口层；范围和验收见 [Select](docs/select.md) |
-| 内容容器 | Card 标题/extra/cover/正文/actions、两尺寸/两变体、hover 与保留编辑状态的 loading；见 [Card](docs/card.md) |
-| 折叠面板 | Collapse 固定键控面板、受控/默认展开、accordion、独立 extra、键盘和保留正文草稿；见 [Collapse](docs/collapse.md) |
-| 分段选择 | Segmented 固定选项、受控/默认选择、图标/富标签、横纵向与等宽 block、三尺寸和键盘导航；见 [Segmented](docs/segmented.md) |
-| 标签面板 | Tabs 固定面板、受控选择、保留草稿、Line/Card、三尺寸/上下/居中、键盘和横向溢出导航；见 [Tabs](docs/tabs.md) |
-| 对话框 | 受控 Modal、保留正文/标题/页脚插槽、嵌套窗口层、焦点恢复与视口内正文滚动；见 [Modal](docs/modal.md) |
-| 抽屉 | Drawer 四边面板、受控关闭、保留插槽、固定标题/页脚、正文滚动与 Modal 混合焦点层；见 [Drawer](docs/drawer.md) |
-| 气泡确认 | Popconfirm 保留触发器/标题/说明、真实确认取消按钮、受控或默认显示、键盘/外部关闭、焦点恢复和子浮层；见 [Popconfirm](docs/popconfirm.md) |
-| 交互气泡 | Popover 保留富内容与编辑草稿、受控开合、组合触发、定位箭头和子浮层输入归属；见 [Popover](docs/popover.md) |
-| 标签与计数 | Tag/CheckableTag 状态色、受控关闭与选择；Badge 计数/溢出/圆点/状态、独立或包裹保留内容；见 [Tag / Badge](docs/tag-and-badge.md) |
-| 头像与成员组 | 文字/图标 Avatar、实际字体测量自适应、保留内容；AvatarGroup 固定键控成员、重叠布局和可换行/滚动的溢出气泡；见 [Avatar](docs/avatar.md) |
-| 评分 | Rate 文字/图标与真实半星、受控评分、清空、原生键盘、动态数量和保留富 Tooltip；见 [Rate](docs/rate.md) |
-| 统计指标 | Statistic typed 数值/字符串、精度截断补零、分组/自定义格式化、保留标题/前后缀/数值内容与 Skeleton loading；见 [Statistic](docs/statistic.md) |
-| 状态与进度 | Alert 受控关闭与内容插槽、Spin 保留内容及加载屏蔽、Progress 条形/圆形/仪表盘进度；见 [反馈组件](docs/feedback.md) |
-| 消息通知 | Message/Notification 窗口作用域 holder/ref、键控更新、四角通知、富内容及到期清理；见 [消息通知](docs/message-notification.md) |
-| 时间轴 | 竖向 Timeline 支持富条目、交替布局、正反序、静态 loading 轨迹及保留编辑内容；见 [Timeline](docs/timeline.md) |
-| 加载骨架 | 静态 Skeleton 标题/段落/avatar 和独立 Avatar/Button/Input 占位，保留加载前后的内容与编辑状态；见 [Skeleton](docs/skeleton.md) |
-| 数据浏览 | Table 保留键控行、typed 列/插槽、受控排序/选择及有限滚动，搭配受控或默认 Pagination；见 [Table](docs/table.md) 和 [Pagination](docs/pagination.md) |
-| 详情展示 | Descriptions 固定键控多列、span、横纵标签、边框和保留富内容；见 [Descriptions](docs/descriptions.md) |
-| 菜单与命令 | Menu 受控选择、Inline 子菜单和键盘导航；Dropdown 点击/右键触发、窗口层与焦点恢复；见 [Menu / Dropdown](docs/menu-dropdown.md) |
-| 数值输入 | InputNumber 保留数值草稿、受控回写、范围/精度/步长、键盘与步进按钮，复用 Input 的选区和 IME；见 [InputNumber](docs/input-number.md) |
-| 滑动输入 | 单值 Slider、双端 RangeSlider、受控值/步长、mouse/touch 拖动、独立 thumb 焦点、键盘、横纵向与反向；范围与验收见 [Slider](docs/slider.md) |
-| 提示浮层 | 基础文字 Tooltip、受控显示、hover/focus 延迟、Escape、十二种位置、边缘翻转与箭头；范围与验收见 [Tooltip](docs/tooltip.md) |
-| 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
-| 可移植框架基础 | 独立宿主/GPU 所有权、共同场景上传事务、Recording 数据验收、无 SDL 的 HEADLESS 构建和非阻塞帧入口 |
+| 响应式与布局 | `Signal`、`Memo`、`Effect`、`Binding`、`Scope`、`Prop<T>`；持久化 Node 树、Constraints 布局、共享响应式断点、按需帧调度与基础状态动效 |
+| 文本与桌面输入 | UTF-8 `ryn::String`/`StringView`、`u8"..."` 字面量、Unicode 17 双向排版、系统字体回退、高 DPI 字形栅格化；字素安全选区、剪贴板、撤销/重做与 IME 会话桥接 |
+| 主题与国际化 | 1198 项锁定 Design Token、Default/Dark/Compact/品牌色/嵌套主题；`ConfigProvider` 默认属性继承与内置 `zh-CN`/`en-US` 语言包、复数与精确数值格式 |
+| 渲染与可移植基础 | 独立宿主/GPU 所有权、共同 `SceneResources` 上传事务、Quad/Glyph/RoundedEffect/Image 与合成路径、内嵌 shader、无 SDL 的 HEADLESS/Recording 构建 |
+| Gallery 与测试体系 | 离线 Ant Design 6.6.5 组件目录与独立页面 `rynui_token_gallery`、在线主题/语言/方向切换、后台 Wayland 验收以及推进中的 Web/native 自动差分测试 |
 
-当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项。通用 4 项与布局 7 项已实现各自原生合同；新增能力与分平台验收见 [106 清单](openspec/changes/106-20261104-complete-general-and-layout-components/tasks.md)。
+### Ant Design 6.6.5 组件覆盖（七类 73 项）
 
-已有组件按原生桌面范围持续收尾，Web 专用 API 不移植。单行家族见 [052 清单](openspec/changes/052-20261003-complete-native-input-features/tasks.md)；[053 TextArea](openspec/changes/053-20261003-add-native-text-area/tasks.md)已实现多行编辑、统计、autoSize、滚动与 resize；[054 OTP](openspec/changes/054-20261003-add-native-otp-input/tasks.md)已实现 Unicode 分格、粘贴/formatter/mask、组导航与动态长度。[055 双向文本](openspec/changes/055-20261003-complete-native-bidirectional-text/tasks.md)补齐 Unicode 17 Arabic/Hebrew 排版、视觉 caret/不连续选区和 reactive 段落方向，Input 家族原生功能已实现；Linux 原生验收仍独立待完成。
+下表对应离线参考目录 [`gallery/ant-design/6.6.5/support-overlay.json`](gallery/ant-design/6.6.5/support-overlay.json) 的真实状态（共 **65 `implemented` · 6 `partial` · 1 `deprecated` · 1 `web-only`**）：
 
-Typography 与 Divider 的基础能力已有 Windows Debug/Release、D3D12/DXIL 真实窗口验收，覆盖系统缩放和四档渲染缩放，见 [034 清单](openspec/changes/034-20261001-complete-typography-and-divider/tasks.md)与[Windows 证据](openspec/changes/034-20261001-complete-typography-and-divider/evidence/windows-typography.md)。新增操作/省略提示与多行编辑的独立验收见 [057 清单](openspec/changes/057-20261023-complete-typography-hints-and-editor/tasks.md)；Linux 原生 Wayland 验收仍待完成。
+| 分类 | 状态统计 | 组件与文档入口 |
+| --- | --- | --- |
+| 通用 General (4) | 4 implemented | [Button](docs/button.md)、[FloatButton](docs/float-button.md)、[Icon](docs/icon.md)、[Typography](docs/typography.md) |
+| 布局 Layout (7) | 7 implemented | [Divider](docs/divider.md)、[Flex](docs/flex-space.md)、[Grid](docs/grid.md)、[Layout](docs/components/layout.md)、[Masonry](docs/masonry.md)、[Space](docs/flex-space.md)、[Splitter](docs/components/splitter.md) |
+| 导航 Navigation (7) | 7 implemented | [Anchor](docs/anchor.md)、[Breadcrumb](docs/breadcrumb.md)、[Dropdown](docs/menu-dropdown.md)、[Menu](docs/menu-dropdown.md)、[Pagination](docs/pagination.md)、[Steps](docs/steps.md)、[Tabs](docs/tabs.md) |
+| 数据录入 Data Entry (18) | 18 implemented | [AutoComplete](docs/auto-complete.md)、[Cascader](docs/components/cascader.md)、[Checkbox](docs/checkbox.md)、[ColorPicker](docs/color-picker.md)、[DatePicker](docs/date-picker.md)、[Form](docs/form.md)、[Input](docs/input.md)（含 Search / Password / TextArea / OTP）、[InputNumber](docs/input-number.md)、[Mentions](docs/mentions.md)、[Radio](docs/radio.md)、[Rate](docs/rate.md)、[Select](docs/select.md)、[Slider](docs/slider.md)、[Switch](docs/switch.md)、[TimePicker](docs/time-picker.md)、[Transfer](docs/components/transfer.md)、[TreeSelect](docs/tree-select.md)、[Upload](docs/components/upload.md) |
+| 数据展示 Data Display (21) | 15 implemented · 5 partial · 1 deprecated | **implemented**：[Avatar](docs/avatar.md)、[Badge](docs/tag-and-badge.md)、[Calendar](docs/calendar.md)、[Card](docs/card.md)、[Carousel](docs/carousel.md)、[Collapse](docs/collapse.md)、[Descriptions](docs/descriptions.md)、[Image](docs/components/image.md)、[Listy](docs/listy.md)、[QRCode](docs/qrcode.md)、[Segmented](docs/segmented.md)、[Tag](docs/tag-and-badge.md)、[Timeline](docs/timeline.md)、[Tooltip](docs/tooltip.md)、[Tree](docs/tree.md)<br>**partial**：[Empty](docs/empty-result.md)、[Popover](docs/popover.md)、[Statistic](docs/statistic.md)、[Table](docs/table.md)、[Tour](docs/tour.md)<br>**deprecated**：[List](docs/list-migration.md)（上游已废弃，迁移至 Listy） |
+| 反馈 Feedback (11) | 10 implemented · 1 partial | **implemented**：[Alert](docs/feedback.md)、[Drawer](docs/drawer.md)、[Message](docs/message-notification.md)、[Modal](docs/modal.md)、[Notification](docs/message-notification.md)、[Popconfirm](docs/popconfirm.md)、[Result](docs/empty-result.md)、[Skeleton](docs/skeleton.md)、[Spin](docs/feedback.md)、[Watermark](docs/components/watermark.md)<br>**partial**：[Progress](docs/feedback.md) |
+| 其他 Other (5) | 4 implemented · 1 web-only | **implemented**：[Affix](docs/components/affix.md)、[App](docs/app.md)、[BorderBeam](docs/components/border-beam.md)、[ConfigProvider](docs/config-provider.md)<br>**web-only**：[Util](docs/util.md)（上游为 TypeScript 类型工具，C++ 直接使用 typed Props/ref） |
 
-单行 `Input` 已接入 Gallery，并完成平台通用测试和 Windows Debug/Release 构建验收；真实系统输入法、候选窗与视觉效果仍需分别完成 Windows 和 Linux 验收。动画和 Gallery 也有待完成的平台验收，具体进度见 [Input](openspec/changes/010-20260831-build-text-input-foundation/tasks.md)、[动画](openspec/changes/009-20260829-build-animation-runtime-foundation/tasks.md)和 [Gallery 独立页面](openspec/changes/105-20261103-redesign-gallery-component-pages/tasks.md) 清单。
+> **范围与验证说明**：目录状态表达的是各组件按原生桌面合同实现的覆盖情况，不移植 Web 专用的 DOM/CSS/React API。组件已实现或通过 HEADLESS/Recording 合同测试，不代表 Windows 与 Linux 全部真机 GPU、系统输入法（IME）、OS 辅助技术、跨显示器 DPI 及 Web/native 差分验收均已关闭；详细缺口、平台证据与已知问题见[组件收尾清单](docs/component-completion.md)、[未解决问题总表](docs/open-issues.md)和 [OpenSpec changes](openspec/changes)。
 
-## 构建与体验
+## 快速开始
 
-建议先运行 `rynui_token_gallery`，按独立组件页浏览真实支持范围、交互样例、C++ 与 Design Token；未实现项提供说明页。入口和定向检查见 [Gallery 页面说明](docs/development/gallery-pages.md)。
+### 支持平台与后端
 
-| 平台 | 工具链 | 当前 GPU 路径 |
+| 平台 | 工具链 | 当前后端路径 |
 | --- | --- | --- |
 | Windows | MSVC x64 | SDL3 GPU / D3D12 / DXIL |
 | Linux | GCC 或 Clang | SDL3 GPU / Vulkan / SPIR-V |
+| 合同测试 | Windows MSVC / Linux GCC | `HEADLESS` + `RECORDING`（无 SDL / GPU 依赖） |
 
-macOS 属于后续架构目标，当前尚未提供正式构建 preset 或验收结果。
+macOS、移动端与 Web 属于后续架构目标，尚未提供正式构建 preset 或实机验收结果；跨端边界见[多 backend 与跨端调研](docs/research/multi-backend-portability.md)。
 
-跨端框架基础由 [035 清单](openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md)和 [renderer 合同](docs/renderer-contract.md)记录。HEADLESS/Recording 运行真实共享组件与文本代码用于测试；移动端、Web 和第二真实 GPU renderer 仍属于后续范围。
+### 环境要求
 
-需要 Git、CMake 3.25+、Ninja 和 C++20 工具链；运行示例需要图形桌面和支持相应 GPU 后端的驱动。Windows 需要安装 Visual Studio C++ x64 工具。Linux 需要 Fontconfig 2.13+ 开发包；默认 bundled Wayland 构建还需要 Meson、pkg-config、patch、wayland-scanner，以及 Wayland、wayland-protocols、Cairo、PangoCairo 开发依赖。
+- **通用**：Git、CMake 3.25+、Ninja、C++20 工具链；运行原生示例需要图形桌面与支持对应 GPU 后端的驱动。
+- **Windows**：Visual Studio C++ x64 工具链（MSVC，不支持用 MinGW 替代）。
+- **Linux**：Fontconfig 2.13+ 开发包、`wayland-client >= 1.18` 开发包（Gallery 有限验收同步）；默认 `BUNDLED` Wayland 构建还需要 Meson、pkg-config、patch、`wayland-scanner`，以及 Wayland、`wayland-protocols`、Cairo、PangoCairo 开发依赖。
+
+### 克隆与构建
+
+所有正式构建统一由仓库的 [`CMakePresets.json`](CMakePresets.json) 与 `Ninja Multi-Config` 驱动。默认 `BUNDLED` 模式会下载并校验 SHA256 锁定的第三方依赖，首次配置需要网络。
 
 ```bash
 git clone https://github.com/helywin/RynUI.git
 cd RynUI
 ```
 
-所有正式构建使用仓库内的 `CMakePresets.json` 和 `Ninja Multi-Config`。默认 `BUNDLED` 模式会下载并校验锁定依赖，首次配置需要网络。
-
-Windows PowerShell：
+**Windows (PowerShell)**：
 
 ```powershell
 ./scripts/build-windows.ps1 -Configuration Debug
 ./out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe
 ```
 
-Linux / GCC：
+交互体验或性能测量建议使用 `-Configuration Release`。
+
+**Linux (GCC)**：
 
 ```bash
 cmake --preset linux-gcc
@@ -103,45 +122,48 @@ ctest --preset linux-gcc-debug
 ./out/build/linux-gcc/examples/Debug/rynui_token_gallery
 ```
 
-Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[开发构建说明](docs/development/building.md)；`SYSTEM` 依赖模式、版本锁定与离线准备方式见[第三方依赖说明](docs/development/third-party.md)。
+Linux 同时提供 `linux-clang` 与无窗口合同测试 preset `linux-gcc-headless`（Windows 对应 `windows-msvc-headless`）。Release 构建、`SYSTEM` 依赖模式与离线覆盖方法见[开发构建说明](docs/development/building.md)和[第三方依赖与锁定规则](docs/development/third-party.md)。
 
 ## 示例
 
-| 可执行文件 | 适合了解什么 |
+推荐从 `rynui_token_gallery` 开始体验：它按七类 73 项提供独立组件页、真实交互样例、主题 / Compact / 品牌色 / 语言 / 方向实时切换，以及每个样例对应的 C++ 源码与 Design Token 视图。
+
+| 可执行文件 | 说明 |
 | --- | --- |
-| `rynui_token_gallery` | 从这里开始：独立组件页、真实状态、主题与 C++ 示例 |
-| `rynui_minimal` | 响应式状态到 GPU 绘制的最小闭环 |
-| `rynui_text_demo` | 中英文排版、字体回退与文本更新 |
-| `rynui_button_demo` | 按钮状态、鼠标与键盘交互 |
-| `rynui_layout_demo` | Flex / Space 组合与响应式布局 |
+| `rynui_token_gallery` | 推荐入口：独立组件页、真实交互、主题与国际化切换、内联 C++ 源码与 Token 浏览 |
+| `rynui_minimal` | 从响应式 `Signal` 到 GPU Quad 绘制的最小闭环 |
+| `rynui_text_demo` | 中英文排版、系统字体回退与文本动态更新 |
+| `rynui_button_demo` | Button 变体、状态切换、鼠标与键盘焦点交互 |
+| `rynui_layout_demo` | `Flex` / `Space` 组合与响应式布局更新 |
 
-示例源码位于 [`examples/`](examples)，公开头文件位于 [`include/ryn/`](include/ryn)。
+示例源码位于 [`examples/`](examples)（另包含纯公开头示例 [`examples/i18n_app/`](examples/i18n_app) 与 [`examples/app_notice/`](examples/app_notice)），公开 C++ 头文件位于 [`include/ryn/`](include/ryn)。
 
-## 文档与参与
+## 文档导航
 
-- [开发构建说明](docs/development/building.md)：环境、presets 与构建选项。
-- [VS Code 使用说明](docs/development/vscode.md)：IntelliSense 配置来源、生效条件与排查。
-- [架构基线](docs/architecture.md)：设计目标、模块边界和长期技术决策；包含尚未实现的规划。
-- [多 backend 与跨端调研](docs/research/multi-backend-portability.md)：已实施的框架基础与未来桌面、移动端、Web 路线和验收范围。
-- [Design Token 参考](docs/design-tokens.md)：锁定的设计变量及支持范围。
-- [Button](docs/button.md)：颜色与变体、原生内容/交互和阶段验收。
-- [Typography](docs/typography.md)：操作/截断提示、多行编辑与受控草稿。
-- [Divider](docs/divider.md)：线条变体、尺寸、逻辑标题方位与间距合同。
-- [Switch](docs/switch.md)：保留状态内容、RTL、焦点、主题与有限反馈。
-- [Flex / Space](docs/flex-space.md)：原生换行、方向、对齐和弹性外部布局映射。
-- [Slider / RangeSlider](docs/slider.md)：数值、交互、主题、支持范围与验收入口。
-- [Tooltip](docs/tooltip.md)：窗口提示层、触发与受控显示、主题及分平台验收。
-- [Icon](docs/icon.md)：完整离线目录、双色、旋转动画与 typed 自定义向量。
-- [Input](docs/input.md)：单行输入家族、公开焦点引用与原生系统输入提示。
-- [Select](docs/select.md)：单选/搜索/动态选项、键盘与窗口层、主题和首版范围。
-- [Card](docs/card.md)：内容区域组合、尺寸与主题、loading 保留状态和子控件交互。
-- [Anchor](docs/anchor.md)：显式原生滚动目标、层级与横向导航、活动跟踪和可取消平滑滚动。
-- [Breadcrumb](docs/breadcrumb.md)、[Steps](docs/steps.md)：保留富内容的层级导航、步骤状态与原生键盘交互。
-- [Form](docs/form.md)、[DatePicker](docs/date-picker.md)、[TimePicker](docs/time-picker.md)：显式字段绑定、同步校验与单日期/时间输入的原生首版范围。
-- [组件收尾](docs/component-completion.md)：已有组件的原生功能缺口与实施顺序。
-- [第三方依赖与锁定规则](docs/development/third-party.md)：版本、来源、校验与许可证信息。
-- [OpenSpec 开发工具](docs/development/openspec.md)：pnpm 全局安装、配套版本与校验命令。
-- [OpenSpec changes](openspec/changes)：各项变更的范围、任务和验收证据。
-- [Agent 协作规则](AGENTS.md)：仓库开发与验证约定。
+### 架构与核心合同
 
-欢迎通过 [GitHub Issues](https://github.com/helywin/RynUI/issues) 反馈问题、讨论使用场景或提出组件需求。报告运行问题时，请附上操作系统、构建 preset、窗口系统、GPU/驱动及复现步骤。详细技术文档目前以简体中文为主。
+- [架构基线](docs/architecture.md)：设计目标、模块边界与长期技术决策（包含尚未实现的规划）。
+- [Design Token 参考](docs/design-tokens.md)：Ant Design 6.6.5 的 1198 项锁定 Token 及支持分类。
+- [Renderer 合同](docs/renderer-contract.md)：logical CPU scene、packed GPU ABI、资源上传事务与 backend 能力边界。
+- [原生国际化](docs/i18n.md) · [ConfigProvider](docs/config-provider.md) · [App 服务](docs/app.md)：语言包、消息词典、默认属性继承与窗口级通知/弹层服务。
+- [双向文本](docs/bidirectional-text.md)：Unicode 17 段落分析、混合脚本排版与视觉光标导航合同。
+- [多 backend 与跨端调研](docs/research/multi-backend-portability.md)：已落地的可移植边界及桌面、移动端、Web 后续路线。
+
+### 开发、构建与测试
+
+- [开发构建说明](docs/development/building.md)：环境要求、正式 presets、Release 与 HEADLESS 构建。
+- [第三方依赖与锁定规则](docs/development/third-party.md)：`BUNDLED`/`SYSTEM` 模式、版本与 SHA256 锁定、离线构建及许可证。
+- [内嵌资源与示例部署](docs/resources.md)：内置 shader 资源嵌入、默认系统字体链与验收字体准备。
+- [Gallery 组件页面](docs/development/gallery-pages.md)：页面宿主、状态草稿、源码面板与定向验收入口。
+- [Web / native 自动差分测试](docs/development/demo-differential-testing.md)：锁定官方 Web 参考与自动化差分 runner。
+- [VS Code 使用说明](docs/development/vscode.md) · [代码格式](docs/development/formatting.md)：IntelliSense 配置与 clang-format 22.x 规范。
+
+### 进度与协作
+
+- [组件收尾清单](docs/component-completion.md) · [未解决问题总表](docs/open-issues.md)：组件原生功能状态、已知问题与平台验证边界。
+- [OpenSpec changes](openspec/changes) · [OpenSpec 开发工具](docs/development/openspec.md)：各项变更的范围、任务清单与验收摘要。
+- [Agent 协作规则](AGENTS.md)：面向 coding agent 的仓库协作、验证与提交规则。
+
+## 反馈与参与
+
+欢迎通过 [GitHub Issues](https://github.com/helywin/RynUI/issues) 报告问题、交流桌面场景或提出组件需求。反馈运行问题时，请附上操作系统、构建 preset、窗口系统、GPU/驱动信息及最小复现步骤。详细技术文档目前以简体中文为主。
