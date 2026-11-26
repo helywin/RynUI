@@ -267,6 +267,50 @@ def quarter_icon_masks(manifest, root, texts):
     return read_masks(manifest, root, 'skia-svg-a8', specs) if specs else {}
 
 
+def layout_icon_key(ink):
+    from .formal_icon_source import official
+
+    _, source_manifest, _ = official()
+    source = ink['atlas_source']
+    font = source['font']
+    em = font['logical_pixel_size'] * source['display_scale']
+    if (source.get('svg_layout_snap') is not True or source.get('svg_viewport_origin') is not True
+            or ink.get('rotation_degrees') != 0
+            or font['sha256'] != source_manifest['outline_container_sha256'] or font['face_index'] != 0
+            or font['source'] != 'bundled-icon' or font['raster_policy']['rasterizer'] != 'skia-svg-a8'
+            or not 0 < em <= 128):
+        return None
+    return source['glyph_id'], em, source['phase'], source['phase_y']
+
+
+def layout_icon_masks(manifest, root, texts):
+    if manifest['environment']['native_capture'].get('icon_rasterizer') != 'skia-svg-a8':
+        return {}
+    specs = {}
+    for text in texts:
+        if text.get('kind') != 'icon-font':
+            continue
+        for ink in text.get('ink_instances', ()):
+            if (key := layout_icon_key(ink)) is not None:
+                glyph, em, x, y = key
+                specs[key] = dict(glyph_id=glyph, physical_em=em, phase=x, phase_y=y, layout_snap=True)
+    return read_masks(manifest, root, 'skia-svg-a8', specs) if specs else {}
+
+
+def place_layout_icon(masks, ink, bounds, dpr):
+    mask = masks.get(layout_icon_key(ink))
+    if mask is None:
+        return None
+    source = ink['atlas_source']
+    pad = source['padding']
+    if (source['display_scale'] != dpr or
+            abs(bounds['width']*dpr - mask.width - 2*pad) > 1e-6 or
+            abs(bounds['height']*dpr - mask.height - 2*pad) > 1e-6 or
+            any(abs(value-round(value)) > 1/64 for value in (bounds['x']*dpr,bounds['y']*dpr))):
+        return None
+    return mask, *scenario_origin(mask, source, bounds, dpr)
+
+
 def verified_quarter_icon_tie(coverage,observed):
     # Chromium rounds the destination gray. Vulkan's BGRA8 black source-over
     # rounds the source contribution; only exact half codes can differ.

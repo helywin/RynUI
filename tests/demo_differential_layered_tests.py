@@ -395,6 +395,48 @@ class LayeredTests(unittest.TestCase):
         with self.assertRaises(RunError):
             _web_glyph_support(row,priors,1,[0,.3,0,0],*common)
 
+    def test_stationary_official_svg_uses_independent_ink_instead_of_atlas_padding(self):
+        from demo_differential.comparison import _bind_stationary_svg_support
+        from demo_differential.formal_icon_source import resource, single_path_for_glyph
+        from demo_differential.glyph_witness import layout_icon_key, place_layout_icon
+
+        entry,_,manifest,cmap=resource('LoadingOutlined')
+        glyph=cmap[entry['layers'][0]['codepoint']]
+        face=dict(logical_pixel_size=2,sha256=manifest['outline_container_sha256'],face_index=0,
+                  source='bundled-icon',raster_policy={'rasterizer':'skia-svg-a8'})
+        source=dict(font=face,glyph_id=glyph,display_scale=1,svg_viewport_origin=True,svg_layout_snap=True,
+                    phase=0,phase_y=0,padding=1,bearing_x=0,bearing_y=0,coverage_width=2,coverage_height=2)
+        ink=dict(atlas_source=source,rotation_degrees=0)
+        key=layout_icon_key(ink)
+        self.assertEqual(key,(glyph,2,0,0))
+        masks={key:GlyphWitness(0,0,2,2,bytes((0,255,0,0)))}
+        bounds=box(4,6,4,4)
+        placement=place_layout_icon(masks,ink,bounds,1)
+        self.assertEqual(placement,(masks[key],5,7))
+        row=dict(bounds=bounds,kind='glyph',native_glyph_mask=placement)
+        self.assertEqual(_layer_coverage(row,(4.5,6.5),1),(0,False))
+        self.assertEqual(_layer_coverage(row,(5.5,7.5),1),(0,False))
+        self.assertEqual(_layer_coverage(row,(6.5,7.5),1),(1,True))
+        path,fill,view_box=single_path_for_glyph(glyph,include_view_box=True)
+        row['glyph_source']=(dict(kind='icon-font'),ink)
+        web=dict(kind='glyph',formal_svg=True,bounds=bounds,svg_viewport=box(5,7,2,2),svg_view_box=view_box,
+                 source=dict(actual=dict(attributes=dict(d=path)),style={'fill-rule':fill},ancestry=[25]))
+        nodes={25:{'style':{'transform':'matrix(1, 0, 0, 1, 0, 0)'}}}
+        _bind_stationary_svg_support([web],[row],nodes,1)
+        self.assertEqual(_layer_coverage(web,(5.5,7.5),1),(1,True))
+        self.assertEqual(_layer_coverage(web,(4.5,9.5),1),(0,False))
+        web.pop('web_svg_support')
+        nodes[25]['style']['transform']='matrix(0, 1, -1, 0, 0, 0)'
+        _bind_stationary_svg_support([web],[row],nodes,1)
+        self.assertNotIn('web_svg_support',web)
+        self.assertIsNone(place_layout_icon(masks,ink,box(4.25,6,4,4),1))
+        self.assertIsNone(place_layout_icon(masks,ink,box(4,6,4,5),1))
+        ink['rotation_degrees']=90
+        self.assertIsNone(place_layout_icon(masks,ink,bounds,1))
+        ink['rotation_degrees']=0
+        source['svg_layout_snap']=False
+        self.assertIsNone(place_layout_icon(masks,ink,bounds,1))
+
     def test_svg_tie_requires_matching_official_path_white_backdrop_and_exact_codes(self):
         from demo_differential.comparison import _witnessed_svg_rounding
         from demo_differential.formal_icon_source import resource

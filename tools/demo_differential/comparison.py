@@ -512,6 +512,12 @@ def _layer_coverage(layer,point,dpr):
         coverage=min(1.,width*dpr)*min(1.,height*dpr)
         return coverage,0<coverage<1-1e-10
     if layer.get('formal_svg'):
+        if (support := layer.get('web_svg_support')) is not None:
+            mask, x, y = support
+            px, py = (math.floor(coordinate * dpr) for coordinate in point)
+            # Keep a one-pixel guard for the browser's independent rasterizer.
+            if not any(mask.at(px - x + dx, py - y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
+                return 0, False
         # Chromium supplies continuous path bounds. Their intersection
         # with the pixel aperture can be nonempty outside the pixel center.
         reach=.5/dpr
@@ -1305,7 +1311,7 @@ def _hard_paint_gates(native_layers,web_layers,step):
 def _glyph_priors_for_run(native,manifest,*,independent_masks=False,web=None):
     from .calibration import scenario_font_priors,font_priors_from_bytes
     from .formal_icon_source import official_font_bytes
-    from .glyph_witness import scenario_masks,browser_scenario_masks,quarter_icon_masks
+    from .glyph_witness import scenario_masks,browser_scenario_masks,quarter_icon_masks,layout_icon_masks
     from .protocol import ROOT,relative_path
     ordinary=set();icons=set();texts=[]
     for step,checkpoint in native['checkpoints'].items():
@@ -1339,6 +1345,7 @@ def _glyph_priors_for_run(native,manifest,*,independent_masks=False,web=None):
     if independent_masks:
         result['scenario_masks']=scenario_masks(manifest,ROOT,texts,result)
         result['quarter_icon_masks']=quarter_icon_masks(manifest,ROOT,texts)
+        result['layout_icon_masks']=layout_icon_masks(manifest,ROOT,texts)
         result['svg_tinted_framebuffer']=manifest['environment'].get('native',{}).get('backend') in ('direct3d12','d3d12')
         if web_rows:
             result['web_masks']=browser_scenario_masks(manifest,ROOT,(_web_glyph_source(row,result) for row in web_rows))
@@ -1597,6 +1604,42 @@ def _witnessed_svg_rounding(sides,observed,masks,point,dpr,placements,*,tinted_f
     return verified_quarter_icon_tie(coverage,observed)
 
 
+def _bind_stationary_svg_support(web_layers, native_layers, nodes, dpr):
+    from .formal_icon_source import single_path_for_glyph
+
+    candidates = {}
+    for row in native_layers:
+        if row['kind'] != 'glyph' or (mask := row.get('native_glyph_mask')) is None:
+            continue
+        text, ink = row['glyph_source']
+        if text.get('kind') != 'icon-font':
+            continue
+        source = ink['atlas_source']
+        signature = single_path_for_glyph(source['glyph_id'], include_view_box=True)
+        if signature is None:
+            continue
+        _, x, y = mask
+        em = source['font']['logical_pixel_size'] * dpr
+        viewport = (x + source['phase'] / 4, y + source['phase_y'] / 4, em, em)
+        candidates[signature, viewport] = mask
+    for row in web_layers:
+        if not row.get('formal_svg') or not (viewport := row.get('svg_viewport')):
+            continue
+        source = row['source']
+        attrs = source['actual']['attributes']
+        ancestry = (nodes[ancestor]['style'] for ancestor in source.get('ancestry', ()) if ancestor in nodes)
+        if attrs.get('transform') not in (None, '') or any(
+            style.get('transform', 'none') not in ('none', 'matrix(1, 0, 0, 1, 0, 0)')
+            or style.get('filter', 'none') != 'none' for style in ancestry
+        ):
+            continue
+        signature = (re.sub(r'\s+', '', attrs.get('d') or ''), source['style'].get('fill-rule', 'nonzero'),
+                     row['svg_view_box'])
+        physical = tuple(viewport[name] * dpr for name in ('x', 'y', 'width', 'height'))
+        if (support := candidates.get((signature, physical))) is not None:
+            row['web_svg_support'] = support
+
+
 def _web_glyph_source(row,priors):
     group=row['text_group'];text=row['content'];baseline=row.get('outline_origin')
     if baseline is None or len(text)!=1:
@@ -1686,19 +1729,25 @@ def _layered_context(case,declaration,native,web,images,thresholds,origins,*,gly
                 bounds=[dict(x=(x+mask.left)/dpr,y=(y+mask.top)/dpr,
                              width=mask.width/dpr,height=mask.height/dpr) for mask,x,y in placements]
                 row['bounds']=reduce(union,bounds)
-    if glyph_priors and glyph_priors.get('scenario_masks'):
-        from .glyph_witness import mask_identity,scenario_origin
-        _,masks=glyph_priors['scenario_masks']
+    if glyph_priors and (glyph_priors.get('scenario_masks') or glyph_priors.get('layout_icon_masks')):
+        from .glyph_witness import mask_identity,scenario_origin,place_layout_icon
+        _,masks=glyph_priors.get('scenario_masks') or (None,{})
+        icons=glyph_priors.get('layout_icon_masks',{})
         for row in native_layers:
             if row['kind']!='glyph':
                 continue
             text,ink=row['glyph_source']
             if text.get('kind')=='icon-font':
+                if icons and (mask:=place_layout_icon(icons,ink,row['bounds'],dpr)) is not None:
+                    row['native_glyph_mask']=mask
                 continue
             scalar=text['content'].encode()[ink['byte_begin']:ink['byte_end']].decode()
             source=ink['atlas_source']
             if len(scalar)==1 and not scalar.isspace() and (mask:=masks.get(mask_identity(scalar,source))) is not None:
                 row['native_glyph_mask']=(mask,*scenario_origin(mask,source,row['bounds'],dpr))
+        if icons:
+            nodes = {node['backend_node_id']:node for node in web_stack['layers']}
+            _bind_stationary_svg_support(web_layers, native_layers, nodes, dpr)
     inventories=(web_layers,native_layers)
     blend_pixels={}
     opacity_surfaces=False
